@@ -1,0 +1,303 @@
+{
+  "elements": {
+    "activity_log": {
+      "id": {
+        "library_uri": "package:ansible_store/src/schema/activity_log.dart",
+        "name": "activity_log"
+      },
+      "declaration": {
+        "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+        "offset": 42,
+        "name": "ActivityLog"
+      },
+      "references": [],
+      "type": "table",
+      "columns": [
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "log_id",
+          "nameInDart": "logId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 86,
+            "name": "logId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "primary",
+              "is_auto_increment": true
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "activity_id",
+          "nameInDart": "activityId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 141,
+            "name": "activityId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "unique"
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "origin_node_id",
+          "nameInDart": "originNodeId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 191,
+            "name": "originNodeId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "type",
+          "nameInDart": "type",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 245,
+            "name": "type"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "entity_type",
+          "nameInDart": "entityType",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 280,
+            "name": "entityType"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "entity_id",
+          "nameInDart": "entityId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 321,
+            "name": "entityId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "board_id",
+          "nameInDart": "boardId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 360,
+            "name": "boardId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "thread_id",
+          "nameInDart": "threadId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 409,
+            "name": "threadId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "author_id",
+          "nameInDart": "authorId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 459,
+            "name": "authorId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "created_at",
+          "nameInDart": "createdAt",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 502,
+            "name": "createdAt"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "payload",
+          "nameInDart": "payload",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 546,
+            "name": "payload"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "inserted_at",
+          "nameInDart": "insertedAt",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/activity_log.dart",
+            "offset": 603,
+            "name": "insertedAt"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              {
+                "lexeme": "currentDateAndTime",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              }
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        }
+      ],
+      "existing_data_class": null,
+      "table_constraints": [],
+      "custom_parent_class": null,
+      "interfaces_for_row_class": [],
+      "fixed_entity_info_name": null,
+      "base_dart_name": "ActivityLog",
+      "row_class_name": "ActivityLogData",
+      "companion_class_name": null,
+      "without_rowid": false,
+      "strict": false,
+      "write_default_constraints": true,
+      "custom_constraints": [],
+      "attached_indices": []
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart"
+  ]
+}

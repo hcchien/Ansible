@@ -1,0 +1,214 @@
+{
+  "elements": {
+    "board_acl": {
+      "id": {
+        "library_uri": "package:ansible_store/src/schema/board_acl.dart",
+        "name": "board_acl"
+      },
+      "declaration": {
+        "source_uri": "package:ansible_store/src/schema/board_acl.dart",
+        "offset": 85,
+        "name": "BoardAcl"
+      },
+      "references": [
+        {
+          "library_uri": "package:ansible_store/src/schema/boards.dart",
+          "name": "boards"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/users.dart",
+          "name": "users"
+        }
+      ],
+      "type": "table",
+      "columns": [
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "board_id",
+          "nameInDart": "boardId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/board_acl.dart",
+            "offset": 127,
+            "name": "boardId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:ansible_store/src/schema/boards.dart",
+                  "name": "boards"
+                },
+                "name": "board_id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "user_id",
+          "nameInDart": "userId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/board_acl.dart",
+            "offset": 194,
+            "name": "userId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:ansible_store/src/schema/users.dart",
+                  "name": "users"
+                },
+                "name": "user_id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "can_read",
+          "nameInDart": "canRead",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/board_acl.dart",
+            "offset": 258,
+            "name": "canRead"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(true)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "can_write",
+          "nameInDart": "canWrite",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/board_acl.dart",
+            "offset": 333,
+            "name": "canWrite"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(true)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "is_admin",
+          "nameInDart": "isAdmin",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/board_acl.dart",
+            "offset": 409,
+            "name": "isAdmin"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(false)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        }
+      ],
+      "existing_data_class": null,
+      "table_constraints": [
+        {
+          "type": "primary_key",
+          "columns": [
+            "board_id",
+            "user_id"
+          ]
+        }
+      ],
+      "custom_parent_class": null,
+      "interfaces_for_row_class": [],
+      "fixed_entity_info_name": null,
+      "base_dart_name": "BoardAcl",
+      "row_class_name": "BoardAclData",
+      "companion_class_name": null,
+      "without_rowid": false,
+      "strict": false,
+      "write_default_constraints": true,
+      "custom_constraints": [],
+      "attached_indices": []
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:ansible_store/src/schema/boards.dart",
+    "package:ansible_store/src/schema/users.dart"
+  ]
+}

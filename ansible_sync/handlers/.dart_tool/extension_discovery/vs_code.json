@@ -1,0 +1,1 @@
+{"version":2,"entries":[{"package":"ansible_domain","rootUri":"../../../ansible_core/domain/","packageUri":"lib/"},{"package":"ansible_store","rootUri":"../../../ansible_core/store/","packageUri":"lib/"},{"package":"ansible_sync","rootUri":"../","packageUri":"lib/"}]}

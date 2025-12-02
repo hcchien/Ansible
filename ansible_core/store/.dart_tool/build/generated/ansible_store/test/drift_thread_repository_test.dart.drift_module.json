@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:ansible_store/ansible_store.dart",
+    "package:ansible_store/src/repositories/drift/drift_thread_repository.dart",
+    "package:drift/native.dart",
+    "package:test/test.dart",
+    "package:ansible_store/src/db/app_database.dart"
+  ]
+}

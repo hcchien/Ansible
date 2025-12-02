@@ -1,0 +1,1 @@
+{"valid_import":true,"imports":[{"uri":"package:drift/drift.dart","transitive":false},{"uri":"package:ansible_store/src/schema/boards.dart","transitive":false},{"uri":"package:ansible_store/src/schema/users.dart","transitive":false}],"elements":[{"kind":"table","name":"board_acl","dart_name":"BoardAcl"}]}

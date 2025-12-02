@@ -1,0 +1,94 @@
+{
+  "elements": {
+    "AppDatabase": {
+      "id": {
+        "library_uri": "package:ansible_store/src/db/app_database.dart",
+        "name": "AppDatabase"
+      },
+      "declaration": {
+        "source_uri": "package:ansible_store/src/db/app_database.dart",
+        "offset": 489,
+        "name": "AppDatabase"
+      },
+      "references": [
+        {
+          "library_uri": "package:ansible_store/src/schema/boards.dart",
+          "name": "boards"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/threads.dart",
+          "name": "threads"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/posts.dart",
+          "name": "posts"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/reactions.dart",
+          "name": "reactions"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/users.dart",
+          "name": "users"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_acl.dart",
+          "name": "board_acl"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/activity_log.dart",
+          "name": "activity_log"
+        }
+      ],
+      "type": "database",
+      "tables": [
+        {
+          "library_uri": "package:ansible_store/src/schema/boards.dart",
+          "name": "boards"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/threads.dart",
+          "name": "threads"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/posts.dart",
+          "name": "posts"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/reactions.dart",
+          "name": "reactions"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/users.dart",
+          "name": "users"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_acl.dart",
+          "name": "board_acl"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/activity_log.dart",
+          "name": "activity_log"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "schema_version": 5,
+      "daos": [],
+      "has_constructor_arg": true
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:drift/native.dart",
+    "package:path/path.dart",
+    "package:ansible_store/src/schema/boards.dart",
+    "package:ansible_store/src/schema/threads.dart",
+    "package:ansible_store/src/schema/posts.dart",
+    "package:ansible_store/src/schema/reactions.dart",
+    "package:ansible_store/src/schema/users.dart",
+    "package:ansible_store/src/schema/board_acl.dart",
+    "package:ansible_store/src/schema/activity_log.dart"
+  ]
+}

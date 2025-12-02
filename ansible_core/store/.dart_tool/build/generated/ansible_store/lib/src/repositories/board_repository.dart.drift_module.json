@@ -1,0 +1,6 @@
+{
+  "elements": {},
+  "imports": [
+    "package:ansible_store/src/entities/board.dart"
+  ]
+}

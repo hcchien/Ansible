@@ -1,0 +1,333 @@
+{
+  "elements": {
+    "posts": {
+      "id": {
+        "library_uri": "package:ansible_store/src/schema/posts.dart",
+        "name": "posts"
+      },
+      "declaration": {
+        "source_uri": "package:ansible_store/src/schema/posts.dart",
+        "offset": 108,
+        "name": "Posts"
+      },
+      "references": [
+        {
+          "library_uri": "package:ansible_store/src/schema/threads.dart",
+          "name": "threads"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/boards.dart",
+          "name": "boards"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/users.dart",
+          "name": "users"
+        }
+      ],
+      "type": "table",
+      "columns": [
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "post_id",
+          "nameInDart": "postId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 147,
+            "name": "postId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "thread_id",
+          "nameInDart": "threadId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 184,
+            "name": "threadId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:ansible_store/src/schema/threads.dart",
+                  "name": "threads"
+                },
+                "name": "thread_id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "board_id",
+          "nameInDart": "boardId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 254,
+            "name": "boardId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:ansible_store/src/schema/boards.dart",
+                  "name": "boards"
+                },
+                "name": "board_id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "author_id",
+          "nameInDart": "authorId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 321,
+            "name": "authorId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:ansible_store/src/schema/users.dart",
+                  "name": "users"
+                },
+                "name": "user_id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "content",
+          "nameInDart": "content",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 387,
+            "name": "content"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "parent_post_id",
+          "nameInDart": "parentPostId",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 425,
+            "name": "parentPostId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:ansible_store/src/schema/posts.dart",
+                  "name": "posts"
+                },
+                "name": "post_id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "created_at",
+          "nameInDart": "createdAt",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 510,
+            "name": "createdAt"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "updated_at",
+          "nameInDart": "updatedAt",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 558,
+            "name": "updatedAt"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "last_edit_at",
+          "nameInDart": "lastEditAt",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 606,
+            "name": "lastEditAt"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "is_deleted",
+          "nameInDart": "isDeleted",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/posts.dart",
+            "offset": 651,
+            "name": "isDeleted"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(false)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        }
+      ],
+      "existing_data_class": null,
+      "table_constraints": [
+        {
+          "type": "primary_key",
+          "columns": [
+            "post_id"
+          ]
+        }
+      ],
+      "custom_parent_class": null,
+      "interfaces_for_row_class": [],
+      "fixed_entity_info_name": null,
+      "base_dart_name": "Posts",
+      "row_class_name": "Post",
+      "companion_class_name": null,
+      "without_rowid": false,
+      "strict": false,
+      "write_default_constraints": true,
+      "custom_constraints": [],
+      "attached_indices": []
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:ansible_store/src/schema/threads.dart",
+    "package:ansible_store/src/schema/boards.dart",
+    "package:ansible_store/src/schema/users.dart"
+  ]
+}

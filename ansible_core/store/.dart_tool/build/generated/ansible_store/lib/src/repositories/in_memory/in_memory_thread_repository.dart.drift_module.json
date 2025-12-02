@@ -1,0 +1,7 @@
+{
+  "elements": {},
+  "imports": [
+    "package:ansible_store/src/entities/thread.dart",
+    "package:ansible_store/src/repositories/thread_repository.dart"
+  ]
+}

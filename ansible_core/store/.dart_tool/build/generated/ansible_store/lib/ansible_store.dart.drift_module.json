@@ -1,0 +1,31 @@
+{
+  "elements": {},
+  "imports": [
+    "package:ansible_store/src/entities/board.dart",
+    "package:ansible_store/src/entities/thread.dart",
+    "package:ansible_store/src/entities/post.dart",
+    "package:ansible_store/src/entities/reaction.dart",
+    "package:ansible_store/src/entities/user.dart",
+    "package:ansible_store/src/entities/board_acl.dart",
+    "package:ansible_store/src/entities/activity_log.dart",
+    "package:ansible_store/src/repositories/board_repository.dart",
+    "package:ansible_store/src/repositories/thread_repository.dart",
+    "package:ansible_store/src/repositories/post_repository.dart",
+    "package:ansible_store/src/repositories/reaction_repository.dart",
+    "package:ansible_store/src/repositories/user_repository.dart",
+    "package:ansible_store/src/repositories/board_acl_repository.dart",
+    "package:ansible_store/src/repositories/activity_log_repository.dart",
+    "package:ansible_store/src/repositories/in_memory/in_memory_board_repository.dart",
+    "package:ansible_store/src/repositories/in_memory/in_memory_thread_repository.dart",
+    "package:ansible_store/src/repositories/in_memory/in_memory_post_repository.dart",
+    "package:ansible_store/src/repositories/in_memory/in_memory_reaction_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_board_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_thread_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_post_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_reaction_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_user_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_board_acl_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_activity_log_repository.dart",
+    "package:ansible_store/src/db/app_database.dart"
+  ]
+}
