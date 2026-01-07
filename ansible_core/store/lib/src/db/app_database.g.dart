@@ -3504,6 +3504,1002 @@ class ActivityLogCompanion extends UpdateCompanion<ActivityLogData> {
   }
 }
 
+class $RemoteNodesTable extends RemoteNodes
+    with TableInfo<$RemoteNodesTable, RemoteNode> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RemoteNodesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _nodeIdMeta = const VerificationMeta('nodeId');
+  @override
+  late final GeneratedColumn<String> nodeId = GeneratedColumn<String>(
+    'node_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _urlMeta = const VerificationMeta('url');
+  @override
+  late final GeneratedColumn<String> url = GeneratedColumn<String>(
+    'url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accessTokenMeta = const VerificationMeta(
+    'accessToken',
+  );
+  @override
+  late final GeneratedColumn<String> accessToken = GeneratedColumn<String>(
+    'access_token',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncCursorMeta = const VerificationMeta(
+    'syncCursor',
+  );
+  @override
+  late final GeneratedColumn<int> syncCursor = GeneratedColumn<int>(
+    'sync_cursor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastSyncAtMeta = const VerificationMeta(
+    'lastSyncAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAt = GeneratedColumn<DateTime>(
+    'last_sync_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    nodeId,
+    name,
+    url,
+    accessToken,
+    syncCursor,
+    lastSyncAt,
+    createdAt,
+    updatedAt,
+    isActive,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'remote_nodes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RemoteNode> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('node_id')) {
+      context.handle(
+        _nodeIdMeta,
+        nodeId.isAcceptableOrUnknown(data['node_id']!, _nodeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nodeIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('url')) {
+      context.handle(
+        _urlMeta,
+        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_urlMeta);
+    }
+    if (data.containsKey('access_token')) {
+      context.handle(
+        _accessTokenMeta,
+        accessToken.isAcceptableOrUnknown(
+          data['access_token']!,
+          _accessTokenMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_cursor')) {
+      context.handle(
+        _syncCursorMeta,
+        syncCursor.isAcceptableOrUnknown(data['sync_cursor']!, _syncCursorMeta),
+      );
+    }
+    if (data.containsKey('last_sync_at')) {
+      context.handle(
+        _lastSyncAtMeta,
+        lastSyncAt.isAcceptableOrUnknown(
+          data['last_sync_at']!,
+          _lastSyncAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {nodeId};
+  @override
+  RemoteNode map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RemoteNode(
+      nodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}node_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      url: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}url'],
+      )!,
+      accessToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}access_token'],
+      ),
+      syncCursor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_cursor'],
+      )!,
+      lastSyncAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_sync_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+    );
+  }
+
+  @override
+  $RemoteNodesTable createAlias(String alias) {
+    return $RemoteNodesTable(attachedDatabase, alias);
+  }
+}
+
+class RemoteNode extends DataClass implements Insertable<RemoteNode> {
+  final String nodeId;
+  final String name;
+  final String url;
+  final String? accessToken;
+  final int syncCursor;
+  final DateTime? lastSyncAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isActive;
+  const RemoteNode({
+    required this.nodeId,
+    required this.name,
+    required this.url,
+    this.accessToken,
+    required this.syncCursor,
+    this.lastSyncAt,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.isActive,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['node_id'] = Variable<String>(nodeId);
+    map['name'] = Variable<String>(name);
+    map['url'] = Variable<String>(url);
+    if (!nullToAbsent || accessToken != null) {
+      map['access_token'] = Variable<String>(accessToken);
+    }
+    map['sync_cursor'] = Variable<int>(syncCursor);
+    if (!nullToAbsent || lastSyncAt != null) {
+      map['last_sync_at'] = Variable<DateTime>(lastSyncAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_active'] = Variable<bool>(isActive);
+    return map;
+  }
+
+  RemoteNodesCompanion toCompanion(bool nullToAbsent) {
+    return RemoteNodesCompanion(
+      nodeId: Value(nodeId),
+      name: Value(name),
+      url: Value(url),
+      accessToken: accessToken == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accessToken),
+      syncCursor: Value(syncCursor),
+      lastSyncAt: lastSyncAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isActive: Value(isActive),
+    );
+  }
+
+  factory RemoteNode.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RemoteNode(
+      nodeId: serializer.fromJson<String>(json['nodeId']),
+      name: serializer.fromJson<String>(json['name']),
+      url: serializer.fromJson<String>(json['url']),
+      accessToken: serializer.fromJson<String?>(json['accessToken']),
+      syncCursor: serializer.fromJson<int>(json['syncCursor']),
+      lastSyncAt: serializer.fromJson<DateTime?>(json['lastSyncAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'nodeId': serializer.toJson<String>(nodeId),
+      'name': serializer.toJson<String>(name),
+      'url': serializer.toJson<String>(url),
+      'accessToken': serializer.toJson<String?>(accessToken),
+      'syncCursor': serializer.toJson<int>(syncCursor),
+      'lastSyncAt': serializer.toJson<DateTime?>(lastSyncAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isActive': serializer.toJson<bool>(isActive),
+    };
+  }
+
+  RemoteNode copyWith({
+    String? nodeId,
+    String? name,
+    String? url,
+    Value<String?> accessToken = const Value.absent(),
+    int? syncCursor,
+    Value<DateTime?> lastSyncAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isActive,
+  }) => RemoteNode(
+    nodeId: nodeId ?? this.nodeId,
+    name: name ?? this.name,
+    url: url ?? this.url,
+    accessToken: accessToken.present ? accessToken.value : this.accessToken,
+    syncCursor: syncCursor ?? this.syncCursor,
+    lastSyncAt: lastSyncAt.present ? lastSyncAt.value : this.lastSyncAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isActive: isActive ?? this.isActive,
+  );
+  RemoteNode copyWithCompanion(RemoteNodesCompanion data) {
+    return RemoteNode(
+      nodeId: data.nodeId.present ? data.nodeId.value : this.nodeId,
+      name: data.name.present ? data.name.value : this.name,
+      url: data.url.present ? data.url.value : this.url,
+      accessToken: data.accessToken.present
+          ? data.accessToken.value
+          : this.accessToken,
+      syncCursor: data.syncCursor.present
+          ? data.syncCursor.value
+          : this.syncCursor,
+      lastSyncAt: data.lastSyncAt.present
+          ? data.lastSyncAt.value
+          : this.lastSyncAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteNode(')
+          ..write('nodeId: $nodeId, ')
+          ..write('name: $name, ')
+          ..write('url: $url, ')
+          ..write('accessToken: $accessToken, ')
+          ..write('syncCursor: $syncCursor, ')
+          ..write('lastSyncAt: $lastSyncAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isActive: $isActive')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    nodeId,
+    name,
+    url,
+    accessToken,
+    syncCursor,
+    lastSyncAt,
+    createdAt,
+    updatedAt,
+    isActive,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RemoteNode &&
+          other.nodeId == this.nodeId &&
+          other.name == this.name &&
+          other.url == this.url &&
+          other.accessToken == this.accessToken &&
+          other.syncCursor == this.syncCursor &&
+          other.lastSyncAt == this.lastSyncAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isActive == this.isActive);
+}
+
+class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
+  final Value<String> nodeId;
+  final Value<String> name;
+  final Value<String> url;
+  final Value<String?> accessToken;
+  final Value<int> syncCursor;
+  final Value<DateTime?> lastSyncAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isActive;
+  final Value<int> rowid;
+  const RemoteNodesCompanion({
+    this.nodeId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.url = const Value.absent(),
+    this.accessToken = const Value.absent(),
+    this.syncCursor = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RemoteNodesCompanion.insert({
+    required String nodeId,
+    required String name,
+    required String url,
+    this.accessToken = const Value.absent(),
+    this.syncCursor = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : nodeId = Value(nodeId),
+       name = Value(name),
+       url = Value(url);
+  static Insertable<RemoteNode> custom({
+    Expression<String>? nodeId,
+    Expression<String>? name,
+    Expression<String>? url,
+    Expression<String>? accessToken,
+    Expression<int>? syncCursor,
+    Expression<DateTime>? lastSyncAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isActive,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (nodeId != null) 'node_id': nodeId,
+      if (name != null) 'name': name,
+      if (url != null) 'url': url,
+      if (accessToken != null) 'access_token': accessToken,
+      if (syncCursor != null) 'sync_cursor': syncCursor,
+      if (lastSyncAt != null) 'last_sync_at': lastSyncAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isActive != null) 'is_active': isActive,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RemoteNodesCompanion copyWith({
+    Value<String>? nodeId,
+    Value<String>? name,
+    Value<String>? url,
+    Value<String?>? accessToken,
+    Value<int>? syncCursor,
+    Value<DateTime?>? lastSyncAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isActive,
+    Value<int>? rowid,
+  }) {
+    return RemoteNodesCompanion(
+      nodeId: nodeId ?? this.nodeId,
+      name: name ?? this.name,
+      url: url ?? this.url,
+      accessToken: accessToken ?? this.accessToken,
+      syncCursor: syncCursor ?? this.syncCursor,
+      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isActive: isActive ?? this.isActive,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (nodeId.present) {
+      map['node_id'] = Variable<String>(nodeId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (url.present) {
+      map['url'] = Variable<String>(url.value);
+    }
+    if (accessToken.present) {
+      map['access_token'] = Variable<String>(accessToken.value);
+    }
+    if (syncCursor.present) {
+      map['sync_cursor'] = Variable<int>(syncCursor.value);
+    }
+    if (lastSyncAt.present) {
+      map['last_sync_at'] = Variable<DateTime>(lastSyncAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteNodesCompanion(')
+          ..write('nodeId: $nodeId, ')
+          ..write('name: $name, ')
+          ..write('url: $url, ')
+          ..write('accessToken: $accessToken, ')
+          ..write('syncCursor: $syncCursor, ')
+          ..write('lastSyncAt: $lastSyncAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isActive: $isActive, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BoardSyncConfigsTable extends BoardSyncConfigs
+    with TableInfo<$BoardSyncConfigsTable, BoardSyncConfig> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BoardSyncConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _configIdMeta = const VerificationMeta(
+    'configId',
+  );
+  @override
+  late final GeneratedColumn<String> configId = GeneratedColumn<String>(
+    'config_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteNodeIdMeta = const VerificationMeta(
+    'remoteNodeId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteNodeId = GeneratedColumn<String>(
+    'remote_node_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boardIdMeta = const VerificationMeta(
+    'boardId',
+  );
+  @override
+  late final GeneratedColumn<String> boardId = GeneratedColumn<String>(
+    'board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncEnabledMeta = const VerificationMeta(
+    'syncEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> syncEnabled = GeneratedColumn<bool>(
+    'sync_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("sync_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    configId,
+    remoteNodeId,
+    boardId,
+    syncEnabled,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'board_sync_configs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BoardSyncConfig> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('config_id')) {
+      context.handle(
+        _configIdMeta,
+        configId.isAcceptableOrUnknown(data['config_id']!, _configIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_configIdMeta);
+    }
+    if (data.containsKey('remote_node_id')) {
+      context.handle(
+        _remoteNodeIdMeta,
+        remoteNodeId.isAcceptableOrUnknown(
+          data['remote_node_id']!,
+          _remoteNodeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteNodeIdMeta);
+    }
+    if (data.containsKey('board_id')) {
+      context.handle(
+        _boardIdMeta,
+        boardId.isAcceptableOrUnknown(data['board_id']!, _boardIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_boardIdMeta);
+    }
+    if (data.containsKey('sync_enabled')) {
+      context.handle(
+        _syncEnabledMeta,
+        syncEnabled.isAcceptableOrUnknown(
+          data['sync_enabled']!,
+          _syncEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {configId};
+  @override
+  BoardSyncConfig map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BoardSyncConfig(
+      configId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}config_id'],
+      )!,
+      remoteNodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_node_id'],
+      )!,
+      boardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}board_id'],
+      )!,
+      syncEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}sync_enabled'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BoardSyncConfigsTable createAlias(String alias) {
+    return $BoardSyncConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
+  final String configId;
+  final String remoteNodeId;
+  final String boardId;
+  final bool syncEnabled;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BoardSyncConfig({
+    required this.configId,
+    required this.remoteNodeId,
+    required this.boardId,
+    required this.syncEnabled,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['config_id'] = Variable<String>(configId);
+    map['remote_node_id'] = Variable<String>(remoteNodeId);
+    map['board_id'] = Variable<String>(boardId);
+    map['sync_enabled'] = Variable<bool>(syncEnabled);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BoardSyncConfigsCompanion toCompanion(bool nullToAbsent) {
+    return BoardSyncConfigsCompanion(
+      configId: Value(configId),
+      remoteNodeId: Value(remoteNodeId),
+      boardId: Value(boardId),
+      syncEnabled: Value(syncEnabled),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BoardSyncConfig.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BoardSyncConfig(
+      configId: serializer.fromJson<String>(json['configId']),
+      remoteNodeId: serializer.fromJson<String>(json['remoteNodeId']),
+      boardId: serializer.fromJson<String>(json['boardId']),
+      syncEnabled: serializer.fromJson<bool>(json['syncEnabled']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'configId': serializer.toJson<String>(configId),
+      'remoteNodeId': serializer.toJson<String>(remoteNodeId),
+      'boardId': serializer.toJson<String>(boardId),
+      'syncEnabled': serializer.toJson<bool>(syncEnabled),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BoardSyncConfig copyWith({
+    String? configId,
+    String? remoteNodeId,
+    String? boardId,
+    bool? syncEnabled,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BoardSyncConfig(
+    configId: configId ?? this.configId,
+    remoteNodeId: remoteNodeId ?? this.remoteNodeId,
+    boardId: boardId ?? this.boardId,
+    syncEnabled: syncEnabled ?? this.syncEnabled,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BoardSyncConfig copyWithCompanion(BoardSyncConfigsCompanion data) {
+    return BoardSyncConfig(
+      configId: data.configId.present ? data.configId.value : this.configId,
+      remoteNodeId: data.remoteNodeId.present
+          ? data.remoteNodeId.value
+          : this.remoteNodeId,
+      boardId: data.boardId.present ? data.boardId.value : this.boardId,
+      syncEnabled: data.syncEnabled.present
+          ? data.syncEnabled.value
+          : this.syncEnabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardSyncConfig(')
+          ..write('configId: $configId, ')
+          ..write('remoteNodeId: $remoteNodeId, ')
+          ..write('boardId: $boardId, ')
+          ..write('syncEnabled: $syncEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    configId,
+    remoteNodeId,
+    boardId,
+    syncEnabled,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BoardSyncConfig &&
+          other.configId == this.configId &&
+          other.remoteNodeId == this.remoteNodeId &&
+          other.boardId == this.boardId &&
+          other.syncEnabled == this.syncEnabled &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
+  final Value<String> configId;
+  final Value<String> remoteNodeId;
+  final Value<String> boardId;
+  final Value<bool> syncEnabled;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const BoardSyncConfigsCompanion({
+    this.configId = const Value.absent(),
+    this.remoteNodeId = const Value.absent(),
+    this.boardId = const Value.absent(),
+    this.syncEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BoardSyncConfigsCompanion.insert({
+    required String configId,
+    required String remoteNodeId,
+    required String boardId,
+    this.syncEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : configId = Value(configId),
+       remoteNodeId = Value(remoteNodeId),
+       boardId = Value(boardId);
+  static Insertable<BoardSyncConfig> custom({
+    Expression<String>? configId,
+    Expression<String>? remoteNodeId,
+    Expression<String>? boardId,
+    Expression<bool>? syncEnabled,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (configId != null) 'config_id': configId,
+      if (remoteNodeId != null) 'remote_node_id': remoteNodeId,
+      if (boardId != null) 'board_id': boardId,
+      if (syncEnabled != null) 'sync_enabled': syncEnabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BoardSyncConfigsCompanion copyWith({
+    Value<String>? configId,
+    Value<String>? remoteNodeId,
+    Value<String>? boardId,
+    Value<bool>? syncEnabled,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return BoardSyncConfigsCompanion(
+      configId: configId ?? this.configId,
+      remoteNodeId: remoteNodeId ?? this.remoteNodeId,
+      boardId: boardId ?? this.boardId,
+      syncEnabled: syncEnabled ?? this.syncEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (configId.present) {
+      map['config_id'] = Variable<String>(configId.value);
+    }
+    if (remoteNodeId.present) {
+      map['remote_node_id'] = Variable<String>(remoteNodeId.value);
+    }
+    if (boardId.present) {
+      map['board_id'] = Variable<String>(boardId.value);
+    }
+    if (syncEnabled.present) {
+      map['sync_enabled'] = Variable<bool>(syncEnabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardSyncConfigsCompanion(')
+          ..write('configId: $configId, ')
+          ..write('remoteNodeId: $remoteNodeId, ')
+          ..write('boardId: $boardId, ')
+          ..write('syncEnabled: $syncEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3514,6 +4510,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ReactionsTable reactions = $ReactionsTable(this);
   late final $BoardAclTable boardAcl = $BoardAclTable(this);
   late final $ActivityLogTable activityLog = $ActivityLogTable(this);
+  late final $RemoteNodesTable remoteNodes = $RemoteNodesTable(this);
+  late final $BoardSyncConfigsTable boardSyncConfigs = $BoardSyncConfigsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3526,6 +4526,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     reactions,
     boardAcl,
     activityLog,
+    remoteNodes,
+    boardSyncConfigs,
   ];
 }
 
@@ -6935,6 +7937,517 @@ typedef $$ActivityLogTableProcessedTableManager =
       ActivityLogData,
       PrefetchHooks Function()
     >;
+typedef $$RemoteNodesTableCreateCompanionBuilder =
+    RemoteNodesCompanion Function({
+      required String nodeId,
+      required String name,
+      required String url,
+      Value<String?> accessToken,
+      Value<int> syncCursor,
+      Value<DateTime?> lastSyncAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isActive,
+      Value<int> rowid,
+    });
+typedef $$RemoteNodesTableUpdateCompanionBuilder =
+    RemoteNodesCompanion Function({
+      Value<String> nodeId,
+      Value<String> name,
+      Value<String> url,
+      Value<String?> accessToken,
+      Value<int> syncCursor,
+      Value<DateTime?> lastSyncAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isActive,
+      Value<int> rowid,
+    });
+
+class $$RemoteNodesTableFilterComposer
+    extends Composer<_$AppDatabase, $RemoteNodesTable> {
+  $$RemoteNodesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get nodeId => $composableBuilder(
+    column: $table.nodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncCursor => $composableBuilder(
+    column: $table.syncCursor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncAt => $composableBuilder(
+    column: $table.lastSyncAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RemoteNodesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RemoteNodesTable> {
+  $$RemoteNodesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get nodeId => $composableBuilder(
+    column: $table.nodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncCursor => $composableBuilder(
+    column: $table.syncCursor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncAt => $composableBuilder(
+    column: $table.lastSyncAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RemoteNodesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RemoteNodesTable> {
+  $$RemoteNodesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get nodeId =>
+      $composableBuilder(column: $table.nodeId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get url =>
+      $composableBuilder(column: $table.url, builder: (column) => column);
+
+  GeneratedColumn<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get syncCursor => $composableBuilder(
+    column: $table.syncCursor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSyncAt => $composableBuilder(
+    column: $table.lastSyncAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+}
+
+class $$RemoteNodesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RemoteNodesTable,
+          RemoteNode,
+          $$RemoteNodesTableFilterComposer,
+          $$RemoteNodesTableOrderingComposer,
+          $$RemoteNodesTableAnnotationComposer,
+          $$RemoteNodesTableCreateCompanionBuilder,
+          $$RemoteNodesTableUpdateCompanionBuilder,
+          (
+            RemoteNode,
+            BaseReferences<_$AppDatabase, $RemoteNodesTable, RemoteNode>,
+          ),
+          RemoteNode,
+          PrefetchHooks Function()
+        > {
+  $$RemoteNodesTableTableManager(_$AppDatabase db, $RemoteNodesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemoteNodesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RemoteNodesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RemoteNodesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> nodeId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> url = const Value.absent(),
+                Value<String?> accessToken = const Value.absent(),
+                Value<int> syncCursor = const Value.absent(),
+                Value<DateTime?> lastSyncAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RemoteNodesCompanion(
+                nodeId: nodeId,
+                name: name,
+                url: url,
+                accessToken: accessToken,
+                syncCursor: syncCursor,
+                lastSyncAt: lastSyncAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String nodeId,
+                required String name,
+                required String url,
+                Value<String?> accessToken = const Value.absent(),
+                Value<int> syncCursor = const Value.absent(),
+                Value<DateTime?> lastSyncAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RemoteNodesCompanion.insert(
+                nodeId: nodeId,
+                name: name,
+                url: url,
+                accessToken: accessToken,
+                syncCursor: syncCursor,
+                lastSyncAt: lastSyncAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RemoteNodesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RemoteNodesTable,
+      RemoteNode,
+      $$RemoteNodesTableFilterComposer,
+      $$RemoteNodesTableOrderingComposer,
+      $$RemoteNodesTableAnnotationComposer,
+      $$RemoteNodesTableCreateCompanionBuilder,
+      $$RemoteNodesTableUpdateCompanionBuilder,
+      (
+        RemoteNode,
+        BaseReferences<_$AppDatabase, $RemoteNodesTable, RemoteNode>,
+      ),
+      RemoteNode,
+      PrefetchHooks Function()
+    >;
+typedef $$BoardSyncConfigsTableCreateCompanionBuilder =
+    BoardSyncConfigsCompanion Function({
+      required String configId,
+      required String remoteNodeId,
+      required String boardId,
+      Value<bool> syncEnabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$BoardSyncConfigsTableUpdateCompanionBuilder =
+    BoardSyncConfigsCompanion Function({
+      Value<String> configId,
+      Value<String> remoteNodeId,
+      Value<String> boardId,
+      Value<bool> syncEnabled,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$BoardSyncConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $BoardSyncConfigsTable> {
+  $$BoardSyncConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get configId => $composableBuilder(
+    column: $table.configId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteNodeId => $composableBuilder(
+    column: $table.remoteNodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get syncEnabled => $composableBuilder(
+    column: $table.syncEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BoardSyncConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BoardSyncConfigsTable> {
+  $$BoardSyncConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get configId => $composableBuilder(
+    column: $table.configId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteNodeId => $composableBuilder(
+    column: $table.remoteNodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get syncEnabled => $composableBuilder(
+    column: $table.syncEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BoardSyncConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BoardSyncConfigsTable> {
+  $$BoardSyncConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get configId =>
+      $composableBuilder(column: $table.configId, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteNodeId => $composableBuilder(
+    column: $table.remoteNodeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get boardId =>
+      $composableBuilder(column: $table.boardId, builder: (column) => column);
+
+  GeneratedColumn<bool> get syncEnabled => $composableBuilder(
+    column: $table.syncEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BoardSyncConfigsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BoardSyncConfigsTable,
+          BoardSyncConfig,
+          $$BoardSyncConfigsTableFilterComposer,
+          $$BoardSyncConfigsTableOrderingComposer,
+          $$BoardSyncConfigsTableAnnotationComposer,
+          $$BoardSyncConfigsTableCreateCompanionBuilder,
+          $$BoardSyncConfigsTableUpdateCompanionBuilder,
+          (
+            BoardSyncConfig,
+            BaseReferences<
+              _$AppDatabase,
+              $BoardSyncConfigsTable,
+              BoardSyncConfig
+            >,
+          ),
+          BoardSyncConfig,
+          PrefetchHooks Function()
+        > {
+  $$BoardSyncConfigsTableTableManager(
+    _$AppDatabase db,
+    $BoardSyncConfigsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BoardSyncConfigsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BoardSyncConfigsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BoardSyncConfigsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> configId = const Value.absent(),
+                Value<String> remoteNodeId = const Value.absent(),
+                Value<String> boardId = const Value.absent(),
+                Value<bool> syncEnabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BoardSyncConfigsCompanion(
+                configId: configId,
+                remoteNodeId: remoteNodeId,
+                boardId: boardId,
+                syncEnabled: syncEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String configId,
+                required String remoteNodeId,
+                required String boardId,
+                Value<bool> syncEnabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BoardSyncConfigsCompanion.insert(
+                configId: configId,
+                remoteNodeId: remoteNodeId,
+                boardId: boardId,
+                syncEnabled: syncEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BoardSyncConfigsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BoardSyncConfigsTable,
+      BoardSyncConfig,
+      $$BoardSyncConfigsTableFilterComposer,
+      $$BoardSyncConfigsTableOrderingComposer,
+      $$BoardSyncConfigsTableAnnotationComposer,
+      $$BoardSyncConfigsTableCreateCompanionBuilder,
+      $$BoardSyncConfigsTableUpdateCompanionBuilder,
+      (
+        BoardSyncConfig,
+        BaseReferences<_$AppDatabase, $BoardSyncConfigsTable, BoardSyncConfig>,
+      ),
+      BoardSyncConfig,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6953,4 +8466,8 @@ class $AppDatabaseManager {
       $$BoardAclTableTableManager(_db, _db.boardAcl);
   $$ActivityLogTableTableManager get activityLog =>
       $$ActivityLogTableTableManager(_db, _db.activityLog);
+  $$RemoteNodesTableTableManager get remoteNodes =>
+      $$RemoteNodesTableTableManager(_db, _db.remoteNodes);
+  $$BoardSyncConfigsTableTableManager get boardSyncConfigs =>
+      $$BoardSyncConfigsTableTableManager(_db, _db.boardSyncConfigs);
 }

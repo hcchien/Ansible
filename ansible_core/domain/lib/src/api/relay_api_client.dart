@@ -46,6 +46,32 @@ class RelayApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> getDelta({int? cursor, int limit = 100}) async {
+    final queryParams = <String, String>{
+      'limit': limit.toString(),
+    };
+    if (cursor != null) {
+      queryParams['cursor'] = cursor.toString();
+    }
+
+    final uri = Uri.parse('$baseUrl/api/v1/sync/delta')
+        .replace(queryParameters: queryParams);
+    final response = await _client.get(uri, headers: _authHeaders());
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch delta: ${response.statusCode} - ${response.body}');
+  }
+
+  Future<Map<String, dynamic>> getBoards() async {
+    final response = await get('/api/v1/boards');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch boards: ${response.statusCode} - ${response.body}');
+  }
+
   Map<String, String> _authHeaders() {
     final headers = {'Content-Type': 'application/json'};
     if (_accessToken != null) {

@@ -7,7 +7,7 @@
       },
       "declaration": {
         "source_uri": "package:ansible_store/src/db/app_database.dart",
-        "offset": 489,
+        "offset": 602,
         "name": "AppDatabase"
       },
       "references": [
@@ -38,6 +38,14 @@
         {
           "library_uri": "package:ansible_store/src/schema/activity_log.dart",
           "name": "activity_log"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/remote_nodes.dart",
+          "name": "remote_nodes"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_sync_configs.dart",
+          "name": "board_sync_configs"
         }
       ],
       "type": "database",
@@ -69,12 +77,20 @@
         {
           "library_uri": "package:ansible_store/src/schema/activity_log.dart",
           "name": "activity_log"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/remote_nodes.dart",
+          "name": "remote_nodes"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_sync_configs.dart",
+          "name": "board_sync_configs"
         }
       ],
       "views": [],
       "includes": [],
       "queries": [],
-      "schema_version": 5,
+      "schema_version": 6,
       "daos": [],
       "has_constructor_arg": true
     }
@@ -89,6 +105,8 @@
     "package:ansible_store/src/schema/reactions.dart",
     "package:ansible_store/src/schema/users.dart",
     "package:ansible_store/src/schema/board_acl.dart",
-    "package:ansible_store/src/schema/activity_log.dart"
+    "package:ansible_store/src/schema/activity_log.dart",
+    "package:ansible_store/src/schema/remote_nodes.dart",
+    "package:ansible_store/src/schema/board_sync_configs.dart"
   ]
 }

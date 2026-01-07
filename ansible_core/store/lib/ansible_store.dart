@@ -5,6 +5,8 @@ export 'src/entities/reaction.dart';
 export 'src/entities/user.dart';
 export 'src/entities/board_acl.dart';
 export 'src/entities/activity_log.dart';
+export 'src/entities/remote_node.dart';
+export 'src/entities/board_sync_config.dart';
 
 export 'src/repositories/board_repository.dart';
 export 'src/repositories/thread_repository.dart';
@@ -13,6 +15,8 @@ export 'src/repositories/reaction_repository.dart';
 export 'src/repositories/user_repository.dart';
 export 'src/repositories/board_acl_repository.dart';
 export 'src/repositories/activity_log_repository.dart';
+export 'src/repositories/remote_node_repository.dart';
+export 'src/repositories/board_sync_config_repository.dart';
 
 export 'src/repositories/in_memory/in_memory_board_repository.dart';
 export 'src/repositories/in_memory/in_memory_thread_repository.dart';
@@ -26,4 +30,6 @@ export 'src/repositories/drift/drift_reaction_repository.dart';
 export 'src/repositories/drift/drift_user_repository.dart';
 export 'src/repositories/drift/drift_board_acl_repository.dart';
 export 'src/repositories/drift/drift_activity_log_repository.dart';
-export 'src/db/app_database.dart' hide Board, Thread, Post, Reaction, User, BoardAcl, ActivityLog;
+export 'src/repositories/drift/drift_remote_node_repository.dart';
+export 'src/repositories/drift/drift_board_sync_config_repository.dart';
+export 'src/db/app_database.dart' hide Board, Thread, Post, Reaction, User, BoardAcl, ActivityLog, RemoteNode, BoardSyncConfig;
