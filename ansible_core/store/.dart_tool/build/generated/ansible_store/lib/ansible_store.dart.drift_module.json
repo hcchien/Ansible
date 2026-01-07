@@ -8,6 +8,8 @@
     "package:ansible_store/src/entities/user.dart",
     "package:ansible_store/src/entities/board_acl.dart",
     "package:ansible_store/src/entities/activity_log.dart",
+    "package:ansible_store/src/entities/remote_node.dart",
+    "package:ansible_store/src/entities/board_sync_config.dart",
     "package:ansible_store/src/repositories/board_repository.dart",
     "package:ansible_store/src/repositories/thread_repository.dart",
     "package:ansible_store/src/repositories/post_repository.dart",
@@ -15,6 +17,8 @@
     "package:ansible_store/src/repositories/user_repository.dart",
     "package:ansible_store/src/repositories/board_acl_repository.dart",
     "package:ansible_store/src/repositories/activity_log_repository.dart",
+    "package:ansible_store/src/repositories/remote_node_repository.dart",
+    "package:ansible_store/src/repositories/board_sync_config_repository.dart",
     "package:ansible_store/src/repositories/in_memory/in_memory_board_repository.dart",
     "package:ansible_store/src/repositories/in_memory/in_memory_thread_repository.dart",
     "package:ansible_store/src/repositories/in_memory/in_memory_post_repository.dart",
@@ -26,6 +30,8 @@
     "package:ansible_store/src/repositories/drift/drift_user_repository.dart",
     "package:ansible_store/src/repositories/drift/drift_board_acl_repository.dart",
     "package:ansible_store/src/repositories/drift/drift_activity_log_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_remote_node_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_board_sync_config_repository.dart",
     "package:ansible_store/src/db/app_database.dart"
   ]
 }

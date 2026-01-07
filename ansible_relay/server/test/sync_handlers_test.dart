@@ -79,7 +79,7 @@ void main() {
       return inboxHandler.router.call(request);
     }
 
-    Response _callDelta({required int cursor, int limit = 100}) {
+    Future<Response> _callDelta({required int cursor, int limit = 100}) {
       final request = Request(
         'GET',
         Uri.parse('http://localhost/delta?cursor=$cursor&limit=$limit'),
@@ -228,14 +228,14 @@ void main() {
       );
       await _callInbox([threadActivity, postActivity]);
 
-      final first = _callDelta(cursor: 0, limit: 1);
+      final first = await _callDelta(cursor: 0, limit: 1);
       expect(first.statusCode, 200);
       final firstBody = jsonDecode(await first.readAsString()) as Map<String, dynamic>;
       expect(firstBody['activities'], hasLength(1));
       expect(firstBody['hasMore'], isTrue);
       final nextCursor = firstBody['nextCursor'] as int;
 
-      final second = _callDelta(cursor: nextCursor, limit: 5);
+      final second = await _callDelta(cursor: nextCursor, limit: 5);
       expect(second.statusCode, 200);
       final secondBody = jsonDecode(await second.readAsString()) as Map<String, dynamic>;
       expect(secondBody['activities'], hasLength(1));
@@ -244,7 +244,7 @@ void main() {
     });
 
     test('invalid cursor returns validation error', () async {
-      final res = _callDelta(cursor: -1, limit: 1);
+      final res = await _callDelta(cursor: -1, limit: 1);
       expect(res.statusCode, 400);
       final body = jsonDecode(await res.readAsString()) as Map<String, dynamic>;
       expect(body['error']['code'], 'VALIDATION_ERROR');

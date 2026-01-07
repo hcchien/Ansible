@@ -7,7 +7,10 @@ import 'handlers/boards_handler.dart';
 import 'handlers/threads_handler.dart';
 import 'handlers/posts_handler.dart';
 import 'handlers/inbox_handler.dart';
+import 'handlers/inbox_handler.dart';
 import 'handlers/sync_handler.dart';
+import 'handlers/webfinger_handler.dart';
+import 'handlers/actor_handler.dart';
 
 Router createRouter({
   required BoardRepository boardRepository,
@@ -43,7 +46,11 @@ Router createRouter({
     boardAclRepository: boardAclRepository,
   );
   final syncHandler = SyncHandler(activityLogRepository: activityLogRepository);
+  final webFingerHandler = WebFingerHandler(userRepository: userRepository);
+  final actorHandler = ActorHandler(userRepository: userRepository);
 
+  router.mount('/.well-known/webfinger', webFingerHandler.router);
+  router.mount('/api/v1/users', actorHandler.router);
   router.mount('/api/v1/auth', authHandler.router);
   router.mount('/api/v1/boards', boardsHandler.router);
   router.mount('/api/v1/threads', threadsHandler.router);

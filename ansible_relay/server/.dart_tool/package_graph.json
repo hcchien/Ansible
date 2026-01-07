@@ -7,6 +7,7 @@
       "name": "ansible_relay",
       "version": "0.1.0",
       "dependencies": [
+        "ansible_ap",
         "ansible_store",
         "ansible_sync",
         "args",
@@ -53,6 +54,14 @@
       "name": "lints",
       "version": "6.0.0",
       "dependencies": []
+    },
+    {
+      "name": "ansible_ap",
+      "version": "0.1.0",
+      "dependencies": [
+        "ansible_domain",
+        "json_annotation"
+      ]
     },
     {
       "name": "ansible_store",
@@ -337,6 +346,15 @@
       ]
     },
     {
+      "name": "ansible_domain",
+      "version": "0.1.0",
+      "dependencies": [
+        "equatable",
+        "http",
+        "meta"
+      ]
+    },
+    {
       "name": "sqlite3",
       "version": "2.9.4",
       "dependencies": [
@@ -361,15 +379,6 @@
         "stack_trace",
         "stream_channel",
         "web"
-      ]
-    },
-    {
-      "name": "ansible_domain",
-      "version": "0.1.0",
-      "dependencies": [
-        "equatable",
-        "http",
-        "meta"
       ]
     },
     {
@@ -520,11 +529,6 @@
       ]
     },
     {
-      "name": "ffi",
-      "version": "2.1.4",
-      "dependencies": []
-    },
-    {
       "name": "equatable",
       "version": "2.0.7",
       "dependencies": [
@@ -543,6 +547,11 @@
       ]
     },
     {
+      "name": "ffi",
+      "version": "2.1.4",
+      "dependencies": []
+    },
+    {
       "name": "fixnum",
       "version": "1.1.1",
       "dependencies": []
@@ -553,6 +562,13 @@
       "dependencies": [
         "meta",
         "path"
+      ]
+    },
+    {
+      "name": "json_annotation",
+      "version": "4.9.0",
+      "dependencies": [
+        "meta"
       ]
     }
   ],

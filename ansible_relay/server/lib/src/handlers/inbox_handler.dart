@@ -6,6 +6,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../models/activity.dart';
 import '../models/error_response.dart';
+import 'package:ansible_ap/ansible_ap.dart' as ap;
 
 class InboxHandler {
   InboxHandler({
@@ -38,6 +39,12 @@ class InboxHandler {
     final bodyString = await request.readAsString();
     if (bodyString.isEmpty) {
       return ErrorResponse.validation('Empty body').toShelfResponse();
+    }
+
+    // Check for ActivityPub
+    final contentType = request.headers['content-type'];
+    if (contentType != null && (contentType.contains('application/activity+json') || contentType.contains('application/ld+json'))) {
+      return _handleActivityPub(request, bodyString);
     }
 
     final Map<String, dynamic> body;
@@ -122,6 +129,29 @@ class InboxHandler {
       jsonEncode({'results': results}),
       headers: _jsonHeaders,
     );
+  }
+
+
+  Future<Response> _handleActivityPub(Request request, String bodyString) async {
+    try {
+      final json = jsonDecode(bodyString);
+      // Basic check for AP structure
+      if (json['type'] == null) {
+         return ErrorResponse.validation('Missing type').toShelfResponse();
+      }
+      
+      // TODO: Verify Signature (Middleware does this theoretically)
+      // TODO: Transform to internal Activity
+      // For now, we just acknowledge receipt to conform to AP protocol
+      print('Received ActivityPub message: ${json['type']}');
+      
+      return Response.ok(
+        jsonEncode({'status': 'accepted'}), 
+        headers: _jsonHeaders
+      );
+    } catch (e) {
+      return ErrorResponse.validation('Invalid ActivityStreams JSON: $e').toShelfResponse();
+    }
   }
 
   Future<int> _applyActivity(Activity activity) async {

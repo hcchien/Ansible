@@ -1,0 +1,9 @@
+{
+  "elements": {},
+  "imports": [
+    "package:drift/drift.dart",
+    "package:ansible_store/src/db/app_database.dart",
+    "package:ansible_store/src/entities/board_sync_config.dart",
+    "package:ansible_store/src/repositories/board_sync_config_repository.dart"
+  ]
+}

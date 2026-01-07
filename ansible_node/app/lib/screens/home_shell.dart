@@ -8,6 +8,7 @@ import 'posts_view_screen.dart';
 import 'sync_settings_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 
+const _localUserId = 'local-user';
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
@@ -35,7 +36,7 @@ class _HomeShellState extends State<HomeShell> {
   bool _loading = true;
   String? _selectedBoardId;
   final _uuid = const Uuid();
-  static const _localUserId = 'local-user';
+
 
   @override
   void initState() {

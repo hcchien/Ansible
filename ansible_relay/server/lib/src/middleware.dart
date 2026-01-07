@@ -71,6 +71,9 @@ Middleware authMiddleware() {
 }
 
 bool _isPublicPath(String path) {
+  if (path == '.well-known/webfinger') return true;
+  if (path.startsWith('api/v1/users')) return true;
+  if (path == 'api/v1/inbox') return true;
   return path == 'health' || path.startsWith('api/v1/auth/login');
 }
 
