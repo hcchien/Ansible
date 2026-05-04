@@ -6,7 +6,7 @@ defmodule AnsibleRelay.Web.Controllers.XrpcController do
   GET  /xrpc/com.atproto.identity.resolveHandle — resolve handle to DID
   """
 
-  alias AnsibleRelay.{DidAccountCache, SigVerifier, OpStore}
+  alias AnsibleRelay.{AbuseDetector, DidAccountCache, SigVerifier, OpStore}
 
   # POST /xrpc/com.atproto.repo.createRecord
   def create_record(conn, params) do
@@ -44,6 +44,16 @@ defmodule AnsibleRelay.Web.Controllers.XrpcController do
          commit_sig,
          %{public_key_hex: pub_key_hex}
        ) do
+    case AbuseDetector.check_did(repo) do
+      {:error, :rate_limited, detail} ->
+        send_json(conn, 429, %{error: "rate_limited", detail: detail})
+
+      :ok ->
+        do_create_record(conn, repo, collection, record, commit_sig, pub_key_hex)
+    end
+  end
+
+  defp do_create_record(conn, repo, collection, record, commit_sig, pub_key_hex) do
     record_json = Jason.encode!(record)
 
     if SigVerifier.verify_ed25519(pub_key_hex, record_json, commit_sig) do

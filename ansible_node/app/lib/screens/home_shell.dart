@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
+import '../services/atproto_client.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../widgets/ops_queue_status_badge.dart';
@@ -37,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
   late final DriftReactionRepository _reactionRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
   late final OpsDispatchService _opsDispatchService;
+  late final AtProtoClient _atProtoClient;
   late final NetworkStatusService _networkStatusService;
 
   List<Board> _boards = [];
@@ -54,6 +56,7 @@ class _HomeShellState extends State<HomeShell> {
     _reactionRepo = DriftReactionRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _opsDispatchService = OpsDispatchService(repository: _opsQueueRepo);
+    _atProtoClient = AtProtoClient();
     _networkStatusService = NetworkStatusService();
     _loadData();
   }
@@ -397,6 +400,7 @@ class _HomeShellState extends State<HomeShell> {
                   did: widget.did,
                   opsQueueRepo: _opsQueueRepo,
                   opsDispatchService: _opsDispatchService,
+                  atProtoClient: _atProtoClient,
                   onClearIdentity: widget.onClearIdentity,
                   loading: _loading,
                   posts: _posts,
@@ -622,6 +626,7 @@ class _MainPanel extends StatelessWidget {
     required this.did,
     required this.opsQueueRepo,
     required this.opsDispatchService,
+    required this.atProtoClient,
     required this.loading,
     required this.posts,
     required this.onRefresh,
@@ -639,6 +644,7 @@ class _MainPanel extends StatelessWidget {
   final String did;
   final OpsQueueRepository opsQueueRepo;
   final OpsDispatchService opsDispatchService;
+  final AtProtoClient atProtoClient;
   final bool loading;
   final List<PostCardData> posts;
   final Future<void> Function() onRefresh;
@@ -694,8 +700,7 @@ class _MainPanel extends StatelessWidget {
                                             .map((b) => b.title)
                                             .firstOrNull ??
                                         '新討論',
-                                    opsQueueRepo: opsQueueRepo,
-                                    opsDispatchService: opsDispatchService,
+                                    atProtoClient: atProtoClient,
                                   ),
                                 ),
                               );

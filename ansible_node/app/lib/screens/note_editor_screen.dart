@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:ansible_store/ansible_store.dart';
-import 'package:uuid/uuid.dart';
+import 'package:ansible_vc/ansible_vc.dart';
 
-import '../services/ops_dispatch_service.dart';
+import '../services/atproto_client.dart';
 
+/// V2.0 note editor — signs a [LexiconPost] record via [LexiconSigner] and
+/// publishes it directly to the Relay with [AtProtoClient.createRecord].
+///
+/// Replaces the V1.x CrdtOpBuilder + OpsDispatchService path.
 class NoteEditorScreen extends StatefulWidget {
   final String authorDid;
   final String boardId;
   final String threadId;
   final String threadTitle;
-  final OpsQueueRepository opsQueueRepo;
-  final OpsDispatchService? opsDispatchService;
+
+  /// V2.0 transport — required for XRPC createRecord.
+  final AtProtoClient atProtoClient;
+
+  /// V2.0 signer — defaults to [LexiconSignerImpl] when not provided.
+  final LexiconSigner? lexiconSigner;
 
   const NoteEditorScreen({
     super.key,
@@ -18,8 +25,8 @@ class NoteEditorScreen extends StatefulWidget {
     required this.boardId,
     required this.threadId,
     required this.threadTitle,
-    required this.opsQueueRepo,
-    this.opsDispatchService,
+    required this.atProtoClient,
+    this.lexiconSigner,
   });
 
   @override
@@ -34,6 +41,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   static const _bgDeep = Color(0xFF050915);
   static const _bgLight = Color(0xFF0B1220);
   static const _accent = Color(0xFFFF9F43);
+
+  LexiconSigner get _signer => widget.lexiconSigner ?? LexiconSignerImpl();
 
   @override
   void dispose() {
@@ -60,36 +69,65 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     });
 
     try {
-      final entry = CrdtOpBuilder.createPost(
+      // 1. Build the Lexicon record map.
+      final record = LexiconPost(
+        text: content,
+        createdAt: DateTime.now().toUtc().toIso8601String(),
+        threadId: widget.threadId.isNotEmpty ? widget.threadId : null,
+      ).toJson();
+
+      // 2. Sign with Ed25519 over DAG-CBOR (or dev stub if Rust unavailable).
+      final signed = await _signer.sign(
+        record,
         authorDid: widget.authorDid,
-        entityId: const Uuid().v4(),
-        boardId: widget.boardId,
-        threadId: widget.threadId,
-        content: content,
       );
-      final dispatchService = widget.opsDispatchService;
-      if (dispatchService == null) {
-        await widget.opsQueueRepo.enqueue(entry);
-      } else {
-        await dispatchService.signAndEnqueue(entry);
-        await dispatchService.flushPending();
-      }
+
+      // 3. Publish to Relay via XRPC createRecord.
+      await widget.atProtoClient.createRecord(
+        CreateRecordRequest(
+          repo: widget.authorDid,
+          collection: LexiconPost.type,
+          record: signed.record,
+          commitSig: signed.commitSigHex,
+        ),
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('已加入發送佇列'),
+          content: Text('已發佈'),
           duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
       );
       Navigator.of(context).pop();
+    } on AtProtoException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSending = false;
+        _errorMessage = _formatAtProtoError(e);
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isSending = false;
         _errorMessage = '發送失敗：$e';
       });
+    }
+  }
+
+  String _formatAtProtoError(AtProtoException e) {
+    switch (e.error) {
+      case 'unregistered_did':
+        return '身份驗證失敗，請重新登入。';
+      case 'invalid_sig':
+        return '簽名驗證失敗，請重新嘗試。';
+      case 'rate_limited':
+        return '發送速率過快，請稍後再試。';
+      case 'missing_fields':
+        return '資料格式錯誤，請重新嘗試。';
+      default:
+        return '發送失敗 (${e.error})';
     }
   }
 

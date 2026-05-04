@@ -1,4 +1,5 @@
 use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
+use zeroize::Zeroizing;
 
 /// Sign a message with an Ed25519 private key.
 ///
@@ -6,27 +7,34 @@ use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
 /// `message_hex`     — arbitrary message bytes, hex-encoded
 ///
 /// Returns the 64-byte signature as hex.
+///
+/// Key material is held in `Zeroizing` wrappers so that both the decoded
+/// `Vec<u8>` and the `[u8; 32]` stack copy are zeroed on drop.
+/// `ed25519_dalek::SigningKey` also implements `ZeroizeOnDrop` (v2.x).
 pub fn sign_message(private_key_hex: String, message_hex: String) -> Result<String, String> {
-    let key_bytes = hex::decode(&private_key_hex)
-        .map_err(|e| format!("Invalid private key hex: {}", e))?;
+    // Zeroizing<Vec<u8>> zeroes the heap buffer when it goes out of scope.
+    let key_bytes: Zeroizing<Vec<u8>> = Zeroizing::new(
+        hex::decode(&private_key_hex)
+            .map_err(|e| format!("Invalid private key hex: {}", e))?,
+    );
 
     if key_bytes.len() != 32 {
         return Err(format!("Private key must be 32 bytes, got {}", key_bytes.len()));
     }
 
-    let key_arr: [u8; 32] = key_bytes.try_into().unwrap();
-    let signing_key = SigningKey::from_bytes(&key_arr);
+    // Zeroizing<[u8; 32]> zeroes the stack copy when it goes out of scope.
+    let key_arr: Zeroizing<[u8; 32]> = Zeroizing::new(
+        <[u8; 32]>::try_from(key_bytes.as_slice())
+            .map_err(|_| "Private key must be 32 bytes".to_string())?,
+    );
+    // SigningKey (ed25519-dalek 2.x) implements ZeroizeOnDrop.
+    let signing_key = SigningKey::from_bytes(&*key_arr);
 
     let message = hex::decode(&message_hex)
         .map_err(|e| format!("Invalid message hex: {}", e))?;
 
     let signature: Signature = signing_key.sign(&message);
-    let sig_hex = hex::encode(signature.to_bytes());
-
-    // zeroize key material
-    drop(signing_key);
-
-    Ok(sig_hex)
+    Ok(hex::encode(signature.to_bytes()))
 }
 
 /// Verify an Ed25519 signature.

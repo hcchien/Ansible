@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use ed25519_dalek::{SigningKey, Signer};
+use zeroize::Zeroizing;
 
 /// A minimal AT Protocol Lexicon record.
 #[derive(Debug)]
@@ -35,16 +36,25 @@ pub fn cbor_encode_record(rec: &LexiconRecord) -> Vec<u8> {
 ///
 /// `private_key_hex` — 32-byte signing key hex-encoded
 /// Returns hex-encoded 64-byte signature.
+/// Key material is held in `Zeroizing` wrappers so that both the decoded
+/// `Vec<u8>` heap buffer and the `[u8; 32]` stack copy are zeroed on drop.
+/// `ed25519_dalek::SigningKey` also implements `ZeroizeOnDrop` (v2.x).
 pub fn sign_record_commit(cbor_bytes: &[u8], private_key_hex: &str) -> Result<String, String> {
-    let key_bytes = hex::decode(private_key_hex)
-        .map_err(|e| format!("Invalid private key hex: {}", e))?;
+    let key_bytes: Zeroizing<Vec<u8>> = Zeroizing::new(
+        hex::decode(private_key_hex)
+            .map_err(|e| format!("Invalid private key hex: {}", e))?,
+    );
 
     if key_bytes.len() != 32 {
         return Err(format!("Private key must be 32 bytes, got {}", key_bytes.len()));
     }
 
-    let key_arr: [u8; 32] = key_bytes.try_into().unwrap();
-    let signing_key = SigningKey::from_bytes(&key_arr);
+    let key_arr: Zeroizing<[u8; 32]> = Zeroizing::new(
+        <[u8; 32]>::try_from(key_bytes.as_slice())
+            .map_err(|_| "Private key must be 32 bytes".to_string())?,
+    );
+    // SigningKey (ed25519-dalek 2.x) implements ZeroizeOnDrop.
+    let signing_key = SigningKey::from_bytes(&*key_arr);
     let signature = signing_key.sign(cbor_bytes);
 
     Ok(hex::encode(signature.to_bytes()))
