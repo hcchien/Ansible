@@ -1,0 +1,180 @@
+defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
+  use ExUnit.Case, async: false
+  use Plug.Test
+
+  alias AnsibleRelay.DidAccountCache
+  alias AnsibleRelay.Web.Router
+
+  @router_opts Router.init([])
+  @valid_public_key String.duplicate("ab", 32)
+  @valid_did "did:plc:abcdefghijklmnop"
+
+  defp post_json(path, body) do
+    conn(:post, path, Jason.encode!(body))
+    |> put_req_header("content-type", "application/json")
+    |> Router.call(@router_opts)
+  end
+
+  defp ed25519_keypair do
+    {public_key, private_key} = :crypto.generate_key(:eddsa, :ed25519)
+    {Base.encode16(public_key, case: :lower), private_key}
+  end
+
+  defp sign_nonce(private_key, nonce) do
+    :eddsa
+    |> :crypto.sign(:none, nonce, [private_key, :ed25519])
+    |> Base.encode16(case: :lower)
+  end
+
+  setup do
+    case DidAccountCache.start_link([]) do
+      {:ok, _} -> :ok
+      {:error, {:already_started, _}} -> :ok
+    end
+
+    DidAccountCache.reset()
+    :ok
+  end
+
+  test "register issues a nonce for a passkeys public key" do
+    response =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert is_binary(body["nonce"])
+    assert byte_size(body["nonce"]) > 20
+    assert is_binary(body["expires_at"])
+    assert body["handle"] == "alice.trisaura.io"
+  end
+
+  test "register reserves a handle while a nonce is pending" do
+    first =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    second =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => String.duplicate("cd", 32),
+        "handle_suffix" => "alice"
+      })
+
+    assert first.status == 200
+    assert second.status == 409
+    assert Jason.decode!(second.resp_body)["error"] == "handle_pending"
+  end
+
+  test "register rejects the legacy public_key field" do
+    response =
+      post_json("/api/v2/identity/register", %{
+        "public_key" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    assert response.status == 422
+    body = Jason.decode!(response.resp_body)
+    assert body["error"] == "missing_fields"
+    assert body["field"] == "public_key_hex"
+  end
+
+  test "register validates the public key and handle suffix" do
+    bad_key =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => "not-hex",
+        "handle_suffix" => "alice"
+      })
+
+    assert bad_key.status == 422
+    assert Jason.decode!(bad_key.resp_body)["detail"] =~ "public_key_hex"
+
+    bad_handle =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "-alice"
+      })
+
+    assert bad_handle.status == 422
+    assert Jason.decode!(bad_handle.resp_body)["detail"] =~ "handle_suffix"
+  end
+
+  test "anchor rejects invalid signatures without consuming the nonce" do
+    register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    nonce = Jason.decode!(register.resp_body)["nonce"]
+
+    response =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => @valid_public_key,
+        "handle" => "alice.trisaura.io",
+        "registration_sig" => "00",
+        "nonce" => nonce
+      })
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_sig"
+    assert :ok = DidAccountCache.consume_nonce(@valid_public_key, nonce)
+  end
+
+  test "anchor verifies a real Ed25519 signature and activates the DID" do
+    {public_key_hex, private_key} = ed25519_keypair()
+
+    register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "alice"
+      })
+
+    nonce = Jason.decode!(register.resp_body)["nonce"]
+    signature = sign_nonce(private_key, nonce)
+
+    response =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle" => "alice.trisaura.io",
+        "registration_sig" => signature,
+        "nonce" => nonce
+      })
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["did"] == @valid_did
+    assert body["handle"] == "alice.trisaura.io"
+    assert {:ok, %{public_key_hex: ^public_key_hex}} = DidAccountCache.get(@valid_did)
+  end
+
+  test "anchor rejects a handle that was not bound to the registration nonce" do
+    {public_key_hex, private_key} = ed25519_keypair()
+
+    register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "alice"
+      })
+
+    nonce = Jason.decode!(register.resp_body)["nonce"]
+    signature = sign_nonce(private_key, nonce)
+
+    response =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle" => "bob.trisaura.io",
+        "registration_sig" => signature,
+        "nonce" => nonce
+      })
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "handle_mismatch"
+  end
+end

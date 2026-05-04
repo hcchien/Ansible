@@ -1,24 +1,30 @@
+import 'dart:async';
+
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/network_status_service.dart';
+import '../services/ops_dispatch_service.dart';
+import '../widgets/ops_queue_status_badge.dart';
+import 'note_editor_screen.dart';
 import 'posts_view_screen.dart';
 import 'sync_settings_screen.dart';
 import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 
-const _localUserId = 'local-user';
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
     required this.db,
-    this.onLogout,
+    required this.did,
+    this.onClearIdentity,
   });
 
   final AppDatabase db;
-  final VoidCallback? onLogout;
+  final String did;
+  final VoidCallback? onClearIdentity;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -28,8 +34,9 @@ class _HomeShellState extends State<HomeShell> {
   late final DriftBoardRepository _boardRepo;
   late final DriftThreadRepository _threadRepo;
   late final DriftPostRepository _postRepo;
-  late final DriftUserRepository _userRepo;
   late final DriftReactionRepository _reactionRepo;
+  late final DriftOpsQueueRepository _opsQueueRepo;
+  late final OpsDispatchService _opsDispatchService;
   late final NetworkStatusService _networkStatusService;
 
   List<Board> _boards = [];
@@ -38,38 +45,23 @@ class _HomeShellState extends State<HomeShell> {
   String? _selectedBoardId;
   final _uuid = const Uuid();
 
-
   @override
   void initState() {
     super.initState();
     _boardRepo = DriftBoardRepository(widget.db);
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
-    _userRepo = DriftUserRepository(widget.db);
     _reactionRepo = DriftReactionRepository(widget.db);
+    _opsQueueRepo = DriftOpsQueueRepository(widget.db);
+    _opsDispatchService = OpsDispatchService(repository: _opsQueueRepo);
     _networkStatusService = NetworkStatusService();
-    _bootstrap().then((_) => _loadData());
+    _loadData();
   }
 
   @override
   void dispose() {
     _networkStatusService.dispose();
     super.dispose();
-  }
-
-  Future<void> _bootstrap() async {
-    final user = await _userRepo.getById(_localUserId);
-    if (user == null) {
-      final now = DateTime.now();
-      await _userRepo.create(User(
-        userId: _localUserId,
-        username: 'local',
-        passwordHash: 'local',
-        displayName: 'Local User',
-        createdAt: now,
-        updatedAt: now,
-      ));
-    }
   }
 
   Future<void> _loadData() async {
@@ -87,11 +79,16 @@ class _HomeShellState extends State<HomeShell> {
         firstPosts[t.id] = posts.isNotEmpty ? posts.first : null;
         postCounts[t.id] = posts.length;
 
-        final reactions = await _reactionRepo.listByTarget(store.TargetType.thread.name, t.id);
+        final reactions = await _reactionRepo.listByTarget(
+          store.TargetType.thread.name,
+          t.id,
+        );
         final countMap = <String, int>{};
         for (final r in reactions) {
-          countMap[r.reactionType.name] = (countMap[r.reactionType.name] ?? 0) + 1;
-          if (r.userId == _localUserId && r.reactionType == store.ReactionType.thumbsUp) {
+          countMap[r.reactionType.name] =
+              (countMap[r.reactionType.name] ?? 0) + 1;
+          if (r.userId == widget.did &&
+              r.reactionType == store.ReactionType.thumbsUp) {
             userReacted[t.id] = true;
           }
         }
@@ -116,9 +113,7 @@ class _HomeShellState extends State<HomeShell> {
         board: board?.title ?? t.boardId,
         timeAgo: _formatTimeAgo(t.createdAt),
         content: content,
-        reactions: {
-          '👍': counts[store.ReactionType.thumbsUp.name] ?? 0,
-        },
+        reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
         comments: comments,
         reacted: userReacted[t.id] ?? false,
       );
@@ -157,22 +152,32 @@ class _HomeShellState extends State<HomeShell> {
       updatedAt: now,
     );
     await _boardRepo.create(board);
+    await _enqueueAndFlush(
+      CrdtOpBuilder.createBoard(
+        authorDid: widget.did,
+        entityId: board.id,
+        slug: board.slug,
+        title: board.title,
+        description: board.description,
+      ),
+    );
     await _loadData();
   }
 
   Future<void> _createThread() async {
     final dialogResult = await showDialog<Map<String, String?>>(
       context: context,
-      builder: (context) => ThreadFormDialog(
-        boards: _boards,
-        initialBoardId: _selectedBoardId,
-      ),
+      builder: (context) =>
+          ThreadFormDialog(boards: _boards, initialBoardId: _selectedBoardId),
     );
     if (dialogResult == null) return;
     final threadTitle = dialogResult['title']?.trim();
     final boardId = dialogResult['boardId'];
     final content = dialogResult['content']?.trim() ?? '';
-    if (threadTitle == null || threadTitle.isEmpty || boardId == null || boardId.isEmpty) {
+    if (threadTitle == null ||
+        threadTitle.isEmpty ||
+        boardId == null ||
+        boardId.isEmpty) {
       return;
     }
     final now = DateTime.now();
@@ -180,17 +185,25 @@ class _HomeShellState extends State<HomeShell> {
       id: _uuid.v4(),
       boardId: boardId,
       title: threadTitle,
-      authorId: _localUserId,
+      authorId: widget.did,
       createdAt: now,
       updatedAt: now,
     );
     await _threadRepo.create(thread);
+    await _enqueueAndFlush(
+      CrdtOpBuilder.createThread(
+        authorDid: widget.did,
+        entityId: thread.id,
+        boardId: boardId,
+        title: thread.title,
+      ),
+    );
     // 建立首帖
     final post = Post(
       id: _uuid.v4(),
       threadId: thread.id,
       boardId: boardId,
-      authorId: _localUserId,
+      authorId: widget.did,
       content: content,
       createdAt: now,
       updatedAt: now,
@@ -198,7 +211,21 @@ class _HomeShellState extends State<HomeShell> {
       parentPostId: null,
     );
     await _postRepo.create(post);
+    await _enqueueAndFlush(
+      CrdtOpBuilder.createPost(
+        authorDid: widget.did,
+        entityId: post.id,
+        boardId: boardId,
+        threadId: thread.id,
+        content: post.content,
+      ),
+    );
     await _loadData();
+  }
+
+  Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
+    await _opsDispatchService.signAndEnqueue(entry);
+    unawaited(_opsDispatchService.flushPending());
   }
 
   Future<void> _openManageBoards() async {
@@ -221,26 +248,34 @@ class _HomeShellState extends State<HomeShell> {
                           final board = _boards[index];
                           return ListTile(
                             title: Text(board.title),
-                            subtitle: board.description != null ? Text(board.description!) : null,
+                            subtitle: board.description != null
+                                ? Text(board.description!)
+                                : null,
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
                                   icon: const Icon(Icons.edit),
                                   onPressed: () async {
-                                    final result = await showDialog<Map<String, String?>>(
-                                      context: context,
-                                      builder: (context) => BoardFormDialog(
-                                        initialTitle: board.title,
-                                        initialDescription: board.description,
-                                      ),
-                                    );
+                                    final result =
+                                        await showDialog<Map<String, String?>>(
+                                          context: context,
+                                          builder: (context) => BoardFormDialog(
+                                            initialTitle: board.title,
+                                            initialDescription:
+                                                board.description,
+                                          ),
+                                        );
                                     if (result != null) {
                                       final now = DateTime.now();
-                                      final updatedSlug = _slugify(result['title'] ?? board.title);
+                                      final updatedSlug = _slugify(
+                                        result['title'] ?? board.title,
+                                      );
                                       final updated = Board(
                                         id: board.id,
-                                        slug: updatedSlug.isEmpty ? board.slug : updatedSlug,
+                                        slug: updatedSlug.isEmpty
+                                            ? board.slug
+                                            : updatedSlug,
                                         title: result['title'] ?? board.title,
                                         description: result['description'],
                                         createdAt: board.createdAt,
@@ -254,21 +289,30 @@ class _HomeShellState extends State<HomeShell> {
                                   },
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.redAccent,
+                                  ),
                                   onPressed: () async {
                                     final confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
                                         title: const Text('刪除看板'),
-                                        content: Text('確定刪除「${board.title}」？此動作不可恢復。'),
+                                        content: Text(
+                                          '確定刪除「${board.title}」？此動作不可恢復。',
+                                        ),
                                         actions: [
                                           TextButton(
-                                            onPressed: () => Navigator.pop(ctx, false),
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
                                             child: const Text('取消'),
                                           ),
                                           TextButton(
-                                            onPressed: () => Navigator.pop(ctx, true),
-                                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, true),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
                                             child: const Text('刪除'),
                                           ),
                                         ],
@@ -350,7 +394,10 @@ class _HomeShellState extends State<HomeShell> {
               Expanded(
                 child: _MainPanel(
                   db: widget.db,
-                  onLogout: widget.onLogout,
+                  did: widget.did,
+                  opsQueueRepo: _opsQueueRepo,
+                  opsDispatchService: _opsDispatchService,
+                  onClearIdentity: widget.onClearIdentity,
                   loading: _loading,
                   posts: _posts,
                   onRefresh: _loadData,
@@ -358,6 +405,8 @@ class _HomeShellState extends State<HomeShell> {
                   onCreateBoard: _createBoard,
                   onManageBoards: _openManageBoards,
                   hasSelectedBoard: _selectedBoardId != null,
+                  selectedBoardId: _selectedBoardId,
+                  boards: _boards,
                   networkStatusService: _networkStatusService,
                 ),
               ),
@@ -381,7 +430,7 @@ class _Sidebar extends StatelessWidget {
   final String? selectedBoardId;
   final ValueChanged<String?> onSelectBoard;
   final VoidCallback onManageBoards;
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -449,7 +498,9 @@ class _Sidebar extends StatelessWidget {
               foregroundColor: Colors.white,
               side: BorderSide(color: Colors.white.withOpacity(0.2)),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ],
@@ -480,7 +531,9 @@ class _BoardTileState extends State<_BoardTile> {
     final hoverBg = const Color(0xFF122036);
     final borderColor = selected
         ? item.accent.withOpacity(0.35)
-        : (_hover ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.05));
+        : (_hover
+              ? Colors.white.withOpacity(0.12)
+              : Colors.white.withOpacity(0.05));
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -499,7 +552,7 @@ class _BoardTileState extends State<_BoardTile> {
                     color: item.accent.withOpacity(0.15),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -507,7 +560,10 @@ class _BoardTileState extends State<_BoardTile> {
           leading: CircleAvatar(
             backgroundColor: item.accent.withOpacity(0.15),
             foregroundColor: item.accent,
-            child: const Text('#', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text(
+              '#',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
           title: Text(
             item.title,
@@ -524,7 +580,10 @@ class _BoardTileState extends State<_BoardTile> {
               : null,
           trailing: item.badge != null
               ? Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1D2A3B),
                     borderRadius: BorderRadius.circular(10),
@@ -558,8 +617,11 @@ class BoardNavItem {
 
 class _MainPanel extends StatelessWidget {
   const _MainPanel({
-    this.onLogout,
+    this.onClearIdentity,
     required this.db,
+    required this.did,
+    required this.opsQueueRepo,
+    required this.opsDispatchService,
     required this.loading,
     required this.posts,
     required this.onRefresh,
@@ -567,11 +629,16 @@ class _MainPanel extends StatelessWidget {
     required this.onCreateBoard,
     required this.onManageBoards,
     required this.hasSelectedBoard,
+    required this.selectedBoardId,
+    required this.boards,
     required this.networkStatusService,
   });
 
-  final VoidCallback? onLogout;
+  final VoidCallback? onClearIdentity;
   final AppDatabase db;
+  final String did;
+  final OpsQueueRepository opsQueueRepo;
+  final OpsDispatchService opsDispatchService;
   final bool loading;
   final List<PostCardData> posts;
   final Future<void> Function() onRefresh;
@@ -579,6 +646,8 @@ class _MainPanel extends StatelessWidget {
   final Future<void> Function() onCreateBoard;
   final Future<void> Function() onManageBoards;
   final bool hasSelectedBoard;
+  final String? selectedBoardId;
+  final List<Board> boards;
   final NetworkStatusService networkStatusService;
 
   @override
@@ -586,7 +655,15 @@ class _MainPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _TopBar(onLogout: onLogout, onRefresh: onRefresh, db: db, networkStatusService: networkStatusService),
+        _TopBar(
+          onClearIdentity: onClearIdentity,
+          onRefresh: onRefresh,
+          db: db,
+          did: did,
+          opsQueueRepo: opsQueueRepo,
+          opsDispatchService: opsDispatchService,
+          networkStatusService: networkStatusService,
+        ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
@@ -600,15 +677,46 @@ class _MainPanel extends StatelessWidget {
                   child: SizedBox(
                     width: 340,
                     child: FilledButton.icon(
-                      onPressed: () {},
+                      onPressed: (hasSelectedBoard && selectedBoardId != null)
+                          ? () {
+                              // Use the first board that matches selectedBoardId for a placeholder threadId
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => NoteEditorScreen(
+                                    authorDid: did,
+                                    boardId: selectedBoardId!,
+                                    threadId: '',
+                                    threadTitle:
+                                        boards
+                                            .where(
+                                              (b) => b.id == selectedBoardId,
+                                            )
+                                            .map((b) => b.title)
+                                            .firstOrNull ??
+                                        '新討論',
+                                    opsQueueRepo: opsQueueRepo,
+                                    opsDispatchService: opsDispatchService,
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
                       icon: const Icon(Icons.edit_outlined, size: 20),
-                      label: const Text('連接錢包以發表文章'),
+                      label: const Text('新貼文'),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFFF9F43),
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
                         elevation: 0,
                       ),
                     ),
@@ -641,19 +749,24 @@ class _MainPanel extends StatelessWidget {
                   child: loading
                       ? const Center(child: CircularProgressIndicator())
                       : posts.isEmpty
-                          ? Center(
-                              child: Text(
-                                '目前沒有貼文',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      color: Colors.white70,
-                                    ),
-                              ),
-                            )
-                          : ListView.separated(
-                              itemCount: posts.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 16),
-                              itemBuilder: (context, index) => PostCard(db: db, data: posts[index]),
-                            ),
+                      ? Center(
+                          child: Text(
+                            '目前沒有貼文',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: Colors.white70),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: posts.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (context, index) => PostCard(
+                            db: db,
+                            data: posts[index],
+                            authorDid: did,
+                            opsDispatchService: opsDispatchService,
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -665,12 +778,28 @@ class _MainPanel extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({this.onLogout, required this.onRefresh, required this.db, required this.networkStatusService});
+  const _TopBar({
+    this.onClearIdentity,
+    required this.onRefresh,
+    required this.db,
+    required this.did,
+    required this.opsQueueRepo,
+    required this.opsDispatchService,
+    required this.networkStatusService,
+  });
 
-  final VoidCallback? onLogout;
+  final VoidCallback? onClearIdentity;
   final Future<void> Function() onRefresh;
   final AppDatabase db;
+  final String did;
+  final OpsQueueRepository opsQueueRepo;
+  final OpsDispatchService opsDispatchService;
   final NetworkStatusService networkStatusService;
+
+  String get _truncatedDid {
+    if (did.length <= 24) return did;
+    return '${did.substring(0, 18)}...${did.substring(did.length - 6)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -720,9 +849,8 @@ class _TopBar extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => WalletScreen(
-                    repository: DriftWalletRepository(db),
-                  ),
+                  builder: (_) =>
+                      WalletScreen(repository: DriftWalletRepository(db)),
                 ),
               );
             },
@@ -732,23 +860,57 @@ class _TopBar extends StatelessWidget {
               foregroundColor: Colors.black,
               backgroundColor: const Color(0xFFFF9F43),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // DID identity badge with ops queue indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F182A),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF1F2A3D)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.fingerprint,
+                  size: 16,
+                  color: Color(0xFFFF9F43),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _truncatedDid,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OpsQueueStatusBadge(repository: opsQueueRepo),
+              ],
             ),
           ),
           const SizedBox(width: 12),
           IconButton(
-            onPressed: onRefresh,
+            onPressed: () async {
+              await opsDispatchService.flushPending();
+              await onRefresh();
+            },
             icon: const Icon(Icons.refresh),
             color: Colors.white70,
-            tooltip: '重新整理',
+            tooltip: '同步並重新整理',
           ),
           const SizedBox(width: 8),
           IconButton(
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => SyncSettingsScreen(db: db),
-                ),
+                MaterialPageRoute(builder: (_) => SyncSettingsScreen(db: db)),
               );
             },
             icon: const Icon(Icons.sync),
@@ -756,13 +918,27 @@ class _TopBar extends StatelessWidget {
             tooltip: 'Sync Settings',
           ),
           const SizedBox(width: 8),
-          if (onLogout != null)
-            IconButton(
-              onPressed: onLogout,
-              icon: const Icon(Icons.logout),
-              color: Colors.white70,
-              tooltip: '登出',
-            ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white70),
+            tooltip: '選單',
+            onSelected: (value) {
+              if (value == 'clear_identity' && onClearIdentity != null) {
+                onClearIdentity!();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: 'clear_identity',
+                child: Row(
+                  children: [
+                    Icon(Icons.no_accounts_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('清除身份 (Clear Identity)'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -835,8 +1011,8 @@ class _NetworkStatusIndicator extends StatelessWidget {
                 status == NetworkStatus.online
                     ? connectionType
                     : status == NetworkStatus.offline
-                        ? 'Offline'
-                        : 'Checking',
+                    ? 'Offline'
+                    : 'Checking',
                 style: TextStyle(
                   color: color,
                   fontSize: 12,
@@ -900,10 +1076,18 @@ class PostCardData {
 }
 
 class PostCard extends StatefulWidget {
-  const PostCard({super.key, required this.data, required this.db});
+  const PostCard({
+    super.key,
+    required this.data,
+    required this.db,
+    required this.authorDid,
+    required this.opsDispatchService,
+  });
 
   final AppDatabase db;
   final PostCardData data;
+  final String authorDid;
+  final OpsDispatchService opsDispatchService;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -926,14 +1110,24 @@ class _PostCardState extends State<PostCard> {
   }
 
   Future<void> _toggleThumbsUp(String targetId, bool currentlyReacted) async {
+    final localDid = widget.authorDid;
     if (currentlyReacted) {
       final existing = await _reactionRepo.getByUserAndTarget(
-        _localUserId,
+        localDid,
         store.TargetType.thread.name,
         targetId,
       );
       if (existing != null) {
         await _reactionRepo.delete(existing.id);
+        await widget.opsDispatchService.signAndEnqueue(
+          CrdtOpBuilder.deleteReaction(
+            authorDid: localDid,
+            entityId: existing.id,
+            targetType: store.TargetType.thread.name,
+            targetId: targetId,
+          ),
+        );
+        unawaited(widget.opsDispatchService.flushPending());
         setState(() {
           _reacted = false;
           _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
@@ -942,13 +1136,23 @@ class _PostCardState extends State<PostCard> {
     } else {
       final reaction = store.Reaction(
         id: const Uuid().v4(),
-        userId: _localUserId,
+        userId: localDid,
         targetType: store.TargetType.thread,
         targetId: targetId,
         reactionType: store.ReactionType.thumbsUp,
         createdAt: DateTime.now(),
       );
       await _reactionRepo.create(reaction);
+      await widget.opsDispatchService.signAndEnqueue(
+        CrdtOpBuilder.createReaction(
+          authorDid: localDid,
+          entityId: reaction.id,
+          targetType: reaction.targetType.name,
+          targetId: reaction.targetId,
+          reactionType: reaction.reactionType.name,
+        ),
+      );
+      unawaited(widget.opsDispatchService.flushPending());
       setState(() {
         _reacted = true;
         _likeCount += 1;
@@ -970,6 +1174,8 @@ class _PostCardState extends State<PostCard> {
               builder: (_) => PostsViewScreen(
                 db: widget.db,
                 thread: thread,
+                authorDid: widget.authorDid,
+                opsDispatchService: widget.opsDispatchService,
               ),
             ),
           );
@@ -987,14 +1193,20 @@ class _PostCardState extends State<PostCard> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       data.category,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   const Spacer(),
@@ -1029,17 +1241,38 @@ class _PostCardState extends State<PostCard> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.person_outline, size: 16, color: Colors.white70),
+                  const Icon(
+                    Icons.person_outline,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
                   const SizedBox(width: 4),
-                  Text(data.author, style: const TextStyle(color: Colors.white70)),
+                  Text(
+                    data.author,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                   const SizedBox(width: 12),
-                  const Icon(Icons.forum_outlined, size: 16, color: Colors.white70),
+                  const Icon(
+                    Icons.forum_outlined,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
                   const SizedBox(width: 4),
-                  Text(data.board, style: const TextStyle(color: Colors.white70)),
+                  Text(
+                    data.board,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                   const SizedBox(width: 12),
-                  const Icon(Icons.access_time, size: 16, color: Colors.white70),
+                  const Icon(
+                    Icons.access_time,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
                   const SizedBox(width: 4),
-                  Text(data.timeAgo, style: const TextStyle(color: Colors.white70)),
+                  Text(
+                    data.timeAgo,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -1049,8 +1282,8 @@ class _PostCardState extends State<PostCard> {
                     padding: const EdgeInsets.only(right: 10),
                     child: _ReactionChip(
                       label: '👍',
-                    count: _likeCount,
-                    active: _reacted,
+                      count: _likeCount,
+                      active: _reacted,
                       onTap: _isReacting
                           ? null
                           : () async {
@@ -1068,10 +1301,8 @@ class _PostCardState extends State<PostCard> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => PostsViewScreen(
-                            db: widget.db,
-                            thread: thread,
-                          ),
+                          builder: (_) =>
+                              PostsViewScreen(db: widget.db, thread: thread),
                         ),
                       );
                     },
@@ -1087,7 +1318,12 @@ class _PostCardState extends State<PostCard> {
 }
 
 class _ReactionChip extends StatelessWidget {
-  const _ReactionChip({required this.label, required this.count, this.active = false, this.onTap});
+  const _ReactionChip({
+    required this.label,
+    required this.count,
+    this.active = false,
+    this.onTap,
+  });
 
   final String label;
   final int count;
@@ -1101,7 +1337,9 @@ class _ReactionChip extends StatelessWidget {
       style: TextButton.styleFrom(
         foregroundColor: active ? Colors.black : Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        backgroundColor: active ? const Color(0xFFFF9F43) : Colors.white.withOpacity(0.05),
+        backgroundColor: active
+            ? const Color(0xFFFF9F43)
+            : Colors.white.withOpacity(0.05),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       child: Text('$label $count'),

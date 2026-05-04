@@ -36,12 +36,11 @@ void main() {
       final credential = TrisAuraCredential.fromJson(humanityFixture);
 
       expect(
-        () => VpBuilder.build(
+        () => VpBuilder.buildUnsigned(
           credential: credential,
           holderDid: 'did:key:z6Mkother',
           nonce: 'nonce-123',
           audience: 'https://relay.trisaura.io',
-          proofValue: 'test-signature',
         ),
         throwsA(
           isA<TrisAuraCredentialException>().having(

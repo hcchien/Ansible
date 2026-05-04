@@ -1,0 +1,175 @@
+defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
+  @moduledoc """
+  V2.0 Passkeys Identity registration endpoints.
+
+  POST /api/v2/identity/register — begin registration, issue nonce
+  POST /api/v2/identity/anchor  — verify Ed25519 sig and anchor DID
+  """
+
+  alias AnsibleRelay.{DidAccountCache, SigVerifier}
+
+  @handle_domain "trisaura.io"
+
+  def register(conn, params) do
+    with {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
+         {:ok, handle_suffix} <- require_field(params, "handle_suffix"),
+         :ok <- validate_public_key_hex(public_key_hex),
+         :ok <- validate_handle_suffix(handle_suffix) do
+      handle = "#{handle_suffix}.#{@handle_domain}"
+
+      case DidAccountCache.get_by_handle(handle) do
+        {:ok, _did} ->
+          send_json(conn, 409, %{error: "handle_taken"})
+
+        :not_found ->
+          case DidAccountCache.issue_nonce(public_key_hex, handle) do
+            {:ok, %{nonce: nonce, expires_at: expires_at}} ->
+              send_json(conn, 200, %{
+                nonce: nonce,
+                expires_at: DateTime.to_iso8601(expires_at),
+                handle: handle
+              })
+
+            {:error, :handle_pending} ->
+              send_json(conn, 409, %{error: "handle_pending"})
+          end
+      end
+    else
+      {:error, {:missing_field, field}} ->
+        send_json(conn, 422, %{error: "missing_fields", field: field})
+
+      {:error, :invalid_public_key_hex} ->
+        send_json(conn, 422, %{
+          error: "missing_fields",
+          detail: "public_key_hex must be 64 hex chars"
+        })
+
+      {:error, :invalid_handle_suffix} ->
+        send_json(conn, 422, %{
+          error: "missing_fields",
+          detail: "handle_suffix must be alphanumeric"
+        })
+    end
+  end
+
+  def anchor(conn, params) do
+    with {:ok, did} <- require_field(params, "did"),
+         {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
+         {:ok, handle} <- require_field(params, "handle"),
+         {:ok, registration_sig} <- require_field(params, "registration_sig"),
+         {:ok, nonce} <- require_field(params, "nonce"),
+         :ok <- validate_did(did),
+         :ok <- validate_public_key_hex(public_key_hex),
+         :ok <- validate_handle(handle) do
+      # Verify signature BEFORE consuming the nonce so an invalid sig does not
+      # burn the nonce — the client can retry without requesting a new one.
+      if not SigVerifier.verify_ed25519(public_key_hex, nonce, registration_sig) do
+        send_json(conn, 401, %{error: "invalid_sig"})
+      else
+        case DidAccountCache.consume_nonce(public_key_hex, nonce, handle) do
+          :ok ->
+            anchor_verified_did(conn, did, public_key_hex, handle)
+
+          {:error, :handle_mismatch} ->
+            send_json(conn, 401, %{error: "handle_mismatch"})
+
+          {:error, :expired_nonce} ->
+            send_json(conn, 401, %{error: "expired_nonce"})
+
+          {:error, :invalid_nonce} ->
+            send_json(conn, 401, %{error: "invalid_nonce"})
+        end
+      end
+    else
+      {:error, {:missing_field, field}} ->
+        send_json(conn, 422, %{error: "missing_fields", field: field})
+
+      {:error, :invalid_did} ->
+        send_json(conn, 422, %{error: "invalid_did"})
+
+      {:error, :invalid_public_key_hex} ->
+        send_json(conn, 422, %{error: "invalid_public_key"})
+
+      {:error, :invalid_handle} ->
+        send_json(conn, 422, %{error: "invalid_handle"})
+    end
+  end
+
+  # --- Helpers ---
+
+  defp anchor_verified_did(conn, did, public_key_hex, handle) do
+    case {DidAccountCache.get(did), DidAccountCache.get_by_handle(handle)} do
+      {{:ok, _entry}, _} ->
+        send_json(conn, 409, %{error: "duplicate_did"})
+
+      {:not_found, {:ok, existing_did}} when existing_did != did ->
+        send_json(conn, 409, %{error: "handle_taken"})
+
+      {:not_found, _} ->
+        :ok = DidAccountCache.put(did, public_key_hex, handle)
+        {:ok, entry} = DidAccountCache.get(did)
+
+        send_json(conn, 200, %{
+          did: did,
+          handle: handle,
+          expires_at: DateTime.to_iso8601(entry.expires_at)
+        })
+    end
+  end
+
+  defp require_field(params, key) do
+    case Map.get(params, key) do
+      nil -> {:error, {:missing_field, key}}
+      "" -> {:error, {:missing_field, key}}
+      val -> {:ok, val}
+    end
+  end
+
+  defp validate_public_key_hex(hex) when is_binary(hex) do
+    if String.length(hex) == 64 and String.match?(hex, ~r/\A[0-9a-fA-F]+\z/) do
+      :ok
+    else
+      {:error, :invalid_public_key_hex}
+    end
+  end
+
+  defp validate_public_key_hex(_), do: {:error, :invalid_public_key_hex}
+
+  defp validate_handle_suffix(suffix) when is_binary(suffix) do
+    # DNS label rules: 1–63 chars, alphanumeric or internal hyphens,
+    # must start and end with alphanumeric.
+    if String.match?(suffix, ~r/\A[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\z/) do
+      :ok
+    else
+      {:error, :invalid_handle_suffix}
+    end
+  end
+
+  defp validate_handle_suffix(_), do: {:error, :invalid_handle_suffix}
+
+  defp validate_did(did) when is_binary(did) do
+    if String.match?(did, ~r/\Adid:plc:[a-z2-7]{10,}\z/) do
+      :ok
+    else
+      {:error, :invalid_did}
+    end
+  end
+
+  defp validate_did(_), do: {:error, :invalid_did}
+
+  defp validate_handle(handle) when is_binary(handle) do
+    if String.match?(handle, ~r/\A[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.trisaura\.io\z/) do
+      :ok
+    else
+      {:error, :invalid_handle}
+    end
+  end
+
+  defp validate_handle(_), do: {:error, :invalid_handle}
+
+  defp send_json(conn, status, body) do
+    conn
+    |> Plug.Conn.put_resp_content_type("application/json")
+    |> Plug.Conn.send_resp(status, Jason.encode!(body))
+  end
+end

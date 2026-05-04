@@ -5,6 +5,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 echo "Starting Ansible Relay server..."
-pushd "$ROOT_DIR/ansible_relay/server" >/dev/null
-dart run bin/server.dart
+pushd "$ROOT_DIR/ansible_relay/phoenix" >/dev/null
+mix run --no-halt
 popd >/dev/null

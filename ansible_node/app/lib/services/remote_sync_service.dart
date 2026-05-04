@@ -1,5 +1,64 @@
+import 'dart:convert';
+
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
+import 'package:http/http.dart' as http;
+
+/// Compatibility client for the legacy board delta endpoint.
+///
+/// V1.1+ will move board synchronization to signed Ops, but this client keeps
+/// the existing Sync Settings workflow functional while retention controls are
+/// enforced locally.
+class RelayApiClient {
+  final String baseUrl;
+  final http.Client _client;
+  String? _accessToken;
+
+  RelayApiClient({required this.baseUrl, http.Client? client})
+    : _client = client ?? http.Client();
+
+  void setAccessToken(String? token) {
+    _accessToken = token;
+  }
+
+  Future<Map<String, dynamic>> login(String username, String password) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/api/v1/auth/login'),
+      headers: const {'content-type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Relay authentication failed: ${response.statusCode}');
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getDelta({int? cursor, int limit = 100}) async {
+    final query = {
+      if (cursor != null) 'cursor': cursor.toString(),
+      'limit': limit.toString(),
+    };
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/sync/delta',
+    ).replace(queryParameters: query);
+    final response = await _client.get(uri, headers: authHeaders);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Relay delta failed: ${response.statusCode}');
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Map<String, String> get authHeaders {
+    final token = _accessToken;
+    return {
+      if (token != null && token.isNotEmpty) 'authorization': 'Bearer $token',
+    };
+  }
+}
 
 class RemoteSyncService {
   final RemoteNodeRepository _remoteNodeRepo;
@@ -23,7 +82,6 @@ class RemoteSyncService {
        _postRepo = postRepo,
        _now = now ?? DateTime.now;
 
-  /// Sync from a specific remote node
   Future<SyncResult> syncFromNode(
     RelayApiClient remoteClient,
     RemoteNode remoteNode,
@@ -50,19 +108,16 @@ class RemoteSyncService {
       final syncTime = _now();
 
       while (hasMore) {
-        // Fetch delta from remote
         final deltaJson = await remoteClient.getDelta(
           cursor: currentCursor > 0 ? currentCursor : null,
           limit: 100,
         );
         final delta = DeltaResponse.fromJson(deltaJson);
 
-        // Process each activity
         for (final entry in delta.activities) {
-          // Filter by enabled boards (if any are configured)
           final boardId = entry.activity.boardId;
           if (boardId == null || !enabledBoardIdSet.contains(boardId)) {
-            continue; // Skip activities for boards not in sync list
+            continue;
           }
           if (!_isWithinRetention(
             entry.activity,
@@ -81,8 +136,6 @@ class RemoteSyncService {
       }
 
       await _pruneExpiredPosts(enabledConfigs, syncTime);
-
-      // Update sync cursor in remote node
       await _remoteNodeRepo.updateSyncCursor(
         remoteNode.id,
         currentCursor,
@@ -96,6 +149,16 @@ class RemoteSyncService {
     } catch (e) {
       return SyncResult.failure(errorMessage: e.toString());
     }
+  }
+
+  Future<SyncResult> syncFromRemote(RelayApiClient remoteClient) async {
+    final remoteNode = await _remoteNodeRepo.getActive();
+    if (remoteNode == null) {
+      return SyncResult.failure(
+        errorMessage: 'No active remote node configured',
+      );
+    }
+    return syncFromNode(remoteClient, remoteNode);
   }
 
   bool _isWithinRetention(Activity activity, int? retentionDays, DateTime now) {
@@ -124,17 +187,6 @@ class RemoteSyncService {
     }
   }
 
-  /// Sync from the active remote node (legacy method)
-  Future<SyncResult> syncFromRemote(RelayApiClient remoteClient) async {
-    final remoteNode = await _remoteNodeRepo.getActive();
-    if (remoteNode == null) {
-      return SyncResult.failure(
-        errorMessage: 'No active remote node configured',
-      );
-    }
-    return syncFromNode(remoteClient, remoteNode);
-  }
-
   Future<void> _applyActivity(Activity activity) async {
     switch (activity.entityType.toLowerCase()) {
       case 'board':
@@ -156,7 +208,6 @@ class RemoteSyncService {
     if (type == 'delete') {
       await _boardRepo.delete(activity.entityId);
     } else {
-      // Create or update
       final now = DateTime.now();
       final board = Board(
         id: activity.entityId,

@@ -9,7 +9,8 @@
       "dependencies": [
         "ansible_domain",
         "drift",
-        "sqlite3"
+        "sqlite3",
+        "uuid"
       ],
       "devDependencies": [
         "build_runner",
@@ -739,6 +740,14 @@
         "json_annotation",
         "source_span",
         "yaml"
+      ]
+    },
+    {
+      "name": "uuid",
+      "version": "4.5.3",
+      "dependencies": [
+        "crypto",
+        "fixnum"
       ]
     }
   ],

@@ -1,250 +1,220 @@
-# Taiwan Digital Identity VC Wallet Architecture
+# Taiwan Digital Identity VC Wallet Plan
 
-> Status: Draft for product, legal, and implementation review
-> Owner areas: identity, wallet, relay, security
+> Status: Draft for implementation planning
+> Owners: identity, wallet, relay, security
 > Last updated: 2026-05-04
 
 ## 1. Purpose
 
-Tris-Aura no longer treats ePassport NFC, MRZ, BAC, or PACE as the core human
-verification path. The replacement direction is:
+Tris-Aura V2 no longer uses ePassport NFC / MRZ / BAC / PACE as the human
+verification path. The replacement identity proofing path is Taiwan's natural
+person certificate ecosystem, preferably through the mobile natural person
+certificate service (TW FidO / 行動自然人憑證) when formal integration is
+available.
 
-1. use Taiwan's natural person certificate ecosystem as the external identity
-   assurance source;
-2. issue Tris-Aura-owned Verifiable Credentials (VCs) after successful proofing;
-3. store and present those credentials from the App, which therefore becomes a
-   local Wallet as well as a forum client.
+The App must therefore become both:
 
-The product goal is not to publish a user's government identity. The product
-goal is to let a DID holder prove a bounded statement such as "this account is
-controlled by a verified human who completed Taiwan natural-person-certificate
-identity proofing" while keeping raw legal identity outside public records.
+1. a DID-based AT Protocol client for posts and sync, and
+2. a wallet that stores, presents, refreshes, and revokes Tris-Aura-issued
+   Verifiable Credentials (VCs).
 
-## 1.1 Issuance Authority
+The Relay/Issuer verifies a user through Taiwan digital identity, then issues a
+privacy-preserving Tris-Aura VC bound to the user's holder DID. The App stores
+that VC locally and presents it later for higher trust tiers, rate-limit
+upgrades, or community access.
 
-`TrisAuraHumanityCredential` is issued only by a Tris-Aura-controlled Issuer
-server. A user may hold the VC, store it in the App Wallet, and present it as a
-VP, but the user must not self-issue this credential type.
+## 2. External Identity Sources
 
-Reason:
+### Confirmed Public Facts
 
-- Verified Human is a trust and Sybil-resistance credential.
-- Its value comes from the Issuer verifying a TW FidO / MOICA-approved proofing
-  result and applying duplicate-prevention policy.
-- A self-issued humanity credential would only prove that the user made a claim
-  about themself; it would not prove issuer-side identity assurance.
+Taiwan's 行動自然人憑證 service provides mobile-device identity authentication
+based on natural person certificates. The official service describes support for
+biometric/device verification, digital services login, and integration by
+government agencies or businesses. The official teaching page also states that
+NFC card binding has card/device constraints: NFC binding is limited to TP07
+natural person certificate IC cards, and mobile OS requirements include Android
+9+ and iOS 15+.
 
-Self-issued credentials may exist later for profile-like claims, such as display
-name, preferences, or personal metadata. They must not grant Verified Human,
-rate-limit upgrades, gated community access, or issuer-backed trust labels.
+Official references:
 
-## 2. Official Sources And Review Flags
+- 行動自然人憑證系統: https://fido.moi.gov.tw/
+- 功能教學: https://fido.moi.gov.tw/pt/main/teaching
+- 我的E政府 TW FidO page: https://www.gov.tw/News_Content_2_371636
+- 行動自然人憑證 APP page: https://www.gov.tw/News_Content_13_762666
 
-Public official references checked on 2026-05-04:
+### Integration Assumptions To Confirm
 
-- Taiwan 行動自然人憑證系統: https://fido.moi.gov.tw/
-- 行動自然人憑證功能教學: https://fido.moi.gov.tw/pt/main/teaching
-- 我的E政府 TW FidO article: https://www.gov.tw/News_Content_2_371636
-- 我的E政府 行動自然人憑證 APP article: https://www.gov.tw/News_Content_13_762666
+The following items are not assumed as available until we obtain integration
+documents or an official sandbox:
 
-From public material, TW FidO / 行動自然人憑證 is positioned as a mobile natural
-person certificate authentication service. Public teaching material describes
-mobile-device binding, biometric/device verification, and NFC-related card/device
-constraints. It also indicates mobile OS requirements and that NFC card binding
-depends on supported natural person certificate IC cards.
+- Whether Tris-Aura can become an approved TW FidO relying party.
+- Whether TW FidO returns a stable pseudonymous subject identifier, certificate
+  serial, signed assertion, or only an authentication result.
+- Whether digital signatures can be requested by third-party mobile apps, or
+  only by approved web services / service providers.
+- Whether the mobile App can use a same-device deep-link flow, a cross-device QR
+  flow, or must use a web-based redirect through an approved relying party.
+- Exact data minimization obligations, retention rules, audit log requirements,
+  and whether the derived uniqueness key is regulated as personal data.
 
-The following statements are intentionally marked for review because they require
-formal integration documents, partner approval, or a sandbox:
+## 3. Target Trust Model
 
-- REVIEW: Whether Tris-Aura can become an approved TW FidO relying party.
-- REVIEW: Whether the provider returns a stable pseudonymous subject, a signed
-  assertion, a certificate serial, or only an authentication result.
-- REVIEW: Whether a third-party mobile app may initiate same-device identity
-  proofing, or whether the flow must be web/QR based through an approved service.
-- REVIEW: Whether a third-party service may use the proofing result to issue a
-  private-sector VC.
-- REVIEW: Whether derived duplicate-prevention commitments are regulated as
-  personal data and what retention period is allowed.
-- REVIEW: Whether App Store review treats the Wallet feature as normal credential
-  storage or requires additional disclosures because it is identity-related.
-
-## 3. Standards Baseline
-
-The implementation should keep a narrow internal MVP while aligning naming and
-semantics with public standards:
-
-- W3C VC Data Model 2.0 for credential shape:
-  https://www.w3.org/TR/vc-data-model-2.0/
-- W3C DID Core for issuer and holder identifiers:
-  https://www.w3.org/TR/did-1.0/
-- OpenID4VCI 1.0 as the target issuance compatibility profile:
-  https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html
-- OpenID4VP 1.0 as the target presentation compatibility profile:
-  https://openid.net/specs/openid-4-verifiable-presentations-1_0.html
-
-Internal MVP APIs can be simpler than OID4VCI/OID4VP. They must still preserve
-the same security properties: holder binding, nonce binding, audience binding,
-issuer verification, expiry checks, and revocation checks.
-
-## 4. Trust Model
+### Roles
 
 | Role | Component | Responsibility |
 |---|---|---|
-| Holder | Tris-Aura App | Owns local DID keys, stores VCs, approves presentations |
-| Identity provider | TW FidO / MOICA-approved flow | Authenticates the natural person |
-| Credential issuer | Tris-Aura relay / issuer service | Issues Tris-Aura VCs after proofing |
-| Verifier | Relay, AppView, private communities | Verifies VP and grants trust tier |
-| DID registry | did:key initially, did:plc or did:web later | Resolves issuer and holder public keys |
+| Holder | `ansible_node/app` | Owns DID keys, stores VCs, creates VPs |
+| Identity Provider | TW FidO / MOICA | Authenticates the real person |
+| Credential Issuer | `ansible_relay/phoenix` issuer module | Issues Tris-Aura VCs after proofing |
+| Verifier | Relay, AppView, communities | Verifies VP and applies trust tier |
+| Registry | DID / PLC / did:web | Resolves issuer and holder public keys |
 
-Identity provider data must terminate at the issuer boundary. Public forum
-records, sync envelopes, ActivityPub objects, and Tris-Aura posts must not embed
-raw government identity attributes.
+### Identity Boundary
 
-## 5. Privacy Boundary
-
-Allowed default VC claims:
+TW FidO / MOICA is used only for proofing. Tris-Aura does not publish the user's
+government identity into AT Protocol records. The Tris-Aura VC should contain
+minimal claims such as:
 
 - `humanVerified: true`
 - `assuranceLevel: "tw_natural_person_certificate"`
-- `assuranceMethod: "tw_fido_or_moica"`
-- `jurisdiction: "TW"`
 - `verifiedAt`
 - `expiresAt`
+- optional age/residency predicates only when needed
 
-Prohibited default VC claims:
+The VC must not contain raw national ID, birth date, legal name, address, phone,
+email, certificate serial, or full MOICA assertion unless a specific product and
+legal review says otherwise.
 
-- national ID
-- legal name
-- birth date
-- household registration address
-- certificate serial number
-- phone number
-- email address
-- raw provider assertion
+### Uniqueness
 
-Additional claims, such as age-over or residency, require a separate product and
-legal review before implementation.
+To prevent one verified person from receiving many high-trust credentials, the
+Issuer stores a uniqueness commitment:
 
-## 6. Duplicate-Prevention Commitment
-
-The issuer needs a way to prevent one verified person from minting many active
-high-trust credentials. The first production design should store a commitment,
-not the raw government identifier:
-
-```text
+```
 subject_commitment = HMAC-SHA256(
-  issuer_secret_pepper,
+  issuer_kms_pepper,
   canonical_provider_subject || ":" || provider_assurance_context
 )
 ```
 
 Rules:
 
-- The raw provider subject is never stored in application tables.
-- The HMAC pepper lives in a secret manager or KMS, not source control.
-- The commitment is used only for issuer-side duplicate prevention.
-- The issued VC contains a random credential ID and does not expose the
+- The raw provider subject is never stored.
+- The HMAC pepper lives in KMS / secret manager, not source control.
+- `subject_commitment` is used only by the Issuer for duplicate prevention.
+- The issued VC contains a separate random credential ID and does not expose the
   commitment.
-- If future selective-disclosure or zero-knowledge tooling is adopted, replace
-  this with a privacy-preserving nullifier.
+- If future selective disclosure or ZK tooling is adopted, replace this with a
+  privacy-preserving nullifier.
 
-If the provider does not return a stable provider subject, the integration must
-stop at a weaker "verified session" level until a compliant uniqueness strategy
-is approved.
+## 4. Product Flows
 
-## 7. Product Flows
+### Flow A — Basic Account
 
-### Flow A: Basic Account
+Current V2 flow remains:
 
-The current app remains usable without government identity proofing:
+1. App creates local device key / passkey-style credential.
+2. App creates or receives `did:plc`.
+3. Relay anchors DID as `Basic`.
+4. User can post with stronger rate limits than anonymous clients, but without
+   verified-human privileges.
 
-1. User creates a local account.
-2. App creates or imports a DID key.
-3. Relay accepts normal signed operations.
-4. Reputation tier is `basic`.
+### Flow B — Upgrade To Verified Human
 
-### Flow B: Upgrade To Verified Human
-
-```text
-App Wallet                  Tris-Aura Issuer              TW identity provider
+```
+App / Wallet                 Tris-Aura Issuer              TW FidO / MOICA
     |                              |                              |
-    |-- POST /api/v1/vc/offer ---->|                              |
-    |   holder_did, types          |                              |
-    |<-- offer + auth request -----|                              |
+    |-- POST /api/v2/vc/offer ---->|                              |
+    |   { holder_did, types }      |                              |
+    |<-- credential_offer ---------|                              |
     |                              |                              |
-    |-- open auth request -------->|-- redirect / QR / request -->|
-    |                              |<-- assertion or result ------|
+    |-- open auth request -------->|-- auth redirect / QR ------->|
+    |                              |<-- signed assertion / result-|
     |                              |                              |
-    |-- POST /api/v1/vc/issue ---->|                              |
-    |   holder_did, key proof      |                              |
-    |<-- signed VC ----------------|                              |
+    |<-- issuance session ready ---|                              |
+    |-- POST /api/v2/vc/issue ---->|                              |
+    |   { holder_did, key_proof }  |                              |
+    |<-- VC -----------------------|                              |
     |                              |                              |
-    | [encrypt and store locally]  |                              |
+    | [store VC in wallet]         |                              |
 ```
 
 Acceptance criteria:
 
-- Issuer verifies the identity-provider result before issuance.
-- App proves control of the holder DID before receiving the VC.
-- Duplicate active `TrisAuraHumanityCredential` issuance is rejected or returns
-  the existing active credential state.
-- App can recover Wallet display state after restart.
-- No raw provider assertion is logged or stored in plaintext.
+- The Issuer verifies TW identity assurance before issuing.
+- The App proves control of `holder_did`.
+- The VC is holder-bound.
+- Duplicate issuance for the same natural person is either rejected or returns
+  the existing active credential status.
+- The App can recover display state after restart without leaking sensitive
+  claims into logs.
 
-### Flow C: Present Credential
+### Flow C — Present VC To Relay / Community
 
-```text
-Verifier                      App Wallet
-   |                              |
-   |-- presentation request ----->|
-   |   nonce, audience, types     |
-   |                              |
-   | [user reviews and approves]  |
-   |                              |
-   |<-- verifiable presentation --|
-   |   holder proof + VC          |
-   |                              |
-   | verify issuer, holder, nonce,
-   | audience, expiry, status
+```
+Verifier                    App Wallet
+   |                            |
+   |-- presentation request --->|
+   |   { nonce, audience,       |
+   |     accepted_types }       |
+   |                            |
+   | [user approves claims]     |
+   |                            |
+   |<-- verifiable presentation |
+   |    { vp, holder_sig }      |
+   |                            |
+   | verify issuer + holder + expiry + revocation
 ```
 
 Acceptance criteria:
 
-- Presentation is bound to verifier nonce.
-- Presentation is bound to verifier audience/domain.
-- Wrong holder, wrong audience, replayed nonce, expired VC, revoked VC, and
-  tampered VC all fail.
-- User sees which credential and claim summary will be presented.
+- Presentation is bound to verifier challenge nonce.
+- Presentation has an `audience` / domain binding.
+- Expired, revoked, wrong-audience, wrong-holder, or tampered VCs fail.
+- User sees which credential and claims will be presented.
 
-### Flow D: Refresh And Revocation
+### Flow D — Refresh / Revocation
 
-Initial policy:
+VCs should be short-lived enough to limit stale trust but long-lived enough to
+avoid frequent government authentication. Initial recommended policy:
 
-- `TrisAuraHumanityCredential` lifetime: 90 days.
-- Refresh window: starts 14 days before expiry.
-- Online status check: required for trust-tier upgrades and gated communities.
-- Offline display: allowed only for low-risk local UI badges.
+- `TrisAuraHumanityCredential`: 90 days
+- refresh window: 14 days before expiry
+- revocation status check: online when presenting to Relay/AppView
+- offline presentation: allowed only for low-risk UI badges, not rate-limit
+  upgrades or gated communities
 
-## 8. Wallet Scope
+## 5. App Wallet Scope
 
-The App needs a Wallet tab or screen group with:
+### Wallet Storage
 
-- Wallet home: credential list, status, expiry, refresh action.
-- Credential detail: issuer, type, issue date, expiry, claim summary.
-- Add credential: starts TW identity proofing or mock proofing in dev.
-- Presentation approval: verifier, requested credential type, requested claims,
-  risk copy, approve/deny.
-- Delete local credential: removes local encrypted payload and metadata.
+Add a local wallet store in SQLite plus encrypted payload storage:
 
-Local storage:
+| Data | Storage | Notes |
+|---|---|---|
+| VC metadata | SQLite | type, issuer DID, expiry, status, display label |
+| VC payload | encrypted local storage | AES-GCM key wrapped by platform keystore |
+| Holder keys | existing DID secure storage | never export private key |
+| Presentation history | SQLite | local-only audit trail; no claim payloads |
 
-| Table | Purpose |
-|---|---|
-| `wallet_credentials` | non-sensitive metadata and status |
-| `wallet_credential_payloads` | encrypted VC payload bytes or keystore-wrapped blob reference |
-| `wallet_presentations` | local-only audit trail without sensitive claims |
-| `credential_status_cache` | cached revocation/suspension result |
-| `issuer_trust_cache` | trusted issuer DID documents and key metadata |
+Minimum tables:
+
+- `wallet_credentials`
+- `wallet_presentations`
+- `credential_status_cache`
+- `issuer_trust_cache`
+
+### Wallet UI
+
+Required screens:
+
+- Wallet home: list credentials, status, expiry, refresh action.
+- Credential detail: issuer, type, issued date, expiry, claims summary.
+- Add credential: starts TW digital identity issuance.
+- Presentation approval: requested verifier, requested claims, expiry, risk.
+- Revocation / delete: remove local copy and optionally notify issuer.
+
+### Wallet APIs
 
 App services:
 
@@ -255,102 +225,267 @@ App services:
 - `CredentialStatusClient`
 - `IssuerTrustStore`
 
-Core VC package responsibilities:
+Rust core:
 
-- parse VC JSON;
-- sign and verify holder proofs;
-- verify issuer proof;
-- check expiry and credential type;
-- build VP with nonce and audience binding.
+- JSON canonicalization / JCS or Data Integrity canonicalization
+- Ed25519 / Data Integrity proof signing
+- VC / VP verification
+- holder-binding proof generation
 
-## 9. Issuer Scope
+## 6. Relay / Issuer Scope
 
-Internal MVP endpoints:
+### New Relay Modules
+
+- `AnsibleRelay.VcIssuer`
+- `AnsibleRelay.VcCredentialStore`
+- `AnsibleRelay.VcStatusRegistry`
+- `AnsibleRelay.TwIdentityProvider`
+- `AnsibleRelay.SubjectCommitment`
+- `AnsibleRelay.Web.Controllers.VcIssuerController`
+
+### New Endpoints
+
+Initial internal API, before OID4VCI compatibility:
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/v1/vc/offer` | Create issuance session and return auth URL/QR/mock token |
-| `POST /api/v1/vc/tw/callback` | Receive and verify identity-provider result |
-| `POST /api/v1/vc/issue` | Issue holder-bound VC after holder key proof |
-| `GET /api/v1/vc/status/:credential_id` | Return active/revoked/suspended/expired status |
-| `POST /api/v1/vc/presentations/verify` | Verify VP for server-side flows |
+| `POST /api/v2/vc/offer` | Create issuance session and return authorization URL / QR payload |
+| `POST /api/v2/vc/tw/callback` | Receive/verify identity provider result |
+| `POST /api/v2/vc/issue` | Issue holder-bound VC after key proof |
+| `GET /api/v2/vc/status/:credential_id` | Return revocation / suspension / expiry status |
+| `POST /api/v2/vc/presentations/verify` | Verify VP for server-side flows |
 
-Issuer modules:
+Compatibility target:
 
-- `ansible_relay/server/lib/src/vc/vc_issuer.dart`
-- `ansible_relay/server/lib/src/vc/vc_credential_store.dart`
-- `ansible_relay/server/lib/src/vc/vc_status_registry.dart`
-- `ansible_relay/server/lib/src/vc/tw_identity_provider.dart`
-- `ansible_relay/server/lib/src/vc/subject_commitment.dart`
-- `ansible_relay/server/lib/src/handlers/vc_handler.dart`
+- OID4VCI for issuance once the internal flow is stable.
+- OID4VP for verifier requests and presentation submission.
 
-Issuer DID:
+### Issuer DID
 
-- MVP: `did:web:issuer.trisaura.io` once production hosting exists.
-- Local dev: fixture issuer DID and test key stored only under test fixtures.
-- DID document must publish assertion method key, issuer metadata endpoint, and
-  key rotation policy.
+Use `did:web:issuer.trisaura.io` for the first production Issuer because it is
+operationally simple and auditable. The DID document must publish:
 
-## 10. Credential Types
+- assertion method key for VC issuance
+- service endpoint for issuer metadata
+- rotated key history policy
+
+Later, `did:plc` can be added if key rotation / delegation requirements align
+better with the rest of the AT Protocol stack.
+
+## 7. Credential Types
 
 ### TrisAuraHumanityCredential
 
+Purpose: prove that a DID holder completed Taiwan natural person certificate
+identity proofing, without exposing the legal identity.
+
+Required claims:
+
 ```json
 {
-  "@context": [
-    "https://www.w3.org/ns/credentials/v2",
-    "https://trisaura.io/contexts/humanity/v1"
-  ],
-  "id": "urn:uuid:2f4574e6-0ef3-4d87-bc24-5ab5168e6a7a",
   "type": ["VerifiableCredential", "TrisAuraHumanityCredential"],
   "issuer": "did:web:issuer.trisaura.io",
-  "validFrom": "2026-05-04T00:00:00Z",
-  "validUntil": "2026-08-02T00:00:00Z",
   "credentialSubject": {
-    "id": "did:key:z6Mkholder",
+    "id": "did:plc:holder...",
     "humanVerified": true,
     "assuranceLevel": "tw_natural_person_certificate",
     "assuranceMethod": "tw_fido_or_moica",
     "jurisdiction": "TW"
   },
+  "validFrom": "2026-05-04T00:00:00Z",
+  "validUntil": "2026-08-02T00:00:00Z",
   "credentialStatus": {
-    "id": "https://issuer.trisaura.io/status/humanity/2026-05#2f4574e6",
     "type": "TrisAuraStatusList2026",
-    "statusPurpose": "revocation"
+    "statusPurpose": "revocation",
+    "statusListCredential": "https://issuer.trisaura.io/status/humanity/2026-05"
   }
 }
 ```
 
+Prohibited claims by default:
+
+- national ID
+- legal name
+- birth date
+- household registration address
+- certificate serial number
+- phone/email from the government flow
+
 ### TrisAuraAgeOverCredential
 
-Deferred until an approved source can provide age predicate data without
-returning exact birth date to the App or public records.
+Optional later credential for communities that need age gates.
+
+Claims:
+
+- `ageOver: 18` or `ageOver: 20`
+- no date of birth
+- no exact age
+
+This requires the upstream identity provider or an approved attribute source to
+provide age information. Mark as blocked until source availability and legal
+review are complete.
 
 ### TrisAuraResidencyCredential
 
-Deferred until a concrete community-governance need exists. Default posture is
-not to issue residency credentials.
+Optional later credential for Taiwan-local governance.
 
-## 11. Development Phases
+Claims:
 
-| Phase | Name | Exit criteria |
-|---|---|---|
-| P0 | Documentation and partner discovery | Integration questions, privacy review inputs, and protocol spec are ready |
-| P1 | Local Wallet foundation | App can store, list, delete, and verify fixture VCs locally |
-| P2 | Issuer MVP with mock TW assertion | Issuer can offer, issue, revoke, and verify VCs using test assertions |
-| P3 | TW digital identity adapter | At least one approved sandbox or production proofing flow issues a VC |
-| P4 | Presentation and reputation integration | Valid VP upgrades trust tier; invalid VP is rejected |
-| P5 | OID4VCI/OID4VP compatibility | QR/metadata flows align with standards-oriented wallet/verifier fixtures |
-| P6 | Production hardening | KMS, rotation, privacy, observability, and release checks are complete |
+- `jurisdiction: "TW"`
+- possibly city/county only if necessary and legally reviewed
 
-## 12. Engineering Guardrails
+Default posture: avoid this credential until a concrete product need exists.
 
-- Build P1 and P2 with deterministic fixtures before external integration.
-- Do not block normal forum use when the identity provider is down.
-- Keep mock proofing compiled out or feature-gated in production builds.
-- Treat every identity-provider callback as replayable until nonce/state checks
-  prove otherwise.
-- Never put raw assertions, national identifiers, or provider subjects in logs.
-- Do not make Wallet deletion imply issuer revocation unless the UI says so.
-- Keep credential presentation explicit; no background presentation without user
-  approval.
+## 8. Development Phases
+
+### P0 — Documentation And Partner Discovery
+
+Deliverables:
+
+- This architecture plan.
+- Protocol spec for credential issuance/presentation.
+- Questions for TW FidO / MOICA integration.
+- Data protection impact assessment draft.
+
+Exit criteria:
+
+- Chosen initial integration path: official TW FidO RP, MOICA web flow, manual
+  review fallback, or staged mock.
+- Confirmed whether same-device mobile flow is possible.
+- Confirmed whether we can receive a stable pseudonymous subject or must derive
+  one from signed certificate attributes.
+
+### P1 — Local Wallet Foundation
+
+Deliverables:
+
+- Wallet tables and repository.
+- Encrypted credential storage.
+- Wallet UI skeleton.
+- Import/delete/list credential flows using dev fixtures.
+- VC parser and basic verification in Rust/Dart.
+
+Tests:
+
+- credentials persist across restart.
+- encrypted payload is not stored as plaintext.
+- expired credential is clearly marked.
+- delete removes local payload and metadata.
+
+### P2 — Tris-Aura Issuer MVP
+
+Deliverables:
+
+- Issuer DID (`did:web`) and signing key management.
+- Internal `/api/v2/vc/offer`, `/issue`, `/status` endpoints.
+- `TrisAuraHumanityCredential` issuance using mocked TW identity assertion.
+- subject commitment duplicate protection.
+- issuer-side audit logs without raw sensitive data.
+
+Tests:
+
+- cannot issue without holder DID proof.
+- duplicate subject commitment cannot mint multiple active humanity VCs.
+- issued VC verifies against issuer DID.
+- revoked credential fails verification.
+
+### P3 — TW Digital Identity Integration
+
+Deliverables:
+
+- Integration adapter for approved TW FidO / MOICA flow.
+- Same-device or QR cross-device issuance UX.
+- callback/assertion verification.
+- production error mapping and retry rules.
+
+Tests:
+
+- callback replay rejected.
+- state/nonce mismatch rejected.
+- expired authorization session rejected.
+- identity provider downtime keeps account usable but blocks new issuance.
+
+Exit criteria:
+
+- At least one real sandbox/production TW identity proofing flow completes and
+  issues a wallet credential.
+
+### P4 — Presentation And Reputation Integration
+
+Deliverables:
+
+- VP generation in App.
+- Relay/AppView VP verification.
+- Reputation Labeler consumes valid humanity VC and upgrades tier.
+- presentation approval UI.
+
+Tests:
+
+- wrong audience rejected.
+- wrong nonce rejected.
+- wrong holder rejected.
+- revoked/expired credential rejected.
+- valid VC upgrades trust tier without exposing raw identity.
+
+### P5 — OID4VCI / OID4VP Compatibility
+
+Deliverables:
+
+- Issuer metadata endpoint.
+- Credential offer format compatible with OID4VCI.
+- Presentation request/response compatible with OID4VP where practical.
+- QR cross-device flow.
+
+Exit criteria:
+
+- A standards-oriented wallet/verifier test fixture can interoperate with our
+  Issuer/Wallet for the supported credential format.
+
+### P6 — Production Hardening
+
+Deliverables:
+
+- KMS-backed issuer keys and subject commitment pepper.
+- issuer key rotation runbook.
+- privacy review and retention policy.
+- threat model and abuse response playbook.
+- observability dashboards.
+- backup / restore / revocation recovery drill.
+
+Exit criteria:
+
+- No dev fallback in production builds.
+- Issuer private keys never appear in logs, DB, or app bundle.
+- Personal data minimization has been reviewed.
+- Security tests and release checklist are green.
+
+## 9. Data Protection Requirements
+
+Default rules:
+
+- Do not store raw government identifiers.
+- Do not log identity provider assertions.
+- Do not include sensitive personal attributes in VCs unless strictly required.
+- Use separate identifiers for:
+  - holder DID
+  - credential ID
+  - subject uniqueness commitment
+  - audit event ID
+- Audit logs must record events, not claims.
+- All credential issuance decisions must be reproducible from retained
+  non-sensitive evidence and status codes.
+
+## 10. Open Questions
+
+- What exact TW FidO / MOICA relying-party protocol and sandbox are available?
+- Can a non-government, non-financial app receive verified attributes, or only an
+  authentication success?
+- Does the provider assertion include a stable subject identifier suitable for
+  duplicate prevention?
+- What are the contractual restrictions on using TW FidO results to issue a
+  private-sector VC?
+- Does the App need to be a separate Wallet app, or can wallet functionality live
+  inside the Tris-Aura app under app store rules and identity-provider terms?
+- Which credential proof format should be the first production target:
+  Data Integrity, JWT VC, or SD-JWT VC?
+- What is the minimum disclosure set for "Verified Human" in the product UI?

@@ -7,17 +7,13 @@
       },
       "declaration": {
         "source_uri": "package:ansible_store/src/schema/threads.dart",
-        "offset": 85,
+        "offset": 64,
         "name": "Threads"
       },
       "references": [
         {
           "library_uri": "package:ansible_store/src/schema/boards.dart",
           "name": "boards"
-        },
-        {
-          "library_uri": "package:ansible_store/src/schema/users.dart",
-          "name": "users"
         }
       ],
       "type": "table",
@@ -31,7 +27,7 @@
           "nameInDart": "threadId",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/threads.dart",
-            "offset": 126,
+            "offset": 105,
             "name": "threadId"
           },
           "typeConverter": null,
@@ -52,7 +48,7 @@
           "nameInDart": "boardId",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/threads.dart",
-            "offset": 165,
+            "offset": 144,
             "name": "boardId"
           },
           "typeConverter": null,
@@ -87,7 +83,7 @@
           "nameInDart": "title",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/threads.dart",
-            "offset": 232,
+            "offset": 211,
             "name": "title"
           },
           "typeConverter": null,
@@ -108,7 +104,7 @@
           "nameInDart": "authorId",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/threads.dart",
-            "offset": 268,
+            "offset": 247,
             "name": "authorId"
           },
           "typeConverter": null,
@@ -117,21 +113,7 @@
           "overriddenJsonName": null,
           "referenceName": null,
           "documentationComment": null,
-          "constraints": [
-            {
-              "type": "foreign_key",
-              "column": {
-                "table": {
-                  "library_uri": "package:ansible_store/src/schema/users.dart",
-                  "name": "users"
-                },
-                "name": "user_id"
-              },
-              "onUpdate": null,
-              "onDelete": null,
-              "initiallyDeferred": false
-            }
-          ],
+          "constraints": [],
           "customConstraints": null
         },
         {
@@ -143,7 +125,7 @@
           "nameInDart": "createdAt",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/threads.dart",
-            "offset": 338,
+            "offset": 290,
             "name": "createdAt"
           },
           "typeConverter": null,
@@ -164,7 +146,7 @@
           "nameInDart": "updatedAt",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/threads.dart",
-            "offset": 386,
+            "offset": 338,
             "name": "updatedAt"
           },
           "typeConverter": null,
@@ -185,7 +167,7 @@
           "nameInDart": "isDeleted",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/threads.dart",
-            "offset": 430,
+            "offset": 382,
             "name": "isDeleted"
           },
           "typeConverter": null,
@@ -231,7 +213,6 @@
   },
   "imports": [
     "package:drift/drift.dart",
-    "package:ansible_store/src/schema/boards.dart",
-    "package:ansible_store/src/schema/users.dart"
+    "package:ansible_store/src/schema/boards.dart"
   ]
 }

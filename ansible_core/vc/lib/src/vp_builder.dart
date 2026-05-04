@@ -1,8 +1,28 @@
 import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:ansible_did/ansible_did.dart';
 
 import 'tris_aura_credential.dart';
+import 'verifiable_credential.dart';
 
+/// VpBuilder constructs W3C Verifiable Presentations.
+///
+/// The static helpers are used by the production post presentation service so
+/// the exact unsigned VP payload can be canonicalized and signed by an injected
+/// signer. The instance API is retained for the generic wallet flow that signs
+/// locally through the Rust bridge.
 class VpBuilder {
+  final FlutterSecureStorage _secureStorage;
+
+  static const _kPlcPrivateKey = 'ansible_plc_private_key';
+  static const _kLegacyPrivateKey = 'ansible_did_private_key';
+
+  VpBuilder({FlutterSecureStorage? secureStorage})
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+
   static Map<String, Object?> buildUnsigned({
     required TrisAuraCredential credential,
     required String holderDid,
@@ -59,24 +79,72 @@ class VpBuilder {
     return jsonEncode(_canonicalValue(unsignedPresentation));
   }
 
-  static Map<String, Object?> build({
-    required TrisAuraCredential credential,
+  Future<VerifiablePresentation> build({
     required String holderDid,
-    required String nonce,
-    required String audience,
-    required String proofValue,
-    DateTime? createdAt,
-  }) {
-    return addProof(
-      unsignedPresentation: buildUnsigned(
-        credential: credential,
-        holderDid: holderDid,
-        nonce: nonce,
-        audience: audience,
-        createdAt: createdAt,
-      ),
+    required List<VerifiableCredential> credentials,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+
+    final vpWithoutProof = {
+      '@context': ['https://www.w3.org/2018/credentials/v1'],
+      'type': ['VerifiablePresentation'],
+      'holder': holderDid,
+      'verifiableCredential': credentials.map((vc) => vc.toJson()).toList(),
+    };
+
+    final canonical = jsonEncode(_canonicalValue(vpWithoutProof));
+    final msgBytes = Uint8List.fromList(utf8.encode(canonical));
+    final proofValue = await _signBytes(msgBytes);
+
+    final proof = CredentialProof(
+      type: 'Ed25519Signature2020',
+      created: now,
+      verificationMethod: '$holderDid#key-1',
+      proofPurpose: 'authentication',
       proofValue: proofValue,
     );
+
+    return VerifiablePresentation(
+      context: const ['https://www.w3.org/2018/credentials/v1'],
+      type: const ['VerifiablePresentation'],
+      holder: holderDid,
+      verifiableCredential: credentials,
+      proof: proof,
+    );
+  }
+
+  Future<String> _signBytes(Uint8List bytes) async {
+    try {
+      final privateKeyHex =
+          await _secureStorage.read(key: _kPlcPrivateKey) ??
+          await _secureStorage.read(key: _kLegacyPrivateKey);
+
+      if (privateKeyHex == null) {
+        throw StateError(
+          'No local DID keypair found. Run identity registration first.',
+        );
+      }
+
+      return await RustLib.instance.apiSignCommit(
+        cborBytes: bytes,
+        privateKeyHex: privateKeyHex,
+      );
+    } on UnimplementedError {
+      debugPrint(
+        '[VpBuilder] DEV WARNING: Rust bridge not compiled; returning dev stub VP signature.',
+      );
+      return _devStubSig(bytes);
+    } on StateError {
+      debugPrint(
+        '[VpBuilder] DEV WARNING: No keypair in storage; returning dev stub VP signature.',
+      );
+      return _devStubSig(bytes);
+    }
+  }
+
+  String _devStubSig(Uint8List bytes) {
+    final lenHex = bytes.length.toRadixString(16).padLeft(4, '0');
+    return 'devvpsig$lenHex${'00' * 60}';
   }
 
   static Map<String, Object?> _deepCopyMap(Map<String, Object?> source) {

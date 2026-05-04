@@ -10,6 +10,10 @@ dependencies:
     path: ../domain
   ansible_did:
     path: ../did
+  flutter_secure_storage: ^9.0.0
+  crypto: ^3.0.0
+  flutter:
+    sdk: flutter
 
 dev_dependencies:
   lints: ^6.0.0

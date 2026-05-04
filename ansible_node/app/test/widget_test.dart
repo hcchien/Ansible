@@ -1,76 +1,56 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:ansible_domain/ansible_domain.dart';
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 
 void main() {
-  testWidgets('renders login screen when user is logged out', (tester) async {
+  testWidgets('renders identity anchor screen when no DID is persisted', (
+    tester,
+  ) async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
-    final authService = _TestAuthService(initialLoggedIn: false);
 
-    await tester.pumpWidget(MyApp(db: db, authService: authService));
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _EmptyDidPlcManager(),
+      ),
+    );
+    await tester.pump();
 
-    expect(find.text('Login to Ansible Relay'), findsOneWidget);
+    expect(find.text('Ansible'), findsOneWidget);
+    expect(find.text('Passkeys 身份建立'), findsOneWidget);
   });
 }
 
-class _TestAuthService extends AuthService {
-  _TestAuthService({bool initialLoggedIn = false})
-    : _isLoggedIn = initialLoggedIn,
-      super(
-        apiClient: RelayApiClient(
-          baseUrl: 'http://localhost',
-          client: _NoopHttpClient(),
-        ),
-        tokenStorage: _MemoryTokenStorage(),
-      );
-
-  bool _isLoggedIn;
-
+class _EmptyDidManager implements DidManager {
   @override
-  bool get isLoggedIn => _isLoggedIn;
-
-  @override
-  Future<void> login(String username, String password) async {
-    _isLoggedIn = true;
+  Future<OwnedDid> generate() {
+    throw UnimplementedError('Not used by this test.');
   }
 
   @override
-  Future<void> logout() async {
-    _isLoggedIn = false;
-  }
+  Future<OwnedDid?> load() async => null;
+
+  @override
+  Future<void> delete() async {}
 }
 
-class _NoopHttpClient extends http.BaseClient {
+class _EmptyDidPlcManager implements DidPlcManager {
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    throw UnimplementedError('Network calls should not run in widget tests.');
-  }
-}
-
-class _MemoryTokenStorage implements TokenStorage {
-  String? _token;
-
-  @override
-  Future<void> deleteToken() async {
-    _token = null;
+  Future<DidPlcResult> createDid({
+    required String handle,
+    String pdsEndpoint = 'https://trisaura.io',
+    String? signingKeyHex,
+  }) {
+    throw UnimplementedError('Not used by this test.');
   }
 
   @override
-  Future<String?> getToken() async => _token;
+  Future<void> deleteDid() async {}
 
   @override
-  Future<void> saveToken(String token) async {
-    _token = token;
-  }
+  Future<DidPlcResult?> loadDid() async => null;
 }

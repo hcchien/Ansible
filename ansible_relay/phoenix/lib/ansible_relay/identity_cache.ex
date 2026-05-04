@@ -1,0 +1,164 @@
+defmodule AnsibleRelay.IdentityCache do
+  @moduledoc """
+  ETS-backed cache of verified DID identities.
+
+  V1.1 Comp C — stores DID → {public_key_hex, nullifier, verified_at, expires_at}
+  after Phase 1 anchoring. Phase 2 ops lookup this cache for sig verification.
+
+  Three ETS tables:
+    :verified_did_cache  — DID → entry map (read_concurrency: true, Phase 2 is read-heavy)
+    :nullifier_index     — nullifier → DID (dedup check during Phase 1)
+    :identity_challenges — DID → challenge entry map (replay protection during Phase 1)
+  """
+
+  use GenServer
+  require Logger
+
+  alias AnsibleRelay.{Repo, Db.VerifiedDid}
+
+  @table :verified_did_cache
+  @nullifier_table :nullifier_index
+  @challenge_table :identity_challenges
+
+  # --- Public API ---
+
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @doc "Store a verified DID identity, indexed by nullifier for dedup."
+  def put(did, public_key_hex, nullifier \\ nil, expires_at \\ nil) do
+    ttl_seconds = Application.get_env(:ansible_relay, :did_cache_ttl_seconds, 7_776_000)
+    expiry = expires_at || DateTime.add(DateTime.utc_now(), ttl_seconds, :second)
+
+    entry = %{
+      public_key_hex: public_key_hex,
+      nullifier: nullifier,
+      verified_at: DateTime.utc_now(),
+      expires_at: expiry
+    }
+
+    :ets.insert(@table, {did, entry})
+
+    if nullifier do
+      :ets.insert(@nullifier_table, {nullifier, did})
+    end
+
+    # Write-through to PostgreSQL for durability
+    Repo.insert(
+      %VerifiedDid{
+        did: did,
+        public_key_hex: public_key_hex,
+        nullifier: nullifier || "",
+        verified_at: DateTime.utc_now(),
+        expires_at: expiry
+      },
+      on_conflict: {:replace, [:public_key_hex, :expires_at]},
+      conflict_target: :did
+    )
+
+    :ok
+  end
+
+  @doc "Look up a DID. Returns {:ok, entry} or :not_found."
+  def get(did) do
+    case :ets.lookup(@table, did) do
+      [{^did, entry}] -> {:ok, entry}
+      [] -> :not_found
+    end
+  end
+
+  @doc "Returns true if the DID is verified and not expired."
+  def verified?(did) do
+    case get(did) do
+      {:ok, %{expires_at: expires_at}} ->
+        DateTime.compare(DateTime.utc_now(), expires_at) == :lt
+
+      :not_found ->
+        false
+    end
+  end
+
+  @doc "Check if a nullifier has already been registered."
+  def nullifier_exists?(nullifier) do
+    case :ets.lookup(@nullifier_table, nullifier) do
+      [] -> false
+      _ -> true
+    end
+  end
+
+  @doc "Remove a DID (revocation). Also removes its nullifier index entry."
+  def remove(did) do
+    case get(did) do
+      {:ok, %{nullifier: nullifier}} when not is_nil(nullifier) ->
+        :ets.delete(@nullifier_table, nullifier)
+
+      _ ->
+        :ok
+    end
+
+    :ets.delete(@table, did)
+    :ok
+  end
+
+  @doc "Return the public key hex for a verified DID, or nil."
+  def public_key_hex(did) do
+    case get(did) do
+      {:ok, %{public_key_hex: pkh}} -> pkh
+      _ -> nil
+    end
+  end
+
+  @doc "Issue a short-lived Phase 1 challenge nonce for a DID."
+  def issue_challenge(did, expires_at \\ nil) when is_binary(did) do
+    ttl_seconds = Application.get_env(:ansible_relay, :identity_challenge_ttl_seconds, 600)
+    now = DateTime.utc_now()
+    expiry = expires_at || DateTime.add(now, ttl_seconds, :second)
+
+    entry = %{
+      challenge: random_challenge(),
+      issued_at: now,
+      expires_at: expiry
+    }
+
+    :ets.insert(@challenge_table, {did, entry})
+    {:ok, entry}
+  end
+
+  @doc "Consume a Phase 1 challenge exactly once."
+  def consume_challenge(did, challenge) when is_binary(did) and is_binary(challenge) do
+    case :ets.lookup(@challenge_table, did) do
+      [{^did, %{challenge: ^challenge, expires_at: expires_at}}] ->
+        :ets.delete(@challenge_table, did)
+
+        if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
+          :ok
+        else
+          {:error, :expired_challenge}
+        end
+
+      [{^did, _entry}] ->
+        {:error, :invalid_challenge}
+
+      [] ->
+        {:error, :invalid_challenge}
+    end
+  end
+
+  # --- GenServer callbacks ---
+
+  @impl true
+  def init(_opts) do
+    :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
+    :ets.new(@nullifier_table, [:set, :public, :named_table])
+    :ets.new(@challenge_table, [:set, :public, :named_table])
+    Logger.info("IdentityCache ETS tables created")
+    {:ok, %{}}
+  end
+
+  defp random_challenge do
+    32
+    |> :crypto.strong_rand_bytes()
+    |> Base.url_encode64(padding: false)
+  end
+end
