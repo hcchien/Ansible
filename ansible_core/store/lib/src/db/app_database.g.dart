@@ -4500,6 +4500,1406 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
   }
 }
 
+class $WalletCredentialsTable extends WalletCredentials
+    with TableInfo<$WalletCredentialsTable, WalletCredential> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WalletCredentialsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _credentialIdMeta = const VerificationMeta(
+    'credentialId',
+  );
+  @override
+  late final GeneratedColumn<String> credentialId = GeneratedColumn<String>(
+    'credential_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _issuerDidMeta = const VerificationMeta(
+    'issuerDid',
+  );
+  @override
+  late final GeneratedColumn<String> issuerDid = GeneratedColumn<String>(
+    'issuer_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _holderDidMeta = const VerificationMeta(
+    'holderDid',
+  );
+  @override
+  late final GeneratedColumn<String> holderDid = GeneratedColumn<String>(
+    'holder_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _credentialTypeMeta = const VerificationMeta(
+    'credentialType',
+  );
+  @override
+  late final GeneratedColumn<String> credentialType = GeneratedColumn<String>(
+    'credential_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _validFromMeta = const VerificationMeta(
+    'validFrom',
+  );
+  @override
+  late final GeneratedColumn<DateTime> validFrom = GeneratedColumn<DateTime>(
+    'valid_from',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _validUntilMeta = const VerificationMeta(
+    'validUntil',
+  );
+  @override
+  late final GeneratedColumn<DateTime> validUntil = GeneratedColumn<DateTime>(
+    'valid_until',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    credentialId,
+    issuerDid,
+    holderDid,
+    credentialType,
+    status,
+    validFrom,
+    validUntil,
+    displayName,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'wallet_credentials';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WalletCredential> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('credential_id')) {
+      context.handle(
+        _credentialIdMeta,
+        credentialId.isAcceptableOrUnknown(
+          data['credential_id']!,
+          _credentialIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_credentialIdMeta);
+    }
+    if (data.containsKey('issuer_did')) {
+      context.handle(
+        _issuerDidMeta,
+        issuerDid.isAcceptableOrUnknown(data['issuer_did']!, _issuerDidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_issuerDidMeta);
+    }
+    if (data.containsKey('holder_did')) {
+      context.handle(
+        _holderDidMeta,
+        holderDid.isAcceptableOrUnknown(data['holder_did']!, _holderDidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_holderDidMeta);
+    }
+    if (data.containsKey('credential_type')) {
+      context.handle(
+        _credentialTypeMeta,
+        credentialType.isAcceptableOrUnknown(
+          data['credential_type']!,
+          _credentialTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_credentialTypeMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('valid_from')) {
+      context.handle(
+        _validFromMeta,
+        validFrom.isAcceptableOrUnknown(data['valid_from']!, _validFromMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_validFromMeta);
+    }
+    if (data.containsKey('valid_until')) {
+      context.handle(
+        _validUntilMeta,
+        validUntil.isAcceptableOrUnknown(data['valid_until']!, _validUntilMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_validUntilMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {credentialId};
+  @override
+  WalletCredential map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WalletCredential(
+      credentialId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}credential_id'],
+      )!,
+      issuerDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issuer_did'],
+      )!,
+      holderDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}holder_did'],
+      )!,
+      credentialType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}credential_type'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      validFrom: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}valid_from'],
+      )!,
+      validUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}valid_until'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WalletCredentialsTable createAlias(String alias) {
+    return $WalletCredentialsTable(attachedDatabase, alias);
+  }
+}
+
+class WalletCredential extends DataClass
+    implements Insertable<WalletCredential> {
+  final String credentialId;
+  final String issuerDid;
+  final String holderDid;
+  final String credentialType;
+  final String status;
+  final DateTime validFrom;
+  final DateTime validUntil;
+  final String displayName;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const WalletCredential({
+    required this.credentialId,
+    required this.issuerDid,
+    required this.holderDid,
+    required this.credentialType,
+    required this.status,
+    required this.validFrom,
+    required this.validUntil,
+    required this.displayName,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['credential_id'] = Variable<String>(credentialId);
+    map['issuer_did'] = Variable<String>(issuerDid);
+    map['holder_did'] = Variable<String>(holderDid);
+    map['credential_type'] = Variable<String>(credentialType);
+    map['status'] = Variable<String>(status);
+    map['valid_from'] = Variable<DateTime>(validFrom);
+    map['valid_until'] = Variable<DateTime>(validUntil);
+    map['display_name'] = Variable<String>(displayName);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  WalletCredentialsCompanion toCompanion(bool nullToAbsent) {
+    return WalletCredentialsCompanion(
+      credentialId: Value(credentialId),
+      issuerDid: Value(issuerDid),
+      holderDid: Value(holderDid),
+      credentialType: Value(credentialType),
+      status: Value(status),
+      validFrom: Value(validFrom),
+      validUntil: Value(validUntil),
+      displayName: Value(displayName),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory WalletCredential.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WalletCredential(
+      credentialId: serializer.fromJson<String>(json['credentialId']),
+      issuerDid: serializer.fromJson<String>(json['issuerDid']),
+      holderDid: serializer.fromJson<String>(json['holderDid']),
+      credentialType: serializer.fromJson<String>(json['credentialType']),
+      status: serializer.fromJson<String>(json['status']),
+      validFrom: serializer.fromJson<DateTime>(json['validFrom']),
+      validUntil: serializer.fromJson<DateTime>(json['validUntil']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'credentialId': serializer.toJson<String>(credentialId),
+      'issuerDid': serializer.toJson<String>(issuerDid),
+      'holderDid': serializer.toJson<String>(holderDid),
+      'credentialType': serializer.toJson<String>(credentialType),
+      'status': serializer.toJson<String>(status),
+      'validFrom': serializer.toJson<DateTime>(validFrom),
+      'validUntil': serializer.toJson<DateTime>(validUntil),
+      'displayName': serializer.toJson<String>(displayName),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  WalletCredential copyWith({
+    String? credentialId,
+    String? issuerDid,
+    String? holderDid,
+    String? credentialType,
+    String? status,
+    DateTime? validFrom,
+    DateTime? validUntil,
+    String? displayName,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => WalletCredential(
+    credentialId: credentialId ?? this.credentialId,
+    issuerDid: issuerDid ?? this.issuerDid,
+    holderDid: holderDid ?? this.holderDid,
+    credentialType: credentialType ?? this.credentialType,
+    status: status ?? this.status,
+    validFrom: validFrom ?? this.validFrom,
+    validUntil: validUntil ?? this.validUntil,
+    displayName: displayName ?? this.displayName,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  WalletCredential copyWithCompanion(WalletCredentialsCompanion data) {
+    return WalletCredential(
+      credentialId: data.credentialId.present
+          ? data.credentialId.value
+          : this.credentialId,
+      issuerDid: data.issuerDid.present ? data.issuerDid.value : this.issuerDid,
+      holderDid: data.holderDid.present ? data.holderDid.value : this.holderDid,
+      credentialType: data.credentialType.present
+          ? data.credentialType.value
+          : this.credentialType,
+      status: data.status.present ? data.status.value : this.status,
+      validFrom: data.validFrom.present ? data.validFrom.value : this.validFrom,
+      validUntil: data.validUntil.present
+          ? data.validUntil.value
+          : this.validUntil,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletCredential(')
+          ..write('credentialId: $credentialId, ')
+          ..write('issuerDid: $issuerDid, ')
+          ..write('holderDid: $holderDid, ')
+          ..write('credentialType: $credentialType, ')
+          ..write('status: $status, ')
+          ..write('validFrom: $validFrom, ')
+          ..write('validUntil: $validUntil, ')
+          ..write('displayName: $displayName, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    credentialId,
+    issuerDid,
+    holderDid,
+    credentialType,
+    status,
+    validFrom,
+    validUntil,
+    displayName,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WalletCredential &&
+          other.credentialId == this.credentialId &&
+          other.issuerDid == this.issuerDid &&
+          other.holderDid == this.holderDid &&
+          other.credentialType == this.credentialType &&
+          other.status == this.status &&
+          other.validFrom == this.validFrom &&
+          other.validUntil == this.validUntil &&
+          other.displayName == this.displayName &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class WalletCredentialsCompanion extends UpdateCompanion<WalletCredential> {
+  final Value<String> credentialId;
+  final Value<String> issuerDid;
+  final Value<String> holderDid;
+  final Value<String> credentialType;
+  final Value<String> status;
+  final Value<DateTime> validFrom;
+  final Value<DateTime> validUntil;
+  final Value<String> displayName;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const WalletCredentialsCompanion({
+    this.credentialId = const Value.absent(),
+    this.issuerDid = const Value.absent(),
+    this.holderDid = const Value.absent(),
+    this.credentialType = const Value.absent(),
+    this.status = const Value.absent(),
+    this.validFrom = const Value.absent(),
+    this.validUntil = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WalletCredentialsCompanion.insert({
+    required String credentialId,
+    required String issuerDid,
+    required String holderDid,
+    required String credentialType,
+    required String status,
+    required DateTime validFrom,
+    required DateTime validUntil,
+    required String displayName,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : credentialId = Value(credentialId),
+       issuerDid = Value(issuerDid),
+       holderDid = Value(holderDid),
+       credentialType = Value(credentialType),
+       status = Value(status),
+       validFrom = Value(validFrom),
+       validUntil = Value(validUntil),
+       displayName = Value(displayName);
+  static Insertable<WalletCredential> custom({
+    Expression<String>? credentialId,
+    Expression<String>? issuerDid,
+    Expression<String>? holderDid,
+    Expression<String>? credentialType,
+    Expression<String>? status,
+    Expression<DateTime>? validFrom,
+    Expression<DateTime>? validUntil,
+    Expression<String>? displayName,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (credentialId != null) 'credential_id': credentialId,
+      if (issuerDid != null) 'issuer_did': issuerDid,
+      if (holderDid != null) 'holder_did': holderDid,
+      if (credentialType != null) 'credential_type': credentialType,
+      if (status != null) 'status': status,
+      if (validFrom != null) 'valid_from': validFrom,
+      if (validUntil != null) 'valid_until': validUntil,
+      if (displayName != null) 'display_name': displayName,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WalletCredentialsCompanion copyWith({
+    Value<String>? credentialId,
+    Value<String>? issuerDid,
+    Value<String>? holderDid,
+    Value<String>? credentialType,
+    Value<String>? status,
+    Value<DateTime>? validFrom,
+    Value<DateTime>? validUntil,
+    Value<String>? displayName,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return WalletCredentialsCompanion(
+      credentialId: credentialId ?? this.credentialId,
+      issuerDid: issuerDid ?? this.issuerDid,
+      holderDid: holderDid ?? this.holderDid,
+      credentialType: credentialType ?? this.credentialType,
+      status: status ?? this.status,
+      validFrom: validFrom ?? this.validFrom,
+      validUntil: validUntil ?? this.validUntil,
+      displayName: displayName ?? this.displayName,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (credentialId.present) {
+      map['credential_id'] = Variable<String>(credentialId.value);
+    }
+    if (issuerDid.present) {
+      map['issuer_did'] = Variable<String>(issuerDid.value);
+    }
+    if (holderDid.present) {
+      map['holder_did'] = Variable<String>(holderDid.value);
+    }
+    if (credentialType.present) {
+      map['credential_type'] = Variable<String>(credentialType.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (validFrom.present) {
+      map['valid_from'] = Variable<DateTime>(validFrom.value);
+    }
+    if (validUntil.present) {
+      map['valid_until'] = Variable<DateTime>(validUntil.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletCredentialsCompanion(')
+          ..write('credentialId: $credentialId, ')
+          ..write('issuerDid: $issuerDid, ')
+          ..write('holderDid: $holderDid, ')
+          ..write('credentialType: $credentialType, ')
+          ..write('status: $status, ')
+          ..write('validFrom: $validFrom, ')
+          ..write('validUntil: $validUntil, ')
+          ..write('displayName: $displayName, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WalletCredentialPayloadsTable extends WalletCredentialPayloads
+    with TableInfo<$WalletCredentialPayloadsTable, WalletCredentialPayload> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WalletCredentialPayloadsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _credentialIdMeta = const VerificationMeta(
+    'credentialId',
+  );
+  @override
+  late final GeneratedColumn<String> credentialId = GeneratedColumn<String>(
+    'credential_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptedPayloadMeta = const VerificationMeta(
+    'encryptedPayload',
+  );
+  @override
+  late final GeneratedColumn<String> encryptedPayload = GeneratedColumn<String>(
+    'encrypted_payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptionVersionMeta = const VerificationMeta(
+    'encryptionVersion',
+  );
+  @override
+  late final GeneratedColumn<String> encryptionVersion =
+      GeneratedColumn<String>(
+        'encryption_version',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    credentialId,
+    encryptedPayload,
+    encryptionVersion,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'wallet_credential_payloads';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WalletCredentialPayload> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('credential_id')) {
+      context.handle(
+        _credentialIdMeta,
+        credentialId.isAcceptableOrUnknown(
+          data['credential_id']!,
+          _credentialIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_credentialIdMeta);
+    }
+    if (data.containsKey('encrypted_payload')) {
+      context.handle(
+        _encryptedPayloadMeta,
+        encryptedPayload.isAcceptableOrUnknown(
+          data['encrypted_payload']!,
+          _encryptedPayloadMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedPayloadMeta);
+    }
+    if (data.containsKey('encryption_version')) {
+      context.handle(
+        _encryptionVersionMeta,
+        encryptionVersion.isAcceptableOrUnknown(
+          data['encryption_version']!,
+          _encryptionVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptionVersionMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {credentialId};
+  @override
+  WalletCredentialPayload map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WalletCredentialPayload(
+      credentialId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}credential_id'],
+      )!,
+      encryptedPayload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}encrypted_payload'],
+      )!,
+      encryptionVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}encryption_version'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WalletCredentialPayloadsTable createAlias(String alias) {
+    return $WalletCredentialPayloadsTable(attachedDatabase, alias);
+  }
+}
+
+class WalletCredentialPayload extends DataClass
+    implements Insertable<WalletCredentialPayload> {
+  final String credentialId;
+  final String encryptedPayload;
+  final String encryptionVersion;
+  final DateTime createdAt;
+  const WalletCredentialPayload({
+    required this.credentialId,
+    required this.encryptedPayload,
+    required this.encryptionVersion,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['credential_id'] = Variable<String>(credentialId);
+    map['encrypted_payload'] = Variable<String>(encryptedPayload);
+    map['encryption_version'] = Variable<String>(encryptionVersion);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  WalletCredentialPayloadsCompanion toCompanion(bool nullToAbsent) {
+    return WalletCredentialPayloadsCompanion(
+      credentialId: Value(credentialId),
+      encryptedPayload: Value(encryptedPayload),
+      encryptionVersion: Value(encryptionVersion),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory WalletCredentialPayload.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WalletCredentialPayload(
+      credentialId: serializer.fromJson<String>(json['credentialId']),
+      encryptedPayload: serializer.fromJson<String>(json['encryptedPayload']),
+      encryptionVersion: serializer.fromJson<String>(json['encryptionVersion']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'credentialId': serializer.toJson<String>(credentialId),
+      'encryptedPayload': serializer.toJson<String>(encryptedPayload),
+      'encryptionVersion': serializer.toJson<String>(encryptionVersion),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  WalletCredentialPayload copyWith({
+    String? credentialId,
+    String? encryptedPayload,
+    String? encryptionVersion,
+    DateTime? createdAt,
+  }) => WalletCredentialPayload(
+    credentialId: credentialId ?? this.credentialId,
+    encryptedPayload: encryptedPayload ?? this.encryptedPayload,
+    encryptionVersion: encryptionVersion ?? this.encryptionVersion,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  WalletCredentialPayload copyWithCompanion(
+    WalletCredentialPayloadsCompanion data,
+  ) {
+    return WalletCredentialPayload(
+      credentialId: data.credentialId.present
+          ? data.credentialId.value
+          : this.credentialId,
+      encryptedPayload: data.encryptedPayload.present
+          ? data.encryptedPayload.value
+          : this.encryptedPayload,
+      encryptionVersion: data.encryptionVersion.present
+          ? data.encryptionVersion.value
+          : this.encryptionVersion,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletCredentialPayload(')
+          ..write('credentialId: $credentialId, ')
+          ..write('encryptedPayload: $encryptedPayload, ')
+          ..write('encryptionVersion: $encryptionVersion, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(credentialId, encryptedPayload, encryptionVersion, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WalletCredentialPayload &&
+          other.credentialId == this.credentialId &&
+          other.encryptedPayload == this.encryptedPayload &&
+          other.encryptionVersion == this.encryptionVersion &&
+          other.createdAt == this.createdAt);
+}
+
+class WalletCredentialPayloadsCompanion
+    extends UpdateCompanion<WalletCredentialPayload> {
+  final Value<String> credentialId;
+  final Value<String> encryptedPayload;
+  final Value<String> encryptionVersion;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const WalletCredentialPayloadsCompanion({
+    this.credentialId = const Value.absent(),
+    this.encryptedPayload = const Value.absent(),
+    this.encryptionVersion = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WalletCredentialPayloadsCompanion.insert({
+    required String credentialId,
+    required String encryptedPayload,
+    required String encryptionVersion,
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : credentialId = Value(credentialId),
+       encryptedPayload = Value(encryptedPayload),
+       encryptionVersion = Value(encryptionVersion);
+  static Insertable<WalletCredentialPayload> custom({
+    Expression<String>? credentialId,
+    Expression<String>? encryptedPayload,
+    Expression<String>? encryptionVersion,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (credentialId != null) 'credential_id': credentialId,
+      if (encryptedPayload != null) 'encrypted_payload': encryptedPayload,
+      if (encryptionVersion != null) 'encryption_version': encryptionVersion,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WalletCredentialPayloadsCompanion copyWith({
+    Value<String>? credentialId,
+    Value<String>? encryptedPayload,
+    Value<String>? encryptionVersion,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return WalletCredentialPayloadsCompanion(
+      credentialId: credentialId ?? this.credentialId,
+      encryptedPayload: encryptedPayload ?? this.encryptedPayload,
+      encryptionVersion: encryptionVersion ?? this.encryptionVersion,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (credentialId.present) {
+      map['credential_id'] = Variable<String>(credentialId.value);
+    }
+    if (encryptedPayload.present) {
+      map['encrypted_payload'] = Variable<String>(encryptedPayload.value);
+    }
+    if (encryptionVersion.present) {
+      map['encryption_version'] = Variable<String>(encryptionVersion.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletCredentialPayloadsCompanion(')
+          ..write('credentialId: $credentialId, ')
+          ..write('encryptedPayload: $encryptedPayload, ')
+          ..write('encryptionVersion: $encryptionVersion, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WalletPresentationsTable extends WalletPresentations
+    with TableInfo<$WalletPresentationsTable, WalletPresentation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WalletPresentationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _presentationIdMeta = const VerificationMeta(
+    'presentationId',
+  );
+  @override
+  late final GeneratedColumn<String> presentationId = GeneratedColumn<String>(
+    'presentation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _credentialIdMeta = const VerificationMeta(
+    'credentialId',
+  );
+  @override
+  late final GeneratedColumn<String> credentialId = GeneratedColumn<String>(
+    'credential_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _verifierAudienceMeta = const VerificationMeta(
+    'verifierAudience',
+  );
+  @override
+  late final GeneratedColumn<String> verifierAudience = GeneratedColumn<String>(
+    'verifier_audience',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nonceHashMeta = const VerificationMeta(
+    'nonceHash',
+  );
+  @override
+  late final GeneratedColumn<String> nonceHash = GeneratedColumn<String>(
+    'nonce_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resultMeta = const VerificationMeta('result');
+  @override
+  late final GeneratedColumn<String> result = GeneratedColumn<String>(
+    'result',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    presentationId,
+    credentialId,
+    verifierAudience,
+    nonceHash,
+    result,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'wallet_presentations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WalletPresentation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('presentation_id')) {
+      context.handle(
+        _presentationIdMeta,
+        presentationId.isAcceptableOrUnknown(
+          data['presentation_id']!,
+          _presentationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_presentationIdMeta);
+    }
+    if (data.containsKey('credential_id')) {
+      context.handle(
+        _credentialIdMeta,
+        credentialId.isAcceptableOrUnknown(
+          data['credential_id']!,
+          _credentialIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_credentialIdMeta);
+    }
+    if (data.containsKey('verifier_audience')) {
+      context.handle(
+        _verifierAudienceMeta,
+        verifierAudience.isAcceptableOrUnknown(
+          data['verifier_audience']!,
+          _verifierAudienceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_verifierAudienceMeta);
+    }
+    if (data.containsKey('nonce_hash')) {
+      context.handle(
+        _nonceHashMeta,
+        nonceHash.isAcceptableOrUnknown(data['nonce_hash']!, _nonceHashMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nonceHashMeta);
+    }
+    if (data.containsKey('result')) {
+      context.handle(
+        _resultMeta,
+        result.isAcceptableOrUnknown(data['result']!, _resultMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resultMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {presentationId};
+  @override
+  WalletPresentation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WalletPresentation(
+      presentationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}presentation_id'],
+      )!,
+      credentialId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}credential_id'],
+      )!,
+      verifierAudience: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}verifier_audience'],
+      )!,
+      nonceHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nonce_hash'],
+      )!,
+      result: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}result'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WalletPresentationsTable createAlias(String alias) {
+    return $WalletPresentationsTable(attachedDatabase, alias);
+  }
+}
+
+class WalletPresentation extends DataClass
+    implements Insertable<WalletPresentation> {
+  final String presentationId;
+  final String credentialId;
+  final String verifierAudience;
+  final String nonceHash;
+  final String result;
+  final DateTime createdAt;
+  const WalletPresentation({
+    required this.presentationId,
+    required this.credentialId,
+    required this.verifierAudience,
+    required this.nonceHash,
+    required this.result,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['presentation_id'] = Variable<String>(presentationId);
+    map['credential_id'] = Variable<String>(credentialId);
+    map['verifier_audience'] = Variable<String>(verifierAudience);
+    map['nonce_hash'] = Variable<String>(nonceHash);
+    map['result'] = Variable<String>(result);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  WalletPresentationsCompanion toCompanion(bool nullToAbsent) {
+    return WalletPresentationsCompanion(
+      presentationId: Value(presentationId),
+      credentialId: Value(credentialId),
+      verifierAudience: Value(verifierAudience),
+      nonceHash: Value(nonceHash),
+      result: Value(result),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory WalletPresentation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WalletPresentation(
+      presentationId: serializer.fromJson<String>(json['presentationId']),
+      credentialId: serializer.fromJson<String>(json['credentialId']),
+      verifierAudience: serializer.fromJson<String>(json['verifierAudience']),
+      nonceHash: serializer.fromJson<String>(json['nonceHash']),
+      result: serializer.fromJson<String>(json['result']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'presentationId': serializer.toJson<String>(presentationId),
+      'credentialId': serializer.toJson<String>(credentialId),
+      'verifierAudience': serializer.toJson<String>(verifierAudience),
+      'nonceHash': serializer.toJson<String>(nonceHash),
+      'result': serializer.toJson<String>(result),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  WalletPresentation copyWith({
+    String? presentationId,
+    String? credentialId,
+    String? verifierAudience,
+    String? nonceHash,
+    String? result,
+    DateTime? createdAt,
+  }) => WalletPresentation(
+    presentationId: presentationId ?? this.presentationId,
+    credentialId: credentialId ?? this.credentialId,
+    verifierAudience: verifierAudience ?? this.verifierAudience,
+    nonceHash: nonceHash ?? this.nonceHash,
+    result: result ?? this.result,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  WalletPresentation copyWithCompanion(WalletPresentationsCompanion data) {
+    return WalletPresentation(
+      presentationId: data.presentationId.present
+          ? data.presentationId.value
+          : this.presentationId,
+      credentialId: data.credentialId.present
+          ? data.credentialId.value
+          : this.credentialId,
+      verifierAudience: data.verifierAudience.present
+          ? data.verifierAudience.value
+          : this.verifierAudience,
+      nonceHash: data.nonceHash.present ? data.nonceHash.value : this.nonceHash,
+      result: data.result.present ? data.result.value : this.result,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletPresentation(')
+          ..write('presentationId: $presentationId, ')
+          ..write('credentialId: $credentialId, ')
+          ..write('verifierAudience: $verifierAudience, ')
+          ..write('nonceHash: $nonceHash, ')
+          ..write('result: $result, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    presentationId,
+    credentialId,
+    verifierAudience,
+    nonceHash,
+    result,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WalletPresentation &&
+          other.presentationId == this.presentationId &&
+          other.credentialId == this.credentialId &&
+          other.verifierAudience == this.verifierAudience &&
+          other.nonceHash == this.nonceHash &&
+          other.result == this.result &&
+          other.createdAt == this.createdAt);
+}
+
+class WalletPresentationsCompanion extends UpdateCompanion<WalletPresentation> {
+  final Value<String> presentationId;
+  final Value<String> credentialId;
+  final Value<String> verifierAudience;
+  final Value<String> nonceHash;
+  final Value<String> result;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const WalletPresentationsCompanion({
+    this.presentationId = const Value.absent(),
+    this.credentialId = const Value.absent(),
+    this.verifierAudience = const Value.absent(),
+    this.nonceHash = const Value.absent(),
+    this.result = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WalletPresentationsCompanion.insert({
+    required String presentationId,
+    required String credentialId,
+    required String verifierAudience,
+    required String nonceHash,
+    required String result,
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : presentationId = Value(presentationId),
+       credentialId = Value(credentialId),
+       verifierAudience = Value(verifierAudience),
+       nonceHash = Value(nonceHash),
+       result = Value(result);
+  static Insertable<WalletPresentation> custom({
+    Expression<String>? presentationId,
+    Expression<String>? credentialId,
+    Expression<String>? verifierAudience,
+    Expression<String>? nonceHash,
+    Expression<String>? result,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (presentationId != null) 'presentation_id': presentationId,
+      if (credentialId != null) 'credential_id': credentialId,
+      if (verifierAudience != null) 'verifier_audience': verifierAudience,
+      if (nonceHash != null) 'nonce_hash': nonceHash,
+      if (result != null) 'result': result,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WalletPresentationsCompanion copyWith({
+    Value<String>? presentationId,
+    Value<String>? credentialId,
+    Value<String>? verifierAudience,
+    Value<String>? nonceHash,
+    Value<String>? result,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return WalletPresentationsCompanion(
+      presentationId: presentationId ?? this.presentationId,
+      credentialId: credentialId ?? this.credentialId,
+      verifierAudience: verifierAudience ?? this.verifierAudience,
+      nonceHash: nonceHash ?? this.nonceHash,
+      result: result ?? this.result,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (presentationId.present) {
+      map['presentation_id'] = Variable<String>(presentationId.value);
+    }
+    if (credentialId.present) {
+      map['credential_id'] = Variable<String>(credentialId.value);
+    }
+    if (verifierAudience.present) {
+      map['verifier_audience'] = Variable<String>(verifierAudience.value);
+    }
+    if (nonceHash.present) {
+      map['nonce_hash'] = Variable<String>(nonceHash.value);
+    }
+    if (result.present) {
+      map['result'] = Variable<String>(result.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletPresentationsCompanion(')
+          ..write('presentationId: $presentationId, ')
+          ..write('credentialId: $credentialId, ')
+          ..write('verifierAudience: $verifierAudience, ')
+          ..write('nonceHash: $nonceHash, ')
+          ..write('result: $result, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4514,6 +5914,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BoardSyncConfigsTable boardSyncConfigs = $BoardSyncConfigsTable(
     this,
   );
+  late final $WalletCredentialsTable walletCredentials =
+      $WalletCredentialsTable(this);
+  late final $WalletCredentialPayloadsTable walletCredentialPayloads =
+      $WalletCredentialPayloadsTable(this);
+  late final $WalletPresentationsTable walletPresentations =
+      $WalletPresentationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4528,6 +5934,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     activityLog,
     remoteNodes,
     boardSyncConfigs,
+    walletCredentials,
+    walletCredentialPayloads,
+    walletPresentations,
   ];
 }
 
@@ -8448,6 +9857,769 @@ typedef $$BoardSyncConfigsTableProcessedTableManager =
       BoardSyncConfig,
       PrefetchHooks Function()
     >;
+typedef $$WalletCredentialsTableCreateCompanionBuilder =
+    WalletCredentialsCompanion Function({
+      required String credentialId,
+      required String issuerDid,
+      required String holderDid,
+      required String credentialType,
+      required String status,
+      required DateTime validFrom,
+      required DateTime validUntil,
+      required String displayName,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$WalletCredentialsTableUpdateCompanionBuilder =
+    WalletCredentialsCompanion Function({
+      Value<String> credentialId,
+      Value<String> issuerDid,
+      Value<String> holderDid,
+      Value<String> credentialType,
+      Value<String> status,
+      Value<DateTime> validFrom,
+      Value<DateTime> validUntil,
+      Value<String> displayName,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$WalletCredentialsTableFilterComposer
+    extends Composer<_$AppDatabase, $WalletCredentialsTable> {
+  $$WalletCredentialsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issuerDid => $composableBuilder(
+    column: $table.issuerDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get holderDid => $composableBuilder(
+    column: $table.holderDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get credentialType => $composableBuilder(
+    column: $table.credentialType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get validFrom => $composableBuilder(
+    column: $table.validFrom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get validUntil => $composableBuilder(
+    column: $table.validUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WalletCredentialsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WalletCredentialsTable> {
+  $$WalletCredentialsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get issuerDid => $composableBuilder(
+    column: $table.issuerDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get holderDid => $composableBuilder(
+    column: $table.holderDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get credentialType => $composableBuilder(
+    column: $table.credentialType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get validFrom => $composableBuilder(
+    column: $table.validFrom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get validUntil => $composableBuilder(
+    column: $table.validUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WalletCredentialsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WalletCredentialsTable> {
+  $$WalletCredentialsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get issuerDid =>
+      $composableBuilder(column: $table.issuerDid, builder: (column) => column);
+
+  GeneratedColumn<String> get holderDid =>
+      $composableBuilder(column: $table.holderDid, builder: (column) => column);
+
+  GeneratedColumn<String> get credentialType => $composableBuilder(
+    column: $table.credentialType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get validFrom =>
+      $composableBuilder(column: $table.validFrom, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get validUntil => $composableBuilder(
+    column: $table.validUntil,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$WalletCredentialsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WalletCredentialsTable,
+          WalletCredential,
+          $$WalletCredentialsTableFilterComposer,
+          $$WalletCredentialsTableOrderingComposer,
+          $$WalletCredentialsTableAnnotationComposer,
+          $$WalletCredentialsTableCreateCompanionBuilder,
+          $$WalletCredentialsTableUpdateCompanionBuilder,
+          (
+            WalletCredential,
+            BaseReferences<
+              _$AppDatabase,
+              $WalletCredentialsTable,
+              WalletCredential
+            >,
+          ),
+          WalletCredential,
+          PrefetchHooks Function()
+        > {
+  $$WalletCredentialsTableTableManager(
+    _$AppDatabase db,
+    $WalletCredentialsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WalletCredentialsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WalletCredentialsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WalletCredentialsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> credentialId = const Value.absent(),
+                Value<String> issuerDid = const Value.absent(),
+                Value<String> holderDid = const Value.absent(),
+                Value<String> credentialType = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> validFrom = const Value.absent(),
+                Value<DateTime> validUntil = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletCredentialsCompanion(
+                credentialId: credentialId,
+                issuerDid: issuerDid,
+                holderDid: holderDid,
+                credentialType: credentialType,
+                status: status,
+                validFrom: validFrom,
+                validUntil: validUntil,
+                displayName: displayName,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String credentialId,
+                required String issuerDid,
+                required String holderDid,
+                required String credentialType,
+                required String status,
+                required DateTime validFrom,
+                required DateTime validUntil,
+                required String displayName,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletCredentialsCompanion.insert(
+                credentialId: credentialId,
+                issuerDid: issuerDid,
+                holderDid: holderDid,
+                credentialType: credentialType,
+                status: status,
+                validFrom: validFrom,
+                validUntil: validUntil,
+                displayName: displayName,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WalletCredentialsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WalletCredentialsTable,
+      WalletCredential,
+      $$WalletCredentialsTableFilterComposer,
+      $$WalletCredentialsTableOrderingComposer,
+      $$WalletCredentialsTableAnnotationComposer,
+      $$WalletCredentialsTableCreateCompanionBuilder,
+      $$WalletCredentialsTableUpdateCompanionBuilder,
+      (
+        WalletCredential,
+        BaseReferences<
+          _$AppDatabase,
+          $WalletCredentialsTable,
+          WalletCredential
+        >,
+      ),
+      WalletCredential,
+      PrefetchHooks Function()
+    >;
+typedef $$WalletCredentialPayloadsTableCreateCompanionBuilder =
+    WalletCredentialPayloadsCompanion Function({
+      required String credentialId,
+      required String encryptedPayload,
+      required String encryptionVersion,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$WalletCredentialPayloadsTableUpdateCompanionBuilder =
+    WalletCredentialPayloadsCompanion Function({
+      Value<String> credentialId,
+      Value<String> encryptedPayload,
+      Value<String> encryptionVersion,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$WalletCredentialPayloadsTableFilterComposer
+    extends Composer<_$AppDatabase, $WalletCredentialPayloadsTable> {
+  $$WalletCredentialPayloadsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get encryptedPayload => $composableBuilder(
+    column: $table.encryptedPayload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get encryptionVersion => $composableBuilder(
+    column: $table.encryptionVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WalletCredentialPayloadsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WalletCredentialPayloadsTable> {
+  $$WalletCredentialPayloadsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get encryptedPayload => $composableBuilder(
+    column: $table.encryptedPayload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get encryptionVersion => $composableBuilder(
+    column: $table.encryptionVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WalletCredentialPayloadsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WalletCredentialPayloadsTable> {
+  $$WalletCredentialPayloadsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get encryptedPayload => $composableBuilder(
+    column: $table.encryptedPayload,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get encryptionVersion => $composableBuilder(
+    column: $table.encryptionVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$WalletCredentialPayloadsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WalletCredentialPayloadsTable,
+          WalletCredentialPayload,
+          $$WalletCredentialPayloadsTableFilterComposer,
+          $$WalletCredentialPayloadsTableOrderingComposer,
+          $$WalletCredentialPayloadsTableAnnotationComposer,
+          $$WalletCredentialPayloadsTableCreateCompanionBuilder,
+          $$WalletCredentialPayloadsTableUpdateCompanionBuilder,
+          (
+            WalletCredentialPayload,
+            BaseReferences<
+              _$AppDatabase,
+              $WalletCredentialPayloadsTable,
+              WalletCredentialPayload
+            >,
+          ),
+          WalletCredentialPayload,
+          PrefetchHooks Function()
+        > {
+  $$WalletCredentialPayloadsTableTableManager(
+    _$AppDatabase db,
+    $WalletCredentialPayloadsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WalletCredentialPayloadsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$WalletCredentialPayloadsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$WalletCredentialPayloadsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> credentialId = const Value.absent(),
+                Value<String> encryptedPayload = const Value.absent(),
+                Value<String> encryptionVersion = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletCredentialPayloadsCompanion(
+                credentialId: credentialId,
+                encryptedPayload: encryptedPayload,
+                encryptionVersion: encryptionVersion,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String credentialId,
+                required String encryptedPayload,
+                required String encryptionVersion,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletCredentialPayloadsCompanion.insert(
+                credentialId: credentialId,
+                encryptedPayload: encryptedPayload,
+                encryptionVersion: encryptionVersion,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WalletCredentialPayloadsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WalletCredentialPayloadsTable,
+      WalletCredentialPayload,
+      $$WalletCredentialPayloadsTableFilterComposer,
+      $$WalletCredentialPayloadsTableOrderingComposer,
+      $$WalletCredentialPayloadsTableAnnotationComposer,
+      $$WalletCredentialPayloadsTableCreateCompanionBuilder,
+      $$WalletCredentialPayloadsTableUpdateCompanionBuilder,
+      (
+        WalletCredentialPayload,
+        BaseReferences<
+          _$AppDatabase,
+          $WalletCredentialPayloadsTable,
+          WalletCredentialPayload
+        >,
+      ),
+      WalletCredentialPayload,
+      PrefetchHooks Function()
+    >;
+typedef $$WalletPresentationsTableCreateCompanionBuilder =
+    WalletPresentationsCompanion Function({
+      required String presentationId,
+      required String credentialId,
+      required String verifierAudience,
+      required String nonceHash,
+      required String result,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$WalletPresentationsTableUpdateCompanionBuilder =
+    WalletPresentationsCompanion Function({
+      Value<String> presentationId,
+      Value<String> credentialId,
+      Value<String> verifierAudience,
+      Value<String> nonceHash,
+      Value<String> result,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$WalletPresentationsTableFilterComposer
+    extends Composer<_$AppDatabase, $WalletPresentationsTable> {
+  $$WalletPresentationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get presentationId => $composableBuilder(
+    column: $table.presentationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get verifierAudience => $composableBuilder(
+    column: $table.verifierAudience,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nonceHash => $composableBuilder(
+    column: $table.nonceHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get result => $composableBuilder(
+    column: $table.result,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WalletPresentationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WalletPresentationsTable> {
+  $$WalletPresentationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get presentationId => $composableBuilder(
+    column: $table.presentationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get verifierAudience => $composableBuilder(
+    column: $table.verifierAudience,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nonceHash => $composableBuilder(
+    column: $table.nonceHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get result => $composableBuilder(
+    column: $table.result,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WalletPresentationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WalletPresentationsTable> {
+  $$WalletPresentationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get presentationId => $composableBuilder(
+    column: $table.presentationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get verifierAudience => $composableBuilder(
+    column: $table.verifierAudience,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get nonceHash =>
+      $composableBuilder(column: $table.nonceHash, builder: (column) => column);
+
+  GeneratedColumn<String> get result =>
+      $composableBuilder(column: $table.result, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$WalletPresentationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WalletPresentationsTable,
+          WalletPresentation,
+          $$WalletPresentationsTableFilterComposer,
+          $$WalletPresentationsTableOrderingComposer,
+          $$WalletPresentationsTableAnnotationComposer,
+          $$WalletPresentationsTableCreateCompanionBuilder,
+          $$WalletPresentationsTableUpdateCompanionBuilder,
+          (
+            WalletPresentation,
+            BaseReferences<
+              _$AppDatabase,
+              $WalletPresentationsTable,
+              WalletPresentation
+            >,
+          ),
+          WalletPresentation,
+          PrefetchHooks Function()
+        > {
+  $$WalletPresentationsTableTableManager(
+    _$AppDatabase db,
+    $WalletPresentationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WalletPresentationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WalletPresentationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$WalletPresentationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> presentationId = const Value.absent(),
+                Value<String> credentialId = const Value.absent(),
+                Value<String> verifierAudience = const Value.absent(),
+                Value<String> nonceHash = const Value.absent(),
+                Value<String> result = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletPresentationsCompanion(
+                presentationId: presentationId,
+                credentialId: credentialId,
+                verifierAudience: verifierAudience,
+                nonceHash: nonceHash,
+                result: result,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String presentationId,
+                required String credentialId,
+                required String verifierAudience,
+                required String nonceHash,
+                required String result,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletPresentationsCompanion.insert(
+                presentationId: presentationId,
+                credentialId: credentialId,
+                verifierAudience: verifierAudience,
+                nonceHash: nonceHash,
+                result: result,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WalletPresentationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WalletPresentationsTable,
+      WalletPresentation,
+      $$WalletPresentationsTableFilterComposer,
+      $$WalletPresentationsTableOrderingComposer,
+      $$WalletPresentationsTableAnnotationComposer,
+      $$WalletPresentationsTableCreateCompanionBuilder,
+      $$WalletPresentationsTableUpdateCompanionBuilder,
+      (
+        WalletPresentation,
+        BaseReferences<
+          _$AppDatabase,
+          $WalletPresentationsTable,
+          WalletPresentation
+        >,
+      ),
+      WalletPresentation,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8470,4 +10642,13 @@ class $AppDatabaseManager {
       $$RemoteNodesTableTableManager(_db, _db.remoteNodes);
   $$BoardSyncConfigsTableTableManager get boardSyncConfigs =>
       $$BoardSyncConfigsTableTableManager(_db, _db.boardSyncConfigs);
+  $$WalletCredentialsTableTableManager get walletCredentials =>
+      $$WalletCredentialsTableTableManager(_db, _db.walletCredentials);
+  $$WalletCredentialPayloadsTableTableManager get walletCredentialPayloads =>
+      $$WalletCredentialPayloadsTableTableManager(
+        _db,
+        _db.walletCredentialPayloads,
+      );
+  $$WalletPresentationsTableTableManager get walletPresentations =>
+      $$WalletPresentationsTableTableManager(_db, _db.walletPresentations);
 }

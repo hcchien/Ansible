@@ -7,6 +7,8 @@ export 'src/entities/board_acl.dart';
 export 'src/entities/activity_log.dart';
 export 'src/entities/remote_node.dart';
 export 'src/entities/board_sync_config.dart';
+export 'src/entities/wallet_credential.dart';
+export 'src/entities/wallet_presentation.dart';
 
 export 'src/repositories/board_repository.dart';
 export 'src/repositories/thread_repository.dart';
@@ -17,11 +19,13 @@ export 'src/repositories/board_acl_repository.dart';
 export 'src/repositories/activity_log_repository.dart';
 export 'src/repositories/remote_node_repository.dart';
 export 'src/repositories/board_sync_config_repository.dart';
+export 'src/repositories/wallet_repository.dart';
 
 export 'src/repositories/in_memory/in_memory_board_repository.dart';
 export 'src/repositories/in_memory/in_memory_thread_repository.dart';
 export 'src/repositories/in_memory/in_memory_post_repository.dart';
 export 'src/repositories/in_memory/in_memory_reaction_repository.dart';
+export 'src/repositories/in_memory/in_memory_wallet_repository.dart';
 
 export 'src/repositories/drift/drift_board_repository.dart';
 export 'src/repositories/drift/drift_thread_repository.dart';
@@ -32,4 +36,15 @@ export 'src/repositories/drift/drift_board_acl_repository.dart';
 export 'src/repositories/drift/drift_activity_log_repository.dart';
 export 'src/repositories/drift/drift_remote_node_repository.dart';
 export 'src/repositories/drift/drift_board_sync_config_repository.dart';
-export 'src/db/app_database.dart' hide Board, Thread, Post, Reaction, User, BoardAcl, ActivityLog, RemoteNode, BoardSyncConfig;
+export 'src/repositories/drift/drift_wallet_repository.dart';
+export 'src/db/app_database.dart'
+    hide
+        Board,
+        Thread,
+        Post,
+        Reaction,
+        User,
+        RemoteNode,
+        BoardSyncConfig,
+        WalletCredential,
+        WalletPresentation;

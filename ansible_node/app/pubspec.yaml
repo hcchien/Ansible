@@ -39,10 +39,13 @@ dependencies:
     path: ../../ansible_core/store
   ansible_domain:
     path: ../../ansible_core/domain
+  ansible_vc:
+    path: ../../ansible_core/vc
   uuid: ^4.5.1
   flutter_secure_storage: ^9.0.0
   connectivity_plus: ^6.0.0
   http: ^1.1.0
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

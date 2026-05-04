@@ -6,6 +6,7 @@ import '../widgets/thread_form_dialog.dart';
 import '../services/network_status_service.dart';
 import 'posts_view_screen.dart';
 import 'sync_settings_screen.dart';
+import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 
 const _localUserId = 'local-user';
@@ -716,7 +717,15 @@ class _TopBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           TextButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => WalletScreen(
+                    repository: DriftWalletRepository(db),
+                  ),
+                ),
+              );
+            },
             icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
             label: const Text('連接錢包'),
             style: TextButton.styleFrom(
@@ -1121,4 +1130,3 @@ class _CommentChip extends StatelessWidget {
     );
   }
 }
-
