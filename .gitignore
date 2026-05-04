@@ -140,3 +140,28 @@ vite.config.ts.timestamp-*
 
 # Claude
 .claude
+
+# Dart / Flutter
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/build/
+**/ios/Flutter/.last_build_id
+
+# Elixir / Phoenix
+**/_build/
+**/deps/
+**/.elixir_ls/
+**/erl_crash.dump
+**/priv/native/*.so
+
+# Rust
+**/target/
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal

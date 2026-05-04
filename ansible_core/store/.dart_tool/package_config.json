@@ -404,6 +404,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "uuid",
+      "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/uuid-4.5.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "vm_service",
       "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/vm_service-15.0.2",
       "packageUri": "lib/",

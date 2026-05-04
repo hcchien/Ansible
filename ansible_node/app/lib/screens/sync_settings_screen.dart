@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
@@ -7,10 +6,7 @@ import '../services/remote_sync_service.dart';
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
 
-  const SyncSettingsScreen({
-    super.key,
-    required this.db,
-  });
+  const SyncSettingsScreen({super.key, required this.db});
 
   @override
   State<SyncSettingsScreen> createState() => _SyncSettingsScreenState();
@@ -25,7 +21,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
   List<RemoteNode> _remoteNodes = [];
   List<Board> _boards = [];
-  Map<String, Map<String, bool>> _boardSyncStatusByNode = {}; // nodeId -> {boardId -> enabled}
+  Map<String, Map<String, bool>> _boardSyncStatusByNode =
+      {}; // nodeId -> {boardId -> enabled}
   bool _isLoading = true;
   Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
   String? _expandedNodeId;
@@ -67,9 +64,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
       }
     }
   }
@@ -88,10 +85,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   Future<void> _showEditRemoteNodeDialog(RemoteNode node) async {
     final result = await showDialog<Map<String, String?>>(
       context: context,
-      builder: (context) => RemoteNodeFormDialog(
-        initialName: node.name,
-        initialUrl: node.url,
-      ),
+      builder: (context) =>
+          RemoteNodeFormDialog(initialName: node.name, initialUrl: node.url),
     );
 
     if (result != null) {
@@ -107,13 +102,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     if (data['username'] != null && data['password'] != null) {
       try {
         final client = RelayApiClient(baseUrl: data['url']!);
-        final response = await client.login(data['username']!, data['password']!);
+        final response = await client.login(
+          data['username']!,
+          data['password']!,
+        );
         accessToken = response['access_token'] as String?;
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Authentication failed: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Authentication failed: $e')));
         }
         return;
       }
@@ -133,26 +131,32 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     await _loadData();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Server added')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Server added')));
     }
   }
 
-  Future<void> _updateRemoteNode(RemoteNode node, Map<String, String?> data) async {
+  Future<void> _updateRemoteNode(
+    RemoteNode node,
+    Map<String, String?> data,
+  ) async {
     String? accessToken = node.accessToken;
 
     // If new credentials provided, try to authenticate
     if (data['username'] != null && data['password'] != null) {
       try {
         final client = RelayApiClient(baseUrl: data['url']!);
-        final response = await client.login(data['username']!, data['password']!);
+        final response = await client.login(
+          data['username']!,
+          data['password']!,
+        );
         accessToken = response['access_token'] as String?;
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Authentication failed: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Authentication failed: $e')));
         }
         return;
       }
@@ -169,9 +173,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     await _loadData();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Server updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Server updated')));
     }
   }
 
@@ -180,7 +184,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Server'),
-        content: Text('Are you sure you want to delete "${node.name}"?\n\nThis will also remove all board sync settings for this server.'),
+        content: Text(
+          'Are you sure you want to delete "${node.name}"?\n\nThis will also remove all board sync settings for this server.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -200,14 +206,18 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       await _loadData();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Server deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Server deleted')));
       }
     }
   }
 
-  Future<void> _toggleBoardSync(String nodeId, String boardId, bool enabled) async {
+  Future<void> _toggleBoardSync(
+    String nodeId,
+    String boardId,
+    bool enabled,
+  ) async {
     await _boardSyncConfigRepo.toggleSync(nodeId, boardId, enabled);
     setState(() {
       _boardSyncStatusByNode[nodeId] ??= {};
@@ -247,13 +257,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         if (result.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${node.name}: Synced ${result.activitiesProcessed} activities'),
+              content: Text(
+                '${node.name}: Synced ${result.activitiesProcessed} activities',
+              ),
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${node.name}: Sync failed - ${result.errorMessage}'),
+              content: Text(
+                '${node.name}: Sync failed - ${result.errorMessage}',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -293,7 +307,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         actions: [
           if (_remoteNodes.isNotEmpty)
             TextButton.icon(
-              onPressed: _syncingNodes.values.any((v) => v) ? null : _syncAllNodes,
+              onPressed: _syncingNodes.values.any((v) => v)
+                  ? null
+                  : _syncAllNodes,
               icon: const Icon(Icons.sync),
               label: const Text('Sync All'),
             ),
@@ -307,15 +323,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _remoteNodes.isEmpty
-              ? _buildEmptyState(theme)
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _remoteNodes.length,
-                  itemBuilder: (context, index) {
-                    final node = _remoteNodes[index];
-                    return _buildServerCard(node, theme);
-                  },
-                ),
+          ? _buildEmptyState(theme)
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _remoteNodes.length,
+              itemBuilder: (context, index) {
+                final node = _remoteNodes[index];
+                return _buildServerCard(node, theme);
+              },
+            ),
     );
   }
 
@@ -332,16 +348,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           const SizedBox(height: 24),
           Text(
             'No sync servers configured',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: Colors.white70,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 8),
           Text(
             'Add a server to start syncing boards',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.white54,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white54),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -406,11 +418,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(
-                              Icons.sync,
-                              size: 14,
-                              color: Colors.white54,
-                            ),
+                            Icon(Icons.sync, size: 14, color: Colors.white54),
                             const SizedBox(width: 4),
                             Text(
                               node.lastSyncAt != null
@@ -550,7 +558,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   TextButton.icon(
                     onPressed: () => _deleteRemoteNode(node),
                     icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                    label: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    label: const Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),

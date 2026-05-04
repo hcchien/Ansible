@@ -10,6 +10,7 @@ dependencies:
     path: ../domain
   drift: ^2.4.0
   sqlite3: ^2.9.4
+  uuid: ^4.0.0
 
 dev_dependencies:
   drift_dev: ^2.4.0

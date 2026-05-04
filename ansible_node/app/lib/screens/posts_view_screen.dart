@@ -1,16 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:uuid/uuid.dart';
 import '../widgets/post_form_dialog.dart';
+import '../services/ops_dispatch_service.dart';
 
 class PostsViewScreen extends StatefulWidget {
   final AppDatabase db;
   final Thread thread;
+  final String? authorDid;
+  final OpsDispatchService? opsDispatchService;
 
   const PostsViewScreen({
     super.key,
     required this.db,
     required this.thread,
+    this.authorDid,
+    this.opsDispatchService,
   });
 
   @override
@@ -21,6 +28,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   late final DriftPostRepository _postRepo;
   List<Post> _posts = [];
   bool _isLoading = true;
+
+  String get _authorDid => widget.authorDid ?? widget.thread.authorId;
 
   @override
   void initState() {
@@ -50,13 +59,23 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         id: const Uuid().v4(),
         threadId: widget.thread.id,
         boardId: widget.thread.boardId,
-        authorId: 'user-local', // Placeholder for now
+        authorId: _authorDid,
         content: content,
         createdAt: now,
         updatedAt: now,
         lastEditAt: now,
       );
       await _postRepo.create(post);
+      await _enqueueAndFlush(
+        CrdtOpBuilder.createPost(
+          authorDid: _authorDid,
+          entityId: post.id,
+          boardId: post.boardId,
+          threadId: post.threadId,
+          content: post.content,
+          parentPostId: post.parentPostId,
+        ),
+      );
       _loadPosts();
     }
   }
@@ -82,6 +101,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         isDeleted: post.isDeleted,
       );
       await _postRepo.update(updatedPost);
+      await _enqueueAndFlush(
+        CrdtOpBuilder.updatePost(
+          authorDid: _authorDid,
+          entityId: updatedPost.id,
+          newContent: updatedPost.content,
+        ),
+      );
       _loadPosts();
     }
   }
@@ -108,8 +134,18 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
 
     if (confirmed == true) {
       await _postRepo.delete(post.id);
+      await _enqueueAndFlush(
+        CrdtOpBuilder.deletePost(authorDid: _authorDid, entityId: post.id),
+      );
       _loadPosts();
     }
+  }
+
+  Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
+    final dispatchService = widget.opsDispatchService;
+    if (dispatchService == null) return;
+    await dispatchService.signAndEnqueue(entry);
+    unawaited(dispatchService.flushPending());
   }
 
   @override
@@ -137,12 +173,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                               const SizedBox(height: 16),
                               Text(
                                 'No posts yet',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(
-                                      color: Colors.grey[600],
-                                    ),
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(color: Colors.grey[600]),
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -181,20 +213,20 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                             children: [
                                               Text(
                                                 post.authorId,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall,
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.titleSmall,
                                               ),
                                               Text(
                                                 _formatDate(post.createdAt) +
-                                                    (post.lastEditAt
-                                                            .isAfter(
-                                                                post.createdAt)
+                                                    (post.lastEditAt.isAfter(
+                                                          post.createdAt,
+                                                        )
                                                         ? ' (edited)'
                                                         : ''),
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodySmall,
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.bodySmall,
                                               ),
                                             ],
                                           ),
@@ -215,12 +247,17 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                               value: 'delete',
                                               child: Row(
                                                 children: [
-                                                  Icon(Icons.delete,
-                                                      color: Colors.red),
+                                                  Icon(
+                                                    Icons.delete,
+                                                    color: Colors.red,
+                                                  ),
                                                   SizedBox(width: 8),
-                                                  Text('Delete',
-                                                      style: TextStyle(
-                                                          color: Colors.red)),
+                                                  Text(
+                                                    'Delete',
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
                                             ),

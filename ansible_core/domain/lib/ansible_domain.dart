@@ -1,5 +1,6 @@
-export 'src/api/relay_api_client.dart';
-export 'src/auth/auth_service.dart';
-export 'src/auth/token_storage.dart';
+// Sync primitives — cursor-based Op stream (transport-agnostic)
 export 'src/sync/delta_response.dart';
 export 'src/sync/sync_result.dart';
+
+// TODO(v1.1 Comp B): libp2p transport — will live in ansible_core/p2p (Rust FFI)
+// TODO(v1.1 Comp A): DID identity service — lives in ansible_core/did

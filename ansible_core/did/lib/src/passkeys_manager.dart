@@ -1,0 +1,228 @@
+/// Passkeys-style identity manager for Tris-Aura V2.0.
+///
+/// On real devices: stores device-held key material via flutter_secure_storage
+/// and requires local biometric/device authentication before account creation.
+///
+/// "Passkeys" here means: keypair generated and stored in hardware enclave,
+/// biometric required to sign, keypair never leaves the device.
+///
+/// Full WebAuthn / FIDO2 RP flow is deferred to P2 (requires relay RP server).
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
+import 'did_manager.dart';
+
+const _kPasskeysHandleKey = 'ansible_passkeys_handle';
+const _kPasskeysDidKey = 'ansible_passkeys_did';
+const _kPasskeysPublicKeyKey = 'ansible_passkeys_public_key';
+
+/// A passkeys-style credential anchored in the device secure enclave.
+class PasskeysCredential {
+  /// did:key string (did:plc migration in P1 when Rust api_create_did_plc lands)
+  final String did;
+
+  /// Ed25519 public key, hex-encoded (32 bytes)
+  final String publicKeyHex;
+
+  /// Human-readable handle (username) associated with this credential
+  final String handle;
+
+  const PasskeysCredential({
+    required this.did,
+    required this.publicKeyHex,
+    required this.handle,
+  });
+}
+
+abstract class PasskeysManager {
+  /// Generate a new keypair with biometric confirmation and store in Secure Enclave.
+  /// Returns the resulting [PasskeysCredential].
+  Future<PasskeysCredential> register({required String username});
+
+  /// Load existing credential from secure storage.
+  /// Returns null if no credential has been registered yet.
+  Future<PasskeysCredential?> load();
+
+  /// Check whether biometric / local authentication is available on this device.
+  Future<bool> isAvailable();
+
+  /// Delete the stored credential (e.g. on identity reset).
+  Future<void> delete();
+}
+
+/// Concrete implementation wrapping [DidManagerImpl] with local_auth biometrics.
+///
+/// Calls [LocalAuthentication.authenticate] before generating/loading keypair.
+/// Catches [PlatformException] and proceeds in dev mode if biometrics unavailable.
+class PasskeysManagerImpl implements PasskeysManager {
+  final DidManagerImpl _didManager;
+  final FlutterSecureStorage _secureStorage;
+  final LocalAuthentication _localAuth;
+  final bool _allowInsecureFallback;
+
+  PasskeysManagerImpl({
+    DidManagerImpl? didManager,
+    FlutterSecureStorage? secureStorage,
+    LocalAuthentication? localAuthentication,
+    bool allowInsecureFallback = const bool.fromEnvironment(
+      'ANSIBLE_ALLOW_INSECURE_DEV_FALLBACK',
+      defaultValue: false,
+    ),
+  }) : _didManager = didManager ?? DidManagerImpl(),
+       _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+       _localAuth = localAuthentication ?? LocalAuthentication(),
+       _allowInsecureFallback = allowInsecureFallback;
+
+  Future<bool> _authenticateWithBiometrics({required String reason}) async {
+    try {
+      final bool canCheck = await _localAuth.canCheckBiometrics;
+      if (!canCheck) {
+        if (_allowInsecureFallback) {
+          debugPrint(
+            '[PasskeysManager] Biometrics unavailable — dev fallback enabled',
+          );
+          return true;
+        }
+        throw PasskeysAuthException(
+          'Biometric or device authentication is not available on this device.',
+        );
+      }
+      return await _localAuth.authenticate(
+        localizedReason: reason,
+        options: const AuthenticationOptions(biometricOnly: false),
+      );
+    } on PlatformException catch (e) {
+      if (_allowInsecureFallback) {
+        debugPrint(
+          '[PasskeysManager] PlatformException from local_auth: $e — dev fallback enabled',
+        );
+        return true;
+      }
+      throw PasskeysAuthException(
+        'Device authentication failed: ${e.message ?? e.code}',
+      );
+    } catch (e) {
+      if (_allowInsecureFallback) {
+        debugPrint(
+          '[PasskeysManager] local_auth threw $e — dev fallback enabled',
+        );
+        return true;
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<PasskeysCredential> register({required String username}) async {
+    final authed = await _authenticateWithBiometrics(
+      reason: 'Confirm your identity to create a Tris-Aura account',
+    );
+    if (!authed) {
+      throw PasskeysAuthException('Biometric authentication was not confirmed');
+    }
+
+    final ownedDid = await _didManager.generate();
+
+    await _secureStorage.write(key: _kPasskeysHandleKey, value: username);
+    await _secureStorage.write(key: _kPasskeysDidKey, value: ownedDid.did);
+    await _secureStorage.write(
+      key: _kPasskeysPublicKeyKey,
+      value: ownedDid.publicKeyHex,
+    );
+
+    return PasskeysCredential(
+      did: ownedDid.did,
+      publicKeyHex: ownedDid.publicKeyHex,
+      handle: username,
+    );
+  }
+
+  @override
+  Future<PasskeysCredential?> load() async {
+    final did = await _secureStorage.read(key: _kPasskeysDidKey);
+    if (did == null) return null;
+
+    final authed = await _authenticateWithBiometrics(
+      reason: 'Confirm your identity to sign in to Tris-Aura',
+    );
+    if (!authed) {
+      throw PasskeysAuthException('Biometric authentication was not confirmed');
+    }
+
+    final publicKeyHex = await _secureStorage.read(key: _kPasskeysPublicKeyKey);
+    final handle = await _secureStorage.read(key: _kPasskeysHandleKey);
+
+    if (publicKeyHex == null || handle == null) return null;
+
+    return PasskeysCredential(
+      did: did,
+      publicKeyHex: publicKeyHex,
+      handle: handle,
+    );
+  }
+
+  @override
+  Future<bool> isAvailable() async {
+    try {
+      return await _localAuth.canCheckBiometrics;
+    } on PlatformException catch (e) {
+      debugPrint('[PasskeysManager] isAvailable PlatformException: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<void> delete() async {
+    await _secureStorage.delete(key: _kPasskeysHandleKey);
+    await _secureStorage.delete(key: _kPasskeysDidKey);
+    await _secureStorage.delete(key: _kPasskeysPublicKeyKey);
+    await _didManager.delete();
+  }
+}
+
+/// Stub implementation for CI / widget tests.
+///
+/// Returns a deterministic dev credential without touching biometrics or storage.
+class PasskeysManagerStub implements PasskeysManager {
+  static const _stubDid = 'did:key:stub-dev-credential';
+  static const _stubPublicKeyHex =
+      'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+
+  @override
+  Future<PasskeysCredential> register({required String username}) async {
+    debugPrint('[PasskeysManagerStub] register called — returning dev stub');
+    return PasskeysCredential(
+      did: _stubDid,
+      publicKeyHex: _stubPublicKeyHex,
+      handle: username,
+    );
+  }
+
+  @override
+  Future<PasskeysCredential?> load() async {
+    debugPrint('[PasskeysManagerStub] load called — returning dev stub');
+    return const PasskeysCredential(
+      did: _stubDid,
+      publicKeyHex: _stubPublicKeyHex,
+      handle: 'stub-user',
+    );
+  }
+
+  @override
+  Future<bool> isAvailable() async => false;
+
+  @override
+  Future<void> delete() async {
+    debugPrint('[PasskeysManagerStub] delete called — no-op in stub');
+  }
+}
+
+/// Thrown when biometric authentication is required but not confirmed.
+class PasskeysAuthException implements Exception {
+  final String message;
+  PasskeysAuthException(this.message);
+  @override
+  String toString() => 'PasskeysAuthException: $message';
+}

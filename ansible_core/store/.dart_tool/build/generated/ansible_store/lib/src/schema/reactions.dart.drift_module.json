@@ -7,15 +7,10 @@
       },
       "declaration": {
         "source_uri": "package:ansible_store/src/schema/reactions.dart",
-        "offset": 63,
+        "offset": 42,
         "name": "Reactions"
       },
-      "references": [
-        {
-          "library_uri": "package:ansible_store/src/schema/users.dart",
-          "name": "users"
-        }
-      ],
+      "references": [],
       "type": "table",
       "columns": [
         {
@@ -27,7 +22,7 @@
           "nameInDart": "id",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/reactions.dart",
-            "offset": 106,
+            "offset": 85,
             "name": "id"
           },
           "typeConverter": null,
@@ -48,7 +43,7 @@
           "nameInDart": "userId",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/reactions.dart",
-            "offset": 139,
+            "offset": 118,
             "name": "userId"
           },
           "typeConverter": null,
@@ -57,21 +52,7 @@
           "overriddenJsonName": null,
           "referenceName": null,
           "documentationComment": null,
-          "constraints": [
-            {
-              "type": "foreign_key",
-              "column": {
-                "table": {
-                  "library_uri": "package:ansible_store/src/schema/users.dart",
-                  "name": "users"
-                },
-                "name": "user_id"
-              },
-              "onUpdate": null,
-              "onDelete": null,
-              "initiallyDeferred": false
-            }
-          ],
+          "constraints": [],
           "customConstraints": null
         },
         {
@@ -83,7 +64,7 @@
           "nameInDart": "targetType",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/reactions.dart",
-            "offset": 203,
+            "offset": 155,
             "name": "targetType"
           },
           "typeConverter": null,
@@ -104,7 +85,7 @@
           "nameInDart": "targetId",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/reactions.dart",
-            "offset": 266,
+            "offset": 218,
             "name": "targetId"
           },
           "typeConverter": null,
@@ -125,7 +106,7 @@
           "nameInDart": "reactionType",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/reactions.dart",
-            "offset": 305,
+            "offset": 257,
             "name": "reactionType"
           },
           "typeConverter": null,
@@ -146,7 +127,7 @@
           "nameInDart": "createdAt",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/reactions.dart",
-            "offset": 391,
+            "offset": 349,
             "name": "createdAt"
           },
           "typeConverter": null,
@@ -182,7 +163,6 @@
     }
   },
   "imports": [
-    "package:drift/drift.dart",
-    "package:ansible_store/src/schema/users.dart"
+    "package:drift/drift.dart"
   ]
 }

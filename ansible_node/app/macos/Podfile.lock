@@ -1,4 +1,6 @@
 PODS:
+  - ansible_did (0.1.0):
+    - FlutterMacOS
   - connectivity_plus (0.0.1):
     - FlutterMacOS
   - flutter_secure_storage_macos (6.1.3):
@@ -9,12 +11,15 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
+  - ansible_did (from `Flutter/ephemeral/.symlinks/plugins/ansible_did/macos`)
   - connectivity_plus (from `Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos`)
   - flutter_secure_storage_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
 
 EXTERNAL SOURCES:
+  ansible_did:
+    :path: Flutter/ephemeral/.symlinks/plugins/ansible_did/macos
   connectivity_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos
   flutter_secure_storage_macos:
@@ -25,6 +30,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
 
 SPEC CHECKSUMS:
+  ansible_did: cad95db203a5e0ce5d3b5e33571731739f351730
   connectivity_plus: 0a976dfd033b59192912fa3c6c7b54aab5093802
   flutter_secure_storage_macos: c2754d3483d20bb207bb9e5a14f1b8e771abcdb9
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
@@ -32,4 +38,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: e4b2a46c768c18841bdda7c2538f463d46e74389
 
-COCOAPODS: 1.12.1
+COCOAPODS: 1.16.2

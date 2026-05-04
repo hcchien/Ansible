@@ -1,0 +1,7 @@
+# On macOS, _enif_* symbols are provided by the BEAM at NIF load time.
+# Tell the linker to leave them unresolved rather than failing the link step.
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]

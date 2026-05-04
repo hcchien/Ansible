@@ -8,11 +8,7 @@ class ThreadsListScreen extends StatefulWidget {
   final AppDatabase db;
   final Board board;
 
-  const ThreadsListScreen({
-    super.key,
-    required this.db,
-    required this.board,
-  });
+  const ThreadsListScreen({super.key, required this.db, required this.board});
 
   @override
   State<ThreadsListScreen> createState() => _ThreadsListScreenState();
@@ -40,12 +36,16 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   }
 
   Future<void> _createThread() async {
-    final title = await showDialog<String>(
+    final result = await showDialog<Map<String, String?>>(
       context: context,
-      builder: (context) => const ThreadFormDialog(),
+      builder: (context) => ThreadFormDialog(
+        boards: [widget.board],
+        initialBoardId: widget.board.id,
+      ),
     );
 
-    if (title != null) {
+    final title = result?['title']?.trim();
+    if (title != null && title.isNotEmpty) {
       final now = DateTime.now();
       final thread = Thread(
         id: const Uuid().v4(),
@@ -70,62 +70,56 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _threads.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.forum_outlined,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No threads yet',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Start a new discussion',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.forum_outlined, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No threads yet',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _threads.length,
-                  itemBuilder: (context, index) {
-                    final thread = _threads[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        leading: const Icon(Icons.chat_bubble_outline),
-                        title: Text(thread.title),
-                        subtitle: Text(
-                          'Created ${_formatDate(thread.createdAt)}',
-                          style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start a new discussion',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _threads.length,
+              itemBuilder: (context, index) {
+                final thread = _threads[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.chat_bubble_outline),
+                    title: Text(thread.title),
+                    subtitle: Text(
+                      'Created ${_formatDate(thread.createdAt)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PostsViewScreen(db: widget.db, thread: thread),
                         ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PostsViewScreen(
-                                db: widget.db,
-                                thread: thread,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createThread,
         tooltip: 'Create Thread',

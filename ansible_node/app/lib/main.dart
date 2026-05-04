@@ -1,38 +1,42 @@
-import 'package:flutter/material.dart';
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
-import 'package:ansible_domain/ansible_domain.dart';
+import 'package:flutter/material.dart';
 
-import 'screens/login_screen.dart';
 import 'screens/home_shell.dart';
-import 'services/flutter_secure_token_storage.dart';
+// import 'screens/identity_anchor_screen.dart'; // V1: DID anchoring via NFC passport (replaced by PasskeysRegistrationScreen in V2.0)
+import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
+import 'services/relay_identity_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the database
+  // Initialise the Rust native library (Ed25519, did:key, signing).
+  // Placeholder stub until ./setup_codegen.sh is run; after that it loads the
+  // real .so / .dylib via flutter_rust_bridge.
+  await RustLib.init();
+
+  // Initialise local SQLite store (Drift schema v7).
+  // No username/password — identity is DID-based.
   final db = AppDatabase();
 
-  // Initialize Auth
-  final tokenStorage = FlutterSecureTokenStorage();
-  final apiClient = RelayApiClient(baseUrl: 'http://localhost:8080'); // Default local relay
-  final authService = AuthService(
-    apiClient: apiClient,
-    tokenStorage: tokenStorage,
-  );
-
-  await authService.initialize();
-  
-  runApp(MyApp(db: db, authService: authService));
+  runApp(MyApp(db: db));
 }
 
 class MyApp extends StatefulWidget {
   final AppDatabase db;
-  final AuthService authService;
-  
+  final DidManager? didManager;
+  final DidPlcManager? didPlcManager;
+  final DidSigner? didSigner;
+  // ignore: unused_field — kept for V1 test-injection compatibility; V2.0 uses AtProtoClient
+  final RelayIdentityClient? relayIdentityClient;
+
   const MyApp({
-    super.key, 
+    super.key,
     required this.db,
-    required this.authService,
+    this.didManager,
+    this.didPlcManager,
+    this.didSigner,
+    this.relayIdentityClient,
   });
 
   @override
@@ -40,18 +44,40 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late bool _isLoggedIn;
+  // Identity state: null = not anchored, non-null = DID string
+  String? _anchoredDid;
+  bool _loadingIdentity = true;
+  late final DidManager _didManager;
+  late final DidPlcManager _didPlcManager;
 
   @override
   void initState() {
     super.initState();
-    _isLoggedIn = widget.authService.isLoggedIn;
+    _didManager = widget.didManager ?? DidManagerImpl();
+    _didPlcManager = widget.didPlcManager ?? DidPlcManagerImpl();
+    _loadPersistedIdentity();
   }
 
-  void _handleLoginSuccess() {
-    setState(() {
-      _isLoggedIn = true;
-    });
+  Future<void> _loadPersistedIdentity() async {
+    try {
+      final plcDid = await _didPlcManager.loadDid();
+      final ownedDid = plcDid == null ? await _didManager.load() : null;
+      if (!mounted) return;
+      setState(() {
+        _anchoredDid = plcDid?.did ?? ownedDid?.did;
+        _loadingIdentity = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _anchoredDid = null;
+        _loadingIdentity = false;
+      });
+    }
+  }
+
+  void _handleRegistered(String did) {
+    setState(() => _anchoredDid = did);
   }
 
   @override
@@ -88,15 +114,15 @@ class _MyAppState extends State<MyApp> {
         fontFamily: fontFamilyBase,
         fontFamilyFallback: fontFallback,
         textTheme: ThemeData.dark().textTheme.apply(
-              bodyColor: Colors.white,
-              displayColor: Colors.white,
-              fontFamilyFallback: fontFallback,
-            ),
+          bodyColor: Colors.white,
+          displayColor: Colors.white,
+          fontFamilyFallback: fontFallback,
+        ),
         primaryTextTheme: ThemeData.dark().textTheme.apply(
-              bodyColor: Colors.white,
-              displayColor: Colors.white,
-              fontFamilyFallback: fontFallback,
-            ),
+          bodyColor: Colors.white,
+          displayColor: Colors.white,
+          fontFamilyFallback: fontFallback,
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: bgLight,
           foregroundColor: Colors.white,
@@ -106,16 +132,23 @@ class _MyAppState extends State<MyApp> {
           style: FilledButton.styleFrom(
             backgroundColor: accent,
             foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            textStyle: const TextStyle(fontWeight: FontWeight.w700, fontFamily: fontFamilyBase),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontFamily: fontFamilyBase,
+            ),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.white,
             side: const BorderSide(color: Color(0xFF28334A)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             textStyle: const TextStyle(fontFamily: fontFamilyBase),
           ),
@@ -123,18 +156,15 @@ class _MyAppState extends State<MyApp> {
         iconTheme: const IconThemeData(color: Colors.white70),
         useMaterial3: true,
       ),
-      home: _isLoggedIn 
-        ? HomeShell(
-            db: widget.db,
-            onLogout: () {
-              widget.authService.logout();
-              setState(() => _isLoggedIn = false);
-            },
-          )
-        : LoginScreen(
-            authService: widget.authService,
-            onLoginSuccess: _handleLoginSuccess,
-          ),
+      home: _loadingIdentity
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : _anchoredDid != null
+          ? HomeShell(
+              db: widget.db,
+              did: _anchoredDid!,
+              onClearIdentity: () => setState(() => _anchoredDid = null),
+            )
+          : PasskeysRegistrationScreen(onRegistered: _handleRegistered),
     );
   }
 }
