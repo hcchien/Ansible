@@ -36,6 +36,27 @@ void main() {
       );
     });
 
+    test('rejects nested prohibited claims', () {
+      final json = Map<String, Object?>.from(humanityFixture);
+      json['credentialSubject'] = {
+        ...humanityFixture['credentialSubject']! as Map<String, Object?>,
+        'profile': {
+          'evidence': {'rawProviderAssertion': 'signed-provider-token'},
+        },
+      };
+
+      expect(
+        () => TrisAuraCredential.fromJson(json),
+        throwsA(
+          isA<TrisAuraCredentialException>().having(
+            (error) => error.code,
+            'code',
+            'prohibited_claim',
+          ),
+        ),
+      );
+    });
+
     test('expired credential fails verification result', () {
       final credential = TrisAuraCredential.fromJson(expiredHumanityFixture);
       final verifier = VcVerifier(

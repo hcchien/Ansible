@@ -46,10 +46,7 @@ class TrisAuraCredential {
 
   factory TrisAuraCredential.fromJson(Map<String, Object?> json) {
     final subject = _requiredMap(json, 'credentialSubject');
-    final prohibitedClaim = prohibitedClaims
-        .where(subject.containsKey)
-        .cast<String?>()
-        .firstWhere((claim) => claim != null, orElse: () => null);
+    final prohibitedClaim = _findProhibitedClaim(subject);
     if (prohibitedClaim != null) {
       throw TrisAuraCredentialException(
         'prohibited_claim',
@@ -145,5 +142,29 @@ class TrisAuraCredential {
       return List<Object?>.unmodifiable(value.map(_copyValue));
     }
     return value;
+  }
+
+  static String? _findProhibitedClaim(Object? value) {
+    if (value is Map) {
+      for (final entry in value.entries) {
+        final key = entry.key.toString();
+        if (prohibitedClaims.contains(key)) {
+          return key;
+        }
+        final nested = _findProhibitedClaim(entry.value);
+        if (nested != null) {
+          return nested;
+        }
+      }
+    }
+    if (value is List) {
+      for (final item in value) {
+        final nested = _findProhibitedClaim(item);
+        if (nested != null) {
+          return nested;
+        }
+      }
+    }
+    return null;
   }
 }

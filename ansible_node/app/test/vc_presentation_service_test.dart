@@ -32,6 +32,7 @@ void main() {
         trustedIssuers: {'did:web:issuer.trisaura.io'},
         proofVerifier: _FakeProofVerifier.valid(),
         proofSigner: _FakeVpProofSigner('holder-proof'),
+        statusResolver: (_) async => CredentialStatus.active,
         presentationIdFactory: () => 'vp-test',
       );
 
@@ -55,6 +56,11 @@ void main() {
             as Map<String, Object?>)['proofValue'],
         'holder-proof',
       );
+      expect(_FakeVpProofSigner.lastCanonicalPayload, contains('post-nonce'));
+      expect(
+        _FakeVpProofSigner.lastCanonicalPayload,
+        isNot(contains('holder-proof')),
+      );
 
       final history = await repo.listPresentations('urn:uuid:test-humanity');
       expect(history.single.presentationId, 'vp-test');
@@ -70,6 +76,7 @@ void main() {
       trustedIssuers: {'did:web:issuer.trisaura.io'},
       proofVerifier: _FakeProofVerifier.valid(),
       proofSigner: _FakeVpProofSigner('holder-proof'),
+      statusResolver: (_) async => CredentialStatus.active,
     );
 
     final envelope = await service.createForPost(
@@ -106,6 +113,7 @@ void main() {
       trustedIssuers: {'did:web:issuer.trisaura.io'},
       proofVerifier: _FakeProofVerifier.valid(),
       proofSigner: _FakeVpProofSigner('holder-proof'),
+      statusResolver: (_) async => CredentialStatus.active,
     );
 
     final envelope = await service.createForPost(
@@ -118,6 +126,50 @@ void main() {
     expect(envelope, isNull);
     expect(await repo.listPresentations('urn:uuid:test-humanity'), isEmpty);
   });
+
+  for (final status in [
+    CredentialStatus.revoked,
+    CredentialStatus.suspended,
+    CredentialStatus.unknown,
+  ]) {
+    test('does not present $status credential status', () async {
+      final repo = InMemoryWalletRepository();
+      await repo.saveCredential(
+        metadata: WalletCredential(
+          credentialId: 'urn:uuid:test-humanity',
+          issuerDid: 'did:web:issuer.trisaura.io',
+          holderDid: 'did:key:z6Mkholder',
+          credentialType: 'TrisAuraHumanityCredential',
+          status: WalletCredentialStatus.active,
+          validFrom: DateTime.utc(2026, 5, 4),
+          validUntil: DateTime.utc(2026, 8, 2),
+          displayName: 'Verified Human',
+          createdAt: DateTime.utc(2026, 5, 4),
+          updatedAt: DateTime.utc(2026, 5, 4),
+        ),
+        encryptedPayload: jsonEncode(_humanityFixture),
+        encryptionVersion: 'test-json',
+      );
+
+      final service = VcPresentationService(
+        walletRepository: repo,
+        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        proofVerifier: _FakeProofVerifier.valid(),
+        proofSigner: _FakeVpProofSigner('holder-proof'),
+        statusResolver: (_) async => status,
+      );
+
+      final envelope = await service.createForPost(
+        holderDid: 'did:key:z6Mkholder',
+        audience: 'https://relay.trisaura.io',
+        nonce: 'post-nonce',
+        now: DateTime.utc(2026, 5, 5),
+      );
+
+      expect(envelope, isNull);
+      expect(await repo.listPresentations('urn:uuid:test-humanity'), isEmpty);
+    });
+  }
 }
 
 final _humanityFixture = <String, Object?>{
@@ -150,17 +202,18 @@ class _FakeProofVerifier implements ProofVerifier {
 }
 
 class _FakeVpProofSigner implements VpProofSigner {
+  static String? lastCanonicalPayload;
   final String proof;
 
   _FakeVpProofSigner(this.proof);
 
   @override
   Future<String> signPresentation({
-    required TrisAuraCredential credential,
-    required String holderDid,
-    required String nonce,
-    required String audience,
+    required Map<String, Object?> unsignedPresentation,
+    required String canonicalPayload,
   }) async {
+    lastCanonicalPayload = canonicalPayload;
+    expect(unsignedPresentation['proof'], isA<Map<String, Object?>>());
     return proof;
   }
 }

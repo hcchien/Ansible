@@ -16,20 +16,16 @@ class VcPresentationEnvelope {
 
 abstract class VpProofSigner {
   Future<String> signPresentation({
-    required TrisAuraCredential credential,
-    required String holderDid,
-    required String nonce,
-    required String audience,
+    required Map<String, Object?> unsignedPresentation,
+    required String canonicalPayload,
   });
 }
 
 class UnsupportedVpProofSigner implements VpProofSigner {
   @override
   Future<String> signPresentation({
-    required TrisAuraCredential credential,
-    required String holderDid,
-    required String nonce,
-    required String audience,
+    required Map<String, Object?> unsignedPresentation,
+    required String canonicalPayload,
   }) {
     throw UnsupportedError('VP proof signing is not connected yet.');
   }
@@ -53,6 +49,7 @@ class VcPresentationService {
   final WalletRepository walletRepository;
   final Set<String> trustedIssuers;
   final ProofVerifier proofVerifier;
+  final CredentialStatusResolver statusResolver;
   final VpProofSigner proofSigner;
   final JsonCredentialPayloadDecoder payloadDecoder;
   final PresentationIdFactory presentationIdFactory;
@@ -61,6 +58,7 @@ class VcPresentationService {
     required this.walletRepository,
     required this.trustedIssuers,
     required this.proofVerifier,
+    required this.statusResolver,
     required this.proofSigner,
     JsonCredentialPayloadDecoder? payloadDecoder,
     PresentationIdFactory? presentationIdFactory,
@@ -104,7 +102,7 @@ class VcPresentationService {
       final verifier = VcVerifier(
         proofVerifier: proofVerifier,
         trustedIssuers: trustedIssuers,
-        statusResolver: (_) async => CredentialStatus.active,
+        statusResolver: statusResolver,
       );
       final verification = await verifier.verifyCredentialStatus(
         credential,
@@ -114,19 +112,21 @@ class VcPresentationService {
         continue;
       }
 
-      final proofValue = await proofSigner.signPresentation(
+      final unsignedVp = VpBuilder.buildUnsigned(
         credential: credential,
         holderDid: holderDid,
         nonce: nonce,
         audience: audience,
-      );
-      final vp = VpBuilder.build(
-        credential: credential,
-        holderDid: holderDid,
-        nonce: nonce,
-        audience: audience,
-        proofValue: proofValue,
         createdAt: now,
+      );
+      final canonicalPayload = VpBuilder.canonicalPayload(unsignedVp);
+      final proofValue = await proofSigner.signPresentation(
+        unsignedPresentation: unsignedVp,
+        canonicalPayload: canonicalPayload,
+      );
+      final vp = VpBuilder.addProof(
+        unsignedPresentation: unsignedVp,
+        proofValue: proofValue,
       );
 
       final presentationId = presentationIdFactory();

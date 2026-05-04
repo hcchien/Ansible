@@ -60,6 +60,9 @@ class InMemoryWalletRepository implements WalletRepository {
   Future<void> deleteCredential(String credentialId) async {
     _credentials.remove(credentialId);
     _payloads.remove(credentialId);
+    _presentations.removeWhere(
+      (presentation) => presentation.credentialId == credentialId,
+    );
   }
 
   @override

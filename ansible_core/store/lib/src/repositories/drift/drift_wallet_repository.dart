@@ -97,6 +97,9 @@ class DriftWalletRepository implements WalletRepository {
   Future<void> deleteCredential(String credentialId) async {
     await _db.transaction(() async {
       await (_db.delete(
+        _db.walletPresentations,
+      )..where((table) => table.credentialId.equals(credentialId))).go();
+      await (_db.delete(
         _db.walletCredentialPayloads,
       )..where((table) => table.credentialId.equals(credentialId))).go();
       await (_db.delete(

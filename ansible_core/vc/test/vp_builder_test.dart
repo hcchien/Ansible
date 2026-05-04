@@ -8,13 +8,17 @@ void main() {
     test('builds presentation bound to nonce and audience', () {
       final credential = TrisAuraCredential.fromJson(humanityFixture);
 
-      final vp = VpBuilder.build(
+      final unsigned = VpBuilder.buildUnsigned(
         credential: credential,
         holderDid: 'did:key:z6Mkholder',
         nonce: 'nonce-123',
         audience: 'https://relay.trisaura.io',
-        proofValue: 'test-signature',
         createdAt: DateTime.utc(2026, 5, 4, 10),
+      );
+      final canonicalPayload = VpBuilder.canonicalPayload(unsigned);
+      final vp = VpBuilder.addProof(
+        unsignedPresentation: unsigned,
+        proofValue: 'test-signature',
       );
 
       expect(vp['holder'], 'did:key:z6Mkholder');
@@ -24,6 +28,8 @@ void main() {
         (vp['proof']! as Map<String, Object?>)['domain'],
         'https://relay.trisaura.io',
       );
+      expect(canonicalPayload, contains('nonce-123'));
+      expect(canonicalPayload, isNot(contains('test-signature')));
     });
 
     test('refuses to build presentation for a different holder', () {
