@@ -37,18 +37,24 @@ void main() {
       expect(retrieved!.remoteNodeId, 'node-1');
       expect(retrieved.boardId, 'board-1');
       expect(retrieved.syncEnabled, isTrue);
+      expect(
+        retrieved.retentionDays,
+        entity.BoardSyncConfig.defaultRetentionDays,
+      );
     });
 
     test('Get config by remote and board', () async {
       final now = DateTime.now();
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-1',
-        remoteNodeId: 'node-1',
-        boardId: 'board-1',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       final retrieved = await repo.getByRemoteAndBoard('node-1', 'board-1');
       expect(retrieved, isNotNull);
@@ -59,36 +65,45 @@ void main() {
       final now = DateTime.now();
 
       // Configs for node-1
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-1',
-        remoteNodeId: 'node-1',
-        boardId: 'board-1',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-2',
-        remoteNodeId: 'node-1',
-        boardId: 'board-2',
-        syncEnabled: false,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-2',
+          remoteNodeId: 'node-1',
+          boardId: 'board-2',
+          syncEnabled: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       // Config for node-2
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-3',
-        remoteNodeId: 'node-2',
-        boardId: 'board-1',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-3',
+          remoteNodeId: 'node-2',
+          boardId: 'board-1',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       final node1Configs = await repo.listByRemote('node-1');
       expect(node1Configs.length, 2);
-      expect(node1Configs.map((c) => c.id), containsAll(['config-1', 'config-2']));
+      expect(
+        node1Configs.map((c) => c.id),
+        containsAll(['config-1', 'config-2']),
+      );
 
       final node2Configs = await repo.listByRemote('node-2');
       expect(node2Configs.length, 1);
@@ -97,30 +112,36 @@ void main() {
     test('Get enabled board IDs', () async {
       final now = DateTime.now();
 
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-1',
-        remoteNodeId: 'node-1',
-        boardId: 'board-1',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-2',
-        remoteNodeId: 'node-1',
-        boardId: 'board-2',
-        syncEnabled: false,
-        createdAt: now,
-        updatedAt: now,
-      ));
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-3',
-        remoteNodeId: 'node-1',
-        boardId: 'board-3',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-2',
+          remoteNodeId: 'node-1',
+          boardId: 'board-2',
+          syncEnabled: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-3',
+          remoteNodeId: 'node-1',
+          boardId: 'board-3',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       final enabledIds = await repo.getEnabledBoardIds('node-1');
       expect(enabledIds.length, 2);
@@ -128,16 +149,50 @@ void main() {
       expect(enabledIds, isNot(contains('board-2')));
     });
 
+    test('List enabled configs includes retention policy', () async {
+      final now = DateTime.now();
+
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: true,
+          retentionDays: 30,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-2',
+          remoteNodeId: 'node-1',
+          boardId: 'board-2',
+          syncEnabled: false,
+          retentionDays: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final enabledConfigs = await repo.listEnabledByRemote('node-1');
+      expect(enabledConfigs.length, 1);
+      expect(enabledConfigs.single.boardId, 'board-1');
+      expect(enabledConfigs.single.retentionDays, 30);
+    });
+
     test('Toggle sync - enable existing config', () async {
       final now = DateTime.now();
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-1',
-        remoteNodeId: 'node-1',
-        boardId: 'board-1',
-        syncEnabled: false,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       await repo.toggleSync('node-1', 'board-1', true);
 
@@ -147,14 +202,16 @@ void main() {
 
     test('Toggle sync - disable existing config', () async {
       final now = DateTime.now();
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-1',
-        remoteNodeId: 'node-1',
-        boardId: 'board-1',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       await repo.toggleSync('node-1', 'board-1', false);
 
@@ -176,20 +233,23 @@ void main() {
 
     test('Update BoardSyncConfig', () async {
       final now = DateTime.now();
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-1',
-        remoteNodeId: 'node-1',
-        boardId: 'board-1',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       final updated = entity.BoardSyncConfig(
         id: 'config-1',
         remoteNodeId: 'node-1',
         boardId: 'board-1',
         syncEnabled: false,
+        retentionDays: null,
         createdAt: now,
         updatedAt: now.add(const Duration(hours: 1)),
       );
@@ -197,18 +257,21 @@ void main() {
 
       final retrieved = await repo.getById('config-1');
       expect(retrieved!.syncEnabled, isFalse);
+      expect(retrieved.retentionDays, isNull);
     });
 
     test('Delete BoardSyncConfig', () async {
       final now = DateTime.now();
-      await repo.create(entity.BoardSyncConfig(
-        id: 'config-1',
-        remoteNodeId: 'node-1',
-        boardId: 'board-1',
-        syncEnabled: true,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      await repo.create(
+        entity.BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'node-1',
+          boardId: 'board-1',
+          syncEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       await repo.delete('config-1');
       final retrieved = await repo.getById('config-1');

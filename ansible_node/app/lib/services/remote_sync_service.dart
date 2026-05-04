@@ -7,6 +7,7 @@ class RemoteSyncService {
   final BoardRepository _boardRepo;
   final ThreadRepository _threadRepo;
   final PostRepository _postRepo;
+  final DateTime Function() _now;
 
   RemoteSyncService({
     required RemoteNodeRepository remoteNodeRepo,
@@ -14,23 +15,39 @@ class RemoteSyncService {
     required BoardRepository boardRepo,
     required ThreadRepository threadRepo,
     required PostRepository postRepo,
-  })  : _remoteNodeRepo = remoteNodeRepo,
-        _boardSyncConfigRepo = boardSyncConfigRepo,
-        _boardRepo = boardRepo,
-        _threadRepo = threadRepo,
-        _postRepo = postRepo;
+    DateTime Function()? now,
+  }) : _remoteNodeRepo = remoteNodeRepo,
+       _boardSyncConfigRepo = boardSyncConfigRepo,
+       _boardRepo = boardRepo,
+       _threadRepo = threadRepo,
+       _postRepo = postRepo,
+       _now = now ?? DateTime.now;
 
   /// Sync from a specific remote node
-  Future<SyncResult> syncFromNode(RelayApiClient remoteClient, RemoteNode remoteNode) async {
+  Future<SyncResult> syncFromNode(
+    RelayApiClient remoteClient,
+    RemoteNode remoteNode,
+  ) async {
     try {
-      // Get enabled board IDs for this remote
-      final enabledBoardIds =
-          await _boardSyncConfigRepo.getEnabledBoardIds(remoteNode.id);
-      final enabledBoardIdSet = enabledBoardIds.toSet();
+      final enabledConfigs = await _boardSyncConfigRepo.listEnabledByRemote(
+        remoteNode.id,
+      );
+      final enabledBoardIdSet = enabledConfigs.map((c) => c.boardId).toSet();
+      if (enabledBoardIdSet.isEmpty) {
+        return SyncResult.success(
+          activitiesProcessed: 0,
+          newCursor: remoteNode.syncCursor,
+        );
+      }
+      final retentionDaysByBoard = {
+        for (final config in enabledConfigs)
+          config.boardId: config.retentionDays,
+      };
 
       int totalProcessed = 0;
       int currentCursor = remoteNode.syncCursor;
       bool hasMore = true;
+      final syncTime = _now();
 
       while (hasMore) {
         // Fetch delta from remote
@@ -44,10 +61,15 @@ class RemoteSyncService {
         for (final entry in delta.activities) {
           // Filter by enabled boards (if any are configured)
           final boardId = entry.activity.boardId;
-          if (boardId != null &&
-              enabledBoardIdSet.isNotEmpty &&
-              !enabledBoardIdSet.contains(boardId)) {
+          if (boardId == null || !enabledBoardIdSet.contains(boardId)) {
             continue; // Skip activities for boards not in sync list
+          }
+          if (!_isWithinRetention(
+            entry.activity,
+            retentionDaysByBoard[boardId],
+            syncTime,
+          )) {
+            continue;
           }
 
           await _applyActivity(entry.activity);
@@ -58,10 +80,14 @@ class RemoteSyncService {
         hasMore = delta.hasMore;
       }
 
+      await _pruneExpiredPosts(enabledConfigs, syncTime);
+
       // Update sync cursor in remote node
-      final syncTime = DateTime.now();
       await _remoteNodeRepo.updateSyncCursor(
-          remoteNode.id, currentCursor, syncTime);
+        remoteNode.id,
+        currentCursor,
+        syncTime,
+      );
 
       return SyncResult.success(
         activitiesProcessed: totalProcessed,
@@ -72,11 +98,39 @@ class RemoteSyncService {
     }
   }
 
+  bool _isWithinRetention(Activity activity, int? retentionDays, DateTime now) {
+    if (retentionDays == null) {
+      return true;
+    }
+    final entityType = activity.entityType.toLowerCase();
+    if (entityType != 'post' && entityType != 'thread') {
+      return true;
+    }
+    final cutoff = now.toUtc().subtract(Duration(days: retentionDays));
+    return !activity.createdAt.toUtc().isBefore(cutoff);
+  }
+
+  Future<void> _pruneExpiredPosts(
+    List<BoardSyncConfig> enabledConfigs,
+    DateTime now,
+  ) async {
+    for (final config in enabledConfigs) {
+      final retentionDays = config.retentionDays;
+      if (retentionDays == null) {
+        continue;
+      }
+      final cutoff = now.toUtc().subtract(Duration(days: retentionDays));
+      await _postRepo.deleteByBoardOlderThan(config.boardId, cutoff);
+    }
+  }
+
   /// Sync from the active remote node (legacy method)
   Future<SyncResult> syncFromRemote(RelayApiClient remoteClient) async {
     final remoteNode = await _remoteNodeRepo.getActive();
     if (remoteNode == null) {
-      return SyncResult.failure(errorMessage: 'No active remote node configured');
+      return SyncResult.failure(
+        errorMessage: 'No active remote node configured',
+      );
     }
     return syncFromNode(remoteClient, remoteNode);
   }

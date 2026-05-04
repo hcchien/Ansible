@@ -6,4 +6,5 @@ abstract class PostRepository {
   Future<void> create(Post post);
   Future<void> update(Post post);
   Future<void> delete(String id);
+  Future<int> deleteByBoardOlderThan(String boardId, DateTime cutoff);
 }

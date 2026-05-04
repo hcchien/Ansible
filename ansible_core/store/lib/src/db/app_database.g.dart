@@ -4126,6 +4126,18 @@ class $BoardSyncConfigsTable extends BoardSyncConfigs
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(90),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4156,6 +4168,7 @@ class $BoardSyncConfigsTable extends BoardSyncConfigs
     remoteNodeId,
     boardId,
     syncEnabled,
+    retentionDays,
     createdAt,
     updatedAt,
   ];
@@ -4207,6 +4220,15 @@ class $BoardSyncConfigsTable extends BoardSyncConfigs
         ),
       );
     }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4244,6 +4266,10 @@ class $BoardSyncConfigsTable extends BoardSyncConfigs
         DriftSqlType.bool,
         data['${effectivePrefix}sync_enabled'],
       )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -4266,6 +4292,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
   final String remoteNodeId;
   final String boardId;
   final bool syncEnabled;
+  final int? retentionDays;
   final DateTime createdAt;
   final DateTime updatedAt;
   const BoardSyncConfig({
@@ -4273,6 +4300,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
     required this.remoteNodeId,
     required this.boardId,
     required this.syncEnabled,
+    this.retentionDays,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -4283,6 +4311,9 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
     map['remote_node_id'] = Variable<String>(remoteNodeId);
     map['board_id'] = Variable<String>(boardId);
     map['sync_enabled'] = Variable<bool>(syncEnabled);
+    if (!nullToAbsent || retentionDays != null) {
+      map['retention_days'] = Variable<int>(retentionDays);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -4294,6 +4325,9 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
       remoteNodeId: Value(remoteNodeId),
       boardId: Value(boardId),
       syncEnabled: Value(syncEnabled),
+      retentionDays: retentionDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(retentionDays),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -4309,6 +4343,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
       remoteNodeId: serializer.fromJson<String>(json['remoteNodeId']),
       boardId: serializer.fromJson<String>(json['boardId']),
       syncEnabled: serializer.fromJson<bool>(json['syncEnabled']),
+      retentionDays: serializer.fromJson<int?>(json['retentionDays']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -4321,6 +4356,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
       'remoteNodeId': serializer.toJson<String>(remoteNodeId),
       'boardId': serializer.toJson<String>(boardId),
       'syncEnabled': serializer.toJson<bool>(syncEnabled),
+      'retentionDays': serializer.toJson<int?>(retentionDays),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -4331,6 +4367,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
     String? remoteNodeId,
     String? boardId,
     bool? syncEnabled,
+    Value<int?> retentionDays = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => BoardSyncConfig(
@@ -4338,6 +4375,9 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
     remoteNodeId: remoteNodeId ?? this.remoteNodeId,
     boardId: boardId ?? this.boardId,
     syncEnabled: syncEnabled ?? this.syncEnabled,
+    retentionDays: retentionDays.present
+        ? retentionDays.value
+        : this.retentionDays,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4351,6 +4391,9 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
       syncEnabled: data.syncEnabled.present
           ? data.syncEnabled.value
           : this.syncEnabled,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4363,6 +4406,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
           ..write('remoteNodeId: $remoteNodeId, ')
           ..write('boardId: $boardId, ')
           ..write('syncEnabled: $syncEnabled, ')
+          ..write('retentionDays: $retentionDays, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4375,6 +4419,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
     remoteNodeId,
     boardId,
     syncEnabled,
+    retentionDays,
     createdAt,
     updatedAt,
   );
@@ -4386,6 +4431,7 @@ class BoardSyncConfig extends DataClass implements Insertable<BoardSyncConfig> {
           other.remoteNodeId == this.remoteNodeId &&
           other.boardId == this.boardId &&
           other.syncEnabled == this.syncEnabled &&
+          other.retentionDays == this.retentionDays &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4395,6 +4441,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
   final Value<String> remoteNodeId;
   final Value<String> boardId;
   final Value<bool> syncEnabled;
+  final Value<int?> retentionDays;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -4403,6 +4450,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
     this.remoteNodeId = const Value.absent(),
     this.boardId = const Value.absent(),
     this.syncEnabled = const Value.absent(),
+    this.retentionDays = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4412,6 +4460,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
     required String remoteNodeId,
     required String boardId,
     this.syncEnabled = const Value.absent(),
+    this.retentionDays = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4423,6 +4472,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
     Expression<String>? remoteNodeId,
     Expression<String>? boardId,
     Expression<bool>? syncEnabled,
+    Expression<int>? retentionDays,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -4432,6 +4482,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
       if (remoteNodeId != null) 'remote_node_id': remoteNodeId,
       if (boardId != null) 'board_id': boardId,
       if (syncEnabled != null) 'sync_enabled': syncEnabled,
+      if (retentionDays != null) 'retention_days': retentionDays,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -4443,6 +4494,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
     Value<String>? remoteNodeId,
     Value<String>? boardId,
     Value<bool>? syncEnabled,
+    Value<int?>? retentionDays,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -4452,6 +4504,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
       remoteNodeId: remoteNodeId ?? this.remoteNodeId,
       boardId: boardId ?? this.boardId,
       syncEnabled: syncEnabled ?? this.syncEnabled,
+      retentionDays: retentionDays ?? this.retentionDays,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -4473,6 +4526,9 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
     if (syncEnabled.present) {
       map['sync_enabled'] = Variable<bool>(syncEnabled.value);
     }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4492,6 +4548,7 @@ class BoardSyncConfigsCompanion extends UpdateCompanion<BoardSyncConfig> {
           ..write('remoteNodeId: $remoteNodeId, ')
           ..write('boardId: $boardId, ')
           ..write('syncEnabled: $syncEnabled, ')
+          ..write('retentionDays: $retentionDays, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -9634,6 +9691,7 @@ typedef $$BoardSyncConfigsTableCreateCompanionBuilder =
       required String remoteNodeId,
       required String boardId,
       Value<bool> syncEnabled,
+      Value<int?> retentionDays,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -9644,6 +9702,7 @@ typedef $$BoardSyncConfigsTableUpdateCompanionBuilder =
       Value<String> remoteNodeId,
       Value<String> boardId,
       Value<bool> syncEnabled,
+      Value<int?> retentionDays,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -9675,6 +9734,11 @@ class $$BoardSyncConfigsTableFilterComposer
 
   ColumnFilters<bool> get syncEnabled => $composableBuilder(
     column: $table.syncEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9718,6 +9782,11 @@ class $$BoardSyncConfigsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9751,6 +9820,11 @@ class $$BoardSyncConfigsTableAnnotationComposer
 
   GeneratedColumn<bool> get syncEnabled => $composableBuilder(
     column: $table.syncEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
     builder: (column) => column,
   );
 
@@ -9802,6 +9876,7 @@ class $$BoardSyncConfigsTableTableManager
                 Value<String> remoteNodeId = const Value.absent(),
                 Value<String> boardId = const Value.absent(),
                 Value<bool> syncEnabled = const Value.absent(),
+                Value<int?> retentionDays = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -9810,6 +9885,7 @@ class $$BoardSyncConfigsTableTableManager
                 remoteNodeId: remoteNodeId,
                 boardId: boardId,
                 syncEnabled: syncEnabled,
+                retentionDays: retentionDays,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -9820,6 +9896,7 @@ class $$BoardSyncConfigsTableTableManager
                 required String remoteNodeId,
                 required String boardId,
                 Value<bool> syncEnabled = const Value.absent(),
+                Value<int?> retentionDays = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -9828,6 +9905,7 @@ class $$BoardSyncConfigsTableTableManager
                 remoteNodeId: remoteNodeId,
                 boardId: boardId,
                 syncEnabled: syncEnabled,
+                retentionDays: retentionDays,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

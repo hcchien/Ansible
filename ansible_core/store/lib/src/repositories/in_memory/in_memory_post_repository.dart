@@ -33,4 +33,20 @@ class InMemoryPostRepository implements PostRepository {
   Future<void> delete(String id) async {
     _posts.remove(id);
   }
+
+  @override
+  Future<int> deleteByBoardOlderThan(String boardId, DateTime cutoff) async {
+    final idsToDelete = _posts.entries
+        .where(
+          (entry) =>
+              entry.value.boardId == boardId &&
+              entry.value.createdAt.isBefore(cutoff),
+        )
+        .map((entry) => entry.key)
+        .toList();
+    for (final id in idsToDelete) {
+      _posts.remove(id);
+    }
+    return idsToDelete.length;
+  }
 }

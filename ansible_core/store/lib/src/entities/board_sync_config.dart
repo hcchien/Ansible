@@ -1,8 +1,12 @@
 class BoardSyncConfig {
+  static const int defaultRetentionDays = 90;
+  static const Object _unchanged = Object();
+
   final String id;
   final String remoteNodeId;
   final String boardId;
   final bool syncEnabled;
+  final int? retentionDays;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -11,6 +15,7 @@ class BoardSyncConfig {
     required this.remoteNodeId,
     required this.boardId,
     this.syncEnabled = true,
+    this.retentionDays = defaultRetentionDays,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -21,6 +26,7 @@ class BoardSyncConfig {
       'remoteNodeId': remoteNodeId,
       'boardId': boardId,
       'syncEnabled': syncEnabled,
+      'retentionDays': retentionDays,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -32,6 +38,9 @@ class BoardSyncConfig {
       remoteNodeId: json['remoteNodeId'] as String,
       boardId: json['boardId'] as String,
       syncEnabled: json['syncEnabled'] as bool? ?? true,
+      retentionDays: json.containsKey('retentionDays')
+          ? json['retentionDays'] as int?
+          : defaultRetentionDays,
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
     );
@@ -42,6 +51,7 @@ class BoardSyncConfig {
     String? remoteNodeId,
     String? boardId,
     bool? syncEnabled,
+    Object? retentionDays = _unchanged,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -50,6 +60,9 @@ class BoardSyncConfig {
       remoteNodeId: remoteNodeId ?? this.remoteNodeId,
       boardId: boardId ?? this.boardId,
       syncEnabled: syncEnabled ?? this.syncEnabled,
+      retentionDays: identical(retentionDays, _unchanged)
+          ? this.retentionDays
+          : retentionDays as int?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

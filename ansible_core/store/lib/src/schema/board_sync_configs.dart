@@ -5,6 +5,8 @@ class BoardSyncConfigs extends Table {
   TextColumn get remoteNodeId => text()();
   TextColumn get boardId => text()();
   BoolColumn get syncEnabled => boolean().withDefault(const Constant(true))();
+  IntColumn get retentionDays =>
+      integer().nullable().withDefault(const Constant(90))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 

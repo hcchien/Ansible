@@ -10,7 +10,9 @@ class DriftPostRepository implements PostRepository {
 
   @override
   Future<void> create(entity.Post post) async {
-    await _db.into(_db.posts).insert(
+    await _db
+        .into(_db.posts)
+        .insert(
           PostsCompanion.insert(
             postId: post.id,
             threadId: post.threadId,
@@ -29,8 +31,9 @@ class DriftPostRepository implements PostRepository {
 
   @override
   Future<entity.Post?> getById(String id) async {
-    final row = await (_db.select(_db.posts)..where((t) => t.postId.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.posts,
+    )..where((t) => t.postId.equals(id))).getSingleOrNull();
     if (row == null) return null;
     return _mapRowToEntity(row);
   }
@@ -66,11 +69,30 @@ class DriftPostRepository implements PostRepository {
   Future<void> delete(String id) async {
     // Soft delete
     await (_db.update(_db.posts)..where((t) => t.postId.equals(id))).write(
-      PostsCompanion(
-        isDeleted: Value(true),
-        updatedAt: Value(DateTime.now()),
-      ),
+      PostsCompanion(isDeleted: Value(true), updatedAt: Value(DateTime.now())),
     );
+  }
+
+  @override
+  Future<int> deleteByBoardOlderThan(String boardId, DateTime cutoff) async {
+    final expiredRows =
+        await (_db.select(_db.posts)..where(
+              (t) =>
+                  t.boardId.equals(boardId) &
+                  t.createdAt.isSmallerThanValue(cutoff),
+            ))
+            .get();
+    final expiredIds = expiredRows.map((row) => row.postId).toList();
+    if (expiredIds.isEmpty) {
+      return 0;
+    }
+
+    await (_db.update(_db.posts)..where((t) => t.parentPostId.isIn(expiredIds)))
+        .write(const PostsCompanion(parentPostId: Value(null)));
+
+    return (_db.delete(
+      _db.posts,
+    )..where((t) => t.postId.isIn(expiredIds))).go();
   }
 
   entity.Post _mapRowToEntity(Post row) {

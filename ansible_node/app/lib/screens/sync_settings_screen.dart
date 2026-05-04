@@ -7,16 +7,23 @@ import '../services/remote_sync_service.dart';
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
 
-  const SyncSettingsScreen({
-    super.key,
-    required this.db,
-  });
+  const SyncSettingsScreen({super.key, required this.db});
 
   @override
   State<SyncSettingsScreen> createState() => _SyncSettingsScreenState();
 }
 
 class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
+  static const int _retainForeverValue = 0;
+  static const List<int> _retentionOptions = [
+    7,
+    30,
+    90,
+    180,
+    365,
+    _retainForeverValue,
+  ];
+
   late final DriftRemoteNodeRepository _remoteNodeRepo;
   late final DriftBoardSyncConfigRepository _boardSyncConfigRepo;
   late final DriftBoardRepository _boardRepo;
@@ -25,9 +32,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
   List<RemoteNode> _remoteNodes = [];
   List<Board> _boards = [];
-  Map<String, Map<String, bool>> _boardSyncStatusByNode = {}; // nodeId -> {boardId -> enabled}
+  Map<String, Map<String, bool>> _boardSyncStatusByNode =
+      {}; // nodeId -> {boardId -> enabled}
+  Map<String, Map<String, int?>> _boardRetentionByNode =
+      {}; // nodeId -> {boardId -> days, null -> forever}
   bool _isLoading = true;
-  Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
+  final Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
   String? _expandedNodeId;
 
   @override
@@ -48,11 +58,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       final boards = await _boardRepo.list();
 
       Map<String, Map<String, bool>> syncStatusByNode = {};
+      Map<String, Map<String, int?>> retentionByNode = {};
       for (final node in nodes) {
         final configs = await _boardSyncConfigRepo.listByRemote(node.id);
         syncStatusByNode[node.id] = {};
+        retentionByNode[node.id] = {};
         for (final config in configs) {
           syncStatusByNode[node.id]![config.boardId] = config.syncEnabled;
+          retentionByNode[node.id]![config.boardId] = config.retentionDays;
         }
       }
 
@@ -60,6 +73,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         _remoteNodes = nodes;
         _boards = boards.where((b) => !b.isDeleted).toList();
         _boardSyncStatusByNode = syncStatusByNode;
+        _boardRetentionByNode = retentionByNode;
         _isLoading = false;
       });
     } catch (e) {
@@ -67,9 +81,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
       }
     }
   }
@@ -88,10 +102,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   Future<void> _showEditRemoteNodeDialog(RemoteNode node) async {
     final result = await showDialog<Map<String, String?>>(
       context: context,
-      builder: (context) => RemoteNodeFormDialog(
-        initialName: node.name,
-        initialUrl: node.url,
-      ),
+      builder: (context) =>
+          RemoteNodeFormDialog(initialName: node.name, initialUrl: node.url),
     );
 
     if (result != null) {
@@ -107,13 +119,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     if (data['username'] != null && data['password'] != null) {
       try {
         final client = RelayApiClient(baseUrl: data['url']!);
-        final response = await client.login(data['username']!, data['password']!);
+        final response = await client.login(
+          data['username']!,
+          data['password']!,
+        );
         accessToken = response['access_token'] as String?;
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Authentication failed: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Authentication failed: $e')));
         }
         return;
       }
@@ -133,26 +148,32 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     await _loadData();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Server added')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Server added')));
     }
   }
 
-  Future<void> _updateRemoteNode(RemoteNode node, Map<String, String?> data) async {
+  Future<void> _updateRemoteNode(
+    RemoteNode node,
+    Map<String, String?> data,
+  ) async {
     String? accessToken = node.accessToken;
 
     // If new credentials provided, try to authenticate
     if (data['username'] != null && data['password'] != null) {
       try {
         final client = RelayApiClient(baseUrl: data['url']!);
-        final response = await client.login(data['username']!, data['password']!);
+        final response = await client.login(
+          data['username']!,
+          data['password']!,
+        );
         accessToken = response['access_token'] as String?;
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Authentication failed: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Authentication failed: $e')));
         }
         return;
       }
@@ -169,9 +190,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     await _loadData();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Server updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Server updated')));
     }
   }
 
@@ -180,7 +201,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Server'),
-        content: Text('Are you sure you want to delete "${node.name}"?\n\nThis will also remove all board sync settings for this server.'),
+        content: Text(
+          'Are you sure you want to delete "${node.name}"?\n\nThis will also remove all board sync settings for this server.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -200,18 +223,60 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       await _loadData();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Server deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Server deleted')));
       }
     }
   }
 
-  Future<void> _toggleBoardSync(String nodeId, String boardId, bool enabled) async {
+  Future<void> _toggleBoardSync(
+    String nodeId,
+    String boardId,
+    bool enabled,
+  ) async {
     await _boardSyncConfigRepo.toggleSync(nodeId, boardId, enabled);
     setState(() {
       _boardSyncStatusByNode[nodeId] ??= {};
+      _boardRetentionByNode[nodeId] ??= {};
       _boardSyncStatusByNode[nodeId]![boardId] = enabled;
+      _boardRetentionByNode[nodeId]![boardId] ??=
+          BoardSyncConfig.defaultRetentionDays;
+    });
+  }
+
+  Future<void> _updateBoardRetention(
+    String nodeId,
+    String boardId,
+    int? retentionDays,
+  ) async {
+    final existing = await _boardSyncConfigRepo.getByRemoteAndBoard(
+      nodeId,
+      boardId,
+    );
+    final now = DateTime.now();
+
+    if (existing == null) {
+      await _boardSyncConfigRepo.create(
+        BoardSyncConfig(
+          id: '${nodeId}_$boardId',
+          remoteNodeId: nodeId,
+          boardId: boardId,
+          syncEnabled: false,
+          retentionDays: retentionDays,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    } else {
+      await _boardSyncConfigRepo.update(
+        existing.copyWith(retentionDays: retentionDays, updatedAt: now),
+      );
+    }
+
+    setState(() {
+      _boardRetentionByNode[nodeId] ??= {};
+      _boardRetentionByNode[nodeId]![boardId] = retentionDays;
     });
   }
 
@@ -247,13 +312,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         if (result.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${node.name}: Synced ${result.activitiesProcessed} activities'),
+              content: Text(
+                '${node.name}: Synced ${result.activitiesProcessed} activities',
+              ),
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${node.name}: Sync failed - ${result.errorMessage}'),
+              content: Text(
+                '${node.name}: Sync failed - ${result.errorMessage}',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -293,7 +362,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         actions: [
           if (_remoteNodes.isNotEmpty)
             TextButton.icon(
-              onPressed: _syncingNodes.values.any((v) => v) ? null : _syncAllNodes,
+              onPressed: _syncingNodes.values.any((v) => v)
+                  ? null
+                  : _syncAllNodes,
               icon: const Icon(Icons.sync),
               label: const Text('Sync All'),
             ),
@@ -307,15 +378,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _remoteNodes.isEmpty
-              ? _buildEmptyState(theme)
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _remoteNodes.length,
-                  itemBuilder: (context, index) {
-                    final node = _remoteNodes[index];
-                    return _buildServerCard(node, theme);
-                  },
-                ),
+          ? _buildEmptyState(theme)
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _remoteNodes.length,
+              itemBuilder: (context, index) {
+                final node = _remoteNodes[index];
+                return _buildServerCard(node, theme);
+              },
+            ),
     );
   }
 
@@ -332,16 +403,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           const SizedBox(height: 24),
           Text(
             'No sync servers configured',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: Colors.white70,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 8),
           Text(
             'Add a server to start syncing boards',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.white54,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white54),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -358,6 +425,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final isExpanded = _expandedNodeId == node.id;
     final isSyncing = _syncingNodes[node.id] ?? false;
     final boardSyncStatus = _boardSyncStatusByNode[node.id] ?? {};
+    final boardRetention = _boardRetentionByNode[node.id] ?? {};
     final enabledCount = boardSyncStatus.values.where((v) => v).length;
 
     return Card(
@@ -406,11 +474,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(
-                              Icons.sync,
-                              size: 14,
-                              color: Colors.white54,
-                            ),
+                            Icon(Icons.sync, size: 14, color: Colors.white54),
                             const SizedBox(width: 4),
                             Text(
                               node.lastSyncAt != null
@@ -430,7 +494,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             Text(
                               enabledCount > 0
                                   ? '$enabledCount boards selected'
-                                  : 'All boards',
+                                  : 'No boards selected',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: Colors.white54,
                               ),
@@ -500,7 +564,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Select specific boards to sync, or leave all unchecked to sync everything.',
+                    'Select boards to sync. If no boards are selected, sync will skip this server.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.white54,
                     ),
@@ -517,17 +581,64 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       ),
                     )
                   else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    Column(
                       children: _boards.map((board) {
                         final isEnabled = boardSyncStatus[board.id] ?? false;
-                        return FilterChip(
-                          label: Text(board.title),
-                          selected: isEnabled,
-                          onSelected: (selected) {
-                            _toggleBoardSync(node.id, board.id, selected);
-                          },
+                        final retentionDays =
+                            boardRetention.containsKey(board.id)
+                            ? boardRetention[board.id]
+                            : BoardSyncConfig.defaultRetentionDays;
+                        final retentionValue =
+                            retentionDays ?? _retainForeverValue;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: CheckboxListTile(
+                                  value: isEnabled,
+                                  onChanged: (selected) {
+                                    _toggleBoardSync(
+                                      node.id,
+                                      board.id,
+                                      selected ?? false,
+                                    );
+                                  },
+                                  title: Text(board.title),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 132,
+                                child: DropdownButtonFormField<int>(
+                                  initialValue: retentionValue,
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    labelText: 'Retain',
+                                  ),
+                                  items: _retentionOptions
+                                      .map(
+                                        (days) => DropdownMenuItem<int>(
+                                          value: days,
+                                          child: Text(_formatRetention(days)),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (days) {
+                                    _updateBoardRetention(
+                                      node.id,
+                                      board.id,
+                                      days == _retainForeverValue ? null : days,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                         );
                       }).toList(),
                     ),
@@ -550,7 +661,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   TextButton.icon(
                     onPressed: () => _deleteRemoteNode(node),
                     icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                    label: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    label: const Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),
@@ -564,5 +678,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   String _formatDateTime(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  static String _formatRetention(int days) {
+    return days == _retainForeverValue ? 'Forever' : '${days}d';
   }
 }
