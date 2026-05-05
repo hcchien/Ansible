@@ -10,7 +10,7 @@ import '../services/vc_issuer_client.dart';
 
 enum _Phase { idle, starting, polling, issuing, done, error }
 
-class TwProviderCredentialScreen extends StatefulWidget {
+class TwProviderCredentialScreen extends StatelessWidget {
   const TwProviderCredentialScreen({
     super.key,
     required this.holderDid,
@@ -29,12 +29,47 @@ class TwProviderCredentialScreen extends StatefulWidget {
   final Duration pollTimeout;
 
   @override
-  State<TwProviderCredentialScreen> createState() =>
-      _TwProviderCredentialScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('TW 身份驗證')),
+      body: TwProviderCredentialPanel(
+        holderDid: holderDid,
+        vcIssuerClient: vcIssuerClient,
+        urlLauncher: urlLauncher,
+        walletRepository: walletRepository,
+        pollInterval: pollInterval,
+        pollTimeout: pollTimeout,
+      ),
+    );
+  }
 }
 
-class _TwProviderCredentialScreenState
-    extends State<TwProviderCredentialScreen> {
+class TwProviderCredentialPanel extends StatefulWidget {
+  const TwProviderCredentialPanel({
+    super.key,
+    required this.holderDid,
+    this.vcIssuerClient,
+    this.urlLauncher,
+    this.walletRepository,
+    this.pollInterval = const Duration(seconds: 2),
+    this.pollTimeout = const Duration(minutes: 2),
+    this.onCredentialStored,
+  });
+
+  final String holderDid;
+  final VcIssuerClient? vcIssuerClient;
+  final ExternalUrlLauncher? urlLauncher;
+  final WalletRepository? walletRepository;
+  final Duration pollInterval;
+  final Duration pollTimeout;
+  final VoidCallback? onCredentialStored;
+
+  @override
+  State<TwProviderCredentialPanel> createState() =>
+      _TwProviderCredentialPanelState();
+}
+
+class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
   final _emailController = TextEditingController();
 
   late final VcIssuerClient _vcIssuerClient;
@@ -184,6 +219,7 @@ class _TwProviderCredentialScreenState
       encryptedPayload: jsonEncode(vc.toJson()),
       encryptionVersion: 'plain-json-v1',
     );
+    widget.onCredentialStored?.call();
 
     if (!mounted) return;
     setState(() => _phase = _Phase.done);
@@ -271,104 +307,101 @@ class _TwProviderCredentialScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('TW 身份驗證')),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(
-                    Icons.verified_user_outlined,
-                    size: 56,
-                    color: Color(0xFFFF9F43),
+    return SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Icon(
+                  Icons.verified_user_outlined,
+                  size: 56,
+                  color: Color(0xFFFF9F43),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _body,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                if (_phase == _Phase.idle || _phase == _Phase.starting) ...[
+                  TextField(
+                    controller: _emailController,
+                    enabled: !_isBusy,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Email 地址',
+                      prefixIcon: Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    _title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  FilledButton.icon(
+                    onPressed: _isBusy ? null : _startFlow,
+                    icon: _isBusy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.open_in_new),
+                    label: const Text('開始驗證'),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _body,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 24),
-                  if (_phase == _Phase.idle || _phase == _Phase.starting) ...[
-                    TextField(
-                      controller: _emailController,
-                      enabled: !_isBusy,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      decoration: const InputDecoration(
-                        labelText: 'Email 地址',
-                        prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _isBusy ? null : _startFlow,
-                      icon: _isBusy
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.open_in_new),
-                      label: const Text('開始驗證'),
-                    ),
-                  ],
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFFFF6B6B)),
-                    ),
-                  ],
-                  if (_offer != null && _phase == _Phase.polling) ...[
-                    const SizedBox(height: 18),
-                    const LinearProgressIndicator(),
-                  ],
-                  if (_phase == _Phase.error) ...[
-                    const SizedBox(height: 16),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        if (_offer != null && _errorMessage == '開啟驗證頁失敗')
-                          FilledButton.icon(
-                            onPressed: _retryLaunch,
-                            icon: const Icon(Icons.open_in_new),
-                            label: const Text('重新開啟驗證頁'),
-                          ),
-                        if (_offer != null)
-                          OutlinedButton.icon(
-                            onPressed: _checkAgain,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('重新檢查'),
-                          ),
-                        OutlinedButton.icon(
-                          onPressed: _restart,
-                          icon: const Icon(Icons.restart_alt),
-                          label: const Text('重新開始'),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
-              ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFFF6B6B)),
+                  ),
+                ],
+                if (_offer != null && _phase == _Phase.polling) ...[
+                  const SizedBox(height: 18),
+                  const LinearProgressIndicator(),
+                ],
+                if (_phase == _Phase.error) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      if (_offer != null && _errorMessage == '開啟驗證頁失敗')
+                        FilledButton.icon(
+                          onPressed: _retryLaunch,
+                          icon: const Icon(Icons.open_in_new),
+                          label: const Text('重新開啟驗證頁'),
+                        ),
+                      if (_offer != null)
+                        OutlinedButton.icon(
+                          onPressed: _checkAgain,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('重新檢查'),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: _restart,
+                        icon: const Icon(Icons.restart_alt),
+                        label: const Text('重新開始'),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
         ),

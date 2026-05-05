@@ -6,6 +6,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('panel starts TW provider flow and launches authorization URL', (
+    tester,
+  ) async {
+    final client = FakeTwIssuerClient(offer: twOfferFixture());
+    final launcher = FakeExternalUrlLauncher();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TwProviderCredentialPanel(
+            holderDid: 'did:plc:abcdefghijklmnop',
+            vcIssuerClient: client,
+            urlLauncher: launcher,
+            walletRepository: InMemoryWalletRepository(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'alice@example.com');
+    await tester.tap(find.text('開始驗證'));
+    await tester.pump();
+
+    expect(client.startedWithDid, 'did:plc:abcdefghijklmnop');
+    expect(client.startedWithEmail, 'alice@example.com');
+    expect(launcher.opened.single.toString(), contains('state-1'));
+    expect(find.text('等待 provider 驗證完成'), findsOneWidget);
+  });
+
   testWidgets('starts TW provider flow and launches authorization URL', (
     tester,
   ) async {
