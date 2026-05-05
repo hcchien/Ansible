@@ -42,10 +42,7 @@ void main() {
       final client = VcIssuerClient(
         baseUrl: 'http://issuer.local',
         client: MockClient((_) async {
-          return http.Response(
-            jsonEncode({'hint': 'Check your inbox'}),
-            200,
-          );
+          return http.Response(jsonEncode({'hint': 'Check your inbox'}), 200);
         }),
       );
 
@@ -63,10 +60,7 @@ void main() {
       final client = VcIssuerClient(
         baseUrl: 'http://issuer.local',
         client: MockClient((_) async {
-          return http.Response(
-            jsonEncode({'error': 'rate_limited'}),
-            429,
-          );
+          return http.Response(jsonEncode({'error': 'rate_limited'}), 429);
         }),
       );
 
@@ -85,49 +79,48 @@ void main() {
   });
 
   group('VcIssuerClient.issueCredential', () {
-    test('posts did, email, and otp to /api/v1/vc/issue and returns vc map',
-        () async {
-      final vcFixture = <String, dynamic>{
-        'id': 'urn:uuid:issued-vc',
-        'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-        'issuer': 'did:web:issuer.trisaura.io',
-      };
+    test(
+      'posts did, email, and otp to /api/v1/vc/issue and returns vc map',
+      () async {
+        final vcFixture = <String, dynamic>{
+          'id': 'urn:uuid:issued-vc',
+          'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
+          'issuer': 'did:web:issuer.trisaura.io',
+        };
 
-      final client = VcIssuerClient(
-        baseUrl: 'http://issuer.local',
-        client: MockClient((request) async {
-          expect(request.method, 'POST');
-          expect(
-            request.url.toString(),
-            'http://issuer.local/api/v1/vc/issue',
-          );
-          final body = jsonDecode(request.body) as Map<String, dynamic>;
-          expect(body['did'], 'did:key:z6MkTest');
-          expect(body['email'], 'user@example.com');
-          expect(body['otp'], '123456');
+        final client = VcIssuerClient(
+          baseUrl: 'http://issuer.local',
+          client: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(
+              request.url.toString(),
+              'http://issuer.local/api/v1/vc/issue',
+            );
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body['did'], 'did:key:z6MkTest');
+            expect(body['email'], 'user@example.com');
+            expect(body['otp'], '123456');
 
-          return http.Response(jsonEncode({'vc': vcFixture}), 200);
-        }),
-      );
+            return http.Response(jsonEncode({'vc': vcFixture}), 200);
+          }),
+        );
 
-      final vc = await client.issueCredential(
-        did: 'did:key:z6MkTest',
-        email: 'user@example.com',
-        otp: '123456',
-      );
+        final vc = await client.issueCredential(
+          did: 'did:key:z6MkTest',
+          email: 'user@example.com',
+          otp: '123456',
+        );
 
-      expect(vc['id'], 'urn:uuid:issued-vc');
-      expect(vc['issuer'], 'did:web:issuer.trisaura.io');
-    });
+        expect(vc['id'], 'urn:uuid:issued-vc');
+        expect(vc['issuer'], 'did:web:issuer.trisaura.io');
+      },
+    );
 
     test('throws VcIssuerException on invalid OTP', () async {
       final client = VcIssuerClient(
         baseUrl: 'http://issuer.local',
         client: MockClient((_) async {
-          return http.Response(
-            jsonEncode({'error': 'invalid_otp'}),
-            422,
-          );
+          return http.Response(jsonEncode({'error': 'invalid_otp'}), 422);
         }),
       );
 
@@ -149,10 +142,7 @@ void main() {
       final client = VcIssuerClient(
         baseUrl: 'http://issuer.local/',
         client: MockClient((request) async {
-          expect(
-            request.url.toString(),
-            'http://issuer.local/api/v1/vc/issue',
-          );
+          expect(request.url.toString(), 'http://issuer.local/api/v1/vc/issue');
           return http.Response(jsonEncode({'vc': <String, dynamic>{}}), 200);
         }),
       );
@@ -165,5 +155,85 @@ void main() {
 
       expect(vc, isA<Map<String, dynamic>>());
     });
+  });
+
+  group('VcIssuerClient TW provider flow', () {
+    test(
+      'startTwProviderFlow posts did and email to /api/v1/vc/tw/start',
+      () async {
+        final client = VcIssuerClient(
+          baseUrl: 'http://issuer.test',
+          client: MockClient((request) async {
+            expect(request.url.path, '/api/v1/vc/tw/start');
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body['did'], 'did:plc:abcdefghijklmnop');
+            expect(body['email'], 'alice@example.com');
+            return http.Response(
+              jsonEncode({
+                'offer_id': 'offer-1',
+                'state': 'state-1',
+                'authorization_url':
+                    'https://provider.example/authorize?state=state-1',
+                'expires_at': '2026-05-05T12:05:00Z',
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }),
+        );
+
+        final offer = await client.startTwProviderFlow(
+          did: 'did:plc:abcdefghijklmnop',
+          email: 'alice@example.com',
+        );
+
+        expect(offer.offerId, 'offer-1');
+        expect(offer.authorizationUrl.toString(), contains('state-1'));
+      },
+    );
+
+    test('getTwProviderStatus gets /api/v1/vc/tw/status/{offerId}', () async {
+      final client = VcIssuerClient(
+        baseUrl: 'http://issuer.test',
+        client: MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(request.url.path, '/api/v1/vc/tw/status/offer-1');
+          return http.Response(jsonEncode({'status': 'verified'}), 200);
+        }),
+      );
+
+      final status = await client.getTwProviderStatus('offer-1');
+
+      expect(status.status, 'verified');
+      expect(status.isVerified, isTrue);
+    });
+
+    test(
+      'issueTwProviderCredential posts offer id to /api/v1/vc/tw/issue',
+      () async {
+        final client = VcIssuerClient(
+          baseUrl: 'http://issuer.test',
+          client: MockClient((request) async {
+            expect(request.url.path, '/api/v1/vc/tw/issue');
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body['offer_id'], 'offer-1');
+            return http.Response(
+              jsonEncode({
+                'vc': {'id': 'vc-1'},
+              }),
+              200,
+            );
+          }),
+        );
+
+        final vc = await client.issueTwProviderCredential(
+          did: 'did:plc:abcdefghijklmnop',
+          email: 'alice@example.com',
+          offerId: 'offer-1',
+        );
+
+        expect(vc['id'], 'vc-1');
+      },
+    );
   });
 }

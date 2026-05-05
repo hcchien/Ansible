@@ -29,6 +29,36 @@ class VcIssuanceChallenge {
   bool get isMockOtp => otp != null;
 }
 
+class TwProviderOffer {
+  final String offerId;
+  final String state;
+  final Uri authorizationUrl;
+  final DateTime expiresAt;
+
+  const TwProviderOffer({
+    required this.offerId,
+    required this.state,
+    required this.authorizationUrl,
+    required this.expiresAt,
+  });
+
+  factory TwProviderOffer.fromJson(Map<String, dynamic> json) =>
+      TwProviderOffer(
+        offerId: json['offer_id'] as String,
+        state: json['state'] as String,
+        authorizationUrl: Uri.parse(json['authorization_url'] as String),
+        expiresAt: DateTime.parse(json['expires_at'] as String),
+      );
+}
+
+class TwProviderStatus {
+  final String status;
+
+  const TwProviderStatus({required this.status});
+
+  bool get isVerified => status == 'verified';
+}
+
 class VcIssuerException implements Exception {
   final int statusCode;
   final String error;
@@ -51,13 +81,13 @@ class VcIssuerClient {
     http.Client? client,
     this.timeout = const Duration(seconds: 15),
   }) : _baseUri = Uri.parse(
-          baseUrl ??
-              const String.fromEnvironment(
-                'ANSIBLE_ISSUER_BASE_URL',
-                defaultValue: 'http://localhost:4002',
-              ),
-        ),
-        _client = client ?? http.Client();
+         baseUrl ??
+             const String.fromEnvironment(
+               'ANSIBLE_ISSUER_BASE_URL',
+               defaultValue: 'http://localhost:4002',
+             ),
+       ),
+       _client = client ?? http.Client();
 
   /// POST /api/v1/vc/request
   ///
@@ -92,6 +122,35 @@ class VcIssuerClient {
     return body['vc'] as Map<String, dynamic>;
   }
 
+  Future<TwProviderOffer> startTwProviderFlow({
+    required String did,
+    required String email,
+  }) async {
+    final body = await _postJson('/api/v1/vc/tw/start', {
+      'did': did,
+      'email': email,
+    });
+    return TwProviderOffer.fromJson(body);
+  }
+
+  Future<TwProviderStatus> getTwProviderStatus(String offerId) async {
+    final body = await _getJson('/api/v1/vc/tw/status/$offerId');
+    return TwProviderStatus(status: body['status'] as String? ?? 'unknown');
+  }
+
+  Future<Map<String, dynamic>> issueTwProviderCredential({
+    required String did,
+    required String email,
+    required String offerId,
+  }) async {
+    final body = await _postJson('/api/v1/vc/tw/issue', {
+      'did': did,
+      'email': email,
+      'offer_id': offerId,
+    });
+    return body['vc'] as Map<String, dynamic>;
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _postJson(
@@ -103,6 +162,24 @@ class VcIssuerClient {
           _endpoint(path),
           headers: const {'content-type': 'application/json'},
           body: jsonEncode(body),
+        )
+        .timeout(timeout);
+
+    final decoded = _decodeObject(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw VcIssuerException(
+        statusCode: response.statusCode,
+        error: (decoded['error'] as String?) ?? 'unknown_error',
+      );
+    }
+    return decoded;
+  }
+
+  Future<Map<String, dynamic>> _getJson(String path) async {
+    final response = await _client
+        .get(
+          _endpoint(path),
+          headers: const {'content-type': 'application/json'},
         )
         .timeout(timeout);
 
