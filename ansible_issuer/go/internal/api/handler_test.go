@@ -85,6 +85,55 @@ func getOTP(t *testing.T, h *api.Handler) string {
 	return code
 }
 
+func TestHealthzReturnsOK(t *testing.T) {
+	h := newTestHandler(t)
+	w := call(h, http.MethodGet, "/healthz", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
+	}
+	if bodyJSON(t, w)["status"] != "ok" {
+		t.Fatalf("unexpected body: %v", bodyJSON(t, w))
+	}
+}
+
+func TestReadyzReportsUnconfiguredTWProvider(t *testing.T) {
+	h := newTestHandler(t)
+	w := call(h, http.MethodGet, "/readyz", nil)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body)
+	}
+	body := bodyJSON(t, w)
+	if body["tw_provider"] != "unconfigured" {
+		t.Fatalf("unexpected body: %v", body)
+	}
+}
+
+func TestReadyzReportsConfiguredTWProvider(t *testing.T) {
+	h := newTestHandler(t)
+	h.ConfigureTWProvider(api.TWProviderConfig{
+		SessionStore: provider.NewMemorySessionStore(time.Now),
+		Verifier: provider.NewContractProofVerifier(provider.ContractProofConfig{
+			SharedSecret: "provider-secret",
+			Audience:     "trisaura-issuer",
+			Now:          time.Now,
+		}),
+		BaseAuthURL: "https://provider.example/authorize",
+		TTL:         5 * time.Minute,
+	})
+
+	w := call(h, http.MethodGet, "/readyz", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
+	}
+	body := bodyJSON(t, w)
+	if body["tw_provider"] != "configured" {
+		t.Fatalf("unexpected body: %v", body)
+	}
+	if body["authorization_url"] != nil || body["session_store_path"] != nil {
+		t.Fatalf("readiness leaked config details: %v", body)
+	}
+}
+
 func TestRequest_MockModeReturnsOTP(t *testing.T) {
 	h := newTestHandler(t)
 	w := call(h, http.MethodPost, "/api/v1/vc/request", map[string]any{

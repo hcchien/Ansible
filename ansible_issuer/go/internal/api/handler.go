@@ -63,6 +63,8 @@ func NewHandler(
 
 // Register mounts all VC endpoints on mux.
 func (h *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /healthz", h.healthz)
+	mux.HandleFunc("GET /readyz", h.readyz)
 	mux.HandleFunc("POST /api/v1/vc/request", h.request)
 	mux.HandleFunc("POST /api/v1/vc/issue", h.issue)
 	mux.HandleFunc("GET /api/v1/vc/status/{id}", h.status)
@@ -83,6 +85,24 @@ func (h *Handler) ConfigureTWProvider(config TWProviderConfig) {
 	if h.now == nil {
 		h.now = time.Now
 	}
+}
+
+func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+func (h *Handler) readyz(w http.ResponseWriter, r *http.Request) {
+	if h.twStore == nil || h.twVerifier == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"status":      "not_ready",
+			"tw_provider": "unconfigured",
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":      "ready",
+		"tw_provider": "configured",
+	})
 }
 
 // POST /api/v1/vc/request — issue OTP for email verification.
