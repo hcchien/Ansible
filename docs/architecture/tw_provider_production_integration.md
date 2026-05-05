@@ -64,3 +64,10 @@ Do not log or store these values:
 Application UI, wallet storage, relay sync, and VC payloads must never persist
 raw provider assertions or government identity fields. Only the issuer-side
 subject commitment may be stored after callback verification.
+
+## External Sandbox Gate
+
+CI may run without partner credentials. In that case the external provider test
+must skip with the missing environment variable names. When credentials are
+present, the sandbox test must execute a partner-approved callback fixture and
+must fail until that fixture is implemented.
