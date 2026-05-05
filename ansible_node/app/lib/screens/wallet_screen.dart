@@ -41,7 +41,10 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _openAddCredential() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TwProviderCredentialScreen(holderDid: widget.holderDid),
+        builder: (_) => TwProviderCredentialScreen(
+          holderDid: widget.holderDid,
+          walletRepository: widget.repository,
+        ),
       ),
     );
     await _reload();

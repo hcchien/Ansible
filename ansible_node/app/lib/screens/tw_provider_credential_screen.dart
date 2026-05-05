@@ -1,10 +1,14 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:ansible_store/ansible_store.dart';
+import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
 
-enum _Phase { idle, starting, polling, error }
+enum _Phase { idle, starting, polling, issuing, done, error }
 
 class TwProviderCredentialScreen extends StatefulWidget {
   const TwProviderCredentialScreen({
@@ -35,20 +39,25 @@ class _TwProviderCredentialScreenState
 
   late final VcIssuerClient _vcIssuerClient;
   late final ExternalUrlLauncher _urlLauncher;
+  late final WalletRepository _walletRepository;
 
   _Phase _phase = _Phase.idle;
   String? _errorMessage;
   TwProviderOffer? _offer;
+  Timer? _pollTimer;
+  DateTime? _pollStartedAt;
 
   @override
   void initState() {
     super.initState();
     _vcIssuerClient = widget.vcIssuerClient ?? VcIssuerClient();
     _urlLauncher = widget.urlLauncher ?? const UrlLauncherExternalUrlLauncher();
+    _walletRepository = widget.walletRepository ?? InMemoryWalletRepository();
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _emailController.dispose();
     super.dispose();
   }
@@ -85,6 +94,7 @@ class _TwProviderCredentialScreenState
         _offer = offer;
         _phase = _Phase.polling;
       });
+      _beginPolling();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -92,6 +102,85 @@ class _TwProviderCredentialScreenState
         _errorMessage = _formatError(error);
       });
     }
+  }
+
+  void _beginPolling() {
+    _pollTimer?.cancel();
+    _pollStartedAt = DateTime.now();
+    _pollOnce();
+    _pollTimer = Timer.periodic(widget.pollInterval, (_) => _pollOnce());
+  }
+
+  Future<void> _pollOnce() async {
+    final offer = _offer;
+    if (offer == null || _phase != _Phase.polling) return;
+
+    final startedAt = _pollStartedAt;
+    if (startedAt != null &&
+        DateTime.now().difference(startedAt) >= widget.pollTimeout) {
+      _pollTimer?.cancel();
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.error;
+        _errorMessage = '尚未收到驗證結果';
+      });
+      return;
+    }
+
+    try {
+      final status = await _vcIssuerClient.getTwProviderStatus(offer.offerId);
+      if (!status.isVerified) return;
+      await _issueAndStore(offer.offerId);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.error;
+        _errorMessage = _formatError(error);
+      });
+    }
+  }
+
+  Future<void> _issueAndStore(String offerId) async {
+    _pollTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _phase = _Phase.issuing;
+      _errorMessage = null;
+    });
+
+    final vcJson = await _vcIssuerClient.issueTwProviderCredential(
+      did: widget.holderDid,
+      email: _emailController.text.trim(),
+      offerId: offerId,
+    );
+    final vc = VerifiableCredential.fromJson(vcJson);
+    final now = DateTime.now().toUtc();
+    final validFrom = DateTime.parse(vc.issuanceDate).toUtc();
+    final validUntil = vc.expirationDate == null
+        ? validFrom.add(const Duration(days: 90))
+        : DateTime.parse(vc.expirationDate!).toUtc();
+
+    await _walletRepository.saveCredential(
+      metadata: WalletCredential(
+        credentialId: vc.id,
+        issuerDid: vc.issuer,
+        holderDid: vc.holderDid ?? widget.holderDid,
+        credentialType: vc.type.contains('TrisAuraHumanityCredential')
+            ? 'TrisAuraHumanityCredential'
+            : vc.type.last,
+        status: WalletCredentialStatus.active,
+        validFrom: validFrom,
+        validUntil: validUntil,
+        displayName: 'Verified Human',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      encryptedPayload: jsonEncode(vc.toJson()),
+      encryptionVersion: 'plain-json-v1',
+    );
+
+    if (!mounted) return;
+    setState(() => _phase = _Phase.done);
   }
 
   String _formatError(Object error) {
@@ -202,6 +291,10 @@ class _TwProviderCredentialScreenState
         return 'TW 身份驗證';
       case _Phase.polling:
         return '等待 provider 驗證完成';
+      case _Phase.issuing:
+        return '正在發行憑證';
+      case _Phase.done:
+        return '憑證已加入 Wallet';
       case _Phase.error:
         return '驗證流程暫停';
     }
@@ -215,6 +308,10 @@ class _TwProviderCredentialScreenState
         return '正在建立驗證工作階段。';
       case _Phase.polling:
         return '完成瀏覽器中的驗證後，請回到 App 等候憑證發行。';
+      case _Phase.issuing:
+        return 'Issuer 已確認驗證結果，正在建立你的 humanity credential。';
+      case _Phase.done:
+        return '你可以回到 Wallet 查看憑證狀態。';
       case _Phase.error:
         return '你可以稍後重試，或重新開始驗證流程。';
     }
