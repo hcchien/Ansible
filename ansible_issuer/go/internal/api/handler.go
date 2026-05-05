@@ -41,6 +41,7 @@ type TWProviderConfig struct {
 	Verifier     provider.ProofVerifier
 	BaseAuthURL  string
 	TTL          time.Duration
+	Retention    time.Duration
 }
 
 func NewHandler(

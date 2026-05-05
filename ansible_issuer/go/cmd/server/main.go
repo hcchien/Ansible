@@ -138,6 +138,10 @@ func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWPr
 	if err != nil {
 		return api.TWProviderConfig{}, fmt.Errorf("TW provider session store init: %w", err)
 	}
+	retention := time.Duration(envInt("TW_PROVIDER_RETENTION_SECONDS", 86400)) * time.Second
+	if err := store.CleanupExpired(retention); err != nil {
+		return api.TWProviderConfig{}, fmt.Errorf("TW provider session cleanup: %w", err)
+	}
 	verifier, err := provider.NewProofVerifierAdapter(provider.VerifierAdapterConfig{
 		Mode:                   provider.VerifierAdapterMode(adapterMode),
 		SharedSecret:           sharedSecret,
@@ -155,6 +159,7 @@ func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWPr
 		Verifier:     verifier,
 		BaseAuthURL:  authURL,
 		TTL:          time.Duration(envInt("TW_PROVIDER_SESSION_TTL_SECONDS", 300)) * time.Second,
+		Retention:    retention,
 	}, nil
 }
 
