@@ -124,6 +124,21 @@ func (s *FileSessionStore) GetVerifiedSession(offerID string) (VerifiedSession, 
 	return s.getVerifiedSessionLocked(offerID)
 }
 
+func (s *FileSessionStore) GetAuthSessionByOfferID(offerID string) (AuthSession, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, session := range s.data.AuthSessions {
+		if session.OfferID == offerID {
+			if !session.ExpiresAt.After(s.now()) {
+				return AuthSession{}, ErrExpiredSessionState
+			}
+			return session, nil
+		}
+	}
+	return AuthSession{}, ErrStateNotFound
+}
+
 func (s *FileSessionStore) ConsumeVerifiedSession(offerID string) (VerifiedSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
