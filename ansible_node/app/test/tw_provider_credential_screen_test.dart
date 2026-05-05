@@ -78,6 +78,119 @@ void main() {
     );
     expect(find.text('憑證已加入 Wallet'), findsOneWidget);
   });
+
+  testWidgets('launch failure keeps offer and shows retry actions', (
+    tester,
+  ) async {
+    final launcher = FakeExternalUrlLauncher(shouldOpen: false);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TwProviderCredentialScreen(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          vcIssuerClient: FakeTwIssuerClient(offer: twOfferFixture()),
+          urlLauncher: launcher,
+          walletRepository: InMemoryWalletRepository(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'alice@example.com');
+    await tester.tap(find.text('開始驗證'));
+    await tester.pump();
+
+    expect(find.text('開啟驗證頁失敗'), findsOneWidget);
+    expect(find.text('重新開啟驗證頁'), findsOneWidget);
+    expect(find.text('重新檢查'), findsOneWidget);
+  });
+
+  testWidgets('poll timeout shows check again and start over actions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TwProviderCredentialScreen(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          vcIssuerClient: FakeTwIssuerClient(
+            offer: twOfferFixture(),
+            statuses: ['pending', 'pending', 'pending'],
+          ),
+          urlLauncher: FakeExternalUrlLauncher(),
+          walletRepository: InMemoryWalletRepository(),
+          pollInterval: const Duration(milliseconds: 10),
+          pollTimeout: const Duration(milliseconds: 20),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'alice@example.com');
+    await tester.tap(find.text('開始驗證'));
+    await tester.pump(const Duration(milliseconds: 40));
+
+    expect(find.text('尚未收到驗證結果'), findsOneWidget);
+    expect(find.text('重新檢查'), findsOneWidget);
+    expect(find.text('重新開始'), findsOneWidget);
+  });
+
+  testWidgets('provider_not_verified keeps waiting state', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TwProviderCredentialScreen(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          vcIssuerClient: FakeTwIssuerClient(
+            offer: twOfferFixture(),
+            statuses: ['verified'],
+            issueError: const VcIssuerException(
+              statusCode: 409,
+              error: 'provider_not_verified',
+            ),
+          ),
+          urlLauncher: FakeExternalUrlLauncher(),
+          walletRepository: InMemoryWalletRepository(),
+          pollInterval: const Duration(milliseconds: 10),
+          pollTimeout: const Duration(seconds: 1),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'alice@example.com');
+    await tester.tap(find.text('開始驗證'));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('等待 provider 驗證完成'), findsOneWidget);
+  });
+
+  testWidgets(
+    'security errors require restart without echoing sensitive fields',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TwProviderCredentialScreen(
+            holderDid: 'did:plc:abcdefghijklmnop',
+            vcIssuerClient: FakeTwIssuerClient(
+              offer: twOfferFixture(),
+              statuses: ['verified'],
+              issueError: const VcIssuerException(
+                statusCode: 401,
+                error: 'invalid_provider_proof',
+              ),
+            ),
+            urlLauncher: FakeExternalUrlLauncher(),
+            walletRepository: InMemoryWalletRepository(),
+            pollInterval: const Duration(milliseconds: 10),
+            pollTimeout: const Duration(seconds: 1),
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField), 'alice@example.com');
+      await tester.tap(find.text('開始驗證'));
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('驗證安全檢查失敗，請重新開始。'), findsOneWidget);
+      expect(find.text('重新開始'), findsOneWidget);
+      expect(find.textContaining('SIGNED_ASSERTION_PAYLOAD'), findsNothing);
+    },
+  );
 }
 
 class FakeTwIssuerClient extends VcIssuerClient {
@@ -85,12 +198,14 @@ class FakeTwIssuerClient extends VcIssuerClient {
     required this.offer,
     this.statuses = const [],
     Map<String, dynamic>? vc,
+    this.issueError,
   }) : vc = vc ?? humanityVcFixture(),
        super(baseUrl: 'http://issuer.test');
 
   final TwProviderOffer offer;
   final List<String> statuses;
   final Map<String, dynamic> vc;
+  final Object? issueError;
   String? startedWithDid;
   String? startedWithEmail;
   var _statusIndex = 0;
@@ -122,17 +237,22 @@ class FakeTwIssuerClient extends VcIssuerClient {
     required String email,
     required String offerId,
   }) async {
+    final error = issueError;
+    if (error != null) throw error;
     return vc;
   }
 }
 
 class FakeExternalUrlLauncher implements ExternalUrlLauncher {
+  FakeExternalUrlLauncher({this.shouldOpen = true});
+
+  final bool shouldOpen;
   final opened = <Uri>[];
 
   @override
   Future<bool> open(Uri url) async {
     opened.add(url);
-    return true;
+    return shouldOpen;
   }
 }
 

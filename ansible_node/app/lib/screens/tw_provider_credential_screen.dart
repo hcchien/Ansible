@@ -45,7 +45,7 @@ class _TwProviderCredentialScreenState
   String? _errorMessage;
   TwProviderOffer? _offer;
   Timer? _pollTimer;
-  DateTime? _pollStartedAt;
+  Timer? _pollTimeoutTimer;
 
   @override
   void initState() {
@@ -58,6 +58,7 @@ class _TwProviderCredentialScreenState
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _pollTimeoutTimer?.cancel();
     _emailController.dispose();
     super.dispose();
   }
@@ -106,26 +107,22 @@ class _TwProviderCredentialScreenState
 
   void _beginPolling() {
     _pollTimer?.cancel();
-    _pollStartedAt = DateTime.now();
+    _pollTimeoutTimer?.cancel();
     _pollOnce();
     _pollTimer = Timer.periodic(widget.pollInterval, (_) => _pollOnce());
-  }
-
-  Future<void> _pollOnce() async {
-    final offer = _offer;
-    if (offer == null || _phase != _Phase.polling) return;
-
-    final startedAt = _pollStartedAt;
-    if (startedAt != null &&
-        DateTime.now().difference(startedAt) >= widget.pollTimeout) {
+    _pollTimeoutTimer = Timer(widget.pollTimeout, () {
       _pollTimer?.cancel();
       if (!mounted) return;
       setState(() {
         _phase = _Phase.error;
         _errorMessage = '尚未收到驗證結果';
       });
-      return;
-    }
+    });
+  }
+
+  Future<void> _pollOnce() async {
+    final offer = _offer;
+    if (offer == null || _phase != _Phase.polling) return;
 
     try {
       final status = await _vcIssuerClient.getTwProviderStatus(offer.offerId);
@@ -133,6 +130,14 @@ class _TwProviderCredentialScreenState
       await _issueAndStore(offer.offerId);
     } catch (error) {
       if (!mounted) return;
+      if (error is VcIssuerException &&
+          error.error == 'provider_not_verified') {
+        setState(() {
+          _phase = _Phase.polling;
+          _errorMessage = null;
+        });
+        return;
+      }
       setState(() {
         _phase = _Phase.error;
         _errorMessage = _formatError(error);
@@ -142,6 +147,7 @@ class _TwProviderCredentialScreenState
 
   Future<void> _issueAndStore(String offerId) async {
     _pollTimer?.cancel();
+    _pollTimeoutTimer?.cancel();
     if (!mounted) return;
     setState(() {
       _phase = _Phase.issuing;
@@ -190,6 +196,12 @@ class _TwProviderCredentialScreenState
           return 'Email 格式無效，請重新輸入。';
         case 'invalid_did':
           return 'DID 格式無效，請重新啟動。';
+        case 'callback_replay':
+        case 'state_mismatch':
+        case 'invalid_provider_proof':
+          return '驗證安全檢查失敗，請重新開始。';
+        case 'provider_not_verified':
+          return '等待 provider 驗證完成';
       }
       if (error.statusCode >= 500) {
         return '發行伺服器暫時無法使用，請稍後再試。';
@@ -203,6 +215,59 @@ class _TwProviderCredentialScreenState
   }
 
   bool get _isBusy => _phase == _Phase.starting;
+
+  Future<void> _retryLaunch() async {
+    final offer = _offer;
+    if (offer == null) return;
+    final opened = await _urlLauncher.open(offer.authorizationUrl);
+    if (!mounted) return;
+    if (opened) {
+      setState(() {
+        _phase = _Phase.polling;
+        _errorMessage = null;
+      });
+      _beginPolling();
+    } else {
+      setState(() => _errorMessage = '開啟驗證頁失敗');
+    }
+  }
+
+  Future<void> _checkAgain() async {
+    final offer = _offer;
+    if (offer == null) return;
+    setState(() {
+      _phase = _Phase.polling;
+      _errorMessage = null;
+    });
+    try {
+      final status = await _vcIssuerClient.getTwProviderStatus(offer.offerId);
+      if (status.isVerified) {
+        await _issueAndStore(offer.offerId);
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.error;
+        _errorMessage = '尚未收到驗證結果';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.error;
+        _errorMessage = _formatError(error);
+      });
+    }
+  }
+
+  void _restart() {
+    _pollTimer?.cancel();
+    _pollTimeoutTimer?.cancel();
+    setState(() {
+      _phase = _Phase.idle;
+      _offer = null;
+      _errorMessage = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -274,6 +339,33 @@ class _TwProviderCredentialScreenState
                   if (_offer != null && _phase == _Phase.polling) ...[
                     const SizedBox(height: 18),
                     const LinearProgressIndicator(),
+                  ],
+                  if (_phase == _Phase.error) ...[
+                    const SizedBox(height: 16),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        if (_offer != null && _errorMessage == '開啟驗證頁失敗')
+                          FilledButton.icon(
+                            onPressed: _retryLaunch,
+                            icon: const Icon(Icons.open_in_new),
+                            label: const Text('重新開啟驗證頁'),
+                          ),
+                        if (_offer != null)
+                          OutlinedButton.icon(
+                            onPressed: _checkAgain,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('重新檢查'),
+                          ),
+                        OutlinedButton.icon(
+                          onPressed: _restart,
+                          icon: const Icon(Icons.restart_alt),
+                          label: const Text('重新開始'),
+                        ),
+                      ],
+                    ),
                   ],
                 ],
               ),

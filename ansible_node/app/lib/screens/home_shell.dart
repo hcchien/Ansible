@@ -933,7 +933,7 @@ class _TopBar extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => WalletScreen(
-                    holderDid: widget.did,
+                    holderDid: did,
                     repository: DriftWalletRepository(db),
                   ),
                 ),
