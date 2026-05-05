@@ -1,4 +1,6 @@
 // Sync primitives — cursor-based Op stream (transport-agnostic)
+export 'src/follow/follow_result.dart';
+export 'src/follow/follow_service.dart';
 export 'src/sync/delta_response.dart';
 export 'src/sync/sync_result.dart';
 

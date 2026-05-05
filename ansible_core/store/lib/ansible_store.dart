@@ -35,6 +35,7 @@ export 'src/crdt/crdt_op_builder.dart';
 
 // === In-memory implementations (testing / offline) ===
 export 'src/repositories/in_memory/in_memory_board_repository.dart';
+export 'src/repositories/in_memory/in_memory_board_sync_config_repository.dart';
 export 'src/repositories/in_memory/in_memory_thread_repository.dart';
 export 'src/repositories/in_memory/in_memory_post_repository.dart';
 export 'src/repositories/in_memory/in_memory_reaction_repository.dart';

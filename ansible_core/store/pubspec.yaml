@@ -6,8 +6,6 @@ environment:
   sdk: ^3.10.0
 
 dependencies:
-  ansible_domain:
-    path: ../domain
   drift: ^2.4.0
   sqlite3: ^2.9.4
   uuid: ^4.0.0

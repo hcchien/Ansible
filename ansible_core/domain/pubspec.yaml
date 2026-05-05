@@ -1,10 +1,15 @@
 name: ansible_domain
 description: Ansible core business logic (boards, threads, posts, sync, VC, policy)
+publish_to: none
 version: 0.1.0
 environment:
   sdk: ^3.10.0
 
 dependencies:
+  ansible_ap:
+    path: ../ap
+  ansible_store:
+    path: ../store
   meta: ^1.7.0
   http: ^1.1.0
   equatable: ^2.0.5
