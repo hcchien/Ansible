@@ -22,13 +22,24 @@ Issuer -> App: {vc}
 
 - `TW_PROVIDER_SESSION_STORE_PATH`: JSON session store path. Required outside mock mode.
 - `TW_PROVIDER_AUTH_URL`: provider authorization endpoint. Required outside mock mode.
-- `TW_PROVIDER_SHARED_SECRET`: HMAC contract verifier secret for CI and staging-only provider-shape tests. Required outside mock mode until the production adapter is wired.
-- `TW_PROVIDER_AUDIENCE`: expected provider audience binding. Required outside mock mode.
+- `TW_PROVIDER_ADAPTER_MODE`: verifier adapter mode. Required outside mock mode. Supported values:
+  - `contract`: HMAC contract verifier for CI and staging-only provider-shape tests.
+  - `production`: fail-closed placeholder until approved TW provider API and trust-anchor validation are implemented.
+- `TW_PROVIDER_SHARED_SECRET`: HMAC contract verifier secret. Required when `TW_PROVIDER_ADAPTER_MODE=contract`.
+- `TW_PROVIDER_AUDIENCE`: expected provider audience binding. Required when `TW_PROVIDER_ADAPTER_MODE=contract`.
+- `TW_PROVIDER_PRODUCTION_TRUST_ANCHORS`: comma-separated production trust-anchor identifiers. Required when `TW_PROVIDER_ADAPTER_MODE=production`, but not sufficient to enable production issuance yet.
+- `TW_PROVIDER_PRODUCTION_AUDIENCE`: production provider audience binding. Required when `TW_PROVIDER_ADAPTER_MODE=production`, but not sufficient to enable production issuance yet.
 - `TW_PROVIDER_SESSION_TTL_SECONDS`: auth session TTL. Defaults to `300`.
 
 When `MOCK_MODE=true`, the server wires a file-backed store in `os.TempDir()`,
-uses a dev-only contract verifier secret, and exposes the TW flow for local app
-tests.
+uses `TW_PROVIDER_ADAPTER_MODE=contract` with a dev-only verifier secret, and
+exposes the TW flow for local app tests.
+
+Production deployments must set `TW_PROVIDER_ADAPTER_MODE=production`. Until the
+approved provider API, callback fixture, and trust-anchor verification are
+implemented, this mode intentionally fails closed during issuer startup. The
+server must not silently fall back to the HMAC contract verifier in production
+mode.
 
 ## Callback Field Mapping
 

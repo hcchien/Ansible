@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -79,20 +80,33 @@ func (disabledIdentityProvider) ProviderSubject(string, string) (string, error) 
 	return "", errors.New("legacy identity provider disabled")
 }
 
+var errTWProviderConfigMissing = errors.New("TW provider config missing")
+
 func configureTWProvider(handler *api.Handler, mockMode bool) {
+	config, err := buildTWProviderConfigFromEnv(mockMode, time.Now)
+	if err != nil {
+		log.Fatal(err)
+	}
+	handler.ConfigureTWProvider(config)
+	log.Printf("TW provider flow enabled with auth URL %s", config.BaseAuthURL)
+}
+
+func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWProviderConfig, error) {
 	required := []string{
 		"TW_PROVIDER_SESSION_STORE_PATH",
 		"TW_PROVIDER_AUTH_URL",
-		"TW_PROVIDER_SHARED_SECRET",
-		"TW_PROVIDER_AUDIENCE",
+	}
+	if !mockMode {
+		required = append(required, "TW_PROVIDER_ADAPTER_MODE")
 	}
 	missing := missingEnv(required)
 	if len(missing) > 0 && !mockMode {
-		log.Fatalf("TW provider config missing: %s", strings.Join(missing, ", "))
+		return api.TWProviderConfig{}, fmt.Errorf("%w: %s", errTWProviderConfigMissing, strings.Join(missing, ", "))
 	}
 
 	storePath := os.Getenv("TW_PROVIDER_SESSION_STORE_PATH")
 	authURL := os.Getenv("TW_PROVIDER_AUTH_URL")
+	adapterMode := os.Getenv("TW_PROVIDER_ADAPTER_MODE")
 	sharedSecret := os.Getenv("TW_PROVIDER_SHARED_SECRET")
 	audience := os.Getenv("TW_PROVIDER_AUDIENCE")
 	if mockMode {
@@ -102,6 +116,9 @@ func configureTWProvider(handler *api.Handler, mockMode bool) {
 		if authURL == "" {
 			authURL = "https://provider.example/authorize"
 		}
+		if adapterMode == "" {
+			adapterMode = string(provider.VerifierAdapterContract)
+		}
 		if sharedSecret == "" {
 			sharedSecret = "dev-only-tw-provider-secret"
 		}
@@ -110,21 +127,35 @@ func configureTWProvider(handler *api.Handler, mockMode bool) {
 		}
 	}
 
-	store, err := provider.NewFileSessionStore(storePath, time.Now)
-	if err != nil {
-		log.Fatalf("TW provider session store init: %v", err)
+	if adapterMode == string(provider.VerifierAdapterContract) && !mockMode {
+		contractMissing := missingEnv([]string{"TW_PROVIDER_SHARED_SECRET", "TW_PROVIDER_AUDIENCE"})
+		if len(contractMissing) > 0 {
+			return api.TWProviderConfig{}, fmt.Errorf("%w: %s", errTWProviderConfigMissing, strings.Join(contractMissing, ", "))
+		}
 	}
-	handler.ConfigureTWProvider(api.TWProviderConfig{
-		SessionStore: store,
-		Verifier: provider.NewContractProofVerifier(provider.ContractProofConfig{
-			SharedSecret: sharedSecret,
-			Audience:     audience,
-			Now:          time.Now,
-		}),
-		BaseAuthURL: authURL,
-		TTL:         time.Duration(envInt("TW_PROVIDER_SESSION_TTL_SECONDS", 300)) * time.Second,
+
+	store, err := provider.NewFileSessionStore(storePath, now)
+	if err != nil {
+		return api.TWProviderConfig{}, fmt.Errorf("TW provider session store init: %w", err)
+	}
+	verifier, err := provider.NewProofVerifierAdapter(provider.VerifierAdapterConfig{
+		Mode:                   provider.VerifierAdapterMode(adapterMode),
+		SharedSecret:           sharedSecret,
+		Audience:               audience,
+		Now:                    now,
+		ProductionTrustAnchors: splitCSV(os.Getenv("TW_PROVIDER_PRODUCTION_TRUST_ANCHORS")),
+		ProductionAudience:     os.Getenv("TW_PROVIDER_PRODUCTION_AUDIENCE"),
 	})
-	log.Printf("TW provider flow enabled with auth URL %s", authURL)
+	if err != nil {
+		return api.TWProviderConfig{}, err
+	}
+
+	return api.TWProviderConfig{
+		SessionStore: store,
+		Verifier:     verifier,
+		BaseAuthURL:  authURL,
+		TTL:          time.Duration(envInt("TW_PROVIDER_SESSION_TTL_SECONDS", 300)) * time.Second,
+	}, nil
 }
 
 func missingEnv(keys []string) []string {
@@ -135,4 +166,19 @@ func missingEnv(keys []string) []string {
 		}
 	}
 	return missing
+}
+
+func splitCSV(value string) []string {
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	var result []string
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
 }
