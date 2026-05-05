@@ -36,7 +36,12 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
 
   # Build a valid createRecord body signed with the given private key
   defp valid_create_record(did, pub_hex, priv_key) do
-    record = %{"$type" => "app.bsky.feed.post", "text" => "hello", "createdAt" => DateTime.utc_now() |> DateTime.to_iso8601()}
+    record = %{
+      "$type" => "app.bsky.feed.post",
+      "text" => "hello",
+      "createdAt" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
     record_json = Jason.encode!(record)
     sig = sign(priv_key, record_json)
     seed_did(did, pub_hex)
@@ -50,6 +55,9 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
   end
 
   setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(AnsibleRelay.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(AnsibleRelay.Repo, {:shared, self()})
+
     for mod <- [DidAccountCache, AbuseDetector, OpStore] do
       case mod.start_link([]) do
         {:ok, _} -> :ok
@@ -145,7 +153,12 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
       seed_did(did, pub_hex)
 
       make_record = fn ->
-        record = %{"$type" => "app.bsky.feed.post", "text" => "burst", "ts" => System.unique_integer()}
+        record = %{
+          "$type" => "app.bsky.feed.post",
+          "text" => "burst",
+          "ts" => System.unique_integer()
+        }
+
         record_json = Jason.encode!(record)
         sig = sign(priv_key, record_json)
 
@@ -196,7 +209,12 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
       seed_did(did2, pub2_hex)
 
       make_record = fn did, pub_hex, priv ->
-        record = %{"$type" => "app.bsky.feed.post", "text" => "x", "ts" => System.unique_integer()}
+        record = %{
+          "$type" => "app.bsky.feed.post",
+          "text" => "x",
+          "ts" => System.unique_integer()
+        }
+
         record_json = Jason.encode!(record)
         sig = sign(priv, record_json)
         seed_did(did, pub_hex)
