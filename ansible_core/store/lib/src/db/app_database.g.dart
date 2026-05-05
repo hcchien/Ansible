@@ -6569,6 +6569,2821 @@ class WalletPresentationsCompanion extends UpdateCompanion<WalletPresentation> {
   }
 }
 
+class $FollowTargetsTable extends FollowTargets
+    with TableInfo<$FollowTargetsTable, FollowTarget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FollowTargetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetTypeMeta = const VerificationMeta(
+    'targetType',
+  );
+  @override
+  late final GeneratedColumn<String> targetType = GeneratedColumn<String>(
+    'target_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _canonicalUriMeta = const VerificationMeta(
+    'canonicalUri',
+  );
+  @override
+  late final GeneratedColumn<String> canonicalUri = GeneratedColumn<String>(
+    'canonical_uri',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _handleMeta = const VerificationMeta('handle');
+  @override
+  late final GeneratedColumn<String> handle = GeneratedColumn<String>(
+    'handle',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _didMeta = const VerificationMeta('did');
+  @override
+  late final GeneratedColumn<String> did = GeneratedColumn<String>(
+    'did',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _actorUriMeta = const VerificationMeta(
+    'actorUri',
+  );
+  @override
+  late final GeneratedColumn<String> actorUri = GeneratedColumn<String>(
+    'actor_uri',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _inboxUriMeta = const VerificationMeta(
+    'inboxUri',
+  );
+  @override
+  late final GeneratedColumn<String> inboxUri = GeneratedColumn<String>(
+    'inbox_uri',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _outboxUriMeta = const VerificationMeta(
+    'outboxUri',
+  );
+  @override
+  late final GeneratedColumn<String> outboxUri = GeneratedColumn<String>(
+    'outbox_uri',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remoteNodeIdMeta = const VerificationMeta(
+    'remoteNodeId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteNodeId = GeneratedColumn<String>(
+    'remote_node_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _boardIdMeta = const VerificationMeta(
+    'boardId',
+  );
+  @override
+  late final GeneratedColumn<String> boardId = GeneratedColumn<String>(
+    'board_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _boardSlugMeta = const VerificationMeta(
+    'boardSlug',
+  );
+  @override
+  late final GeneratedColumn<String> boardSlug = GeneratedColumn<String>(
+    'board_slug',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    targetId,
+    targetType,
+    canonicalUri,
+    displayName,
+    handle,
+    did,
+    actorUri,
+    inboxUri,
+    outboxUri,
+    remoteNodeId,
+    boardId,
+    boardSlug,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'follow_targets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FollowTarget> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetIdMeta);
+    }
+    if (data.containsKey('target_type')) {
+      context.handle(
+        _targetTypeMeta,
+        targetType.isAcceptableOrUnknown(data['target_type']!, _targetTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetTypeMeta);
+    }
+    if (data.containsKey('canonical_uri')) {
+      context.handle(
+        _canonicalUriMeta,
+        canonicalUri.isAcceptableOrUnknown(
+          data['canonical_uri']!,
+          _canonicalUriMeta,
+        ),
+      );
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('handle')) {
+      context.handle(
+        _handleMeta,
+        handle.isAcceptableOrUnknown(data['handle']!, _handleMeta),
+      );
+    }
+    if (data.containsKey('did')) {
+      context.handle(
+        _didMeta,
+        did.isAcceptableOrUnknown(data['did']!, _didMeta),
+      );
+    }
+    if (data.containsKey('actor_uri')) {
+      context.handle(
+        _actorUriMeta,
+        actorUri.isAcceptableOrUnknown(data['actor_uri']!, _actorUriMeta),
+      );
+    }
+    if (data.containsKey('inbox_uri')) {
+      context.handle(
+        _inboxUriMeta,
+        inboxUri.isAcceptableOrUnknown(data['inbox_uri']!, _inboxUriMeta),
+      );
+    }
+    if (data.containsKey('outbox_uri')) {
+      context.handle(
+        _outboxUriMeta,
+        outboxUri.isAcceptableOrUnknown(data['outbox_uri']!, _outboxUriMeta),
+      );
+    }
+    if (data.containsKey('remote_node_id')) {
+      context.handle(
+        _remoteNodeIdMeta,
+        remoteNodeId.isAcceptableOrUnknown(
+          data['remote_node_id']!,
+          _remoteNodeIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('board_id')) {
+      context.handle(
+        _boardIdMeta,
+        boardId.isAcceptableOrUnknown(data['board_id']!, _boardIdMeta),
+      );
+    }
+    if (data.containsKey('board_slug')) {
+      context.handle(
+        _boardSlugMeta,
+        boardSlug.isAcceptableOrUnknown(data['board_slug']!, _boardSlugMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {targetId};
+  @override
+  FollowTarget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FollowTarget(
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      )!,
+      targetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_type'],
+      )!,
+      canonicalUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}canonical_uri'],
+      ),
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      handle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}handle'],
+      ),
+      did: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}did'],
+      ),
+      actorUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_uri'],
+      ),
+      inboxUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}inbox_uri'],
+      ),
+      outboxUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outbox_uri'],
+      ),
+      remoteNodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_node_id'],
+      ),
+      boardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}board_id'],
+      ),
+      boardSlug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}board_slug'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $FollowTargetsTable createAlias(String alias) {
+    return $FollowTargetsTable(attachedDatabase, alias);
+  }
+}
+
+class FollowTarget extends DataClass implements Insertable<FollowTarget> {
+  final String targetId;
+  final String targetType;
+  final String? canonicalUri;
+  final String displayName;
+  final String? handle;
+  final String? did;
+  final String? actorUri;
+  final String? inboxUri;
+  final String? outboxUri;
+  final String? remoteNodeId;
+  final String? boardId;
+  final String? boardSlug;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isDeleted;
+  const FollowTarget({
+    required this.targetId,
+    required this.targetType,
+    this.canonicalUri,
+    required this.displayName,
+    this.handle,
+    this.did,
+    this.actorUri,
+    this.inboxUri,
+    this.outboxUri,
+    this.remoteNodeId,
+    this.boardId,
+    this.boardSlug,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.isDeleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['target_id'] = Variable<String>(targetId);
+    map['target_type'] = Variable<String>(targetType);
+    if (!nullToAbsent || canonicalUri != null) {
+      map['canonical_uri'] = Variable<String>(canonicalUri);
+    }
+    map['display_name'] = Variable<String>(displayName);
+    if (!nullToAbsent || handle != null) {
+      map['handle'] = Variable<String>(handle);
+    }
+    if (!nullToAbsent || did != null) {
+      map['did'] = Variable<String>(did);
+    }
+    if (!nullToAbsent || actorUri != null) {
+      map['actor_uri'] = Variable<String>(actorUri);
+    }
+    if (!nullToAbsent || inboxUri != null) {
+      map['inbox_uri'] = Variable<String>(inboxUri);
+    }
+    if (!nullToAbsent || outboxUri != null) {
+      map['outbox_uri'] = Variable<String>(outboxUri);
+    }
+    if (!nullToAbsent || remoteNodeId != null) {
+      map['remote_node_id'] = Variable<String>(remoteNodeId);
+    }
+    if (!nullToAbsent || boardId != null) {
+      map['board_id'] = Variable<String>(boardId);
+    }
+    if (!nullToAbsent || boardSlug != null) {
+      map['board_slug'] = Variable<String>(boardSlug);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    return map;
+  }
+
+  FollowTargetsCompanion toCompanion(bool nullToAbsent) {
+    return FollowTargetsCompanion(
+      targetId: Value(targetId),
+      targetType: Value(targetType),
+      canonicalUri: canonicalUri == null && nullToAbsent
+          ? const Value.absent()
+          : Value(canonicalUri),
+      displayName: Value(displayName),
+      handle: handle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(handle),
+      did: did == null && nullToAbsent ? const Value.absent() : Value(did),
+      actorUri: actorUri == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actorUri),
+      inboxUri: inboxUri == null && nullToAbsent
+          ? const Value.absent()
+          : Value(inboxUri),
+      outboxUri: outboxUri == null && nullToAbsent
+          ? const Value.absent()
+          : Value(outboxUri),
+      remoteNodeId: remoteNodeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteNodeId),
+      boardId: boardId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boardId),
+      boardSlug: boardSlug == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boardSlug),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+    );
+  }
+
+  factory FollowTarget.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FollowTarget(
+      targetId: serializer.fromJson<String>(json['targetId']),
+      targetType: serializer.fromJson<String>(json['targetType']),
+      canonicalUri: serializer.fromJson<String?>(json['canonicalUri']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      handle: serializer.fromJson<String?>(json['handle']),
+      did: serializer.fromJson<String?>(json['did']),
+      actorUri: serializer.fromJson<String?>(json['actorUri']),
+      inboxUri: serializer.fromJson<String?>(json['inboxUri']),
+      outboxUri: serializer.fromJson<String?>(json['outboxUri']),
+      remoteNodeId: serializer.fromJson<String?>(json['remoteNodeId']),
+      boardId: serializer.fromJson<String?>(json['boardId']),
+      boardSlug: serializer.fromJson<String?>(json['boardSlug']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'targetId': serializer.toJson<String>(targetId),
+      'targetType': serializer.toJson<String>(targetType),
+      'canonicalUri': serializer.toJson<String?>(canonicalUri),
+      'displayName': serializer.toJson<String>(displayName),
+      'handle': serializer.toJson<String?>(handle),
+      'did': serializer.toJson<String?>(did),
+      'actorUri': serializer.toJson<String?>(actorUri),
+      'inboxUri': serializer.toJson<String?>(inboxUri),
+      'outboxUri': serializer.toJson<String?>(outboxUri),
+      'remoteNodeId': serializer.toJson<String?>(remoteNodeId),
+      'boardId': serializer.toJson<String?>(boardId),
+      'boardSlug': serializer.toJson<String?>(boardSlug),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+    };
+  }
+
+  FollowTarget copyWith({
+    String? targetId,
+    String? targetType,
+    Value<String?> canonicalUri = const Value.absent(),
+    String? displayName,
+    Value<String?> handle = const Value.absent(),
+    Value<String?> did = const Value.absent(),
+    Value<String?> actorUri = const Value.absent(),
+    Value<String?> inboxUri = const Value.absent(),
+    Value<String?> outboxUri = const Value.absent(),
+    Value<String?> remoteNodeId = const Value.absent(),
+    Value<String?> boardId = const Value.absent(),
+    Value<String?> boardSlug = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isDeleted,
+  }) => FollowTarget(
+    targetId: targetId ?? this.targetId,
+    targetType: targetType ?? this.targetType,
+    canonicalUri: canonicalUri.present ? canonicalUri.value : this.canonicalUri,
+    displayName: displayName ?? this.displayName,
+    handle: handle.present ? handle.value : this.handle,
+    did: did.present ? did.value : this.did,
+    actorUri: actorUri.present ? actorUri.value : this.actorUri,
+    inboxUri: inboxUri.present ? inboxUri.value : this.inboxUri,
+    outboxUri: outboxUri.present ? outboxUri.value : this.outboxUri,
+    remoteNodeId: remoteNodeId.present ? remoteNodeId.value : this.remoteNodeId,
+    boardId: boardId.present ? boardId.value : this.boardId,
+    boardSlug: boardSlug.present ? boardSlug.value : this.boardSlug,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+  );
+  FollowTarget copyWithCompanion(FollowTargetsCompanion data) {
+    return FollowTarget(
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      targetType: data.targetType.present
+          ? data.targetType.value
+          : this.targetType,
+      canonicalUri: data.canonicalUri.present
+          ? data.canonicalUri.value
+          : this.canonicalUri,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      handle: data.handle.present ? data.handle.value : this.handle,
+      did: data.did.present ? data.did.value : this.did,
+      actorUri: data.actorUri.present ? data.actorUri.value : this.actorUri,
+      inboxUri: data.inboxUri.present ? data.inboxUri.value : this.inboxUri,
+      outboxUri: data.outboxUri.present ? data.outboxUri.value : this.outboxUri,
+      remoteNodeId: data.remoteNodeId.present
+          ? data.remoteNodeId.value
+          : this.remoteNodeId,
+      boardId: data.boardId.present ? data.boardId.value : this.boardId,
+      boardSlug: data.boardSlug.present ? data.boardSlug.value : this.boardSlug,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FollowTarget(')
+          ..write('targetId: $targetId, ')
+          ..write('targetType: $targetType, ')
+          ..write('canonicalUri: $canonicalUri, ')
+          ..write('displayName: $displayName, ')
+          ..write('handle: $handle, ')
+          ..write('did: $did, ')
+          ..write('actorUri: $actorUri, ')
+          ..write('inboxUri: $inboxUri, ')
+          ..write('outboxUri: $outboxUri, ')
+          ..write('remoteNodeId: $remoteNodeId, ')
+          ..write('boardId: $boardId, ')
+          ..write('boardSlug: $boardSlug, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    targetId,
+    targetType,
+    canonicalUri,
+    displayName,
+    handle,
+    did,
+    actorUri,
+    inboxUri,
+    outboxUri,
+    remoteNodeId,
+    boardId,
+    boardSlug,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FollowTarget &&
+          other.targetId == this.targetId &&
+          other.targetType == this.targetType &&
+          other.canonicalUri == this.canonicalUri &&
+          other.displayName == this.displayName &&
+          other.handle == this.handle &&
+          other.did == this.did &&
+          other.actorUri == this.actorUri &&
+          other.inboxUri == this.inboxUri &&
+          other.outboxUri == this.outboxUri &&
+          other.remoteNodeId == this.remoteNodeId &&
+          other.boardId == this.boardId &&
+          other.boardSlug == this.boardSlug &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
+}
+
+class FollowTargetsCompanion extends UpdateCompanion<FollowTarget> {
+  final Value<String> targetId;
+  final Value<String> targetType;
+  final Value<String?> canonicalUri;
+  final Value<String> displayName;
+  final Value<String?> handle;
+  final Value<String?> did;
+  final Value<String?> actorUri;
+  final Value<String?> inboxUri;
+  final Value<String?> outboxUri;
+  final Value<String?> remoteNodeId;
+  final Value<String?> boardId;
+  final Value<String?> boardSlug;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<int> rowid;
+  const FollowTargetsCompanion({
+    this.targetId = const Value.absent(),
+    this.targetType = const Value.absent(),
+    this.canonicalUri = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.handle = const Value.absent(),
+    this.did = const Value.absent(),
+    this.actorUri = const Value.absent(),
+    this.inboxUri = const Value.absent(),
+    this.outboxUri = const Value.absent(),
+    this.remoteNodeId = const Value.absent(),
+    this.boardId = const Value.absent(),
+    this.boardSlug = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FollowTargetsCompanion.insert({
+    required String targetId,
+    required String targetType,
+    this.canonicalUri = const Value.absent(),
+    required String displayName,
+    this.handle = const Value.absent(),
+    this.did = const Value.absent(),
+    this.actorUri = const Value.absent(),
+    this.inboxUri = const Value.absent(),
+    this.outboxUri = const Value.absent(),
+    this.remoteNodeId = const Value.absent(),
+    this.boardId = const Value.absent(),
+    this.boardSlug = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : targetId = Value(targetId),
+       targetType = Value(targetType),
+       displayName = Value(displayName);
+  static Insertable<FollowTarget> custom({
+    Expression<String>? targetId,
+    Expression<String>? targetType,
+    Expression<String>? canonicalUri,
+    Expression<String>? displayName,
+    Expression<String>? handle,
+    Expression<String>? did,
+    Expression<String>? actorUri,
+    Expression<String>? inboxUri,
+    Expression<String>? outboxUri,
+    Expression<String>? remoteNodeId,
+    Expression<String>? boardId,
+    Expression<String>? boardSlug,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (targetId != null) 'target_id': targetId,
+      if (targetType != null) 'target_type': targetType,
+      if (canonicalUri != null) 'canonical_uri': canonicalUri,
+      if (displayName != null) 'display_name': displayName,
+      if (handle != null) 'handle': handle,
+      if (did != null) 'did': did,
+      if (actorUri != null) 'actor_uri': actorUri,
+      if (inboxUri != null) 'inbox_uri': inboxUri,
+      if (outboxUri != null) 'outbox_uri': outboxUri,
+      if (remoteNodeId != null) 'remote_node_id': remoteNodeId,
+      if (boardId != null) 'board_id': boardId,
+      if (boardSlug != null) 'board_slug': boardSlug,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FollowTargetsCompanion copyWith({
+    Value<String>? targetId,
+    Value<String>? targetType,
+    Value<String?>? canonicalUri,
+    Value<String>? displayName,
+    Value<String?>? handle,
+    Value<String?>? did,
+    Value<String?>? actorUri,
+    Value<String?>? inboxUri,
+    Value<String?>? outboxUri,
+    Value<String?>? remoteNodeId,
+    Value<String?>? boardId,
+    Value<String?>? boardSlug,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+    Value<int>? rowid,
+  }) {
+    return FollowTargetsCompanion(
+      targetId: targetId ?? this.targetId,
+      targetType: targetType ?? this.targetType,
+      canonicalUri: canonicalUri ?? this.canonicalUri,
+      displayName: displayName ?? this.displayName,
+      handle: handle ?? this.handle,
+      did: did ?? this.did,
+      actorUri: actorUri ?? this.actorUri,
+      inboxUri: inboxUri ?? this.inboxUri,
+      outboxUri: outboxUri ?? this.outboxUri,
+      remoteNodeId: remoteNodeId ?? this.remoteNodeId,
+      boardId: boardId ?? this.boardId,
+      boardSlug: boardSlug ?? this.boardSlug,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (targetType.present) {
+      map['target_type'] = Variable<String>(targetType.value);
+    }
+    if (canonicalUri.present) {
+      map['canonical_uri'] = Variable<String>(canonicalUri.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (handle.present) {
+      map['handle'] = Variable<String>(handle.value);
+    }
+    if (did.present) {
+      map['did'] = Variable<String>(did.value);
+    }
+    if (actorUri.present) {
+      map['actor_uri'] = Variable<String>(actorUri.value);
+    }
+    if (inboxUri.present) {
+      map['inbox_uri'] = Variable<String>(inboxUri.value);
+    }
+    if (outboxUri.present) {
+      map['outbox_uri'] = Variable<String>(outboxUri.value);
+    }
+    if (remoteNodeId.present) {
+      map['remote_node_id'] = Variable<String>(remoteNodeId.value);
+    }
+    if (boardId.present) {
+      map['board_id'] = Variable<String>(boardId.value);
+    }
+    if (boardSlug.present) {
+      map['board_slug'] = Variable<String>(boardSlug.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FollowTargetsCompanion(')
+          ..write('targetId: $targetId, ')
+          ..write('targetType: $targetType, ')
+          ..write('canonicalUri: $canonicalUri, ')
+          ..write('displayName: $displayName, ')
+          ..write('handle: $handle, ')
+          ..write('did: $did, ')
+          ..write('actorUri: $actorUri, ')
+          ..write('inboxUri: $inboxUri, ')
+          ..write('outboxUri: $outboxUri, ')
+          ..write('remoteNodeId: $remoteNodeId, ')
+          ..write('boardId: $boardId, ')
+          ..write('boardSlug: $boardSlug, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FollowEdgesTable extends FollowEdges
+    with TableInfo<$FollowEdgesTable, FollowEdge> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FollowEdgesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _followIdMeta = const VerificationMeta(
+    'followId',
+  );
+  @override
+  late final GeneratedColumn<String> followId = GeneratedColumn<String>(
+    'follow_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _followerDidMeta = const VerificationMeta(
+    'followerDid',
+  );
+  @override
+  late final GeneratedColumn<String> followerDid = GeneratedColumn<String>(
+    'follower_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES follow_targets (target_id)',
+    ),
+  );
+  static const VerificationMeta _targetTypeMeta = const VerificationMeta(
+    'targetType',
+  );
+  @override
+  late final GeneratedColumn<String> targetType = GeneratedColumn<String>(
+    'target_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _directionMeta = const VerificationMeta(
+    'direction',
+  );
+  @override
+  late final GeneratedColumn<String> direction = GeneratedColumn<String>(
+    'direction',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _visibilityMeta = const VerificationMeta(
+    'visibility',
+  );
+  @override
+  late final GeneratedColumn<String> visibility = GeneratedColumn<String>(
+    'visibility',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteActivityIdMeta = const VerificationMeta(
+    'remoteActivityId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteActivityId = GeneratedColumn<String>(
+    'remote_activity_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _acceptedAtMeta = const VerificationMeta(
+    'acceptedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> acceptedAt = GeneratedColumn<DateTime>(
+    'accepted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cancelledAtMeta = const VerificationMeta(
+    'cancelledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cancelledAt = GeneratedColumn<DateTime>(
+    'cancelled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    followId,
+    followerDid,
+    targetId,
+    targetType,
+    direction,
+    status,
+    visibility,
+    remoteActivityId,
+    lastError,
+    createdAt,
+    updatedAt,
+    acceptedAt,
+    cancelledAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'follow_edges';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FollowEdge> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('follow_id')) {
+      context.handle(
+        _followIdMeta,
+        followId.isAcceptableOrUnknown(data['follow_id']!, _followIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_followIdMeta);
+    }
+    if (data.containsKey('follower_did')) {
+      context.handle(
+        _followerDidMeta,
+        followerDid.isAcceptableOrUnknown(
+          data['follower_did']!,
+          _followerDidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_followerDidMeta);
+    }
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetIdMeta);
+    }
+    if (data.containsKey('target_type')) {
+      context.handle(
+        _targetTypeMeta,
+        targetType.isAcceptableOrUnknown(data['target_type']!, _targetTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetTypeMeta);
+    }
+    if (data.containsKey('direction')) {
+      context.handle(
+        _directionMeta,
+        direction.isAcceptableOrUnknown(data['direction']!, _directionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_directionMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('visibility')) {
+      context.handle(
+        _visibilityMeta,
+        visibility.isAcceptableOrUnknown(data['visibility']!, _visibilityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_visibilityMeta);
+    }
+    if (data.containsKey('remote_activity_id')) {
+      context.handle(
+        _remoteActivityIdMeta,
+        remoteActivityId.isAcceptableOrUnknown(
+          data['remote_activity_id']!,
+          _remoteActivityIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('accepted_at')) {
+      context.handle(
+        _acceptedAtMeta,
+        acceptedAt.isAcceptableOrUnknown(data['accepted_at']!, _acceptedAtMeta),
+      );
+    }
+    if (data.containsKey('cancelled_at')) {
+      context.handle(
+        _cancelledAtMeta,
+        cancelledAt.isAcceptableOrUnknown(
+          data['cancelled_at']!,
+          _cancelledAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {followId};
+  @override
+  FollowEdge map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FollowEdge(
+      followId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}follow_id'],
+      )!,
+      followerDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}follower_did'],
+      )!,
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      )!,
+      targetType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_type'],
+      )!,
+      direction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}direction'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      visibility: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}visibility'],
+      )!,
+      remoteActivityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_activity_id'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      acceptedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}accepted_at'],
+      ),
+      cancelledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cancelled_at'],
+      ),
+    );
+  }
+
+  @override
+  $FollowEdgesTable createAlias(String alias) {
+    return $FollowEdgesTable(attachedDatabase, alias);
+  }
+}
+
+class FollowEdge extends DataClass implements Insertable<FollowEdge> {
+  final String followId;
+  final String followerDid;
+  final String targetId;
+  final String targetType;
+  final String direction;
+  final String status;
+  final String visibility;
+  final String? remoteActivityId;
+  final String? lastError;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? acceptedAt;
+  final DateTime? cancelledAt;
+  const FollowEdge({
+    required this.followId,
+    required this.followerDid,
+    required this.targetId,
+    required this.targetType,
+    required this.direction,
+    required this.status,
+    required this.visibility,
+    this.remoteActivityId,
+    this.lastError,
+    required this.createdAt,
+    required this.updatedAt,
+    this.acceptedAt,
+    this.cancelledAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['follow_id'] = Variable<String>(followId);
+    map['follower_did'] = Variable<String>(followerDid);
+    map['target_id'] = Variable<String>(targetId);
+    map['target_type'] = Variable<String>(targetType);
+    map['direction'] = Variable<String>(direction);
+    map['status'] = Variable<String>(status);
+    map['visibility'] = Variable<String>(visibility);
+    if (!nullToAbsent || remoteActivityId != null) {
+      map['remote_activity_id'] = Variable<String>(remoteActivityId);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || acceptedAt != null) {
+      map['accepted_at'] = Variable<DateTime>(acceptedAt);
+    }
+    if (!nullToAbsent || cancelledAt != null) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt);
+    }
+    return map;
+  }
+
+  FollowEdgesCompanion toCompanion(bool nullToAbsent) {
+    return FollowEdgesCompanion(
+      followId: Value(followId),
+      followerDid: Value(followerDid),
+      targetId: Value(targetId),
+      targetType: Value(targetType),
+      direction: Value(direction),
+      status: Value(status),
+      visibility: Value(visibility),
+      remoteActivityId: remoteActivityId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteActivityId),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      acceptedAt: acceptedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(acceptedAt),
+      cancelledAt: cancelledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledAt),
+    );
+  }
+
+  factory FollowEdge.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FollowEdge(
+      followId: serializer.fromJson<String>(json['followId']),
+      followerDid: serializer.fromJson<String>(json['followerDid']),
+      targetId: serializer.fromJson<String>(json['targetId']),
+      targetType: serializer.fromJson<String>(json['targetType']),
+      direction: serializer.fromJson<String>(json['direction']),
+      status: serializer.fromJson<String>(json['status']),
+      visibility: serializer.fromJson<String>(json['visibility']),
+      remoteActivityId: serializer.fromJson<String?>(json['remoteActivityId']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      acceptedAt: serializer.fromJson<DateTime?>(json['acceptedAt']),
+      cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'followId': serializer.toJson<String>(followId),
+      'followerDid': serializer.toJson<String>(followerDid),
+      'targetId': serializer.toJson<String>(targetId),
+      'targetType': serializer.toJson<String>(targetType),
+      'direction': serializer.toJson<String>(direction),
+      'status': serializer.toJson<String>(status),
+      'visibility': serializer.toJson<String>(visibility),
+      'remoteActivityId': serializer.toJson<String?>(remoteActivityId),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'acceptedAt': serializer.toJson<DateTime?>(acceptedAt),
+      'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
+    };
+  }
+
+  FollowEdge copyWith({
+    String? followId,
+    String? followerDid,
+    String? targetId,
+    String? targetType,
+    String? direction,
+    String? status,
+    String? visibility,
+    Value<String?> remoteActivityId = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> acceptedAt = const Value.absent(),
+    Value<DateTime?> cancelledAt = const Value.absent(),
+  }) => FollowEdge(
+    followId: followId ?? this.followId,
+    followerDid: followerDid ?? this.followerDid,
+    targetId: targetId ?? this.targetId,
+    targetType: targetType ?? this.targetType,
+    direction: direction ?? this.direction,
+    status: status ?? this.status,
+    visibility: visibility ?? this.visibility,
+    remoteActivityId: remoteActivityId.present
+        ? remoteActivityId.value
+        : this.remoteActivityId,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    acceptedAt: acceptedAt.present ? acceptedAt.value : this.acceptedAt,
+    cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
+  );
+  FollowEdge copyWithCompanion(FollowEdgesCompanion data) {
+    return FollowEdge(
+      followId: data.followId.present ? data.followId.value : this.followId,
+      followerDid: data.followerDid.present
+          ? data.followerDid.value
+          : this.followerDid,
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      targetType: data.targetType.present
+          ? data.targetType.value
+          : this.targetType,
+      direction: data.direction.present ? data.direction.value : this.direction,
+      status: data.status.present ? data.status.value : this.status,
+      visibility: data.visibility.present
+          ? data.visibility.value
+          : this.visibility,
+      remoteActivityId: data.remoteActivityId.present
+          ? data.remoteActivityId.value
+          : this.remoteActivityId,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      acceptedAt: data.acceptedAt.present
+          ? data.acceptedAt.value
+          : this.acceptedAt,
+      cancelledAt: data.cancelledAt.present
+          ? data.cancelledAt.value
+          : this.cancelledAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FollowEdge(')
+          ..write('followId: $followId, ')
+          ..write('followerDid: $followerDid, ')
+          ..write('targetId: $targetId, ')
+          ..write('targetType: $targetType, ')
+          ..write('direction: $direction, ')
+          ..write('status: $status, ')
+          ..write('visibility: $visibility, ')
+          ..write('remoteActivityId: $remoteActivityId, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('acceptedAt: $acceptedAt, ')
+          ..write('cancelledAt: $cancelledAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    followId,
+    followerDid,
+    targetId,
+    targetType,
+    direction,
+    status,
+    visibility,
+    remoteActivityId,
+    lastError,
+    createdAt,
+    updatedAt,
+    acceptedAt,
+    cancelledAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FollowEdge &&
+          other.followId == this.followId &&
+          other.followerDid == this.followerDid &&
+          other.targetId == this.targetId &&
+          other.targetType == this.targetType &&
+          other.direction == this.direction &&
+          other.status == this.status &&
+          other.visibility == this.visibility &&
+          other.remoteActivityId == this.remoteActivityId &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.acceptedAt == this.acceptedAt &&
+          other.cancelledAt == this.cancelledAt);
+}
+
+class FollowEdgesCompanion extends UpdateCompanion<FollowEdge> {
+  final Value<String> followId;
+  final Value<String> followerDid;
+  final Value<String> targetId;
+  final Value<String> targetType;
+  final Value<String> direction;
+  final Value<String> status;
+  final Value<String> visibility;
+  final Value<String?> remoteActivityId;
+  final Value<String?> lastError;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> acceptedAt;
+  final Value<DateTime?> cancelledAt;
+  final Value<int> rowid;
+  const FollowEdgesCompanion({
+    this.followId = const Value.absent(),
+    this.followerDid = const Value.absent(),
+    this.targetId = const Value.absent(),
+    this.targetType = const Value.absent(),
+    this.direction = const Value.absent(),
+    this.status = const Value.absent(),
+    this.visibility = const Value.absent(),
+    this.remoteActivityId = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.acceptedAt = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FollowEdgesCompanion.insert({
+    required String followId,
+    required String followerDid,
+    required String targetId,
+    required String targetType,
+    required String direction,
+    required String status,
+    required String visibility,
+    this.remoteActivityId = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.acceptedAt = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : followId = Value(followId),
+       followerDid = Value(followerDid),
+       targetId = Value(targetId),
+       targetType = Value(targetType),
+       direction = Value(direction),
+       status = Value(status),
+       visibility = Value(visibility);
+  static Insertable<FollowEdge> custom({
+    Expression<String>? followId,
+    Expression<String>? followerDid,
+    Expression<String>? targetId,
+    Expression<String>? targetType,
+    Expression<String>? direction,
+    Expression<String>? status,
+    Expression<String>? visibility,
+    Expression<String>? remoteActivityId,
+    Expression<String>? lastError,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? acceptedAt,
+    Expression<DateTime>? cancelledAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (followId != null) 'follow_id': followId,
+      if (followerDid != null) 'follower_did': followerDid,
+      if (targetId != null) 'target_id': targetId,
+      if (targetType != null) 'target_type': targetType,
+      if (direction != null) 'direction': direction,
+      if (status != null) 'status': status,
+      if (visibility != null) 'visibility': visibility,
+      if (remoteActivityId != null) 'remote_activity_id': remoteActivityId,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (acceptedAt != null) 'accepted_at': acceptedAt,
+      if (cancelledAt != null) 'cancelled_at': cancelledAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FollowEdgesCompanion copyWith({
+    Value<String>? followId,
+    Value<String>? followerDid,
+    Value<String>? targetId,
+    Value<String>? targetType,
+    Value<String>? direction,
+    Value<String>? status,
+    Value<String>? visibility,
+    Value<String?>? remoteActivityId,
+    Value<String?>? lastError,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? acceptedAt,
+    Value<DateTime?>? cancelledAt,
+    Value<int>? rowid,
+  }) {
+    return FollowEdgesCompanion(
+      followId: followId ?? this.followId,
+      followerDid: followerDid ?? this.followerDid,
+      targetId: targetId ?? this.targetId,
+      targetType: targetType ?? this.targetType,
+      direction: direction ?? this.direction,
+      status: status ?? this.status,
+      visibility: visibility ?? this.visibility,
+      remoteActivityId: remoteActivityId ?? this.remoteActivityId,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (followId.present) {
+      map['follow_id'] = Variable<String>(followId.value);
+    }
+    if (followerDid.present) {
+      map['follower_did'] = Variable<String>(followerDid.value);
+    }
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (targetType.present) {
+      map['target_type'] = Variable<String>(targetType.value);
+    }
+    if (direction.present) {
+      map['direction'] = Variable<String>(direction.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (visibility.present) {
+      map['visibility'] = Variable<String>(visibility.value);
+    }
+    if (remoteActivityId.present) {
+      map['remote_activity_id'] = Variable<String>(remoteActivityId.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (acceptedAt.present) {
+      map['accepted_at'] = Variable<DateTime>(acceptedAt.value);
+    }
+    if (cancelledAt.present) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FollowEdgesCompanion(')
+          ..write('followId: $followId, ')
+          ..write('followerDid: $followerDid, ')
+          ..write('targetId: $targetId, ')
+          ..write('targetType: $targetType, ')
+          ..write('direction: $direction, ')
+          ..write('status: $status, ')
+          ..write('visibility: $visibility, ')
+          ..write('remoteActivityId: $remoteActivityId, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('acceptedAt: $acceptedAt, ')
+          ..write('cancelledAt: $cancelledAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FollowActivityEventsTable extends FollowActivityEvents
+    with TableInfo<$FollowActivityEventsTable, FollowActivityEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FollowActivityEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _eventIdMeta = const VerificationMeta(
+    'eventId',
+  );
+  @override
+  late final GeneratedColumn<String> eventId = GeneratedColumn<String>(
+    'event_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _followIdMeta = const VerificationMeta(
+    'followId',
+  );
+  @override
+  late final GeneratedColumn<String> followId = GeneratedColumn<String>(
+    'follow_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES follow_edges (follow_id)',
+    ),
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actorDidMeta = const VerificationMeta(
+    'actorDid',
+  );
+  @override
+  late final GeneratedColumn<String> actorDid = GeneratedColumn<String>(
+    'actor_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _activityIdMeta = const VerificationMeta(
+    'activityId',
+  );
+  @override
+  late final GeneratedColumn<String> activityId = GeneratedColumn<String>(
+    'activity_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _messageMeta = const VerificationMeta(
+    'message',
+  );
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+    'message',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    eventId,
+    followId,
+    eventType,
+    actorDid,
+    activityId,
+    message,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'follow_activity_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FollowActivityEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('event_id')) {
+      context.handle(
+        _eventIdMeta,
+        eventId.isAcceptableOrUnknown(data['event_id']!, _eventIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('follow_id')) {
+      context.handle(
+        _followIdMeta,
+        followId.isAcceptableOrUnknown(data['follow_id']!, _followIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_followIdMeta);
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventTypeMeta);
+    }
+    if (data.containsKey('actor_did')) {
+      context.handle(
+        _actorDidMeta,
+        actorDid.isAcceptableOrUnknown(data['actor_did']!, _actorDidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actorDidMeta);
+    }
+    if (data.containsKey('activity_id')) {
+      context.handle(
+        _activityIdMeta,
+        activityId.isAcceptableOrUnknown(data['activity_id']!, _activityIdMeta),
+      );
+    }
+    if (data.containsKey('message')) {
+      context.handle(
+        _messageMeta,
+        message.isAcceptableOrUnknown(data['message']!, _messageMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {eventId};
+  @override
+  FollowActivityEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FollowActivityEvent(
+      eventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_id'],
+      )!,
+      followId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}follow_id'],
+      )!,
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      )!,
+      actorDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_did'],
+      )!,
+      activityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}activity_id'],
+      ),
+      message: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}message'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FollowActivityEventsTable createAlias(String alias) {
+    return $FollowActivityEventsTable(attachedDatabase, alias);
+  }
+}
+
+class FollowActivityEvent extends DataClass
+    implements Insertable<FollowActivityEvent> {
+  final String eventId;
+  final String followId;
+  final String eventType;
+  final String actorDid;
+  final String? activityId;
+  final String? message;
+  final DateTime createdAt;
+  const FollowActivityEvent({
+    required this.eventId,
+    required this.followId,
+    required this.eventType,
+    required this.actorDid,
+    this.activityId,
+    this.message,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['event_id'] = Variable<String>(eventId);
+    map['follow_id'] = Variable<String>(followId);
+    map['event_type'] = Variable<String>(eventType);
+    map['actor_did'] = Variable<String>(actorDid);
+    if (!nullToAbsent || activityId != null) {
+      map['activity_id'] = Variable<String>(activityId);
+    }
+    if (!nullToAbsent || message != null) {
+      map['message'] = Variable<String>(message);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  FollowActivityEventsCompanion toCompanion(bool nullToAbsent) {
+    return FollowActivityEventsCompanion(
+      eventId: Value(eventId),
+      followId: Value(followId),
+      eventType: Value(eventType),
+      actorDid: Value(actorDid),
+      activityId: activityId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(activityId),
+      message: message == null && nullToAbsent
+          ? const Value.absent()
+          : Value(message),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory FollowActivityEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FollowActivityEvent(
+      eventId: serializer.fromJson<String>(json['eventId']),
+      followId: serializer.fromJson<String>(json['followId']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      actorDid: serializer.fromJson<String>(json['actorDid']),
+      activityId: serializer.fromJson<String?>(json['activityId']),
+      message: serializer.fromJson<String?>(json['message']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'eventId': serializer.toJson<String>(eventId),
+      'followId': serializer.toJson<String>(followId),
+      'eventType': serializer.toJson<String>(eventType),
+      'actorDid': serializer.toJson<String>(actorDid),
+      'activityId': serializer.toJson<String?>(activityId),
+      'message': serializer.toJson<String?>(message),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  FollowActivityEvent copyWith({
+    String? eventId,
+    String? followId,
+    String? eventType,
+    String? actorDid,
+    Value<String?> activityId = const Value.absent(),
+    Value<String?> message = const Value.absent(),
+    DateTime? createdAt,
+  }) => FollowActivityEvent(
+    eventId: eventId ?? this.eventId,
+    followId: followId ?? this.followId,
+    eventType: eventType ?? this.eventType,
+    actorDid: actorDid ?? this.actorDid,
+    activityId: activityId.present ? activityId.value : this.activityId,
+    message: message.present ? message.value : this.message,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  FollowActivityEvent copyWithCompanion(FollowActivityEventsCompanion data) {
+    return FollowActivityEvent(
+      eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      followId: data.followId.present ? data.followId.value : this.followId,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      actorDid: data.actorDid.present ? data.actorDid.value : this.actorDid,
+      activityId: data.activityId.present
+          ? data.activityId.value
+          : this.activityId,
+      message: data.message.present ? data.message.value : this.message,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FollowActivityEvent(')
+          ..write('eventId: $eventId, ')
+          ..write('followId: $followId, ')
+          ..write('eventType: $eventType, ')
+          ..write('actorDid: $actorDid, ')
+          ..write('activityId: $activityId, ')
+          ..write('message: $message, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    eventId,
+    followId,
+    eventType,
+    actorDid,
+    activityId,
+    message,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FollowActivityEvent &&
+          other.eventId == this.eventId &&
+          other.followId == this.followId &&
+          other.eventType == this.eventType &&
+          other.actorDid == this.actorDid &&
+          other.activityId == this.activityId &&
+          other.message == this.message &&
+          other.createdAt == this.createdAt);
+}
+
+class FollowActivityEventsCompanion
+    extends UpdateCompanion<FollowActivityEvent> {
+  final Value<String> eventId;
+  final Value<String> followId;
+  final Value<String> eventType;
+  final Value<String> actorDid;
+  final Value<String?> activityId;
+  final Value<String?> message;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const FollowActivityEventsCompanion({
+    this.eventId = const Value.absent(),
+    this.followId = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.actorDid = const Value.absent(),
+    this.activityId = const Value.absent(),
+    this.message = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FollowActivityEventsCompanion.insert({
+    required String eventId,
+    required String followId,
+    required String eventType,
+    required String actorDid,
+    this.activityId = const Value.absent(),
+    this.message = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : eventId = Value(eventId),
+       followId = Value(followId),
+       eventType = Value(eventType),
+       actorDid = Value(actorDid);
+  static Insertable<FollowActivityEvent> custom({
+    Expression<String>? eventId,
+    Expression<String>? followId,
+    Expression<String>? eventType,
+    Expression<String>? actorDid,
+    Expression<String>? activityId,
+    Expression<String>? message,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (eventId != null) 'event_id': eventId,
+      if (followId != null) 'follow_id': followId,
+      if (eventType != null) 'event_type': eventType,
+      if (actorDid != null) 'actor_did': actorDid,
+      if (activityId != null) 'activity_id': activityId,
+      if (message != null) 'message': message,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FollowActivityEventsCompanion copyWith({
+    Value<String>? eventId,
+    Value<String>? followId,
+    Value<String>? eventType,
+    Value<String>? actorDid,
+    Value<String?>? activityId,
+    Value<String?>? message,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return FollowActivityEventsCompanion(
+      eventId: eventId ?? this.eventId,
+      followId: followId ?? this.followId,
+      eventType: eventType ?? this.eventType,
+      actorDid: actorDid ?? this.actorDid,
+      activityId: activityId ?? this.activityId,
+      message: message ?? this.message,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (eventId.present) {
+      map['event_id'] = Variable<String>(eventId.value);
+    }
+    if (followId.present) {
+      map['follow_id'] = Variable<String>(followId.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (actorDid.present) {
+      map['actor_did'] = Variable<String>(actorDid.value);
+    }
+    if (activityId.present) {
+      map['activity_id'] = Variable<String>(activityId.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FollowActivityEventsCompanion(')
+          ..write('eventId: $eventId, ')
+          ..write('followId: $followId, ')
+          ..write('eventType: $eventType, ')
+          ..write('actorDid: $actorDid, ')
+          ..write('activityId: $activityId, ')
+          ..write('message: $message, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $OutboundFollowActivitiesTable extends OutboundFollowActivities
+    with TableInfo<$OutboundFollowActivitiesTable, OutboundFollowActivity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OutboundFollowActivitiesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _outboxIdMeta = const VerificationMeta(
+    'outboxId',
+  );
+  @override
+  late final GeneratedColumn<String> outboxId = GeneratedColumn<String>(
+    'outbox_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _activityIdMeta = const VerificationMeta(
+    'activityId',
+  );
+  @override
+  late final GeneratedColumn<String> activityId = GeneratedColumn<String>(
+    'activity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _activityTypeMeta = const VerificationMeta(
+    'activityType',
+  );
+  @override
+  late final GeneratedColumn<String> activityType = GeneratedColumn<String>(
+    'activity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetInboxUriMeta = const VerificationMeta(
+    'targetInboxUri',
+  );
+  @override
+  late final GeneratedColumn<String> targetInboxUri = GeneratedColumn<String>(
+    'target_inbox_uri',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadJsonMeta = const VerificationMeta(
+    'payloadJson',
+  );
+  @override
+  late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
+    'payload_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptCountMeta = const VerificationMeta(
+    'attemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+    'attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deliveredAtMeta = const VerificationMeta(
+    'deliveredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deliveredAt = GeneratedColumn<DateTime>(
+    'delivered_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    outboxId,
+    activityId,
+    activityType,
+    targetInboxUri,
+    payloadJson,
+    status,
+    attemptCount,
+    lastError,
+    createdAt,
+    updatedAt,
+    deliveredAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'outbound_follow_activities';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OutboundFollowActivity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('outbox_id')) {
+      context.handle(
+        _outboxIdMeta,
+        outboxId.isAcceptableOrUnknown(data['outbox_id']!, _outboxIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_outboxIdMeta);
+    }
+    if (data.containsKey('activity_id')) {
+      context.handle(
+        _activityIdMeta,
+        activityId.isAcceptableOrUnknown(data['activity_id']!, _activityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_activityIdMeta);
+    }
+    if (data.containsKey('activity_type')) {
+      context.handle(
+        _activityTypeMeta,
+        activityType.isAcceptableOrUnknown(
+          data['activity_type']!,
+          _activityTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_activityTypeMeta);
+    }
+    if (data.containsKey('target_inbox_uri')) {
+      context.handle(
+        _targetInboxUriMeta,
+        targetInboxUri.isAcceptableOrUnknown(
+          data['target_inbox_uri']!,
+          _targetInboxUriMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetInboxUriMeta);
+    }
+    if (data.containsKey('payload_json')) {
+      context.handle(
+        _payloadJsonMeta,
+        payloadJson.isAcceptableOrUnknown(
+          data['payload_json']!,
+          _payloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+        _attemptCountMeta,
+        attemptCount.isAcceptableOrUnknown(
+          data['attempt_count']!,
+          _attemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('delivered_at')) {
+      context.handle(
+        _deliveredAtMeta,
+        deliveredAt.isAcceptableOrUnknown(
+          data['delivered_at']!,
+          _deliveredAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {outboxId};
+  @override
+  OutboundFollowActivity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OutboundFollowActivity(
+      outboxId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outbox_id'],
+      )!,
+      activityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}activity_id'],
+      )!,
+      activityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}activity_type'],
+      )!,
+      targetInboxUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_inbox_uri'],
+      )!,
+      payloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_json'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      attemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempt_count'],
+      )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deliveredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}delivered_at'],
+      ),
+    );
+  }
+
+  @override
+  $OutboundFollowActivitiesTable createAlias(String alias) {
+    return $OutboundFollowActivitiesTable(attachedDatabase, alias);
+  }
+}
+
+class OutboundFollowActivity extends DataClass
+    implements Insertable<OutboundFollowActivity> {
+  final String outboxId;
+  final String activityId;
+  final String activityType;
+  final String targetInboxUri;
+  final String payloadJson;
+  final String status;
+  final int attemptCount;
+  final String? lastError;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deliveredAt;
+  const OutboundFollowActivity({
+    required this.outboxId,
+    required this.activityId,
+    required this.activityType,
+    required this.targetInboxUri,
+    required this.payloadJson,
+    required this.status,
+    required this.attemptCount,
+    this.lastError,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deliveredAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['outbox_id'] = Variable<String>(outboxId);
+    map['activity_id'] = Variable<String>(activityId);
+    map['activity_type'] = Variable<String>(activityType);
+    map['target_inbox_uri'] = Variable<String>(targetInboxUri);
+    map['payload_json'] = Variable<String>(payloadJson);
+    map['status'] = Variable<String>(status);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deliveredAt != null) {
+      map['delivered_at'] = Variable<DateTime>(deliveredAt);
+    }
+    return map;
+  }
+
+  OutboundFollowActivitiesCompanion toCompanion(bool nullToAbsent) {
+    return OutboundFollowActivitiesCompanion(
+      outboxId: Value(outboxId),
+      activityId: Value(activityId),
+      activityType: Value(activityType),
+      targetInboxUri: Value(targetInboxUri),
+      payloadJson: Value(payloadJson),
+      status: Value(status),
+      attemptCount: Value(attemptCount),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deliveredAt: deliveredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveredAt),
+    );
+  }
+
+  factory OutboundFollowActivity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OutboundFollowActivity(
+      outboxId: serializer.fromJson<String>(json['outboxId']),
+      activityId: serializer.fromJson<String>(json['activityId']),
+      activityType: serializer.fromJson<String>(json['activityType']),
+      targetInboxUri: serializer.fromJson<String>(json['targetInboxUri']),
+      payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      status: serializer.fromJson<String>(json['status']),
+      attemptCount: serializer.fromJson<int>(json['attemptCount']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deliveredAt: serializer.fromJson<DateTime?>(json['deliveredAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'outboxId': serializer.toJson<String>(outboxId),
+      'activityId': serializer.toJson<String>(activityId),
+      'activityType': serializer.toJson<String>(activityType),
+      'targetInboxUri': serializer.toJson<String>(targetInboxUri),
+      'payloadJson': serializer.toJson<String>(payloadJson),
+      'status': serializer.toJson<String>(status),
+      'attemptCount': serializer.toJson<int>(attemptCount),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deliveredAt': serializer.toJson<DateTime?>(deliveredAt),
+    };
+  }
+
+  OutboundFollowActivity copyWith({
+    String? outboxId,
+    String? activityId,
+    String? activityType,
+    String? targetInboxUri,
+    String? payloadJson,
+    String? status,
+    int? attemptCount,
+    Value<String?> lastError = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deliveredAt = const Value.absent(),
+  }) => OutboundFollowActivity(
+    outboxId: outboxId ?? this.outboxId,
+    activityId: activityId ?? this.activityId,
+    activityType: activityType ?? this.activityType,
+    targetInboxUri: targetInboxUri ?? this.targetInboxUri,
+    payloadJson: payloadJson ?? this.payloadJson,
+    status: status ?? this.status,
+    attemptCount: attemptCount ?? this.attemptCount,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deliveredAt: deliveredAt.present ? deliveredAt.value : this.deliveredAt,
+  );
+  OutboundFollowActivity copyWithCompanion(
+    OutboundFollowActivitiesCompanion data,
+  ) {
+    return OutboundFollowActivity(
+      outboxId: data.outboxId.present ? data.outboxId.value : this.outboxId,
+      activityId: data.activityId.present
+          ? data.activityId.value
+          : this.activityId,
+      activityType: data.activityType.present
+          ? data.activityType.value
+          : this.activityType,
+      targetInboxUri: data.targetInboxUri.present
+          ? data.targetInboxUri.value
+          : this.targetInboxUri,
+      payloadJson: data.payloadJson.present
+          ? data.payloadJson.value
+          : this.payloadJson,
+      status: data.status.present ? data.status.value : this.status,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deliveredAt: data.deliveredAt.present
+          ? data.deliveredAt.value
+          : this.deliveredAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboundFollowActivity(')
+          ..write('outboxId: $outboxId, ')
+          ..write('activityId: $activityId, ')
+          ..write('activityType: $activityType, ')
+          ..write('targetInboxUri: $targetInboxUri, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deliveredAt: $deliveredAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    outboxId,
+    activityId,
+    activityType,
+    targetInboxUri,
+    payloadJson,
+    status,
+    attemptCount,
+    lastError,
+    createdAt,
+    updatedAt,
+    deliveredAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OutboundFollowActivity &&
+          other.outboxId == this.outboxId &&
+          other.activityId == this.activityId &&
+          other.activityType == this.activityType &&
+          other.targetInboxUri == this.targetInboxUri &&
+          other.payloadJson == this.payloadJson &&
+          other.status == this.status &&
+          other.attemptCount == this.attemptCount &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deliveredAt == this.deliveredAt);
+}
+
+class OutboundFollowActivitiesCompanion
+    extends UpdateCompanion<OutboundFollowActivity> {
+  final Value<String> outboxId;
+  final Value<String> activityId;
+  final Value<String> activityType;
+  final Value<String> targetInboxUri;
+  final Value<String> payloadJson;
+  final Value<String> status;
+  final Value<int> attemptCount;
+  final Value<String?> lastError;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deliveredAt;
+  final Value<int> rowid;
+  const OutboundFollowActivitiesCompanion({
+    this.outboxId = const Value.absent(),
+    this.activityId = const Value.absent(),
+    this.activityType = const Value.absent(),
+    this.targetInboxUri = const Value.absent(),
+    this.payloadJson = const Value.absent(),
+    this.status = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OutboundFollowActivitiesCompanion.insert({
+    required String outboxId,
+    required String activityId,
+    required String activityType,
+    required String targetInboxUri,
+    required String payloadJson,
+    required String status,
+    this.attemptCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deliveredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : outboxId = Value(outboxId),
+       activityId = Value(activityId),
+       activityType = Value(activityType),
+       targetInboxUri = Value(targetInboxUri),
+       payloadJson = Value(payloadJson),
+       status = Value(status);
+  static Insertable<OutboundFollowActivity> custom({
+    Expression<String>? outboxId,
+    Expression<String>? activityId,
+    Expression<String>? activityType,
+    Expression<String>? targetInboxUri,
+    Expression<String>? payloadJson,
+    Expression<String>? status,
+    Expression<int>? attemptCount,
+    Expression<String>? lastError,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deliveredAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (outboxId != null) 'outbox_id': outboxId,
+      if (activityId != null) 'activity_id': activityId,
+      if (activityType != null) 'activity_type': activityType,
+      if (targetInboxUri != null) 'target_inbox_uri': targetInboxUri,
+      if (payloadJson != null) 'payload_json': payloadJson,
+      if (status != null) 'status': status,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deliveredAt != null) 'delivered_at': deliveredAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OutboundFollowActivitiesCompanion copyWith({
+    Value<String>? outboxId,
+    Value<String>? activityId,
+    Value<String>? activityType,
+    Value<String>? targetInboxUri,
+    Value<String>? payloadJson,
+    Value<String>? status,
+    Value<int>? attemptCount,
+    Value<String?>? lastError,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deliveredAt,
+    Value<int>? rowid,
+  }) {
+    return OutboundFollowActivitiesCompanion(
+      outboxId: outboxId ?? this.outboxId,
+      activityId: activityId ?? this.activityId,
+      activityType: activityType ?? this.activityType,
+      targetInboxUri: targetInboxUri ?? this.targetInboxUri,
+      payloadJson: payloadJson ?? this.payloadJson,
+      status: status ?? this.status,
+      attemptCount: attemptCount ?? this.attemptCount,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (outboxId.present) {
+      map['outbox_id'] = Variable<String>(outboxId.value);
+    }
+    if (activityId.present) {
+      map['activity_id'] = Variable<String>(activityId.value);
+    }
+    if (activityType.present) {
+      map['activity_type'] = Variable<String>(activityType.value);
+    }
+    if (targetInboxUri.present) {
+      map['target_inbox_uri'] = Variable<String>(targetInboxUri.value);
+    }
+    if (payloadJson.present) {
+      map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deliveredAt.present) {
+      map['delivered_at'] = Variable<DateTime>(deliveredAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboundFollowActivitiesCompanion(')
+          ..write('outboxId: $outboxId, ')
+          ..write('activityId: $activityId, ')
+          ..write('activityType: $activityType, ')
+          ..write('targetInboxUri: $targetInboxUri, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deliveredAt: $deliveredAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6590,6 +9405,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $WalletCredentialPayloadsTable(this);
   late final $WalletPresentationsTable walletPresentations =
       $WalletPresentationsTable(this);
+  late final $FollowTargetsTable followTargets = $FollowTargetsTable(this);
+  late final $FollowEdgesTable followEdges = $FollowEdgesTable(this);
+  late final $FollowActivityEventsTable followActivityEvents =
+      $FollowActivityEventsTable(this);
+  late final $OutboundFollowActivitiesTable outboundFollowActivities =
+      $OutboundFollowActivitiesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6608,6 +9429,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     walletCredentials,
     walletCredentialPayloads,
     walletPresentations,
+    followTargets,
+    followEdges,
+    followActivityEvents,
+    outboundFollowActivities,
   ];
 }
 
@@ -10839,6 +13664,1837 @@ typedef $$WalletPresentationsTableProcessedTableManager =
       WalletPresentation,
       PrefetchHooks Function()
     >;
+typedef $$FollowTargetsTableCreateCompanionBuilder =
+    FollowTargetsCompanion Function({
+      required String targetId,
+      required String targetType,
+      Value<String?> canonicalUri,
+      required String displayName,
+      Value<String?> handle,
+      Value<String?> did,
+      Value<String?> actorUri,
+      Value<String?> inboxUri,
+      Value<String?> outboxUri,
+      Value<String?> remoteNodeId,
+      Value<String?> boardId,
+      Value<String?> boardSlug,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+typedef $$FollowTargetsTableUpdateCompanionBuilder =
+    FollowTargetsCompanion Function({
+      Value<String> targetId,
+      Value<String> targetType,
+      Value<String?> canonicalUri,
+      Value<String> displayName,
+      Value<String?> handle,
+      Value<String?> did,
+      Value<String?> actorUri,
+      Value<String?> inboxUri,
+      Value<String?> outboxUri,
+      Value<String?> remoteNodeId,
+      Value<String?> boardId,
+      Value<String?> boardSlug,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+
+final class $$FollowTargetsTableReferences
+    extends BaseReferences<_$AppDatabase, $FollowTargetsTable, FollowTarget> {
+  $$FollowTargetsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$FollowEdgesTable, List<FollowEdge>>
+  _followEdgesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.followEdges,
+    aliasName: $_aliasNameGenerator(
+      db.followTargets.targetId,
+      db.followEdges.targetId,
+    ),
+  );
+
+  $$FollowEdgesTableProcessedTableManager get followEdgesRefs {
+    final manager = $$FollowEdgesTableTableManager($_db, $_db.followEdges)
+        .filter(
+          (f) =>
+              f.targetId.targetId.sqlEquals($_itemColumn<String>('target_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_followEdgesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$FollowTargetsTableFilterComposer
+    extends Composer<_$AppDatabase, $FollowTargetsTable> {
+  $$FollowTargetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get canonicalUri => $composableBuilder(
+    column: $table.canonicalUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get handle => $composableBuilder(
+    column: $table.handle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get did => $composableBuilder(
+    column: $table.did,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUri => $composableBuilder(
+    column: $table.actorUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get inboxUri => $composableBuilder(
+    column: $table.inboxUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get outboxUri => $composableBuilder(
+    column: $table.outboxUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteNodeId => $composableBuilder(
+    column: $table.remoteNodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boardSlug => $composableBuilder(
+    column: $table.boardSlug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> followEdgesRefs(
+    Expression<bool> Function($$FollowEdgesTableFilterComposer f) f,
+  ) {
+    final $$FollowEdgesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetId,
+      referencedTable: $db.followEdges,
+      getReferencedColumn: (t) => t.targetId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowEdgesTableFilterComposer(
+            $db: $db,
+            $table: $db.followEdges,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FollowTargetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FollowTargetsTable> {
+  $$FollowTargetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get canonicalUri => $composableBuilder(
+    column: $table.canonicalUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get handle => $composableBuilder(
+    column: $table.handle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get did => $composableBuilder(
+    column: $table.did,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorUri => $composableBuilder(
+    column: $table.actorUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get inboxUri => $composableBuilder(
+    column: $table.inboxUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outboxUri => $composableBuilder(
+    column: $table.outboxUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteNodeId => $composableBuilder(
+    column: $table.remoteNodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boardSlug => $composableBuilder(
+    column: $table.boardSlug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FollowTargetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FollowTargetsTable> {
+  $$FollowTargetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get canonicalUri => $composableBuilder(
+    column: $table.canonicalUri,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get handle =>
+      $composableBuilder(column: $table.handle, builder: (column) => column);
+
+  GeneratedColumn<String> get did =>
+      $composableBuilder(column: $table.did, builder: (column) => column);
+
+  GeneratedColumn<String> get actorUri =>
+      $composableBuilder(column: $table.actorUri, builder: (column) => column);
+
+  GeneratedColumn<String> get inboxUri =>
+      $composableBuilder(column: $table.inboxUri, builder: (column) => column);
+
+  GeneratedColumn<String> get outboxUri =>
+      $composableBuilder(column: $table.outboxUri, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteNodeId => $composableBuilder(
+    column: $table.remoteNodeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get boardId =>
+      $composableBuilder(column: $table.boardId, builder: (column) => column);
+
+  GeneratedColumn<String> get boardSlug =>
+      $composableBuilder(column: $table.boardSlug, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  Expression<T> followEdgesRefs<T extends Object>(
+    Expression<T> Function($$FollowEdgesTableAnnotationComposer a) f,
+  ) {
+    final $$FollowEdgesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetId,
+      referencedTable: $db.followEdges,
+      getReferencedColumn: (t) => t.targetId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowEdgesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.followEdges,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FollowTargetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FollowTargetsTable,
+          FollowTarget,
+          $$FollowTargetsTableFilterComposer,
+          $$FollowTargetsTableOrderingComposer,
+          $$FollowTargetsTableAnnotationComposer,
+          $$FollowTargetsTableCreateCompanionBuilder,
+          $$FollowTargetsTableUpdateCompanionBuilder,
+          (FollowTarget, $$FollowTargetsTableReferences),
+          FollowTarget,
+          PrefetchHooks Function({bool followEdgesRefs})
+        > {
+  $$FollowTargetsTableTableManager(_$AppDatabase db, $FollowTargetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FollowTargetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FollowTargetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FollowTargetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> targetId = const Value.absent(),
+                Value<String> targetType = const Value.absent(),
+                Value<String?> canonicalUri = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<String?> handle = const Value.absent(),
+                Value<String?> did = const Value.absent(),
+                Value<String?> actorUri = const Value.absent(),
+                Value<String?> inboxUri = const Value.absent(),
+                Value<String?> outboxUri = const Value.absent(),
+                Value<String?> remoteNodeId = const Value.absent(),
+                Value<String?> boardId = const Value.absent(),
+                Value<String?> boardSlug = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FollowTargetsCompanion(
+                targetId: targetId,
+                targetType: targetType,
+                canonicalUri: canonicalUri,
+                displayName: displayName,
+                handle: handle,
+                did: did,
+                actorUri: actorUri,
+                inboxUri: inboxUri,
+                outboxUri: outboxUri,
+                remoteNodeId: remoteNodeId,
+                boardId: boardId,
+                boardSlug: boardSlug,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String targetId,
+                required String targetType,
+                Value<String?> canonicalUri = const Value.absent(),
+                required String displayName,
+                Value<String?> handle = const Value.absent(),
+                Value<String?> did = const Value.absent(),
+                Value<String?> actorUri = const Value.absent(),
+                Value<String?> inboxUri = const Value.absent(),
+                Value<String?> outboxUri = const Value.absent(),
+                Value<String?> remoteNodeId = const Value.absent(),
+                Value<String?> boardId = const Value.absent(),
+                Value<String?> boardSlug = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FollowTargetsCompanion.insert(
+                targetId: targetId,
+                targetType: targetType,
+                canonicalUri: canonicalUri,
+                displayName: displayName,
+                handle: handle,
+                did: did,
+                actorUri: actorUri,
+                inboxUri: inboxUri,
+                outboxUri: outboxUri,
+                remoteNodeId: remoteNodeId,
+                boardId: boardId,
+                boardSlug: boardSlug,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FollowTargetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({followEdgesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (followEdgesRefs) db.followEdges],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (followEdgesRefs)
+                    await $_getPrefetchedData<
+                      FollowTarget,
+                      $FollowTargetsTable,
+                      FollowEdge
+                    >(
+                      currentTable: table,
+                      referencedTable: $$FollowTargetsTableReferences
+                          ._followEdgesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$FollowTargetsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).followEdgesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.targetId == item.targetId,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FollowTargetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FollowTargetsTable,
+      FollowTarget,
+      $$FollowTargetsTableFilterComposer,
+      $$FollowTargetsTableOrderingComposer,
+      $$FollowTargetsTableAnnotationComposer,
+      $$FollowTargetsTableCreateCompanionBuilder,
+      $$FollowTargetsTableUpdateCompanionBuilder,
+      (FollowTarget, $$FollowTargetsTableReferences),
+      FollowTarget,
+      PrefetchHooks Function({bool followEdgesRefs})
+    >;
+typedef $$FollowEdgesTableCreateCompanionBuilder =
+    FollowEdgesCompanion Function({
+      required String followId,
+      required String followerDid,
+      required String targetId,
+      required String targetType,
+      required String direction,
+      required String status,
+      required String visibility,
+      Value<String?> remoteActivityId,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> acceptedAt,
+      Value<DateTime?> cancelledAt,
+      Value<int> rowid,
+    });
+typedef $$FollowEdgesTableUpdateCompanionBuilder =
+    FollowEdgesCompanion Function({
+      Value<String> followId,
+      Value<String> followerDid,
+      Value<String> targetId,
+      Value<String> targetType,
+      Value<String> direction,
+      Value<String> status,
+      Value<String> visibility,
+      Value<String?> remoteActivityId,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> acceptedAt,
+      Value<DateTime?> cancelledAt,
+      Value<int> rowid,
+    });
+
+final class $$FollowEdgesTableReferences
+    extends BaseReferences<_$AppDatabase, $FollowEdgesTable, FollowEdge> {
+  $$FollowEdgesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FollowTargetsTable _targetIdTable(_$AppDatabase db) =>
+      db.followTargets.createAlias(
+        $_aliasNameGenerator(
+          db.followEdges.targetId,
+          db.followTargets.targetId,
+        ),
+      );
+
+  $$FollowTargetsTableProcessedTableManager get targetId {
+    final $_column = $_itemColumn<String>('target_id')!;
+
+    final manager = $$FollowTargetsTableTableManager(
+      $_db,
+      $_db.followTargets,
+    ).filter((f) => f.targetId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_targetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $FollowActivityEventsTable,
+    List<FollowActivityEvent>
+  >
+  _followActivityEventsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.followActivityEvents,
+        aliasName: $_aliasNameGenerator(
+          db.followEdges.followId,
+          db.followActivityEvents.followId,
+        ),
+      );
+
+  $$FollowActivityEventsTableProcessedTableManager
+  get followActivityEventsRefs {
+    final manager =
+        $$FollowActivityEventsTableTableManager(
+          $_db,
+          $_db.followActivityEvents,
+        ).filter(
+          (f) =>
+              f.followId.followId.sqlEquals($_itemColumn<String>('follow_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _followActivityEventsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$FollowEdgesTableFilterComposer
+    extends Composer<_$AppDatabase, $FollowEdgesTable> {
+  $$FollowEdgesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get followId => $composableBuilder(
+    column: $table.followId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get followerDid => $composableBuilder(
+    column: $table.followerDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get visibility => $composableBuilder(
+    column: $table.visibility,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteActivityId => $composableBuilder(
+    column: $table.remoteActivityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$FollowTargetsTableFilterComposer get targetId {
+    final $$FollowTargetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetId,
+      referencedTable: $db.followTargets,
+      getReferencedColumn: (t) => t.targetId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowTargetsTableFilterComposer(
+            $db: $db,
+            $table: $db.followTargets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> followActivityEventsRefs(
+    Expression<bool> Function($$FollowActivityEventsTableFilterComposer f) f,
+  ) {
+    final $$FollowActivityEventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.followId,
+      referencedTable: $db.followActivityEvents,
+      getReferencedColumn: (t) => t.followId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowActivityEventsTableFilterComposer(
+            $db: $db,
+            $table: $db.followActivityEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FollowEdgesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FollowEdgesTable> {
+  $$FollowEdgesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get followId => $composableBuilder(
+    column: $table.followId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get followerDid => $composableBuilder(
+    column: $table.followerDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get visibility => $composableBuilder(
+    column: $table.visibility,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteActivityId => $composableBuilder(
+    column: $table.remoteActivityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$FollowTargetsTableOrderingComposer get targetId {
+    final $$FollowTargetsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetId,
+      referencedTable: $db.followTargets,
+      getReferencedColumn: (t) => t.targetId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowTargetsTableOrderingComposer(
+            $db: $db,
+            $table: $db.followTargets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FollowEdgesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FollowEdgesTable> {
+  $$FollowEdgesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get followId =>
+      $composableBuilder(column: $table.followId, builder: (column) => column);
+
+  GeneratedColumn<String> get followerDid => $composableBuilder(
+    column: $table.followerDid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetType => $composableBuilder(
+    column: $table.targetType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get direction =>
+      $composableBuilder(column: $table.direction, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get visibility => $composableBuilder(
+    column: $table.visibility,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteActivityId => $composableBuilder(
+    column: $table.remoteActivityId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => column,
+  );
+
+  $$FollowTargetsTableAnnotationComposer get targetId {
+    final $$FollowTargetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetId,
+      referencedTable: $db.followTargets,
+      getReferencedColumn: (t) => t.targetId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowTargetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.followTargets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> followActivityEventsRefs<T extends Object>(
+    Expression<T> Function($$FollowActivityEventsTableAnnotationComposer a) f,
+  ) {
+    final $$FollowActivityEventsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.followId,
+          referencedTable: $db.followActivityEvents,
+          getReferencedColumn: (t) => t.followId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FollowActivityEventsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.followActivityEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$FollowEdgesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FollowEdgesTable,
+          FollowEdge,
+          $$FollowEdgesTableFilterComposer,
+          $$FollowEdgesTableOrderingComposer,
+          $$FollowEdgesTableAnnotationComposer,
+          $$FollowEdgesTableCreateCompanionBuilder,
+          $$FollowEdgesTableUpdateCompanionBuilder,
+          (FollowEdge, $$FollowEdgesTableReferences),
+          FollowEdge,
+          PrefetchHooks Function({bool targetId, bool followActivityEventsRefs})
+        > {
+  $$FollowEdgesTableTableManager(_$AppDatabase db, $FollowEdgesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FollowEdgesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FollowEdgesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FollowEdgesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> followId = const Value.absent(),
+                Value<String> followerDid = const Value.absent(),
+                Value<String> targetId = const Value.absent(),
+                Value<String> targetType = const Value.absent(),
+                Value<String> direction = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> visibility = const Value.absent(),
+                Value<String?> remoteActivityId = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> acceptedAt = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FollowEdgesCompanion(
+                followId: followId,
+                followerDid: followerDid,
+                targetId: targetId,
+                targetType: targetType,
+                direction: direction,
+                status: status,
+                visibility: visibility,
+                remoteActivityId: remoteActivityId,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                acceptedAt: acceptedAt,
+                cancelledAt: cancelledAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String followId,
+                required String followerDid,
+                required String targetId,
+                required String targetType,
+                required String direction,
+                required String status,
+                required String visibility,
+                Value<String?> remoteActivityId = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> acceptedAt = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FollowEdgesCompanion.insert(
+                followId: followId,
+                followerDid: followerDid,
+                targetId: targetId,
+                targetType: targetType,
+                direction: direction,
+                status: status,
+                visibility: visibility,
+                remoteActivityId: remoteActivityId,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                acceptedAt: acceptedAt,
+                cancelledAt: cancelledAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FollowEdgesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({targetId = false, followActivityEventsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (followActivityEventsRefs) db.followActivityEvents,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (targetId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.targetId,
+                                    referencedTable:
+                                        $$FollowEdgesTableReferences
+                                            ._targetIdTable(db),
+                                    referencedColumn:
+                                        $$FollowEdgesTableReferences
+                                            ._targetIdTable(db)
+                                            .targetId,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (followActivityEventsRefs)
+                        await $_getPrefetchedData<
+                          FollowEdge,
+                          $FollowEdgesTable,
+                          FollowActivityEvent
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FollowEdgesTableReferences
+                              ._followActivityEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FollowEdgesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).followActivityEventsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.followId == item.followId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$FollowEdgesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FollowEdgesTable,
+      FollowEdge,
+      $$FollowEdgesTableFilterComposer,
+      $$FollowEdgesTableOrderingComposer,
+      $$FollowEdgesTableAnnotationComposer,
+      $$FollowEdgesTableCreateCompanionBuilder,
+      $$FollowEdgesTableUpdateCompanionBuilder,
+      (FollowEdge, $$FollowEdgesTableReferences),
+      FollowEdge,
+      PrefetchHooks Function({bool targetId, bool followActivityEventsRefs})
+    >;
+typedef $$FollowActivityEventsTableCreateCompanionBuilder =
+    FollowActivityEventsCompanion Function({
+      required String eventId,
+      required String followId,
+      required String eventType,
+      required String actorDid,
+      Value<String?> activityId,
+      Value<String?> message,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$FollowActivityEventsTableUpdateCompanionBuilder =
+    FollowActivityEventsCompanion Function({
+      Value<String> eventId,
+      Value<String> followId,
+      Value<String> eventType,
+      Value<String> actorDid,
+      Value<String?> activityId,
+      Value<String?> message,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$FollowActivityEventsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $FollowActivityEventsTable,
+          FollowActivityEvent
+        > {
+  $$FollowActivityEventsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $FollowEdgesTable _followIdTable(_$AppDatabase db) =>
+      db.followEdges.createAlias(
+        $_aliasNameGenerator(
+          db.followActivityEvents.followId,
+          db.followEdges.followId,
+        ),
+      );
+
+  $$FollowEdgesTableProcessedTableManager get followId {
+    final $_column = $_itemColumn<String>('follow_id')!;
+
+    final manager = $$FollowEdgesTableTableManager(
+      $_db,
+      $_db.followEdges,
+    ).filter((f) => f.followId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_followIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$FollowActivityEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $FollowActivityEventsTable> {
+  $$FollowActivityEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorDid => $composableBuilder(
+    column: $table.actorDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get activityId => $composableBuilder(
+    column: $table.activityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$FollowEdgesTableFilterComposer get followId {
+    final $$FollowEdgesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.followId,
+      referencedTable: $db.followEdges,
+      getReferencedColumn: (t) => t.followId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowEdgesTableFilterComposer(
+            $db: $db,
+            $table: $db.followEdges,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FollowActivityEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FollowActivityEventsTable> {
+  $$FollowActivityEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorDid => $composableBuilder(
+    column: $table.actorDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get activityId => $composableBuilder(
+    column: $table.activityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$FollowEdgesTableOrderingComposer get followId {
+    final $$FollowEdgesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.followId,
+      referencedTable: $db.followEdges,
+      getReferencedColumn: (t) => t.followId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowEdgesTableOrderingComposer(
+            $db: $db,
+            $table: $db.followEdges,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FollowActivityEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FollowActivityEventsTable> {
+  $$FollowActivityEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get eventId =>
+      $composableBuilder(column: $table.eventId, builder: (column) => column);
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<String> get actorDid =>
+      $composableBuilder(column: $table.actorDid, builder: (column) => column);
+
+  GeneratedColumn<String> get activityId => $composableBuilder(
+    column: $table.activityId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get message =>
+      $composableBuilder(column: $table.message, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$FollowEdgesTableAnnotationComposer get followId {
+    final $$FollowEdgesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.followId,
+      referencedTable: $db.followEdges,
+      getReferencedColumn: (t) => t.followId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FollowEdgesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.followEdges,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FollowActivityEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FollowActivityEventsTable,
+          FollowActivityEvent,
+          $$FollowActivityEventsTableFilterComposer,
+          $$FollowActivityEventsTableOrderingComposer,
+          $$FollowActivityEventsTableAnnotationComposer,
+          $$FollowActivityEventsTableCreateCompanionBuilder,
+          $$FollowActivityEventsTableUpdateCompanionBuilder,
+          (FollowActivityEvent, $$FollowActivityEventsTableReferences),
+          FollowActivityEvent,
+          PrefetchHooks Function({bool followId})
+        > {
+  $$FollowActivityEventsTableTableManager(
+    _$AppDatabase db,
+    $FollowActivityEventsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FollowActivityEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FollowActivityEventsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$FollowActivityEventsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> eventId = const Value.absent(),
+                Value<String> followId = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<String> actorDid = const Value.absent(),
+                Value<String?> activityId = const Value.absent(),
+                Value<String?> message = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FollowActivityEventsCompanion(
+                eventId: eventId,
+                followId: followId,
+                eventType: eventType,
+                actorDid: actorDid,
+                activityId: activityId,
+                message: message,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String eventId,
+                required String followId,
+                required String eventType,
+                required String actorDid,
+                Value<String?> activityId = const Value.absent(),
+                Value<String?> message = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FollowActivityEventsCompanion.insert(
+                eventId: eventId,
+                followId: followId,
+                eventType: eventType,
+                actorDid: actorDid,
+                activityId: activityId,
+                message: message,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FollowActivityEventsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({followId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (followId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.followId,
+                                referencedTable:
+                                    $$FollowActivityEventsTableReferences
+                                        ._followIdTable(db),
+                                referencedColumn:
+                                    $$FollowActivityEventsTableReferences
+                                        ._followIdTable(db)
+                                        .followId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FollowActivityEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FollowActivityEventsTable,
+      FollowActivityEvent,
+      $$FollowActivityEventsTableFilterComposer,
+      $$FollowActivityEventsTableOrderingComposer,
+      $$FollowActivityEventsTableAnnotationComposer,
+      $$FollowActivityEventsTableCreateCompanionBuilder,
+      $$FollowActivityEventsTableUpdateCompanionBuilder,
+      (FollowActivityEvent, $$FollowActivityEventsTableReferences),
+      FollowActivityEvent,
+      PrefetchHooks Function({bool followId})
+    >;
+typedef $$OutboundFollowActivitiesTableCreateCompanionBuilder =
+    OutboundFollowActivitiesCompanion Function({
+      required String outboxId,
+      required String activityId,
+      required String activityType,
+      required String targetInboxUri,
+      required String payloadJson,
+      required String status,
+      Value<int> attemptCount,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deliveredAt,
+      Value<int> rowid,
+    });
+typedef $$OutboundFollowActivitiesTableUpdateCompanionBuilder =
+    OutboundFollowActivitiesCompanion Function({
+      Value<String> outboxId,
+      Value<String> activityId,
+      Value<String> activityType,
+      Value<String> targetInboxUri,
+      Value<String> payloadJson,
+      Value<String> status,
+      Value<int> attemptCount,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deliveredAt,
+      Value<int> rowid,
+    });
+
+class $$OutboundFollowActivitiesTableFilterComposer
+    extends Composer<_$AppDatabase, $OutboundFollowActivitiesTable> {
+  $$OutboundFollowActivitiesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get outboxId => $composableBuilder(
+    column: $table.outboxId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get activityId => $composableBuilder(
+    column: $table.activityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get activityType => $composableBuilder(
+    column: $table.activityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetInboxUri => $composableBuilder(
+    column: $table.targetInboxUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OutboundFollowActivitiesTableOrderingComposer
+    extends Composer<_$AppDatabase, $OutboundFollowActivitiesTable> {
+  $$OutboundFollowActivitiesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get outboxId => $composableBuilder(
+    column: $table.outboxId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get activityId => $composableBuilder(
+    column: $table.activityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get activityType => $composableBuilder(
+    column: $table.activityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetInboxUri => $composableBuilder(
+    column: $table.targetInboxUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OutboundFollowActivitiesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OutboundFollowActivitiesTable> {
+  $$OutboundFollowActivitiesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get outboxId =>
+      $composableBuilder(column: $table.outboxId, builder: (column) => column);
+
+  GeneratedColumn<String> get activityId => $composableBuilder(
+    column: $table.activityId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get activityType => $composableBuilder(
+    column: $table.activityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetInboxUri => $composableBuilder(
+    column: $table.targetInboxUri,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deliveredAt => $composableBuilder(
+    column: $table.deliveredAt,
+    builder: (column) => column,
+  );
+}
+
+class $$OutboundFollowActivitiesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OutboundFollowActivitiesTable,
+          OutboundFollowActivity,
+          $$OutboundFollowActivitiesTableFilterComposer,
+          $$OutboundFollowActivitiesTableOrderingComposer,
+          $$OutboundFollowActivitiesTableAnnotationComposer,
+          $$OutboundFollowActivitiesTableCreateCompanionBuilder,
+          $$OutboundFollowActivitiesTableUpdateCompanionBuilder,
+          (
+            OutboundFollowActivity,
+            BaseReferences<
+              _$AppDatabase,
+              $OutboundFollowActivitiesTable,
+              OutboundFollowActivity
+            >,
+          ),
+          OutboundFollowActivity,
+          PrefetchHooks Function()
+        > {
+  $$OutboundFollowActivitiesTableTableManager(
+    _$AppDatabase db,
+    $OutboundFollowActivitiesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OutboundFollowActivitiesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$OutboundFollowActivitiesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$OutboundFollowActivitiesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> outboxId = const Value.absent(),
+                Value<String> activityId = const Value.absent(),
+                Value<String> activityType = const Value.absent(),
+                Value<String> targetInboxUri = const Value.absent(),
+                Value<String> payloadJson = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deliveredAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboundFollowActivitiesCompanion(
+                outboxId: outboxId,
+                activityId: activityId,
+                activityType: activityType,
+                targetInboxUri: targetInboxUri,
+                payloadJson: payloadJson,
+                status: status,
+                attemptCount: attemptCount,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deliveredAt: deliveredAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String outboxId,
+                required String activityId,
+                required String activityType,
+                required String targetInboxUri,
+                required String payloadJson,
+                required String status,
+                Value<int> attemptCount = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deliveredAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboundFollowActivitiesCompanion.insert(
+                outboxId: outboxId,
+                activityId: activityId,
+                activityType: activityType,
+                targetInboxUri: targetInboxUri,
+                payloadJson: payloadJson,
+                status: status,
+                attemptCount: attemptCount,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deliveredAt: deliveredAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OutboundFollowActivitiesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OutboundFollowActivitiesTable,
+      OutboundFollowActivity,
+      $$OutboundFollowActivitiesTableFilterComposer,
+      $$OutboundFollowActivitiesTableOrderingComposer,
+      $$OutboundFollowActivitiesTableAnnotationComposer,
+      $$OutboundFollowActivitiesTableCreateCompanionBuilder,
+      $$OutboundFollowActivitiesTableUpdateCompanionBuilder,
+      (
+        OutboundFollowActivity,
+        BaseReferences<
+          _$AppDatabase,
+          $OutboundFollowActivitiesTable,
+          OutboundFollowActivity
+        >,
+      ),
+      OutboundFollowActivity,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10872,4 +15528,15 @@ class $AppDatabaseManager {
       );
   $$WalletPresentationsTableTableManager get walletPresentations =>
       $$WalletPresentationsTableTableManager(_db, _db.walletPresentations);
+  $$FollowTargetsTableTableManager get followTargets =>
+      $$FollowTargetsTableTableManager(_db, _db.followTargets);
+  $$FollowEdgesTableTableManager get followEdges =>
+      $$FollowEdgesTableTableManager(_db, _db.followEdges);
+  $$FollowActivityEventsTableTableManager get followActivityEvents =>
+      $$FollowActivityEventsTableTableManager(_db, _db.followActivityEvents);
+  $$OutboundFollowActivitiesTableTableManager get outboundFollowActivities =>
+      $$OutboundFollowActivitiesTableTableManager(
+        _db,
+        _db.outboundFollowActivities,
+      );
 }
