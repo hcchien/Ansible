@@ -8,8 +8,12 @@ import '../schema/activity_log.dart';
 import '../schema/board_acl.dart';
 import '../schema/board_sync_configs.dart';
 import '../schema/boards.dart';
+import '../schema/follow_activity_events.dart';
+import '../schema/follow_edges.dart';
+import '../schema/follow_targets.dart';
 import '../schema/identities.dart';
 import '../schema/ops_queue.dart';
+import '../schema/outbound_follow_activities.dart';
 import '../schema/posts.dart';
 import '../schema/reactions.dart';
 import '../schema/remote_nodes.dart';
@@ -35,13 +39,17 @@ part 'app_database.g.dart';
     WalletCredentials,
     WalletCredentialPayloads,
     WalletPresentations,
+    FollowTargets,
+    FollowEdges,
+    FollowActivityEvents,
+    OutboundFollowActivities,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +67,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 9) {
         await _createTableIfMissing(m, identities);
         await _createTableIfMissing(m, opsQueue);
+      }
+      if (from < 10) {
+        await _createTableIfMissing(m, followTargets);
+        await _createTableIfMissing(m, followEdges);
+        await _createTableIfMissing(m, followActivityEvents);
+        await _createTableIfMissing(m, outboundFollowActivities);
       }
       await _addColumnIfMissing(
         m,
