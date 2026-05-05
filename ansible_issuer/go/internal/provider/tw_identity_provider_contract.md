@@ -35,6 +35,14 @@ Signature validation must use provider-published trust anchors or partner-issued
 credentials. Test-mode assertions such as `signed` are valid only inside unit
 tests and local mock mode.
 
+## Local Contract Verifier
+
+The Go issuer includes an HMAC contract verifier for CI and staging-only
+provider-shape tests. It validates the same normalized callback fields used by
+the production adapter, but it is not a substitute for TW FidO/MOICA trust-anchor
+signature verification. Production deployments must configure a provider adapter
+that validates partner-issued signatures and audience binding.
+
 ## Replay Handling
 
 Each started auth session is single-use. A verified callback consumes both its

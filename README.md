@@ -71,6 +71,14 @@ relationships and remote board follows toggle `BoardSyncConfig`.
 Follow data must not contain Wallet credential payloads or Taiwan digital
 identity assertions.
 
+## TW Provider Issuance Direction
+
+The issuer supports a production-shaped TW provider flow with single-use auth
+state, replay rejection, provider proof verification boundaries, and holder-bound
+credential issuance after callback verification. Raw provider assertions and
+government identity fields stay inside the issuer boundary and must not be
+logged or stored.
+
 ## Getting Started
 
 ### Prerequisites
