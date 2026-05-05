@@ -1,9 +1,16 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
-class WalletScreen extends StatefulWidget {
-  const WalletScreen({super.key, required this.repository});
+import 'tw_provider_credential_screen.dart';
 
+class WalletScreen extends StatefulWidget {
+  const WalletScreen({
+    super.key,
+    required this.holderDid,
+    required this.repository,
+  });
+
+  final String holderDid;
   final WalletRepository repository;
 
   @override
@@ -31,6 +38,15 @@ class _WalletScreenState extends State<WalletScreen> {
     await _reload();
   }
 
+  Future<void> _openAddCredential() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TwProviderCredentialScreen(holderDid: widget.holderDid),
+      ),
+    );
+    await _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,6 +56,11 @@ class _WalletScreenState extends State<WalletScreen> {
         foregroundColor: Colors.white,
         title: const Text('Wallet'),
         actions: [
+          IconButton(
+            onPressed: _openAddCredential,
+            icon: const Icon(Icons.add),
+            tooltip: 'Add credential',
+          ),
           IconButton(
             onPressed: _reload,
             icon: const Icon(Icons.refresh),
@@ -56,7 +77,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
           final credentials = snapshot.data ?? const <WalletCredential>[];
           if (credentials.isEmpty) {
-            return const _EmptyWalletState();
+            return _EmptyWalletState(onAddCredential: _openAddCredential);
           }
 
           return ListView.separated(
@@ -78,7 +99,9 @@ class _WalletScreenState extends State<WalletScreen> {
 }
 
 class _EmptyWalletState extends StatelessWidget {
-  const _EmptyWalletState();
+  const _EmptyWalletState({required this.onAddCredential});
+
+  final VoidCallback onAddCredential;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +141,7 @@ class _EmptyWalletState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
-              onPressed: null,
+              onPressed: onAddCredential,
               icon: const Icon(Icons.add),
               label: const Text('Add credential'),
             ),
