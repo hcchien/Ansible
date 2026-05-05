@@ -129,6 +129,18 @@ func TestTWProviderFlowIssuesCredentialAfterVerifiedCallback(t *testing.T) {
 func TestTWProviderCallbackReplayRejected(t *testing.T) {
 	now := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
 	h := newTWHandler(t, now)
+	counters := api.NewMemoryAuditCounters()
+	h.ConfigureTWProvider(api.TWProviderConfig{
+		SessionStore: provider.NewMemorySessionStore(func() time.Time { return now }),
+		Verifier: provider.NewContractProofVerifier(provider.ContractProofConfig{
+			SharedSecret: "provider-secret",
+			Audience:     "trisaura-issuer",
+			Now:          func() time.Time { return now },
+		}),
+		BaseAuthURL: "https://provider.example/authorize",
+		TTL:         5 * time.Minute,
+		Counters:    counters,
+	})
 	start := call(h, http.MethodPost, "/api/v1/vc/tw/start", map[string]any{
 		"did": testDID, "email": testEmail,
 	})
@@ -155,11 +167,27 @@ func TestTWProviderCallbackReplayRejected(t *testing.T) {
 	if bodyJSON(t, replay)["error"] != "callback_replay" {
 		t.Fatalf("unexpected replay error: %s", replay.Body)
 	}
+	snapshot := counters.Snapshot()
+	if snapshot["tw_callback_verified"] != 1 || snapshot["tw_callback_replay"] != 1 {
+		t.Fatalf("unexpected counters: %v", snapshot)
+	}
 }
 
 func TestTWProviderCallbackStateMismatchRejected(t *testing.T) {
 	now := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
 	h := newTWHandler(t, now)
+	counters := api.NewMemoryAuditCounters()
+	h.ConfigureTWProvider(api.TWProviderConfig{
+		SessionStore: provider.NewMemorySessionStore(func() time.Time { return now }),
+		Verifier: provider.NewContractProofVerifier(provider.ContractProofConfig{
+			SharedSecret: "provider-secret",
+			Audience:     "trisaura-issuer",
+			Now:          func() time.Time { return now },
+		}),
+		BaseAuthURL: "https://provider.example/authorize",
+		TTL:         5 * time.Minute,
+		Counters:    counters,
+	})
 	call(h, http.MethodPost, "/api/v1/vc/tw/start", map[string]any{
 		"did": testDID, "email": testEmail,
 	})
@@ -178,6 +206,9 @@ func TestTWProviderCallbackStateMismatchRejected(t *testing.T) {
 	}
 	if bodyJSON(t, response)["error"] != "state_mismatch" {
 		t.Fatalf("unexpected error: %s", response.Body)
+	}
+	if counters.Snapshot()["tw_callback_state_mismatch"] != 1 {
+		t.Fatalf("unexpected counters: %v", counters.Snapshot())
 	}
 }
 

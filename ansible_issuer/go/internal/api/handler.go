@@ -33,6 +33,7 @@ type Handler struct {
 	twVerifier provider.ProofVerifier
 	twAuthURL  string
 	twTTL      time.Duration
+	twCounters AuditCounters
 	now        func() time.Time
 }
 
@@ -42,6 +43,7 @@ type TWProviderConfig struct {
 	BaseAuthURL  string
 	TTL          time.Duration
 	Retention    time.Duration
+	Counters     AuditCounters
 }
 
 func NewHandler(
@@ -79,6 +81,7 @@ func (h *Handler) ConfigureTWProvider(config TWProviderConfig) {
 	h.twVerifier = config.Verifier
 	h.twAuthURL = config.BaseAuthURL
 	h.twTTL = config.TTL
+	h.twCounters = config.Counters
 	if h.twTTL <= 0 {
 		h.twTTL = 5 * time.Minute
 	}
@@ -277,6 +280,7 @@ func (h *Handler) twCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.incrementAuditCounter("tw_callback_verified")
 	writeJSON(w, http.StatusOK, map[string]any{"status": "verified", "offer_id": session.OfferID})
 }
 
@@ -364,10 +368,13 @@ func (h *Handler) twConfigured(w http.ResponseWriter) bool {
 func (h *Handler) writeProofError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, provider.ErrMissingProviderProofValue):
+		h.incrementAuditCounter("tw_callback_missing_provider_proof")
 		writeError(w, http.StatusUnprocessableEntity, "missing_provider_proof")
 	case errors.Is(err, provider.ErrProviderAudience), errors.Is(err, provider.ErrProviderSignature), errors.Is(err, provider.ErrProviderExpiry):
+		h.incrementAuditCounter("tw_callback_invalid_provider_proof")
 		writeError(w, http.StatusUnauthorized, "invalid_provider_proof")
 	default:
+		h.incrementAuditCounter("tw_callback_invalid_provider_proof")
 		writeError(w, http.StatusUnauthorized, "invalid_provider_proof")
 	}
 }
@@ -375,13 +382,23 @@ func (h *Handler) writeProofError(w http.ResponseWriter, err error) {
 func (h *Handler) writeSessionError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, provider.ErrReplay):
+		h.incrementAuditCounter("tw_callback_replay")
 		writeError(w, http.StatusConflict, "callback_replay")
 	case errors.Is(err, provider.ErrStateNotFound):
+		h.incrementAuditCounter("tw_callback_state_mismatch")
 		writeError(w, http.StatusUnauthorized, "state_mismatch")
 	case errors.Is(err, provider.ErrExpiredSessionState):
+		h.incrementAuditCounter("tw_callback_expired_session")
 		writeError(w, http.StatusUnauthorized, "expired_session")
 	default:
+		h.incrementAuditCounter("tw_callback_session_error")
 		writeError(w, http.StatusInternalServerError, "provider_session_error")
+	}
+}
+
+func (h *Handler) incrementAuditCounter(event string) {
+	if h.twCounters != nil {
+		h.twCounters.Increment(event)
 	}
 }
 
