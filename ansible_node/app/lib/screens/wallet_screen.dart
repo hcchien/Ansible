@@ -1,17 +1,27 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
-import 'tw_provider_credential_screen.dart';
+import '../services/external_url_launcher.dart';
+import '../services/vc_issuer_client.dart';
+import 'credential_issuance_wizard.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({
     super.key,
     required this.holderDid,
     required this.repository,
+    this.vcIssuerClient,
+    this.urlLauncher,
+    this.pollInterval = const Duration(seconds: 2),
+    this.pollTimeout = const Duration(minutes: 2),
   });
 
   final String holderDid;
   final WalletRepository repository;
+  final VcIssuerClient? vcIssuerClient;
+  final ExternalUrlLauncher? urlLauncher;
+  final Duration pollInterval;
+  final Duration pollTimeout;
 
   @override
   State<WalletScreen> createState() => _WalletScreenState();
@@ -19,6 +29,7 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   late Future<List<WalletCredential>> _credentials;
+  var _showWizard = false;
 
   @override
   void initState() {
@@ -38,15 +49,13 @@ class _WalletScreenState extends State<WalletScreen> {
     await _reload();
   }
 
-  Future<void> _openAddCredential() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TwProviderCredentialScreen(
-          holderDid: widget.holderDid,
-          walletRepository: widget.repository,
-        ),
-      ),
-    );
+  void _openAddCredential() {
+    setState(() => _showWizard = true);
+  }
+
+  Future<void> _handleCredentialStored() async {
+    if (!mounted) return;
+    setState(() => _showWizard = false);
     await _reload();
   }
 
@@ -80,23 +89,45 @@ class _WalletScreenState extends State<WalletScreen> {
 
           final credentials = snapshot.data ?? const <WalletCredential>[];
           if (credentials.isEmpty) {
+            if (_showWizard) {
+              return ListView(
+                padding: const EdgeInsets.all(20),
+                children: [_buildCredentialWizard()],
+              );
+            }
             return _EmptyWalletState(onAddCredential: _openAddCredential);
           }
 
-          return ListView.separated(
+          return ListView(
             padding: const EdgeInsets.all(20),
-            itemCount: credentials.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final credential = credentials[index];
-              return _CredentialTile(
-                credential: credential,
-                onDelete: () => _deleteCredential(credential),
-              );
-            },
+            children: [
+              if (_showWizard) ...[
+                _buildCredentialWizard(),
+                const SizedBox(height: 16),
+              ],
+              for (final credential in credentials) ...[
+                _CredentialTile(
+                  credential: credential,
+                  onDelete: () => _deleteCredential(credential),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ],
           );
         },
       ),
+    );
+  }
+
+  Widget _buildCredentialWizard() {
+    return CredentialIssuanceWizard(
+      holderDid: widget.holderDid,
+      vcIssuerClient: widget.vcIssuerClient,
+      urlLauncher: widget.urlLauncher,
+      walletRepository: widget.repository,
+      pollInterval: widget.pollInterval,
+      pollTimeout: widget.pollTimeout,
+      onCredentialStored: _handleCredentialStored,
     );
   }
 }
