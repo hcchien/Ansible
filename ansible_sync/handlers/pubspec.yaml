@@ -8,6 +8,10 @@ environment:
 dependencies:
   ansible_ap:
     path: ../../ansible_core/ap
+  ansible_domain:
+    path: ../../ansible_core/domain
+  ansible_store:
+    path: ../../ansible_core/store
   shelf: ^1.4.0
 
 dev_dependencies:
