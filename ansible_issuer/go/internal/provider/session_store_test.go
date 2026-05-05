@@ -117,3 +117,109 @@ func TestFileSessionStoreStoresVerifiedCommitment(t *testing.T) {
 		t.Fatalf("unexpected verified session: %+v", got)
 	}
 }
+
+func TestFileSessionStoreCleanupExpiredRemovesOldSessionsAndReplays(t *testing.T) {
+	now := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
+	path := filepath.Join(t.TempDir(), "provider_sessions.json")
+	store, err := provider.NewFileSessionStore(path, func() time.Time {
+		return now
+	})
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+
+	if err := store.CreateAuthSession(provider.AuthSession{
+		OfferID:   "old-auth",
+		DID:       "did:plc:abcdefghijklmnop",
+		Email:     "alice@example.com",
+		State:     "old-state",
+		ExpiresAt: now.Add(-2 * time.Hour),
+	}); err != nil {
+		t.Fatalf("create old auth: %v", err)
+	}
+	if err := store.CreateAuthSession(provider.AuthSession{
+		OfferID:   "recent-auth",
+		DID:       "did:plc:abcdefghijklmnop",
+		Email:     "alice@example.com",
+		State:     "recent-state",
+		ExpiresAt: now.Add(-30 * time.Minute),
+	}); err != nil {
+		t.Fatalf("create recent auth: %v", err)
+	}
+	if err := store.StoreVerifiedSession(provider.VerifiedSession{
+		OfferID:           "old-verified",
+		DID:               "did:plc:abcdefghijklmnop",
+		Email:             "alice@example.com",
+		SubjectCommitment: "commitment-old",
+		VerifiedAt:        now.Add(-3 * time.Hour),
+		ExpiresAt:         now.Add(-2 * time.Hour),
+	}); err != nil {
+		t.Fatalf("store old verified: %v", err)
+	}
+	if err := store.MarkReplayIDConsumed("old-replay", now.Add(-2*time.Hour)); err != nil {
+		t.Fatalf("mark old replay: %v", err)
+	}
+	if err := store.MarkReplayIDConsumed("recent-replay", now.Add(30*time.Minute)); err != nil {
+		t.Fatalf("mark recent replay: %v", err)
+	}
+
+	if err := store.CleanupExpired(time.Hour); err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+
+	reopened, err := provider.NewFileSessionStore(path, func() time.Time {
+		return now
+	})
+	if err != nil {
+		t.Fatalf("reopen store: %v", err)
+	}
+
+	if _, err := reopened.GetAuthSessionByOfferID("old-auth"); err != provider.ErrStateNotFound {
+		t.Fatalf("expected old auth removed, got %v", err)
+	}
+	if err := reopened.MarkReplayIDConsumed("old-replay", now.Add(time.Hour)); err != nil {
+		t.Fatalf("expected old replay removed, got %v", err)
+	}
+	if err := reopened.MarkReplayIDConsumed("recent-replay", now.Add(time.Hour)); err != provider.ErrReplay {
+		t.Fatalf("expected recent replay retained, got %v", err)
+	}
+}
+
+func TestMemorySessionStoreCleanupExpiredRemovesOldSessionsAndReplays(t *testing.T) {
+	now := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
+	store := provider.NewMemorySessionStore(func() time.Time { return now })
+
+	if err := store.CreateAuthSession(provider.AuthSession{
+		OfferID:   "old-auth",
+		DID:       "did:plc:abcdefghijklmnop",
+		Email:     "alice@example.com",
+		State:     "old-state",
+		ExpiresAt: now.Add(-2 * time.Hour),
+	}); err != nil {
+		t.Fatalf("create old auth: %v", err)
+	}
+	if err := store.StoreVerifiedSession(provider.VerifiedSession{
+		OfferID:           "old-verified",
+		DID:               "did:plc:abcdefghijklmnop",
+		Email:             "alice@example.com",
+		SubjectCommitment: "commitment-old",
+		VerifiedAt:        now.Add(-3 * time.Hour),
+		ExpiresAt:         now.Add(-2 * time.Hour),
+	}); err != nil {
+		t.Fatalf("store old verified: %v", err)
+	}
+	if err := store.MarkReplayIDConsumed("old-replay", now.Add(-2*time.Hour)); err != nil {
+		t.Fatalf("mark old replay: %v", err)
+	}
+
+	if err := store.CleanupExpired(time.Hour); err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+
+	if _, err := store.GetAuthSessionByOfferID("old-auth"); err != provider.ErrStateNotFound {
+		t.Fatalf("expected old auth removed, got %v", err)
+	}
+	if err := store.MarkReplayIDConsumed("old-replay", now.Add(time.Hour)); err != nil {
+		t.Fatalf("expected old replay removed, got %v", err)
+	}
+}

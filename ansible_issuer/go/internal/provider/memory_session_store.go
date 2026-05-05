@@ -125,6 +125,29 @@ func (s *MemorySessionStore) GetAuthSessionByOfferID(offerID string) (AuthSessio
 	return AuthSession{}, ErrStateNotFound
 }
 
+func (s *MemorySessionStore) CleanupExpired(retention time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := s.now()
+	for state, session := range s.authSessions {
+		if expiredBeyondRetention(session.ExpiresAt, retention, now) {
+			delete(s.authSessions, state)
+		}
+	}
+	for offerID, session := range s.verifiedSessions {
+		if expiredBeyondRetention(session.ExpiresAt, retention, now) {
+			delete(s.verifiedSessions, offerID)
+		}
+	}
+	for replayID, expiresAt := range s.replayIDs {
+		if expiredBeyondRetention(expiresAt, retention, now) {
+			delete(s.replayIDs, replayID)
+		}
+	}
+	return nil
+}
+
 func (s *MemorySessionStore) getVerifiedSessionLocked(offerID string) (VerifiedSession, error) {
 	session, ok := s.verifiedSessions[offerID]
 	if !ok || session.Consumed || !session.ExpiresAt.After(s.now()) {

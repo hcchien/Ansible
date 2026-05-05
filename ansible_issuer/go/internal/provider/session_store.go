@@ -38,4 +38,5 @@ type SessionStore interface {
 	StoreVerifiedSession(VerifiedSession) error
 	GetVerifiedSession(offerID string) (VerifiedSession, error)
 	ConsumeVerifiedSession(offerID string) (VerifiedSession, error)
+	CleanupExpired(retention time.Duration) error
 }

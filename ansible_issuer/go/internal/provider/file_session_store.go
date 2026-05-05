@@ -155,6 +155,29 @@ func (s *FileSessionStore) ConsumeVerifiedSession(offerID string) (VerifiedSessi
 	return session, nil
 }
 
+func (s *FileSessionStore) CleanupExpired(retention time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := s.now()
+	for state, session := range s.data.AuthSessions {
+		if expiredBeyondRetention(session.ExpiresAt, retention, now) {
+			delete(s.data.AuthSessions, state)
+		}
+	}
+	for offerID, session := range s.data.VerifiedSessions {
+		if expiredBeyondRetention(session.ExpiresAt, retention, now) {
+			delete(s.data.VerifiedSessions, offerID)
+		}
+	}
+	for replayID, expiresAt := range s.data.ReplayIDs {
+		if expiredBeyondRetention(expiresAt, retention, now) {
+			delete(s.data.ReplayIDs, replayID)
+		}
+	}
+	return s.saveLocked()
+}
+
 func (s *FileSessionStore) getVerifiedSessionLocked(offerID string) (VerifiedSession, error) {
 	session, ok := s.data.VerifiedSessions[offerID]
 	if !ok || session.Consumed || !session.ExpiresAt.After(s.now()) {
@@ -218,4 +241,11 @@ func newFileSessionData() fileSessionData {
 		VerifiedSessions: make(map[string]VerifiedSession),
 		ReplayIDs:        make(map[string]time.Time),
 	}
+}
+
+func expiredBeyondRetention(expiresAt time.Time, retention time.Duration, now time.Time) bool {
+	if retention < 0 {
+		retention = 0
+	}
+	return !expiresAt.Add(retention).After(now)
 }
