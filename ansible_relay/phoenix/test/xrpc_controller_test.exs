@@ -7,9 +7,6 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
 
   @router_opts Router.init([])
 
-  # RFC 8032 test-vector-1 keypair (same as reputation_controller_test)
-  @test_private_key_hex "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae3d55"
-
   defp post_json(path, body) do
     conn(:post, path, Jason.encode!(body))
     |> put_req_header("content-type", "application/json")
@@ -26,13 +23,7 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
     {Base.encode16(pub, case: :lower), priv}
   end
 
-  defp sign(private_key, message) when is_binary(private_key) do
-    {:ok, priv_bytes} = Base.decode16(private_key, case: :mixed)
-    :crypto.sign(:eddsa, :none, message, [priv_bytes, :ed25519])
-    |> Base.encode16(case: :lower)
-  end
-
-  defp sign(private_key, message) when is_binary(message) do
+  defp sign(private_key, message) do
     :crypto.sign(:eddsa, :none, message, [private_key, :ed25519])
     |> Base.encode16(case: :lower)
   end

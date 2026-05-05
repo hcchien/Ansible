@@ -16,6 +16,7 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
   alias AnsibleRelay.{DidAccountCache, VpVerifier}
 
   @tier_for_credential %{
+    "TrisAuraHumanityCredential" => "verified_human",
     "EmailCredential" => "verified_human"
   }
 

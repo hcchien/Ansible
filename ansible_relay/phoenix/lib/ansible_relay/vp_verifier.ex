@@ -1,53 +1,51 @@
 defmodule AnsibleRelay.VpVerifier do
   @moduledoc """
-  W3C Verifiable Presentation verifier.
+  W3C Verifiable Presentation verifier for TrisAuraHumanityCredential.
 
-  Verifies a VP submitted for reputation tier upgrade:
+  Verification order:
+    1. VP holder — DID matches `holder` field; signature covers the VP with
+       proof options (challenge, domain, type, etc.) but without proofValue,
+       all keys sorted alphabetically to match the Dart canonical form.
+    2. Challenge / audience — if opts[:nonce] or opts[:audience] are supplied,
+       the corresponding proof fields must match exactly.
+    3. Each embedded VC — issuer proof valid, subject matches holder, type
+       recognised, not expired (checks `validUntil` then `expirationDate`).
 
-    1. VP holder proof
-       - signature over canonical VP (without proof) JSON
-       - verified against the holder's public key from DidAccountCache
-
-    2. Each VC issuer proof
-       - signature over canonical VC (without proof) JSON
-       - verified against a trusted issuer public key from config
-
-    3. Structural checks
-       - VP holder == credentialSubject.id (proves the VC was issued TO this holder)
-       - VC type includes a recognised credential type
-       - VC not expired
-
-  Proof format: Ed25519Signature2020, proofValue = hex-encoded 64-byte signature.
-
-  TODO(P2): add challenge/response to VP proof to prevent replay attacks.
+  Proof format: Ed25519Signature2020 or DataIntegrityProof/eddsa-jcs-2022,
+  proofValue = hex-encoded 64-byte Ed25519 signature.
   """
 
   alias AnsibleRelay.{DidAccountCache, SigVerifier}
 
+  @recognised_credential_types ~w[TrisAuraHumanityCredential EmailCredential]
+
   @type error ::
           :holder_not_found
           | :invalid_vp_proof
+          | :wrong_nonce
+          | :wrong_audience
           | :no_credentials
           | :invalid_vc_proof
           | :vc_subject_mismatch
           | :vc_expired
           | :unknown_credential_type
 
-  @recognised_credential_types ~w[EmailCredential]
-
   @doc """
   Verify a VP and return the credential type of the first accepted VC.
 
+  Options:
+    - `nonce:` — if set, the VP proof `challenge` field must match exactly
+    - `audience:` — if set, the VP proof `domain` field must match exactly
+
   Returns `{:ok, credential_type}` or `{:error, reason}`.
   """
-  @spec verify(String.t(), map()) :: {:ok, String.t()} | {:error, error()}
-  def verify(holder_did, vp) when is_binary(holder_did) and is_map(vp) do
+  @spec verify(String.t(), map(), keyword()) :: {:ok, String.t()} | {:error, error()}
+  def verify(holder_did, vp, opts \\ []) when is_binary(holder_did) and is_map(vp) do
     with {:ok, pub_key_hex} <- resolve_holder_key(holder_did),
-         :ok <- verify_vp_proof(vp, pub_key_hex, holder_did),
+         :ok <- verify_vp_proof(vp, pub_key_hex, holder_did, opts),
          {:ok, vcs} <- extract_vcs(vp),
          {:ok, vc} <- pick_accepted_vc(vcs, holder_did) do
-      credential_type = vc_credential_type(vc)
-      {:ok, credential_type}
+      {:ok, vc_credential_type(vc)}
     end
   end
 
@@ -60,17 +58,18 @@ defmodule AnsibleRelay.VpVerifier do
     end
   end
 
-  defp verify_vp_proof(vp, pub_key_hex, expected_holder) do
+  defp verify_vp_proof(vp, pub_key_hex, expected_holder, opts) do
     proof = Map.get(vp, "proof", %{})
     proof_value = Map.get(proof, "proofValue", "")
-
     actual_holder = Map.get(vp, "holder", "")
 
-    if actual_holder != expected_holder do
-      {:error, :invalid_vp_proof}
-    else
-      vp_without_proof = Map.delete(vp, "proof")
-      canonical = Jason.encode!(vp_without_proof)
+    with :ok <- check_holder(actual_holder, expected_holder),
+         :ok <- check_challenge(proof, opts[:nonce]),
+         :ok <- check_domain(proof, opts[:audience]) do
+      # Sign VP with proof options (minus proofValue), all keys sorted — must
+      # match the canonical form produced by Dart's VpBuilder.canonicalPayload.
+      proof_options = Map.delete(proof, "proofValue")
+      canonical = vp |> Map.put("proof", proof_options) |> deep_sort_keys() |> Jason.encode!()
 
       if SigVerifier.verify_ed25519(pub_key_hex, canonical, proof_value) do
         :ok
@@ -80,10 +79,22 @@ defmodule AnsibleRelay.VpVerifier do
     end
   end
 
-  defp extract_vcs(%{"verifiableCredential" => vcs}) when is_list(vcs) and length(vcs) > 0 do
-    {:ok, vcs}
+  defp check_holder(actual, expected) when actual == expected, do: :ok
+  defp check_holder(_, _), do: {:error, :invalid_vp_proof}
+
+  defp check_challenge(_proof, nil), do: :ok
+
+  defp check_challenge(proof, expected) do
+    if Map.get(proof, "challenge") == expected, do: :ok, else: {:error, :wrong_nonce}
   end
 
+  defp check_domain(_proof, nil), do: :ok
+
+  defp check_domain(proof, expected) do
+    if Map.get(proof, "domain") == expected, do: :ok, else: {:error, :wrong_audience}
+  end
+
+  defp extract_vcs(%{"verifiableCredential" => [_ | _] = vcs}), do: {:ok, vcs}
   defp extract_vcs(_), do: {:error, :no_credentials}
 
   defp pick_accepted_vc(vcs, holder_did) do
@@ -105,39 +116,33 @@ defmodule AnsibleRelay.VpVerifier do
   end
 
   defp check_vc_subject(vc, holder_did) do
-    subject_id =
-      vc
-      |> Map.get("credentialSubject", %{})
-      |> Map.get("id")
-
+    subject_id = vc |> Map.get("credentialSubject", %{}) |> Map.get("id")
     if subject_id == holder_did, do: :ok, else: {:error, :vc_subject_mismatch}
   end
 
   defp check_vc_type(vc) do
     types = Map.get(vc, "type", [])
 
-    if Enum.any?(types, &(&1 in @recognised_credential_types)) do
-      :ok
-    else
-      {:error, :unknown_credential_type}
-    end
+    if Enum.any?(types, &(&1 in @recognised_credential_types)),
+      do: :ok,
+      else: {:error, :unknown_credential_type}
   end
 
+  # Checks `validUntil` (W3C VC v2) then falls back to `expirationDate` (v1).
   defp check_vc_expiry(vc) do
-    case Map.get(vc, "expirationDate") do
+    expiry_str = Map.get(vc, "validUntil") || Map.get(vc, "expirationDate")
+
+    case expiry_str && DateTime.from_iso8601(expiry_str) do
       nil ->
         :ok
 
-      date_str ->
-        case DateTime.from_iso8601(date_str) do
-          {:ok, expiry, _} ->
-            if DateTime.compare(DateTime.utc_now(), expiry) == :lt,
-              do: :ok,
-              else: {:error, :vc_expired}
+      {:ok, expiry, _} ->
+        if DateTime.compare(DateTime.utc_now(), expiry) == :lt,
+          do: :ok,
+          else: {:error, :vc_expired}
 
-          _ ->
-            :ok
-        end
+      _ ->
+        :ok
     end
   end
 
@@ -152,7 +157,7 @@ defmodule AnsibleRelay.VpVerifier do
 
       %{public_key_hex: pub_key_hex} ->
         vc_without_proof = Map.delete(vc, "proof")
-        canonical = Jason.encode!(vc_without_proof)
+        canonical = vc_without_proof |> deep_sort_keys() |> Jason.encode!()
 
         if SigVerifier.verify_ed25519(pub_key_hex, canonical, proof_value),
           do: :ok,
@@ -174,4 +179,15 @@ defmodule AnsibleRelay.VpVerifier do
     |> Enum.find(&(&1 in @recognised_credential_types))
     |> Kernel.||("VerifiableCredential")
   end
+
+  # Recursively sorts map keys alphabetically so Jason.encode! output matches
+  # the canonical form produced by Dart's VpBuilder._canonicalValue.
+  defp deep_sort_keys(value) when is_map(value) do
+    value
+    |> Enum.sort_by(fn {k, _} -> k end)
+    |> Map.new(fn {k, v} -> {k, deep_sort_keys(v)} end)
+  end
+
+  defp deep_sort_keys(value) when is_list(value), do: Enum.map(value, &deep_sort_keys/1)
+  defp deep_sort_keys(value), do: value
 end

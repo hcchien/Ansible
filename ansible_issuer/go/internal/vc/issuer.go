@@ -1,0 +1,159 @@
+package vc
+
+import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"time"
+)
+
+const (
+	credentialType  = "TrisAuraHumanityCredential"
+	assuranceLevel  = "tw_natural_person_certificate"
+	assuranceMethod = "tw_fido_or_moica"
+	jurisdiction    = "TW"
+	defaultTTLDays  = 90
+)
+
+// Config holds issuer configuration.
+type Config struct {
+	IssuerDID  string
+	IssuerURL  string
+	PrivKeyHex string // 32-byte Ed25519 seed as lowercase hex
+	TTLDays    int
+}
+
+// Issuer builds, signs, and tracks TrisAuraHumanityCredentials.
+type Issuer struct {
+	issuerDID string
+	issuerURL string
+	privKey   ed25519.PrivateKey
+	pubKey    ed25519.PublicKey
+	ttlDays   int
+	store     *Store
+}
+
+func NewIssuer(cfg Config, store *Store) (*Issuer, error) {
+	seed, err := hex.DecodeString(cfg.PrivKeyHex)
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key hex: %w", err)
+	}
+	if len(seed) != ed25519.SeedSize {
+		return nil, fmt.Errorf("private key seed must be %d bytes, got %d", ed25519.SeedSize, len(seed))
+	}
+	priv := ed25519.NewKeyFromSeed(seed)
+	ttl := cfg.TTLDays
+	if ttl <= 0 {
+		ttl = defaultTTLDays
+	}
+	return &Issuer{
+		issuerDID: cfg.IssuerDID,
+		issuerURL: cfg.IssuerURL,
+		privKey:   priv,
+		pubKey:    priv.Public().(ed25519.PublicKey),
+		ttlDays:   ttl,
+		store:     store,
+	}, nil
+}
+
+// Issue builds, signs, and records a TrisAuraHumanityCredential.
+// Returns ErrDuplicateActiveCredential if an active credential already exists
+// for the given subject commitment.
+func (iss *Issuer) Issue(holderDID, subjectCommitment string) (map[string]any, error) {
+	if err := iss.store.CheckDuplicate(subjectCommitment); err != nil {
+		return nil, err
+	}
+
+	now := time.Now().UTC()
+	cred := &Credential{
+		Context: []string{
+			"https://www.w3.org/ns/credentials/v2",
+			"https://trisaura.io/contexts/humanity/v1",
+		},
+		ID:         fmt.Sprintf("%s/vc/%s", iss.issuerURL, randomHex(16)),
+		Type:       []string{"VerifiableCredential", credentialType},
+		Issuer:     iss.issuerDID,
+		ValidFrom:  now.Format(time.RFC3339),
+		ValidUntil: now.AddDate(0, 0, iss.ttlDays).Format(time.RFC3339),
+		CredentialSubject: CredentialSubject{
+			ID:              holderDID,
+			HumanVerified:   true,
+			AssuranceLevel:  assuranceLevel,
+			AssuranceMethod: assuranceMethod,
+			Jurisdiction:    jurisdiction,
+		},
+	}
+
+	canonical, err := json.Marshal(cred)
+	if err != nil {
+		return nil, err
+	}
+	sig := ed25519.Sign(iss.privKey, canonical)
+	cred.Proof = &Proof{
+		Type:               "Ed25519Signature2020",
+		Created:            now.Format(time.RFC3339),
+		VerificationMethod: iss.issuerDID + "#key-1",
+		ProofPurpose:       "assertionMethod",
+		ProofValue:         hex.EncodeToString(sig),
+	}
+
+	b, err := json.Marshal(cred)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+
+	iss.store.add(record{
+		credentialID: cred.ID,
+		holderDID:    holderDID,
+		commitment:   subjectCommitment,
+		status:       StatusActive,
+	})
+
+	return out, nil
+}
+
+// VerifyProof checks the Ed25519Signature2020 proof on a raw credential map.
+func (iss *Issuer) VerifyProof(raw map[string]any) bool {
+	proofRaw, ok := raw["proof"]
+	if !ok {
+		return false
+	}
+	proofMap, ok := proofRaw.(map[string]any)
+	if !ok {
+		return false
+	}
+	proofValue, _ := proofMap["proofValue"].(string)
+	sigBytes, err := hex.DecodeString(proofValue)
+	if err != nil {
+		return false
+	}
+
+	// Round-trip through *Credential so field order matches what was signed.
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return false
+	}
+	var cred Credential
+	if err := json.Unmarshal(b, &cred); err != nil {
+		return false
+	}
+	cred.Proof = nil
+
+	canonical, err := json.Marshal(&cred)
+	if err != nil {
+		return false
+	}
+	return ed25519.Verify(iss.pubKey, canonical, sigBytes)
+}
+
+func randomHex(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}

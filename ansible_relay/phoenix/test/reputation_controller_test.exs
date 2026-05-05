@@ -7,11 +7,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
   @router_opts Router.init([])
 
-  # RFC 8032 test vector 1 — same keys used in ansible_issuer dev config
-  @issuer_private_key_hex "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae3d55"
-  @issuer_public_key_hex "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
   @issuer_did "did:web:issuer.trisaura.io"
-
   @holder_did "did:plc:abcdefghijklmnop"
 
   defp post_json(path, body) do
@@ -20,39 +16,53 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     |> Router.call(@router_opts)
   end
 
-  # Generate a holder Ed25519 keypair
   defp holder_keypair do
     {pub, priv} = :crypto.generate_key(:eddsa, :ed25519)
     {Base.encode16(pub, case: :lower), priv}
   end
 
-  # Sign a binary with an Ed25519 private key; returns hex signature
   defp sign(private_key, message) when is_binary(message) do
     :crypto.sign(:eddsa, :none, message, [private_key, :ed25519])
     |> Base.encode16(case: :lower)
   end
 
-  # Build a valid signed EmailCredential VC
-  defp build_vc(holder_did) do
+  # Recursively sort map keys alphabetically — mirrors Dart's _canonicalValue.
+  defp deep_sort(value) when is_map(value) do
+    value
+    |> Enum.sort_by(fn {k, _} -> k end)
+    |> Map.new(fn {k, v} -> {k, deep_sort(v)} end)
+  end
+
+  defp deep_sort(value) when is_list(value), do: Enum.map(value, &deep_sort/1)
+  defp deep_sort(value), do: value
+
+  defp canonical(value), do: value |> deep_sort() |> Jason.encode!()
+
+  # Build a signed TrisAuraHumanityCredential VC.
+  defp build_vc(holder_did, issuer_priv) do
     now = DateTime.utc_now() |> DateTime.to_iso8601()
-    expiry = DateTime.add(DateTime.utc_now(), 90 * 86_400, :second) |> DateTime.to_iso8601()
+    valid_until = DateTime.add(DateTime.utc_now(), 90 * 86_400, :second) |> DateTime.to_iso8601()
 
     vc_without_proof = %{
-      "@context" => ["https://www.w3.org/2018/credentials/v1"],
+      "@context" => [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://trisaura.io/contexts/humanity/v1"
+      ],
       "id" => "https://issuer.trisaura.io/vc/test001",
-      "type" => ["VerifiableCredential", "EmailCredential"],
+      "type" => ["VerifiableCredential", "TrisAuraHumanityCredential"],
       "issuer" => @issuer_did,
-      "issuanceDate" => now,
-      "expirationDate" => expiry,
+      "validFrom" => now,
+      "validUntil" => valid_until,
       "credentialSubject" => %{
         "id" => holder_did,
-        "email" => "test@example.com",
-        "emailVerified" => true
+        "humanVerified" => true,
+        "assuranceLevel" => "tw_natural_person_certificate",
+        "assuranceMethod" => "tw_fido_or_moica",
+        "jurisdiction" => "TW"
       }
     }
 
-    {:ok, priv_bytes} = Base.decode16(@issuer_private_key_hex, case: :mixed)
-    proof_value = sign(priv_bytes, Jason.encode!(vc_without_proof))
+    proof_value = sign(issuer_priv, canonical(vc_without_proof))
 
     Map.put(vc_without_proof, "proof", %{
       "type" => "Ed25519Signature2020",
@@ -63,24 +73,27 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     })
   end
 
-  # Build a valid signed VP wrapping the given VCs
+  # Build a signed VP using the canonical form:
+  # sign(canonical(vp_with_proof_options_but_no_proof_value)).
   defp build_vp(holder_did, holder_priv_key, vcs) do
-    vp_without_proof = %{
-      "@context" => ["https://www.w3.org/2018/credentials/v1"],
-      "type" => ["VerifiablePresentation"],
-      "holder" => holder_did,
-      "verifiableCredential" => vcs
+    proof_options = %{
+      "type" => "DataIntegrityProof",
+      "cryptosuite" => "eddsa-jcs-2022",
+      "verificationMethod" => "#{holder_did}#key-1",
+      "created" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "proofPurpose" => "authentication"
     }
 
-    proof_value = sign(holder_priv_key, Jason.encode!(vp_without_proof))
+    vp_with_options = %{
+      "@context" => ["https://www.w3.org/ns/credentials/v2"],
+      "type" => ["VerifiablePresentation"],
+      "holder" => holder_did,
+      "verifiableCredential" => vcs,
+      "proof" => proof_options
+    }
 
-    Map.put(vp_without_proof, "proof", %{
-      "type" => "Ed25519Signature2020",
-      "created" => DateTime.utc_now() |> DateTime.to_iso8601(),
-      "verificationMethod" => "#{holder_did}#key-1",
-      "proofPurpose" => "authentication",
-      "proofValue" => proof_value
-    })
+    proof_value = sign(holder_priv_key, canonical(vp_with_options))
+    put_in(vp_with_options, ["proof", "proofValue"], proof_value)
   end
 
   setup do
@@ -91,19 +104,23 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
     DidAccountCache.reset()
 
-    # Ensure Relay config includes the dev issuer key
+    # Generate issuer keypair using OTP so sign/verify use the same key format.
+    {issuer_pub, issuer_priv} = :crypto.generate_key(:eddsa, :ed25519)
+    issuer_pub_hex = Base.encode16(issuer_pub, case: :lower)
+
     Application.put_env(:ansible_relay, :trusted_vc_issuers, [
-      %{did: @issuer_did, public_key_hex: @issuer_public_key_hex}
+      %{did: @issuer_did, public_key_hex: issuer_pub_hex}
     ])
 
-    :ok
+    {:ok, issuer_priv: issuer_priv}
   end
 
-  test "present upgrades holder to verified_human with valid VP" do
+  test "present upgrades holder to verified_human with valid humanity credential VP",
+       %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
     DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
 
-    vc = build_vc(@holder_did)
+    vc = build_vc(@holder_did, issuer_priv)
     vp = build_vp(@holder_did, priv_key, [vc])
 
     response =
@@ -115,11 +132,11 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     assert {:ok, %{reputation_tier: "verified_human"}} = DidAccountCache.get(@holder_did)
   end
 
-  test "present rejects VP with invalid holder proof" do
+  test "present rejects VP with invalid holder proof", %{issuer_priv: issuer_priv} do
     {pub_hex, _priv_key} = holder_keypair()
     DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
 
-    vc = build_vc(@holder_did)
+    vc = build_vc(@holder_did, issuer_priv)
     {_other_pub, other_priv} = holder_keypair()
     vp = build_vp(@holder_did, other_priv, [vc])
 
@@ -130,11 +147,11 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "invalid_vp"
   end
 
-  test "present rejects VP when VC subject does not match holder" do
+  test "present rejects VP when VC subject does not match holder", %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
     DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
 
-    vc = build_vc("did:plc:someoneelse0001")
+    vc = build_vc("did:plc:someoneelse0001", issuer_priv)
     vp = build_vp(@holder_did, priv_key, [vc])
 
     response =
@@ -143,27 +160,25 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     assert response.status in [401, 422]
   end
 
-  test "present does not downgrade a higher tier" do
+  test "present does not downgrade a higher tier", %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
-    # Pre-set to verified_human
     DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io",
       reputation_tier: "verified_human"
     )
 
-    vc = build_vc(@holder_did)
+    vc = build_vc(@holder_did, issuer_priv)
     vp = build_vp(@holder_did, priv_key, [vc])
 
     response =
       post_json("/api/v2/reputation/present", %{"holder_did" => @holder_did, "vp" => vp})
 
-    # Still 200, tier unchanged
     assert response.status == 200
     assert {:ok, %{reputation_tier: "verified_human"}} = DidAccountCache.get(@holder_did)
   end
 
-  test "present returns 404 for unknown holder" do
+  test "present returns 404 for unknown holder", %{issuer_priv: issuer_priv} do
     {_pub, priv_key} = holder_keypair()
-    vc = build_vc(@holder_did)
+    vc = build_vc(@holder_did, issuer_priv)
     vp = build_vp(@holder_did, priv_key, [vc])
 
     response =
