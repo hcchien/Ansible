@@ -1,7 +1,9 @@
+import 'package:ansible_domain/ansible_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:uuid/uuid.dart';
 import '../widgets/board_form_dialog.dart';
+import '../widgets/follow_button.dart';
 import 'threads_list_screen.dart';
 
 class BoardsListScreen extends StatefulWidget {
@@ -14,14 +16,25 @@ class BoardsListScreen extends StatefulWidget {
 }
 
 class _BoardsListScreenState extends State<BoardsListScreen> {
+  static const _localFollowerDid = 'did:key:local';
+
   late final DriftBoardRepository _boardRepo;
+  late final DriftFollowRepository _followRepo;
+  late final FollowService _followService;
   List<Board> _boards = [];
+  Set<String> _followedBoardIds = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _boardRepo = DriftBoardRepository(widget.db);
+    _followRepo = DriftFollowRepository(widget.db);
+    _followService = FollowService(
+      followRepository: _followRepo,
+      outboxRepository: DriftFollowActivityOutboxRepository(widget.db),
+      boardSyncConfigRepository: DriftBoardSyncConfigRepository(widget.db),
+    );
     _loadBoards();
   }
 
@@ -29,11 +42,40 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
     print('Loading boards...');
     setState(() => _isLoading = true);
     final boards = await _boardRepo.list();
-    print('Loaded ${boards.length} boards: ${boards.map((b) => b.title).toList()}');
+    final followedBoardIds = <String>{};
+    for (final board in boards) {
+      final target = await _followRepo.getTargetByCanonicalUri(
+        'local://boards/${board.id}',
+      );
+      if (target == null) continue;
+      final edge = await _followRepo.getEdge(
+        _localFollowerDid,
+        target.targetId,
+        FollowDirection.outbound,
+      );
+      if (edge?.status == FollowStatus.accepted) {
+        followedBoardIds.add(board.id);
+      }
+    }
+    print(
+      'Loaded ${boards.length} boards: ${boards.map((b) => b.title).toList()}',
+    );
     setState(() {
       _boards = boards;
+      _followedBoardIds = followedBoardIds;
       _isLoading = false;
     });
+  }
+
+  Future<void> _followBoard(Board board) async {
+    await _followService.followBoard(
+      followerDid: _localFollowerDid,
+      boardId: board.id,
+      boardSlug: board.slug,
+      displayName: board.title,
+      now: DateTime.now().toUtc(),
+    );
+    await _loadBoards();
   }
 
   Future<void> _createBoard() async {
@@ -130,46 +172,58 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _boards.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.dashboard_outlined,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No boards yet',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Create your first board to get started',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.dashboard_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _boards.length,
-                  itemBuilder: (context, index) {
-                    final board = _boards[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        leading: const Icon(Icons.dashboard),
-                        title: Text(board.title),
-                        subtitle: board.description != null
-                            ? Text(board.description!)
-                            : null,
-                        trailing: PopupMenuButton(
+                  const SizedBox(height: 16),
+                  Text(
+                    'No boards yet',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create your first board to get started',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _boards.length,
+              itemBuilder: (context, index) {
+                final board = _boards[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.dashboard),
+                    title: Text(board.title),
+                    subtitle: board.description != null
+                        ? Text(board.description!)
+                        : null,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FollowButton(
+                          status: _followedBoardIds.contains(board.id)
+                              ? FollowButtonStatus.following
+                              : FollowButtonStatus.notFollowing,
+                          onPressed: _followedBoardIds.contains(board.id)
+                              ? null
+                              : () => _followBoard(board),
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton(
                           itemBuilder: (context) => [
                             const PopupMenuItem(
                               value: 'edit',
@@ -187,8 +241,10 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
                                 children: [
                                   Icon(Icons.delete, color: Colors.red),
                                   SizedBox(width: 8),
-                                  Text('Delete',
-                                      style: TextStyle(color: Colors.red)),
+                                  Text(
+                                    'Delete',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
                                 ],
                               ),
                             ),
@@ -201,21 +257,21 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
                             }
                           },
                         ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ThreadsListScreen(
-                                db: widget.db,
-                                board: board,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ThreadsListScreen(db: widget.db, board: board),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createBoard,
         tooltip: 'Create Board',

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +9,7 @@ import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
+import '../widgets/feed_filter_tabs.dart';
 import '../widgets/ops_queue_status_badge.dart';
 import 'note_editor_screen.dart';
 import 'posts_view_screen.dart';
@@ -36,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
   late final DriftThreadRepository _threadRepo;
   late final DriftPostRepository _postRepo;
   late final DriftReactionRepository _reactionRepo;
+  late final DriftFollowRepository _followRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
   late final OpsDispatchService _opsDispatchService;
   late final AtProtoClient _atProtoClient;
@@ -45,6 +48,7 @@ class _HomeShellState extends State<HomeShell> {
   List<PostCardData> _posts = [];
   bool _loading = true;
   String? _selectedBoardId;
+  FeedFilter _feedFilter = FeedFilter.all;
   final _uuid = const Uuid();
 
   @override
@@ -54,6 +58,7 @@ class _HomeShellState extends State<HomeShell> {
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
     _reactionRepo = DriftReactionRepository(widget.db);
+    _followRepo = DriftFollowRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _opsDispatchService = OpsDispatchService(repository: _opsQueueRepo);
     _atProtoClient = AtProtoClient();
@@ -70,7 +75,18 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     final boards = await _boardRepo.list();
-    final threads = await _threadRepo.list(boardId: _selectedBoardId);
+    final boardMap = {for (final b in boards) b.id: b};
+    final followingEntries = _feedFilter == FeedFilter.following
+        ? await FollowFeedProjector(
+            followRepository: _followRepo,
+            boardRepository: _boardRepo,
+            threadRepository: _threadRepo,
+            postRepository: _postRepo,
+          ).project(followerDid: widget.did)
+        : null;
+    final threads = followingEntries == null
+        ? await _threadRepo.list(boardId: _selectedBoardId)
+        : <Thread>[];
     // preload posts per thread for content preview and counts
     final firstPosts = <String, Post?>{};
     final postCounts = <String, int>{};
@@ -99,28 +115,28 @@ class _HomeShellState extends State<HomeShell> {
       }
     }
 
-    // Map boardId -> board for display
-    final boardMap = {for (final b in boards) b.id: b};
     threads.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final postCards = threads.map((t) {
-      final board = boardMap[t.boardId];
-      final content = firstPosts[t.id]?.content ?? '';
-      final comments = postCounts[t.id] ?? 0;
-      final counts = reactionCounts[t.id] ?? const {};
-      return PostCardData(
-        thread: t,
-        category: board?.title ?? '未分類',
-        title: t.title,
-        author: t.authorId,
-        board: board?.title ?? t.boardId,
-        timeAgo: _formatTimeAgo(t.createdAt),
-        content: content,
-        reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
-        comments: comments,
-        reacted: userReacted[t.id] ?? false,
-      );
-    }).toList();
+    final postCards = followingEntries == null
+        ? threads.map((t) {
+            final board = boardMap[t.boardId];
+            final content = firstPosts[t.id]?.content ?? '';
+            final comments = postCounts[t.id] ?? 0;
+            final counts = reactionCounts[t.id] ?? const {};
+            return PostCardData(
+              thread: t,
+              category: board?.title ?? '未分類',
+              title: t.title,
+              author: t.authorId,
+              board: board?.title ?? t.boardId,
+              timeAgo: _formatTimeAgo(t.createdAt),
+              content: content,
+              reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
+              comments: comments,
+              reacted: userReacted[t.id] ?? false,
+            );
+          }).toList()
+        : await _buildFollowingPostCards(followingEntries, boardMap);
 
     setState(() {
       _boards = boards;
@@ -132,8 +148,59 @@ class _HomeShellState extends State<HomeShell> {
   void _selectBoard(String? boardId) {
     setState(() {
       _selectedBoardId = boardId;
+      _feedFilter = boardId == null ? FeedFilter.all : FeedFilter.boards;
     });
     _loadData();
+  }
+
+  void _selectFeedFilter(FeedFilter filter) {
+    setState(() {
+      _feedFilter = filter;
+      if (filter == FeedFilter.following || filter == FeedFilter.all) {
+        _selectedBoardId = null;
+      }
+    });
+    _loadData();
+  }
+
+  Future<List<PostCardData>> _buildFollowingPostCards(
+    List<FollowFeedEntry> entries,
+    Map<String, Board> boardMap,
+  ) async {
+    final cards = <PostCardData>[];
+    for (final entry in entries) {
+      final posts = await _postRepo.list(threadId: entry.thread.id);
+      final reactions = await _reactionRepo.listByTarget(
+        store.TargetType.thread.name,
+        entry.thread.id,
+      );
+      final countMap = <String, int>{};
+      var reacted = false;
+      for (final reaction in reactions) {
+        countMap[reaction.reactionType.name] =
+            (countMap[reaction.reactionType.name] ?? 0) + 1;
+        if (reaction.userId == widget.did &&
+            reaction.reactionType == store.ReactionType.thumbsUp) {
+          reacted = true;
+        }
+      }
+      final board = entry.board ?? boardMap[entry.post.boardId];
+      cards.add(
+        PostCardData(
+          thread: entry.thread,
+          category: board?.title ?? '未分類',
+          title: entry.thread.title,
+          author: entry.post.authorId,
+          board: board?.title ?? entry.post.boardId,
+          timeAgo: _formatTimeAgo(entry.post.createdAt),
+          content: entry.post.content,
+          reactions: {'👍': countMap[store.ReactionType.thumbsUp.name] ?? 0},
+          comments: posts.length,
+          reacted: reacted,
+        ),
+      );
+    }
+    return cards;
   }
 
   Future<void> _createBoard() async {
@@ -408,6 +475,8 @@ class _HomeShellState extends State<HomeShell> {
                   onCreateThread: _createThread,
                   onCreateBoard: _createBoard,
                   onManageBoards: _openManageBoards,
+                  feedFilter: _feedFilter,
+                  onFeedFilterChanged: _selectFeedFilter,
                   hasSelectedBoard: _selectedBoardId != null,
                   selectedBoardId: _selectedBoardId,
                   boards: _boards,
@@ -633,6 +702,8 @@ class _MainPanel extends StatelessWidget {
     required this.onCreateThread,
     required this.onCreateBoard,
     required this.onManageBoards,
+    required this.feedFilter,
+    required this.onFeedFilterChanged,
     required this.hasSelectedBoard,
     required this.selectedBoardId,
     required this.boards,
@@ -651,6 +722,8 @@ class _MainPanel extends StatelessWidget {
   final Future<void> Function() onCreateThread;
   final Future<void> Function() onCreateBoard;
   final Future<void> Function() onManageBoards;
+  final FeedFilter feedFilter;
+  final ValueChanged<FeedFilter> onFeedFilterChanged;
   final bool hasSelectedBoard;
   final String? selectedBoardId;
   final List<Board> boards;
@@ -678,6 +751,11 @@ class _MainPanel extends StatelessWidget {
               children: [
                 const _SectionHeader(),
                 const SizedBox(height: 10),
+                FeedFilterTabs(
+                  selected: feedFilter,
+                  onChanged: onFeedFilterChanged,
+                ),
+                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: SizedBox(
