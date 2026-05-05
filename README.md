@@ -61,6 +61,16 @@ User composes a post
 | Reputation Labeler | 🔜 P3 | Basic / DNS-verified / Verified Human tiers |
 | AI Agent Comp F | 🔜 P4 | Summarisation and filtering over Firehose stream |
 
+## Social Graph Direction
+
+Follow users and follow boards are implemented as a local-first social
+subscription layer. User follows build a Following feed from accepted actor
+relationships. Board follows build the same feed from accepted board
+relationships and remote board follows toggle `BoardSyncConfig`.
+
+Follow data must not contain Wallet credential payloads or Taiwan digital
+identity assertions.
+
 ## Getting Started
 
 ### Prerequisites
