@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -20,8 +21,13 @@ func signProviderAssertion(secret, payload string) string {
 
 func newTWHandler(t *testing.T, now time.Time) *api.Handler {
 	t.Helper()
-	h := newTestHandler(t)
 	store := provider.NewMemorySessionStore(func() time.Time { return now })
+	return newTWHandlerWithStore(t, now, store)
+}
+
+func newTWHandlerWithStore(t *testing.T, now time.Time, store provider.SessionStore) *api.Handler {
+	t.Helper()
+	h := newTestHandler(t)
 	verifier := provider.NewContractProofVerifier(provider.ContractProofConfig{
 		SharedSecret: "provider-secret",
 		Audience:     "trisaura-issuer",
@@ -34,6 +40,47 @@ func newTWHandler(t *testing.T, now time.Time) *api.Handler {
 		TTL:          5 * time.Minute,
 	})
 	return h
+}
+
+func TestTWProviderFlowWorksWithFileBackedStore(t *testing.T) {
+	now := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
+	store, err := provider.NewFileSessionStore(filepath.Join(t.TempDir(), "sessions.json"), func() time.Time {
+		return now
+	})
+	if err != nil {
+		t.Fatalf("new file store: %v", err)
+	}
+	h := newTWHandlerWithStore(t, now, store)
+
+	start := call(h, http.MethodPost, "/api/v1/vc/tw/start", map[string]any{
+		"did": testDID, "email": testEmail,
+	})
+	if start.Code != http.StatusOK {
+		t.Fatalf("start failed: %d %s", start.Code, start.Body)
+	}
+	startBody := bodyJSON(t, start)
+	offerID := startBody["offer_id"].(string)
+	state := startBody["state"].(string)
+
+	payload := state + "|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
+	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", map[string]any{
+		"state":            state,
+		"provider_subject": "subject-1",
+		"audience":         "trisaura-issuer",
+		"expires_at":       "2026-05-05T12:05:00Z",
+		"assertion":        payload,
+		"signature":        signProviderAssertion("provider-secret", payload),
+	})
+	if callback.Code != http.StatusOK {
+		t.Fatalf("callback failed: %d %s", callback.Code, callback.Body)
+	}
+
+	issue := call(h, http.MethodPost, "/api/v1/vc/tw/issue", map[string]any{
+		"did": testDID, "email": testEmail, "offer_id": offerID,
+	})
+	if issue.Code != http.StatusOK {
+		t.Fatalf("issue failed: %d %s", issue.Code, issue.Body)
+	}
 }
 
 func TestTWProviderFlowIssuesCredentialAfterVerifiedCallback(t *testing.T) {
