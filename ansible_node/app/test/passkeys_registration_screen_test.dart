@@ -2,6 +2,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/screens/passkeys_registration_screen.dart';
 import 'package:ansible_node/services/atproto_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -52,6 +53,8 @@ void main() {
   testWidgets('registration surfaces relay errors without completing', (
     tester,
   ) async {
+    final passkeys = _FakePasskeysManager('cd' * 32);
+    final didPlc = _FakeDidPlcManager();
     final atProto = _FakeAtProtoClient(
       registerError: const AtProtoException(
         statusCode: 409,
@@ -63,8 +66,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: PasskeysRegistrationScreen(
-          passkeysManager: _FakePasskeysManager('cd' * 32),
-          didPlcManager: _FakeDidPlcManager(),
+          passkeysManager: passkeys,
+          didPlcManager: didPlc,
           atProtoClient: atProto,
           nonceSigner: (nonce, publicKeyHex) async => 'unused',
           onRegistered: (did) => registeredDid = did,
@@ -77,6 +80,41 @@ void main() {
 
     expect(find.text('此帳號名稱已被使用，請嘗試不同的名稱。'), findsOneWidget);
     expect(registeredDid, isNull);
+    expect(didPlc.deleteCalled, isTrue);
+    expect(passkeys.deleteCalled, isTrue);
+  });
+
+  testWidgets('registration converts Dart fallback signer output in dev mode', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({
+      'ansible_did_private_key': '11' * 32,
+    });
+
+    final passkeys = _FakePasskeysManager('cd' * 32);
+    final didPlc = _FakeDidPlcManager();
+    final atProto = _FakeAtProtoClient();
+    String? registeredDid;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PasskeysRegistrationScreen(
+          passkeysManager: passkeys,
+          didPlcManager: didPlc,
+          atProtoClient: atProto,
+          allowInsecureDevFallback: true,
+          onRegistered: (did) => registeredDid = did,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('建立帳號（Passkeys）'));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+
+    expect(atProto.anchorRequest?.registrationSig, startsWith('dev-sig-'));
+    expect(registeredDid, 'did:plc:test');
   });
 
   testWidgets('registration validates handle suffix before generating keys', (
@@ -110,11 +148,14 @@ void main() {
 class _FakePasskeysManager implements PasskeysManager {
   final String publicKeyHex;
   bool registerCalled = false;
+  bool deleteCalled = false;
 
   _FakePasskeysManager(this.publicKeyHex);
 
   @override
-  Future<void> delete() async {}
+  Future<void> delete() async {
+    deleteCalled = true;
+  }
 
   @override
   Future<bool> isAvailable() async => true;
@@ -135,6 +176,7 @@ class _FakePasskeysManager implements PasskeysManager {
 
 class _FakeDidPlcManager implements DidPlcManager {
   String? signingKeyHex;
+  bool deleteCalled = false;
 
   @override
   Future<DidPlcResult> createDid({
@@ -151,7 +193,9 @@ class _FakeDidPlcManager implements DidPlcManager {
   }
 
   @override
-  Future<void> deleteDid() async {}
+  Future<void> deleteDid() async {
+    deleteCalled = true;
+  }
 
   @override
   Future<DidPlcResult?> loadDid() async => null;

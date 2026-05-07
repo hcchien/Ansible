@@ -450,43 +450,81 @@ class _HomeShellState extends State<HomeShell> {
               end: Alignment.bottomRight,
             ),
           ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 280,
-                child: _Sidebar(
-                  boards: _boards,
-                  selectedBoardId: _selectedBoardId,
-                  onSelectBoard: _selectBoard,
-                  onManageBoards: _loadData,
-                ),
-              ),
-              Expanded(
-                child: _MainPanel(
-                  db: widget.db,
-                  did: widget.did,
-                  opsQueueRepo: _opsQueueRepo,
-                  opsDispatchService: _opsDispatchService,
-                  atProtoClient: _atProtoClient,
-                  onClearIdentity: widget.onClearIdentity,
-                  loading: _loading,
-                  posts: _posts,
-                  onRefresh: _loadData,
-                  onCreateThread: _createThread,
-                  onCreateBoard: _createBoard,
-                  onManageBoards: _openManageBoards,
-                  feedFilter: _feedFilter,
-                  onFeedFilterChanged: _selectFeedFilter,
-                  hasSelectedBoard: _selectedBoardId != null,
-                  selectedBoardId: _selectedBoardId,
-                  boards: _boards,
-                  networkStatusService: _networkStatusService,
-                ),
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 720;
+              final mainPanel = _MainPanel(
+                db: widget.db,
+                did: widget.did,
+                opsQueueRepo: _opsQueueRepo,
+                opsDispatchService: _opsDispatchService,
+                atProtoClient: _atProtoClient,
+                onClearIdentity: widget.onClearIdentity,
+                loading: _loading,
+                posts: _posts,
+                onRefresh: _loadData,
+                onCreateThread: _createThread,
+                onCreateBoard: _createBoard,
+                onManageBoards: _openManageBoards,
+                onOpenBoards: compact ? () => _openBoardsSheet(context) : null,
+                feedFilter: _feedFilter,
+                onFeedFilterChanged: _selectFeedFilter,
+                hasSelectedBoard: _selectedBoardId != null,
+                selectedBoardId: _selectedBoardId,
+                boards: _boards,
+                networkStatusService: _networkStatusService,
+              );
+
+              if (compact) {
+                return mainPanel;
+              }
+
+              return Row(
+                children: [
+                  SizedBox(
+                    width: 280,
+                    child: _Sidebar(
+                      boards: _boards,
+                      selectedBoardId: _selectedBoardId,
+                      onSelectBoard: _selectBoard,
+                      onManageBoards: _loadData,
+                    ),
+                  ),
+                  Expanded(child: mainPanel),
+                ],
+              );
+            },
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _openBoardsSheet(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0C1424),
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * 0.72,
+            child: _Sidebar(
+              boards: _boards,
+              selectedBoardId: _selectedBoardId,
+              onSelectBoard: (boardId) {
+                Navigator.of(sheetContext).pop();
+                _selectBoard(boardId);
+              },
+              onManageBoards: () {
+                Navigator.of(sheetContext).pop();
+                _openManageBoards();
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -702,6 +740,7 @@ class _MainPanel extends StatelessWidget {
     required this.onCreateThread,
     required this.onCreateBoard,
     required this.onManageBoards,
+    this.onOpenBoards,
     required this.feedFilter,
     required this.onFeedFilterChanged,
     required this.hasSelectedBoard,
@@ -722,6 +761,7 @@ class _MainPanel extends StatelessWidget {
   final Future<void> Function() onCreateThread;
   final Future<void> Function() onCreateBoard;
   final Future<void> Function() onManageBoards;
+  final VoidCallback? onOpenBoards;
   final FeedFilter feedFilter;
   final ValueChanged<FeedFilter> onFeedFilterChanged;
   final bool hasSelectedBoard;
@@ -731,131 +771,145 @@ class _MainPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _TopBar(
-          onClearIdentity: onClearIdentity,
-          onRefresh: onRefresh,
-          db: db,
-          did: did,
-          opsQueueRepo: opsQueueRepo,
-          opsDispatchService: opsDispatchService,
-          networkStatusService: networkStatusService,
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _SectionHeader(),
-                const SizedBox(height: 10),
-                FeedFilterTabs(
-                  selected: feedFilter,
-                  onChanged: onFeedFilterChanged,
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    width: 340,
-                    child: FilledButton.icon(
-                      onPressed: (hasSelectedBoard && selectedBoardId != null)
-                          ? () {
-                              // Use the first board that matches selectedBoardId for a placeholder threadId
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => NoteEditorScreen(
-                                    authorDid: did,
-                                    boardId: selectedBoardId!,
-                                    threadId: '',
-                                    threadTitle:
-                                        boards
-                                            .where(
-                                              (b) => b.id == selectedBoardId,
-                                            )
-                                            .map((b) => b.title)
-                                            .firstOrNull ??
-                                        '新討論',
-                                    atProtoClient: atProtoClient,
-                                  ),
-                                ),
-                              );
-                            }
-                          : null,
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      label: const Text('新貼文'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF9F43),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 16,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 640;
+        final contentPadding = compact
+            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+            : const EdgeInsets.symmetric(horizontal: 28, vertical: 12);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _TopBar(
+              onClearIdentity: onClearIdentity,
+              onRefresh: onRefresh,
+              db: db,
+              did: did,
+              opsQueueRepo: opsQueueRepo,
+              opsDispatchService: opsDispatchService,
+              networkStatusService: networkStatusService,
+            ),
+            Expanded(
+              child: Padding(
+                padding: contentPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionHeader(onOpenBoards: onOpenBoards),
+                    const SizedBox(height: 10),
+                    FeedFilterTabs(
+                      selected: feedFilter,
+                      onChanged: onFeedFilterChanged,
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: compact ? double.infinity : 340,
+                        child: FilledButton.icon(
+                          onPressed:
+                              (hasSelectedBoard && selectedBoardId != null)
+                              ? () {
+                                  // Use the first board that matches selectedBoardId for a placeholder threadId
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => NoteEditorScreen(
+                                        authorDid: did,
+                                        boardId: selectedBoardId!,
+                                        threadId: '',
+                                        threadTitle:
+                                            boards
+                                                .where(
+                                                  (b) =>
+                                                      b.id == selectedBoardId,
+                                                )
+                                                .map((b) => b.title)
+                                                .firstOrNull ??
+                                            '新討論',
+                                        atProtoClient: atProtoClient,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              : null,
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          label: const Text('新貼文'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF9F43),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                            elevation: 0,
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                        elevation: 0,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    IconButton.filled(
-                      onPressed: onCreateBoard,
-                      icon: const Icon(Icons.add),
-                      tooltip: '新增看板',
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Tooltip(
+                          message: '新增看板',
+                          child: IconButton.filled(
+                            onPressed: onCreateBoard,
+                            icon: const Icon(Icons.add),
+                          ),
+                        ),
+                        FilledButton.icon(
+                          onPressed: hasSelectedBoard ? onCreateThread : null,
+                          icon: const Icon(Icons.forum_outlined),
+                          label: Text(compact ? '新討論' : '建立新討論'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: onManageBoards,
+                          icon: const Icon(Icons.settings_outlined),
+                          label: Text(compact ? '看板' : '管理看板'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    FilledButton.icon(
-                      onPressed: hasSelectedBoard ? onCreateThread : null,
-                      icon: const Icon(Icons.forum_outlined),
-                      label: const Text('建立新討論'),
-                    ),
-                    const Spacer(),
-                    OutlinedButton.icon(
-                      onPressed: onManageBoards,
-                      icon: const Icon(Icons.settings_outlined),
-                      label: const Text('管理看板'),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: loading
+                          ? const Center(child: CircularProgressIndicator())
+                          : posts.isEmpty
+                          ? Center(
+                              child: Text(
+                                '目前沒有貼文',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(color: Colors.white70),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: posts.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 16),
+                              itemBuilder: (context, index) => PostCard(
+                                db: db,
+                                data: posts[index],
+                                authorDid: did,
+                                opsDispatchService: opsDispatchService,
+                              ),
+                            ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : posts.isEmpty
-                      ? Center(
-                          child: Text(
-                            '目前沒有貼文',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(color: Colors.white70),
-                          ),
-                        )
-                      : ListView.separated(
-                          itemCount: posts.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (context, index) => PostCard(
-                            db: db,
-                            data: posts[index],
-                            authorDid: did,
-                            opsDispatchService: opsDispatchService,
-                          ),
-                        ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -887,144 +941,178 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF0C1424).withOpacity(0.75),
         border: Border(
           bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
         ),
       ),
-      child: Row(
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 640;
+
+          return Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.08),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: const Icon(Icons.bolt, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Ansible',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-              ),
-            ],
-          ),
-          const Spacer(),
-          // Network Status Indicator
-          ListenableBuilder(
-            listenable: networkStatusService,
-            builder: (context, _) {
-              return _NetworkStatusIndicator(
-                status: networkStatusService.status,
-                connectionType: networkStatusService.connectionType,
-                onTap: () => networkStatusService.checkStatus(),
-              );
-            },
-          ),
-          const SizedBox(width: 12),
-          TextButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => WalletScreen(
-                    holderDid: did,
-                    repository: DriftWalletRepository(db),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.08),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Icon(Icons.bolt, color: Colors.white),
                   ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
-            label: const Text('連接錢包'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.black,
-              backgroundColor: const Color(0xFFFF9F43),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // DID identity badge with ops queue indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F182A),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF1F2A3D)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.fingerprint,
-                  size: 16,
-                  color: Color(0xFFFF9F43),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _truncatedDid,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Ansible',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
                   ),
+                ],
+              ),
+              const Spacer(),
+              if (!compact) ...[
+                ListenableBuilder(
+                  listenable: networkStatusService,
+                  builder: (context, _) {
+                    return _NetworkStatusIndicator(
+                      status: networkStatusService.status,
+                      connectionType: networkStatusService.connectionType,
+                      onTap: () => networkStatusService.checkStatus(),
+                    );
+                  },
                 ),
                 const SizedBox(width: 8),
-                OpsQueueStatusBadge(repository: opsQueueRepo),
               ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: () async {
-              await opsDispatchService.flushPending();
-              await onRefresh();
-            },
-            icon: const Icon(Icons.refresh),
-            color: Colors.white70,
-            tooltip: '同步並重新整理',
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => SyncSettingsScreen(db: db)),
-              );
-            },
-            icon: const Icon(Icons.sync),
-            color: Colors.white70,
-            tooltip: 'Sync Settings',
-          ),
-          const SizedBox(width: 8),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white70),
-            tooltip: '選單',
-            onSelected: (value) {
-              if (value == 'clear_identity' && onClearIdentity != null) {
-                onClearIdentity!();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem<String>(
-                value: 'clear_identity',
-                child: Row(
-                  children: [
-                    Icon(Icons.no_accounts_outlined, size: 18),
-                    SizedBox(width: 10),
-                    Text('清除身份 (Clear Identity)'),
-                  ],
+              compact
+                  ? IconButton.filled(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => WalletScreen(
+                              holderDid: did,
+                              repository: DriftWalletRepository(db),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.account_balance_wallet_outlined),
+                      tooltip: '連接錢包',
+                    )
+                  : TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => WalletScreen(
+                              holderDid: did,
+                              repository: DriftWalletRepository(db),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.account_balance_wallet_outlined,
+                        size: 18,
+                      ),
+                      label: const Text('連接錢包'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        backgroundColor: const Color(0xFFFF9F43),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+              if (!compact) ...[
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F182A),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF1F2A3D)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.fingerprint,
+                        size: 16,
+                        color: Color(0xFFFF9F43),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _truncatedDid,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OpsQueueStatusBadge(repository: opsQueueRepo),
+                    ],
+                  ),
                 ),
+              ],
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: () async {
+                  await opsDispatchService.flushPending();
+                  await onRefresh();
+                },
+                icon: const Icon(Icons.refresh),
+                color: Colors.white70,
+                tooltip: '同步並重新整理',
+              ),
+              if (!compact)
+                IconButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SyncSettingsScreen(db: db),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.sync),
+                  color: Colors.white70,
+                  tooltip: 'Sync Settings',
+                ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white70),
+                tooltip: '選單',
+                onSelected: (value) {
+                  if (value == 'clear_identity' && onClearIdentity != null) {
+                    onClearIdentity!();
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem<String>(
+                    value: 'clear_identity',
+                    child: Row(
+                      children: [
+                        Icon(Icons.no_accounts_outlined, size: 18),
+                        SizedBox(width: 10),
+                        Text('清除身份 (Clear Identity)'),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1113,21 +1201,28 @@ class _NetworkStatusIndicator extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader();
+  const _SectionHeader({this.onOpenBoards});
+
+  final VoidCallback? onOpenBoards;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         IconButton(
-          onPressed: () {},
+          onPressed: onOpenBoards,
           icon: const Icon(Icons.view_sidebar_outlined),
           color: Colors.white70,
+          tooltip: '訂閱',
         ),
         const SizedBox(width: 8),
-        const Text(
-          '全部文章',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+        const Expanded(
+          child: Text(
+            '全部文章',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
         ),
       ],
     );

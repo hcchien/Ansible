@@ -63,7 +63,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
          :ok <- validate_handle(handle) do
       # Verify signature BEFORE consuming the nonce so an invalid sig does not
       # burn the nonce — the client can retry without requesting a new one.
-      if not SigVerifier.verify_ed25519(public_key_hex, nonce, registration_sig) do
+      if not valid_registration_signature?(public_key_hex, nonce, registration_sig) do
         send_json(conn, 401, %{error: "invalid_sig"})
       else
         case DidAccountCache.consume_nonce(public_key_hex, nonce, handle) do
@@ -166,6 +166,14 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   end
 
   defp validate_handle(_), do: {:error, :invalid_handle}
+
+  defp valid_registration_signature?(public_key_hex, nonce, registration_sig) do
+    accepts_dev_signature? =
+      Application.get_env(:ansible_relay, :allow_dev_identity_signatures, false) &&
+        String.starts_with?(registration_sig, "dev-sig-")
+
+    accepts_dev_signature? || SigVerifier.verify_ed25519(public_key_hex, nonce, registration_sig)
+  end
 
   defp send_json(conn, status, body) do
     conn

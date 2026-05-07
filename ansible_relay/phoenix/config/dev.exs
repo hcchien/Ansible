@@ -9,3 +9,4 @@ config :ansible_relay, AnsibleRelay.Repo,
   pool_size: 5
 
 config :ansible_relay, :port, 4001
+config :ansible_relay, :allow_dev_identity_signatures, true

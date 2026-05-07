@@ -153,6 +153,35 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert {:ok, %{public_key_hex: ^public_key_hex}} = DidAccountCache.get(@valid_did)
   end
 
+  test "anchor accepts development signatures only when enabled" do
+    original = Application.get_env(:ansible_relay, :allow_dev_identity_signatures, false)
+    Application.put_env(:ansible_relay, :allow_dev_identity_signatures, true)
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :allow_dev_identity_signatures, original)
+    end)
+
+    register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    nonce = Jason.decode!(register.resp_body)["nonce"]
+
+    response =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => @valid_public_key,
+        "handle" => "alice.trisaura.io",
+        "registration_sig" => "dev-sig-local",
+        "nonce" => nonce
+      })
+
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["did"] == @valid_did
+  end
+
   test "anchor rejects a handle that was not bound to the registration nonce" do
     {public_key_hex, private_key} = ed25519_keypair()
 

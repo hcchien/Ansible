@@ -6,13 +6,20 @@ config :ansible_relay, AnsibleRelay.Repo,
   adapter: Ecto.Adapters.Postgres,
   pool_size: 10
 
-config :ansible_relay, :did_cache_ttl_seconds, 7_776_000   # 90 days
-config :ansible_relay, :identity_challenge_ttl_seconds, 600 # 10 minutes
+# 90 days
+config :ansible_relay, :did_cache_ttl_seconds, 7_776_000
+# 10 minutes
+config :ansible_relay, :identity_challenge_ttl_seconds, 600
 config :ansible_relay, :port, 4000
+config :ansible_relay, :allow_dev_identity_signatures, false
 
 config :ansible_relay, :zkp_verification_keys, [
-  %{version: "passport_v1_groth16_bn254", hash: "sha256:dev-vk-hash-placeholder", status: :active},
-  %{version: "passport_v1_dev",           hash: "sha256:dev-passport-v1-placeholder", status: :active}
+  %{
+    version: "passport_v1_groth16_bn254",
+    hash: "sha256:dev-vk-hash-placeholder",
+    status: :active
+  },
+  %{version: "passport_v1_dev", hash: "sha256:dev-passport-v1-placeholder", status: :active}
 ]
 
 # SOSP abuse detector defaults. A DID posting more than 5 Ops/second is

@@ -25,6 +25,7 @@ class PasskeysRegistrationScreen extends StatefulWidget {
   final DidPlcManager? didPlcManager;
   final AtProtoClient? atProtoClient;
   final Future<String> Function(String nonce, String publicKeyHex)? nonceSigner;
+  final bool allowInsecureDevFallback;
 
   const PasskeysRegistrationScreen({
     super.key,
@@ -33,6 +34,10 @@ class PasskeysRegistrationScreen extends StatefulWidget {
     this.didPlcManager,
     this.atProtoClient,
     this.nonceSigner,
+    this.allowInsecureDevFallback = const bool.fromEnvironment(
+      'ANSIBLE_ALLOW_INSECURE_DEV_FALLBACK',
+      defaultValue: false,
+    ),
   });
 
   @override
@@ -131,11 +136,25 @@ class _PasskeysRegistrationScreenState
       setState(() => _phase = _Phase.done);
       widget.onRegistered(result.did);
     } catch (e) {
+      await _cleanupPartialRegistration();
       if (!mounted) return;
       setState(() {
         _phase = _Phase.idle;
         _errorMessage = _formatError(e);
       });
+    }
+  }
+
+  Future<void> _cleanupPartialRegistration() async {
+    try {
+      await _didPlcManager.deleteDid();
+    } catch (_) {
+      // Keep the original registration error visible.
+    }
+    try {
+      await _passkeysManager.delete();
+    } catch (_) {
+      // Keep the original registration error visible.
     }
   }
 
@@ -157,6 +176,9 @@ class _PasskeysRegistrationScreenState
       final signer = DidSignerImpl(secureStorage: const FlutterSecureStorage());
       final sig = await signer.sign(utf8.encode(nonce));
       if (!RegExp(r'^[0-9a-fA-F]{128}$').hasMatch(sig.hex)) {
+        if (widget.allowInsecureDevFallback) {
+          return _devSignatureForNonce(nonce);
+        }
         throw const FormatException(
           'Registration signature must be a 64-byte hex Ed25519 signature',
         );
@@ -165,11 +187,17 @@ class _PasskeysRegistrationScreenState
     } on UnimplementedError {
       // Rust bridge not built yet — return a dev stub that the local Relay
       // accepts. Real devices always have the bridge available.
-      return 'dev-sig-${base64Url.encode(utf8.encode(nonce)).replaceAll("=", "")}';
+      if (!widget.allowInsecureDevFallback) rethrow;
+      return _devSignatureForNonce(nonce);
     } on StateError {
       // Keypair not in storage yet (race during first registration) — same stub.
-      return 'dev-sig-${base64Url.encode(utf8.encode(nonce)).replaceAll("=", "")}';
+      if (!widget.allowInsecureDevFallback) rethrow;
+      return _devSignatureForNonce(nonce);
     }
+  }
+
+  String _devSignatureForNonce(String nonce) {
+    return 'dev-sig-${base64Url.encode(utf8.encode(nonce)).replaceAll("=", "")}';
   }
 
   String? _normalizeHandleSuffix(String raw) {

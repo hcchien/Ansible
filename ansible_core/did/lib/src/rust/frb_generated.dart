@@ -93,10 +93,21 @@ class RustLib {
     required String handle,
     required String pdsEndpoint,
   }) async {
+    final did =
+        'did:plc:${_localPlcSuffix('$signingKeyHex|$handle|$pdsEndpoint')}';
     return DidPlcBytes(
-      did: 'did:plc:dev-${signingKeyHex.substring(0, 8)}',
-      genesisJson:
-          '{"type":"plc_genesis","signingKey":"$signingKeyHex","handle":"$handle","pds":"$pdsEndpoint","stub":true}',
+      did: did,
+      genesisJson: jsonEncode({
+        'handle': handle,
+        'prev': null,
+        'rotationKeys': [signingKeyHex],
+        'services': {
+          'atproto_pds': {'type': 'AtprotoPds', 'endpoint': pdsEndpoint},
+        },
+        'signingKey': signingKeyHex,
+        'stub': true,
+        'type': 'plc_genesis',
+      }),
     );
   }
 
@@ -129,6 +140,18 @@ class RustLib {
     // Dev stub: deterministic fake sig
     final lenHex = cborBytes.length.toRadixString(16).padLeft(4, '0');
     return 'devsig$lenHex${'00' * 60}';
+  }
+
+  String _localPlcSuffix(String seed) {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
+    final buffer = StringBuffer();
+    for (var i = 0; i < 24; i++) {
+      final codeUnit = seed.codeUnitAt(i % seed.length);
+      buffer.writeCharCode(
+        alphabet.codeUnitAt((codeUnit + i) % alphabet.length),
+      );
+    }
+    return buffer.toString();
   }
 }
 

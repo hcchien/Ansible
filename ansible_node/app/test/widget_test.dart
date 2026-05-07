@@ -2,6 +2,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -22,6 +23,33 @@ void main() {
 
     expect(find.text('Ansible'), findsOneWidget);
     expect(find.text('Passkeys 身份建立'), findsOneWidget);
+  });
+
+  testWidgets('uses a single-column forum layout on phone width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _ExistingDidPlcManager(),
+      ),
+    );
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(find.text('全部文章'), findsOneWidget);
+    expect(find.text('目前沒有貼文'), findsOneWidget);
+    expect(find.text('訂閱'), findsNothing);
   });
 }
 
@@ -53,4 +81,25 @@ class _EmptyDidPlcManager implements DidPlcManager {
 
   @override
   Future<DidPlcResult?> loadDid() async => null;
+}
+
+class _ExistingDidPlcManager implements DidPlcManager {
+  @override
+  Future<DidPlcResult> createDid({
+    required String handle,
+    String pdsEndpoint = 'https://trisaura.io',
+    String? signingKeyHex,
+  }) {
+    throw UnimplementedError('Not used by this test.');
+  }
+
+  @override
+  Future<void> deleteDid() async {}
+
+  @override
+  Future<DidPlcResult?> loadDid() async => const DidPlcResult(
+    did: 'did:plc:abcdefghijklmnop',
+    genesisJson: '{"type":"plc_genesis"}',
+    publicKeyHex: 'ab',
+  );
 }
