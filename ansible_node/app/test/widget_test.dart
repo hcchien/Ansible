@@ -21,8 +21,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Ansible'), findsOneWidget);
-    expect(find.text('Passkeys 身份建立'), findsOneWidget);
+    expect(find.text('ansible'), findsOneWidget);
+    expect(find.text('在這裡，\n先慢一點。'), findsOneWidget);
+    expect(find.text('沒有帳號 · 沒有雲端 · 不會被收集'), findsOneWidget);
   });
 
   testWidgets('uses a single-column forum layout on phone width', (
@@ -47,7 +48,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('全部文章'), findsOneWidget);
+    expect(find.text('討論串'), findsOneWidget);
+    expect(find.text('公開 · OPEN'), findsOneWidget);
     expect(find.text('目前沒有貼文'), findsOneWidget);
     expect(find.text('訂閱'), findsNothing);
   });

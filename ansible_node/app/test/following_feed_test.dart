@@ -17,7 +17,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Following'));
+    await tester.tap(find.text('圈內'));
     await tester.pumpAndSettle();
 
     expect(selected, FeedFilter.following);

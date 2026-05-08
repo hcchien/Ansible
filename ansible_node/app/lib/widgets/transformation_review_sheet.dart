@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/ansible_design.dart';
+
 typedef TransformationAccept =
     Future<void> Function(String? title, String body);
 
@@ -59,36 +61,97 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 12,
+          left: 22,
+          right: 22,
+          top: 16,
           bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: Container(
+                width: 32,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: AnsibleDesign.rule,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                const AnsibleMark(size: 18),
+                const SizedBox(width: 10),
+                const Text(
+                  'SYSTEM MESSAGE · 系統訊息',
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 10,
+                    letterSpacing: 1.4,
+                    color: AnsibleDesign.inkMuted,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             const Text(
-              '轉換審閱',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              '下面這些內容會離開你的裝置，傳送給遠端 AI 做整理。',
+              style: TextStyle(
+                fontSize: 17,
+                height: 1.65,
+                color: AnsibleDesign.ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '一旦傳出，就無法當作沒發生過。可以先把不想送的關掉。',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.65,
+                color: AnsibleDesign.inkMuted,
+                fontStyle: FontStyle.italic,
+              ),
             ),
             const SizedBox(height: 12),
-            const Text('來源邊界', style: TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final label in widget.sourceLabels)
-                  Chip(label: Text(label)),
-                if (widget.containsPrivateSource)
-                  const Chip(label: Text('Private/local source')),
-              ],
+            Container(
+              decoration: const BoxDecoration(
+                border: Border.symmetric(
+                  horizontal: BorderSide(
+                    color: AnsibleDesign.ruleSoft,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: Column(
+                children: [
+                  _ManifestRow(
+                    kind: '正文 · BODY',
+                    detail: '${widget.body.length} 字',
+                    enabled: true,
+                    locked: true,
+                  ),
+                  if (widget.containsPrivateSource)
+                    const _ManifestRow(
+                      kind: 'PRIVATE · LOCAL SOURCE',
+                      detail: '來源內容預設留在本地；送出前需明確確認',
+                      enabled: true,
+                    ),
+                  for (final label in widget.sourceLabels)
+                    _ManifestRow(
+                      kind: '來源 · SOURCE',
+                      detail: label,
+                      enabled: true,
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
+              decoration: const InputDecoration(labelText: '標題 · TITLE'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -96,27 +159,106 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
               controller: _bodyController,
               minLines: 5,
               maxLines: 10,
-              decoration: const InputDecoration(labelText: 'Generated output'),
+              style: const TextStyle(height: 1.55),
+              decoration: const InputDecoration(labelText: '整理結果 · OUTPUT'),
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
+            Row(
               children: [
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.close),
-                  label: const Text('Discard'),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    child: const Text('留在本地'),
+                  ),
                 ),
-                FilledButton.icon(
-                  onPressed: _saving ? null : _accept,
-                  icon: const Icon(Icons.check),
-                  label: const Text('接受'),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: _saving ? null : _accept,
+                    child: Text('送出 · 約 ${widget.body.length} 字'),
+                  ),
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ManifestRow extends StatelessWidget {
+  const _ManifestRow({
+    required this.kind,
+    required this.detail,
+    required this.enabled,
+    this.locked = false,
+  });
+
+  final String kind;
+  final String detail;
+  final bool enabled;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  kind,
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    letterSpacing: 1.3,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: enabled ? AnsibleDesign.ink : AnsibleDesign.inkFaint,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Opacity(
+            opacity: locked ? 0.45 : 1,
+            child: Container(
+              width: 36,
+              height: 20,
+              decoration: BoxDecoration(
+                color: enabled ? AnsibleDesign.ink : AnsibleDesign.paperDeep,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+              ),
+              alignment: enabled ? Alignment.centerRight : Alignment.centerLeft,
+              padding: const EdgeInsets.all(2),
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AnsibleDesign.paper,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

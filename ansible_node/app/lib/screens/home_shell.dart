@@ -21,6 +21,7 @@ import 'posts_view_screen.dart';
 import 'sync_settings_screen.dart';
 import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
+import '../theme/ansible_design.dart';
 
 enum _ContentModeTab { murmur, notes, discussions }
 
@@ -189,7 +190,7 @@ class _HomeShellState extends State<HomeShell> {
     if (providers.isEmpty) {
       final result = await showModalBottomSheet<AiProviderSetupResult>(
         context: context,
-        backgroundColor: const Color(0xFF0C1424),
+        backgroundColor: AnsibleDesign.paper,
         showDragHandle: true,
         isScrollControlled: true,
         builder: (_) => const AiProviderSetupSheet(),
@@ -209,7 +210,7 @@ class _HomeShellState extends State<HomeShell> {
 
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF0C1424),
+      backgroundColor: AnsibleDesign.paper,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (_) => TransformationReviewSheet(
@@ -517,13 +518,7 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       body: SafeArea(
         child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF050915), Color(0xFF0B1220)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
+          color: AnsibleDesign.paper,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 720;
@@ -581,7 +576,7 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> _openBoardsSheet(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF0C1424),
+      backgroundColor: AnsibleDesign.paper,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -624,9 +619,9 @@ class _Sidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1424).withOpacity(0.75),
+        color: AnsibleDesign.paperElev,
         border: Border(
-          right: BorderSide(color: Colors.white.withOpacity(0.06)),
+          right: BorderSide(color: AnsibleDesign.rule.withValues(alpha: 0.8)),
         ),
       ),
       padding: const EdgeInsets.all(20),
@@ -636,14 +631,19 @@ class _Sidebar extends StatelessWidget {
           Row(
             children: [
               const Text(
-                '訂閱',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                '圈 · CIRCLE',
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 10,
+                  letterSpacing: 1.4,
+                  color: AnsibleDesign.inkFaint,
+                ),
               ),
               const Spacer(),
               IconButton(
                 onPressed: () {},
                 icon: const Icon(Icons.add),
-                color: const Color(0xFFFF9F43),
+                color: AnsibleDesign.accent,
               ),
             ],
           ),
@@ -658,7 +658,7 @@ class _Sidebar extends StatelessWidget {
                     item: BoardNavItem(
                       title: '全部動態',
                       badge: '${boards.length} 看板',
-                      accent: const Color(0xFFFF9F43),
+                      accent: AnsibleDesign.accent,
                     ),
                     selected: selectedBoardId == null,
                     onTap: () => onSelectBoard(null),
@@ -670,7 +670,7 @@ class _Sidebar extends StatelessWidget {
                     title: board.title,
                     badge: null,
                     subtitle: board.slug,
-                    accent: const Color(0xFFFF9F43),
+                    accent: AnsibleDesign.accent,
                   ),
                   selected: selectedBoardId == board.id,
                   onTap: () => onSelectBoard(board.id),
@@ -684,8 +684,8 @@ class _Sidebar extends StatelessWidget {
             icon: const Icon(Icons.settings_outlined, size: 18),
             label: const Text('管理訂閱'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withOpacity(0.2)),
+              foregroundColor: AnsibleDesign.ink,
+              side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -716,13 +716,11 @@ class _BoardTileState extends State<_BoardTile> {
   Widget build(BuildContext context) {
     final selected = widget.selected;
     final item = widget.item;
-    final baseBg = selected ? const Color(0xFF0F1F34) : const Color(0xFF0F182A);
-    final hoverBg = const Color(0xFF122036);
+    final baseBg = selected ? AnsibleDesign.paperDeep : AnsibleDesign.paperElev;
+    final hoverBg = AnsibleDesign.paperDeep;
     final borderColor = selected
-        ? item.accent.withOpacity(0.35)
-        : (_hover
-              ? Colors.white.withOpacity(0.12)
-              : Colors.white.withOpacity(0.05));
+        ? item.accent.withValues(alpha: 0.35)
+        : (_hover ? AnsibleDesign.rule : AnsibleDesign.ruleSoft);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -738,7 +736,7 @@ class _BoardTileState extends State<_BoardTile> {
           boxShadow: _hover
               ? [
                   BoxShadow(
-                    color: item.accent.withOpacity(0.15),
+                    color: item.accent.withValues(alpha: 0.15),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -747,7 +745,7 @@ class _BoardTileState extends State<_BoardTile> {
         ),
         child: ListTile(
           leading: CircleAvatar(
-            backgroundColor: item.accent.withOpacity(0.15),
+            backgroundColor: item.accent.withValues(alpha: 0.15),
             foregroundColor: item.accent,
             child: const Text(
               '#',
@@ -758,13 +756,16 @@ class _BoardTileState extends State<_BoardTile> {
             item.title,
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: _hover ? item.accent : Colors.white,
+              color: _hover ? item.accent : AnsibleDesign.ink,
             ),
           ),
           subtitle: item.subtitle != null
               ? Text(
                   item.subtitle!,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  style: const TextStyle(
+                    color: AnsibleDesign.inkMuted,
+                    fontSize: 12,
+                  ),
                 )
               : null,
           trailing: item.badge != null
@@ -774,7 +775,7 @@ class _BoardTileState extends State<_BoardTile> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1D2A3B),
+                    color: AnsibleDesign.paperDeep,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -795,7 +796,7 @@ class BoardNavItem {
     required this.title,
     this.badge,
     this.subtitle,
-    this.accent = const Color(0xFFFF9F43),
+    this.accent = AnsibleDesign.accent,
   });
 
   final String title;
@@ -928,8 +929,8 @@ class _MainPanel extends StatelessWidget {
                             icon: const Icon(Icons.edit_outlined, size: 20),
                             label: const Text('新貼文'),
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF9F43),
-                              foregroundColor: Colors.black,
+                              backgroundColor: AnsibleDesign.ink,
+                              foregroundColor: AnsibleDesign.paper,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 18,
                                 vertical: 16,
@@ -1000,7 +1001,9 @@ class _MainPanel extends StatelessWidget {
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium
-                                        ?.copyWith(color: Colors.white70),
+                                        ?.copyWith(
+                                          color: AnsibleDesign.inkMuted,
+                                        ),
                                   ),
                                 )
                               : ListView.separated(
@@ -1055,10 +1058,10 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0C1424).withOpacity(0.75),
+      decoration: const BoxDecoration(
+        color: AnsibleDesign.paper,
         border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
         ),
       ),
       child: LayoutBuilder(
@@ -1070,20 +1073,11 @@ class _TopBar extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.08),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: const Icon(Icons.bolt, color: Colors.white),
-                  ),
-                  const SizedBox(width: 12),
+                  const AnsibleMark(size: 30),
+                  const SizedBox(width: 10),
                   const Text(
-                    'Ansible',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                    'ansible',
+                    style: TextStyle(fontWeight: FontWeight.w300, fontSize: 22),
                   ),
                 ],
               ),
@@ -1133,8 +1127,8 @@ class _TopBar extends StatelessWidget {
                       ),
                       label: const Text('連接錢包'),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        backgroundColor: const Color(0xFFFF9F43),
+                        foregroundColor: AnsibleDesign.paper,
+                        backgroundColor: AnsibleDesign.ink,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 14,
@@ -1152,9 +1146,9 @@ class _TopBar extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F182A),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF1F2A3D)),
+                    color: AnsibleDesign.paperElev,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AnsibleDesign.rule, width: 0.5),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1162,15 +1156,15 @@ class _TopBar extends StatelessWidget {
                       const Icon(
                         Icons.fingerprint,
                         size: 16,
-                        color: Color(0xFFFF9F43),
+                        color: AnsibleDesign.accent,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         _truncatedDid,
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: AnsibleDesign.inkMuted,
                           fontSize: 12,
-                          fontFamily: 'monospace',
+                          fontFamily: AnsibleDesign.mono,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1186,7 +1180,7 @@ class _TopBar extends StatelessWidget {
                   await onRefresh();
                 },
                 icon: const Icon(Icons.refresh),
-                color: Colors.white70,
+                color: AnsibleDesign.inkMuted,
                 tooltip: '同步並重新整理',
               ),
               if (!compact)
@@ -1199,11 +1193,14 @@ class _TopBar extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.sync),
-                  color: Colors.white70,
+                  color: AnsibleDesign.inkMuted,
                   tooltip: 'Sync Settings',
                 ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white70),
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AnsibleDesign.inkMuted,
+                ),
                 tooltip: '選單',
                 onSelected: (value) {
                   if (value == 'clear_identity' && onClearIdentity != null) {
@@ -1240,21 +1237,28 @@ class _ModeNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SegmentedButton<_ContentModeTab>(
+      style: SegmentedButton.styleFrom(
+        backgroundColor: AnsibleDesign.paper,
+        selectedBackgroundColor: AnsibleDesign.paperDeep,
+        foregroundColor: AnsibleDesign.inkMuted,
+        selectedForegroundColor: AnsibleDesign.ink,
+        side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
+      ),
       segments: const [
         ButtonSegment(
           value: _ContentModeTab.murmur,
           icon: Icon(Icons.chat_bubble_outline),
-          label: Text('Murmur'),
+          label: Text('碎念'),
         ),
         ButtonSegment(
           value: _ContentModeTab.notes,
           icon: Icon(Icons.sticky_note_2_outlined),
-          label: Text('Notes'),
+          label: Text('筆記'),
         ),
         ButtonSegment(
           value: _ContentModeTab.discussions,
           icon: Icon(Icons.forum_outlined),
-          label: Text('Discussions'),
+          label: Text('討論'),
         ),
       ],
       selected: {selected},
@@ -1358,18 +1362,23 @@ class _SectionHeader extends StatelessWidget {
         IconButton(
           onPressed: onOpenBoards,
           icon: const Icon(Icons.view_sidebar_outlined),
-          color: Colors.white70,
+          color: AnsibleDesign.inkMuted,
           tooltip: '訂閱',
         ),
         const SizedBox(width: 8),
         const Expanded(
           child: Text(
-            '全部文章',
+            '討論串',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.w500,
+              color: AnsibleDesign.ink,
+            ),
           ),
         ),
+        const AnsibleStatusChip(label: '公開 · OPEN', dot: AnsibleDesign.accent),
       ],
     );
   }
@@ -1421,7 +1430,7 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> {
   bool _hover = false;
-  static const _accent = Color(0xFFFF9F43);
+  static const _accent = AnsibleDesign.accent;
   late final store.DriftReactionRepository _reactionRepo;
   bool _isReacting = false;
   bool _reacted = false;
@@ -1508,9 +1517,9 @@ class _PostCardState extends State<PostCard> {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withOpacity(0.04)),
+            color: AnsibleDesign.paperElev,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1524,8 +1533,8 @@ class _PostCardState extends State<PostCard> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(8),
+                      color: AnsibleDesign.paperDeep,
+                      borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       data.category,
@@ -1539,7 +1548,7 @@ class _PostCardState extends State<PostCard> {
                   IconButton(
                     onPressed: () {},
                     icon: const Icon(Icons.more_horiz),
-                    color: Colors.white70,
+                    color: AnsibleDesign.inkMuted,
                   ),
                 ],
               ),
@@ -1549,7 +1558,7 @@ class _PostCardState extends State<PostCard> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: _hover ? _accent : Colors.white,
+                  color: _hover ? _accent : AnsibleDesign.ink,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1558,7 +1567,7 @@ class _PostCardState extends State<PostCard> {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Color(0xFFBCC7D9),
+                  color: AnsibleDesign.inkMuted,
                   height: 1.5,
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
@@ -1570,34 +1579,34 @@ class _PostCardState extends State<PostCard> {
                   const Icon(
                     Icons.person_outline,
                     size: 16,
-                    color: Colors.white70,
+                    color: AnsibleDesign.inkMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     data.author,
-                    style: const TextStyle(color: Colors.white70),
+                    style: const TextStyle(color: AnsibleDesign.inkMuted),
                   ),
                   const SizedBox(width: 12),
                   const Icon(
                     Icons.forum_outlined,
                     size: 16,
-                    color: Colors.white70,
+                    color: AnsibleDesign.inkMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     data.board,
-                    style: const TextStyle(color: Colors.white70),
+                    style: const TextStyle(color: AnsibleDesign.inkMuted),
                   ),
                   const SizedBox(width: 12),
                   const Icon(
                     Icons.access_time,
                     size: 16,
-                    color: Colors.white70,
+                    color: AnsibleDesign.inkMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     data.timeAgo,
-                    style: const TextStyle(color: Colors.white70),
+                    style: const TextStyle(color: AnsibleDesign.inkMuted),
                   ),
                 ],
               ),
@@ -1661,12 +1670,10 @@ class _ReactionChip extends StatelessWidget {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(
-        foregroundColor: active ? Colors.black : Colors.white,
+        foregroundColor: active ? AnsibleDesign.paper : AnsibleDesign.ink,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        backgroundColor: active
-            ? const Color(0xFFFF9F43)
-            : Colors.white.withOpacity(0.05),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: active ? AnsibleDesign.ink : AnsibleDesign.paperDeep,
+        shape: const StadiumBorder(),
       ),
       child: Text('$label $count'),
     );
@@ -1686,10 +1693,10 @@ class _CommentChip extends StatelessWidget {
       icon: const Icon(Icons.chat_bubble_outline, size: 18),
       label: Text('$count 則留言'),
       style: TextButton.styleFrom(
-        foregroundColor: Colors.white,
+        foregroundColor: AnsibleDesign.ink,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        backgroundColor: Colors.white.withOpacity(0.05),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: AnsibleDesign.paperDeep,
+        shape: const StadiumBorder(),
       ),
     );
   }

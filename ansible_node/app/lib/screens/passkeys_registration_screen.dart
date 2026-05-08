@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../services/atproto_client.dart';
+import '../theme/ansible_design.dart';
 
 /// Passkeys Registration Screen — Phase 1 V2.0
 ///
@@ -254,87 +255,191 @@ class _PasskeysRegistrationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AnsibleDesign.paper,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.fingerprint,
-                      size: 72,
-                      color: Color(0xFF1A56A4),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Ansible',
-                      style: Theme.of(context).textTheme.headlineLarge
-                          ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1A56A4),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Text(
+                              '1 / 3',
+                              style: TextStyle(
+                                fontFamily: AnsibleDesign.mono,
+                                fontSize: 10,
+                                color: AnsibleDesign.inkFaint,
+                                letterSpacing: 1.4,
+                              ),
+                            ),
+                            Spacer(),
+                            Text(
+                              '本地優先',
+                              style: TextStyle(
+                                fontFamily: AnsibleDesign.mono,
+                                fontSize: 10,
+                                color: AnsibleDesign.inkFaint,
+                                letterSpacing: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 36),
+                        const AnsibleMark(
+                          size: 86,
+                          color: AnsibleDesign.accent,
+                        ),
+                        const SizedBox(height: 22),
+                        const Text(
+                          'ansible',
+                          style: TextStyle(
+                            fontSize: 38,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: 0,
+                            height: 1.1,
                           ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Passkeys 身份建立',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 40),
-                    TextField(
-                      controller: _handleController,
-                      enabled: _phase == _Phase.idle,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      textInputAction: TextInputAction.done,
-                      decoration: const InputDecoration(
-                        labelText: '帳號名稱',
-                        suffixText: '.trisaura.io',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildPhaseIndicator(),
-                    const SizedBox(height: 32),
-                    if (_errorMessage != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          _errorMessage!,
-                          style: TextStyle(color: Colors.red.shade800),
+                        const SizedBox(height: 22),
+                        const Text(
+                          '在這裡，\n先慢一點。',
+                          style: TextStyle(
+                            fontSize: 23,
+                            height: 1.5,
+                            color: AnsibleDesign.ink,
+                          ),
                         ),
-                      ),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _phase == _Phase.idle
-                            ? _startRegistration
-                            : null,
-                        icon: const Icon(Icons.key),
-                        label: const Text('建立帳號（Passkeys）'),
-                      ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          '一個給碎念、筆記、與不急著被聽見的話的地方。先寫給自己；如果哪天想讓人看見，你會知道的。',
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.7,
+                            color: AnsibleDesign.inkMuted,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: AnsibleDesign.rule,
+                              width: 0.5,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: AnsibleDesign.paperElev,
+                          ),
+                          child: Column(
+                            children: [
+                              const _PromiseRow(
+                                dot: AnsibleDesign.spore,
+                                label: '留在你這裡',
+                                meta: 'STAYS LOCAL',
+                                body: '碎念、筆記、草稿與沒寄出的句子，預設只在你的裝置裡。',
+                              ),
+                              const Divider(height: 1),
+                              const _PromiseRow(
+                                dot: AnsibleDesign.accent,
+                                label: '送出前會先問你',
+                                meta: 'ASKS FIRST',
+                                body: '請 AI 整理、分享到圈子或公開之前，都會清楚列出會離開裝置的內容。',
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  4,
+                                  14,
+                                  14,
+                                ),
+                                child: TextField(
+                                  controller: _handleController,
+                                  enabled: _phase == _Phase.idle,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  textInputAction: TextInputAction.done,
+                                  decoration: const InputDecoration(
+                                    labelText: '帳號名稱',
+                                    suffixText: '.trisaura.io',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPhaseIndicator(),
+                        if (_errorMessage != null) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AnsibleDesign.danger.withValues(
+                                alpha: 0.08,
+                              ),
+                              border: Border.all(
+                                color: AnsibleDesign.danger.withValues(
+                                  alpha: 0.25,
+                                ),
+                                width: 0.5,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                color: AnsibleDesign.danger,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '系統不收集個人資料\n私鑰僅存於裝置安全晶片',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(22, 12, 22, 14),
+                  decoration: const BoxDecoration(
+                    color: AnsibleDesign.paper,
+                    border: Border(
+                      top: BorderSide(
+                        color: AnsibleDesign.ruleSoft,
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _phase == _Phase.idle
+                              ? _startRegistration
+                              : null,
+                          icon: const Icon(Icons.key_outlined),
+                          label: const Text('建立帳號（Passkeys）'),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        '沒有帳號 · 沒有雲端 · 不會被收集',
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 9,
+                          color: AnsibleDesign.inkFaint,
+                          letterSpacing: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -346,38 +451,127 @@ class _PasskeysRegistrationScreenState
     if (_phase == _Phase.idle) return const SizedBox.shrink();
 
     final steps = [
-      (label: '🔑 金鑰生成中', phase: _Phase.generatingKey),
-      (label: '🪪 建立 DID', phase: _Phase.creatingDid),
-      (label: '☁️ 上傳 Relay', phase: _Phase.anchoring),
-      (label: '✅ 身份建立完成', phase: _Phase.done),
+      (label: 'PASSKEY · 金鑰生成中', phase: _Phase.generatingKey),
+      (label: 'DID · 建立本地身份', phase: _Phase.creatingDid),
+      (label: 'RELAY · 錨定名稱', phase: _Phase.anchoring),
+      (label: 'DONE · 身份建立完成', phase: _Phase.done),
     ];
 
-    return Column(
-      children: steps.map((s) {
-        final isDone = _phase.index > s.phase.index;
-        final isCurrent = _phase == s.phase;
-        return ListTile(
-          dense: true,
-          leading: isCurrent
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(
-                  isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: isDone ? Colors.green : Colors.grey,
-                  size: 24,
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border.symmetric(
+          horizontal: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
+      child: Column(
+        children: steps.map((s) {
+          final isDone = _phase.index > s.phase.index;
+          final isCurrent = _phase == s.phase;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                if (isCurrent)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 1.5),
+                  )
+                else
+                  Icon(
+                    isDone ? Icons.check_circle : Icons.circle_outlined,
+                    color: isDone
+                        ? AnsibleDesign.spore
+                        : AnsibleDesign.inkFaint,
+                    size: 14,
+                  ),
+                const SizedBox(width: 10),
+                Text(
+                  s.label,
+                  style: TextStyle(
+                    color: isCurrent
+                        ? AnsibleDesign.ink
+                        : AnsibleDesign.inkMuted,
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 10,
+                    letterSpacing: 1.1,
+                  ),
                 ),
-          title: Text(
-            s.label,
-            style: TextStyle(
-              color: isCurrent ? const Color(0xFF1A56A4) : null,
-              fontWeight: isCurrent ? FontWeight.bold : null,
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _PromiseRow extends StatelessWidget {
+  const _PromiseRow({
+    required this.dot,
+    required this.label,
+    required this.meta,
+    required this.body,
+  });
+
+  final Color dot;
+  final String label;
+  final String meta;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(top: 7),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AnsibleDesign.ink,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      meta,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 8.5,
+                        color: AnsibleDesign.inkFaint,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.55,
+                    color: AnsibleDesign.inkMuted,
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
 }

@@ -11,6 +11,7 @@ import 'screens/home_shell.dart';
 // import 'screens/identity_anchor_screen.dart'; // V1: DID anchoring via NFC passport (replaced by PasskeysRegistrationScreen in V2.0)
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
 import 'services/relay_identity_client.dart';
+import 'theme/ansible_design.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,80 +108,9 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    const bgDeep = Color(0xFF050915);
-    const bgLight = Color(0xFF0B1220);
-    const accent = Color(0xFFFF9F43); // lively orange per latest UI
-    const fontFamilyBase = 'PMingLiU'; // 新細明體
-    const fontFallback = ['PMingLiU', 'MingLiU', 'PingFang TC'];
-    final colorScheme = ColorScheme(
-      brightness: Brightness.dark,
-      primary: accent,
-      onPrimary: Colors.black,
-      secondary: const Color(0xFFFFB76B),
-      onSecondary: Colors.white,
-      error: Colors.redAccent,
-      onError: Colors.white,
-      surface: const Color(0xFF0F182A),
-      onSurface: Colors.white,
-      surfaceContainerHighest: const Color(0xFF101728),
-      onSurfaceVariant: const Color(0xFFA9B4C8),
-      outline: const Color(0xFF1F2A3D),
-      shadow: Colors.black,
-      tertiary: accent.withOpacity(0.7),
-      onTertiary: Colors.black,
-    );
-
     return MaterialApp(
       title: 'Ansible Node',
-      theme: ThemeData(
-        colorScheme: colorScheme,
-        scaffoldBackgroundColor: bgDeep,
-        cardColor: colorScheme.surface,
-        fontFamily: fontFamilyBase,
-        fontFamilyFallback: fontFallback,
-        textTheme: ThemeData.dark().textTheme.apply(
-          bodyColor: Colors.white,
-          displayColor: Colors.white,
-          fontFamilyFallback: fontFallback,
-        ),
-        primaryTextTheme: ThemeData.dark().textTheme.apply(
-          bodyColor: Colors.white,
-          displayColor: Colors.white,
-          fontFamilyFallback: fontFallback,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: bgLight,
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: accent,
-            foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontFamily: fontFamilyBase,
-            ),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFF28334A)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            textStyle: const TextStyle(fontFamily: fontFamilyBase),
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white70),
-        useMaterial3: true,
-      ),
+      theme: AnsibleDesign.theme(),
       home: _loadingIdentity
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : _anchoredDid != null

@@ -40,7 +40,7 @@ void main() {
     await tester.tap(find.text('儲存並繼續'));
     await tester.pumpAndSettle();
 
-    expect(find.text('轉換審閱'), findsOneWidget);
-    expect(find.text('來源邊界'), findsOneWidget);
+    expect(find.text('SYSTEM MESSAGE · 系統訊息'), findsOneWidget);
+    expect(find.text('下面這些內容會離開你的裝置，傳送給遠端 AI 做整理。'), findsOneWidget);
   });
 }

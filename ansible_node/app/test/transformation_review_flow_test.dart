@@ -25,15 +25,16 @@ void main() {
       ),
     );
 
-    expect(find.text('轉換審閱'), findsOneWidget);
-    expect(find.text('Private/local source'), findsOneWidget);
+    expect(find.text('SYSTEM MESSAGE · 系統訊息'), findsOneWidget);
+    expect(find.text('下面這些內容會離開你的裝置，傳送給遠端 AI 做整理。'), findsOneWidget);
+    expect(find.text('PRIVATE · LOCAL SOURCE'), findsOneWidget);
     expect(accepted, isFalse);
 
     await tester.enterText(
       find.byKey(const Key('transformation_body_field')),
       'Edited body',
     );
-    await tester.tap(find.text('接受'));
+    await tester.tap(find.text('送出 · 約 14 字'));
     await tester.pumpAndSettle();
 
     expect(accepted, isTrue);

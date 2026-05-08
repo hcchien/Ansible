@@ -5,6 +5,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:uuid/uuid.dart';
 import '../widgets/post_form_dialog.dart';
 import '../services/ops_dispatch_service.dart';
+import '../theme/ansible_design.dart';
 
 class PostsViewScreen extends StatefulWidget {
   final AppDatabase db;
@@ -153,7 +154,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.thread.title),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: AnsibleDesign.paper,
+        foregroundColor: AnsibleDesign.ink,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -165,21 +167,23 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.message_outlined,
                                 size: 64,
-                                color: Colors.grey[400],
+                                color: AnsibleDesign.inkFaint,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 'No posts yet',
                                 style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(color: Colors.grey[600]),
+                                    ?.copyWith(color: AnsibleDesign.inkMuted),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Be the first to post',
-                                style: TextStyle(color: Colors.grey[600]),
+                                style: const TextStyle(
+                                  color: AnsibleDesign.inkMuted,
+                                ),
                               ),
                             ],
                           ),
@@ -199,6 +203,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                     Row(
                                       children: [
                                         CircleAvatar(
+                                          backgroundColor:
+                                              AnsibleDesign.paperDeep,
+                                          foregroundColor:
+                                              AnsibleDesign.inkMuted,
                                           child: Text(
                                             post.authorId
                                                 .substring(0, 1)
@@ -282,15 +290,11 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                         ),
                 ),
                 Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
+                  decoration: const BoxDecoration(
+                    color: AnsibleDesign.paper,
+                    border: Border(
+                      top: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+                    ),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: SafeArea(

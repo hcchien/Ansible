@@ -28,15 +28,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('Murmur'), findsOneWidget);
-    expect(find.text('Notes'), findsOneWidget);
-    expect(find.text('Discussions'), findsOneWidget);
+    expect(find.text('碎念'), findsOneWidget);
+    expect(find.text('筆記'), findsOneWidget);
+    expect(find.text('討論'), findsOneWidget);
     expect(find.text('訂閱'), findsNothing);
 
-    await tester.tap(find.text('Murmur'));
+    await tester.tap(find.text('碎念'));
     await tester.pumpAndSettle();
 
-    expect(find.text('捕捉 Murmur'), findsOneWidget);
+    expect(find.text('MURMUR · 碎念'), findsOneWidget);
+    expect(find.text('放下'), findsOneWidget);
     await tester.enterText(
       find.byKey(const Key('murmur_body_field')),
       'a' * 501,
@@ -44,13 +45,15 @@ void main() {
     await tester.pump();
     expect(find.text('500 / 500'), findsOneWidget);
 
-    await tester.tap(find.text('Notes'));
+    await tester.tap(find.text('筆記'));
     await tester.pumpAndSettle();
-    expect(find.text('Linked murmurs'), findsOneWidget);
+    expect(find.text('草地'), findsOneWidget);
+    expect(find.text('來源 · LINEAGE'), findsOneWidget);
 
-    await tester.tap(find.text('Discussions'));
+    await tester.tap(find.text('討論'));
     await tester.pumpAndSettle();
     expect(find.text('AI 摘要'), findsOneWidget);
+    expect(find.text('討論串'), findsOneWidget);
   });
 }
 
