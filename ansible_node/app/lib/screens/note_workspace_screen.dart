@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 import '../theme/ansible_design.dart';
 
 class NoteWorkspaceScreen extends StatelessWidget {
-  const NoteWorkspaceScreen({super.key, this.notes = const []});
+  const NoteWorkspaceScreen({
+    super.key,
+    this.notes = const [],
+    this.murmurs = const [],
+  });
 
   final List<ContentItem> notes;
+  final List<ContentItem> murmurs;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +23,20 @@ class NoteWorkspaceScreen extends StatelessWidget {
           const _EmptyNotesPreview()
         else
           for (final note in notes) _NoteRow(note: note),
+        const SizedBox(height: 18),
+        const AnsibleSectionHead(zh: '散落', en: 'LOOSE MURMURS', action: '↗ 編入'),
+        if (murmurs.isEmpty)
+          const Text(
+            '還沒有散落的碎念。',
+            style: TextStyle(
+              fontSize: 13,
+              color: AnsibleDesign.inkMuted,
+              fontStyle: FontStyle.italic,
+            ),
+          )
+        else
+          for (final murmur in murmurs.reversed.take(5))
+            _MurmurRow(murmur: murmur),
         const SizedBox(height: 20),
         const AnsibleSectionHead(zh: '來源 · LINEAGE', en: 'LOCAL CONTENT GRAPH'),
         const _LineagePreview(),
@@ -130,6 +149,64 @@ class _NoteRow extends StatelessWidget {
 
   String _formatDate(DateTime value) {
     return '${value.month.toString().padLeft(2, '0')}.${value.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class _MurmurRow extends StatelessWidget {
+  const _MurmurRow({required this.murmur});
+
+  final ContentItem murmur;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            margin: const EdgeInsets.only(top: 8),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AnsibleDesign.inkFaint,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              murmur.body,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.55,
+                color: AnsibleDesign.ink,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            _formatTime(murmur.createdAt),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9,
+              color: AnsibleDesign.inkFaint,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime value) {
+    return '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
   }
 }
 

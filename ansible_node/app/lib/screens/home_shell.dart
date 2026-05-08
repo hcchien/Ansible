@@ -18,7 +18,10 @@ import 'murmur_screen.dart';
 import 'note_editor_screen.dart';
 import 'note_workspace_screen.dart';
 import 'posts_view_screen.dart';
-import 'sync_settings_screen.dart';
+import 'inbox_screen.dart';
+import 'profile_screen.dart';
+import 'search_screen.dart';
+import 'settings_home_screen.dart';
 import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
@@ -57,6 +60,7 @@ class _HomeShellState extends State<HomeShell> {
 
   List<Board> _boards = [];
   List<PostCardData> _posts = [];
+  List<ContentItem> _contentItems = [];
   bool _loading = true;
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
@@ -92,6 +96,7 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     final boards = await _boardRepo.list();
+    final contentItems = await _contentItemRepo.list(authorDid: widget.did);
     final boardMap = {for (final b in boards) b.id: b};
     final followingEntries = _feedFilter == FeedFilter.following
         ? await FollowFeedProjector(
@@ -158,6 +163,7 @@ class _HomeShellState extends State<HomeShell> {
     setState(() {
       _boards = boards;
       _posts = postCards;
+      _contentItems = contentItems;
       _loading = false;
     });
   }
@@ -545,6 +551,8 @@ class _HomeShellState extends State<HomeShell> {
                 selectedMode: _selectedMode,
                 onModeChanged: _selectMode,
                 contentItemRepository: _contentItemRepo,
+                contentItems: _contentItems,
+                onContentItemsChanged: _loadData,
                 onStartAiAction: _startAiTransformation,
               );
 
@@ -829,6 +837,8 @@ class _MainPanel extends StatelessWidget {
     required this.selectedMode,
     required this.onModeChanged,
     required this.contentItemRepository,
+    required this.contentItems,
+    required this.onContentItemsChanged,
     required this.onStartAiAction,
   });
 
@@ -854,6 +864,8 @@ class _MainPanel extends StatelessWidget {
   final _ContentModeTab selectedMode;
   final ValueChanged<_ContentModeTab> onModeChanged;
   final ContentItemRepository contentItemRepository;
+  final List<ContentItem> contentItems;
+  final Future<void> Function() onContentItemsChanged;
   final Future<void> Function() onStartAiAction;
 
   @override
@@ -876,6 +888,7 @@ class _MainPanel extends StatelessWidget {
               opsQueueRepo: opsQueueRepo,
               opsDispatchService: opsDispatchService,
               networkStatusService: networkStatusService,
+              contentItems: contentItems,
             ),
             Expanded(
               child: Padding(
@@ -989,8 +1002,19 @@ class _MainPanel extends StatelessWidget {
                         _ContentModeTab.murmur => MurmurScreen(
                           authorDid: did,
                           contentItemRepository: contentItemRepository,
+                          recentMurmurs: contentItems
+                              .where((item) => item.mode == ContentMode.murmur)
+                              .toList(),
+                          onSaved: onContentItemsChanged,
                         ),
-                        _ContentModeTab.notes => const NoteWorkspaceScreen(),
+                        _ContentModeTab.notes => NoteWorkspaceScreen(
+                          notes: contentItems
+                              .where((item) => item.mode == ContentMode.note)
+                              .toList(),
+                          murmurs: contentItems
+                              .where((item) => item.mode == ContentMode.murmur)
+                              .toList(),
+                        ),
                         _ContentModeTab.discussions =>
                           loading
                               ? const Center(child: CircularProgressIndicator())
@@ -1039,6 +1063,7 @@ class _TopBar extends StatelessWidget {
     required this.opsQueueRepo,
     required this.opsDispatchService,
     required this.networkStatusService,
+    required this.contentItems,
   });
 
   final VoidCallback? onClearIdentity;
@@ -1048,6 +1073,7 @@ class _TopBar extends StatelessWidget {
   final OpsQueueRepository opsQueueRepo;
   final OpsDispatchService opsDispatchService;
   final NetworkStatusService networkStatusService;
+  final List<ContentItem> contentItems;
 
   String get _truncatedDid {
     if (did.length <= 24) return did;
@@ -1073,12 +1099,17 @@ class _TopBar extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AnsibleMark(size: 30),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'ansible',
-                    style: TextStyle(fontWeight: FontWeight.w300, fontSize: 22),
-                  ),
+                  AnsibleMark(size: compact ? 26 : 30),
+                  if (!compact) ...[
+                    const SizedBox(width: 10),
+                    const Text(
+                      'ansible',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w300,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const Spacer(),
@@ -1095,49 +1126,57 @@ class _TopBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
-              compact
-                  ? IconButton.filled(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => WalletScreen(
-                              holderDid: did,
-                              repository: DriftWalletRepository(db),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.account_balance_wallet_outlined),
-                      tooltip: '連接錢包',
-                    )
-                  : TextButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => WalletScreen(
-                              holderDid: did,
-                              repository: DriftWalletRepository(db),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.account_balance_wallet_outlined,
-                        size: 18,
-                      ),
-                      label: const Text('連接錢包'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AnsibleDesign.paper,
-                        backgroundColor: AnsibleDesign.ink,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SearchScreen(contentItems: contentItems),
                     ),
+                  );
+                },
+                icon: const Icon(Icons.search),
+                color: AnsibleDesign.inkMuted,
+                tooltip: '搜尋',
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const InboxScreen()),
+                  );
+                },
+                icon: const Icon(Icons.inbox_outlined),
+                color: AnsibleDesign.inkMuted,
+                tooltip: '收信',
+              ),
+              if (!compact)
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => WalletScreen(
+                          holderDid: did,
+                          repository: DriftWalletRepository(db),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 18,
+                  ),
+                  label: const Text('錢包'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AnsibleDesign.paper,
+                    backgroundColor: AnsibleDesign.ink,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
               if (!compact) ...[
                 const SizedBox(width: 12),
                 Container(
@@ -1187,38 +1226,30 @@ class _TopBar extends StatelessWidget {
                 IconButton(
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SyncSettingsScreen(db: db),
-                      ),
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
                     );
                   },
-                  icon: const Icon(Icons.sync),
+                  icon: const Icon(Icons.person_outline),
                   color: AnsibleDesign.inkMuted,
-                  tooltip: 'Sync Settings',
+                  tooltip: '公開身分',
                 ),
-              PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_vert,
-                  color: AnsibleDesign.inkMuted,
-                ),
-                tooltip: '選單',
-                onSelected: (value) {
-                  if (value == 'clear_identity' && onClearIdentity != null) {
-                    onClearIdentity!();
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem<String>(
-                    value: 'clear_identity',
-                    child: Row(
-                      children: [
-                        Icon(Icons.no_accounts_outlined, size: 18),
-                        SizedBox(width: 10),
-                        Text('清除身份 (Clear Identity)'),
-                      ],
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SettingsHomeScreen(
+                        db: db,
+                        did: did,
+                        onClearIdentity: onClearIdentity,
+                      ),
                     ),
-                  ),
-                ],
+                  );
+                },
+                icon: const Icon(
+                  Icons.settings_outlined,
+                  color: AnsibleDesign.inkMuted,
+                ),
+                tooltip: '設定',
               ),
             ],
           );

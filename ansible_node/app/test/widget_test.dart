@@ -52,6 +52,17 @@ void main() {
     expect(find.text('公開 · OPEN'), findsOneWidget);
     expect(find.text('目前沒有貼文'), findsOneWidget);
     expect(find.text('訂閱'), findsNothing);
+
+    await tester.tap(find.byTooltip('設定'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SETTINGS'), findsOneWidget);
+    expect(find.text('錢包'), findsOneWidget);
+    expect(find.text('同步'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    expect(find.text('登出此裝置'), findsOneWidget);
+    expect(find.text('清除身份 (Clear Identity)'), findsNothing);
   });
 }
 

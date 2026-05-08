@@ -37,7 +37,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('MURMUR · 碎念'), findsOneWidget);
-    expect(find.text('放下'), findsOneWidget);
+    expect(find.text('送出'), findsOneWidget);
     await tester.enterText(
       find.byKey(const Key('murmur_body_field')),
       'a' * 501,
@@ -45,9 +45,20 @@ void main() {
     await tester.pump();
     expect(find.text('500 / 500'), findsOneWidget);
 
+    await tester.enterText(
+      find.byKey(const Key('murmur_body_field')),
+      '測試碎念存檔',
+    );
+    await tester.tap(find.text('送出'));
+    await tester.pumpAndSettle();
+    expect(find.text('已送出'), findsOneWidget);
+    expect(find.text('測試碎念存檔'), findsOneWidget);
+
     await tester.tap(find.text('筆記'));
     await tester.pumpAndSettle();
     expect(find.text('草地'), findsOneWidget);
+    expect(find.text('散落'), findsOneWidget);
+    expect(find.text('測試碎念存檔'), findsOneWidget);
     expect(find.text('來源 · LINEAGE'), findsOneWidget);
 
     await tester.tap(find.text('討論'));

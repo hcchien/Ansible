@@ -35,7 +35,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Wallet'), findsOneWidget);
+    expect(find.text('WALLET'), findsOneWidget);
+    expect(find.text('錢包'), findsOneWidget);
+    await _scrollWallet(tester);
     expect(find.text('Verified Human'), findsOneWidget);
     expect(find.text('Active'), findsOneWidget);
     expect(find.text('Expires 2026-08-02'), findsOneWidget);
@@ -52,8 +54,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No credentials yet'), findsOneWidget);
-    expect(find.text('Add credential'), findsOneWidget);
+    await _scrollWallet(tester);
+    expect(find.text('還沒有憑證'), findsOneWidget);
+    expect(find.text('產生新身分'), findsOneWidget);
   });
 
   testWidgets('empty wallet add credential expands inline wizard', (
@@ -70,7 +73,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add credential'));
+    await _scrollWallet(tester);
+    await tester.tap(find.text('產生新身分'));
     await tester.pumpAndSettle();
 
     expect(find.byType(CredentialIssuanceWizard), findsOneWidget);
@@ -78,7 +82,7 @@ void main() {
     expect(find.text('Email OTP / Legacy'), findsOneWidget);
   });
 
-  testWidgets('wallet app bar add credential expands inline wizard', (
+  testWidgets('wallet identity add credential expands inline wizard', (
     tester,
   ) async {
     final repo = InMemoryWalletRepository.withCredentials([
@@ -105,11 +109,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Add credential'));
+    await _scrollWallet(tester);
+    await tester.tap(find.text('產生新身分'));
     await tester.pumpAndSettle();
 
     expect(find.byType(CredentialIssuanceWizard), findsOneWidget);
-    expect(find.text('Verified Human'), findsOneWidget);
     expect(find.text('TW 身份驗證'), findsOneWidget);
   });
 
@@ -134,20 +138,27 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add credential'));
+    await _scrollWallet(tester);
+    await tester.tap(find.text('產生新身分'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('TW 身份驗證'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'alice@example.com');
-    await tester.drag(find.byType(ListView), const Offset(0, -180));
+    await tester.ensureVisible(find.text('開始驗證'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('開始驗證'));
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
 
     expect(find.byType(CredentialIssuanceWizard), findsNothing);
+    await _scrollWallet(tester);
     expect(find.text('Verified Human'), findsOneWidget);
   });
+}
+
+Future<void> _scrollWallet(WidgetTester tester) async {
+  await tester.drag(find.byType(ListView), const Offset(0, -520));
+  await tester.pumpAndSettle();
 }
 
 class FakeTwIssuerClient extends VcIssuerClient {

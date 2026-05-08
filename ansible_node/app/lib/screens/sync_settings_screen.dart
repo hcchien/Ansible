@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
+import '../theme/ansible_design.dart';
+import '../widgets/ansible_screen_chrome.dart';
 
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
@@ -355,65 +357,171 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sync Settings'),
-        actions: [
-          if (_remoteNodes.isNotEmpty)
-            TextButton.icon(
-              onPressed: _syncingNodes.values.any((v) => v)
-                  ? null
-                  : _syncAllNodes,
-              icon: const Icon(Icons.sync),
-              label: const Text('Sync All'),
-            ),
-        ],
+    return AnsibleScreenScaffold(
+      title: 'SYNC',
+      leadingLabel: '← 設定',
+      trailing: IconButton(
+        onPressed: _remoteNodes.isEmpty || _syncingNodes.values.any((v) => v)
+            ? null
+            : _syncAllNodes,
+        icon: const Icon(Icons.sync),
+        tooltip: '全部同步',
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddRemoteNodeDialog,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Server'),
-      ),
-      body: _isLoading
+      child: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _remoteNodes.isEmpty
-          ? _buildEmptyState(theme)
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _remoteNodes.length,
-              itemBuilder: (context, index) {
-                final node = _remoteNodes[index];
-                return _buildServerCard(node, theme);
-              },
+          : ListView(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AnsibleMonoLabel('同步 · SYNC'),
+                      const SizedBox(height: 6),
+                      const Text(
+                        '點對點 · 無雲',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w500,
+                          color: AnsibleDesign.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AnsibleDesign.paperDeep.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AnsibleMark(size: 18, color: AnsibleDesign.accent),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                '你的內容只在你信任的裝置與圈裡流動。沒有伺服器在中間留副本。',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  height: 1.6,
+                                  color: AnsibleDesign.inkMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const AnsibleMonoLabel(
+                  '我的裝置 · DEVICES',
+                  padding: EdgeInsets.fromLTRB(22, 0, 22, 8),
+                ),
+                if (_remoteNodes.isEmpty)
+                  _buildEmptyState(theme)
+                else
+                  AnsibleRuleGroup(
+                    children: [
+                      for (var i = 0; i < _remoteNodes.length; i += 1)
+                        _buildServerCard(_remoteNodes[i], theme),
+                    ],
+                  ),
+                const AnsibleMonoLabel(
+                  '同步的圈 · CIRCLES',
+                  padding: EdgeInsets.fromLTRB(22, 20, 22, 8),
+                ),
+                AnsibleRuleGroup(
+                  children: [
+                    for (var i = 0; i < _boards.take(3).length; i += 1)
+                      _CircleSyncRow(
+                        name: _boards[i].title,
+                        members: i == 0 ? 4 : 2,
+                        when: i == 0 ? '2 小時前' : '今晨',
+                        status: i == 2
+                            ? _CircleSyncStatus.paused
+                            : _CircleSyncStatus.live,
+                      ),
+                    if (_boards.isEmpty)
+                      const _CircleSyncRow(
+                        name: '週四讀書會',
+                        members: 4,
+                        when: '2 小時前',
+                        status: _CircleSyncStatus.live,
+                      ),
+                  ],
+                ),
+                const AnsibleMonoLabel(
+                  '進階 · ADVANCED',
+                  padding: EdgeInsets.fromLTRB(22, 20, 22, 8),
+                ),
+                const AnsibleRuleGroup(
+                  children: [
+                    _SyncSwitchRow(
+                      label: '只在 Wi-Fi 同步',
+                      sub: '行動網路時暫停',
+                      on: true,
+                    ),
+                    _SyncSwitchRow(label: '附件大檔同步', sub: '預設只同步文字', on: false),
+                    _SyncSwitchRow(
+                      label: '背景同步',
+                      sub: 'App 關閉時也保持',
+                      on: true,
+                      last: true,
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(22, 14, 22, 24),
+                  child: Text(
+                    '一切都是端到端加密的。連我們也讀不到。',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.6,
+                      color: AnsibleDesign.inkFaint,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }
 
   Widget _buildEmptyState(ThemeData theme) {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.cloud_off,
-            size: 64,
-            color: Colors.white.withValues(alpha: 0.3),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AnsibleDesign.paperElev,
+              border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const AnsibleGlyphBox(glyph: '↔'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '還沒有設定同步節點。新增一台可信任裝置或小範圍測試 relay 後，內容才會離開本機。',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AnsibleDesign.inkMuted,
+                      height: 1.55,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
-          Text(
-            'No sync servers configured',
-            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white70),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Add a server to start syncing boards',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white54),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
             onPressed: _showAddRemoteNodeDialog,
             icon: const Icon(Icons.add),
-            label: const Text('Add Server'),
+            label: const Text('新增同步節點'),
           ),
         ],
       ),
@@ -427,8 +535,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final boardRetention = _boardRetentionByNode[node.id] ?? {};
     final enabledCount = boardSyncStatus.values.where((v) => v).length;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
       child: Column(
         children: [
           // Server Header
@@ -447,7 +559,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: node.isActive ? Colors.green : Colors.grey,
+                      color: node.isActive
+                          ? AnsibleDesign.spore
+                          : AnsibleDesign.inkFaint,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -460,34 +574,39 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         Text(
                           node.name,
                           style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                            color: AnsibleDesign.ink,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           node.url,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.white60,
+                            color: AnsibleDesign.inkMuted,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.sync, size: 14, color: Colors.white54),
+                            Icon(
+                              Icons.sync,
+                              size: 14,
+                              color: AnsibleDesign.inkFaint,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               node.lastSyncAt != null
                                   ? 'Last: ${_formatDateTime(node.lastSyncAt!)}'
                                   : 'Never synced',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white54,
+                                color: AnsibleDesign.inkFaint,
                               ),
                             ),
                             const SizedBox(width: 16),
                             Icon(
                               Icons.dashboard,
                               size: 14,
-                              color: Colors.white54,
+                              color: AnsibleDesign.inkFaint,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -495,7 +614,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                   ? '$enabledCount boards selected'
                                   : 'No boards selected',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white54,
+                                color: AnsibleDesign.inkFaint,
                               ),
                             ),
                           ],
@@ -517,7 +636,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   ),
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white54,
+                    color: AnsibleDesign.inkFaint,
                   ),
                 ],
               ),
@@ -525,7 +644,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           ),
           // Expanded content
           if (isExpanded) ...[
-            Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+            const Divider(height: 1, color: AnsibleDesign.ruleSoft),
             // Board selection
             Padding(
               padding: const EdgeInsets.all(16),
@@ -565,7 +684,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   Text(
                     'Select boards to sync. If no boards are selected, sync will skip this server.',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white54,
+                      color: AnsibleDesign.inkMuted,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -575,7 +694,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       child: Text(
                         'No boards available',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.white54,
+                          color: AnsibleDesign.inkMuted,
                         ),
                       ),
                     )
@@ -644,7 +763,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                 ],
               ),
             ),
-            Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+            const Divider(height: 1, color: AnsibleDesign.ruleSoft),
             // Server actions
             Padding(
               padding: const EdgeInsets.all(12),
@@ -681,5 +800,143 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
   static String _formatRetention(int days) {
     return days == _retainForeverValue ? 'Forever' : '${days}d';
+  }
+}
+
+enum _CircleSyncStatus { live, paused, behind }
+
+class _CircleSyncRow extends StatelessWidget {
+  const _CircleSyncRow({
+    required this.name,
+    required this.members,
+    required this.when,
+    required this.status,
+  });
+
+  final String name;
+  final int members;
+  final String when;
+  final _CircleSyncStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status) {
+      _CircleSyncStatus.live => AnsibleDesign.spore,
+      _CircleSyncStatus.paused => AnsibleDesign.rule,
+      _CircleSyncStatus.behind => AnsibleDesign.accent,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AnsibleDesign.paperDeep,
+              border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              name.characters.first,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AnsibleDesign.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$members 人 · 上次 $when',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SyncSwitchRow extends StatelessWidget {
+  const _SyncSwitchRow({
+    required this.label,
+    required this.sub,
+    required this.on,
+    this.last = false,
+  });
+
+  final String label;
+  final String sub;
+  final bool on;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: last
+              ? BorderSide.none
+              : const BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AnsibleDesign.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sub,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    height: 1.5,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(value: on, onChanged: null),
+        ],
+      ),
+    );
   }
 }

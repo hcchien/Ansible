@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
+import '../theme/ansible_design.dart';
+import '../widgets/ansible_screen_chrome.dart';
 import 'credential_issuance_wizard.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -61,26 +63,15 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF07111F),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0C1424),
-        foregroundColor: Colors.white,
-        title: const Text('Wallet'),
-        actions: [
-          IconButton(
-            onPressed: _openAddCredential,
-            icon: const Icon(Icons.add),
-            tooltip: 'Add credential',
-          ),
-          IconButton(
-            onPressed: _reload,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-          ),
-        ],
+    return AnsibleScreenScaffold(
+      title: 'WALLET',
+      leadingLabel: '← 設定',
+      trailing: IconButton(
+        onPressed: _reload,
+        icon: const Icon(Icons.refresh),
+        tooltip: '重新整理',
       ),
-      body: FutureBuilder<List<WalletCredential>>(
+      child: FutureBuilder<List<WalletCredential>>(
         future: _credentials,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -88,30 +79,131 @@ class _WalletScreenState extends State<WalletScreen> {
           }
 
           final credentials = snapshot.data ?? const <WalletCredential>[];
-          if (credentials.isEmpty) {
-            if (_showWizard) {
-              return ListView(
-                padding: const EdgeInsets.all(20),
-                children: [_buildCredentialWizard()],
-              );
-            }
-            return _EmptyWalletState(onAddCredential: _openAddCredential);
-          }
-
           return ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
             children: [
+              const AnsibleMonoLabel('身分 · IDENTITIES'),
+              const SizedBox(height: 6),
+              const Text(
+                '錢包',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w500,
+                  color: AnsibleDesign.ink,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'one device, many selves',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AnsibleDesign.inkMuted,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '這些都是你。但你選擇在哪裡是哪一個。',
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.6,
+                  color: AnsibleDesign.inkMuted,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _IdentityCard(
+                primary: true,
+                name: '本人',
+                en: 'ROOT · MASTER PASSKEY',
+                type: 'master passkey',
+                sub: '此裝置上產生的源頭。不能改名、不能複製、不能離開這台。',
+                uses: '所有圈與發布物的根',
+                age: '建立 312 天前',
+                keyFragment: _fragment(widget.holderDid),
+              ),
+              const SizedBox(height: 12),
+              const _IdentityCard(
+                accent: true,
+                name: '公開 · Tris',
+                en: 'PUBLIC HANDLE',
+                type: '衍生身分',
+                sub: '在討論串裡露出的名字。讀者只會看到這個。',
+                uses: '公開討論 · 23 處',
+                age: '278 天',
+                keyFragment: 'pk · 8c4d ... 22fa',
+              ),
+              const SizedBox(height: 12),
+              const _IdentityCard(
+                name: '讀書會 · Tris',
+                en: 'CIRCLE HANDLE',
+                type: '圈內身分',
+                sub: '只在「週四讀書會」內可見。離開圈就消失。',
+                uses: '1 個圈',
+                age: '92 天',
+                keyFragment: 'pk · c91a ... 6d02',
+              ),
+              const SizedBox(height: 12),
+              const _IdentityCard(
+                dim: true,
+                name: '匿名瀏覽',
+                en: 'OBSERVER',
+                type: '只讀身分',
+                sub: '拿來閱讀別人的公開內容；不留下任何痕跡。',
+                uses: '未啟用',
+                age: '未使用',
+                keyFragment: 'pk · observer',
+              ),
+              const SizedBox(height: 18),
+              OutlinedButton.icon(
+                onPressed: _openAddCredential,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('產生新身分'),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(
+                    color: AnsibleDesign.rule,
+                    width: 0.5,
+                    style: BorderStyle.solid,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 16),
               if (_showWizard) ...[
                 _buildCredentialWizard(),
                 const SizedBox(height: 16),
               ],
-              for (final credential in credentials) ...[
-                _CredentialTile(
-                  credential: credential,
-                  onDelete: () => _deleteCredential(credential),
+              const AnsibleMonoLabel('憑證 · CREDENTIALS'),
+              const SizedBox(height: 8),
+              if (credentials.isEmpty)
+                _EmptyWalletState(onAddCredential: _openAddCredential)
+              else
+                for (final credential in credentials) ...[
+                  _CredentialTile(
+                    credential: credential,
+                    onDelete: () => _deleteCredential(credential),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AnsibleDesign.paperDeep.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                const SizedBox(height: 12),
-              ],
+                child: const Text(
+                  '身分都從「本人」衍生而來。彼此之間不可互推。\n就算公開的我被看穿了，圈內的我仍是隱密的。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.7,
+                    color: AnsibleDesign.inkMuted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -130,6 +222,11 @@ class _WalletScreenState extends State<WalletScreen> {
       onCredentialStored: _handleCredentialStored,
     );
   }
+
+  static String _fragment(String value) {
+    if (value.length <= 16) return 'pk · $value';
+    return 'pk · ${value.substring(0, 6)} ... ${value.substring(value.length - 4)}';
+  }
 }
 
 class _EmptyWalletState extends StatelessWidget {
@@ -139,45 +236,227 @@ class _EmptyWalletState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paperElev,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AnsibleDesign.accentSoft,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.verified_user_outlined,
+              color: AnsibleDesign.accent,
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '還沒有憑證',
+                  style: TextStyle(
+                    color: AnsibleDesign.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '驗證憑證核發後會出現在這裡。',
+                  style: TextStyle(
+                    color: AnsibleDesign.inkMuted,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onAddCredential,
+            icon: const Icon(Icons.add),
+            tooltip: '新增憑證',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IdentityCard extends StatelessWidget {
+  const _IdentityCard({
+    required this.name,
+    required this.en,
+    required this.type,
+    required this.sub,
+    required this.uses,
+    required this.age,
+    required this.keyFragment,
+    this.primary = false,
+    this.accent = false,
+    this.dim = false,
+  });
+
+  final String name;
+  final String en;
+  final String type;
+  final String sub;
+  final String uses;
+  final String age;
+  final String keyFragment;
+  final bool primary;
+  final bool accent;
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: dim ? 0.65 : 1,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: primary
+              ? AnsibleDesign.paperDeep.withValues(alpha: 0.45)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: primary ? AnsibleDesign.ink : AnsibleDesign.rule,
+            width: 0.5,
+          ),
+        ),
+        child: Stack(
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+            if (accent)
+              const Positioned(
+                left: -16,
+                top: 0,
+                bottom: 0,
+                child: SizedBox(
+                  width: 2,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: AnsibleDesign.accent),
+                  ),
+                ),
               ),
-              child: const Icon(
-                Icons.account_balance_wallet_outlined,
-                color: Color(0xFFFF9F43),
-                size: 34,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'No credentials yet',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Verified credentials will appear here after issuance.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: onAddCredential,
-              icon: const Icon(Icons.add),
-              label: const Text('Add credential'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        en,
+                        style: const TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 9,
+                          letterSpacing: 1.4,
+                          color: AnsibleDesign.inkFaint,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      age,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 9,
+                        letterSpacing: 1,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: primary ? 22 : 17,
+                        fontWeight: FontWeight.w500,
+                        color: AnsibleDesign.ink,
+                      ),
+                    ),
+                    if (primary)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AnsibleDesign.accent,
+                            width: 0.5,
+                          ),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: const Text(
+                          '主',
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.mono,
+                            fontSize: 8,
+                            letterSpacing: 1.4,
+                            color: AnsibleDesign.accent,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  sub,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    height: 1.55,
+                    color: AnsibleDesign.inkMuted,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  keyFragment,
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 10,
+                    letterSpacing: 0.5,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Divider(color: AnsibleDesign.ruleSoft, height: 1),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      type,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AnsibleDesign.inkMuted,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      uses,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 9,
+                        letterSpacing: 1,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -197,8 +476,8 @@ class _CredentialTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1424),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        color: AnsibleDesign.paperElev,
+        border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -223,9 +502,9 @@ class _CredentialTile extends StatelessWidget {
                 Text(
                   credential.displayName,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AnsibleDesign.ink,
                     fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -236,7 +515,7 @@ class _CredentialTile extends StatelessWidget {
                     _StatusChip(status: credential.status),
                     Text(
                       'Expires ${_formatDate(credential.validUntil)}',
-                      style: const TextStyle(color: Colors.white70),
+                      style: const TextStyle(color: AnsibleDesign.inkMuted),
                     ),
                   ],
                 ),
@@ -244,7 +523,10 @@ class _CredentialTile extends StatelessWidget {
                 Text(
                   credential.issuerDid,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: const TextStyle(
+                    color: AnsibleDesign.inkFaint,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -252,7 +534,7 @@ class _CredentialTile extends StatelessWidget {
           IconButton(
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline),
-            color: Colors.white70,
+            color: AnsibleDesign.inkMuted,
             tooltip: 'Delete local credential',
           ),
         ],
