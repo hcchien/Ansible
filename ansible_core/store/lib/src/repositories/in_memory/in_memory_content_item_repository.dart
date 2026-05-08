@@ -38,6 +38,7 @@ class InMemoryContentItemRepository implements ContentItemRepository {
   @override
   Future<List<ContentItem>> list({ContentMode? mode, String? authorDid}) async {
     final items = _items.values.where((item) {
+      if (item.isDeleted) return false;
       if (mode != null && item.mode != mode) return false;
       if (authorDid != null && item.authorDid != authorDid) return false;
       return true;

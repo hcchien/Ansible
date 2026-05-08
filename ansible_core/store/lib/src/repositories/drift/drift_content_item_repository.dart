@@ -60,6 +60,7 @@ class DriftContentItemRepository implements ContentItemRepository {
     String? authorDid,
   }) async {
     final query = _db.select(_db.contentItems);
+    query.where((table) => table.isDeleted.equals(false));
     if (mode != null) {
       query.where((table) => table.mode.equals(mode.name));
     }

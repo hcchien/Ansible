@@ -8,10 +8,14 @@ class NoteWorkspaceScreen extends StatelessWidget {
     super.key,
     this.notes = const [],
     this.murmurs = const [],
+    this.contentItemRepository,
+    this.onContentItemsChanged,
   });
 
   final List<ContentItem> notes;
   final List<ContentItem> murmurs;
+  final ContentItemRepository? contentItemRepository;
+  final Future<void> Function()? onContentItemsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +26,12 @@ class NoteWorkspaceScreen extends StatelessWidget {
         if (notes.isEmpty)
           const _EmptyNotesPreview()
         else
-          for (final note in notes) _NoteRow(note: note),
+          for (final note in notes)
+            _NoteRow(
+              note: note,
+              contentItemRepository: contentItemRepository,
+              onContentItemsChanged: onContentItemsChanged,
+            ),
         const SizedBox(height: 18),
         const AnsibleSectionHead(zh: '散落', en: 'LOOSE MURMURS', action: '↗ 編入'),
         if (murmurs.isEmpty)
@@ -85,9 +94,15 @@ class _EmptyNotesPreview extends StatelessWidget {
 }
 
 class _NoteRow extends StatelessWidget {
-  const _NoteRow({required this.note});
+  const _NoteRow({
+    required this.note,
+    this.contentItemRepository,
+    this.onContentItemsChanged,
+  });
 
   final ContentItem note;
+  final ContentItemRepository? contentItemRepository;
+  final Future<void> Function()? onContentItemsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -138,9 +153,10 @@ class _NoteRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const AnsibleStatusChip(
-            label: 'PRIVATE',
-            dot: AnsibleDesign.inkMuted,
+          _VisibilityMenu(
+            note: note,
+            contentItemRepository: contentItemRepository,
+            onContentItemsChanged: onContentItemsChanged,
           ),
         ],
       ),
@@ -150,6 +166,81 @@ class _NoteRow extends StatelessWidget {
   String _formatDate(DateTime value) {
     return '${value.month.toString().padLeft(2, '0')}.${value.day.toString().padLeft(2, '0')}';
   }
+}
+
+class _VisibilityMenu extends StatelessWidget {
+  const _VisibilityMenu({
+    required this.note,
+    this.contentItemRepository,
+    this.onContentItemsChanged,
+  });
+
+  final ContentItem note;
+  final ContentItemRepository? contentItemRepository;
+  final Future<void> Function()? onContentItemsChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = _visibilityMeta(note.visibility);
+    final chip = AnsibleStatusChip(label: meta.label, dot: meta.dot);
+    if (contentItemRepository == null) return chip;
+
+    return PopupMenuButton<ContentVisibility>(
+      tooltip: '設定可見性',
+      padding: EdgeInsets.zero,
+      position: PopupMenuPosition.under,
+      onSelected: (visibility) => _updateVisibility(context, visibility),
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: ContentVisibility.private, child: Text('私人')),
+        PopupMenuItem(value: ContentVisibility.public, child: Text('公開')),
+      ],
+      child: chip,
+    );
+  }
+
+  Future<void> _updateVisibility(
+    BuildContext context,
+    ContentVisibility visibility,
+  ) async {
+    if (visibility == note.visibility || contentItemRepository == null) return;
+    final now = DateTime.now().toUtc();
+
+    await contentItemRepository!.update(
+      ContentItem(
+        id: note.id,
+        authorDid: note.authorDid,
+        mode: note.mode,
+        body: note.body,
+        status: note.status,
+        visibility: visibility,
+        createdAt: note.createdAt,
+        updatedAt: now,
+        subjectId: note.subjectId,
+        title: note.title,
+        publishedAt: visibility == ContentVisibility.public
+            ? note.publishedAt ?? now
+            : note.publishedAt,
+        isDeleted: note.isDeleted,
+        localOnly: visibility == ContentVisibility.private,
+      ),
+    );
+    await onContentItemsChanged?.call();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('可見性已更新')));
+  }
+}
+
+({String label, Color dot}) _visibilityMeta(ContentVisibility visibility) {
+  return switch (visibility) {
+    ContentVisibility.private => (
+      label: 'PRIVATE',
+      dot: AnsibleDesign.inkMuted,
+    ),
+    ContentVisibility.unlisted => (label: 'CIRCLE', dot: AnsibleDesign.spore),
+    ContentVisibility.public => (label: 'PUBLIC', dot: AnsibleDesign.accent),
+  };
 }
 
 class _MurmurRow extends StatelessWidget {

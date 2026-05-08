@@ -27,6 +27,7 @@ class MurmurScreen extends StatefulWidget {
 class _MurmurScreenState extends State<MurmurScreen> {
   static const _limit = 500;
   final _bodyController = TextEditingController();
+  ContentVisibility _visibility = ContentVisibility.private;
   bool _saving = false;
 
   @override
@@ -47,9 +48,10 @@ class _MurmurScreenState extends State<MurmurScreen> {
         mode: ContentMode.murmur,
         body: body,
         status: ContentStatus.active,
-        visibility: ContentVisibility.private,
+        visibility: _visibility,
         createdAt: now,
         updatedAt: now,
+        localOnly: _visibility == ContentVisibility.private,
       ),
     );
     if (!mounted) return;
@@ -104,9 +106,11 @@ class _MurmurScreenState extends State<MurmurScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '一句話、一個直覺、一個還沒理順的問題都可以。沒人會看到。',
-                style: TextStyle(
+              Text(
+                _visibility == ContentVisibility.private
+                    ? '一句話、一個直覺、一個還沒理順的問題都可以。沒人會看到。'
+                    : '一句話、一個直覺、一個還沒理順的問題都可以。這則會標記為公開。',
+                style: const TextStyle(
                   fontSize: 13,
                   height: 1.65,
                   color: AnsibleDesign.inkMuted,
@@ -160,19 +164,48 @@ class _MurmurScreenState extends State<MurmurScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              const Row(
+              Row(
                 children: [
-                  AnsibleStatusChip(
-                    label: 'PRIVATE',
-                    dot: AnsibleDesign.inkMuted,
+                  SegmentedButton<ContentVisibility>(
+                    style: ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      side: WidgetStateProperty.all(
+                        const BorderSide(color: AnsibleDesign.rule, width: 0.5),
+                      ),
+                      textStyle: WidgetStateProperty.all(
+                        const TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 10,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                    segments: const [
+                      ButtonSegment(
+                        value: ContentVisibility.private,
+                        label: Text('PRIVATE'),
+                      ),
+                      ButtonSegment(
+                        value: ContentVisibility.public,
+                        label: Text('PUBLIC'),
+                      ),
+                    ],
+                    selected: {_visibility},
+                    onSelectionChanged: (selection) {
+                      setState(() => _visibility = selection.single);
+                    },
                   ),
-                  SizedBox(width: 8),
-                  Text(
-                    '預設只給自己',
-                    style: TextStyle(
-                      color: AnsibleDesign.inkFaint,
-                      fontStyle: FontStyle.italic,
-                      fontSize: 12,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _visibility == ContentVisibility.private
+                          ? '只給自己'
+                          : '公開發布',
+                      style: const TextStyle(
+                        color: AnsibleDesign.inkFaint,
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -189,7 +222,11 @@ class _MurmurScreenState extends State<MurmurScreen> {
                 )
               else
                 for (final murmur in widget.recentMurmurs.reversed.take(5))
-                  _RecentMurmurRow(murmur: murmur),
+                  _RecentMurmurRow(
+                    murmur: murmur,
+                    contentItemRepository: widget.contentItemRepository,
+                    onDeleted: widget.onSaved,
+                  ),
             ],
           ),
         ),
@@ -199,16 +236,28 @@ class _MurmurScreenState extends State<MurmurScreen> {
 }
 
 class _RecentMurmurRow extends StatelessWidget {
-  const _RecentMurmurRow({required this.murmur});
+  const _RecentMurmurRow({
+    required this.murmur,
+    this.contentItemRepository,
+    this.onDeleted,
+  });
 
   final ContentItem murmur;
+  final ContentItemRepository? contentItemRepository;
+  final Future<void> Function()? onDeleted;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => MurmurDetailScreen(murmur: murmur)),
+          MaterialPageRoute(
+            builder: (_) => MurmurDetailScreen(
+              murmur: murmur,
+              contentItemRepository: contentItemRepository,
+              onDeleted: onDeleted,
+            ),
+          ),
         );
       },
       child: Container(

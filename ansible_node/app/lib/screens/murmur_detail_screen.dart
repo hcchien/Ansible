@@ -5,19 +5,47 @@ import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
 class MurmurDetailScreen extends StatelessWidget {
-  const MurmurDetailScreen({super.key, required this.murmur});
+  const MurmurDetailScreen({
+    super.key,
+    required this.murmur,
+    this.contentItemRepository,
+    this.onDeleted,
+  });
 
   final ContentItem murmur;
+  final ContentItemRepository? contentItemRepository;
+  final Future<void> Function()? onDeleted;
 
   @override
   Widget build(BuildContext context) {
     return AnsibleScreenScaffold(
       title: 'MURMUR',
       leadingLabel: '← 草地',
-      trailing: IconButton(
-        onPressed: () {},
+      trailing: PopupMenuButton<String>(
         icon: const Icon(Icons.more_horiz),
         tooltip: '更多',
+        onSelected: (value) {
+          if (value == 'delete') {
+            _confirmDelete(context);
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem<String>(
+            value: 'delete',
+            enabled: contentItemRepository != null,
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: AnsibleDesign.danger,
+                ),
+                SizedBox(width: 10),
+                Text('刪除碎念', style: TextStyle(color: AnsibleDesign.danger)),
+              ],
+            ),
+          ),
+        ],
       ),
       child: ListView(
         children: [
@@ -172,6 +200,38 @@ class MurmurDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final repository = contentItemRepository;
+    if (repository == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('刪除碎念？'),
+        content: const Text('這會把這則碎念從本機列表移除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('刪除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await repository.delete(murmur.id);
+    await onDeleted?.call();
+    if (!context.mounted) return;
+    navigator.pop();
+    messenger.showSnackBar(const SnackBar(content: Text('已刪除碎念')));
   }
 
   String _formatDateTime(DateTime value) {

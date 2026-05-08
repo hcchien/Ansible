@@ -9,7 +9,7 @@ void main() {
   testWidgets('phone navigation exposes content modes and murmur limit', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 844);
+    tester.view.physicalSize = const Size(390, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -54,11 +54,33 @@ void main() {
     expect(find.text('已送出'), findsOneWidget);
     expect(find.text('測試碎念存檔'), findsOneWidget);
 
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -220));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('測試碎念存檔'));
+    await tester.pumpAndSettle();
+    expect(find.text('MURMUR'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+    expect(find.text('刪除碎念'), findsOneWidget);
+
+    await tester.tap(find.text('刪除碎念'));
+    await tester.pumpAndSettle();
+    expect(find.text('刪除碎念？'), findsOneWidget);
+
+    await tester.tap(find.text('刪除'));
+    await tester.pumpAndSettle();
+    expect(find.text('測試碎念存檔'), findsNothing);
+    expect(find.text('送出的碎念會先留在這裡。'), findsOneWidget);
+
     await tester.tap(find.text('筆記'));
     await tester.pumpAndSettle();
     expect(find.text('草地'), findsOneWidget);
     expect(find.text('散落'), findsOneWidget);
-    expect(find.text('測試碎念存檔'), findsOneWidget);
+    expect(find.text('測試碎念存檔'), findsNothing);
+    expect(find.text('還沒有散落的碎念。'), findsOneWidget);
     expect(find.text('來源 · LINEAGE'), findsOneWidget);
 
     await tester.tap(find.text('討論'));

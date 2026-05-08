@@ -1014,6 +1014,8 @@ class _MainPanel extends StatelessWidget {
                           murmurs: contentItems
                               .where((item) => item.mode == ContentMode.murmur)
                               .toList(),
+                          contentItemRepository: contentItemRepository,
+                          onContentItemsChanged: onContentItemsChanged,
                         ),
                         _ContentModeTab.discussions =>
                           loading

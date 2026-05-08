@@ -165,7 +165,7 @@ class SettingsHomeScreen extends StatelessWidget {
                 label: '收信',
                 en: 'INBOX',
                 sub: '圈內回覆、新成員、同步',
-                value: '3',
+                value: '0',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const InboxScreen()),
