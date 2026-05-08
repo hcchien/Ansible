@@ -9,13 +9,14 @@
 
 ## Phase 1: Local Model
 
-- [ ] Add `content_items` and mode metadata Drift tables.
-- [ ] Add `content_relations`, `transformation_jobs`, `projections`, and
+- [x] Add `content_items` and mode metadata Drift tables.
+- [x] Add `content_relations`, `transformation_jobs`, `projections`, and
   `ownership_policies`.
-- [ ] Add `ai_provider_configs`, `context_packs`, and `summary_jobs`.
-- [ ] Add entities and repository interfaces.
+- [x] Add `ai_provider_configs`, `context_packs`, and `summary_jobs`.
+- [ ] Add entities and repository interfaces. (Entities complete; repository
+  interfaces are still pending.)
 - [ ] Add Drift and in-memory repositories.
-- [ ] Add schema migration and generated Drift code.
+- [x] Add schema migration and generated Drift code.
 - [ ] Add store tests for mode queries, lineage, transformations, and privacy
   defaults.
 

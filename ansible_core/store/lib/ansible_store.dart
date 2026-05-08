@@ -15,6 +15,15 @@ export 'src/entities/identity.dart'; // DID-based identity (replaces User+passwo
 export 'src/entities/ops_queue.dart'; // Local Op queue for offline-first / Comp B
 export 'src/entities/wallet_credential.dart';
 export 'src/entities/wallet_presentation.dart';
+export 'src/entities/content_item.dart';
+export 'src/entities/content_relation.dart';
+export 'src/entities/transformation_job.dart';
+export 'src/entities/projection.dart';
+export 'src/entities/discussion_node.dart';
+export 'src/entities/ownership_policy.dart';
+export 'src/entities/ai_provider_config.dart';
+export 'src/entities/context_pack.dart';
+export 'src/entities/summary_job.dart';
 
 // === Repository interfaces ===
 export 'src/repositories/board_repository.dart';
@@ -71,4 +80,14 @@ export 'src/db/app_database.dart'
         OutboundFollowActivity,
         Identity,
         WalletCredential,
-        WalletPresentation;
+        WalletPresentation,
+        ContentItem,
+        ContentRelation,
+        TransformationJob,
+        TransformationSource,
+        Projection,
+        DiscussionNode,
+        OwnershipPolicy,
+        AiProviderConfig,
+        ContextPack,
+        SummaryJob;

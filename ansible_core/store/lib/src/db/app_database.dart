@@ -8,16 +8,26 @@ import '../schema/activity_log.dart';
 import '../schema/board_acl.dart';
 import '../schema/board_sync_configs.dart';
 import '../schema/boards.dart';
+import '../schema/ai_provider_configs.dart';
+import '../schema/content_items.dart';
+import '../schema/content_metadata.dart';
+import '../schema/content_relations.dart';
+import '../schema/context_packs.dart';
+import '../schema/discussion_nodes.dart';
 import '../schema/follow_activity_events.dart';
 import '../schema/follow_edges.dart';
 import '../schema/follow_targets.dart';
 import '../schema/identities.dart';
 import '../schema/ops_queue.dart';
 import '../schema/outbound_follow_activities.dart';
+import '../schema/ownership_policies.dart';
 import '../schema/posts.dart';
+import '../schema/projections.dart';
 import '../schema/reactions.dart';
 import '../schema/remote_nodes.dart';
+import '../schema/summary_jobs.dart';
 import '../schema/threads.dart';
+import '../schema/transformation_jobs.dart';
 import '../schema/wallet_credential_payloads.dart';
 import '../schema/wallet_credentials.dart';
 import '../schema/wallet_presentations.dart';
@@ -43,13 +53,27 @@ part 'app_database.g.dart';
     FollowEdges,
     FollowActivityEvents,
     OutboundFollowActivities,
+    ContentItems,
+    MurmurMetadata,
+    NoteMetadata,
+    PostMetadata,
+    DiscussionMetadata,
+    ContentRelations,
+    TransformationJobs,
+    TransformationSources,
+    Projections,
+    DiscussionNodes,
+    OwnershipPolicies,
+    AiProviderConfigs,
+    ContextPacks,
+    SummaryJobs,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +97,22 @@ class AppDatabase extends _$AppDatabase {
         await _createTableIfMissing(m, followEdges);
         await _createTableIfMissing(m, followActivityEvents);
         await _createTableIfMissing(m, outboundFollowActivities);
+      }
+      if (from < 11) {
+        await _createTableIfMissing(m, contentItems);
+        await _createTableIfMissing(m, murmurMetadata);
+        await _createTableIfMissing(m, noteMetadata);
+        await _createTableIfMissing(m, postMetadata);
+        await _createTableIfMissing(m, discussionMetadata);
+        await _createTableIfMissing(m, contentRelations);
+        await _createTableIfMissing(m, transformationJobs);
+        await _createTableIfMissing(m, transformationSources);
+        await _createTableIfMissing(m, projections);
+        await _createTableIfMissing(m, discussionNodes);
+        await _createTableIfMissing(m, ownershipPolicies);
+        await _createTableIfMissing(m, aiProviderConfigs);
+        await _createTableIfMissing(m, contextPacks);
+        await _createTableIfMissing(m, summaryJobs);
       }
       await _addColumnIfMissing(
         m,

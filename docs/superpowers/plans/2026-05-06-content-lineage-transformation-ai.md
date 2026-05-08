@@ -112,7 +112,7 @@ Create Lexicon and relay changes:
 - Generate: `ansible_core/store/lib/src/db/app_database.g.dart`
 - Test: `ansible_core/store/test/content_lineage_schema_test.dart`
 
-- [ ] **Step 1: Write failing schema smoke test**
+- [x] **Step 1: Write failing schema smoke test**
 
 Create `ansible_core/store/test/content_lineage_schema_test.dart`:
 
@@ -160,7 +160,7 @@ dart test test/content_lineage_schema_test.dart
 
 Expected: FAIL because the tables do not exist.
 
-- [ ] **Step 2: Add entities and enums**
+- [x] **Step 2: Add entities and enums**
 
 Create entities with parse helpers matching existing `FollowTargetType` style:
 
@@ -182,7 +182,7 @@ dart analyze lib/src/entities
 
 Expected: analysis exits 0.
 
-- [ ] **Step 3: Add Drift tables and migration**
+- [x] **Step 3: Add Drift tables and migration**
 
 Add all schema tables to `AppDatabase`, bump `schemaVersion`, and add guarded
 `_createTableIfMissing` calls in `onUpgrade`.
@@ -197,7 +197,7 @@ dart test test/content_lineage_schema_test.dart
 
 Expected: PASS.
 
-- [ ] **Step 4: Export public store APIs**
+- [x] **Step 4: Export public store APIs**
 
 Export the new entities and repositories from `ansible_store.dart`. Hide new
 Drift row classes in the final database export if their names collide with
