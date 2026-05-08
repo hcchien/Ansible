@@ -40,7 +40,8 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
          public_key = params["public_key"],
          challenge = params["challenge"],
          :ok <- check_nullifier_unique(nullifier),
-         :ok <- ZkpKeyRegistry.verify(params["zkp_circuit_version"], params["verification_key_hash"]),
+         :ok <-
+           ZkpKeyRegistry.verify(params["zkp_circuit_version"], params["verification_key_hash"]),
          :ok <- verify_zkp_stub(params["zkp_proof"], params["zkp_circuit_version"]),
          :ok <- verify_challenge_signature(public_key, challenge, params["challenge_signature"]),
          :ok <- IdentityCache.consume_challenge(did, challenge) do
@@ -66,6 +67,9 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
         })
 
       {:error, :invalid_zkp} ->
+        send_json(conn, 401, %{error: "invalid_zkp_proof"})
+
+      {:error, :development_zkp_disabled} ->
         send_json(conn, 401, %{error: "invalid_zkp_proof"})
 
       {:error, :unsupported_zkp_circuit} ->
@@ -105,7 +109,11 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
 
   defp verify_zkp_stub(_zkp_proof, _circuit_version) do
     # TODO(Q2): call SigVerifier or a dedicated ZKP verifier NIF
-    :ok
+    if Application.get_env(:ansible_relay, :allow_dev_zkp_proofs, false) do
+      :ok
+    else
+      {:error, :invalid_zkp}
+    end
   end
 
   defp verify_challenge_signature(public_key, challenge, signature) do

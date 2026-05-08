@@ -35,13 +35,11 @@ defmodule AnsibleRelay.ZkpKeyRegistry do
           | {:error, :unsupported_zkp_circuit}
           | {:error, :inactive_zkp_circuit}
           | {:error, :verification_key_hash_mismatch}
+          | {:error, :development_zkp_disabled}
   def verify(version, hash) when is_binary(version) and is_binary(hash) do
     case find(version) do
-      {:ok, %{hash: ^hash, status: :active}} ->
-        :ok
-
-      {:ok, %{hash: ^hash}} ->
-        {:error, :inactive_zkp_circuit}
+      {:ok, %{hash: ^hash} = entry} ->
+        verify_matching_entry(entry)
 
       {:ok, _entry} ->
         {:error, :verification_key_hash_mismatch}
@@ -49,5 +47,22 @@ defmodule AnsibleRelay.ZkpKeyRegistry do
       :not_found ->
         {:error, :unsupported_zkp_circuit}
     end
+  end
+
+  defp verify_matching_entry(%{version: version, hash: hash, status: :active}) do
+    if development_key?(version, hash) and
+         not Application.get_env(@app, :allow_dev_zkp_proofs, false) do
+      {:error, :development_zkp_disabled}
+    else
+      :ok
+    end
+  end
+
+  defp verify_matching_entry(%{hash: _hash}), do: {:error, :inactive_zkp_circuit}
+
+  defp development_key?(version, hash) do
+    String.contains?(version, "_dev") or
+      String.contains?(hash, "dev-") or
+      String.contains?(hash, "placeholder")
   end
 end

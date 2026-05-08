@@ -33,6 +33,7 @@ abstract class LexiconSigner {
 /// which must match the key used by [DidPlcManagerImpl] / [DidManagerImpl].
 class LexiconSignerImpl implements LexiconSigner {
   final FlutterSecureStorage _secureStorage;
+  final bool _allowInsecureFallback;
 
   // Must match the key written by DidPlcManagerImpl ('ansible_plc_private_key')
   // and the fallback DidManagerImpl ('ansible_did_private_key').
@@ -40,8 +41,14 @@ class LexiconSignerImpl implements LexiconSigner {
   static const _kPlcPrivateKeyStorageKey = 'ansible_plc_private_key';
   static const _kLegacyPrivateKeyStorageKey = 'ansible_did_private_key';
 
-  LexiconSignerImpl({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+  LexiconSignerImpl({
+    FlutterSecureStorage? secureStorage,
+    bool allowInsecureFallback = const bool.fromEnvironment(
+      'ANSIBLE_ALLOW_INSECURE_DEV_FALLBACK',
+      defaultValue: false,
+    ),
+  }) : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+       _allowInsecureFallback = allowInsecureFallback;
 
   @override
   Future<SignedLexiconRecord> sign(
@@ -58,12 +65,12 @@ class LexiconSignerImpl implements LexiconSigner {
       );
 
       // Step 1: encode to DAG-CBOR → Uint8List (NOT a hex string)
-      final Uint8List cborBytes =
-          await RustLib.instance.apiCborEncodeRecord(record: rustRecord);
+      final Uint8List cborBytes = await RustLib.instance.apiCborEncodeRecord(
+        record: rustRecord,
+      );
 
       // Step 2: compute CID from bytes
-      final cid =
-          RustLib.instance.apiComputeCid(cborBytes: cborBytes);
+      final cid = RustLib.instance.apiComputeCid(cborBytes: cborBytes);
 
       // Step 3: load private key — prefer plc key, fall back to legacy did key
       final privateKeyHex =
@@ -71,7 +78,8 @@ class LexiconSignerImpl implements LexiconSigner {
           await _secureStorage.read(key: _kLegacyPrivateKeyStorageKey);
       if (privateKeyHex == null) {
         throw StateError(
-            'No local DID keypair found. Run identity registration first.');
+          'No local DID keypair found. Run identity registration first.',
+        );
       }
 
       // Step 4: sign the CBOR bytes with Ed25519
@@ -80,6 +88,8 @@ class LexiconSignerImpl implements LexiconSigner {
         privateKeyHex: privateKeyHex,
       );
 
+      _validateProductionSigningOutput(cid, commitSigHex);
+
       return SignedLexiconRecord(
         record: record,
         cid: cid,
@@ -87,10 +97,36 @@ class LexiconSignerImpl implements LexiconSigner {
         authorDid: authorDid,
       );
     } on UnimplementedError catch (e) {
+      if (!_allowInsecureFallback) {
+        throw StateError(
+          'Native Lexicon signing is not available. Enable only the explicit development signing fallback for local tests.',
+        );
+      }
       debugPrint(
-          '[LexiconSigner] DEV WARNING: Rust signing APIs not implemented — '
-          'returning stub signature. Error: $e');
+        '[LexiconSigner] DEV WARNING: Rust signing APIs not implemented — '
+        'returning stub signature. Error: $e',
+      );
       return _stubSign(record, authorDid: authorDid);
+    }
+  }
+
+  void _validateProductionSigningOutput(String cid, String commitSigHex) {
+    if (_allowInsecureFallback) return;
+
+    final usesDevelopmentFallback =
+        cid.startsWith('bafydev') ||
+        cid.contains('stub') ||
+        commitSigHex.startsWith('devsig') ||
+        commitSigHex.startsWith('deadbeef');
+    final validEd25519Hex = RegExp(
+      r'^[0-9a-fA-F]{128}$',
+    ).hasMatch(commitSigHex);
+
+    if (usesDevelopmentFallback || !validEd25519Hex) {
+      throw StateError(
+        'Native Lexicon signing returned a development signing fallback. '
+        'Bundle the production Rust signer before publishing records.',
+      );
     }
   }
 
@@ -117,7 +153,9 @@ class LexiconSignerStub implements LexiconSigner {
     Map<String, dynamic> record, {
     required String authorDid,
   }) async {
-    debugPrint('[LexiconSignerStub] sign called — returning dev stub signature');
+    debugPrint(
+      '[LexiconSignerStub] sign called — returning dev stub signature',
+    );
     return SignedLexiconRecord(
       record: record,
       cid: 'bafydev-stub-cid-${record[r'$type'] ?? 'unknown'}',

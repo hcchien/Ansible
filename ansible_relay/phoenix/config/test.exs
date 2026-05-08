@@ -10,3 +10,4 @@ config :ansible_relay, AnsibleRelay.Repo,
 
 config :ansible_relay, :port, 4002
 config :ansible_relay, :persist_did_accounts, false
+config :ansible_relay, :allow_dev_zkp_proofs, true

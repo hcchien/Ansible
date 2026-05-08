@@ -86,6 +86,26 @@ defmodule AnsibleRelay.Web.IdentityControllerTest do
     assert IdentityCache.verified?(did)
   end
 
+  test "anchor rejects development ZKP proof when dev proofs are disabled" do
+    original = Application.get_env(:ansible_relay, :allow_dev_zkp_proofs, false)
+    Application.put_env(:ansible_relay, :allow_dev_zkp_proofs, false)
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :allow_dev_zkp_proofs, original)
+    end)
+
+    did = "did:key:z6MkNoDevProof#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    challenge_response = post_json("/api/v1/identity/challenge", %{"did" => did})
+    challenge = Jason.decode!(challenge_response.resp_body)["challenge"]
+
+    response =
+      post_json("/api/v1/identity/anchor", valid_anchor(did, challenge, public_key, private_key))
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_zkp_proof"
+  end
+
   test "anchor requires challenge fields" do
     did = "did:key:z6MkMissingChallenge#{System.unique_integer()}"
 
