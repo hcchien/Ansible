@@ -40,15 +40,15 @@
 
 ## Phase 4: Low-Friction Flutter UI
 
-- [ ] Add first-use AI provider setup sheet.
-- [ ] Return to the original action after provider setup succeeds.
-- [ ] Add source-boundary disclosure before remote private-content calls.
-- [ ] Add transformation review sheet.
-- [ ] Add summary review sheet.
-- [ ] Add Murmur screen with 500-character limit.
-- [ ] Add Note workspace with linked murmur panel.
-- [ ] Add Discussion detail summary action.
-- [ ] Add phone-safe navigation for Murmur, Notes, and Discussions.
+- [x] Add first-use AI provider setup sheet.
+- [x] Return to the original action after provider setup succeeds.
+- [x] Add source-boundary disclosure before remote private-content calls.
+- [x] Add transformation review sheet.
+- [x] Add summary review sheet.
+- [x] Add Murmur screen with 500-character limit.
+- [x] Add Note workspace with linked murmur panel.
+- [x] Add Discussion detail summary action.
+- [x] Add phone-safe navigation for Murmur, Notes, and Discussions.
 
 ## Phase 5: Public Sync
 

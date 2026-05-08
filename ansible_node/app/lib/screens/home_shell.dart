@@ -7,15 +7,22 @@ import 'package:uuid/uuid.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
+import '../services/ai/ai_provider_config_store.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
+import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
 import '../widgets/ops_queue_status_badge.dart';
+import '../widgets/transformation_review_sheet.dart';
+import 'murmur_screen.dart';
 import 'note_editor_screen.dart';
+import 'note_workspace_screen.dart';
 import 'posts_view_screen.dart';
 import 'sync_settings_screen.dart';
 import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
+
+enum _ContentModeTab { murmur, notes, discussions }
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -40,6 +47,9 @@ class _HomeShellState extends State<HomeShell> {
   late final DriftReactionRepository _reactionRepo;
   late final DriftFollowRepository _followRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
+  late final DriftContentItemRepository _contentItemRepo;
+  late final DriftAiProviderConfigRepository _aiProviderConfigRepo;
+  late final AiProviderConfigStore _aiProviderConfigStore;
   late final OpsDispatchService _opsDispatchService;
   late final AtProtoClient _atProtoClient;
   late final NetworkStatusService _networkStatusService;
@@ -49,6 +59,7 @@ class _HomeShellState extends State<HomeShell> {
   bool _loading = true;
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
+  _ContentModeTab _selectedMode = _ContentModeTab.discussions;
   final _uuid = const Uuid();
 
   @override
@@ -60,6 +71,11 @@ class _HomeShellState extends State<HomeShell> {
     _reactionRepo = DriftReactionRepository(widget.db);
     _followRepo = DriftFollowRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
+    _contentItemRepo = DriftContentItemRepository(widget.db);
+    _aiProviderConfigRepo = DriftAiProviderConfigRepository(widget.db);
+    _aiProviderConfigStore = AiProviderConfigStore(
+      repository: _aiProviderConfigRepo,
+    );
     _opsDispatchService = OpsDispatchService(repository: _opsQueueRepo);
     _atProtoClient = AtProtoClient();
     _networkStatusService = NetworkStatusService();
@@ -161,6 +177,64 @@ class _HomeShellState extends State<HomeShell> {
       }
     });
     _loadData();
+  }
+
+  void _selectMode(_ContentModeTab mode) {
+    setState(() => _selectedMode = mode);
+  }
+
+  Future<void> _startAiTransformation() async {
+    final providers = await _aiProviderConfigRepo.list();
+    if (!mounted) return;
+    if (providers.isEmpty) {
+      final result = await showModalBottomSheet<AiProviderSetupResult>(
+        context: context,
+        backgroundColor: const Color(0xFF0C1424),
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (_) => const AiProviderSetupSheet(),
+      );
+      if (result == null) return;
+      await _aiProviderConfigStore.save(
+        displayName: result.displayName,
+        providerType: result.providerType,
+        baseUrl: result.baseUrl,
+        modelName: result.modelName,
+        apiKey: result.apiKey,
+        defaultForTransformations: true,
+        defaultForSummaries: true,
+      );
+      if (!mounted) return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0C1424),
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => TransformationReviewSheet(
+        title: 'Draft note',
+        body: 'Review AI output before it becomes local content.',
+        sourceLabels: const ['Current workspace'],
+        containsPrivateSource: true,
+        onAccept: (title, body) async {
+          final now = DateTime.now().toUtc();
+          await _contentItemRepo.create(
+            ContentItem(
+              id: _uuid.v4(),
+              authorDid: widget.did,
+              mode: ContentMode.note,
+              title: title,
+              body: body,
+              status: ContentStatus.active,
+              visibility: ContentVisibility.private,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<List<PostCardData>> _buildFollowingPostCards(
@@ -473,6 +547,10 @@ class _HomeShellState extends State<HomeShell> {
                 selectedBoardId: _selectedBoardId,
                 boards: _boards,
                 networkStatusService: _networkStatusService,
+                selectedMode: _selectedMode,
+                onModeChanged: _selectMode,
+                contentItemRepository: _contentItemRepo,
+                onStartAiAction: _startAiTransformation,
               );
 
               if (compact) {
@@ -747,6 +825,10 @@ class _MainPanel extends StatelessWidget {
     required this.selectedBoardId,
     required this.boards,
     required this.networkStatusService,
+    required this.selectedMode,
+    required this.onModeChanged,
+    required this.contentItemRepository,
+    required this.onStartAiAction,
   });
 
   final VoidCallback? onClearIdentity;
@@ -768,6 +850,10 @@ class _MainPanel extends StatelessWidget {
   final String? selectedBoardId;
   final List<Board> boards;
   final NetworkStatusService networkStatusService;
+  final _ContentModeTab selectedMode;
+  final ValueChanged<_ContentModeTab> onModeChanged;
+  final ContentItemRepository contentItemRepository;
+  final Future<void> Function() onStartAiAction;
 
   @override
   Widget build(BuildContext context) {
@@ -798,110 +884,137 @@ class _MainPanel extends StatelessWidget {
                   children: [
                     _SectionHeader(onOpenBoards: onOpenBoards),
                     const SizedBox(height: 10),
-                    FeedFilterTabs(
-                      selected: feedFilter,
-                      onChanged: onFeedFilterChanged,
+                    _ModeNavigation(
+                      selected: selectedMode,
+                      onChanged: onModeChanged,
                     ),
                     const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: SizedBox(
-                        width: compact ? double.infinity : 340,
-                        child: FilledButton.icon(
-                          onPressed:
-                              (hasSelectedBoard && selectedBoardId != null)
-                              ? () {
-                                  // Use the first board that matches selectedBoardId for a placeholder threadId
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => NoteEditorScreen(
-                                        authorDid: did,
-                                        boardId: selectedBoardId!,
-                                        threadId: '',
-                                        threadTitle:
-                                            boards
-                                                .where(
-                                                  (b) =>
-                                                      b.id == selectedBoardId,
-                                                )
-                                                .map((b) => b.title)
-                                                .firstOrNull ??
-                                            '新討論',
-                                        atProtoClient: atProtoClient,
+                    if (selectedMode == _ContentModeTab.discussions) ...[
+                      FeedFilterTabs(
+                        selected: feedFilter,
+                        onChanged: onFeedFilterChanged,
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: compact ? double.infinity : 340,
+                          child: FilledButton.icon(
+                            onPressed:
+                                (hasSelectedBoard && selectedBoardId != null)
+                                ? () {
+                                    // Use the selected board for a placeholder threadId.
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => NoteEditorScreen(
+                                          authorDid: did,
+                                          boardId: selectedBoardId!,
+                                          threadId: '',
+                                          threadTitle:
+                                              boards
+                                                  .where(
+                                                    (b) =>
+                                                        b.id == selectedBoardId,
+                                                  )
+                                                  .map((b) => b.title)
+                                                  .firstOrNull ??
+                                              '新討論',
+                                          atProtoClient: atProtoClient,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }
-                              : null,
-                          icon: const Icon(Icons.edit_outlined, size: 20),
-                          label: const Text('新貼文'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF9F43),
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 16,
+                                    );
+                                  }
+                                : null,
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            label: const Text('新貼文'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF9F43),
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                              elevation: 0,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            textStyle: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                            ),
-                            elevation: 0,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Tooltip(
-                          message: '新增看板',
-                          child: IconButton.filled(
-                            onPressed: onCreateBoard,
-                            icon: const Icon(Icons.add),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Tooltip(
+                            message: '新增看板',
+                            child: IconButton.filled(
+                              onPressed: onCreateBoard,
+                              icon: const Icon(Icons.add),
+                            ),
                           ),
-                        ),
-                        FilledButton.icon(
-                          onPressed: hasSelectedBoard ? onCreateThread : null,
-                          icon: const Icon(Icons.forum_outlined),
-                          label: Text(compact ? '新討論' : '建立新討論'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: onManageBoards,
-                          icon: const Icon(Icons.settings_outlined),
-                          label: Text(compact ? '看板' : '管理看板'),
-                        ),
-                      ],
-                    ),
+                          FilledButton.icon(
+                            onPressed: hasSelectedBoard ? onCreateThread : null,
+                            icon: const Icon(Icons.forum_outlined),
+                            label: Text(compact ? '新討論' : '建立新討論'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: onManageBoards,
+                            icon: const Icon(Icons.settings_outlined),
+                            label: Text(compact ? '看板' : '管理看板'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: onStartAiAction,
+                            icon: const Icon(Icons.auto_awesome),
+                            label: const Text('AI 助手'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: onStartAiAction,
+                            icon: const Icon(Icons.summarize_outlined),
+                            label: const Text('AI 摘要'),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Expanded(
-                      child: loading
-                          ? const Center(child: CircularProgressIndicator())
-                          : posts.isEmpty
-                          ? Center(
-                              child: Text(
-                                '目前沒有貼文',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(color: Colors.white70),
-                              ),
-                            )
-                          : ListView.separated(
-                              itemCount: posts.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 16),
-                              itemBuilder: (context, index) => PostCard(
-                                db: db,
-                                data: posts[index],
-                                authorDid: did,
-                                opsDispatchService: opsDispatchService,
-                              ),
-                            ),
+                      child: switch (selectedMode) {
+                        _ContentModeTab.murmur => MurmurScreen(
+                          authorDid: did,
+                          contentItemRepository: contentItemRepository,
+                        ),
+                        _ContentModeTab.notes => const NoteWorkspaceScreen(),
+                        _ContentModeTab.discussions =>
+                          loading
+                              ? const Center(child: CircularProgressIndicator())
+                              : posts.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    '目前沒有貼文',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(color: Colors.white70),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  itemCount: posts.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 16),
+                                  itemBuilder: (context, index) => PostCard(
+                                    db: db,
+                                    data: posts[index],
+                                    authorDid: did,
+                                    opsDispatchService: opsDispatchService,
+                                  ),
+                                ),
+                      },
                     ),
                   ],
                 ),
@@ -1114,6 +1227,39 @@ class _TopBar extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _ModeNavigation extends StatelessWidget {
+  const _ModeNavigation({required this.selected, required this.onChanged});
+
+  final _ContentModeTab selected;
+  final ValueChanged<_ContentModeTab> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<_ContentModeTab>(
+      segments: const [
+        ButtonSegment(
+          value: _ContentModeTab.murmur,
+          icon: Icon(Icons.chat_bubble_outline),
+          label: Text('Murmur'),
+        ),
+        ButtonSegment(
+          value: _ContentModeTab.notes,
+          icon: Icon(Icons.sticky_note_2_outlined),
+          label: Text('Notes'),
+        ),
+        ButtonSegment(
+          value: _ContentModeTab.discussions,
+          icon: Icon(Icons.forum_outlined),
+          label: Text('Discussions'),
+        ),
+      ],
+      selected: {selected},
+      showSelectedIcon: false,
+      onSelectionChanged: (selection) => onChanged(selection.single),
     );
   }
 }

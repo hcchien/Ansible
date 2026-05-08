@@ -472,7 +472,7 @@ Expected: provider parses mocked response and returns structured JSON.
 - Test: `ansible_node/app/test/ai_setup_flow_test.dart`
 - Test: `ansible_node/app/test/transformation_review_flow_test.dart`
 
-- [ ] **Step 1: Write failing widget tests**
+- [x] **Step 1: Write failing widget tests**
 
 Test cases:
 
@@ -490,7 +490,7 @@ flutter test test/ai_setup_flow_test.dart test/transformation_review_flow_test.d
 
 Expected: FAIL because UI is missing.
 
-- [ ] **Step 2: Build provider setup sheet**
+- [x] **Step 2: Build provider setup sheet**
 
 The sheet must contain:
 
@@ -510,7 +510,7 @@ flutter test test/ai_setup_flow_test.dart
 
 Expected: setup flow test passes.
 
-- [ ] **Step 3: Build transformation and summary review sheets**
+- [x] **Step 3: Build transformation and summary review sheets**
 
 Review sheets must show source boundaries, generated output, discard, edit, and
 accept/save actions.
@@ -534,7 +534,7 @@ Expected: tests pass; analyze has no errors.
 - Test: `ansible_node/app/test/content_modes_navigation_test.dart`
 - Test: `ansible_node/app/test/summary_review_flow_test.dart`
 
-- [ ] **Step 1: Write failing navigation and mobile layout tests**
+- [x] **Step 1: Write failing navigation and mobile layout tests**
 
 Verify:
 
@@ -552,7 +552,7 @@ flutter test test/content_modes_navigation_test.dart test/summary_review_flow_te
 
 Expected: FAIL until screens exist.
 
-- [ ] **Step 2: Implement screens incrementally**
+- [x] **Step 2: Implement screens incrementally**
 
 Build screens using existing dark visual language from `home_shell.dart`.
 Keep dense, app-like controls; avoid landing-page composition.
