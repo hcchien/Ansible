@@ -24,19 +24,19 @@
 - [x] Add manual Murmur -> Note transformation.
 - [x] Add manual Note -> Discussion projection.
 - [x] Add local lineage inspector query/projector.
-- [ ] Keep legacy board/thread/post forum behavior working.
+- [x] Keep legacy board/thread/post forum behavior working.
 - [x] Add tests for projection acknowledgement and relation creation.
 
 ## Phase 3: AI Assistance Foundation
 
-- [ ] Add `AiProvider` interface.
-- [ ] Add manual provider for deterministic tests and no-AI fallback.
-- [ ] Add OpenAI-compatible provider adapter.
-- [ ] Add local HTTP provider adapter for LAN/self-hosted models.
-- [ ] Store API keys in Keychain with `flutter_secure_storage`.
-- [ ] Add privacy policy checks for remote provider calls.
-- [ ] Add context pack builders for transformation and summary tasks.
-- [ ] Add summary job storage and save-as-note behavior.
+- [x] Add `AiProvider` interface.
+- [x] Add manual provider for deterministic tests and no-AI fallback.
+- [x] Add OpenAI-compatible provider adapter.
+- [x] Add local HTTP provider adapter for LAN/self-hosted models.
+- [x] Store API keys in Keychain with `flutter_secure_storage`.
+- [x] Add privacy policy checks for remote provider calls.
+- [x] Add context pack builders for transformation and summary tasks.
+- [x] Add summary job storage and save-as-note behavior.
 
 ## Phase 4: Low-Friction Flutter UI
 

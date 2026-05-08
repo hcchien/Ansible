@@ -389,7 +389,7 @@ Expected: tests pass; analysis exits 0.
 - Test: `ansible_node/app/test/ai_provider_test.dart`
 - Test: `ansible_node/app/test/ai_privacy_policy_test.dart`
 
-- [ ] **Step 1: Write provider and privacy tests**
+- [x] **Step 1: Write provider and privacy tests**
 
 Test cases:
 
@@ -407,7 +407,7 @@ flutter test test/ai_provider_test.dart test/ai_privacy_policy_test.dart
 
 Expected: FAIL because services do not exist.
 
-- [ ] **Step 2: Implement provider interface**
+- [x] **Step 2: Implement provider interface**
 
 Core interface:
 
@@ -439,7 +439,7 @@ flutter test test/ai_provider_test.dart test/ai_privacy_policy_test.dart
 
 Expected: manual and privacy tests pass.
 
-- [ ] **Step 3: Implement OpenAI-compatible provider**
+- [x] **Step 3: Implement OpenAI-compatible provider**
 
 Use `http.Client` injection for tests. Request shape:
 
