@@ -13,6 +13,7 @@ defmodule AnsibleRelay.Web.Controllers.XrpcController do
     with {:ok, repo} <- require_field(params, "repo"),
          {:ok, collection} <- require_field(params, "collection"),
          {:ok, record} <- require_record(params),
+         :ok <- validate_public_record(collection, record),
          {:ok, commit_sig} <- require_field(params, "commit_sig") do
       # Single ETS read — avoids TOCTOU between active?/1 and public_key_hex/1
       case DidAccountCache.get(repo) do
@@ -33,6 +34,9 @@ defmodule AnsibleRelay.Web.Controllers.XrpcController do
 
       {:error, :invalid_record} ->
         send_json(conn, 422, %{error: "missing_fields", detail: "record must be a map"})
+
+      {:error, {:invalid_record, detail}} ->
+        send_json(conn, 422, %{error: "invalid_record", detail: detail})
     end
   end
 
@@ -119,6 +123,92 @@ defmodule AnsibleRelay.Web.Controllers.XrpcController do
       _ -> {:error, :invalid_record}
     end
   end
+
+  defp validate_public_record(collection, record) do
+    with :ok <- validate_collection_type(collection, record),
+         :ok <- reject_private_only_fields(record),
+         :ok <- validate_required_fields(collection, record) do
+      :ok
+    end
+  end
+
+  defp validate_collection_type(collection, record) do
+    case Map.get(record, "$type") do
+      ^collection -> :ok
+      nil -> {:error, {:missing_field, "$type"}}
+      _ -> {:error, {:invalid_record, "collection must match record $type"}}
+    end
+  end
+
+  defp reject_private_only_fields(record) do
+    private_fields = ["privateTags", "inputSnapshot", "outputSnapshot"]
+
+    case Enum.find(private_fields, &Map.has_key?(record, &1)) do
+      nil -> :ok
+      field -> {:error, {:invalid_record, "#{field} is private-only"}}
+    end
+  end
+
+  defp validate_required_fields("io.trisaura.post", record),
+    do: require_record_fields(record, ["text", "createdAt"])
+
+  defp validate_required_fields("io.trisaura.murmur", record),
+    do: require_record_fields(record, ["text", "createdAt"])
+
+  defp validate_required_fields("io.trisaura.note", record),
+    do: require_record_fields(record, ["body", "visibility", "createdAt"])
+
+  defp validate_required_fields("io.trisaura.discussion", record) do
+    require_record_fields(record, [
+      "title",
+      "body",
+      "discussionShape",
+      "participationPolicy",
+      "forkPolicy",
+      "consensusState",
+      "createdAt",
+      "updatedAt"
+    ])
+  end
+
+  defp validate_required_fields("io.trisaura.contentRelation", record),
+    do: require_record_fields(record, ["from", "to", "relationType", "createdAt"])
+
+  defp validate_required_fields("io.trisaura.transformation", record),
+    do:
+      require_record_fields(record, [
+        "sourceRefs",
+        "targetRef",
+        "targetMode",
+        "providerType",
+        "status",
+        "createdAt"
+      ])
+
+  defp validate_required_fields("io.trisaura.projection", record),
+    do:
+      require_record_fields(record, [
+        "source",
+        "target",
+        "projectedExcerpt",
+        "participationPolicy",
+        "ownershipTransferAcknowledged",
+        "createdAt"
+      ])
+
+  defp validate_required_fields(_collection, _record), do: :ok
+
+  defp require_record_fields(record, fields) do
+    case Enum.find(fields, &blank?(Map.get(record, &1))) do
+      nil -> :ok
+      field -> {:error, {:missing_field, field}}
+    end
+  end
+
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?([]), do: true
+  defp blank?(_), do: false
 
   # Generate a timestamp-based TID (AT Protocol record key)
   defp tid do

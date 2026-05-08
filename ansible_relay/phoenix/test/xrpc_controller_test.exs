@@ -54,6 +54,19 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
     }
   end
 
+  defp signed_create_record(did, pub_hex, priv_key, collection, record) do
+    record_json = Jason.encode!(record)
+    sig = sign(priv_key, record_json)
+    seed_did(did, pub_hex)
+
+    %{
+      "repo" => did,
+      "collection" => collection,
+      "record" => record,
+      "commit_sig" => sig
+    }
+  end
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(AnsibleRelay.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(AnsibleRelay.Repo, {:shared, self()})
@@ -133,6 +146,108 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
 
     assert response.status == 422
     assert Jason.decode!(response.resp_body)["error"] == "missing_fields"
+  end
+
+  test "accepts valid io.trisaura.post records" do
+    {pub_hex, priv_key} = ed25519_keypair()
+    did = "did:plc:trisaurapost#{System.unique_integer([:positive])}"
+
+    record = %{
+      "$type" => "io.trisaura.post",
+      "text" => "public reply",
+      "createdAt" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    body = signed_create_record(did, pub_hex, priv_key, "io.trisaura.post", record)
+
+    response = post_json("/xrpc/com.atproto.repo.createRecord", body)
+
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["uri"] =~ "/io.trisaura.post/"
+  end
+
+  test "accepts valid content lineage records" do
+    {pub_hex, priv_key} = ed25519_keypair()
+    did = "did:plc:discussion#{System.unique_integer([:positive])}"
+
+    record = %{
+      "$type" => "io.trisaura.discussion",
+      "title" => "Public discussion",
+      "body" => "Opening context",
+      "discussionShape" => "thread",
+      "participationPolicy" => "comment",
+      "forkPolicy" => "allowed",
+      "consensusState" => "none",
+      "createdAt" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "updatedAt" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    body = signed_create_record(did, pub_hex, priv_key, "io.trisaura.discussion", record)
+
+    response = post_json("/xrpc/com.atproto.repo.createRecord", body)
+
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["uri"] =~ "/io.trisaura.discussion/"
+  end
+
+  test "returns 422 when collection and record type do not match" do
+    {pub_hex, priv_key} = ed25519_keypair()
+    did = "did:plc:mismatch#{System.unique_integer([:positive])}"
+
+    record = %{
+      "$type" => "io.trisaura.note",
+      "body" => "note",
+      "visibility" => "public",
+      "createdAt" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    body = signed_create_record(did, pub_hex, priv_key, "io.trisaura.discussion", record)
+
+    response = post_json("/xrpc/com.atproto.repo.createRecord", body)
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_record"
+  end
+
+  test "returns 422 when a content lineage record is missing required fields" do
+    {pub_hex, priv_key} = ed25519_keypair()
+    did = "did:plc:missing#{System.unique_integer([:positive])}"
+
+    record = %{
+      "$type" => "io.trisaura.projection",
+      "source" => "at://did:plc:alice/io.trisaura.note/r1",
+      "target" => "at://did:plc:alice/io.trisaura.discussion/r2"
+    }
+
+    body = signed_create_record(did, pub_hex, priv_key, "io.trisaura.projection", record)
+
+    response = post_json("/xrpc/com.atproto.repo.createRecord", body)
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "missing_fields"
+  end
+
+  test "rejects private-only fields from public records" do
+    {pub_hex, priv_key} = ed25519_keypair()
+    did = "did:plc:privatefield#{System.unique_integer([:positive])}"
+
+    record = %{
+      "$type" => "io.trisaura.transformation",
+      "sourceRefs" => ["at://did:plc:alice/io.trisaura.murmur/r1"],
+      "targetRef" => "at://did:plc:alice/io.trisaura.note/r2",
+      "targetMode" => "note",
+      "providerType" => "manual",
+      "status" => "accepted",
+      "createdAt" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "inputSnapshot" => %{"body" => "private"}
+    }
+
+    body = signed_create_record(did, pub_hex, priv_key, "io.trisaura.transformation", record)
+
+    response = post_json("/xrpc/com.atproto.repo.createRecord", body)
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_record"
   end
 
   test "rate-limited DID receives 429 after token bucket exhaustion" do

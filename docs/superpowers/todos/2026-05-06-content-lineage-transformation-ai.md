@@ -52,22 +52,22 @@
 
 ## Phase 5: Public Sync
 
-- [ ] Add Lexicon record classes for new `io.trisaura.*` content records.
-- [ ] Add relay validation for collection/type matching.
-- [ ] Add relay validation for required fields.
-- [ ] Reject private-only fields from public records.
-- [ ] Sync public discussions and public lineage only.
-- [ ] Keep private murmurs, private notes, context packs, and summary jobs
+- [x] Add Lexicon record classes for new `io.trisaura.*` content records.
+- [x] Add relay validation for collection/type matching.
+- [x] Add relay validation for required fields.
+- [x] Reject private-only fields from public records.
+- [x] Sync public discussions and public lineage only.
+- [x] Keep private murmurs, private notes, context packs, and summary jobs
   local-only by default.
 
 ## Phase 6: Integration And QA
 
-- [ ] Test Murmur -> Note -> Discussion end-to-end.
-- [ ] Test Discussion summary -> private note.
-- [ ] Test Following or board digest with bounded context.
-- [ ] Test remote provider privacy rejection and explicit consent.
-- [ ] Run store, domain, vc, app, and relay test suites.
-- [ ] Re-test iPhone compact layout after adding mode navigation.
+- [x] Test Murmur -> Note -> Discussion end-to-end.
+- [x] Test Discussion summary -> private note.
+- [x] Test Following or board digest with bounded context.
+- [x] Test remote provider privacy rejection and explicit consent.
+- [x] Run store, domain, vc, app, and relay test suites.
+- [x] Re-test iPhone compact layout after adding mode navigation.
 
 ## Decisions Captured
 

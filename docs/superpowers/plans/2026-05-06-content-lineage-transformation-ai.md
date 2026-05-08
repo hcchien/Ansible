@@ -575,7 +575,7 @@ Expected: PASS.
 - Modify: `ansible_relay/phoenix/lib/ansible_relay/web/controllers/xrpc_controller.ex`
 - Test: `ansible_relay/phoenix/test/xrpc_controller_test.exs`
 
-- [ ] **Step 1: Write failing Lexicon tests**
+- [x] **Step 1: Write failing Lexicon tests**
 
 Test JSON for:
 
@@ -595,7 +595,7 @@ dart test test/lexicon_record_test.dart
 
 Expected: FAIL because classes are missing.
 
-- [ ] **Step 2: Implement Lexicon record classes**
+- [x] **Step 2: Implement Lexicon record classes**
 
 Add classes matching `docs/protocol/tris_aura_content_lineage_lexicon_v0.1.md`.
 
@@ -609,7 +609,7 @@ dart analyze lib test
 
 Expected: PASS and analysis exits 0.
 
-- [ ] **Step 3: Add relay validation tests**
+- [x] **Step 3: Add relay validation tests**
 
 Test:
 
@@ -627,7 +627,7 @@ mix test test/xrpc_controller_test.exs
 
 Expected: FAIL until validation is implemented.
 
-- [ ] **Step 4: Implement relay validation**
+- [x] **Step 4: Implement relay validation**
 
 Keep validation lightweight in `XrpcController`:
 
@@ -652,7 +652,7 @@ Expected: all relay tests pass.
 - Create: `ansible_node/app/test/content_lineage_integration_test.dart`
 - Create: `ansible_node/app/test/ai_summary_integration_test.dart`
 
-- [ ] **Step 1: Write integration tests**
+- [x] **Step 1: Write integration tests**
 
 Cover:
 
@@ -672,7 +672,7 @@ flutter test test/content_lineage_integration_test.dart test/ai_summary_integrat
 
 Expected: FAIL until previous tasks are integrated.
 
-- [ ] **Step 2: Wire services into app composition**
+- [x] **Step 2: Wire services into app composition**
 
 Update app construction to pass repositories, AI provider store, and provider
 factory into the new screens without global mutable state.

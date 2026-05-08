@@ -3,8 +3,6 @@
 /// Replaces ZkpProver from V1.x.
 /// Signs via Rust Ed25519 over the DAG-CBOR encoding of the record.
 
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ansible_did/ansible_did.dart';

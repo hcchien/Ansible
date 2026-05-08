@@ -6,7 +6,6 @@
 ///   TODO(P2): use multibase base58btc per W3C Ed25519Signature2020 spec.
 
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
