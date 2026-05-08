@@ -38,6 +38,14 @@ export 'src/repositories/follow_repository.dart';
 export 'src/repositories/follow_activity_outbox_repository.dart';
 export 'src/repositories/ops_queue_repository.dart';
 export 'src/repositories/wallet_repository.dart';
+export 'src/repositories/content_item_repository.dart';
+export 'src/repositories/content_relation_repository.dart';
+export 'src/repositories/transformation_job_repository.dart';
+export 'src/repositories/projection_repository.dart';
+export 'src/repositories/discussion_node_repository.dart';
+export 'src/repositories/ai_provider_config_repository.dart';
+export 'src/repositories/context_pack_repository.dart';
+export 'src/repositories/summary_job_repository.dart';
 
 // === CRDT Op Builder (V1.1 Comp B) ===
 export 'src/crdt/crdt_op_builder.dart';
@@ -52,6 +60,14 @@ export 'src/repositories/in_memory/in_memory_follow_repository.dart';
 export 'src/repositories/in_memory/in_memory_follow_activity_outbox_repository.dart';
 export 'src/repositories/in_memory/in_memory_ops_queue_repository.dart';
 export 'src/repositories/in_memory/in_memory_wallet_repository.dart';
+export 'src/repositories/in_memory/in_memory_content_item_repository.dart';
+export 'src/repositories/in_memory/in_memory_content_relation_repository.dart';
+export 'src/repositories/in_memory/in_memory_transformation_job_repository.dart';
+export 'src/repositories/in_memory/in_memory_projection_repository.dart';
+export 'src/repositories/in_memory/in_memory_discussion_node_repository.dart';
+export 'src/repositories/in_memory/in_memory_ai_provider_config_repository.dart';
+export 'src/repositories/in_memory/in_memory_context_pack_repository.dart';
+export 'src/repositories/in_memory/in_memory_summary_job_repository.dart';
 
 // === Drift (SQLite) implementations ===
 export 'src/repositories/drift/drift_board_repository.dart';
@@ -66,6 +82,14 @@ export 'src/repositories/drift/drift_follow_repository.dart';
 export 'src/repositories/drift/drift_follow_activity_outbox_repository.dart';
 export 'src/repositories/drift/drift_ops_queue_repository.dart';
 export 'src/repositories/drift/drift_wallet_repository.dart';
+export 'src/repositories/drift/drift_content_item_repository.dart';
+export 'src/repositories/drift/drift_content_relation_repository.dart';
+export 'src/repositories/drift/drift_transformation_job_repository.dart';
+export 'src/repositories/drift/drift_projection_repository.dart';
+export 'src/repositories/drift/drift_discussion_node_repository.dart';
+export 'src/repositories/drift/drift_ai_provider_config_repository.dart';
+export 'src/repositories/drift/drift_context_pack_repository.dart';
+export 'src/repositories/drift/drift_summary_job_repository.dart';
 export 'src/db/app_database.dart'
     hide
         Board,

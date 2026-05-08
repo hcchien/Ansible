@@ -219,7 +219,7 @@ Expected: analysis exits 0.
 - Create repository interfaces and Drift/in-memory implementations.
 - Test: `ansible_core/store/test/content_lineage_repository_test.dart`
 
-- [ ] **Step 1: Write failing repository tests**
+- [x] **Step 1: Write failing repository tests**
 
 Create tests covering:
 
@@ -238,7 +238,7 @@ dart test test/content_lineage_repository_test.dart
 
 Expected: FAIL because repositories are missing.
 
-- [ ] **Step 2: Implement content item and relation repositories**
+- [x] **Step 2: Implement content item and relation repositories**
 
 Methods required:
 
@@ -267,7 +267,7 @@ dart test test/content_lineage_repository_test.dart
 
 Expected: PASS.
 
-- [ ] **Step 3: Implement transformation, projection, context, summary, and provider repositories**
+- [x] **Step 3: Implement transformation, projection, context, summary, and provider repositories**
 
 Use focused methods that match the first UI flows:
 

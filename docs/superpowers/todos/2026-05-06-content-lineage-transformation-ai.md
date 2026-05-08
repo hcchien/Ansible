@@ -13,11 +13,10 @@
 - [x] Add `content_relations`, `transformation_jobs`, `projections`, and
   `ownership_policies`.
 - [x] Add `ai_provider_configs`, `context_packs`, and `summary_jobs`.
-- [ ] Add entities and repository interfaces. (Entities complete; repository
-  interfaces are still pending.)
-- [ ] Add Drift and in-memory repositories.
+- [x] Add entities and repository interfaces.
+- [x] Add Drift and in-memory repositories.
 - [x] Add schema migration and generated Drift code.
-- [ ] Add store tests for mode queries, lineage, transformations, and privacy
+- [x] Add store tests for mode queries, lineage, transformations, and privacy
   defaults.
 
 ## Phase 2: Manual Product Flows
