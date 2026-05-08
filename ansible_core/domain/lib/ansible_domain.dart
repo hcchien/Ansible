@@ -1,4 +1,6 @@
 // Sync primitives — cursor-based Op stream (transport-agnostic)
+export 'src/content/content_lineage_projector.dart';
+export 'src/content/content_transformation_service.dart';
 export 'src/follow/follow_feed_projector.dart';
 export 'src/follow/follow_result.dart';
 export 'src/follow/follow_service.dart';

@@ -298,7 +298,7 @@ Expected: tests pass; analysis has no errors.
 - Modify: `ansible_core/domain/lib/ansible_domain.dart`
 - Test: `ansible_core/domain/test/content_transformation_service_test.dart`
 
-- [ ] **Step 1: Write failing Murmur -> Note test**
+- [x] **Step 1: Write failing Murmur -> Note test**
 
 Test that selected murmur IDs create:
 
@@ -315,7 +315,7 @@ dart test test/content_transformation_service_test.dart
 
 Expected: FAIL because the service does not exist.
 
-- [ ] **Step 2: Implement manual Murmur -> Note**
+- [x] **Step 2: Implement manual Murmur -> Note**
 
 Service method:
 
@@ -337,7 +337,7 @@ dart test test/content_transformation_service_test.dart
 
 Expected: PASS for Murmur -> Note.
 
-- [ ] **Step 3: Add Note -> Discussion projection test**
+- [x] **Step 3: Add Note -> Discussion projection test**
 
 Test that accepting projection creates:
 
@@ -355,7 +355,7 @@ dart test test/content_transformation_service_test.dart
 
 Expected: FAIL until projection implementation exists.
 
-- [ ] **Step 4: Implement Note -> Discussion projection**
+- [x] **Step 4: Implement Note -> Discussion projection**
 
 Service method:
 

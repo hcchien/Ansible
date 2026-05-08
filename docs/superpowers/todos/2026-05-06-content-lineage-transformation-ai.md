@@ -21,11 +21,11 @@
 
 ## Phase 2: Manual Product Flows
 
-- [ ] Add manual Murmur -> Note transformation.
-- [ ] Add manual Note -> Discussion projection.
-- [ ] Add local lineage inspector query/projector.
+- [x] Add manual Murmur -> Note transformation.
+- [x] Add manual Note -> Discussion projection.
+- [x] Add local lineage inspector query/projector.
 - [ ] Keep legacy board/thread/post forum behavior working.
-- [ ] Add tests for projection acknowledgement and relation creation.
+- [x] Add tests for projection acknowledgement and relation creation.
 
 ## Phase 3: AI Assistance Foundation
 
