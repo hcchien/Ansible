@@ -1,17 +1,20 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 import '../theme/ansible_design.dart';
 
 class NoteWorkspaceScreen extends StatelessWidget {
   const NoteWorkspaceScreen({
     super.key,
+    this.authorDid,
     this.notes = const [],
     this.murmurs = const [],
     this.contentItemRepository,
     this.onContentItemsChanged,
   });
 
+  final String? authorDid;
   final List<ContentItem> notes;
   final List<ContentItem> murmurs;
   final ContentItemRepository? contentItemRepository;
@@ -22,7 +25,24 @@ class NoteWorkspaceScreen extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        const AnsibleSectionHead(zh: '草地', en: 'WORKING NOTES', action: '↓ 最近'),
+        Row(
+          children: [
+            const Expanded(
+              child: AnsibleSectionHead(
+                zh: '草地',
+                en: 'WORKING NOTES',
+                action: '↓ 最近',
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: contentItemRepository == null || authorDid == null
+                  ? null
+                  : () => _showCreateNoteDialog(context),
+              icon: const Icon(Icons.note_add_outlined, size: 18),
+              label: const Text('新增筆記'),
+            ),
+          ],
+        ),
         if (notes.isEmpty)
           const _EmptyNotesPreview()
         else
@@ -50,6 +70,124 @@ class NoteWorkspaceScreen extends StatelessWidget {
         const AnsibleSectionHead(zh: '來源 · LINEAGE', en: 'LOCAL CONTENT GRAPH'),
         const _LineagePreview(),
       ],
+    );
+  }
+
+  Future<void> _showCreateNoteDialog(BuildContext context) async {
+    final repository = contentItemRepository;
+    final did = authorDid;
+    if (repository == null || did == null) return;
+
+    final result = await showDialog<_CreateNoteResult>(
+      context: context,
+      builder: (_) => const _CreateNoteDialog(),
+    );
+    if (result == null) return;
+
+    final now = DateTime.now().toUtc();
+    await repository.create(
+      ContentItem(
+        id: const Uuid().v4(),
+        authorDid: did,
+        mode: ContentMode.note,
+        title: result.title,
+        body: result.body,
+        status: ContentStatus.active,
+        visibility: ContentVisibility.private,
+        createdAt: now,
+        updatedAt: now,
+        localOnly: true,
+      ),
+    );
+    await onContentItemsChanged?.call();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('已建立筆記')));
+  }
+}
+
+class _CreateNoteResult {
+  const _CreateNoteResult({required this.title, required this.body});
+
+  final String title;
+  final String body;
+}
+
+class _CreateNoteDialog extends StatefulWidget {
+  const _CreateNoteDialog();
+
+  @override
+  State<_CreateNoteDialog> createState() => _CreateNoteDialogState();
+}
+
+class _CreateNoteDialogState extends State<_CreateNoteDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _bodyController = TextEditingController();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _bodyController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('新增筆記'),
+      content: Form(
+        key: _formKey,
+        child: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                key: const Key('note_title_field'),
+                controller: _titleController,
+                autofocus: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(labelText: '標題'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return '請輸入標題';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const Key('note_body_field'),
+                controller: _bodyController,
+                minLines: 5,
+                maxLines: 8,
+                decoration: const InputDecoration(labelText: '內文'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return '請輸入內文';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('建立')),
+      ],
+    );
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.of(context).pop(
+      _CreateNoteResult(
+        title: _titleController.text.trim(),
+        body: _bodyController.text.trim(),
+      ),
     );
   }
 }

@@ -1008,6 +1008,7 @@ class _MainPanel extends StatelessWidget {
                           onSaved: onContentItemsChanged,
                         ),
                         _ContentModeTab.notes => NoteWorkspaceScreen(
+                          authorDid: did,
                           notes: contentItems
                               .where((item) => item.mode == ContentMode.note)
                               .toList(),
