@@ -343,7 +343,7 @@ class _EditorVisibilityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Row(
       children: [
-        AnsibleStatusChip(label: 'PRIVATE', dot: AnsibleDesign.inkMuted),
+        AnsibleStatusChip(label: 'private', dot: AnsibleDesign.inkMuted),
         SizedBox(width: 8),
         Expanded(
           child: Text(

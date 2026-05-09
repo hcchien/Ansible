@@ -150,9 +150,9 @@ class MurmurDetailScreen extends StatelessWidget {
 
   static String _visibilityLabel(ContentVisibility visibility) {
     return switch (visibility) {
-      ContentVisibility.private => '私人',
-      ContentVisibility.unlisted => '圈內',
-      ContentVisibility.public => '公開',
+      ContentVisibility.private => 'private',
+      ContentVisibility.unlisted => 'unlisted',
+      ContentVisibility.public => 'public',
     };
   }
 

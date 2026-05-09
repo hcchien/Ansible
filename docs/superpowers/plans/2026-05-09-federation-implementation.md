@@ -194,14 +194,14 @@ Modify the Phoenix relay for ActivityPub:
 - Test `ansible_node/app/test/content_visibility_controls_test.dart`.
 - Test `ansible_node/app/test/federation_visibility_test.dart`.
 
-- [ ] Keep visibility labels simple: private, unlisted, public.
-- [ ] Add advanced distribution settings for Nostr relays and ActivityPub relay opt-in.
-- [ ] Ensure private content disables all federation targets.
-- [ ] Ensure unlisted/public can choose Nostr, ActivityPub, or both.
+- [x] Keep visibility labels simple: private, unlisted, public.
+- [x] Add advanced distribution settings for Nostr relays and ActivityPub relay opt-in.
+- [x] Ensure private content disables all federation targets.
+- [x] Ensure unlisted/public can choose Nostr, ActivityPub, or both.
 - [x] Show an explicit pending/failed distribution state when public/unlisted content cannot be signed with the user's real private key.
 - [x] Show per-target delivery status without making protocol details prominent in the editor.
-- [ ] Run `cd ansible_node/app && flutter test test/content_visibility_controls_test.dart test/federation_visibility_test.dart`.
-- [ ] Commit with `feat(app): add federation distribution controls`.
+- [x] Run `cd ansible_node/app && flutter test test/content_visibility_controls_test.dart test/federation_visibility_test.dart`.
+- [x] Commit with `feat(app): add federation distribution controls`.
 
 ## Task 8: Migration And Compatibility Cleanup
 

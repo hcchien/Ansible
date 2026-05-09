@@ -71,9 +71,9 @@ class NoteDetailScreen extends StatelessWidget {
 
   static String _visibilityLabel(ContentVisibility visibility) {
     return switch (visibility) {
-      ContentVisibility.private => 'PRIVATE',
-      ContentVisibility.unlisted => 'CIRCLE',
-      ContentVisibility.public => 'PUBLIC',
+      ContentVisibility.private => 'private',
+      ContentVisibility.unlisted => 'unlisted',
+      ContentVisibility.public => 'public',
     };
   }
 

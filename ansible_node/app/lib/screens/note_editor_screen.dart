@@ -408,7 +408,7 @@ class _VisibilityChip extends StatelessWidget {
           _Dot(color: AnsibleDesign.inkMuted, size: 4),
           SizedBox(width: 5),
           Text(
-            'PRIVATE',
+            'private',
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 9,

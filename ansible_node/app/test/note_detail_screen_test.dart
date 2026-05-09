@@ -31,7 +31,7 @@ void main() {
     expect(find.text('NOTE · 始於 2026.05.08'), findsOneWidget);
     expect(find.text('Field notes'), findsOneWidget);
     expect(find.text(body), findsOneWidget);
-    expect(find.text('PRIVATE'), findsOneWidget);
+    expect(find.text('private'), findsOneWidget);
     expect(find.text('由 0 個 murmur 編成'), findsOneWidget);
     expect(find.text('尚未連結 murmur 來源。'), findsOneWidget);
   });
