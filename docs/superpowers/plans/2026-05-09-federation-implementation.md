@@ -88,7 +88,7 @@ Modify the Phoenix relay for ActivityPub:
 - [x] Add a signing policy model that distinguishes unsigned local-only saves from signed distribution attempts.
 - [x] Add tests proving `unlisted` and `public` publication targets cannot move to publishable state without a required real-signature marker.
 - [x] Run `cd ansible_core/store && dart test test/publication_repository_test.dart`.
-- [ ] Commit with `feat(store): add federation publication outbox`.
+- [x] Commit with `feat(store): add federation publication outbox`.
 
 ## Task 2: Nostr Core Package
 
@@ -108,7 +108,7 @@ Modify the Phoenix relay for ActivityPub:
 - [x] Implement NIP-19 identifier helpers for `npub`, `note`, `nevent`, and `naddr` display values.
 - [x] Add tests using fixed vectors for deterministic serialization and identifier encoding.
 - [x] Run `cd ansible_core/nostr && dart test`.
-- [ ] Commit with `feat(nostr): add event and identity primitives`.
+- [x] Commit with `feat(nostr): add event and identity primitives`.
 
 ## Task 3: ContentItem To Nostr Projection
 
@@ -125,7 +125,7 @@ Modify the Phoenix relay for ActivityPub:
 - [x] Reject `private` content with a typed projection error.
 - [x] Add tests for murmur, note, delete, follow, relay list, and private rejection.
 - [x] Run `cd ansible_core/nostr && dart test test/nostr_content_projection_test.dart`.
-- [ ] Commit with `feat(nostr): project content into nostr events`.
+- [x] Commit with `feat(nostr): project content into nostr events`.
 
 ## Task 4: App-Side Nostr Publish And Read
 
@@ -182,7 +182,7 @@ Modify the Phoenix relay for ActivityPub:
 - [x] Store delivery attempts per remote inbox and retry transient failures.
 - [x] Treat external deletes as best-effort while preserving internal tombstones.
 - [x] Run `cd ansible_relay/phoenix && mix test test/activity_pub_controller_test.exs test/activity_pub_delivery_test.exs`.
-- [ ] Commit with `feat(relay): distribute publications over activitypub`.
+- [x] Commit with `feat(relay): distribute publications over activitypub`.
 
 ## Task 7: UI Distribution Settings
 
@@ -211,23 +211,23 @@ Modify the Phoenix relay for ActivityPub:
 - Update docs that mention AT Protocol as the only interoperability target.
 - Test full affected suites.
 
-- [ ] Keep current `did:plc` tests valid where they exercise existing local identity flow.
-- [ ] Add `did:nostr` fixtures for Nostr public identity.
-- [ ] Add ActivityPub actor URL fixtures under relay domain.
-- [ ] Update references so `did:plc` is described as current compatibility context, not required federation identity.
-- [ ] Run `cd ansible_node/app && flutter test`.
-- [ ] Run `cd ansible_core/store && dart test`.
-- [ ] Run `cd ansible_core/nostr && dart test`.
-- [ ] Run `cd ansible_relay/phoenix && mix test`.
-- [ ] Commit with `docs: clarify federation identity transition`.
+- [x] Keep current `did:plc` tests valid where they exercise existing local identity flow.
+- [x] Add `did:nostr` fixtures for Nostr public identity.
+- [x] Add ActivityPub actor URL fixtures under relay domain.
+- [x] Update references so `did:plc` is described as current compatibility context, not required federation identity.
+- [x] Run `cd ansible_node/app && flutter test`.
+- [x] Run `cd ansible_core/store && dart test`.
+- [x] Run `cd ansible_core/nostr && dart test`.
+- [x] Run `cd ansible_relay/phoenix && mix test`.
+- [x] Commit with `docs: clarify federation identity transition`.
 
 ## Acceptance Checklist
 
-- [ ] App can publish public/unlisted Nostr events directly to configured relays.
-- [ ] Relay can receive signed publication intents and project them to ActivityPub.
-- [ ] ActivityPub Actor/WebFinger/outbox/inbox endpoints return valid JSON.
-- [ ] Private content never produces external protocol payloads.
-- [ ] Public/unlisted content is never externally distributed with unsigned, stub-signed, or dev-signed payloads.
-- [ ] If production signing is unavailable, content remains locally saved with explicit retryable publication status.
-- [ ] NIP-26 remains excluded from v1.
-- [ ] Documentation states Nostr and ActivityPub are adapters over the local-first canonical model.
+- [x] App can publish public/unlisted Nostr events directly to configured relays.
+- [x] Relay can receive signed publication intents and project them to ActivityPub.
+- [x] ActivityPub Actor/WebFinger/outbox/inbox endpoints return valid JSON.
+- [x] Private content never produces external protocol payloads.
+- [x] Public/unlisted content is never externally distributed with unsigned, stub-signed, or dev-signed payloads.
+- [x] If production signing is unavailable, content remains locally saved with explicit retryable publication status.
+- [x] NIP-26 remains excluded from v1.
+- [x] Documentation states Nostr and ActivityPub are adapters over the local-first canonical model.

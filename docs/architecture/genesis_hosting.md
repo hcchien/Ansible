@@ -28,6 +28,13 @@ and mirror the network.
 The Genesis Relay is the reference implementation for high-throughput,
 low-latency AT Protocol Op ingestion and Firehose subscription.
 
+Transition note: this section describes the current AT Protocol / `did:plc`
+compatibility and AppView path. It is not the only public federation identity
+path. The local-first federation direction is defined in
+[`../protocol/tris_aura_federation_strategy_v0.1.md`](../protocol/tris_aura_federation_strategy_v0.1.md):
+Nostr uses `did:nostr` / public keys from the app, and ActivityPub uses
+relay-domain actor URLs owned by the distribution relay.
+
 ### C-1 Distributed Erlang Cluster
 
 - Runtime: Phoenix on GKE, clustered with `libcluster`.

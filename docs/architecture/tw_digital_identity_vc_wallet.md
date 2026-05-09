@@ -18,6 +18,12 @@ The App must therefore become both:
 2. a wallet that stores, presents, refreshes, and revokes Tris-Aura-issued
    Verifiable Credentials (VCs).
 
+Federation transition note: `did:plc` remains the current holder DID and
+AT Protocol compatibility context for this wallet plan. It should not be read
+as the only public identity path. Public Nostr identity is represented by
+`did:nostr` / `npub`, while ActivityPub identity is a relay-domain Actor URL
+such as `https://relay.trisaura.io/users/alice`.
+
 The Relay/Issuer verifies a user through Taiwan digital identity, then issues a
 privacy-preserving Tris-Aura VC bound to the user's holder DID. The App stores
 that VC locally and presents it later for higher trust tiers, rate-limit
@@ -114,7 +120,7 @@ Rules:
 Current V2 flow remains:
 
 1. App creates local device key / passkey-style credential.
-2. App creates or receives `did:plc`.
+2. App creates or receives the current compatibility DID, today `did:plc`.
 3. Relay anchors DID as `Basic`.
 4. User can post with stronger rate limits than anonymous clients, but without
    verified-human privileges.

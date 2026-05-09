@@ -6,6 +6,15 @@
 
 ---
 
+Transition note: this document describes the current AT Protocol-shaped
+compatibility surface and remains valid for XRPC/Firehose tests. It does not
+define the required public federation identity. New federation work treats
+AT-URI / `did:plc` records as optional compatibility or discovery context;
+Nostr uses `did:nostr` public keys, and ActivityPub uses relay-domain Actor
+URLs.
+
+---
+
 ## 1. Lexicon Namespace
 
 所有 Tris-Aura 自訂記錄類型使用保留的反向網域命名空間：
