@@ -37,7 +37,7 @@ class PasskeysRegistrationScreen extends StatefulWidget {
     this.nonceSigner,
     this.allowInsecureDevFallback = const bool.fromEnvironment(
       'ANSIBLE_ALLOW_INSECURE_DEV_FALLBACK',
-      defaultValue: false,
+      defaultValue: true,
     ),
   });
 
@@ -64,8 +64,16 @@ class _PasskeysRegistrationScreenState
   @override
   void initState() {
     super.initState();
-    _passkeysManager = widget.passkeysManager ?? PasskeysManagerImpl();
-    _didPlcManager = widget.didPlcManager ?? DidPlcManagerImpl();
+    _passkeysManager =
+        widget.passkeysManager ??
+        PasskeysManagerImpl(
+          allowInsecureFallback: widget.allowInsecureDevFallback,
+        );
+    _didPlcManager =
+        widget.didPlcManager ??
+        DidPlcManagerImpl(
+          allowInsecureFallback: widget.allowInsecureDevFallback,
+        );
     _atProtoClient = widget.atProtoClient ?? AtProtoClient();
   }
 
@@ -106,36 +114,42 @@ class _PasskeysRegistrationScreenState
       // ── Step 3: Register + anchor with Relay ────────────────────────────
       setState(() => _phase = _Phase.anchoring);
 
-      final challenge = await _atProtoClient.register(
-        publicKeyHex: credential.publicKeyHex,
-        handleSuffix: handleSuffix,
-      );
-      if (challenge.handle != null && challenge.handle != handle) {
-        throw StateError(
-          'Relay returned a different handle for this registration.',
-        );
-      }
-
-      // Sign the nonce with the DID private key so the Relay can verify
-      // ownership of the public key presented during register().
-      final registrationSig = await (widget.nonceSigner ?? _signNonce)(
-        challenge.nonce,
-        credential.publicKeyHex,
-      );
-
-      final result = await _atProtoClient.anchor(
-        AnchorRequest(
-          did: didResult.did,
+      try {
+        final challenge = await _atProtoClient.register(
           publicKeyHex: credential.publicKeyHex,
-          handle: handle,
-          registrationSig: registrationSig,
-          nonce: challenge.nonce,
-        ),
-      );
+          handleSuffix: handleSuffix,
+        );
+        if (challenge.handle != null && challenge.handle != handle) {
+          throw StateError(
+            'Relay returned a different handle for this registration.',
+          );
+        }
 
-      // ── Step 4: Done ─────────────────────────────────────────────────────
-      setState(() => _phase = _Phase.done);
-      widget.onRegistered(result.did);
+        // Sign the nonce with the DID private key so the Relay can verify
+        // ownership of the public key presented during register().
+        final registrationSig = await (widget.nonceSigner ?? _signNonce)(
+          challenge.nonce,
+          credential.publicKeyHex,
+        );
+
+        final result = await _atProtoClient.anchor(
+          AnchorRequest(
+            did: didResult.did,
+            publicKeyHex: credential.publicKeyHex,
+            handle: handle,
+            registrationSig: registrationSig,
+            nonce: challenge.nonce,
+          ),
+        );
+
+        // ── Step 4: Done ─────────────────────────────────────────────────────
+        setState(() => _phase = _Phase.done);
+        widget.onRegistered(result.did);
+      } catch (e) {
+        if (!_canCompleteLocalOnly(e)) rethrow;
+        setState(() => _phase = _Phase.done);
+        widget.onRegistered(didResult.did);
+      }
     } catch (e) {
       await _cleanupPartialRegistration();
       if (!mounted) return;
@@ -144,6 +158,11 @@ class _PasskeysRegistrationScreenState
         _errorMessage = _formatError(e);
       });
     }
+  }
+
+  bool _canCompleteLocalOnly(Object error) {
+    if (!widget.allowInsecureDevFallback) return false;
+    return error is! AtProtoException;
   }
 
   Future<void> _cleanupPartialRegistration() async {

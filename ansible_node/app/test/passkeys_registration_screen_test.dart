@@ -117,6 +117,70 @@ void main() {
     expect(registeredDid, 'did:plc:test');
   });
 
+  testWidgets('registration can complete locally when dev relay is offline', (
+    tester,
+  ) async {
+    final passkeys = _FakePasskeysManager('cd' * 32);
+    final didPlc = _FakeDidPlcManager();
+    final atProto = _OfflineAtProtoClient();
+    String? registeredDid;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PasskeysRegistrationScreen(
+          passkeysManager: passkeys,
+          didPlcManager: didPlc,
+          atProtoClient: atProto,
+          allowInsecureDevFallback: true,
+          onRegistered: (did) => registeredDid = did,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('建立帳號（Passkeys）'));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+
+    expect(atProto.registerCalled, isTrue);
+    expect(registeredDid, 'did:plc:test');
+    expect(didPlc.deleteCalled, isFalse);
+    expect(passkeys.deleteCalled, isFalse);
+  });
+
+  testWidgets('registration still surfaces relay rejection in dev mode', (
+    tester,
+  ) async {
+    final passkeys = _FakePasskeysManager('cd' * 32);
+    final didPlc = _FakeDidPlcManager();
+    final atProto = _FakeAtProtoClient(
+      registerError: const AtProtoException(
+        statusCode: 409,
+        error: 'handle_taken',
+      ),
+    );
+    String? registeredDid;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PasskeysRegistrationScreen(
+          passkeysManager: passkeys,
+          didPlcManager: didPlc,
+          atProtoClient: atProto,
+          allowInsecureDevFallback: true,
+          nonceSigner: (nonce, publicKeyHex) async => 'unused',
+          onRegistered: (did) => registeredDid = did,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('建立帳號（Passkeys）'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('此帳號名稱已被使用，請嘗試不同的名稱。'), findsOneWidget);
+    expect(registeredDid, isNull);
+  });
+
   testWidgets('registration validates handle suffix before generating keys', (
     tester,
   ) async {
@@ -232,5 +296,20 @@ class _FakeAtProtoClient extends AtProtoClient {
       handle: req.handle,
       expiresAt: '2026-08-04T00:00:00Z',
     );
+  }
+}
+
+class _OfflineAtProtoClient extends AtProtoClient {
+  bool registerCalled = false;
+
+  _OfflineAtProtoClient() : super(baseUrl: 'http://unused.local');
+
+  @override
+  Future<RegistrationChallenge> register({
+    required String publicKeyHex,
+    required String handleSuffix,
+  }) async {
+    registerCalled = true;
+    throw Exception('Relay is offline');
   }
 }
