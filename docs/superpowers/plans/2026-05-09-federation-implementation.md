@@ -24,6 +24,8 @@ Important boundaries:
 - Nostr is app-direct: app owns the Nostr key and publishes signed events to selected relays.
 - ActivityPub is relay-managed: app never exposes ActivityPub inbox/outbox endpoints.
 - `private` content must never create a Nostr event, ActivityPub activity, or relay publication intent.
+- `unlisted` and `public` content may be saved locally before signing succeeds, but external distribution must require a real user private-key signature.
+- Stub signatures, dev signatures, and insecure fallback signatures must never be silently accepted on production distribution paths.
 - NIP-26 is not part of v1.
 
 ## File Structure
@@ -78,12 +80,14 @@ Modify the Phoenix relay for ActivityPub:
 - Generate `ansible_core/store/lib/src/db/app_database.g.dart`.
 - Test `ansible_core/store/test/publication_repository_test.dart`.
 
-- [ ] Add `PublicationIntent` with fields: `intentId`, `authorDid`, `contentItemId`, `action` (`publish`, `update`, `delete`), `visibility`, `status`, `createdAt`, `updatedAt`, and `error`.
-- [ ] Add `PublicationTarget` with fields: `targetId`, `intentId`, `protocol` (`nostr`, `activityPub`), `endpoint`, `status`, `remoteId`, `lastAttemptAt`, and `error`.
-- [ ] Add `IdentityBinding` with fields: `bindingId`, `localAccountDid`, `bindingType` (`nostr`, `activityPub`, `nip05`, `atproto`), `identifier`, `publicKey`, `isPrimary`, `createdAt`, and `updatedAt`.
-- [ ] Add repository methods: `enqueueIntent`, `listPendingTargets`, `markTargetPublished`, `markTargetFailed`, `markIntentComplete`, and `bindingsForAccount`.
-- [ ] Add tests proving `private` publication intents are rejected before storage.
-- [ ] Run `cd ansible_core/store && dart test test/publication_repository_test.dart`.
+- [x] Add `PublicationIntent` with fields: `intentId`, `authorDid`, `contentItemId`, `action` (`publish`, `update`, `delete`), `visibility`, `status`, `createdAt`, `updatedAt`, and `error`.
+- [x] Add `PublicationTarget` with fields: `targetId`, `intentId`, `protocol` (`nostr`, `activityPub`), `endpoint`, `status`, `remoteId`, `lastAttemptAt`, and `error`.
+- [x] Add `IdentityBinding` with fields: `bindingId`, `localAccountDid`, `bindingType` (`nostr`, `activityPub`, `nip05`, `atproto`), `identifier`, `publicKey`, `isPrimary`, `createdAt`, and `updatedAt`.
+- [x] Add repository methods: `enqueueIntent`, `listPendingTargets`, `markTargetPublished`, `markTargetFailed`, `markIntentComplete`, and `bindingsForAccount`.
+- [x] Add tests proving `private` publication intents are rejected before storage.
+- [x] Add a signing policy model that distinguishes unsigned local-only saves from signed distribution attempts.
+- [x] Add tests proving `unlisted` and `public` publication targets cannot move to publishable state without a required real-signature marker.
+- [x] Run `cd ansible_core/store && dart test test/publication_repository_test.dart`.
 - [ ] Commit with `feat(store): add federation publication outbox`.
 
 ## Task 2: Nostr Core Package
@@ -95,13 +99,15 @@ Modify the Phoenix relay for ActivityPub:
 - Test `ansible_core/nostr/test/nostr_event_test.dart`.
 - Test `ansible_core/nostr/test/nostr_identifier_test.dart`.
 
-- [ ] Implement NIP-01 event serialization: `id = sha256([0, pubkey, created_at, kind, tags, content])` with compact UTF-8 JSON.
-- [ ] Implement `NostrEvent` fields: `id`, `pubkey`, `createdAt`, `kind`, `tags`, `content`, and `sig`.
-- [ ] Implement `NostrEventSigner` behind an interface so production secp256k1 Schnorr signing can be swapped without changing projections.
-- [ ] Implement `NostrKeyStore` using secure storage for local private key material.
-- [ ] Implement NIP-19 identifier helpers for `npub`, `note`, `nevent`, and `naddr` display values.
-- [ ] Add tests using fixed vectors for deterministic serialization and identifier encoding.
-- [ ] Run `cd ansible_core/nostr && dart test`.
+- [x] Implement NIP-01 event serialization: `id = sha256([0, pubkey, created_at, kind, tags, content])` with compact UTF-8 JSON.
+- [x] Implement `NostrEvent` fields: `id`, `pubkey`, `createdAt`, `kind`, `tags`, `content`, and `sig`.
+- [x] Implement `NostrEventSigner` behind an interface so production secp256k1 Schnorr signing can be swapped without changing projections.
+- [x] Implement `NostrKeyStore` using secure storage for local private key material.
+- [x] Reject stub/dev signatures unless an explicit test-only signer is injected by tests.
+- [x] Add tests proving production signing emits NIP-01-valid signatures and fails closed when key material or native signing is unavailable.
+- [x] Implement NIP-19 identifier helpers for `npub`, `note`, `nevent`, and `naddr` display values.
+- [x] Add tests using fixed vectors for deterministic serialization and identifier encoding.
+- [x] Run `cd ansible_core/nostr && dart test`.
 - [ ] Commit with `feat(nostr): add event and identity primitives`.
 
 ## Task 3: ContentItem To Nostr Projection
@@ -111,14 +117,14 @@ Modify the Phoenix relay for ActivityPub:
 - Create `ansible_core/nostr/lib/src/nostr_content_projection.dart`.
 - Test `ansible_core/nostr/test/nostr_content_projection_test.dart`.
 
-- [ ] Map public or unlisted `murmur` to NIP-01 `kind:1`.
-- [ ] Map public or unlisted `note` to NIP-23 `kind:30023` with `d`, `title`, `published_at`, and optional `t` tags.
-- [ ] Map delete/tombstone to NIP-09 `kind:5` referencing the prior Nostr event id.
-- [ ] Map follow graph snapshots to NIP-02 `kind:3`.
-- [ ] Map relay preferences to NIP-65 `kind:10002`.
-- [ ] Reject `private` content with a typed projection error.
-- [ ] Add tests for murmur, note, delete, follow, relay list, and private rejection.
-- [ ] Run `cd ansible_core/nostr && dart test test/nostr_content_projection_test.dart`.
+- [x] Map public or unlisted `murmur` to NIP-01 `kind:1`.
+- [x] Map public or unlisted `note` to NIP-23 `kind:30023` with `d`, `title`, `published_at`, and optional `t` tags.
+- [x] Map delete/tombstone to NIP-09 `kind:5` referencing the prior Nostr event id.
+- [x] Map follow graph snapshots to NIP-02 `kind:3`.
+- [x] Map relay preferences to NIP-65 `kind:10002`.
+- [x] Reject `private` content with a typed projection error.
+- [x] Add tests for murmur, note, delete, follow, relay list, and private rejection.
+- [x] Run `cd ansible_core/nostr && dart test test/nostr_content_projection_test.dart`.
 - [ ] Commit with `feat(nostr): project content into nostr events`.
 
 ## Task 4: App-Side Nostr Publish And Read
@@ -132,11 +138,12 @@ Modify the Phoenix relay for ActivityPub:
 - Test `ansible_node/app/test/distribution_settings_test.dart`.
 
 - [ ] Add relay settings for read/write Nostr relays.
-- [ ] Add `NostrPublicationService` that reads pending Nostr targets, signs projected events, publishes via WebSocket, and records per-relay success/failure.
-- [ ] Add minimal NIP-01 relay client support for `EVENT`, `REQ`, `EOSE`, `OK`, `NOTICE`, and `CLOSE`.
-- [ ] Ensure partial relay success does not fail the whole intent.
-- [ ] Ensure failed relay targets remain retryable.
-- [ ] Ensure no private content can reach `NostrPublicationService`.
+- [x] Add `NostrPublicationService` that reads pending Nostr targets, signs projected events, publishes via WebSocket, and records per-relay success/failure.
+- [x] Add minimal NIP-01 relay client support for `EVENT`, `REQ`, `EOSE`, `OK`, `NOTICE`, and `CLOSE`.
+- [x] Ensure partial relay success does not fail the whole intent.
+- [x] Ensure failed relay targets remain retryable.
+- [x] Ensure no private content can reach `NostrPublicationService`.
+- [ ] Ensure public/unlisted content without a real Nostr private-key signature remains local and records an explicit pending/failed publication status instead of using a dev fallback.
 - [ ] Run `cd ansible_node/app && flutter test test/nostr_publication_service_test.dart test/distribution_settings_test.dart`.
 - [ ] Commit with `feat(app): publish public content to nostr relays`.
 
@@ -150,6 +157,7 @@ Modify the Phoenix relay for ActivityPub:
 
 - [ ] Add `POST /api/v1/publication-intents`.
 - [ ] Validate signed app publication intent: author id, content id, action, visibility, payload hash, and signature.
+- [ ] Reject missing, stub, dev, or malformed intent signatures even when the app saved the source content locally.
 - [ ] Reject private visibility.
 - [ ] Store accepted intents for ActivityPub delivery.
 - [ ] Return stable relay-side publication id and initial delivery status.
@@ -190,7 +198,8 @@ Modify the Phoenix relay for ActivityPub:
 - [ ] Add advanced distribution settings for Nostr relays and ActivityPub relay opt-in.
 - [ ] Ensure private content disables all federation targets.
 - [ ] Ensure unlisted/public can choose Nostr, ActivityPub, or both.
-- [ ] Show per-target delivery status without making protocol details prominent in the editor.
+- [x] Show an explicit pending/failed distribution state when public/unlisted content cannot be signed with the user's real private key.
+- [x] Show per-target delivery status without making protocol details prominent in the editor.
 - [ ] Run `cd ansible_node/app && flutter test test/content_visibility_controls_test.dart test/federation_visibility_test.dart`.
 - [ ] Commit with `feat(app): add federation distribution controls`.
 
@@ -218,5 +227,7 @@ Modify the Phoenix relay for ActivityPub:
 - [ ] Relay can receive signed publication intents and project them to ActivityPub.
 - [ ] ActivityPub Actor/WebFinger/outbox/inbox endpoints return valid JSON.
 - [ ] Private content never produces external protocol payloads.
+- [ ] Public/unlisted content is never externally distributed with unsigned, stub-signed, or dev-signed payloads.
+- [ ] If production signing is unavailable, content remains locally saved with explicit retryable publication status.
 - [ ] NIP-26 remains excluded from v1.
 - [ ] Documentation states Nostr and ActivityPub are adapters over the local-first canonical model.

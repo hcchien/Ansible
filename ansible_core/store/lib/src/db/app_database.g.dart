@@ -17130,6 +17130,1891 @@ class SummaryJobsCompanion extends UpdateCompanion<SummaryJob> {
   }
 }
 
+class $PublicationIntentsTable extends PublicationIntents
+    with TableInfo<$PublicationIntentsTable, PublicationIntent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PublicationIntentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _intentIdMeta = const VerificationMeta(
+    'intentId',
+  );
+  @override
+  late final GeneratedColumn<String> intentId = GeneratedColumn<String>(
+    'intent_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorDidMeta = const VerificationMeta(
+    'authorDid',
+  );
+  @override
+  late final GeneratedColumn<String> authorDid = GeneratedColumn<String>(
+    'author_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentItemIdMeta = const VerificationMeta(
+    'contentItemId',
+  );
+  @override
+  late final GeneratedColumn<String> contentItemId = GeneratedColumn<String>(
+    'content_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _visibilityMeta = const VerificationMeta(
+    'visibility',
+  );
+  @override
+  late final GeneratedColumn<String> visibility = GeneratedColumn<String>(
+    'visibility',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _distributionPreferenceMeta =
+      const VerificationMeta('distributionPreference');
+  @override
+  late final GeneratedColumn<String> distributionPreference =
+      GeneratedColumn<String>(
+        'distribution_preference',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _payloadHashMeta = const VerificationMeta(
+    'payloadHash',
+  );
+  @override
+  late final GeneratedColumn<String> payloadHash = GeneratedColumn<String>(
+    'payload_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _signatureMeta = const VerificationMeta(
+    'signature',
+  );
+  @override
+  late final GeneratedColumn<String> signature = GeneratedColumn<String>(
+    'signature',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _signatureSchemeMeta = const VerificationMeta(
+    'signatureScheme',
+  );
+  @override
+  late final GeneratedColumn<String> signatureScheme = GeneratedColumn<String>(
+    'signature_scheme',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _signedAtMeta = const VerificationMeta(
+    'signedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> signedAt = GeneratedColumn<DateTime>(
+    'signed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+    'error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    intentId,
+    authorDid,
+    contentItemId,
+    action,
+    visibility,
+    distributionPreference,
+    status,
+    payloadHash,
+    signature,
+    signatureScheme,
+    signedAt,
+    createdAt,
+    updatedAt,
+    error,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'publication_intents';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PublicationIntent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('intent_id')) {
+      context.handle(
+        _intentIdMeta,
+        intentId.isAcceptableOrUnknown(data['intent_id']!, _intentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_intentIdMeta);
+    }
+    if (data.containsKey('author_did')) {
+      context.handle(
+        _authorDidMeta,
+        authorDid.isAcceptableOrUnknown(data['author_did']!, _authorDidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorDidMeta);
+    }
+    if (data.containsKey('content_item_id')) {
+      context.handle(
+        _contentItemIdMeta,
+        contentItemId.isAcceptableOrUnknown(
+          data['content_item_id']!,
+          _contentItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_contentItemIdMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('visibility')) {
+      context.handle(
+        _visibilityMeta,
+        visibility.isAcceptableOrUnknown(data['visibility']!, _visibilityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_visibilityMeta);
+    }
+    if (data.containsKey('distribution_preference')) {
+      context.handle(
+        _distributionPreferenceMeta,
+        distributionPreference.isAcceptableOrUnknown(
+          data['distribution_preference']!,
+          _distributionPreferenceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_distributionPreferenceMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('payload_hash')) {
+      context.handle(
+        _payloadHashMeta,
+        payloadHash.isAcceptableOrUnknown(
+          data['payload_hash']!,
+          _payloadHashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('signature')) {
+      context.handle(
+        _signatureMeta,
+        signature.isAcceptableOrUnknown(data['signature']!, _signatureMeta),
+      );
+    }
+    if (data.containsKey('signature_scheme')) {
+      context.handle(
+        _signatureSchemeMeta,
+        signatureScheme.isAcceptableOrUnknown(
+          data['signature_scheme']!,
+          _signatureSchemeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('signed_at')) {
+      context.handle(
+        _signedAtMeta,
+        signedAt.isAcceptableOrUnknown(data['signed_at']!, _signedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+        _errorMeta,
+        error.isAcceptableOrUnknown(data['error']!, _errorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {intentId};
+  @override
+  PublicationIntent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PublicationIntent(
+      intentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}intent_id'],
+      )!,
+      authorDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_did'],
+      )!,
+      contentItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_item_id'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      visibility: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}visibility'],
+      )!,
+      distributionPreference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}distribution_preference'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      payloadHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_hash'],
+      ),
+      signature: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signature'],
+      ),
+      signatureScheme: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signature_scheme'],
+      ),
+      signedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}signed_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      error: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}error'],
+      ),
+    );
+  }
+
+  @override
+  $PublicationIntentsTable createAlias(String alias) {
+    return $PublicationIntentsTable(attachedDatabase, alias);
+  }
+}
+
+class PublicationIntent extends DataClass
+    implements Insertable<PublicationIntent> {
+  final String intentId;
+  final String authorDid;
+  final String contentItemId;
+  final String action;
+  final String visibility;
+  final String distributionPreference;
+  final String status;
+  final String? payloadHash;
+  final String? signature;
+  final String? signatureScheme;
+  final DateTime? signedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String? error;
+  const PublicationIntent({
+    required this.intentId,
+    required this.authorDid,
+    required this.contentItemId,
+    required this.action,
+    required this.visibility,
+    required this.distributionPreference,
+    required this.status,
+    this.payloadHash,
+    this.signature,
+    this.signatureScheme,
+    this.signedAt,
+    required this.createdAt,
+    required this.updatedAt,
+    this.error,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['intent_id'] = Variable<String>(intentId);
+    map['author_did'] = Variable<String>(authorDid);
+    map['content_item_id'] = Variable<String>(contentItemId);
+    map['action'] = Variable<String>(action);
+    map['visibility'] = Variable<String>(visibility);
+    map['distribution_preference'] = Variable<String>(distributionPreference);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || payloadHash != null) {
+      map['payload_hash'] = Variable<String>(payloadHash);
+    }
+    if (!nullToAbsent || signature != null) {
+      map['signature'] = Variable<String>(signature);
+    }
+    if (!nullToAbsent || signatureScheme != null) {
+      map['signature_scheme'] = Variable<String>(signatureScheme);
+    }
+    if (!nullToAbsent || signedAt != null) {
+      map['signed_at'] = Variable<DateTime>(signedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    return map;
+  }
+
+  PublicationIntentsCompanion toCompanion(bool nullToAbsent) {
+    return PublicationIntentsCompanion(
+      intentId: Value(intentId),
+      authorDid: Value(authorDid),
+      contentItemId: Value(contentItemId),
+      action: Value(action),
+      visibility: Value(visibility),
+      distributionPreference: Value(distributionPreference),
+      status: Value(status),
+      payloadHash: payloadHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(payloadHash),
+      signature: signature == null && nullToAbsent
+          ? const Value.absent()
+          : Value(signature),
+      signatureScheme: signatureScheme == null && nullToAbsent
+          ? const Value.absent()
+          : Value(signatureScheme),
+      signedAt: signedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(signedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      error: error == null && nullToAbsent
+          ? const Value.absent()
+          : Value(error),
+    );
+  }
+
+  factory PublicationIntent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PublicationIntent(
+      intentId: serializer.fromJson<String>(json['intentId']),
+      authorDid: serializer.fromJson<String>(json['authorDid']),
+      contentItemId: serializer.fromJson<String>(json['contentItemId']),
+      action: serializer.fromJson<String>(json['action']),
+      visibility: serializer.fromJson<String>(json['visibility']),
+      distributionPreference: serializer.fromJson<String>(
+        json['distributionPreference'],
+      ),
+      status: serializer.fromJson<String>(json['status']),
+      payloadHash: serializer.fromJson<String?>(json['payloadHash']),
+      signature: serializer.fromJson<String?>(json['signature']),
+      signatureScheme: serializer.fromJson<String?>(json['signatureScheme']),
+      signedAt: serializer.fromJson<DateTime?>(json['signedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      error: serializer.fromJson<String?>(json['error']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'intentId': serializer.toJson<String>(intentId),
+      'authorDid': serializer.toJson<String>(authorDid),
+      'contentItemId': serializer.toJson<String>(contentItemId),
+      'action': serializer.toJson<String>(action),
+      'visibility': serializer.toJson<String>(visibility),
+      'distributionPreference': serializer.toJson<String>(
+        distributionPreference,
+      ),
+      'status': serializer.toJson<String>(status),
+      'payloadHash': serializer.toJson<String?>(payloadHash),
+      'signature': serializer.toJson<String?>(signature),
+      'signatureScheme': serializer.toJson<String?>(signatureScheme),
+      'signedAt': serializer.toJson<DateTime?>(signedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'error': serializer.toJson<String?>(error),
+    };
+  }
+
+  PublicationIntent copyWith({
+    String? intentId,
+    String? authorDid,
+    String? contentItemId,
+    String? action,
+    String? visibility,
+    String? distributionPreference,
+    String? status,
+    Value<String?> payloadHash = const Value.absent(),
+    Value<String?> signature = const Value.absent(),
+    Value<String?> signatureScheme = const Value.absent(),
+    Value<DateTime?> signedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<String?> error = const Value.absent(),
+  }) => PublicationIntent(
+    intentId: intentId ?? this.intentId,
+    authorDid: authorDid ?? this.authorDid,
+    contentItemId: contentItemId ?? this.contentItemId,
+    action: action ?? this.action,
+    visibility: visibility ?? this.visibility,
+    distributionPreference:
+        distributionPreference ?? this.distributionPreference,
+    status: status ?? this.status,
+    payloadHash: payloadHash.present ? payloadHash.value : this.payloadHash,
+    signature: signature.present ? signature.value : this.signature,
+    signatureScheme: signatureScheme.present
+        ? signatureScheme.value
+        : this.signatureScheme,
+    signedAt: signedAt.present ? signedAt.value : this.signedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    error: error.present ? error.value : this.error,
+  );
+  PublicationIntent copyWithCompanion(PublicationIntentsCompanion data) {
+    return PublicationIntent(
+      intentId: data.intentId.present ? data.intentId.value : this.intentId,
+      authorDid: data.authorDid.present ? data.authorDid.value : this.authorDid,
+      contentItemId: data.contentItemId.present
+          ? data.contentItemId.value
+          : this.contentItemId,
+      action: data.action.present ? data.action.value : this.action,
+      visibility: data.visibility.present
+          ? data.visibility.value
+          : this.visibility,
+      distributionPreference: data.distributionPreference.present
+          ? data.distributionPreference.value
+          : this.distributionPreference,
+      status: data.status.present ? data.status.value : this.status,
+      payloadHash: data.payloadHash.present
+          ? data.payloadHash.value
+          : this.payloadHash,
+      signature: data.signature.present ? data.signature.value : this.signature,
+      signatureScheme: data.signatureScheme.present
+          ? data.signatureScheme.value
+          : this.signatureScheme,
+      signedAt: data.signedAt.present ? data.signedAt.value : this.signedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      error: data.error.present ? data.error.value : this.error,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicationIntent(')
+          ..write('intentId: $intentId, ')
+          ..write('authorDid: $authorDid, ')
+          ..write('contentItemId: $contentItemId, ')
+          ..write('action: $action, ')
+          ..write('visibility: $visibility, ')
+          ..write('distributionPreference: $distributionPreference, ')
+          ..write('status: $status, ')
+          ..write('payloadHash: $payloadHash, ')
+          ..write('signature: $signature, ')
+          ..write('signatureScheme: $signatureScheme, ')
+          ..write('signedAt: $signedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('error: $error')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    intentId,
+    authorDid,
+    contentItemId,
+    action,
+    visibility,
+    distributionPreference,
+    status,
+    payloadHash,
+    signature,
+    signatureScheme,
+    signedAt,
+    createdAt,
+    updatedAt,
+    error,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PublicationIntent &&
+          other.intentId == this.intentId &&
+          other.authorDid == this.authorDid &&
+          other.contentItemId == this.contentItemId &&
+          other.action == this.action &&
+          other.visibility == this.visibility &&
+          other.distributionPreference == this.distributionPreference &&
+          other.status == this.status &&
+          other.payloadHash == this.payloadHash &&
+          other.signature == this.signature &&
+          other.signatureScheme == this.signatureScheme &&
+          other.signedAt == this.signedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.error == this.error);
+}
+
+class PublicationIntentsCompanion extends UpdateCompanion<PublicationIntent> {
+  final Value<String> intentId;
+  final Value<String> authorDid;
+  final Value<String> contentItemId;
+  final Value<String> action;
+  final Value<String> visibility;
+  final Value<String> distributionPreference;
+  final Value<String> status;
+  final Value<String?> payloadHash;
+  final Value<String?> signature;
+  final Value<String?> signatureScheme;
+  final Value<DateTime?> signedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<String?> error;
+  final Value<int> rowid;
+  const PublicationIntentsCompanion({
+    this.intentId = const Value.absent(),
+    this.authorDid = const Value.absent(),
+    this.contentItemId = const Value.absent(),
+    this.action = const Value.absent(),
+    this.visibility = const Value.absent(),
+    this.distributionPreference = const Value.absent(),
+    this.status = const Value.absent(),
+    this.payloadHash = const Value.absent(),
+    this.signature = const Value.absent(),
+    this.signatureScheme = const Value.absent(),
+    this.signedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.error = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PublicationIntentsCompanion.insert({
+    required String intentId,
+    required String authorDid,
+    required String contentItemId,
+    required String action,
+    required String visibility,
+    required String distributionPreference,
+    this.status = const Value.absent(),
+    this.payloadHash = const Value.absent(),
+    this.signature = const Value.absent(),
+    this.signatureScheme = const Value.absent(),
+    this.signedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.error = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : intentId = Value(intentId),
+       authorDid = Value(authorDid),
+       contentItemId = Value(contentItemId),
+       action = Value(action),
+       visibility = Value(visibility),
+       distributionPreference = Value(distributionPreference);
+  static Insertable<PublicationIntent> custom({
+    Expression<String>? intentId,
+    Expression<String>? authorDid,
+    Expression<String>? contentItemId,
+    Expression<String>? action,
+    Expression<String>? visibility,
+    Expression<String>? distributionPreference,
+    Expression<String>? status,
+    Expression<String>? payloadHash,
+    Expression<String>? signature,
+    Expression<String>? signatureScheme,
+    Expression<DateTime>? signedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? error,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (intentId != null) 'intent_id': intentId,
+      if (authorDid != null) 'author_did': authorDid,
+      if (contentItemId != null) 'content_item_id': contentItemId,
+      if (action != null) 'action': action,
+      if (visibility != null) 'visibility': visibility,
+      if (distributionPreference != null)
+        'distribution_preference': distributionPreference,
+      if (status != null) 'status': status,
+      if (payloadHash != null) 'payload_hash': payloadHash,
+      if (signature != null) 'signature': signature,
+      if (signatureScheme != null) 'signature_scheme': signatureScheme,
+      if (signedAt != null) 'signed_at': signedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (error != null) 'error': error,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PublicationIntentsCompanion copyWith({
+    Value<String>? intentId,
+    Value<String>? authorDid,
+    Value<String>? contentItemId,
+    Value<String>? action,
+    Value<String>? visibility,
+    Value<String>? distributionPreference,
+    Value<String>? status,
+    Value<String?>? payloadHash,
+    Value<String?>? signature,
+    Value<String?>? signatureScheme,
+    Value<DateTime?>? signedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<String?>? error,
+    Value<int>? rowid,
+  }) {
+    return PublicationIntentsCompanion(
+      intentId: intentId ?? this.intentId,
+      authorDid: authorDid ?? this.authorDid,
+      contentItemId: contentItemId ?? this.contentItemId,
+      action: action ?? this.action,
+      visibility: visibility ?? this.visibility,
+      distributionPreference:
+          distributionPreference ?? this.distributionPreference,
+      status: status ?? this.status,
+      payloadHash: payloadHash ?? this.payloadHash,
+      signature: signature ?? this.signature,
+      signatureScheme: signatureScheme ?? this.signatureScheme,
+      signedAt: signedAt ?? this.signedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      error: error ?? this.error,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (intentId.present) {
+      map['intent_id'] = Variable<String>(intentId.value);
+    }
+    if (authorDid.present) {
+      map['author_did'] = Variable<String>(authorDid.value);
+    }
+    if (contentItemId.present) {
+      map['content_item_id'] = Variable<String>(contentItemId.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (visibility.present) {
+      map['visibility'] = Variable<String>(visibility.value);
+    }
+    if (distributionPreference.present) {
+      map['distribution_preference'] = Variable<String>(
+        distributionPreference.value,
+      );
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (payloadHash.present) {
+      map['payload_hash'] = Variable<String>(payloadHash.value);
+    }
+    if (signature.present) {
+      map['signature'] = Variable<String>(signature.value);
+    }
+    if (signatureScheme.present) {
+      map['signature_scheme'] = Variable<String>(signatureScheme.value);
+    }
+    if (signedAt.present) {
+      map['signed_at'] = Variable<DateTime>(signedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicationIntentsCompanion(')
+          ..write('intentId: $intentId, ')
+          ..write('authorDid: $authorDid, ')
+          ..write('contentItemId: $contentItemId, ')
+          ..write('action: $action, ')
+          ..write('visibility: $visibility, ')
+          ..write('distributionPreference: $distributionPreference, ')
+          ..write('status: $status, ')
+          ..write('payloadHash: $payloadHash, ')
+          ..write('signature: $signature, ')
+          ..write('signatureScheme: $signatureScheme, ')
+          ..write('signedAt: $signedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('error: $error, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PublicationTargetsTable extends PublicationTargets
+    with TableInfo<$PublicationTargetsTable, PublicationTarget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PublicationTargetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _intentIdMeta = const VerificationMeta(
+    'intentId',
+  );
+  @override
+  late final GeneratedColumn<String> intentId = GeneratedColumn<String>(
+    'intent_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES publication_intents (intent_id)',
+    ),
+  );
+  static const VerificationMeta _protocolMeta = const VerificationMeta(
+    'protocol',
+  );
+  @override
+  late final GeneratedColumn<String> protocol = GeneratedColumn<String>(
+    'protocol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endpointMeta = const VerificationMeta(
+    'endpoint',
+  );
+  @override
+  late final GeneratedColumn<String> endpoint = GeneratedColumn<String>(
+    'endpoint',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteId = GeneratedColumn<String>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+    'error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    targetId,
+    intentId,
+    protocol,
+    endpoint,
+    status,
+    remoteId,
+    lastAttemptAt,
+    error,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'publication_targets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PublicationTarget> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetIdMeta);
+    }
+    if (data.containsKey('intent_id')) {
+      context.handle(
+        _intentIdMeta,
+        intentId.isAcceptableOrUnknown(data['intent_id']!, _intentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_intentIdMeta);
+    }
+    if (data.containsKey('protocol')) {
+      context.handle(
+        _protocolMeta,
+        protocol.isAcceptableOrUnknown(data['protocol']!, _protocolMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_protocolMeta);
+    }
+    if (data.containsKey('endpoint')) {
+      context.handle(
+        _endpointMeta,
+        endpoint.isAcceptableOrUnknown(data['endpoint']!, _endpointMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endpointMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+        _errorMeta,
+        error.isAcceptableOrUnknown(data['error']!, _errorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {targetId};
+  @override
+  PublicationTarget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PublicationTarget(
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      )!,
+      intentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}intent_id'],
+      )!,
+      protocol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}protocol'],
+      )!,
+      endpoint: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}endpoint'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_id'],
+      ),
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+      error: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}error'],
+      ),
+    );
+  }
+
+  @override
+  $PublicationTargetsTable createAlias(String alias) {
+    return $PublicationTargetsTable(attachedDatabase, alias);
+  }
+}
+
+class PublicationTarget extends DataClass
+    implements Insertable<PublicationTarget> {
+  final String targetId;
+  final String intentId;
+  final String protocol;
+  final String endpoint;
+  final String status;
+  final String? remoteId;
+  final DateTime? lastAttemptAt;
+  final String? error;
+  const PublicationTarget({
+    required this.targetId,
+    required this.intentId,
+    required this.protocol,
+    required this.endpoint,
+    required this.status,
+    this.remoteId,
+    this.lastAttemptAt,
+    this.error,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['target_id'] = Variable<String>(targetId);
+    map['intent_id'] = Variable<String>(intentId);
+    map['protocol'] = Variable<String>(protocol);
+    map['endpoint'] = Variable<String>(endpoint);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<String>(remoteId);
+    }
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    return map;
+  }
+
+  PublicationTargetsCompanion toCompanion(bool nullToAbsent) {
+    return PublicationTargetsCompanion(
+      targetId: Value(targetId),
+      intentId: Value(intentId),
+      protocol: Value(protocol),
+      endpoint: Value(endpoint),
+      status: Value(status),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      error: error == null && nullToAbsent
+          ? const Value.absent()
+          : Value(error),
+    );
+  }
+
+  factory PublicationTarget.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PublicationTarget(
+      targetId: serializer.fromJson<String>(json['targetId']),
+      intentId: serializer.fromJson<String>(json['intentId']),
+      protocol: serializer.fromJson<String>(json['protocol']),
+      endpoint: serializer.fromJson<String>(json['endpoint']),
+      status: serializer.fromJson<String>(json['status']),
+      remoteId: serializer.fromJson<String?>(json['remoteId']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      error: serializer.fromJson<String?>(json['error']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'targetId': serializer.toJson<String>(targetId),
+      'intentId': serializer.toJson<String>(intentId),
+      'protocol': serializer.toJson<String>(protocol),
+      'endpoint': serializer.toJson<String>(endpoint),
+      'status': serializer.toJson<String>(status),
+      'remoteId': serializer.toJson<String?>(remoteId),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'error': serializer.toJson<String?>(error),
+    };
+  }
+
+  PublicationTarget copyWith({
+    String? targetId,
+    String? intentId,
+    String? protocol,
+    String? endpoint,
+    String? status,
+    Value<String?> remoteId = const Value.absent(),
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<String?> error = const Value.absent(),
+  }) => PublicationTarget(
+    targetId: targetId ?? this.targetId,
+    intentId: intentId ?? this.intentId,
+    protocol: protocol ?? this.protocol,
+    endpoint: endpoint ?? this.endpoint,
+    status: status ?? this.status,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    error: error.present ? error.value : this.error,
+  );
+  PublicationTarget copyWithCompanion(PublicationTargetsCompanion data) {
+    return PublicationTarget(
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      intentId: data.intentId.present ? data.intentId.value : this.intentId,
+      protocol: data.protocol.present ? data.protocol.value : this.protocol,
+      endpoint: data.endpoint.present ? data.endpoint.value : this.endpoint,
+      status: data.status.present ? data.status.value : this.status,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      error: data.error.present ? data.error.value : this.error,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicationTarget(')
+          ..write('targetId: $targetId, ')
+          ..write('intentId: $intentId, ')
+          ..write('protocol: $protocol, ')
+          ..write('endpoint: $endpoint, ')
+          ..write('status: $status, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('error: $error')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    targetId,
+    intentId,
+    protocol,
+    endpoint,
+    status,
+    remoteId,
+    lastAttemptAt,
+    error,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PublicationTarget &&
+          other.targetId == this.targetId &&
+          other.intentId == this.intentId &&
+          other.protocol == this.protocol &&
+          other.endpoint == this.endpoint &&
+          other.status == this.status &&
+          other.remoteId == this.remoteId &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.error == this.error);
+}
+
+class PublicationTargetsCompanion extends UpdateCompanion<PublicationTarget> {
+  final Value<String> targetId;
+  final Value<String> intentId;
+  final Value<String> protocol;
+  final Value<String> endpoint;
+  final Value<String> status;
+  final Value<String?> remoteId;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<String?> error;
+  final Value<int> rowid;
+  const PublicationTargetsCompanion({
+    this.targetId = const Value.absent(),
+    this.intentId = const Value.absent(),
+    this.protocol = const Value.absent(),
+    this.endpoint = const Value.absent(),
+    this.status = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.error = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PublicationTargetsCompanion.insert({
+    required String targetId,
+    required String intentId,
+    required String protocol,
+    required String endpoint,
+    this.status = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.error = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : targetId = Value(targetId),
+       intentId = Value(intentId),
+       protocol = Value(protocol),
+       endpoint = Value(endpoint);
+  static Insertable<PublicationTarget> custom({
+    Expression<String>? targetId,
+    Expression<String>? intentId,
+    Expression<String>? protocol,
+    Expression<String>? endpoint,
+    Expression<String>? status,
+    Expression<String>? remoteId,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<String>? error,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (targetId != null) 'target_id': targetId,
+      if (intentId != null) 'intent_id': intentId,
+      if (protocol != null) 'protocol': protocol,
+      if (endpoint != null) 'endpoint': endpoint,
+      if (status != null) 'status': status,
+      if (remoteId != null) 'remote_id': remoteId,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (error != null) 'error': error,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PublicationTargetsCompanion copyWith({
+    Value<String>? targetId,
+    Value<String>? intentId,
+    Value<String>? protocol,
+    Value<String>? endpoint,
+    Value<String>? status,
+    Value<String?>? remoteId,
+    Value<DateTime?>? lastAttemptAt,
+    Value<String?>? error,
+    Value<int>? rowid,
+  }) {
+    return PublicationTargetsCompanion(
+      targetId: targetId ?? this.targetId,
+      intentId: intentId ?? this.intentId,
+      protocol: protocol ?? this.protocol,
+      endpoint: endpoint ?? this.endpoint,
+      status: status ?? this.status,
+      remoteId: remoteId ?? this.remoteId,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      error: error ?? this.error,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (intentId.present) {
+      map['intent_id'] = Variable<String>(intentId.value);
+    }
+    if (protocol.present) {
+      map['protocol'] = Variable<String>(protocol.value);
+    }
+    if (endpoint.present) {
+      map['endpoint'] = Variable<String>(endpoint.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<String>(remoteId.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PublicationTargetsCompanion(')
+          ..write('targetId: $targetId, ')
+          ..write('intentId: $intentId, ')
+          ..write('protocol: $protocol, ')
+          ..write('endpoint: $endpoint, ')
+          ..write('status: $status, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('error: $error, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $IdentityBindingsTable extends IdentityBindings
+    with TableInfo<$IdentityBindingsTable, IdentityBinding> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IdentityBindingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _bindingIdMeta = const VerificationMeta(
+    'bindingId',
+  );
+  @override
+  late final GeneratedColumn<String> bindingId = GeneratedColumn<String>(
+    'binding_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localAccountDidMeta = const VerificationMeta(
+    'localAccountDid',
+  );
+  @override
+  late final GeneratedColumn<String> localAccountDid = GeneratedColumn<String>(
+    'local_account_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bindingTypeMeta = const VerificationMeta(
+    'bindingType',
+  );
+  @override
+  late final GeneratedColumn<String> bindingType = GeneratedColumn<String>(
+    'binding_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _identifierMeta = const VerificationMeta(
+    'identifier',
+  );
+  @override
+  late final GeneratedColumn<String> identifier = GeneratedColumn<String>(
+    'identifier',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _publicKeyMeta = const VerificationMeta(
+    'publicKey',
+  );
+  @override
+  late final GeneratedColumn<String> publicKey = GeneratedColumn<String>(
+    'public_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isPrimaryMeta = const VerificationMeta(
+    'isPrimary',
+  );
+  @override
+  late final GeneratedColumn<bool> isPrimary = GeneratedColumn<bool>(
+    'is_primary',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_primary" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    bindingId,
+    localAccountDid,
+    bindingType,
+    identifier,
+    publicKey,
+    isPrimary,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'identity_bindings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<IdentityBinding> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('binding_id')) {
+      context.handle(
+        _bindingIdMeta,
+        bindingId.isAcceptableOrUnknown(data['binding_id']!, _bindingIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bindingIdMeta);
+    }
+    if (data.containsKey('local_account_did')) {
+      context.handle(
+        _localAccountDidMeta,
+        localAccountDid.isAcceptableOrUnknown(
+          data['local_account_did']!,
+          _localAccountDidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localAccountDidMeta);
+    }
+    if (data.containsKey('binding_type')) {
+      context.handle(
+        _bindingTypeMeta,
+        bindingType.isAcceptableOrUnknown(
+          data['binding_type']!,
+          _bindingTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_bindingTypeMeta);
+    }
+    if (data.containsKey('identifier')) {
+      context.handle(
+        _identifierMeta,
+        identifier.isAcceptableOrUnknown(data['identifier']!, _identifierMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_identifierMeta);
+    }
+    if (data.containsKey('public_key')) {
+      context.handle(
+        _publicKeyMeta,
+        publicKey.isAcceptableOrUnknown(data['public_key']!, _publicKeyMeta),
+      );
+    }
+    if (data.containsKey('is_primary')) {
+      context.handle(
+        _isPrimaryMeta,
+        isPrimary.isAcceptableOrUnknown(data['is_primary']!, _isPrimaryMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {bindingId};
+  @override
+  IdentityBinding map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IdentityBinding(
+      bindingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}binding_id'],
+      )!,
+      localAccountDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_account_did'],
+      )!,
+      bindingType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}binding_type'],
+      )!,
+      identifier: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}identifier'],
+      )!,
+      publicKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}public_key'],
+      ),
+      isPrimary: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_primary'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $IdentityBindingsTable createAlias(String alias) {
+    return $IdentityBindingsTable(attachedDatabase, alias);
+  }
+}
+
+class IdentityBinding extends DataClass implements Insertable<IdentityBinding> {
+  final String bindingId;
+  final String localAccountDid;
+  final String bindingType;
+  final String identifier;
+  final String? publicKey;
+  final bool isPrimary;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const IdentityBinding({
+    required this.bindingId,
+    required this.localAccountDid,
+    required this.bindingType,
+    required this.identifier,
+    this.publicKey,
+    required this.isPrimary,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['binding_id'] = Variable<String>(bindingId);
+    map['local_account_did'] = Variable<String>(localAccountDid);
+    map['binding_type'] = Variable<String>(bindingType);
+    map['identifier'] = Variable<String>(identifier);
+    if (!nullToAbsent || publicKey != null) {
+      map['public_key'] = Variable<String>(publicKey);
+    }
+    map['is_primary'] = Variable<bool>(isPrimary);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  IdentityBindingsCompanion toCompanion(bool nullToAbsent) {
+    return IdentityBindingsCompanion(
+      bindingId: Value(bindingId),
+      localAccountDid: Value(localAccountDid),
+      bindingType: Value(bindingType),
+      identifier: Value(identifier),
+      publicKey: publicKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(publicKey),
+      isPrimary: Value(isPrimary),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory IdentityBinding.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IdentityBinding(
+      bindingId: serializer.fromJson<String>(json['bindingId']),
+      localAccountDid: serializer.fromJson<String>(json['localAccountDid']),
+      bindingType: serializer.fromJson<String>(json['bindingType']),
+      identifier: serializer.fromJson<String>(json['identifier']),
+      publicKey: serializer.fromJson<String?>(json['publicKey']),
+      isPrimary: serializer.fromJson<bool>(json['isPrimary']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'bindingId': serializer.toJson<String>(bindingId),
+      'localAccountDid': serializer.toJson<String>(localAccountDid),
+      'bindingType': serializer.toJson<String>(bindingType),
+      'identifier': serializer.toJson<String>(identifier),
+      'publicKey': serializer.toJson<String?>(publicKey),
+      'isPrimary': serializer.toJson<bool>(isPrimary),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  IdentityBinding copyWith({
+    String? bindingId,
+    String? localAccountDid,
+    String? bindingType,
+    String? identifier,
+    Value<String?> publicKey = const Value.absent(),
+    bool? isPrimary,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => IdentityBinding(
+    bindingId: bindingId ?? this.bindingId,
+    localAccountDid: localAccountDid ?? this.localAccountDid,
+    bindingType: bindingType ?? this.bindingType,
+    identifier: identifier ?? this.identifier,
+    publicKey: publicKey.present ? publicKey.value : this.publicKey,
+    isPrimary: isPrimary ?? this.isPrimary,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  IdentityBinding copyWithCompanion(IdentityBindingsCompanion data) {
+    return IdentityBinding(
+      bindingId: data.bindingId.present ? data.bindingId.value : this.bindingId,
+      localAccountDid: data.localAccountDid.present
+          ? data.localAccountDid.value
+          : this.localAccountDid,
+      bindingType: data.bindingType.present
+          ? data.bindingType.value
+          : this.bindingType,
+      identifier: data.identifier.present
+          ? data.identifier.value
+          : this.identifier,
+      publicKey: data.publicKey.present ? data.publicKey.value : this.publicKey,
+      isPrimary: data.isPrimary.present ? data.isPrimary.value : this.isPrimary,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IdentityBinding(')
+          ..write('bindingId: $bindingId, ')
+          ..write('localAccountDid: $localAccountDid, ')
+          ..write('bindingType: $bindingType, ')
+          ..write('identifier: $identifier, ')
+          ..write('publicKey: $publicKey, ')
+          ..write('isPrimary: $isPrimary, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    bindingId,
+    localAccountDid,
+    bindingType,
+    identifier,
+    publicKey,
+    isPrimary,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IdentityBinding &&
+          other.bindingId == this.bindingId &&
+          other.localAccountDid == this.localAccountDid &&
+          other.bindingType == this.bindingType &&
+          other.identifier == this.identifier &&
+          other.publicKey == this.publicKey &&
+          other.isPrimary == this.isPrimary &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class IdentityBindingsCompanion extends UpdateCompanion<IdentityBinding> {
+  final Value<String> bindingId;
+  final Value<String> localAccountDid;
+  final Value<String> bindingType;
+  final Value<String> identifier;
+  final Value<String?> publicKey;
+  final Value<bool> isPrimary;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const IdentityBindingsCompanion({
+    this.bindingId = const Value.absent(),
+    this.localAccountDid = const Value.absent(),
+    this.bindingType = const Value.absent(),
+    this.identifier = const Value.absent(),
+    this.publicKey = const Value.absent(),
+    this.isPrimary = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  IdentityBindingsCompanion.insert({
+    required String bindingId,
+    required String localAccountDid,
+    required String bindingType,
+    required String identifier,
+    this.publicKey = const Value.absent(),
+    this.isPrimary = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : bindingId = Value(bindingId),
+       localAccountDid = Value(localAccountDid),
+       bindingType = Value(bindingType),
+       identifier = Value(identifier);
+  static Insertable<IdentityBinding> custom({
+    Expression<String>? bindingId,
+    Expression<String>? localAccountDid,
+    Expression<String>? bindingType,
+    Expression<String>? identifier,
+    Expression<String>? publicKey,
+    Expression<bool>? isPrimary,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (bindingId != null) 'binding_id': bindingId,
+      if (localAccountDid != null) 'local_account_did': localAccountDid,
+      if (bindingType != null) 'binding_type': bindingType,
+      if (identifier != null) 'identifier': identifier,
+      if (publicKey != null) 'public_key': publicKey,
+      if (isPrimary != null) 'is_primary': isPrimary,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  IdentityBindingsCompanion copyWith({
+    Value<String>? bindingId,
+    Value<String>? localAccountDid,
+    Value<String>? bindingType,
+    Value<String>? identifier,
+    Value<String?>? publicKey,
+    Value<bool>? isPrimary,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return IdentityBindingsCompanion(
+      bindingId: bindingId ?? this.bindingId,
+      localAccountDid: localAccountDid ?? this.localAccountDid,
+      bindingType: bindingType ?? this.bindingType,
+      identifier: identifier ?? this.identifier,
+      publicKey: publicKey ?? this.publicKey,
+      isPrimary: isPrimary ?? this.isPrimary,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (bindingId.present) {
+      map['binding_id'] = Variable<String>(bindingId.value);
+    }
+    if (localAccountDid.present) {
+      map['local_account_did'] = Variable<String>(localAccountDid.value);
+    }
+    if (bindingType.present) {
+      map['binding_type'] = Variable<String>(bindingType.value);
+    }
+    if (identifier.present) {
+      map['identifier'] = Variable<String>(identifier.value);
+    }
+    if (publicKey.present) {
+      map['public_key'] = Variable<String>(publicKey.value);
+    }
+    if (isPrimary.present) {
+      map['is_primary'] = Variable<bool>(isPrimary.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IdentityBindingsCompanion(')
+          ..write('bindingId: $bindingId, ')
+          ..write('localAccountDid: $localAccountDid, ')
+          ..write('bindingType: $bindingType, ')
+          ..write('identifier: $identifier, ')
+          ..write('publicKey: $publicKey, ')
+          ..write('isPrimary: $isPrimary, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -17180,6 +19065,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AiProviderConfigsTable(this);
   late final $ContextPacksTable contextPacks = $ContextPacksTable(this);
   late final $SummaryJobsTable summaryJobs = $SummaryJobsTable(this);
+  late final $PublicationIntentsTable publicationIntents =
+      $PublicationIntentsTable(this);
+  late final $PublicationTargetsTable publicationTargets =
+      $PublicationTargetsTable(this);
+  late final $IdentityBindingsTable identityBindings = $IdentityBindingsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -17216,6 +19108,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     aiProviderConfigs,
     contextPacks,
     summaryJobs,
+    publicationIntents,
+    publicationTargets,
+    identityBindings,
   ];
 }
 
@@ -31096,6 +32991,1184 @@ typedef $$SummaryJobsTableProcessedTableManager =
       SummaryJob,
       PrefetchHooks Function({bool contextPackId, bool providerConfigId})
     >;
+typedef $$PublicationIntentsTableCreateCompanionBuilder =
+    PublicationIntentsCompanion Function({
+      required String intentId,
+      required String authorDid,
+      required String contentItemId,
+      required String action,
+      required String visibility,
+      required String distributionPreference,
+      Value<String> status,
+      Value<String?> payloadHash,
+      Value<String?> signature,
+      Value<String?> signatureScheme,
+      Value<DateTime?> signedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<String?> error,
+      Value<int> rowid,
+    });
+typedef $$PublicationIntentsTableUpdateCompanionBuilder =
+    PublicationIntentsCompanion Function({
+      Value<String> intentId,
+      Value<String> authorDid,
+      Value<String> contentItemId,
+      Value<String> action,
+      Value<String> visibility,
+      Value<String> distributionPreference,
+      Value<String> status,
+      Value<String?> payloadHash,
+      Value<String?> signature,
+      Value<String?> signatureScheme,
+      Value<DateTime?> signedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<String?> error,
+      Value<int> rowid,
+    });
+
+final class $$PublicationIntentsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PublicationIntentsTable,
+          PublicationIntent
+        > {
+  $$PublicationIntentsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$PublicationTargetsTable, List<PublicationTarget>>
+  _publicationTargetsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.publicationTargets,
+        aliasName: $_aliasNameGenerator(
+          db.publicationIntents.intentId,
+          db.publicationTargets.intentId,
+        ),
+      );
+
+  $$PublicationTargetsTableProcessedTableManager get publicationTargetsRefs {
+    final manager =
+        $$PublicationTargetsTableTableManager(
+          $_db,
+          $_db.publicationTargets,
+        ).filter(
+          (f) =>
+              f.intentId.intentId.sqlEquals($_itemColumn<String>('intent_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _publicationTargetsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$PublicationIntentsTableFilterComposer
+    extends Composer<_$AppDatabase, $PublicationIntentsTable> {
+  $$PublicationIntentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get intentId => $composableBuilder(
+    column: $table.intentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorDid => $composableBuilder(
+    column: $table.authorDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentItemId => $composableBuilder(
+    column: $table.contentItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get visibility => $composableBuilder(
+    column: $table.visibility,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get distributionPreference => $composableBuilder(
+    column: $table.distributionPreference,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadHash => $composableBuilder(
+    column: $table.payloadHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signatureScheme => $composableBuilder(
+    column: $table.signatureScheme,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get signedAt => $composableBuilder(
+    column: $table.signedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> publicationTargetsRefs(
+    Expression<bool> Function($$PublicationTargetsTableFilterComposer f) f,
+  ) {
+    final $$PublicationTargetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.publicationTargets,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PublicationTargetsTableFilterComposer(
+            $db: $db,
+            $table: $db.publicationTargets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PublicationIntentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PublicationIntentsTable> {
+  $$PublicationIntentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get intentId => $composableBuilder(
+    column: $table.intentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorDid => $composableBuilder(
+    column: $table.authorDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentItemId => $composableBuilder(
+    column: $table.contentItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get visibility => $composableBuilder(
+    column: $table.visibility,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get distributionPreference => $composableBuilder(
+    column: $table.distributionPreference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadHash => $composableBuilder(
+    column: $table.payloadHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get signatureScheme => $composableBuilder(
+    column: $table.signatureScheme,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get signedAt => $composableBuilder(
+    column: $table.signedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PublicationIntentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PublicationIntentsTable> {
+  $$PublicationIntentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get intentId =>
+      $composableBuilder(column: $table.intentId, builder: (column) => column);
+
+  GeneratedColumn<String> get authorDid =>
+      $composableBuilder(column: $table.authorDid, builder: (column) => column);
+
+  GeneratedColumn<String> get contentItemId => $composableBuilder(
+    column: $table.contentItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get visibility => $composableBuilder(
+    column: $table.visibility,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get distributionPreference => $composableBuilder(
+    column: $table.distributionPreference,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get payloadHash => $composableBuilder(
+    column: $table.payloadHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get signature =>
+      $composableBuilder(column: $table.signature, builder: (column) => column);
+
+  GeneratedColumn<String> get signatureScheme => $composableBuilder(
+    column: $table.signatureScheme,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get signedAt =>
+      $composableBuilder(column: $table.signedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+
+  Expression<T> publicationTargetsRefs<T extends Object>(
+    Expression<T> Function($$PublicationTargetsTableAnnotationComposer a) f,
+  ) {
+    final $$PublicationTargetsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.intentId,
+          referencedTable: $db.publicationTargets,
+          getReferencedColumn: (t) => t.intentId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PublicationTargetsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.publicationTargets,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$PublicationIntentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PublicationIntentsTable,
+          PublicationIntent,
+          $$PublicationIntentsTableFilterComposer,
+          $$PublicationIntentsTableOrderingComposer,
+          $$PublicationIntentsTableAnnotationComposer,
+          $$PublicationIntentsTableCreateCompanionBuilder,
+          $$PublicationIntentsTableUpdateCompanionBuilder,
+          (PublicationIntent, $$PublicationIntentsTableReferences),
+          PublicationIntent,
+          PrefetchHooks Function({bool publicationTargetsRefs})
+        > {
+  $$PublicationIntentsTableTableManager(
+    _$AppDatabase db,
+    $PublicationIntentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PublicationIntentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PublicationIntentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PublicationIntentsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> intentId = const Value.absent(),
+                Value<String> authorDid = const Value.absent(),
+                Value<String> contentItemId = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<String> visibility = const Value.absent(),
+                Value<String> distributionPreference = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> payloadHash = const Value.absent(),
+                Value<String?> signature = const Value.absent(),
+                Value<String?> signatureScheme = const Value.absent(),
+                Value<DateTime?> signedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PublicationIntentsCompanion(
+                intentId: intentId,
+                authorDid: authorDid,
+                contentItemId: contentItemId,
+                action: action,
+                visibility: visibility,
+                distributionPreference: distributionPreference,
+                status: status,
+                payloadHash: payloadHash,
+                signature: signature,
+                signatureScheme: signatureScheme,
+                signedAt: signedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                error: error,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String intentId,
+                required String authorDid,
+                required String contentItemId,
+                required String action,
+                required String visibility,
+                required String distributionPreference,
+                Value<String> status = const Value.absent(),
+                Value<String?> payloadHash = const Value.absent(),
+                Value<String?> signature = const Value.absent(),
+                Value<String?> signatureScheme = const Value.absent(),
+                Value<DateTime?> signedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PublicationIntentsCompanion.insert(
+                intentId: intentId,
+                authorDid: authorDid,
+                contentItemId: contentItemId,
+                action: action,
+                visibility: visibility,
+                distributionPreference: distributionPreference,
+                status: status,
+                payloadHash: payloadHash,
+                signature: signature,
+                signatureScheme: signatureScheme,
+                signedAt: signedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                error: error,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PublicationIntentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({publicationTargetsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (publicationTargetsRefs) db.publicationTargets,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (publicationTargetsRefs)
+                    await $_getPrefetchedData<
+                      PublicationIntent,
+                      $PublicationIntentsTable,
+                      PublicationTarget
+                    >(
+                      currentTable: table,
+                      referencedTable: $$PublicationIntentsTableReferences
+                          ._publicationTargetsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$PublicationIntentsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).publicationTargetsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.intentId == item.intentId,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PublicationIntentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PublicationIntentsTable,
+      PublicationIntent,
+      $$PublicationIntentsTableFilterComposer,
+      $$PublicationIntentsTableOrderingComposer,
+      $$PublicationIntentsTableAnnotationComposer,
+      $$PublicationIntentsTableCreateCompanionBuilder,
+      $$PublicationIntentsTableUpdateCompanionBuilder,
+      (PublicationIntent, $$PublicationIntentsTableReferences),
+      PublicationIntent,
+      PrefetchHooks Function({bool publicationTargetsRefs})
+    >;
+typedef $$PublicationTargetsTableCreateCompanionBuilder =
+    PublicationTargetsCompanion Function({
+      required String targetId,
+      required String intentId,
+      required String protocol,
+      required String endpoint,
+      Value<String> status,
+      Value<String?> remoteId,
+      Value<DateTime?> lastAttemptAt,
+      Value<String?> error,
+      Value<int> rowid,
+    });
+typedef $$PublicationTargetsTableUpdateCompanionBuilder =
+    PublicationTargetsCompanion Function({
+      Value<String> targetId,
+      Value<String> intentId,
+      Value<String> protocol,
+      Value<String> endpoint,
+      Value<String> status,
+      Value<String?> remoteId,
+      Value<DateTime?> lastAttemptAt,
+      Value<String?> error,
+      Value<int> rowid,
+    });
+
+final class $$PublicationTargetsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PublicationTargetsTable,
+          PublicationTarget
+        > {
+  $$PublicationTargetsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PublicationIntentsTable _intentIdTable(_$AppDatabase db) =>
+      db.publicationIntents.createAlias(
+        $_aliasNameGenerator(
+          db.publicationTargets.intentId,
+          db.publicationIntents.intentId,
+        ),
+      );
+
+  $$PublicationIntentsTableProcessedTableManager get intentId {
+    final $_column = $_itemColumn<String>('intent_id')!;
+
+    final manager = $$PublicationIntentsTableTableManager(
+      $_db,
+      $_db.publicationIntents,
+    ).filter((f) => f.intentId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_intentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PublicationTargetsTableFilterComposer
+    extends Composer<_$AppDatabase, $PublicationTargetsTable> {
+  $$PublicationTargetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get protocol => $composableBuilder(
+    column: $table.protocol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get endpoint => $composableBuilder(
+    column: $table.endpoint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PublicationIntentsTableFilterComposer get intentId {
+    final $$PublicationIntentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.publicationIntents,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PublicationIntentsTableFilterComposer(
+            $db: $db,
+            $table: $db.publicationIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PublicationTargetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PublicationTargetsTable> {
+  $$PublicationTargetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get protocol => $composableBuilder(
+    column: $table.protocol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get endpoint => $composableBuilder(
+    column: $table.endpoint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PublicationIntentsTableOrderingComposer get intentId {
+    final $$PublicationIntentsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.publicationIntents,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PublicationIntentsTableOrderingComposer(
+            $db: $db,
+            $table: $db.publicationIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PublicationTargetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PublicationTargetsTable> {
+  $$PublicationTargetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<String> get protocol =>
+      $composableBuilder(column: $table.protocol, builder: (column) => column);
+
+  GeneratedColumn<String> get endpoint =>
+      $composableBuilder(column: $table.endpoint, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+
+  $$PublicationIntentsTableAnnotationComposer get intentId {
+    final $$PublicationIntentsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.intentId,
+          referencedTable: $db.publicationIntents,
+          getReferencedColumn: (t) => t.intentId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PublicationIntentsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.publicationIntents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$PublicationTargetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PublicationTargetsTable,
+          PublicationTarget,
+          $$PublicationTargetsTableFilterComposer,
+          $$PublicationTargetsTableOrderingComposer,
+          $$PublicationTargetsTableAnnotationComposer,
+          $$PublicationTargetsTableCreateCompanionBuilder,
+          $$PublicationTargetsTableUpdateCompanionBuilder,
+          (PublicationTarget, $$PublicationTargetsTableReferences),
+          PublicationTarget,
+          PrefetchHooks Function({bool intentId})
+        > {
+  $$PublicationTargetsTableTableManager(
+    _$AppDatabase db,
+    $PublicationTargetsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PublicationTargetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PublicationTargetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PublicationTargetsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> targetId = const Value.absent(),
+                Value<String> intentId = const Value.absent(),
+                Value<String> protocol = const Value.absent(),
+                Value<String> endpoint = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PublicationTargetsCompanion(
+                targetId: targetId,
+                intentId: intentId,
+                protocol: protocol,
+                endpoint: endpoint,
+                status: status,
+                remoteId: remoteId,
+                lastAttemptAt: lastAttemptAt,
+                error: error,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String targetId,
+                required String intentId,
+                required String protocol,
+                required String endpoint,
+                Value<String> status = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PublicationTargetsCompanion.insert(
+                targetId: targetId,
+                intentId: intentId,
+                protocol: protocol,
+                endpoint: endpoint,
+                status: status,
+                remoteId: remoteId,
+                lastAttemptAt: lastAttemptAt,
+                error: error,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PublicationTargetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({intentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (intentId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.intentId,
+                                referencedTable:
+                                    $$PublicationTargetsTableReferences
+                                        ._intentIdTable(db),
+                                referencedColumn:
+                                    $$PublicationTargetsTableReferences
+                                        ._intentIdTable(db)
+                                        .intentId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PublicationTargetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PublicationTargetsTable,
+      PublicationTarget,
+      $$PublicationTargetsTableFilterComposer,
+      $$PublicationTargetsTableOrderingComposer,
+      $$PublicationTargetsTableAnnotationComposer,
+      $$PublicationTargetsTableCreateCompanionBuilder,
+      $$PublicationTargetsTableUpdateCompanionBuilder,
+      (PublicationTarget, $$PublicationTargetsTableReferences),
+      PublicationTarget,
+      PrefetchHooks Function({bool intentId})
+    >;
+typedef $$IdentityBindingsTableCreateCompanionBuilder =
+    IdentityBindingsCompanion Function({
+      required String bindingId,
+      required String localAccountDid,
+      required String bindingType,
+      required String identifier,
+      Value<String?> publicKey,
+      Value<bool> isPrimary,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$IdentityBindingsTableUpdateCompanionBuilder =
+    IdentityBindingsCompanion Function({
+      Value<String> bindingId,
+      Value<String> localAccountDid,
+      Value<String> bindingType,
+      Value<String> identifier,
+      Value<String?> publicKey,
+      Value<bool> isPrimary,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$IdentityBindingsTableFilterComposer
+    extends Composer<_$AppDatabase, $IdentityBindingsTable> {
+  $$IdentityBindingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get bindingId => $composableBuilder(
+    column: $table.bindingId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localAccountDid => $composableBuilder(
+    column: $table.localAccountDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bindingType => $composableBuilder(
+    column: $table.bindingType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get identifier => $composableBuilder(
+    column: $table.identifier,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get publicKey => $composableBuilder(
+    column: $table.publicKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPrimary => $composableBuilder(
+    column: $table.isPrimary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$IdentityBindingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $IdentityBindingsTable> {
+  $$IdentityBindingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get bindingId => $composableBuilder(
+    column: $table.bindingId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localAccountDid => $composableBuilder(
+    column: $table.localAccountDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bindingType => $composableBuilder(
+    column: $table.bindingType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get identifier => $composableBuilder(
+    column: $table.identifier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get publicKey => $composableBuilder(
+    column: $table.publicKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPrimary => $composableBuilder(
+    column: $table.isPrimary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$IdentityBindingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IdentityBindingsTable> {
+  $$IdentityBindingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get bindingId =>
+      $composableBuilder(column: $table.bindingId, builder: (column) => column);
+
+  GeneratedColumn<String> get localAccountDid => $composableBuilder(
+    column: $table.localAccountDid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bindingType => $composableBuilder(
+    column: $table.bindingType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get identifier => $composableBuilder(
+    column: $table.identifier,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get publicKey =>
+      $composableBuilder(column: $table.publicKey, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPrimary =>
+      $composableBuilder(column: $table.isPrimary, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$IdentityBindingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $IdentityBindingsTable,
+          IdentityBinding,
+          $$IdentityBindingsTableFilterComposer,
+          $$IdentityBindingsTableOrderingComposer,
+          $$IdentityBindingsTableAnnotationComposer,
+          $$IdentityBindingsTableCreateCompanionBuilder,
+          $$IdentityBindingsTableUpdateCompanionBuilder,
+          (
+            IdentityBinding,
+            BaseReferences<
+              _$AppDatabase,
+              $IdentityBindingsTable,
+              IdentityBinding
+            >,
+          ),
+          IdentityBinding,
+          PrefetchHooks Function()
+        > {
+  $$IdentityBindingsTableTableManager(
+    _$AppDatabase db,
+    $IdentityBindingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IdentityBindingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IdentityBindingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IdentityBindingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> bindingId = const Value.absent(),
+                Value<String> localAccountDid = const Value.absent(),
+                Value<String> bindingType = const Value.absent(),
+                Value<String> identifier = const Value.absent(),
+                Value<String?> publicKey = const Value.absent(),
+                Value<bool> isPrimary = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IdentityBindingsCompanion(
+                bindingId: bindingId,
+                localAccountDid: localAccountDid,
+                bindingType: bindingType,
+                identifier: identifier,
+                publicKey: publicKey,
+                isPrimary: isPrimary,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String bindingId,
+                required String localAccountDid,
+                required String bindingType,
+                required String identifier,
+                Value<String?> publicKey = const Value.absent(),
+                Value<bool> isPrimary = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IdentityBindingsCompanion.insert(
+                bindingId: bindingId,
+                localAccountDid: localAccountDid,
+                bindingType: bindingType,
+                identifier: identifier,
+                publicKey: publicKey,
+                isPrimary: isPrimary,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$IdentityBindingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $IdentityBindingsTable,
+      IdentityBinding,
+      $$IdentityBindingsTableFilterComposer,
+      $$IdentityBindingsTableOrderingComposer,
+      $$IdentityBindingsTableAnnotationComposer,
+      $$IdentityBindingsTableCreateCompanionBuilder,
+      $$IdentityBindingsTableUpdateCompanionBuilder,
+      (
+        IdentityBinding,
+        BaseReferences<_$AppDatabase, $IdentityBindingsTable, IdentityBinding>,
+      ),
+      IdentityBinding,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -31168,4 +34241,10 @@ class $AppDatabaseManager {
       $$ContextPacksTableTableManager(_db, _db.contextPacks);
   $$SummaryJobsTableTableManager get summaryJobs =>
       $$SummaryJobsTableTableManager(_db, _db.summaryJobs);
+  $$PublicationIntentsTableTableManager get publicationIntents =>
+      $$PublicationIntentsTableTableManager(_db, _db.publicationIntents);
+  $$PublicationTargetsTableTableManager get publicationTargets =>
+      $$PublicationTargetsTableTableManager(_db, _db.publicationTargets);
+  $$IdentityBindingsTableTableManager get identityBindings =>
+      $$IdentityBindingsTableTableManager(_db, _db.identityBindings);
 }

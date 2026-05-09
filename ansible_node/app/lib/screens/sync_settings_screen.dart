@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
+import '../services/nostr_publication_service.dart';
+import '../services/nostr_secure_key_store.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import '../widgets/nostr_publication_retry_panel.dart';
 
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
@@ -30,9 +34,13 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   late final DriftBoardRepository _boardRepo;
   late final DriftThreadRepository _threadRepo;
   late final DriftPostRepository _postRepo;
+  late final DriftContentItemRepository _contentItemRepo;
+  late final DriftPublicationRepository _publicationRepo;
+  late final SecureStorageNostrKeyStore _nostrKeyStore;
 
   List<RemoteNode> _remoteNodes = [];
   List<Board> _boards = [];
+  List<PublicationTarget> _failedNostrTargets = [];
   Map<String, Map<String, bool>> _boardSyncStatusByNode =
       {}; // nodeId -> {boardId -> enabled}
   Map<String, Map<String, int?>> _boardRetentionByNode =
@@ -49,6 +57,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     _boardRepo = DriftBoardRepository(widget.db);
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
+    _contentItemRepo = DriftContentItemRepository(widget.db);
+    _publicationRepo = DriftPublicationRepository(widget.db);
+    _nostrKeyStore = const SecureStorageNostrKeyStore();
     _loadData();
   }
 
@@ -57,6 +68,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     try {
       final nodes = await _remoteNodeRepo.list();
       final boards = await _boardRepo.list();
+      final failedNostrTargets = await _publicationRepo.listTargets(
+        protocol: PublicationProtocol.nostr,
+        status: PublicationStatus.failed,
+      );
 
       Map<String, Map<String, bool>> syncStatusByNode = {};
       Map<String, Map<String, int?>> retentionByNode = {};
@@ -73,6 +88,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       setState(() {
         _remoteNodes = nodes;
         _boards = boards.where((b) => !b.isDeleted).toList();
+        _failedNostrTargets = failedNostrTargets;
         _boardSyncStatusByNode = syncStatusByNode;
         _boardRetentionByNode = retentionByNode;
         _isLoading = false;
@@ -353,6 +369,35 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     }
   }
 
+  Future<void> _retryNostrTarget(PublicationTarget target) async {
+    final service = NostrPublicationService(
+      contentItems: _contentItemRepo,
+      publications: _publicationRepo,
+      keyStore: _nostrKeyStore,
+      signer: ProductionNostrEventSigner(
+        keyStore: _nostrKeyStore,
+        signingBridge: const SchnorrSigningBridge(),
+      ),
+    );
+    final result = await service.retryTarget(target.targetId);
+    await _loadData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.published > 0 ? 'Nostr 發佈已重試' : 'Nostr 發佈仍未成功'),
+      ),
+    );
+  }
+
+  Future<void> _resetNostrTarget(PublicationTarget target) async {
+    await _publicationRepo.resetTargetForRetry(target.targetId);
+    await _loadData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Nostr 發佈已重設為待重試')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -450,6 +495,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         status: _CircleSyncStatus.live,
                       ),
                   ],
+                ),
+                NostrPublicationRetryPanel(
+                  failedTargets: _failedNostrTargets,
+                  onRetry: _retryNostrTarget,
+                  onReset: _resetNostrTarget,
                 ),
                 const AnsibleMonoLabel(
                   '進階 · ADVANCED',

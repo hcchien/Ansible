@@ -18,10 +18,13 @@ import '../schema/follow_activity_events.dart';
 import '../schema/follow_edges.dart';
 import '../schema/follow_targets.dart';
 import '../schema/identities.dart';
+import '../schema/identity_bindings.dart';
 import '../schema/ops_queue.dart';
 import '../schema/outbound_follow_activities.dart';
 import '../schema/ownership_policies.dart';
 import '../schema/posts.dart';
+import '../schema/publication_intents.dart';
+import '../schema/publication_targets.dart';
 import '../schema/projections.dart';
 import '../schema/reactions.dart';
 import '../schema/remote_nodes.dart';
@@ -67,13 +70,16 @@ part 'app_database.g.dart';
     AiProviderConfigs,
     ContextPacks,
     SummaryJobs,
+    PublicationIntents,
+    PublicationTargets,
+    IdentityBindings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -113,6 +119,11 @@ class AppDatabase extends _$AppDatabase {
         await _createTableIfMissing(m, aiProviderConfigs);
         await _createTableIfMissing(m, contextPacks);
         await _createTableIfMissing(m, summaryJobs);
+      }
+      if (from < 12) {
+        await _createTableIfMissing(m, publicationIntents);
+        await _createTableIfMissing(m, publicationTargets);
+        await _createTableIfMissing(m, identityBindings);
       }
       await _addColumnIfMissing(
         m,

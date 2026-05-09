@@ -17,6 +17,9 @@ export 'src/entities/wallet_credential.dart';
 export 'src/entities/wallet_presentation.dart';
 export 'src/entities/content_item.dart';
 export 'src/entities/content_relation.dart';
+export 'src/entities/publication_intent.dart';
+export 'src/entities/publication_target.dart';
+export 'src/entities/identity_binding.dart';
 export 'src/entities/transformation_job.dart';
 export 'src/entities/projection.dart';
 export 'src/entities/discussion_node.dart';
@@ -40,6 +43,7 @@ export 'src/repositories/ops_queue_repository.dart';
 export 'src/repositories/wallet_repository.dart';
 export 'src/repositories/content_item_repository.dart';
 export 'src/repositories/content_relation_repository.dart';
+export 'src/repositories/publication_repository.dart';
 export 'src/repositories/transformation_job_repository.dart';
 export 'src/repositories/projection_repository.dart';
 export 'src/repositories/discussion_node_repository.dart';
@@ -62,6 +66,7 @@ export 'src/repositories/in_memory/in_memory_ops_queue_repository.dart';
 export 'src/repositories/in_memory/in_memory_wallet_repository.dart';
 export 'src/repositories/in_memory/in_memory_content_item_repository.dart';
 export 'src/repositories/in_memory/in_memory_content_relation_repository.dart';
+export 'src/repositories/in_memory/in_memory_publication_repository.dart';
 export 'src/repositories/in_memory/in_memory_transformation_job_repository.dart';
 export 'src/repositories/in_memory/in_memory_projection_repository.dart';
 export 'src/repositories/in_memory/in_memory_discussion_node_repository.dart';
@@ -84,6 +89,7 @@ export 'src/repositories/drift/drift_ops_queue_repository.dart';
 export 'src/repositories/drift/drift_wallet_repository.dart';
 export 'src/repositories/drift/drift_content_item_repository.dart';
 export 'src/repositories/drift/drift_content_relation_repository.dart';
+export 'src/repositories/drift/drift_publication_repository.dart';
 export 'src/repositories/drift/drift_transformation_job_repository.dart';
 export 'src/repositories/drift/drift_projection_repository.dart';
 export 'src/repositories/drift/drift_discussion_node_repository.dart';
@@ -107,6 +113,9 @@ export 'src/db/app_database.dart'
         WalletPresentation,
         ContentItem,
         ContentRelation,
+        PublicationIntent,
+        PublicationTarget,
+        IdentityBinding,
         TransformationJob,
         TransformationSource,
         Projection,

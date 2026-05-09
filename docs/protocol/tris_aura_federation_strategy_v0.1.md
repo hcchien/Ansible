@@ -77,6 +77,23 @@ Principle:
 
 > App signs intent. Relay distributes protocol-specific activities.
 
+## Publication Signing Policy
+
+Local-first storage and federation signing are separate concerns:
+
+- `private` content may remain unsigned local state because it never leaves the
+  local database.
+- `unlisted` and `public` content must not be distributed until the app has
+  created a signed publication intent or signed Nostr event with a real user
+  private key.
+- Development signatures and stub signatures must never be silently accepted on
+  public distribution paths. If production signing is unavailable, the app must
+  leave the target pending or failed with an explicit error.
+- The app may save content locally before signing succeeds, but external
+  adapters must fail closed: no signature, no federation.
+- Signing policy must be enforced at adapter boundaries as well as UI flows, so
+  alternate entry points cannot bypass it.
+
 ## Visibility Semantics
 
 | Ansible visibility | Federation behavior |

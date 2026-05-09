@@ -1,0 +1,15 @@
+name: ansible_nostr
+description: Nostr event, identifier, and projection primitives for Ansible
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  ansible_store:
+    path: ../store
+  crypto: ^3.0.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.21.0
