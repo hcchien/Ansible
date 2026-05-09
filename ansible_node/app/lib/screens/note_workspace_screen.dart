@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../theme/ansible_design.dart';
+import '../widgets/content_visibility_sheet.dart';
+import 'note_detail_screen.dart';
 
 class NoteWorkspaceScreen extends StatelessWidget {
   const NoteWorkspaceScreen({
@@ -244,59 +246,66 @@ class _NoteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+    return InkWell(
+      onTap: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => NoteDetailScreen(note: note)));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Text(
-                  note.title ?? 'Untitled note',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w500,
-                    color: AnsibleDesign.ink,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Expanded(
+                  child: Text(
+                    note.title ?? 'Untitled note',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                      color: AnsibleDesign.ink,
+                    ),
                   ),
                 ),
-              ),
-              Text(
-                _formatDate(note.updatedAt),
-                style: const TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 9,
-                  color: AnsibleDesign.inkFaint,
-                  letterSpacing: 0.8,
+                Text(
+                  _formatDate(note.updatedAt),
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    color: AnsibleDesign.inkFaint,
+                    letterSpacing: 0.8,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            note.body,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: AnsibleDesign.inkMuted,
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          _VisibilityMenu(
-            note: note,
-            contentItemRepository: contentItemRepository,
-            onContentItemsChanged: onContentItemsChanged,
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              note.body,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _VisibilityMenu(
+              note: note,
+              contentItemRepository: contentItemRepository,
+              onContentItemsChanged: onContentItemsChanged,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -319,21 +328,30 @@ class _VisibilityMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = _visibilityMeta(note.visibility);
-    final chip = AnsibleStatusChip(label: meta.label, dot: meta.dot);
+    final meta = contentVisibilityMeta(note.visibility);
+    final chip = AnsibleStatusChip(
+      key: Key('visibility_chip_${note.id}'),
+      label: meta.label,
+      dot: meta.dot,
+    );
     if (contentItemRepository == null) return chip;
 
-    return PopupMenuButton<ContentVisibility>(
-      tooltip: '設定可見性',
-      padding: EdgeInsets.zero,
-      position: PopupMenuPosition.under,
-      onSelected: (visibility) => _updateVisibility(context, visibility),
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: ContentVisibility.private, child: Text('私人')),
-        PopupMenuItem(value: ContentVisibility.public, child: Text('公開')),
-      ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: () => _showVisibilitySheet(context),
       child: chip,
     );
+  }
+
+  Future<void> _showVisibilitySheet(BuildContext context) async {
+    final visibility = await showContentVisibilitySheet(
+      context: context,
+      current: note.visibility,
+      subjectLabel: '這篇 note',
+    );
+    if (visibility == null) return;
+    if (!context.mounted) return;
+    await _updateVisibility(context, visibility);
   }
 
   Future<void> _updateVisibility(
@@ -368,17 +386,6 @@ class _VisibilityMenu extends StatelessWidget {
       context,
     ).showSnackBar(const SnackBar(content: Text('可見性已更新')));
   }
-}
-
-({String label, Color dot}) _visibilityMeta(ContentVisibility visibility) {
-  return switch (visibility) {
-    ContentVisibility.private => (
-      label: 'PRIVATE',
-      dot: AnsibleDesign.inkMuted,
-    ),
-    ContentVisibility.unlisted => (label: 'CIRCLE', dot: AnsibleDesign.spore),
-    ContentVisibility.public => (label: 'PUBLIC', dot: AnsibleDesign.accent),
-  };
 }
 
 class _MurmurRow extends StatelessWidget {

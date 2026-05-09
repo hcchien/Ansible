@@ -52,6 +52,7 @@ class _HomeShellState extends State<HomeShell> {
   late final DriftFollowRepository _followRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
   late final DriftContentItemRepository _contentItemRepo;
+  late final DriftContentRelationRepository _contentRelationRepo;
   late final DriftAiProviderConfigRepository _aiProviderConfigRepo;
   late final AiProviderConfigStore _aiProviderConfigStore;
   late final OpsDispatchService _opsDispatchService;
@@ -61,6 +62,7 @@ class _HomeShellState extends State<HomeShell> {
   List<Board> _boards = [];
   List<PostCardData> _posts = [];
   List<ContentItem> _contentItems = [];
+  Map<String, int> _murmurReferenceCounts = const {};
   bool _loading = true;
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
@@ -77,6 +79,7 @@ class _HomeShellState extends State<HomeShell> {
     _followRepo = DriftFollowRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _contentItemRepo = DriftContentItemRepository(widget.db);
+    _contentRelationRepo = DriftContentRelationRepository(widget.db);
     _aiProviderConfigRepo = DriftAiProviderConfigRepository(widget.db);
     _aiProviderConfigStore = AiProviderConfigStore(
       repository: _aiProviderConfigRepo,
@@ -97,6 +100,13 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => _loading = true);
     final boards = await _boardRepo.list();
     final contentItems = await _contentItemRepo.list(authorDid: widget.did);
+    final murmurReferenceCounts = <String, int>{};
+    for (final item in contentItems) {
+      if (item.mode != ContentMode.murmur) continue;
+      murmurReferenceCounts[item.id] = (await _contentRelationRepo.derivedFrom(
+        item.id,
+      )).length;
+    }
     final boardMap = {for (final b in boards) b.id: b};
     final followingEntries = _feedFilter == FeedFilter.following
         ? await FollowFeedProjector(
@@ -164,6 +174,7 @@ class _HomeShellState extends State<HomeShell> {
       _boards = boards;
       _posts = postCards;
       _contentItems = contentItems;
+      _murmurReferenceCounts = murmurReferenceCounts;
       _loading = false;
     });
   }
@@ -552,6 +563,7 @@ class _HomeShellState extends State<HomeShell> {
                 onModeChanged: _selectMode,
                 contentItemRepository: _contentItemRepo,
                 contentItems: _contentItems,
+                murmurReferenceCounts: _murmurReferenceCounts,
                 onContentItemsChanged: _loadData,
                 onStartAiAction: _startAiTransformation,
               );
@@ -838,6 +850,7 @@ class _MainPanel extends StatelessWidget {
     required this.onModeChanged,
     required this.contentItemRepository,
     required this.contentItems,
+    required this.murmurReferenceCounts,
     required this.onContentItemsChanged,
     required this.onStartAiAction,
   });
@@ -865,6 +878,7 @@ class _MainPanel extends StatelessWidget {
   final ValueChanged<_ContentModeTab> onModeChanged;
   final ContentItemRepository contentItemRepository;
   final List<ContentItem> contentItems;
+  final Map<String, int> murmurReferenceCounts;
   final Future<void> Function() onContentItemsChanged;
   final Future<void> Function() onStartAiAction;
 
@@ -1005,6 +1019,7 @@ class _MainPanel extends StatelessWidget {
                           recentMurmurs: contentItems
                               .where((item) => item.mode == ContentMode.murmur)
                               .toList(),
+                          murmurReferenceCounts: murmurReferenceCounts,
                           onSaved: onContentItemsChanged,
                         ),
                         _ContentModeTab.notes => NoteWorkspaceScreen(

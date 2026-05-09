@@ -19,7 +19,12 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('PUBLIC'));
+    await tester.tap(find.byKey(const Key('murmur_visibility_chip')));
+    await tester.pumpAndSettle();
+    expect(find.text('誰能看見 · VISIBILITY'), findsOneWidget);
+    await tester.tap(find.text('公開'));
+    await tester.tap(find.text('確認'));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('murmur_body_field')),
       'public murmur',
@@ -89,9 +94,11 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('設定可見性'));
+    await tester.tap(find.byKey(const Key('visibility_chip_note-1')));
     await tester.pumpAndSettle();
+    expect(find.text('誰能看見 · VISIBILITY'), findsOneWidget);
     await tester.tap(find.text('公開'));
+    await tester.tap(find.text('確認'));
     await tester.pumpAndSettle();
 
     final updated = await repository.getById('note-1');
