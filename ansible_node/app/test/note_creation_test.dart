@@ -26,6 +26,8 @@ void main() {
 
     await tester.tap(find.text('新增筆記'));
     await tester.pumpAndSettle();
+    expect(find.text('編輯中 · EDITING'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
     await tester.enterText(
       find.byKey(const Key('note_title_field')),
       'Field notes',
@@ -34,7 +36,7 @@ void main() {
       find.byKey(const Key('note_body_field')),
       'A note needs a body.',
     );
-    await tester.tap(find.text('建立'));
+    await tester.tap(find.text('完成'));
     await tester.pumpAndSettle();
 
     final notes = await repository.list(mode: ContentMode.note);
@@ -62,7 +64,8 @@ void main() {
 
     await tester.tap(find.text('新增筆記'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('建立'));
+    expect(find.byType(AlertDialog), findsNothing);
+    await tester.tap(find.text('完成'));
     await tester.pumpAndSettle();
 
     expect(find.text('請輸入標題'), findsOneWidget);

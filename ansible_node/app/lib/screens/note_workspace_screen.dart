@@ -39,7 +39,7 @@ class NoteWorkspaceScreen extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: contentItemRepository == null || authorDid == null
                   ? null
-                  : () => _showCreateNoteDialog(context),
+                  : () => _openCreateNoteEditor(context),
               icon: const Icon(Icons.note_add_outlined, size: 18),
               label: const Text('新增筆記'),
             ),
@@ -75,14 +75,16 @@ class NoteWorkspaceScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _showCreateNoteDialog(BuildContext context) async {
+  Future<void> _openCreateNoteEditor(BuildContext context) async {
     final repository = contentItemRepository;
     final did = authorDid;
     if (repository == null || did == null) return;
 
-    final result = await showDialog<_CreateNoteResult>(
-      context: context,
-      builder: (_) => const _CreateNoteDialog(),
+    final result = await Navigator.of(context).push<_CreateNoteResult>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _CreateNoteEditorScreen(murmurs: murmurs),
+      ),
     );
     if (result == null) return;
 
@@ -116,17 +118,21 @@ class _CreateNoteResult {
   final String body;
 }
 
-class _CreateNoteDialog extends StatefulWidget {
-  const _CreateNoteDialog();
+class _CreateNoteEditorScreen extends StatefulWidget {
+  const _CreateNoteEditorScreen({required this.murmurs});
 
   @override
-  State<_CreateNoteDialog> createState() => _CreateNoteDialogState();
+  State<_CreateNoteEditorScreen> createState() =>
+      _CreateNoteEditorScreenState();
+
+  final List<ContentItem> murmurs;
 }
 
-class _CreateNoteDialogState extends State<_CreateNoteDialog> {
-  final _formKey = GlobalKey<FormState>();
+class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
+  bool _drawerOpen = true;
+  bool _showErrors = false;
 
   @override
   void dispose() {
@@ -137,59 +143,458 @@ class _CreateNoteDialogState extends State<_CreateNoteDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('新增筆記'),
-      content: Form(
-        key: _formKey,
-        child: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                key: const Key('note_title_field'),
-                controller: _titleController,
-                autofocus: true,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: '標題'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) return '請輸入標題';
-                  return null;
-                },
+    final titleMissing = _showErrors && _titleController.text.trim().isEmpty;
+    final bodyMissing = _showErrors && _bodyController.text.trim().isEmpty;
+
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      backgroundColor: AnsibleDesign.paper,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 14, 6),
+              child: Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, size: 17),
+                    label: const Text('取消'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AnsibleDesign.inkMuted,
+                      textStyle: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 10,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _EditorDot(color: AnsibleDesign.spore, size: 5),
+                      SizedBox(width: 8),
+                      Text(
+                        '草稿保留 · 本機',
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 9.5,
+                          color: AnsibleDesign.inkFaint,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 14),
+                  FilledButton(
+                    onPressed: _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AnsibleDesign.paperElev,
+                      foregroundColor: AnsibleDesign.ink,
+                      side: const BorderSide(
+                        color: AnsibleDesign.rule,
+                        width: 0.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      minimumSize: const Size(0, 34),
+                    ),
+                    child: const Text(
+                      '完成',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                key: const Key('note_body_field'),
-                controller: _bodyController,
-                minLines: 5,
-                maxLines: 8,
-                decoration: const InputDecoration(labelText: '內文'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) return '請輸入內文';
-                  return null;
-                },
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(22, 4, 22, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '編輯中 · EDITING',
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9.5,
+                    color: AnsibleDesign.inkFaint,
+                    letterSpacing: 1.6,
+                  ),
+                ),
               ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      key: const Key('note_title_field'),
+                      controller: _titleController,
+                      autofocus: true,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(
+                        fontSize: 28,
+                        height: 1.2,
+                        color: AnsibleDesign.ink,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0,
+                      ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        filled: false,
+                        hintText: '末日松茸採集',
+                        hintStyle: TextStyle(
+                          color: AnsibleDesign.inkFaint,
+                          fontSize: 28,
+                          fontStyle: FontStyle.normal,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        border: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AnsibleDesign.ruleSoft,
+                            width: 0.5,
+                          ),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AnsibleDesign.ruleSoft,
+                            width: 0.5,
+                          ),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AnsibleDesign.accent,
+                            width: 1,
+                          ),
+                        ),
+                        contentPadding: EdgeInsets.fromLTRB(0, 4, 0, 8),
+                      ),
+                    ),
+                    if (titleMissing) const _InlineError('請輸入標題'),
+                    const SizedBox(height: 10),
+                    const _EditorVisibilityRow(),
+                    const SizedBox(height: 10),
+                    TextField(
+                      key: const Key('note_body_field'),
+                      controller: _bodyController,
+                      minLines: 9,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        height: 1.8,
+                        color: AnsibleDesign.ink,
+                      ),
+                      decoration: const InputDecoration(
+                        filled: false,
+                        hintText: '繼續寫下去，或從下方拖一個 murmur 進來……',
+                        hintStyle: TextStyle(
+                          color: AnsibleDesign.inkFaint,
+                          fontSize: 15.5,
+                          height: 1.8,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    if (bodyMissing) const _InlineError('請輸入內文'),
+                  ],
+                ),
+              ),
+            ),
+            const _EditorFormatToolbar(),
+            _EditorMurmurDrawer(
+              open: _drawerOpen,
+              murmurs: widget.murmurs,
+              onToggle: () => setState(() => _drawerOpen = !_drawerOpen),
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('建立')),
-      ],
     );
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    Navigator.of(context).pop(
-      _CreateNoteResult(
-        title: _titleController.text.trim(),
-        body: _bodyController.text.trim(),
+    setState(() => _showErrors = true);
+    final title = _titleController.text.trim();
+    final body = _bodyController.text.trim();
+    if (title.isEmpty || body.isEmpty) return;
+    Navigator.of(context).pop(_CreateNoteResult(title: title, body: body));
+  }
+}
+
+class _EditorVisibilityRow extends StatelessWidget {
+  const _EditorVisibilityRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        AnsibleStatusChip(label: 'PRIVATE', dot: AnsibleDesign.inkMuted),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '還沒讓任何人看見',
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.4,
+              color: AnsibleDesign.inkFaint,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EditorFormatToolbar extends StatelessWidget {
+  const _EditorFormatToolbar();
+
+  @override
+  Widget build(BuildContext context) {
+    const tools = ['B', 'I', 'U', '""', '§', '↗'];
+    return Container(
+      height: 40,
+      margin: const EdgeInsets.fromLTRB(22, 0, 22, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.ink,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: AnsibleDesign.ink.withValues(alpha: 0.18),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
+      child: Row(
+        children: [
+          for (var i = 0; i < tools.length; i++) ...[
+            Expanded(
+              child: Center(
+                child: Text(
+                  tools[i],
+                  style: TextStyle(
+                    color: AnsibleDesign.paper,
+                    fontSize: 14,
+                    fontWeight: tools[i] == 'B'
+                        ? FontWeight.w700
+                        : FontWeight.w400,
+                    fontStyle: tools[i] == 'I'
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                    decoration: tools[i] == 'U'
+                        ? TextDecoration.underline
+                        : TextDecoration.none,
+                    decorationColor: AnsibleDesign.paper,
+                  ),
+                ),
+              ),
+            ),
+            if (i < tools.length - 1)
+              Container(
+                width: 0.5,
+                height: 18,
+                color: AnsibleDesign.paper.withValues(alpha: 0.16),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EditorMurmurDrawer extends StatelessWidget {
+  const _EditorMurmurDrawer({
+    required this.open,
+    required this.murmurs,
+    required this.onToggle,
+  });
+
+  final bool open;
+  final List<ContentItem> murmurs;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = murmurs.reversed.take(6).toList();
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: const BoxDecoration(
+        color: AnsibleDesign.paperElev,
+        border: Border(
+          top: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+          left: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+          right: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 12, 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: AnsibleDesign.rule,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    '編入 · DRAW IN',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 9.5,
+                      color: AnsibleDesign.inkFaint,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    open
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    size: 18,
+                    color: AnsibleDesign.inkMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (open)
+            SizedBox(
+              height: 112,
+              child: items.isEmpty
+                  ? const Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: Text(
+                          '還沒有可以編入的 murmur。',
+                          style: TextStyle(
+                            color: AnsibleDesign.inkMuted,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      itemBuilder: (context, index) =>
+                          _EditorMurmurCard(murmur: items[index]),
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemCount: items.length,
+                    ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditorMurmurCard extends StatelessWidget {
+  const _EditorMurmurCard({required this.murmur});
+
+  final ContentItem murmur;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 168,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paper,
+        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'MURMUR · ${_formatDate(murmur.createdAt)}',
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 8.5,
+              color: AnsibleDesign.inkFaint,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            murmur.body,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              height: 1.55,
+              color: AnsibleDesign.ink,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime value) {
+    return '${value.month.toString().padLeft(2, '0')}.${value.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        message,
+        style: const TextStyle(color: AnsibleDesign.danger, fontSize: 12),
+      ),
+    );
+  }
+}
+
+class _EditorDot extends StatelessWidget {
+  const _EditorDot({required this.color, required this.size});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
