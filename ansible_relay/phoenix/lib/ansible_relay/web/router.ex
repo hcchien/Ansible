@@ -17,6 +17,23 @@ defmodule AnsibleRelay.Web.Router do
     send_json(conn, 200, %{status: "ok", relay: "ansible_relay", version: "0.1.0"})
   end
 
+  # ActivityPub discovery and relay-owned actor endpoints
+  get "/.well-known/webfinger" do
+    AnsibleRelay.Web.Controllers.ActivityPubController.webfinger(conn, conn.query_params)
+  end
+
+  get "/users/:actor" do
+    AnsibleRelay.Web.Controllers.ActivityPubController.actor(conn, %{"actor" => actor})
+  end
+
+  post "/users/:actor/inbox" do
+    AnsibleRelay.Web.Controllers.ActivityPubController.inbox(conn, %{"actor" => actor})
+  end
+
+  get "/users/:actor/outbox" do
+    AnsibleRelay.Web.Controllers.ActivityPubController.outbox(conn, %{"actor" => actor})
+  end
+
   # Phase 1 — Identity Anchoring
   post "/api/v1/identity/challenge" do
     AnsibleRelay.Web.Controllers.IdentityController.challenge(conn, conn.body_params)

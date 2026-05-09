@@ -6,7 +6,10 @@ defmodule AnsibleRelay.PublicationIntentStore do
   delivery. This module deliberately does not perform federation itself.
   """
 
+  import Ecto.Query
+
   alias AnsibleRelay.{Repo, Db.PublicationIntent}
+  alias AnsibleRelay.ActivityPub.ActivityBuilder
 
   def accept(attrs) do
     attrs =
@@ -39,6 +42,18 @@ defmodule AnsibleRelay.PublicationIntentStore do
       |> binary_part(0, 32)
 
     "pub_#{digest}"
+  end
+
+  def list_accepted do
+    PublicationIntent
+    |> where([intent], intent.status == "accepted")
+    |> order_by([intent], asc: intent.inserted_at)
+    |> Repo.all()
+  end
+
+  def list_for_actor(actor) when is_binary(actor) do
+    list_accepted()
+    |> Enum.filter(&(ActivityBuilder.actor_name(&1) == actor))
   end
 
   defp duplicate?(changeset) do

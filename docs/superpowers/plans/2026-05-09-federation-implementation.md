@@ -173,15 +173,15 @@ Modify the Phoenix relay for ActivityPub:
 - Test `ansible_relay/phoenix/test/activity_pub_controller_test.exs`.
 - Test `ansible_relay/phoenix/test/activity_pub_delivery_test.exs`.
 
-- [ ] Add WebFinger endpoint for relay-domain actors, e.g. `acct:alice@relay.trisaura.io`.
-- [ ] Add Actor endpoint under `/users/:actor`.
-- [ ] Add inbox and outbox endpoints under `/users/:actor/inbox` and `/users/:actor/outbox`.
-- [ ] Map publication intent `publish` to ActivityPub `Create`.
-- [ ] Map publication intent `update` to ActivityPub `Update`.
-- [ ] Map publication intent `delete` to ActivityPub `Delete`.
-- [ ] Store delivery attempts per remote inbox and retry transient failures.
-- [ ] Treat external deletes as best-effort while preserving internal tombstones.
-- [ ] Run `cd ansible_relay/phoenix && mix test test/activity_pub_controller_test.exs test/activity_pub_delivery_test.exs`.
+- [x] Add WebFinger endpoint for relay-domain actors, e.g. `acct:alice@relay.trisaura.io`.
+- [x] Add Actor endpoint under `/users/:actor`.
+- [x] Add inbox and outbox endpoints under `/users/:actor/inbox` and `/users/:actor/outbox`.
+- [x] Map publication intent `publish` to ActivityPub `Create`.
+- [x] Map publication intent `update` to ActivityPub `Update`.
+- [x] Map publication intent `delete` to ActivityPub `Delete`.
+- [x] Store delivery attempts per remote inbox and retry transient failures.
+- [x] Treat external deletes as best-effort while preserving internal tombstones.
+- [x] Run `cd ansible_relay/phoenix && mix test test/activity_pub_controller_test.exs test/activity_pub_delivery_test.exs`.
 - [ ] Commit with `feat(relay): distribute publications over activitypub`.
 
 ## Task 7: UI Distribution Settings
