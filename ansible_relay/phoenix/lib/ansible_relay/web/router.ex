@@ -2,15 +2,16 @@ defmodule AnsibleRelay.Web.Router do
   use Plug.Router
   require Logger
 
-  plug Plug.Logger
-  plug :match
+  plug(Plug.Logger)
+  plug(:match)
 
-  plug Plug.Parsers,
+  plug(Plug.Parsers,
     parsers: [:json],
     pass: ["application/json"],
     json_decoder: Jason
+  )
 
-  plug :dispatch
+  plug(:dispatch)
 
   get "/health" do
     send_json(conn, 200, %{status: "ok", relay: "ansible_relay", version: "0.1.0"})
@@ -28,6 +29,11 @@ defmodule AnsibleRelay.Web.Router do
   # Phase 2 — Op ingestion
   post "/api/v1/ops" do
     AnsibleRelay.Web.Controllers.OpsController.ingest(conn, conn.body_params)
+  end
+
+  # Federation — signed publication intents for relay-managed distribution
+  post "/api/v1/publication-intents" do
+    AnsibleRelay.Web.Controllers.PublicationIntentController.create(conn, conn.body_params)
   end
 
   # Phase 2 — Delta pull (cursor-based)

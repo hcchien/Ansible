@@ -145,7 +145,7 @@ Modify the Phoenix relay for ActivityPub:
 - [x] Ensure no private content can reach `NostrPublicationService`.
 - [x] Ensure public/unlisted content without a real Nostr private-key signature remains local and records an explicit pending/failed publication status instead of using a dev fallback.
 - [x] Run `cd ansible_node/app && flutter test test/nostr_publication_service_test.dart test/distribution_settings_test.dart`.
-- [ ] Commit with `feat(app): publish public content to nostr relays`.
+- [x] Commit with `feat(app): publish public content to nostr relays`.
 
 ## Task 5: Relay Publication Intent Endpoint
 
@@ -155,14 +155,14 @@ Modify the Phoenix relay for ActivityPub:
 - Modify `ansible_relay/phoenix/lib/ansible_relay/web/router.ex`.
 - Test `ansible_relay/phoenix/test/publication_intent_controller_test.exs`.
 
-- [ ] Add `POST /api/v1/publication-intents`.
-- [ ] Validate signed app publication intent: author id, content id, action, visibility, payload hash, and signature.
-- [ ] Reject missing, stub, dev, or malformed intent signatures even when the app saved the source content locally.
-- [ ] Reject private visibility.
-- [ ] Store accepted intents for ActivityPub delivery.
-- [ ] Return stable relay-side publication id and initial delivery status.
-- [ ] Run `cd ansible_relay/phoenix && mix test test/publication_intent_controller_test.exs`.
-- [ ] Commit with `feat(relay): accept signed publication intents`.
+- [x] Add `POST /api/v1/publication-intents`.
+- [x] Validate signed app publication intent: author id, content id, action, visibility, payload hash, and signature.
+- [x] Reject missing, stub, dev, or malformed intent signatures even when the app saved the source content locally.
+- [x] Reject private visibility.
+- [x] Store accepted intents for ActivityPub delivery.
+- [x] Return stable relay-side publication id and initial delivery status.
+- [x] Run `cd ansible_relay/phoenix && mix test test/publication_intent_controller_test.exs`.
+- [x] Commit with `feat(relay): accept signed publication intents`.
 
 ## Task 6: Relay-Side ActivityPub Actor And Delivery
 
