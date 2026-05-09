@@ -6,6 +6,21 @@
 
 ---
 
+## 0. Federation Direction Note
+
+This spec describes the current AT Protocol / `did:plc`-shaped implementation
+and remains valid for existing tests, local identity flow, and compatibility
+work. It should not be read as the only long-term public federation path.
+
+The new federation direction is defined in
+[`tris_aura_federation_strategy_v0.1.md`](./tris_aura_federation_strategy_v0.1.md):
+Ansible keeps a local-first canonical model, projects public content directly
+to Nostr relays from the app, and delegates ActivityPub federation to the relay
+layer. Existing `did:plc` references remain implementation context until they
+are replaced or bridged.
+
+---
+
 ## 1. 核心設計哲學
 
 | 原則 | 說明 |
