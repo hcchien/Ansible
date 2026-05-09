@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import '../services/nostr_publication_service.dart';
+import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/nostr_publication_retry_panel.dart';
+import '../widgets/nostr_relay_settings_panel.dart';
 
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
@@ -37,9 +39,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   late final DriftContentItemRepository _contentItemRepo;
   late final DriftPublicationRepository _publicationRepo;
   late final SecureStorageNostrKeyStore _nostrKeyStore;
+  late final SecureStorageNostrRelaySettingsStore _nostrRelaySettingsStore;
 
   List<RemoteNode> _remoteNodes = [];
   List<Board> _boards = [];
+  List<NostrRelayPreference> _nostrRelays = [];
   List<PublicationTarget> _failedNostrTargets = [];
   Map<String, Map<String, bool>> _boardSyncStatusByNode =
       {}; // nodeId -> {boardId -> enabled}
@@ -60,6 +64,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     _contentItemRepo = DriftContentItemRepository(widget.db);
     _publicationRepo = DriftPublicationRepository(widget.db);
     _nostrKeyStore = const SecureStorageNostrKeyStore();
+    _nostrRelaySettingsStore = const SecureStorageNostrRelaySettingsStore();
     _loadData();
   }
 
@@ -68,6 +73,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     try {
       final nodes = await _remoteNodeRepo.list();
       final boards = await _boardRepo.list();
+      final nostrRelays = await _nostrRelaySettingsStore.list();
       final failedNostrTargets = await _publicationRepo.listTargets(
         protocol: PublicationProtocol.nostr,
         status: PublicationStatus.failed,
@@ -88,6 +94,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       setState(() {
         _remoteNodes = nodes;
         _boards = boards.where((b) => !b.isDeleted).toList();
+        _nostrRelays = nostrRelays;
         _failedNostrTargets = failedNostrTargets;
         _boardSyncStatusByNode = syncStatusByNode;
         _boardRetentionByNode = retentionByNode;
@@ -398,6 +405,13 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     ).showSnackBar(const SnackBar(content: Text('Nostr 發佈已重設為待重試')));
   }
 
+  Future<void> _updateNostrRelays(List<NostrRelayPreference> relays) async {
+    await _nostrRelaySettingsStore.save(relays);
+    final normalized = await _nostrRelaySettingsStore.list();
+    if (!mounted) return;
+    setState(() => _nostrRelays = normalized);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -500,6 +514,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   failedTargets: _failedNostrTargets,
                   onRetry: _retryNostrTarget,
                   onReset: _resetNostrTarget,
+                ),
+                NostrRelaySettingsPanel(
+                  relays: _nostrRelays,
+                  onChanged: _updateNostrRelays,
                 ),
                 const AnsibleMonoLabel(
                   '進階 · ADVANCED',

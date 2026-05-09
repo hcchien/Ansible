@@ -137,14 +137,14 @@ Modify the Phoenix relay for ActivityPub:
 - Test `ansible_node/app/test/nostr_publication_service_test.dart`.
 - Test `ansible_node/app/test/distribution_settings_test.dart`.
 
-- [ ] Add relay settings for read/write Nostr relays.
+- [x] Add relay settings for read/write Nostr relays.
 - [x] Add `NostrPublicationService` that reads pending Nostr targets, signs projected events, publishes via WebSocket, and records per-relay success/failure.
 - [x] Add minimal NIP-01 relay client support for `EVENT`, `REQ`, `EOSE`, `OK`, `NOTICE`, and `CLOSE`.
 - [x] Ensure partial relay success does not fail the whole intent.
 - [x] Ensure failed relay targets remain retryable.
 - [x] Ensure no private content can reach `NostrPublicationService`.
-- [ ] Ensure public/unlisted content without a real Nostr private-key signature remains local and records an explicit pending/failed publication status instead of using a dev fallback.
-- [ ] Run `cd ansible_node/app && flutter test test/nostr_publication_service_test.dart test/distribution_settings_test.dart`.
+- [x] Ensure public/unlisted content without a real Nostr private-key signature remains local and records an explicit pending/failed publication status instead of using a dev fallback.
+- [x] Run `cd ansible_node/app && flutter test test/nostr_publication_service_test.dart test/distribution_settings_test.dart`.
 - [ ] Commit with `feat(app): publish public content to nostr relays`.
 
 ## Task 5: Relay Publication Intent Endpoint
