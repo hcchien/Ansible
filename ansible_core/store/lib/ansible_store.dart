@@ -6,6 +6,11 @@ export 'src/entities/reaction.dart';
 export 'src/entities/board_acl.dart';
 export 'src/entities/activity_log.dart'; // ActivityLog = Op log (CRDT ops received)
 export 'src/entities/remote_node.dart';
+export 'src/entities/forum_host.dart';
+export 'src/entities/hosted_board_projection.dart';
+export 'src/entities/board_subscription.dart';
+export 'src/entities/board_publication_target.dart';
+export 'src/entities/local_collection.dart';
 export 'src/entities/board_sync_config.dart';
 export 'src/entities/follow_target.dart';
 export 'src/entities/follow_edge.dart';
@@ -36,6 +41,9 @@ export 'src/repositories/reaction_repository.dart';
 export 'src/repositories/board_acl_repository.dart';
 export 'src/repositories/activity_log_repository.dart';
 export 'src/repositories/remote_node_repository.dart';
+export 'src/repositories/forum_host_repository.dart';
+export 'src/repositories/hosted_board_repository.dart';
+export 'src/repositories/local_collection_repository.dart';
 export 'src/repositories/board_sync_config_repository.dart';
 export 'src/repositories/follow_repository.dart';
 export 'src/repositories/follow_activity_outbox_repository.dart';
@@ -56,6 +64,9 @@ export 'src/crdt/crdt_op_builder.dart';
 
 // === In-memory implementations (testing / offline) ===
 export 'src/repositories/in_memory/in_memory_board_repository.dart';
+export 'src/repositories/in_memory/in_memory_forum_host_repository.dart';
+export 'src/repositories/in_memory/in_memory_hosted_board_repository.dart';
+export 'src/repositories/in_memory/in_memory_local_collection_repository.dart';
 export 'src/repositories/in_memory/in_memory_board_sync_config_repository.dart';
 export 'src/repositories/in_memory/in_memory_thread_repository.dart';
 export 'src/repositories/in_memory/in_memory_post_repository.dart';
@@ -76,6 +87,9 @@ export 'src/repositories/in_memory/in_memory_summary_job_repository.dart';
 
 // === Drift (SQLite) implementations ===
 export 'src/repositories/drift/drift_board_repository.dart';
+export 'src/repositories/drift/drift_forum_host_repository.dart';
+export 'src/repositories/drift/drift_hosted_board_repository.dart';
+export 'src/repositories/drift/drift_local_collection_repository.dart';
 export 'src/repositories/drift/drift_thread_repository.dart';
 export 'src/repositories/drift/drift_post_repository.dart';
 export 'src/repositories/drift/drift_reaction_repository.dart';
@@ -103,6 +117,11 @@ export 'src/db/app_database.dart'
         Post,
         Reaction,
         RemoteNode,
+        ForumHost,
+        HostedBoardProjection,
+        BoardSubscription,
+        BoardPublicationTarget,
+        LocalCollection,
         BoardSyncConfig,
         FollowTarget,
         FollowEdge,

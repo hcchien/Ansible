@@ -12,6 +12,7 @@ class PostsViewScreen extends StatefulWidget {
   final Thread thread;
   final String? authorDid;
   final OpsDispatchService? opsDispatchService;
+  final Future<void> Function()? onFlushPendingOps;
 
   const PostsViewScreen({
     super.key,
@@ -19,6 +20,7 @@ class PostsViewScreen extends StatefulWidget {
     required this.thread,
     this.authorDid,
     this.opsDispatchService,
+    this.onFlushPendingOps,
   });
 
   @override
@@ -146,7 +148,12 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     final dispatchService = widget.opsDispatchService;
     if (dispatchService == null) return;
     await dispatchService.signAndEnqueue(entry);
-    unawaited(dispatchService.flushPending());
+    final flushPendingOps = widget.onFlushPendingOps;
+    if (flushPendingOps == null) {
+      unawaited(dispatchService.flushPending());
+    } else {
+      unawaited(flushPendingOps());
+    }
   }
 
   @override

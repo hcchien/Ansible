@@ -17,6 +17,10 @@ class AnsibleDesign {
   static const serif = 'Noto Serif TC';
   static const sans = 'Noto Sans TC';
   static const mono = 'JetBrains Mono';
+  static const appTextScale = 1.08;
+  static const navTextSize = 12.5;
+  static const readingTextSize = 17.0;
+  static const previewTextSize = 16.5;
   static const fallback = [
     'Noto Serif TC',
     'Noto Sans TC',
@@ -238,7 +242,7 @@ class AnsibleStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         border: Border.all(color: AnsibleDesign.rule, width: 0.5),
         borderRadius: BorderRadius.circular(999),
@@ -247,8 +251,8 @@ class AnsibleStatusChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 6,
-            height: 6,
+            width: 7,
+            height: 7,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: dot ?? AnsibleDesign.spore,
@@ -259,7 +263,7 @@ class AnsibleStatusChip extends StatelessWidget {
             label,
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 10,
+              fontSize: 11.5,
               color: AnsibleDesign.inkMuted,
               letterSpacing: 0.8,
             ),

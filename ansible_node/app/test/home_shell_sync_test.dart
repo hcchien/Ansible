@@ -1,0 +1,200 @@
+import 'package:ansible_node/screens/home_shell.dart';
+import 'package:ansible_node/services/app_sync_service.dart';
+import 'package:ansible_node/services/network_status_service.dart';
+import 'package:ansible_store/ansible_store.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  testWidgets('header sync button runs app-wide sync', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    var syncCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          syncRunner: () async {
+            syncCalls += 1;
+            return const AppSyncResult(
+              pulledActivities: 0,
+              publishSummary: PublicPublishSummary(
+                publicItems: 1,
+                enqueued: 1,
+                published: 1,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    await tester.tap(find.byTooltip('同步'));
+    await tester.pumpAndSettle();
+
+    expect(syncCalls, 1);
+    expect(find.textContaining('public publish 1/1 targets'), findsOneWidget);
+  });
+
+  testWidgets('startup pull refresh runs when online with active relay', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    await _seedActiveRelay(db);
+    final network = _FakeNetworkStatusMonitor(NetworkStatus.online);
+    var pullCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: network,
+          pullRefreshRunner: () async {
+            pullCalls += 1;
+            return const RelayPullSummary(pulledActivities: 1);
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(pullCalls, 1);
+  });
+
+  testWidgets('foreground resume pull refresh runs when online', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    await _seedActiveRelay(db);
+    final network = _FakeNetworkStatusMonitor(NetworkStatus.online);
+    var pullCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: network,
+          pullRefreshRunner: () async {
+            pullCalls += 1;
+            return const RelayPullSummary(pulledActivities: 1);
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(pullCalls, 2);
+  });
+
+  testWidgets('online transition pull refresh runs once with active relay', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    await _seedActiveRelay(db);
+    final network = _FakeNetworkStatusMonitor(NetworkStatus.offline);
+    var pullCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: network,
+          pullRefreshRunner: () async {
+            pullCalls += 1;
+            return const RelayPullSummary(pulledActivities: 1);
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(pullCalls, 0);
+
+    network.setStatus(NetworkStatus.online);
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(pullCalls, 1);
+  });
+}
+
+Future<void> _seedActiveRelay(AppDatabase db) async {
+  await DriftRemoteNodeRepository(db).create(
+    RemoteNode(
+      id: 'relay',
+      name: 'Local relay',
+      url: 'http://127.0.0.1:4001',
+      isActive: true,
+      createdAt: DateTime.utc(2026, 5, 10),
+      updatedAt: DateTime.utc(2026, 5, 10),
+    ),
+  );
+}
+
+class _FakeNetworkStatusMonitor extends ChangeNotifier
+    implements NetworkStatusMonitor {
+  _FakeNetworkStatusMonitor(this._status);
+
+  NetworkStatus _status;
+
+  void setStatus(NetworkStatus status) {
+    _status = status;
+    notifyListeners();
+  }
+
+  @override
+  NetworkStatus get status => _status;
+
+  @override
+  bool get isOnline => _status == NetworkStatus.online;
+
+  @override
+  bool get isOffline => _status == NetworkStatus.offline;
+
+  @override
+  bool get isChecking => _status == NetworkStatus.checking;
+
+  @override
+  String get connectionType => 'WiFi';
+
+  @override
+  DateTime? get lastChecked => DateTime.utc(2026, 5, 10);
+
+  @override
+  List<ConnectivityResult> get connectivityResults => const [
+    ConnectivityResult.wifi,
+  ];
+
+  @override
+  Future<void> checkStatus() async {}
+
+  @override
+  Future<bool> isUrlReachable(String url) async => true;
+}

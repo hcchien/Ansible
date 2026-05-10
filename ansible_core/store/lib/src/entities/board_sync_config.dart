@@ -1,3 +1,6 @@
+import 'board_subscription.dart';
+import 'hosted_board_projection.dart';
+
 class BoardSyncConfig {
   static const int defaultRetentionDays = 90;
   static const Object _unchanged = Object();
@@ -79,5 +82,29 @@ class BoardSyncConfig {
       return DateTime.parse(value);
     }
     throw ArgumentError('Invalid date value "$value"');
+  }
+}
+
+extension BoardSyncConfigSubscriptionCompat on BoardSyncConfig {
+  BoardSubscription? toBoardSubscription(HostedBoardProjection? projection) {
+    if (projection == null) {
+      return null;
+    }
+    if (projection.localBoardId != boardId ||
+        projection.forumHostId != remoteNodeId) {
+      return null;
+    }
+    return BoardSubscription(
+      subscriptionId: '${remoteNodeId}_${projection.hostedBoardId}',
+      forumHostId: projection.forumHostId,
+      hostedBoardId: projection.hostedBoardId,
+      localBoardId: projection.localBoardId,
+      readEnabled: syncEnabled,
+      writeEnabled: syncEnabled,
+      syncCursor: projection.lastSeenCursor,
+      retentionDays: retentionDays,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
   }
 }

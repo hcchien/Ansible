@@ -5,7 +5,9 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 
 import '../schema/activity_log.dart';
+import '../schema/board_publication_targets.dart';
 import '../schema/board_acl.dart';
+import '../schema/board_subscriptions.dart';
 import '../schema/board_sync_configs.dart';
 import '../schema/boards.dart';
 import '../schema/ai_provider_configs.dart';
@@ -17,8 +19,11 @@ import '../schema/discussion_nodes.dart';
 import '../schema/follow_activity_events.dart';
 import '../schema/follow_edges.dart';
 import '../schema/follow_targets.dart';
+import '../schema/forum_hosts.dart';
+import '../schema/hosted_board_projections.dart';
 import '../schema/identities.dart';
 import '../schema/identity_bindings.dart';
+import '../schema/local_collections.dart';
 import '../schema/ops_queue.dart';
 import '../schema/outbound_follow_activities.dart';
 import '../schema/ownership_policies.dart';
@@ -40,6 +45,10 @@ part 'app_database.g.dart';
 @DriftDatabase(
   tables: [
     Boards,
+    ForumHosts,
+    HostedBoardProjections,
+    BoardSubscriptions,
+    BoardPublicationTargets,
     Threads,
     Posts,
     Reactions,
@@ -73,13 +82,14 @@ part 'app_database.g.dart';
     PublicationIntents,
     PublicationTargets,
     IdentityBindings,
+    LocalCollections,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -124,6 +134,15 @@ class AppDatabase extends _$AppDatabase {
         await _createTableIfMissing(m, publicationIntents);
         await _createTableIfMissing(m, publicationTargets);
         await _createTableIfMissing(m, identityBindings);
+      }
+      if (from < 13) {
+        await _createTableIfMissing(m, forumHosts);
+        await _createTableIfMissing(m, hostedBoardProjections);
+        await _createTableIfMissing(m, boardSubscriptions);
+        await _createTableIfMissing(m, boardPublicationTargets);
+      }
+      if (from < 14) {
+        await _createTableIfMissing(m, localCollections);
       }
       await _addColumnIfMissing(
         m,

@@ -12,6 +12,7 @@ defmodule AnsibleRelay.IdentityCache do
   """
 
   use GenServer
+  import Ecto.Query
   require Logger
 
   alias AnsibleRelay.{Repo, Db.VerifiedDid}
@@ -152,9 +153,41 @@ defmodule AnsibleRelay.IdentityCache do
     :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     :ets.new(@nullifier_table, [:set, :public, :named_table])
     :ets.new(@challenge_table, [:set, :public, :named_table])
-    Logger.info("IdentityCache ETS tables created")
+    restored = restore_persisted_identities()
+    Logger.info("IdentityCache ETS tables created, restored #{restored} persisted DID(s)")
     {:ok, %{}}
   end
+
+  defp restore_persisted_identities do
+    now = DateTime.utc_now()
+
+    VerifiedDid
+    |> where([identity], identity.expires_at > ^now)
+    |> Repo.all()
+    |> Enum.reduce(0, fn identity, count ->
+      entry = %{
+        public_key_hex: identity.public_key_hex,
+        nullifier: empty_to_nil(identity.nullifier),
+        verified_at: identity.verified_at,
+        expires_at: identity.expires_at
+      }
+
+      :ets.insert(@table, {identity.did, entry})
+
+      if entry.nullifier do
+        :ets.insert(@nullifier_table, {entry.nullifier, identity.did})
+      end
+
+      count + 1
+    end)
+  rescue
+    error ->
+      Logger.warning("IdentityCache restore skipped: #{Exception.message(error)}")
+      0
+  end
+
+  defp empty_to_nil(""), do: nil
+  defp empty_to_nil(value), do: value
 
   defp random_challenge do
     32

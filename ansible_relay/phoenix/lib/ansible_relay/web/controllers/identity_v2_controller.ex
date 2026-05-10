@@ -6,7 +6,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   POST /api/v2/identity/anchor  — verify Ed25519 sig and anchor DID
   """
 
-  alias AnsibleRelay.{DidAccountCache, SigVerifier}
+  alias AnsibleRelay.{DidAccountCache, IdentityCache, SigVerifier}
 
   @handle_domain "trisaura.io"
 
@@ -107,6 +107,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
       {:not_found, _} ->
         :ok = DidAccountCache.put(did, public_key_hex, handle)
+        :ok = IdentityCache.put(did, public_key_hex, "v2:#{did}")
         {:ok, entry} = DidAccountCache.get(did)
 
         send_json(conn, 200, %{

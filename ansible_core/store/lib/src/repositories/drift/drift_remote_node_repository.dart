@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../db/app_database.dart';
+import '../../entities/forum_host.dart' as forum;
 import '../../entities/remote_node.dart' as entity;
 import '../remote_node_repository.dart';
 
@@ -10,7 +11,9 @@ class DriftRemoteNodeRepository implements RemoteNodeRepository {
 
   @override
   Future<void> create(entity.RemoteNode node) async {
-    await _db.into(_db.remoteNodes).insert(
+    await _db
+        .into(_db.remoteNodes)
+        .insert(
           RemoteNodesCompanion.insert(
             nodeId: node.id,
             name: node.name,
@@ -28,18 +31,21 @@ class DriftRemoteNodeRepository implements RemoteNodeRepository {
 
   @override
   Future<entity.RemoteNode?> getById(String id) async {
-    final row = await (_db.select(_db.remoteNodes)
-          ..where((t) => t.nodeId.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.remoteNodes,
+    )..where((t) => t.nodeId.equals(id))).getSingleOrNull();
     if (row == null) return null;
     return _mapRowToEntity(row);
   }
 
   @override
   Future<entity.RemoteNode?> getActive() async {
-    final row = await (_db.select(_db.remoteNodes)
-          ..where((t) => t.isActive.equals(true)))
-        .getSingleOrNull();
+    final row =
+        await (_db.select(_db.remoteNodes)
+              ..where((t) => t.isActive.equals(true))
+              ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+              ..limit(1))
+            .getSingleOrNull();
     if (row == null) return null;
     return _mapRowToEntity(row);
   }
@@ -50,10 +56,25 @@ class DriftRemoteNodeRepository implements RemoteNodeRepository {
     return rows.map(_mapRowToEntity).toList();
   }
 
+  Future<List<forum.ForumHost>> listForumHosts({
+    bool includeInactive = true,
+  }) async {
+    final nodes = await list();
+    final hosts = <forum.ForumHost>[];
+    for (final node in nodes) {
+      if (includeInactive || node.isActive) {
+        hosts.add(node.toForumHost());
+      }
+    }
+    hosts.sort((a, b) => a.displayName.compareTo(b.displayName));
+    return hosts;
+  }
+
   @override
   Future<void> update(entity.RemoteNode node) async {
-    await (_db.update(_db.remoteNodes)..where((t) => t.nodeId.equals(node.id)))
-        .write(
+    await (_db.update(
+      _db.remoteNodes,
+    )..where((t) => t.nodeId.equals(node.id))).write(
       RemoteNodesCompanion(
         name: Value(node.name),
         url: Value(node.url),
@@ -72,9 +93,14 @@ class DriftRemoteNodeRepository implements RemoteNodeRepository {
   }
 
   @override
-  Future<void> updateSyncCursor(String id, int cursor, DateTime syncTime) async {
-    await (_db.update(_db.remoteNodes)..where((t) => t.nodeId.equals(id)))
-        .write(
+  Future<void> updateSyncCursor(
+    String id,
+    int cursor,
+    DateTime syncTime,
+  ) async {
+    await (_db.update(
+      _db.remoteNodes,
+    )..where((t) => t.nodeId.equals(id))).write(
       RemoteNodesCompanion(
         syncCursor: Value(cursor),
         lastSyncAt: Value(syncTime),

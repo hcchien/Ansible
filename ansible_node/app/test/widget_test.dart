@@ -1,5 +1,6 @@
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/main.dart';
+import 'package:ansible_node/screens/home_shell.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +64,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('登出此裝置'), findsOneWidget);
     expect(find.text('清除身份 (Clear Identity)'), findsNothing);
+  });
+
+  testWidgets('applies the app text size step globally', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _ExistingDidPlcManager(),
+      ),
+    );
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final context = tester.element(find.byType(HomeShell));
+    expect(MediaQuery.textScalerOf(context).scale(10), closeTo(10.8, 0.01));
   });
 }
 

@@ -15,6 +15,10 @@ canonical product model.
 The first full implementation should support direct app publication to Nostr
 relays and relay-managed ActivityPub federation.
 
+This design now treats discussion boards as Forum Host-owned surfaces. The
+local app stores board projections and subscriptions; it does not treat a
+local-only discussion board as the canonical collaboration object.
+
 ## Existing Context
 
 Ansible currently stores content locally as Drift-backed domain entities. The
@@ -46,6 +50,17 @@ Nostr and ActivityPub at the distribution boundary.
 
 This keeps the product local-first while avoiding a custom public federation
 protocol.
+
+Forum Host ownership is the board boundary:
+
+- Forum Hosts own hosted boards, threads, posts, permissions, moderation, and
+  distribution FE state.
+- Local `Board` rows are projections during migration.
+- `murmur` and `note` remain local canonical content and can be projected to
+  selected Forum Hosts.
+- Multi-host discussion distribution uses primary plus cross-post targets, not
+  a shared multi-primary board identity.
+- Purely local personal organization belongs to Local Collections.
 
 ## Identity Model
 
@@ -132,3 +147,5 @@ Ansible state.
   note, not destructively rewritten.
 - The implementation plan defines a gated full federation path: publication
   abstraction first, then Nostr, then relay-managed ActivityPub.
+- New board work treats Forum Hosts as the canonical owner of discussion boards
+  and treats local boards as migration projections.

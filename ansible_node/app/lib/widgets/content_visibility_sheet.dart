@@ -399,14 +399,14 @@ class _VisibilityOptionRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         color: selected ? AnsibleDesign.paperElev : Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+        padding: const EdgeInsets.fromLTRB(20, 17, 20, 17),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(top: 7),
+              width: 9,
+              height: 9,
+              margin: const EdgeInsets.only(top: 8),
               decoration: BoxDecoration(
                 color: option.dot,
                 shape: BoxShape.circle,
@@ -424,7 +424,7 @@ class _VisibilityOptionRow extends StatelessWidget {
                       Text(
                         option.zh,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                           color: AnsibleDesign.ink,
                         ),
@@ -436,7 +436,7 @@ class _VisibilityOptionRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontFamily: AnsibleDesign.mono,
-                            fontSize: 9,
+                            fontSize: 10.5,
                             letterSpacing: 1.5,
                             color: AnsibleDesign.inkFaint,
                           ),
@@ -448,7 +448,7 @@ class _VisibilityOptionRow extends StatelessWidget {
                   Text(
                     option.description,
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 14,
                       height: 1.55,
                       color: AnsibleDesign.inkMuted,
                     ),
@@ -458,8 +458,8 @@ class _VisibilityOptionRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Container(
-              width: 16,
-              height: 16,
+              width: 20,
+              height: 20,
               margin: const EdgeInsets.only(top: 5),
               decoration: BoxDecoration(
                 color: selected ? AnsibleDesign.ink : Colors.transparent,
@@ -472,8 +472,8 @@ class _VisibilityOptionRow extends StatelessWidget {
               child: selected
                   ? Center(
                       child: Container(
-                        width: 6,
-                        height: 6,
+                        width: 8,
+                        height: 8,
                         decoration: const BoxDecoration(
                           color: AnsibleDesign.paper,
                           shape: BoxShape.circle,
@@ -515,9 +515,9 @@ const _visibilityOptions = [
   ),
   _VisibilityOption(
     visibility: ContentVisibility.unlisted,
-    zh: '送進讀書會',
+    zh: '不列出',
     en: 'unlisted',
-    description: '圈內 4 人都能讀。可以再加，但離開的人讀不到新的。',
+    description: '可以同步與分享連結，但不主動放進公開列表或索引。',
     dot: AnsibleDesign.spore,
   ),
   _VisibilityOption(

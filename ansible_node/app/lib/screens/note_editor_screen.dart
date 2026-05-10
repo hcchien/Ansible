@@ -445,7 +445,7 @@ class _BodyField extends StatelessWidget {
       textInputAction: TextInputAction.newline,
       onChanged: (_) => onChanged(),
       style: const TextStyle(
-        fontSize: 15.5,
+        fontSize: AnsibleDesign.readingTextSize,
         height: 1.8,
         color: AnsibleDesign.ink,
       ),
@@ -454,7 +454,7 @@ class _BodyField extends StatelessWidget {
         hintText: '一朵一朵地撿，慢慢撿。林下不是空的——只是用看不見的方式生長著。',
         hintStyle: TextStyle(
           color: AnsibleDesign.inkFaint,
-          fontSize: 15.5,
+          fontSize: AnsibleDesign.readingTextSize,
           height: 1.8,
           fontStyle: FontStyle.normal,
         ),
@@ -549,7 +549,7 @@ class _ContinuationHint extends StatelessWidget {
       child: Text(
         '繼續寫下去，或從下方拖一個 murmur 進來……',
         style: TextStyle(
-          fontSize: 15.5,
+          fontSize: AnsibleDesign.readingTextSize,
           height: 1.8,
           color: AnsibleDesign.inkFaint,
           fontStyle: FontStyle.italic,

@@ -30,9 +30,24 @@ void main() {
 
     expect(find.text('NOTE · 始於 2026.05.08'), findsOneWidget);
     expect(find.text('Field notes'), findsOneWidget);
-    expect(find.text(body), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is RichText && widget.text.toPlainText().contains(body),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('private'), findsOneWidget);
     expect(find.text('由 0 個 murmur 編成'), findsOneWidget);
     expect(find.text('尚未連結 murmur 來源。'), findsOneWidget);
+
+    final bodyText = tester.widget<RichText>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is RichText && widget.text.toPlainText().contains(body),
+      ),
+    );
+    expect((bodyText.text as TextSpan).style?.fontSize, 17);
+    expect(tester.widget<Text>(find.text('← 草地')).style?.fontSize, 12.5);
   });
 }

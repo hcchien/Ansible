@@ -156,6 +156,43 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
   end
 
+  test "accepts development publication signatures only when enabled" do
+    original = Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false)
+    Application.put_env(:ansible_relay, :allow_dev_publication_signatures, true)
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :allow_dev_publication_signatures, original)
+    end)
+
+    did = "did:key:z6MkDevPublication#{System.unique_integer([:positive])}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+    intent = valid_intent(did, private_key) |> Map.put("signature", "dev-signature-local")
+
+    response = post_json("/api/v1/publication-intents", intent)
+
+    assert response.status == 202
+    assert Jason.decode!(response.resp_body)["accepted"] == true
+  end
+
+  test "accepts development publication signatures for local-only unverified DID when enabled" do
+    original = Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false)
+    Application.put_env(:ansible_relay, :allow_dev_publication_signatures, true)
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :allow_dev_publication_signatures, original)
+    end)
+
+    did = "did:plc:qrstuvwxyz234567abcdefgh"
+    {_public_key, private_key} = ed25519_keypair()
+    intent = valid_intent(did, private_key) |> Map.put("signature", "dev-signature-local")
+
+    response = post_json("/api/v1/publication-intents", intent)
+
+    assert response.status == 202
+    assert Jason.decode!(response.resp_body)["accepted"] == true
+  end
+
   test "rejects tampered payload hash" do
     did = "did:key:z6MkTamperedPublication#{System.unique_integer([:positive])}"
     {public_key, private_key} = ed25519_keypair()

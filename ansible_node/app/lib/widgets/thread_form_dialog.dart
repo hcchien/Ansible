@@ -24,7 +24,9 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedBoardId = widget.initialBoardId ?? (widget.boards.isNotEmpty ? widget.boards.first.id : null);
+    _selectedBoardId =
+        widget.initialBoardId ??
+        (widget.boards.isNotEmpty ? widget.boards.first.id : null);
   }
 
   @override
@@ -48,18 +50,15 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
               initialValue: _selectedBoardId,
               items: widget.boards
                   .map(
-                    (b) => DropdownMenuItem(
-                      value: b.id,
-                      child: Text(b.title),
-                    ),
+                    (b) => DropdownMenuItem(value: b.id, child: Text(b.title)),
                   )
                   .toList(),
               onChanged: (value) => setState(() => _selectedBoardId = value),
-              decoration: const InputDecoration(labelText: '選擇看板'),
+              decoration: const InputDecoration(labelText: '選擇 hosted board'),
               validator: (_) {
-                if (!hasBoards) return '請先建立看板';
+                if (!hasBoards) return '請先加入或建立 Forum Host 的 hosted board';
                 if (_selectedBoardId == null || _selectedBoardId!.isEmpty) {
-                  return '請選擇看板';
+                  return '請選擇 hosted board';
                 }
                 return null;
               },

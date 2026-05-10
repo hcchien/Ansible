@@ -295,7 +295,7 @@ class _NavTextButton extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: AnsibleDesign.mono,
-                fontSize: 10,
+                fontSize: AnsibleDesign.navTextSize,
                 letterSpacing: 1.5,
                 color: AnsibleDesign.inkMuted,
               ),

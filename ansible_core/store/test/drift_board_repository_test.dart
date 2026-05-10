@@ -39,6 +39,38 @@ void main() {
       expect(retrieved.isDeleted, isFalse);
     });
 
+    test('Create rejects same slug with different board id', () async {
+      final now = DateTime.now();
+      await repo.create(
+        entity.Board(
+          id: 'local-board',
+          slug: 'general',
+          title: 'Local General',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await expectLater(
+        repo.create(
+          entity.Board(
+            id: 'remote-board',
+            slug: 'general',
+            title: 'Remote General',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(await repo.getById('remote-board'), isNull);
+      final local = await repo.getById('local-board');
+      expect(local, isNotNull);
+      expect(local!.title, 'Local General');
+      expect(local.slug, 'general');
+    });
+
     test('Update Board', () async {
       final createdAt = DateTime.now();
       final board = entity.Board(

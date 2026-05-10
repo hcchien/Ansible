@@ -29,9 +29,15 @@ void main() {
 
     final signed = await service.signAndEnqueue(entry);
     final queued = await repo.listPending();
+    final payload =
+        jsonDecode(utf8.decode(base64Decode(entry.payload)))
+            as Map<String, dynamic>;
 
     expect(signed.signature, 'signed:${entry.opId}${entry.payload}');
     expect(queued.single.signature, signed.signature);
+    expect(payload['boardId'], 'board-1');
+    expect(payload['threadId'], 'thread-1');
+    expect(payload['content'], 'hello');
   });
 
   test('flushPending marks accepted ops as synced', () async {

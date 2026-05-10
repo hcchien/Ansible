@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_domain/ansible_domain.dart';
+import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -8,8 +11,14 @@ import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
 import '../services/ai/ai_provider_config_store.dart';
+import '../services/app_sync_service.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
+import '../services/content_publication_service.dart';
+import '../services/forum_host_client.dart';
+import '../services/nostr_relay_settings_store.dart';
+import '../services/nostr_secure_key_store.dart';
+import '../services/relay_ops_client.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
 import '../widgets/ops_queue_status_badge.dart';
@@ -34,36 +43,52 @@ class HomeShell extends StatefulWidget {
     required this.db,
     required this.did,
     this.onClearIdentity,
+    this.syncRunner,
+    this.pullRefreshRunner,
+    this.networkStatusMonitor,
   });
 
   final AppDatabase db;
   final String did;
   final VoidCallback? onClearIdentity;
+  final Future<AppSyncResult> Function()? syncRunner;
+  final Future<RelayPullSummary> Function()? pullRefreshRunner;
+  final NetworkStatusMonitor? networkStatusMonitor;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final DriftBoardRepository _boardRepo;
   late final DriftThreadRepository _threadRepo;
   late final DriftPostRepository _postRepo;
   late final DriftReactionRepository _reactionRepo;
   late final DriftFollowRepository _followRepo;
+  late final DriftRemoteNodeRepository _remoteNodeRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
   late final DriftContentItemRepository _contentItemRepo;
   late final DriftContentRelationRepository _contentRelationRepo;
+  late final DriftPublicationRepository _publicationRepo;
+  late final DriftHostedBoardRepository _hostedBoardRepo;
   late final DriftAiProviderConfigRepository _aiProviderConfigRepo;
   late final AiProviderConfigStore _aiProviderConfigStore;
+  late final SecureStorageNostrKeyStore _nostrKeyStore;
+  late final SecureStorageNostrRelaySettingsStore _nostrRelaySettingsStore;
   late final OpsDispatchService _opsDispatchService;
   late final AtProtoClient _atProtoClient;
-  late final NetworkStatusService _networkStatusService;
+  late final NetworkStatusMonitor _networkStatusService;
+  late final bool _ownsNetworkStatusService;
 
   List<Board> _boards = [];
   List<PostCardData> _posts = [];
   List<ContentItem> _contentItems = [];
   Map<String, int> _murmurReferenceCounts = const {};
   bool _loading = true;
+  bool _syncing = false;
+  bool _pullRefreshing = false;
+  NetworkStatus? _lastNetworkStatus;
+  DateTime? _lastAutoSyncAt;
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
   _ContentModeTab _selectedMode = _ContentModeTab.discussions;
@@ -77,23 +102,47 @@ class _HomeShellState extends State<HomeShell> {
     _postRepo = DriftPostRepository(widget.db);
     _reactionRepo = DriftReactionRepository(widget.db);
     _followRepo = DriftFollowRepository(widget.db);
+    _remoteNodeRepo = DriftRemoteNodeRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _contentItemRepo = DriftContentItemRepository(widget.db);
     _contentRelationRepo = DriftContentRelationRepository(widget.db);
+    _publicationRepo = DriftPublicationRepository(widget.db);
+    _hostedBoardRepo = DriftHostedBoardRepository(widget.db);
     _aiProviderConfigRepo = DriftAiProviderConfigRepository(widget.db);
     _aiProviderConfigStore = AiProviderConfigStore(
       repository: _aiProviderConfigRepo,
     );
+    _nostrKeyStore = const SecureStorageNostrKeyStore();
+    _nostrRelaySettingsStore = const SecureStorageNostrRelaySettingsStore();
     _opsDispatchService = OpsDispatchService(repository: _opsQueueRepo);
     _atProtoClient = AtProtoClient();
-    _networkStatusService = NetworkStatusService();
-    _loadData();
+    _networkStatusService =
+        widget.networkStatusMonitor ?? NetworkStatusService();
+    _ownsNetworkStatusService = widget.networkStatusMonitor == null;
+    _lastNetworkStatus = _networkStatusService.status;
+    _networkStatusService.addListener(_handleNetworkStatusChanged);
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_loadData());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_runForegroundPullIfConfigured());
+    });
   }
 
   @override
   void dispose() {
-    _networkStatusService.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _networkStatusService.removeListener(_handleNetworkStatusChanged);
+    if (_ownsNetworkStatusService) {
+      _networkStatusService.dispose();
+    }
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_runForegroundPullIfConfigured());
+    }
   }
 
   Future<void> _loadData() async {
@@ -296,31 +345,88 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _createBoard() async {
+    final forumHosts = (await _remoteNodeRepo.list())
+        .where((node) => node.isActive)
+        .toList();
+    if (forumHosts.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('請先在同步設定新增 Forum Host。討論看板由 Forum Host 建立。'),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
     final result = await showDialog<Map<String, String?>>(
       context: context,
-      builder: (context) => const BoardFormDialog(),
+      builder: (context) =>
+          BoardFormDialog(forumHosts: forumHosts, requireForumHost: true),
     );
     if (result == null) return;
     final now = DateTime.now();
-    final id = _uuid.v4();
+    final forumHostId = result['forumHostId'];
+    final forumHost = forumHosts.firstWhere(
+      (host) => host.id == forumHostId,
+      orElse: () => forumHosts.first,
+    );
     final title = result['title']!;
-    final slug = _slugify(title);
+    final intentId = _uuid.v4();
+    final signature = await DidSignerImpl()
+        .sign(utf8.encode('$intentId:${widget.did}:$title'))
+        .then((signature) => signature.hex);
+    final remoteBoard = await ForumHostClient(baseUrl: forumHost.url)
+        .createHostedBoard(
+          CreateHostedBoardIntent(
+            intentId: intentId,
+            authorDid: widget.did,
+            signature: signature,
+            title: title,
+            description: result['description'],
+          ),
+        );
+    final hostedBoardId = remoteBoard['hosted_board_id'] as String;
+    final localBoardId = '${forumHost.id}_$hostedBoardId';
+    final remoteSlug = remoteBoard['slug'] as String? ?? _slugify(title);
+    final slug = _uniqueLocalBoardSlug(remoteSlug, localBoardId);
     final board = Board(
-      id: id,
-      slug: slug.isEmpty ? id : slug,
-      title: title,
-      description: result['description'],
+      id: localBoardId,
+      slug: slug.isEmpty ? localBoardId : slug,
+      title: remoteBoard['title'] as String? ?? title,
+      description:
+          remoteBoard['description'] as String? ?? result['description'],
       createdAt: now,
       updatedAt: now,
     );
     await _boardRepo.create(board);
-    await _enqueueAndFlush(
-      CrdtOpBuilder.createBoard(
-        authorDid: widget.did,
-        entityId: board.id,
-        slug: board.slug,
+    await _hostedBoardRepo.upsertProjection(
+      HostedBoardProjection(
+        localBoardId: board.id,
+        forumHostId: forumHost.id,
+        hostedBoardId: hostedBoardId,
+        canonicalBoardUri: remoteBoard['canonical_board_uri'] as String,
+        remoteSlug: remoteSlug,
+        localSlug: board.slug,
         title: board.title,
         description: board.description,
+        permissions: Map<String, Object?>.from(
+          remoteBoard['permissions'] as Map? ??
+              const {'read': true, 'write': true},
+        ),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await _hostedBoardRepo.upsertSubscription(
+      BoardSubscription(
+        subscriptionId: '${forumHost.id}_$hostedBoardId',
+        forumHostId: forumHost.id,
+        hostedBoardId: hostedBoardId,
+        localBoardId: board.id,
+        readEnabled: true,
+        writeEnabled: true,
+        createdAt: now,
+        updatedAt: now,
       ),
     );
     await _loadData();
@@ -387,7 +493,147 @@ class _HomeShellState extends State<HomeShell> {
 
   Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
     await _opsDispatchService.signAndEnqueue(entry);
-    unawaited(_opsDispatchService.flushPending());
+    unawaited(_flushPendingOps());
+  }
+
+  Future<void> _publishContentItem(
+    ContentItem item,
+    DistributionPreference distributionPreference,
+  ) async {
+    final result = await ContentPublicationService(
+      contentItems: _contentItemRepo,
+      publications: _publicationRepo,
+      relaySettings: _nostrRelaySettingsStore,
+      remoteNodes: _remoteNodeRepo,
+      keyStore: _nostrKeyStore,
+      signingBridge: const SchnorrSigningBridge(),
+    ).publishContentItem(item, distributionPreference: distributionPreference);
+    if (!mounted) return;
+    if (result.published > 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已同步 ${result.published} 篇公開內容')));
+    } else if (result.failed > 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('公開內容已排入同步，但 relay 發佈失敗')));
+    } else if (result.skippedReason == 'no_write_relays') {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('尚未設定可寫入的 Nostr relay')));
+    }
+  }
+
+  Future<void> _flushPendingOps() async {
+    final activeNode = await _remoteNodeRepo.getActive();
+    final service = activeNode == null
+        ? _opsDispatchService
+        : OpsDispatchService(
+            repository: _opsQueueRepo,
+            relayClient: RelayOpsClient(baseUrl: activeNode.url),
+          );
+    await service.flushPending();
+  }
+
+  AppSyncService _appSyncService() {
+    return AppSyncService(
+      remoteNodeRepo: _remoteNodeRepo,
+      boardSyncConfigRepo: DriftBoardSyncConfigRepository(widget.db),
+      hostedBoardRepo: DriftHostedBoardRepository(widget.db),
+      boardRepo: _boardRepo,
+      threadRepo: _threadRepo,
+      postRepo: _postRepo,
+      contentItemRepo: _contentItemRepo,
+      publicationRepo: _publicationRepo,
+      relaySettings: _nostrRelaySettingsStore,
+      keyStore: _nostrKeyStore,
+      signingBridge: const SchnorrSigningBridge(),
+    );
+  }
+
+  void _handleNetworkStatusChanged() {
+    final current = _networkStatusService.status;
+    final wasOnline = _lastNetworkStatus == NetworkStatus.online;
+    _lastNetworkStatus = current;
+    if (current != NetworkStatus.online || wasOnline) return;
+    unawaited(_runAutoSyncIfConfigured());
+  }
+
+  Future<void> _runAutoSyncIfConfigured() async {
+    if (_syncing) return;
+    final now = DateTime.now();
+    final last = _lastAutoSyncAt;
+    if (last != null && now.difference(last) < const Duration(minutes: 2)) {
+      return;
+    }
+    if (!await _hasConfiguredSyncTargets()) return;
+    _lastAutoSyncAt = now;
+    await _runForegroundPullIfConfigured();
+    await _runHeaderSync(showSnackBar: false, pullRemote: false);
+  }
+
+  Future<void> _runForegroundPullIfConfigured() async {
+    if (_pullRefreshing || _syncing) return;
+    if (_networkStatusService.status != NetworkStatus.online) return;
+    if (!await _hasActiveRelay()) return;
+    _pullRefreshing = true;
+    try {
+      final runner = widget.pullRefreshRunner;
+      final result = runner == null
+          ? await _appSyncService().pullLatestFromRelays()
+          : await runner();
+      if (result.pulledActivities > 0) {
+        await _loadData();
+      }
+    } finally {
+      _pullRefreshing = false;
+    }
+  }
+
+  Future<bool> _hasActiveRelay() async {
+    final nodes = await _remoteNodeRepo.list();
+    return nodes.any((node) => node.isActive);
+  }
+
+  Future<bool> _hasConfiguredSyncTargets() async {
+    final nodes = await _remoteNodeRepo.list();
+    if (nodes.any((node) => node.isActive)) return true;
+    final relays = await _nostrRelaySettingsStore.list();
+    return relays.any((relay) => relay.write);
+  }
+
+  Future<void> _runHeaderSync({
+    bool showSnackBar = true,
+    bool pullRemote = true,
+  }) async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    try {
+      await _flushPendingOps();
+      final runner = widget.syncRunner;
+      final result = runner == null
+          ? await _appSyncService().syncAll(pullRemote: pullRemote)
+          : await runner();
+      await _loadData();
+      if (!mounted) return;
+      if (showSnackBar) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(appSyncSummaryMessage(result)),
+            backgroundColor: result.success ? null : Colors.red,
+          ),
+        );
+      }
+    } catch (error) {
+      if (!mounted || !showSnackBar) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('同步失敗：$error'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _syncing = false);
+      }
+    }
   }
 
   Future<void> _openManageBoards() async {
@@ -405,7 +651,7 @@ class _HomeShellState extends State<HomeShell> {
                     : ListView.separated(
                         shrinkWrap: true,
                         itemCount: _boards.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final board = _boards[index];
                           return ListTile(
@@ -433,11 +679,16 @@ class _HomeShellState extends State<HomeShell> {
                                       final updatedSlug = _slugify(
                                         result['title'] ?? board.title,
                                       );
+                                      final uniqueUpdatedSlug =
+                                          updatedSlug.isEmpty
+                                          ? board.slug
+                                          : _uniqueLocalBoardSlug(
+                                              updatedSlug,
+                                              board.id,
+                                            );
                                       final updated = Board(
                                         id: board.id,
-                                        slug: updatedSlug.isEmpty
-                                            ? board.slug
-                                            : updatedSlug,
+                                        slug: uniqueUpdatedSlug,
                                         title: result['title'] ?? board.title,
                                         description: result['description'],
                                         createdAt: board.createdAt,
@@ -522,6 +773,23 @@ class _HomeShellState extends State<HomeShell> {
         .replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
+  String _uniqueLocalBoardSlug(String desiredSlug, String boardId) {
+    final base = desiredSlug.trim().isEmpty ? boardId : desiredSlug.trim();
+    final usedByOtherId = {
+      for (final board in _boards)
+        if (board.id != boardId) board.slug,
+    };
+    if (!usedByOtherId.contains(base)) return base;
+
+    var candidate = base;
+    var attempt = 2;
+    do {
+      candidate = '$base-$attempt';
+      attempt += 1;
+    } while (usedByOtherId.contains(candidate));
+    return candidate;
+  }
+
   String _formatTimeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return '剛剛';
@@ -544,6 +812,9 @@ class _HomeShellState extends State<HomeShell> {
                 did: widget.did,
                 opsQueueRepo: _opsQueueRepo,
                 opsDispatchService: _opsDispatchService,
+                onFlushPendingOps: _flushPendingOps,
+                onSync: () => _runHeaderSync(),
+                syncing: _syncing,
                 atProtoClient: _atProtoClient,
                 onClearIdentity: widget.onClearIdentity,
                 loading: _loading,
@@ -565,6 +836,7 @@ class _HomeShellState extends State<HomeShell> {
                 contentItems: _contentItems,
                 murmurReferenceCounts: _murmurReferenceCounts,
                 onContentItemsChanged: _loadData,
+                onPublishContentItem: _publishContentItem,
                 onStartAiAction: _startAiTransformation,
               );
 
@@ -671,7 +943,7 @@ class _Sidebar extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: boards.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return _BoardTile(
@@ -748,7 +1020,8 @@ class _BoardTileState extends State<_BoardTile> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
-        transform: Matrix4.identity()..translate(0.0, _hover ? -2.0 : 0.0),
+        transform: Matrix4.identity()
+          ..translateByDouble(0.0, _hover ? -2.0 : 0.0, 0.0, 1.0),
         decoration: BoxDecoration(
           color: _hover ? hoverBg : baseBg,
           borderRadius: BorderRadius.circular(12),
@@ -832,6 +1105,9 @@ class _MainPanel extends StatelessWidget {
     required this.did,
     required this.opsQueueRepo,
     required this.opsDispatchService,
+    required this.onFlushPendingOps,
+    required this.onSync,
+    required this.syncing,
     required this.atProtoClient,
     required this.loading,
     required this.posts,
@@ -852,6 +1128,7 @@ class _MainPanel extends StatelessWidget {
     required this.contentItems,
     required this.murmurReferenceCounts,
     required this.onContentItemsChanged,
+    required this.onPublishContentItem,
     required this.onStartAiAction,
   });
 
@@ -860,6 +1137,9 @@ class _MainPanel extends StatelessWidget {
   final String did;
   final OpsQueueRepository opsQueueRepo;
   final OpsDispatchService opsDispatchService;
+  final Future<void> Function() onFlushPendingOps;
+  final Future<void> Function() onSync;
+  final bool syncing;
   final AtProtoClient atProtoClient;
   final bool loading;
   final List<PostCardData> posts;
@@ -873,13 +1153,15 @@ class _MainPanel extends StatelessWidget {
   final bool hasSelectedBoard;
   final String? selectedBoardId;
   final List<Board> boards;
-  final NetworkStatusService networkStatusService;
+  final NetworkStatusMonitor networkStatusService;
   final _ContentModeTab selectedMode;
   final ValueChanged<_ContentModeTab> onModeChanged;
   final ContentItemRepository contentItemRepository;
   final List<ContentItem> contentItems;
   final Map<String, int> murmurReferenceCounts;
   final Future<void> Function() onContentItemsChanged;
+  final Future<void> Function(ContentItem, DistributionPreference)
+  onPublishContentItem;
   final Future<void> Function() onStartAiAction;
 
   @override
@@ -896,11 +1178,11 @@ class _MainPanel extends StatelessWidget {
           children: [
             _TopBar(
               onClearIdentity: onClearIdentity,
-              onRefresh: onRefresh,
               db: db,
               did: did,
               opsQueueRepo: opsQueueRepo,
-              opsDispatchService: opsDispatchService,
+              onSync: onSync,
+              syncing: syncing,
               networkStatusService: networkStatusService,
               contentItems: contentItems,
             ),
@@ -1021,6 +1303,7 @@ class _MainPanel extends StatelessWidget {
                               .toList(),
                           murmurReferenceCounts: murmurReferenceCounts,
                           onSaved: onContentItemsChanged,
+                          onPublishContentItem: onPublishContentItem,
                         ),
                         _ContentModeTab.notes => NoteWorkspaceScreen(
                           authorDid: did,
@@ -1032,6 +1315,7 @@ class _MainPanel extends StatelessWidget {
                               .toList(),
                           contentItemRepository: contentItemRepository,
                           onContentItemsChanged: onContentItemsChanged,
+                          onPublishContentItem: onPublishContentItem,
                         ),
                         _ContentModeTab.discussions =>
                           loading
@@ -1050,13 +1334,14 @@ class _MainPanel extends StatelessWidget {
                                 )
                               : ListView.separated(
                                   itemCount: posts.length,
-                                  separatorBuilder: (_, __) =>
+                                  separatorBuilder: (_, _) =>
                                       const SizedBox(height: 16),
                                   itemBuilder: (context, index) => PostCard(
                                     db: db,
                                     data: posts[index],
                                     authorDid: did,
                                     opsDispatchService: opsDispatchService,
+                                    onFlushPendingOps: onFlushPendingOps,
                                   ),
                                 ),
                       },
@@ -1075,22 +1360,22 @@ class _MainPanel extends StatelessWidget {
 class _TopBar extends StatelessWidget {
   const _TopBar({
     this.onClearIdentity,
-    required this.onRefresh,
     required this.db,
     required this.did,
     required this.opsQueueRepo,
-    required this.opsDispatchService,
+    required this.onSync,
+    required this.syncing,
     required this.networkStatusService,
     required this.contentItems,
   });
 
   final VoidCallback? onClearIdentity;
-  final Future<void> Function() onRefresh;
   final AppDatabase db;
   final String did;
   final OpsQueueRepository opsQueueRepo;
-  final OpsDispatchService opsDispatchService;
-  final NetworkStatusService networkStatusService;
+  final Future<void> Function() onSync;
+  final bool syncing;
+  final NetworkStatusMonitor networkStatusService;
   final List<ContentItem> contentItems;
 
   String get _truncatedDid {
@@ -1232,13 +1517,15 @@ class _TopBar extends StatelessWidget {
               ],
               const SizedBox(width: 4),
               IconButton(
-                onPressed: () async {
-                  await opsDispatchService.flushPending();
-                  await onRefresh();
-                },
-                icon: const Icon(Icons.refresh),
+                onPressed: syncing ? null : onSync,
+                icon: syncing
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync),
                 color: AnsibleDesign.inkMuted,
-                tooltip: '同步並重新整理',
+                tooltip: '同步',
               ),
               if (!compact)
                 IconButton(
@@ -1466,12 +1753,14 @@ class PostCard extends StatefulWidget {
     required this.db,
     required this.authorDid,
     required this.opsDispatchService,
+    required this.onFlushPendingOps,
   });
 
   final AppDatabase db;
   final PostCardData data;
   final String authorDid;
   final OpsDispatchService opsDispatchService;
+  final Future<void> Function() onFlushPendingOps;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -1511,7 +1800,7 @@ class _PostCardState extends State<PostCard> {
             targetId: targetId,
           ),
         );
-        unawaited(widget.opsDispatchService.flushPending());
+        unawaited(widget.onFlushPendingOps());
         setState(() {
           _reacted = false;
           _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
@@ -1536,7 +1825,7 @@ class _PostCardState extends State<PostCard> {
           reactionType: reaction.reactionType.name,
         ),
       );
-      unawaited(widget.opsDispatchService.flushPending());
+      unawaited(widget.onFlushPendingOps());
       setState(() {
         _reacted = true;
         _likeCount += 1;
@@ -1560,6 +1849,7 @@ class _PostCardState extends State<PostCard> {
                 thread: thread,
                 authorDid: widget.authorDid,
                 opsDispatchService: widget.opsDispatchService,
+                onFlushPendingOps: widget.onFlushPendingOps,
               ),
             ),
           );
@@ -1618,7 +1908,7 @@ class _PostCardState extends State<PostCard> {
                 style: const TextStyle(
                   color: AnsibleDesign.inkMuted,
                   height: 1.5,
-                  fontSize: 14,
+                  fontSize: AnsibleDesign.previewTextSize,
                   fontWeight: FontWeight.w400,
                 ),
               ),

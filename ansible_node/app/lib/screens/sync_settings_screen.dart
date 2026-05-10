@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
+import '../services/content_publication_service.dart';
+import '../services/app_sync_service.dart';
 import '../services/nostr_publication_service.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
@@ -33,6 +36,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
   late final DriftRemoteNodeRepository _remoteNodeRepo;
   late final DriftBoardSyncConfigRepository _boardSyncConfigRepo;
+  late final DriftHostedBoardRepository _hostedBoardRepo;
   late final DriftBoardRepository _boardRepo;
   late final DriftThreadRepository _threadRepo;
   late final DriftPostRepository _postRepo;
@@ -58,6 +62,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     super.initState();
     _remoteNodeRepo = DriftRemoteNodeRepository(widget.db);
     _boardSyncConfigRepo = DriftBoardSyncConfigRepository(widget.db);
+    _hostedBoardRepo = DriftHostedBoardRepository(widget.db);
     _boardRepo = DriftBoardRepository(widget.db);
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
@@ -174,7 +179,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Server added')));
+      ).showSnackBar(const SnackBar(content: Text('Forum Host added')));
     }
   }
 
@@ -216,7 +221,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Server updated')));
+      ).showSnackBar(const SnackBar(content: Text('Forum Host updated')));
     }
   }
 
@@ -224,9 +229,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Server'),
+        title: const Text('Delete Forum Host'),
         content: Text(
-          'Are you sure you want to delete "${node.name}"?\n\nThis will also remove all board sync settings for this server.',
+          'Are you sure you want to delete "${node.name}"?\n\nThis will also remove hosted board subscription settings for this Forum Host.',
         ),
         actions: [
           TextButton(
@@ -249,7 +254,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Server deleted')));
+        ).showSnackBar(const SnackBar(content: Text('Forum Host deleted')));
       }
     }
   }
@@ -304,7 +309,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     });
   }
 
-  Future<void> _performSync(RemoteNode node) async {
+  Future<SyncResult> _performSync(
+    RemoteNode node, {
+    bool showSnackBar = true,
+    bool publishPublicContent = true,
+  }) async {
     setState(() {
       _syncingNodes[node.id] = true;
     });
@@ -318,12 +327,18 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       final syncService = RemoteSyncService(
         remoteNodeRepo: _remoteNodeRepo,
         boardSyncConfigRepo: _boardSyncConfigRepo,
+        hostedBoardRepo: _hostedBoardRepo,
         boardRepo: _boardRepo,
         threadRepo: _threadRepo,
         postRepo: _postRepo,
       );
 
       final result = await syncService.syncFromNode(client, node);
+      final publishSummary = publishPublicContent
+          ? await bestEffortPublicPublish(
+              () => _publishPublicContent(showSnackBar: false),
+            )
+          : const PublicPublishSummary(publicItems: 0);
 
       setState(() {
         _syncingNodes[node.id] = false;
@@ -332,12 +347,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       // Reload to update last sync time
       await _loadData();
 
-      if (mounted) {
+      if (mounted && showSnackBar) {
         if (result.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '${node.name}: Synced ${result.activitiesProcessed} activities',
+                '${node.name}: pull ${result.activitiesProcessed} activities；${_publishSummaryMessage(publishSummary)}',
               ),
             ),
           );
@@ -352,12 +367,13 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           );
         }
       }
+      return result;
     } catch (e) {
       setState(() {
         _syncingNodes[node.id] = false;
       });
 
-      if (mounted) {
+      if (mounted && showSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${node.name}: Sync error - $e'),
@@ -365,15 +381,131 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           ),
         );
       }
+      return SyncResult.failure(errorMessage: e.toString());
     }
   }
 
   Future<void> _syncAllNodes() async {
+    var pulledActivities = 0;
+    final pullErrors = <String>[];
     for (final node in _remoteNodes) {
       if (node.isActive) {
-        await _performSync(node);
+        final result = await _performSync(
+          node,
+          showSnackBar: false,
+          publishPublicContent: false,
+        );
+        if (result.success) {
+          pulledActivities += result.activitiesProcessed;
+        } else {
+          pullErrors.add('${node.name}: ${result.errorMessage}');
+        }
       }
     }
+    final publishSummary = await bestEffortPublicPublish(
+      () => _publishPublicContent(showSnackBar: false),
+    );
+    if (!mounted) return;
+    final message = _syncAllSummaryMessage(
+      pulledActivities: pulledActivities,
+      pullErrors: pullErrors,
+      publishSummary: publishSummary,
+    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<PublicPublishSummary> _publishPublicContent({
+    bool showSnackBar = true,
+  }) async {
+    final publicItems = (await _contentItemRepo.list())
+        .where((item) => item.visibility != ContentVisibility.private)
+        .toList();
+    if (publicItems.isEmpty) {
+      return const PublicPublishSummary(publicItems: 0);
+    }
+    final distributionPreference = _configuredDistributionPreference();
+    if (distributionPreference == DistributionPreference.localOnly) {
+      return PublicPublishSummary(
+        publicItems: publicItems.length,
+        skipped: publicItems.length,
+        skippedReasons: const {'localOnly'},
+      );
+    }
+
+    final service = ContentPublicationService(
+      contentItems: _contentItemRepo,
+      publications: _publicationRepo,
+      relaySettings: _nostrRelaySettingsStore,
+      remoteNodes: _remoteNodeRepo,
+      keyStore: _nostrKeyStore,
+      signingBridge: const SchnorrSigningBridge(),
+    );
+    var published = 0;
+    var failed = 0;
+    var enqueued = 0;
+    var skipped = 0;
+    final skippedReasons = <String>{};
+    final failureReasons = <String>{};
+    for (final item in publicItems) {
+      final result = await service.publishContentItem(
+        item,
+        distributionPreference: distributionPreference,
+      );
+      published += result.published;
+      failed += result.failed;
+      enqueued += result.enqueued;
+      failureReasons.addAll(result.errors);
+      if (result.enqueued == 0 && result.published == 0 && result.failed == 0) {
+        skipped++;
+        if (result.skippedReason != null) {
+          skippedReasons.add(result.skippedReason!);
+        }
+      }
+    }
+    await _loadData();
+    final summary = PublicPublishSummary(
+      publicItems: publicItems.length,
+      enqueued: enqueued,
+      published: published,
+      failed: failed,
+      skipped: skipped,
+      skippedReasons: skippedReasons,
+      failureReasons: failureReasons,
+    );
+    if (!mounted || !showSnackBar) return summary;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(_publishSummaryMessage(summary))));
+    return summary;
+  }
+
+  String _syncAllSummaryMessage({
+    required int pulledActivities,
+    required List<String> pullErrors,
+    required PublicPublishSummary publishSummary,
+  }) {
+    return appSyncSummaryMessage(
+      AppSyncResult(
+        pulledActivities: pulledActivities,
+        pullErrors: pullErrors,
+        publishSummary: publishSummary,
+      ),
+    );
+  }
+
+  String _publishSummaryMessage(PublicPublishSummary summary) {
+    return publicPublishSummaryMessage(summary);
+  }
+
+  DistributionPreference _configuredDistributionPreference() {
+    final hasNostr = _nostrRelays.any((relay) => relay.write);
+    final hasRelay = _remoteNodes.any((node) => node.isActive);
+    if (hasNostr && hasRelay) return DistributionPreference.nostrAndActivityPub;
+    if (hasNostr) return DistributionPreference.nostr;
+    if (hasRelay) return DistributionPreference.activityPub;
+    return DistributionPreference.localOnly;
   }
 
   Future<void> _retryNostrTarget(PublicationTarget target) async {
@@ -415,12 +547,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasSyncTargets =
+        _remoteNodes.isNotEmpty || _nostrRelays.any((relay) => relay.write);
 
     return AnsibleScreenScaffold(
       title: 'SYNC',
       leadingLabel: '← 設定',
       trailing: IconButton(
-        onPressed: _remoteNodes.isEmpty || _syncingNodes.values.any((v) => v)
+        onPressed: !hasSyncTargets || _syncingNodes.values.any((v) => v)
             ? null
             : _syncAllNodes,
         icon: const Icon(Icons.sync),
@@ -474,7 +608,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   ),
                 ),
                 const AnsibleMonoLabel(
-                  '我的裝置 · DEVICES',
+                  'Forum Hosts',
                   padding: EdgeInsets.fromLTRB(22, 0, 22, 8),
                 ),
                 if (_remoteNodes.isEmpty)
@@ -575,7 +709,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '還沒有設定同步節點。新增一台可信任裝置或小範圍測試 relay 後，內容才會離開本機。',
+                    '還沒有設定 Forum Host。新增一個可信任的 Forum Host 後，公開討論看板才會離開本機。',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AnsibleDesign.inkMuted,
                       height: 1.55,
@@ -589,7 +723,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           OutlinedButton.icon(
             onPressed: _showAddRemoteNodeDialog,
             icon: const Icon(Icons.add),
-            label: const Text('新增同步節點'),
+            label: const Text('新增 Forum Host'),
           ),
         ],
       ),
@@ -679,8 +813,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             const SizedBox(width: 4),
                             Text(
                               enabledCount > 0
-                                  ? '$enabledCount boards selected'
-                                  : 'No boards selected',
+                                  ? '$enabledCount hosted boards selected'
+                                  : 'No hosted boards selected',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AnsibleDesign.inkFaint,
                               ),
@@ -722,7 +856,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   Row(
                     children: [
                       Text(
-                        'Boards to Sync',
+                        'Hosted boards',
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -750,7 +884,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Select boards to sync. If no boards are selected, sync will skip this server.',
+                    'Select hosted board projections to sync from this Forum Host.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AnsibleDesign.inkMuted,
                     ),
@@ -760,7 +894,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        'No boards available',
+                        'No hosted boards available',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: AnsibleDesign.inkMuted,
                         ),

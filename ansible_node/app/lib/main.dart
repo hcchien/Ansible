@@ -111,6 +111,18 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'Ansible Node',
       theme: AnsibleDesign.theme(),
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        final effectiveScale = mediaQuery.textScaler.scale(
+          AnsibleDesign.appTextScale,
+        );
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: TextScaler.linear(effectiveScale),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: _loadingIdentity
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : _anchoredDid != null

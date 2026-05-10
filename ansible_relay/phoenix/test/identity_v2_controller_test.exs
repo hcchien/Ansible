@@ -2,7 +2,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
   use ExUnit.Case, async: false
   use Plug.Test
 
-  alias AnsibleRelay.DidAccountCache
+  alias AnsibleRelay.{DidAccountCache, IdentityCache, Repo}
   alias AnsibleRelay.Web.Router
 
   @router_opts Router.init([])
@@ -27,7 +27,15 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
   end
 
   setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+
     case DidAccountCache.start_link([]) do
+      {:ok, _} -> :ok
+      {:error, {:already_started, _}} -> :ok
+    end
+
+    case IdentityCache.start_link([]) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
     end
@@ -151,6 +159,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert body["did"] == @valid_did
     assert body["handle"] == "alice.trisaura.io"
     assert {:ok, %{public_key_hex: ^public_key_hex}} = DidAccountCache.get(@valid_did)
+    assert {:ok, %{public_key_hex: ^public_key_hex}} = IdentityCache.get(@valid_did)
   end
 
   test "anchor accepts development signatures only when enabled" do

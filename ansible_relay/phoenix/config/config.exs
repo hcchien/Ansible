@@ -12,6 +12,7 @@ config :ansible_relay, :did_cache_ttl_seconds, 7_776_000
 config :ansible_relay, :identity_challenge_ttl_seconds, 600
 config :ansible_relay, :port, 4000
 config :ansible_relay, :allow_dev_identity_signatures, false
+config :ansible_relay, :allow_dev_publication_signatures, false
 config :ansible_relay, :allow_dev_zkp_proofs, false
 
 config :ansible_relay, :zkp_verification_keys, [

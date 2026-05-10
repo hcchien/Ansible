@@ -2,6 +2,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
   @moduledoc "Accepts app-signed publication intents for relay-side distribution."
 
   import Plug.Conn
+  require Logger
 
   alias AnsibleRelay.{IdentityCache, PublicationIntentStore, SigVerifier}
 
@@ -19,7 +20,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
          :ok <- validate_signature_shape(params["signature"]),
          :ok <- validate_payload_hash(params["payload"], params["payload_hash"]),
          author_did = params["author_did"],
-         :ok <- check_did_verified(author_did),
+         :ok <- check_did_verified(author_did, params["signature"]),
          public_key = IdentityCache.public_key_hex(author_did),
          :ok <- check_signature(public_key, signing_payload(params), params["signature"]),
          {:ok, intent} <- PublicationIntentStore.accept(normalize(params)) do
@@ -43,15 +44,18 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
         send_json(conn, 422, %{error: "invalid_signature_scheme", expected: @signature_scheme})
 
       {:error, :malformed_signature} ->
+        log_rejected_signature(:malformed_signature, params)
         send_json(conn, 401, %{error: "invalid_signature"})
 
       {:error, :payload_hash_mismatch} ->
         send_json(conn, 422, %{error: "payload_hash_mismatch"})
 
       {:error, :unverified_did} ->
+        log_rejected_signature(:unverified_did, params)
         send_json(conn, 401, %{error: "unverified_did"})
 
       {:error, :bad_signature} ->
+        log_rejected_signature(:bad_signature, params)
         send_json(conn, 401, %{error: "invalid_signature"})
 
       {:error, :duplicate} ->
@@ -91,6 +95,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
     lower = String.downcase(signature)
 
     cond do
+      dev_publication_signature?(lower) -> :ok
       String.starts_with?(lower, "dev") -> {:error, :malformed_signature}
       String.starts_with?(lower, "stub") -> {:error, :malformed_signature}
       String.starts_with?(lower, "deadbeef") -> {:error, :malformed_signature}
@@ -114,14 +119,63 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
 
   defp validate_payload_hash(_payload, _payload_hash), do: {:error, :payload_hash_mismatch}
 
-  defp check_did_verified(did) do
-    if IdentityCache.verified?(did), do: :ok, else: {:error, :unverified_did}
+  defp check_did_verified(did, signature) do
+    cond do
+      IdentityCache.verified?(did) ->
+        :ok
+
+      dev_publication_signature?(signature) ->
+        Logger.warning(
+          "accepting unverified DID for development publication author=#{truncate(did, 36)}"
+        )
+
+        :ok
+
+      true ->
+        {:error, :unverified_did}
+    end
   end
 
-  defp check_signature(public_key, message, signature) do
+  defp check_signature(public_key, message, signature) when is_binary(signature) do
+    if dev_publication_signature?(signature) do
+      :ok
+    else
+      check_signature_with_public_key(public_key, message, signature)
+    end
+  end
+
+  defp check_signature_with_public_key(public_key, message, signature) do
     if SigVerifier.verify_ed25519(public_key, message, signature),
       do: :ok,
       else: {:error, :bad_signature}
+  end
+
+  defp dev_publication_signature?(signature) when is_binary(signature) do
+    Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false) &&
+      String.starts_with?(String.downcase(signature), "dev-signature-")
+  end
+
+  defp dev_publication_signature?(_signature), do: false
+
+  defp log_rejected_signature(reason, params) do
+    signature = Map.get(params, "signature", "")
+    author_did = Map.get(params, "author_did", "")
+
+    Logger.warning(
+      "publication intent rejected reason=#{reason} author=#{truncate(author_did, 36)} " <>
+        "signature_prefix=#{truncate(signature, 24)} signature_len=#{byte_size(to_string(signature))} " <>
+        "dev_publication_signatures=#{Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false)}"
+    )
+  end
+
+  defp truncate(value, max) do
+    value = to_string(value)
+
+    if String.length(value) > max do
+      String.slice(value, 0, max) <> "…"
+    else
+      value
+    end
   end
 
   defp normalize(params) do

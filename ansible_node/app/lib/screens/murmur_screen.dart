@@ -15,6 +15,7 @@ class MurmurScreen extends StatefulWidget {
     this.recentMurmurs = const [],
     this.murmurReferenceCounts = const {},
     this.onSaved,
+    this.onPublishContentItem,
   });
 
   final String authorDid;
@@ -22,6 +23,11 @@ class MurmurScreen extends StatefulWidget {
   final List<ContentItem> recentMurmurs;
   final Map<String, int> murmurReferenceCounts;
   final Future<void> Function()? onSaved;
+  final Future<void> Function(
+    ContentItem item,
+    DistributionPreference preference,
+  )?
+  onPublishContentItem;
 
   @override
   State<MurmurScreen> createState() => _MurmurScreenState();
@@ -31,6 +37,8 @@ class _MurmurScreenState extends State<MurmurScreen> {
   static const _limit = 500;
   final _bodyController = TextEditingController();
   ContentVisibility _visibility = ContentVisibility.private;
+  DistributionPreference _distributionPreference =
+      DistributionPreference.localOnly;
   bool _saving = false;
 
   @override
@@ -44,19 +52,21 @@ class _MurmurScreenState extends State<MurmurScreen> {
     if (body.isEmpty || widget.contentItemRepository == null) return;
     setState(() => _saving = true);
     final now = DateTime.now().toUtc();
-    await widget.contentItemRepository!.create(
-      ContentItem(
-        id: const Uuid().v4(),
-        authorDid: widget.authorDid,
-        mode: ContentMode.murmur,
-        body: body,
-        status: ContentStatus.active,
-        visibility: _visibility,
-        createdAt: now,
-        updatedAt: now,
-        localOnly: _visibility == ContentVisibility.private,
-      ),
+    final item = ContentItem(
+      id: const Uuid().v4(),
+      authorDid: widget.authorDid,
+      mode: ContentMode.murmur,
+      body: body,
+      status: ContentStatus.active,
+      visibility: _visibility,
+      createdAt: now,
+      updatedAt: now,
+      localOnly: _visibility == ContentVisibility.private,
     );
+    await widget.contentItemRepository!.create(item);
+    if (_visibility != ContentVisibility.private) {
+      await widget.onPublishContentItem?.call(item, _distributionPreference);
+    }
     if (!mounted) return;
     await widget.onSaved?.call();
     if (!mounted) return;
@@ -70,13 +80,19 @@ class _MurmurScreenState extends State<MurmurScreen> {
   }
 
   Future<void> _showVisibilitySheet() async {
-    final visibility = await showContentVisibilitySheet(
+    final choice = await showContentDistributionSheet(
       context: context,
-      current: _visibility,
+      current: ContentDistributionChoice(
+        visibility: _visibility,
+        distributionPreference: _distributionPreference,
+      ),
       subjectLabel: '這條 murmur',
     );
-    if (visibility == null || !mounted) return;
-    setState(() => _visibility = visibility);
+    if (choice == null || !mounted) return;
+    setState(() {
+      _visibility = choice.visibility;
+      _distributionPreference = choice.distributionPreference;
+    });
   }
 
   @override
@@ -122,7 +138,7 @@ class _MurmurScreenState extends State<MurmurScreen> {
               Text(
                 _visibility == ContentVisibility.private
                     ? '一句話、一個直覺、一個還沒理順的問題都可以。沒人會看到。'
-                    : '一句話、一個直覺、一個還沒理順的問題都可以。這則會標記為公開。',
+                    : '一句話、一個直覺、一個還沒理順的問題都可以。這則會標記為可同步。',
                 style: const TextStyle(
                   fontSize: 13,
                   height: 1.65,
@@ -193,13 +209,13 @@ class _MurmurScreenState extends State<MurmurScreen> {
                     child: Text(
                       switch (_visibility) {
                         ContentVisibility.private => '只給自己',
-                        ContentVisibility.unlisted => '送進讀書會',
+                        ContentVisibility.unlisted => '不列出但可同步',
                         ContentVisibility.public => '公開發布',
                       },
                       style: const TextStyle(
                         color: AnsibleDesign.inkFaint,
                         fontStyle: FontStyle.italic,
-                        fontSize: 12,
+                        fontSize: 13.5,
                       ),
                     ),
                   ),
@@ -295,7 +311,7 @@ class _RecentMurmurRow extends StatelessWidget {
             Text(
               murmur.body,
               style: const TextStyle(
-                fontSize: 14.5,
+                fontSize: AnsibleDesign.readingTextSize,
                 height: 1.6,
                 color: AnsibleDesign.ink,
                 fontStyle: FontStyle.italic,

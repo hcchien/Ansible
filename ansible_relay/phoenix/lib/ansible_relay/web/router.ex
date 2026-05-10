@@ -58,6 +58,19 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.OpsController.delta(conn, conn.query_params)
   end
 
+  # Forum Host — hosted-board discovery and creation
+  get "/api/v1/forum-host" do
+    AnsibleRelay.Web.Controllers.ForumHostController.info(conn, conn.query_params)
+  end
+
+  get "/api/v1/forum-host/boards" do
+    AnsibleRelay.Web.Controllers.ForumHostController.boards(conn, conn.query_params)
+  end
+
+  post "/api/v1/forum-host/boards" do
+    AnsibleRelay.Web.Controllers.ForumHostController.create_board(conn, conn.body_params)
+  end
+
   # V2 — Passkeys Identity
   post "/api/v2/identity/register" do
     AnsibleRelay.Web.Controllers.IdentityV2Controller.register(conn, conn.body_params)

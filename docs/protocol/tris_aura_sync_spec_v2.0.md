@@ -19,6 +19,14 @@ to Nostr relays from the app, and delegates ActivityPub federation to the relay
 layer. Existing `did:plc` references remain implementation context until they
 are replaced or bridged.
 
+Forum board ownership is also moving out of the local-canonical model. Forum
+Hosts own discussion boards, threads, posts, permissions, moderation, and the
+distribution FE state. Local `Board` rows are compatibility projections until
+they are bound to `(forumHostId, hostedBoardId)` through
+`HostedBoardProjection`/`BoardSubscription`, or replaced by `LocalCollection`
+for purely local personal grouping. `murmur` and `note` remain local-owned
+content and may be projected to selected Forum Hosts.
+
 ---
 
 ## 1. 核心設計哲學

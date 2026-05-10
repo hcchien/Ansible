@@ -4,12 +4,28 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 enum NetworkStatus {
-  online,      // Connected and can reach internet
-  offline,     // No network connection
-  checking,    // Currently checking status
+  online, // Connected and can reach internet
+  offline, // No network connection
+  checking, // Currently checking status
 }
 
-class NetworkStatusService extends ChangeNotifier {
+abstract class NetworkStatusMonitor extends ChangeNotifier {
+  NetworkStatus get status;
+  List<ConnectivityResult> get connectivityResults;
+  DateTime? get lastChecked;
+
+  bool get isOnline;
+  bool get isOffline;
+  bool get isChecking;
+
+  String get connectionType;
+
+  Future<void> checkStatus();
+  Future<bool> isUrlReachable(String url);
+}
+
+class NetworkStatusService extends ChangeNotifier
+    implements NetworkStatusMonitor {
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _subscription;
 
@@ -17,14 +33,21 @@ class NetworkStatusService extends ChangeNotifier {
   List<ConnectivityResult> _connectivityResults = [];
   DateTime? _lastChecked;
 
+  @override
   NetworkStatus get status => _status;
+  @override
   List<ConnectivityResult> get connectivityResults => _connectivityResults;
+  @override
   DateTime? get lastChecked => _lastChecked;
 
+  @override
   bool get isOnline => _status == NetworkStatus.online;
+  @override
   bool get isOffline => _status == NetworkStatus.offline;
+  @override
   bool get isChecking => _status == NetworkStatus.checking;
 
+  @override
   String get connectionType {
     if (_connectivityResults.isEmpty) return 'Unknown';
     final types = _connectivityResults.map((r) {
@@ -63,6 +86,7 @@ class NetworkStatusService extends ChangeNotifier {
     });
   }
 
+  @override
   Future<void> checkStatus() async {
     _status = NetworkStatus.checking;
     notifyListeners();
@@ -90,19 +114,23 @@ class NetworkStatusService extends ChangeNotifier {
 
     // We have a connection, verify internet access by pinging a reliable endpoint
     try {
-      final response = await http.get(
-        Uri.parse('https://www.google.com/generate_204'),
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(Uri.parse('https://www.google.com/generate_204'))
+          .timeout(const Duration(seconds: 5));
 
-      _status = response.statusCode == 204 ? NetworkStatus.online : NetworkStatus.offline;
+      _status = response.statusCode == 204
+          ? NetworkStatus.online
+          : NetworkStatus.offline;
     } catch (e) {
       // If Google fails, try another endpoint
       try {
-        final response = await http.get(
-          Uri.parse('https://www.cloudflare.com/cdn-cgi/trace'),
-        ).timeout(const Duration(seconds: 5));
+        final response = await http
+            .get(Uri.parse('https://www.cloudflare.com/cdn-cgi/trace'))
+            .timeout(const Duration(seconds: 5));
 
-        _status = response.statusCode == 200 ? NetworkStatus.online : NetworkStatus.offline;
+        _status = response.statusCode == 200
+            ? NetworkStatus.online
+            : NetworkStatus.offline;
       } catch (e) {
         // Consider online if we have connectivity but can't verify
         // (could be behind a captive portal or firewall)
@@ -114,6 +142,7 @@ class NetworkStatusService extends ChangeNotifier {
   }
 
   /// Check if a specific URL is reachable
+  @override
   Future<bool> isUrlReachable(String url) async {
     try {
       final uri = Uri.parse(url);

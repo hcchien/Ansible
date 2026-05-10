@@ -10,3 +10,4 @@ config :ansible_relay, AnsibleRelay.Repo,
 
 config :ansible_relay, :port, 4001
 config :ansible_relay, :allow_dev_identity_signatures, true
+config :ansible_relay, :allow_dev_publication_signatures, true

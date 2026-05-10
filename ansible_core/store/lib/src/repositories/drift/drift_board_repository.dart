@@ -10,7 +10,24 @@ class DriftBoardRepository implements BoardRepository {
 
   @override
   Future<void> create(entity.Board board) async {
-    await _db.into(_db.boards).insert(
+    final existingById = await getById(board.id);
+    if (existingById != null) {
+      await update(board);
+      return;
+    }
+
+    final existingBySlug = await (_db.select(
+      _db.boards,
+    )..where((t) => t.slug.equals(board.slug))).getSingleOrNull();
+    if (existingBySlug != null && existingBySlug.boardId != board.id) {
+      throw StateError(
+        'Board slug "${board.slug}" already belongs to ${existingBySlug.boardId}',
+      );
+    }
+
+    await _db
+        .into(_db.boards)
+        .insert(
           BoardsCompanion.insert(
             boardId: board.id,
             slug: board.slug,
@@ -20,14 +37,15 @@ class DriftBoardRepository implements BoardRepository {
             updatedAt: Value(board.updatedAt),
             isDeleted: Value(board.isDeleted),
           ),
-          mode: InsertMode.insertOrReplace,
+          mode: InsertMode.insert,
         );
   }
 
   @override
   Future<entity.Board?> getById(String id) async {
-    final row = await (_db.select(_db.boards)..where((t) => t.boardId.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.boards,
+    )..where((t) => t.boardId.equals(id))).getSingleOrNull();
     if (row == null) return null;
     return _mapRowToEntity(row);
   }
@@ -40,7 +58,9 @@ class DriftBoardRepository implements BoardRepository {
 
   @override
   Future<void> update(entity.Board board) async {
-    await (_db.update(_db.boards)..where((t) => t.boardId.equals(board.id))).write(
+    await (_db.update(
+      _db.boards,
+    )..where((t) => t.boardId.equals(board.id))).write(
       BoardsCompanion(
         slug: Value(board.slug),
         title: Value(board.title),
@@ -55,10 +75,7 @@ class DriftBoardRepository implements BoardRepository {
   Future<void> delete(String id) async {
     // Soft delete
     await (_db.update(_db.boards)..where((t) => t.boardId.equals(id))).write(
-      BoardsCompanion(
-        isDeleted: Value(true),
-        updatedAt: Value(DateTime.now()),
-      ),
+      BoardsCompanion(isDeleted: Value(true), updatedAt: Value(DateTime.now())),
     );
   }
 

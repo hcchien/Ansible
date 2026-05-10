@@ -19,8 +19,13 @@ class CrdtOpBuilder {
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
-    // Use Yrs delta for the primary 'title' field; metadata falls back to JSON.
-    final payload = _encodeYrsDelta(entityId, 'title', title);
+    final payload = _encodeJsonPayload({
+      'boardId': entityId,
+      'slug': slug,
+      'title': title,
+      'description': description,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    });
     return OpsQueueEntry(
       opId: opId,
       authorDid: authorDid,
@@ -44,7 +49,13 @@ class CrdtOpBuilder {
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
-    final payload = _encodeYrsDelta(entityId, 'content', content);
+    final payload = _encodeJsonPayload({
+      'boardId': boardId,
+      'threadId': threadId,
+      'content': content,
+      'parentPostId': parentPostId,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    });
     return OpsQueueEntry(
       opId: opId,
       authorDid: authorDid,
@@ -67,7 +78,13 @@ class CrdtOpBuilder {
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
-    final payload = _encodeYrsDelta(entityId, 'title', title);
+    final payload = _encodeJsonPayload({
+      'boardId': boardId,
+      'threadId': entityId,
+      'title': title,
+      'description': description,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    });
     return OpsQueueEntry(
       opId: opId,
       authorDid: authorDid,

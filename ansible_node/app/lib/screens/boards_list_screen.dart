@@ -1,7 +1,6 @@
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
-import 'package:uuid/uuid.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/follow_button.dart';
 import 'threads_list_screen.dart';
@@ -39,7 +38,6 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
   }
 
   Future<void> _loadBoards() async {
-    print('Loading boards...');
     setState(() => _isLoading = true);
     final boards = await _boardRepo.list();
     final followedBoardIds = <String>{};
@@ -57,9 +55,6 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
         followedBoardIds.add(board.id);
       }
     }
-    print(
-      'Loaded ${boards.length} boards: ${boards.map((b) => b.title).toList()}',
-    );
     setState(() {
       _boards = boards;
       _followedBoardIds = followedBoardIds;
@@ -79,35 +74,11 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
   }
 
   Future<void> _createBoard() async {
-    try {
-      print('Opening create board dialog...');
-      final result = await showDialog<Map<String, String?>>(
-        context: context,
-        builder: (context) => const BoardFormDialog(),
-      );
-
-      print('Dialog result: $result');
-      if (result != null) {
-        final boardId = const Uuid().v4();
-        final now = DateTime.now();
-        final slug = _slugify(result['title']!);
-        final board = Board(
-          id: boardId,
-          slug: slug.isEmpty ? boardId : slug,
-          title: result['title']!,
-          description: result['description'],
-          createdAt: now,
-          updatedAt: now,
-        );
-        print('Creating board: ${board.title}');
-        await _boardRepo.create(board);
-        print('Board created successfully');
-        _loadBoards();
-      }
-    } catch (e, stackTrace) {
-      print('Error creating board: $e');
-      print('Stack trace: $stackTrace');
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('請從主畫面新增 Forum Host hosted board；不再建立 local-only board。'),
+      ),
+    );
   }
 
   Future<void> _editBoard(Board board) async {
@@ -166,7 +137,7 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Boards'),
+        title: const Text('Hosted boards'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: _isLoading
@@ -183,14 +154,14 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No boards yet',
+                    'No hosted boards yet',
                     style: Theme.of(
                       context,
                     ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Create your first board to get started',
+                    'Add a Forum Host before creating discussion boards',
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
@@ -274,7 +245,7 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createBoard,
-        tooltip: 'Create Board',
+        tooltip: 'Create hosted board',
         child: const Icon(Icons.add),
       ),
     );

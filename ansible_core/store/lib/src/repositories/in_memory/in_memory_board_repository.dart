@@ -6,6 +6,18 @@ class InMemoryBoardRepository implements BoardRepository {
 
   @override
   Future<void> create(Board board) async {
+    final existing = _boards[board.id];
+    if (existing != null) {
+      _boards[board.id] = board;
+      return;
+    }
+    for (final current in _boards.values) {
+      if (current.slug == board.slug && current.id != board.id) {
+        throw StateError(
+          'Board slug "${board.slug}" already belongs to ${current.id}',
+        );
+      }
+    }
     _boards[board.id] = board;
   }
 

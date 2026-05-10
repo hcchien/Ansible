@@ -2,16 +2,19 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/ansible_design.dart';
+import '../widgets/note_markdown_text.dart';
 
 class NoteDetailScreen extends StatelessWidget {
   const NoteDetailScreen({
     super.key,
     required this.note,
     this.sourceMurmurs = const [],
+    this.onEdit,
   });
 
   final ContentItem note;
   final List<ContentItem> sourceMurmurs;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +23,7 @@ class NoteDetailScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(note: note),
+            _TopBar(note: note, onEdit: onEdit),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(22, 6, 22, 24),
@@ -44,10 +47,10 @@ class NoteDetailScreen extends StatelessWidget {
                     end: note.updatedAt,
                   ),
                   const _Hairline(margin: EdgeInsets.only(top: 8, bottom: 18)),
-                  Text(
+                  NoteMarkdownBody(
                     note.body,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: AnsibleDesign.readingTextSize,
                       height: 1.75,
                       color: AnsibleDesign.ink,
                     ),
@@ -57,7 +60,7 @@ class NoteDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const _BottomActionBar(),
+            _BottomActionBar(onEdit: onEdit),
           ],
         ),
       ),
@@ -87,9 +90,10 @@ class NoteDetailScreen extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.note});
+  const _TopBar({required this.note, required this.onEdit});
 
   final ContentItem note;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +110,7 @@ class _TopBar extends StatelessWidget {
                 '← 草地',
                 style: TextStyle(
                   fontFamily: AnsibleDesign.mono,
-                  fontSize: 10,
+                  fontSize: AnsibleDesign.navTextSize,
                   color: AnsibleDesign.inkMuted,
                   letterSpacing: 1.6,
                 ),
@@ -130,9 +134,23 @@ class _TopBar extends StatelessWidget {
                 letterSpacing: 1,
               ),
             ),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', enabled: false, child: Text('編輯')),
-              PopupMenuItem(value: 'share', enabled: false, child: Text('分享')),
+            onSelected: (value) {
+              if (value == 'edit' && onEdit != null) {
+                Navigator.of(context).pop();
+                onEdit!();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'edit',
+                enabled: onEdit != null,
+                child: const Text('編輯'),
+              ),
+              const PopupMenuItem(
+                value: 'share',
+                enabled: false,
+                child: Text('分享'),
+              ),
             ],
           ),
         ],
@@ -285,7 +303,9 @@ class _SourceLineageSection extends StatelessWidget {
 }
 
 class _BottomActionBar extends StatelessWidget {
-  const _BottomActionBar();
+  const _BottomActionBar({required this.onEdit});
+
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +319,15 @@ class _BottomActionBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _TextAction(label: '編輯', onTap: () => _showPending(context)),
+          _TextAction(
+            label: '編輯',
+            onTap: onEdit == null
+                ? () => _showPending(context)
+                : () {
+                    Navigator.of(context).pop();
+                    onEdit!();
+                  },
+          ),
           const SizedBox(width: 18),
           _TextAction(label: '分享', onTap: () => _showPending(context)),
           const Spacer(),

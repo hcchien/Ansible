@@ -26,6 +26,14 @@ The canonical model remains Ansible-native and protocol-neutral:
 - Visibility is an Ansible domain decision, not a protocol field.
 - Drift SQLite remains the local source of truth for private drafts, local
   content, and publication state.
+- Forum Hosts own discussion boards. Local `Board` rows are projections used for
+  routing, display, cache, and offline reads while the host-owned board identity
+  remains `(forumHostId, hostedBoardId)`.
+- `murmur` and `note` remain local canonical content. They may be projected to
+  Forum Hosts, Nostr relays, or ActivityPub via relay adapters without changing
+  local ownership.
+- Local-only personal grouping belongs to `LocalCollection`, not to discussion
+  boards.
 
 Nostr events and ActivityPub activities are projections. They must not become
 the only persisted representation of user content.
@@ -145,6 +153,23 @@ The relay/distribution server owns ActivityPub interoperability:
 
 The app sends signed publication intents to the relay. The relay validates the
 intent, projects it to ActivityPub, and records delivery status.
+
+## Forum Host Board Ownership
+
+Discussion boards are not local-canonical objects. A Forum Host owns hosted
+boards, threads, posts, permissions, moderation state, and distribution FE
+state. The app stores:
+
+- `ForumHost` records for configured distribution hosts.
+- `HostedBoardProjection` records for local board cache/routing.
+- `BoardSubscription` records for read/write opt-in and per-board cursors.
+- `BoardPublicationTarget` records for thread drafts, cross-posts, and
+  note/murmur projections.
+
+During migration, existing local `Board` rows remain valid as projections. New
+discussion board creation should select a Forum Host and create a hosted board
+there first. Multi-host distribution uses one primary hosted board plus
+cross-post targets; it must not invent a shared multi-primary board identity.
 
 ## Failure Behavior
 

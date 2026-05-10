@@ -41,7 +41,7 @@ class RelayApiClient {
       'limit': limit.toString(),
     };
     final uri = Uri.parse(
-      '$baseUrl/api/v1/sync/delta',
+      '$baseUrl/api/v1/ops/delta',
     ).replace(queryParameters: query);
     final response = await _client.get(uri, headers: authHeaders);
 
@@ -49,7 +49,8 @@ class RelayApiClient {
       throw StateError('Relay delta failed: ${response.statusCode}');
     }
 
-    return jsonDecode(response.body) as Map<String, dynamic>;
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return _normalizeDelta(body);
   }
 
   Map<String, String> get authHeaders {
@@ -58,11 +59,71 @@ class RelayApiClient {
       if (token != null && token.isNotEmpty) 'authorization': 'Bearer $token',
     };
   }
+
+  Map<String, dynamic> _normalizeDelta(Map<String, dynamic> body) {
+    final ops = body['ops'];
+    if (ops is! List<dynamic>) return body;
+
+    return {
+      'activities': ops
+          .map(
+            (op) => _opToActivityLogEntry(Map<String, dynamic>.from(op as Map)),
+          )
+          .toList(),
+      'nextCursor': body['next_cursor'] ?? body['nextCursor'] ?? 0,
+      'hasMore': body['has_more'] ?? body['hasMore'] ?? false,
+    };
+  }
+
+  Map<String, dynamic> _opToActivityLogEntry(Map<String, dynamic> op) {
+    final payload = _decodePayload(op['payload'] as String?);
+    final entityType = op['entity_type'] as String? ?? '';
+    final entityId = op['entity_id'] as String? ?? '';
+    final opId = op['op_id'] as String? ?? entityId;
+    final receivedAt =
+        op['received_at'] as String? ??
+        DateTime.now().toUtc().toIso8601String();
+
+    return {
+      'logId': op['log_id'] as int? ?? 0,
+      'activity': {
+        'activityId': opId,
+        'type': _activityType(op['op_type'] as String?),
+        'entityType': entityType,
+        'entityId': entityId,
+        'boardId': payload['boardId'],
+        'threadId': payload['threadId'],
+        'authorId': op['author_did'] as String? ?? '',
+        'createdAt': payload['createdAt'] as String? ?? receivedAt,
+        'payload': payload,
+      },
+    };
+  }
+
+  Map<String, dynamic> _decodePayload(String? payload) {
+    if (payload == null || payload.isEmpty) return {};
+    try {
+      return jsonDecode(utf8.decode(base64Decode(payload)))
+          as Map<String, dynamic>;
+    } catch (_) {
+      return {'rawPayload': payload};
+    }
+  }
+
+  String _activityType(String? opType) {
+    return switch (opType) {
+      'insert' => 'create',
+      'update' || 'crdt_merge' => 'update',
+      'delete' => 'delete',
+      _ => opType ?? 'update',
+    };
+  }
 }
 
 class RemoteSyncService {
   final RemoteNodeRepository _remoteNodeRepo;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
+  final HostedBoardRepository? _hostedBoardRepo;
   final BoardRepository _boardRepo;
   final ThreadRepository _threadRepo;
   final PostRepository _postRepo;
@@ -71,12 +132,14 @@ class RemoteSyncService {
   RemoteSyncService({
     required RemoteNodeRepository remoteNodeRepo,
     required BoardSyncConfigRepository boardSyncConfigRepo,
+    HostedBoardRepository? hostedBoardRepo,
     required BoardRepository boardRepo,
     required ThreadRepository threadRepo,
     required PostRepository postRepo,
     DateTime Function()? now,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _boardSyncConfigRepo = boardSyncConfigRepo,
+       _hostedBoardRepo = hostedBoardRepo,
        _boardRepo = boardRepo,
        _threadRepo = threadRepo,
        _postRepo = postRepo,
@@ -84,14 +147,35 @@ class RemoteSyncService {
 
   Future<SyncResult> syncFromNode(
     RelayApiClient remoteClient,
-    RemoteNode remoteNode,
-  ) async {
+    RemoteNode remoteNode, {
+    bool requireBoardSyncConfig = true,
+  }) async {
     try {
       final enabledConfigs = await _boardSyncConfigRepo.listEnabledByRemote(
         remoteNode.id,
       );
+      final hostedSubscriptions =
+          (await _hostedBoardRepo?.listSubscriptions(
+                    forumHostId: remoteNode.id,
+                  ) ??
+                  const <BoardSubscription>[])
+              .where((subscription) => subscription.readEnabled)
+              .toList();
+      final hostedProjections =
+          await _hostedBoardRepo?.listProjections(forumHostId: remoteNode.id) ??
+          const <HostedBoardProjection>[];
+      final hostedProjectionByBoardId = {
+        for (final projection in hostedProjections)
+          projection.hostedBoardId: projection,
+      };
+      final hostedSubscriptionByBoardId = {
+        for (final subscription in hostedSubscriptions)
+          subscription.hostedBoardId: subscription,
+      };
       final enabledBoardIdSet = enabledConfigs.map((c) => c.boardId).toSet();
-      if (enabledBoardIdSet.isEmpty) {
+      if (requireBoardSyncConfig &&
+          enabledBoardIdSet.isEmpty &&
+          hostedSubscriptions.isEmpty) {
         return SyncResult.success(
           activitiesProcessed: 0,
           newCursor: remoteNode.syncCursor,
@@ -115,19 +199,28 @@ class RemoteSyncService {
         final delta = DeltaResponse.fromJson(deltaJson);
 
         for (final entry in delta.activities) {
+          final hostedRoute = _routeHostedActivity(
+            entry.activity,
+            hostedSubscriptionByBoardId,
+            hostedProjectionByBoardId,
+          );
           final boardId = entry.activity.boardId;
-          if (boardId == null || !enabledBoardIdSet.contains(boardId)) {
+          final allowedByLegacy =
+              boardId != null && enabledBoardIdSet.contains(boardId);
+          if (requireBoardSyncConfig &&
+              !allowedByLegacy &&
+              hostedRoute == null) {
             continue;
           }
-          if (!_isWithinRetention(
-            entry.activity,
-            retentionDaysByBoard[boardId],
-            syncTime,
-          )) {
+          final activity = hostedRoute?.activity ?? entry.activity;
+          final retentionDays =
+              hostedRoute?.subscription.retentionDays ??
+              retentionDaysByBoard[activity.boardId ?? boardId];
+          if (!_isWithinRetention(activity, retentionDays, syncTime)) {
             continue;
           }
 
-          await _applyActivity(entry.activity);
+          await _applyActivity(activity);
           totalProcessed++;
         }
 
@@ -141,6 +234,13 @@ class RemoteSyncService {
         currentCursor,
         syncTime,
       );
+      for (final subscription in hostedSubscriptions) {
+        await _hostedBoardRepo?.updateSubscriptionCursor(
+          subscription.subscriptionId,
+          currentCursor,
+          syncTime,
+        );
+      }
 
       return SyncResult.success(
         activitiesProcessed: totalProcessed,
@@ -149,6 +249,68 @@ class RemoteSyncService {
     } catch (e) {
       return SyncResult.failure(errorMessage: e.toString());
     }
+  }
+
+  _HostedActivityRoute? _routeHostedActivity(
+    Activity activity,
+    Map<String, BoardSubscription> subscriptionByHostedBoardId,
+    Map<String, HostedBoardProjection> projectionByHostedBoardId,
+  ) {
+    if (subscriptionByHostedBoardId.isEmpty) return null;
+    final hostedBoardId = _hostedBoardIdFor(activity);
+    if (hostedBoardId == null) return null;
+    final subscription = subscriptionByHostedBoardId[hostedBoardId];
+    final projection = projectionByHostedBoardId[hostedBoardId];
+    if (subscription == null || projection == null) return null;
+    return _HostedActivityRoute(
+      subscription: subscription,
+      activity: _localProjectionActivity(activity, projection),
+    );
+  }
+
+  String? _hostedBoardIdFor(Activity activity) {
+    if (activity.entityType.toLowerCase() == 'board') {
+      return activity.boardId ?? activity.entityId;
+    }
+    return activity.boardId;
+  }
+
+  Activity _localProjectionActivity(
+    Activity activity,
+    HostedBoardProjection projection,
+  ) {
+    if (activity.entityType.toLowerCase() == 'board') {
+      return Activity(
+        activityId: activity.activityId,
+        originNodeId: activity.originNodeId,
+        type: activity.type,
+        entityType: activity.entityType,
+        entityId: projection.localBoardId,
+        boardId: projection.localBoardId,
+        threadId: activity.threadId,
+        authorId: activity.authorId,
+        createdAt: activity.createdAt,
+        payload: {
+          ...activity.payload,
+          'slug': projection.localSlug,
+          'title': projection.title,
+          if (projection.description != null)
+            'description': projection.description,
+        },
+      );
+    }
+    return Activity(
+      activityId: activity.activityId,
+      originNodeId: activity.originNodeId,
+      type: activity.type,
+      entityType: activity.entityType,
+      entityId: activity.entityId,
+      boardId: projection.localBoardId,
+      threadId: activity.threadId,
+      authorId: activity.authorId,
+      createdAt: activity.createdAt,
+      payload: activity.payload,
+    );
   }
 
   Future<SyncResult> syncFromRemote(RelayApiClient remoteClient) async {
@@ -209,9 +371,14 @@ class RemoteSyncService {
       await _boardRepo.delete(activity.entityId);
     } else {
       final now = DateTime.now();
+      final existing = await _boardRepo.getById(activity.entityId);
+      final slug = await _uniqueBoardSlug(
+        payload['slug'] as String? ?? activity.entityId,
+        activity.entityId,
+      );
       final board = Board(
         id: activity.entityId,
-        slug: payload['slug'] as String? ?? activity.entityId,
+        slug: slug,
         title: payload['title'] as String? ?? 'Untitled',
         description: payload['description'] as String?,
         createdAt: activity.createdAt,
@@ -219,13 +386,41 @@ class RemoteSyncService {
         isDeleted: payload['isDeleted'] as bool? ?? false,
       );
 
-      final existing = await _boardRepo.getById(activity.entityId);
       if (existing == null) {
         await _boardRepo.create(board);
       } else {
         await _boardRepo.update(board);
       }
     }
+  }
+
+  Future<String> _uniqueBoardSlug(String desiredSlug, String boardId) async {
+    final base = desiredSlug.trim().isEmpty ? boardId : desiredSlug.trim();
+    final boards = await _boardRepo.list();
+    final usedByOtherId = {
+      for (final board in boards)
+        if (board.id != boardId) board.slug,
+    };
+    if (!usedByOtherId.contains(base)) return base;
+
+    final suffix = _slugSuffix(boardId);
+    var candidate = '$base-$suffix';
+    var attempt = 2;
+    while (usedByOtherId.contains(candidate)) {
+      candidate = '$base-$suffix-$attempt';
+      attempt += 1;
+    }
+    return candidate;
+  }
+
+  String _slugSuffix(String id) {
+    final normalized = id
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    if (normalized.isEmpty) return 'remote';
+    if (normalized.length <= 12) return normalized;
+    return normalized.substring(0, 12);
   }
 
   Future<void> _applyThreadActivity(Activity activity) async {
@@ -289,4 +484,14 @@ class RemoteSyncService {
       }
     }
   }
+}
+
+class _HostedActivityRoute {
+  final BoardSubscription subscription;
+  final Activity activity;
+
+  const _HostedActivityRoute({
+    required this.subscription,
+    required this.activity,
+  });
 }

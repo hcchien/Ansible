@@ -1,3 +1,5 @@
+import 'forum_host.dart';
+
 class RemoteNode {
   final String id;
   final String name;
@@ -93,5 +95,21 @@ class RemoteNode {
       return DateTime.parse(value);
     }
     return null;
+  }
+}
+
+extension RemoteNodeForumHostCompat on RemoteNode {
+  ForumHost toForumHost() {
+    return ForumHost(
+      forumHostId: id,
+      displayName: name,
+      baseUrl: url,
+      canonicalHostUri: url,
+      serverKind: 'ansibleForumHost',
+      capabilities: const {},
+      isActive: isActive,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
   }
 }

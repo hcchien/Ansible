@@ -57,6 +57,9 @@ void main() {
     );
 
     expect(find.text('Nostr + ActivityPub'), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const Key('distribution_activitypub_toggle')),
+    );
     await tester.tap(find.byKey(const Key('distribution_activitypub_toggle')));
     await tester.pumpAndSettle();
     expect(find.text('Nostr'), findsWidgets);
@@ -80,6 +83,9 @@ void main() {
       onResult: (value) => choice = value,
     );
 
+    await tester.ensureVisible(
+      find.byKey(const Key('distribution_nostr_toggle')),
+    );
     await tester.tap(find.byKey(const Key('distribution_nostr_toggle')));
     await tester.pumpAndSettle();
     expect(find.text('ActivityPub'), findsWidgets);
@@ -89,6 +95,21 @@ void main() {
 
     expect(choice!.visibility, ContentVisibility.unlisted);
     expect(choice!.distributionPreference, DistributionPreference.activityPub);
+  });
+
+  testWidgets('unlisted visibility copy does not mention demo circle names', (
+    tester,
+  ) async {
+    await _pumpDistributionSheet(
+      tester,
+      current: ContentDistributionChoice.forVisibility(
+        ContentVisibility.unlisted,
+      ),
+      onResult: (_) {},
+    );
+
+    expect(find.text('不列出'), findsOneWidget);
+    expect(find.textContaining('讀書會'), findsNothing);
   });
 }
 

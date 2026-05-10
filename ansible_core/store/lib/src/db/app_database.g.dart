@@ -471,6 +471,2771 @@ class BoardsCompanion extends UpdateCompanion<Board> {
   }
 }
 
+class $ForumHostsTable extends ForumHosts
+    with TableInfo<$ForumHostsTable, ForumHost> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ForumHostsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _forumHostIdMeta = const VerificationMeta(
+    'forumHostId',
+  );
+  @override
+  late final GeneratedColumn<String> forumHostId = GeneratedColumn<String>(
+    'forum_host_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseUrlMeta = const VerificationMeta(
+    'baseUrl',
+  );
+  @override
+  late final GeneratedColumn<String> baseUrl = GeneratedColumn<String>(
+    'base_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _canonicalHostUriMeta = const VerificationMeta(
+    'canonicalHostUri',
+  );
+  @override
+  late final GeneratedColumn<String> canonicalHostUri = GeneratedColumn<String>(
+    'canonical_host_uri',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverKindMeta = const VerificationMeta(
+    'serverKind',
+  );
+  @override
+  late final GeneratedColumn<String> serverKind = GeneratedColumn<String>(
+    'server_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _capabilitiesJsonMeta = const VerificationMeta(
+    'capabilitiesJson',
+  );
+  @override
+  late final GeneratedColumn<String> capabilitiesJson = GeneratedColumn<String>(
+    'capabilities_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    forumHostId,
+    displayName,
+    baseUrl,
+    canonicalHostUri,
+    serverKind,
+    capabilitiesJson,
+    isActive,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'forum_hosts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ForumHost> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('forum_host_id')) {
+      context.handle(
+        _forumHostIdMeta,
+        forumHostId.isAcceptableOrUnknown(
+          data['forum_host_id']!,
+          _forumHostIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_forumHostIdMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('base_url')) {
+      context.handle(
+        _baseUrlMeta,
+        baseUrl.isAcceptableOrUnknown(data['base_url']!, _baseUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_baseUrlMeta);
+    }
+    if (data.containsKey('canonical_host_uri')) {
+      context.handle(
+        _canonicalHostUriMeta,
+        canonicalHostUri.isAcceptableOrUnknown(
+          data['canonical_host_uri']!,
+          _canonicalHostUriMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_canonicalHostUriMeta);
+    }
+    if (data.containsKey('server_kind')) {
+      context.handle(
+        _serverKindMeta,
+        serverKind.isAcceptableOrUnknown(data['server_kind']!, _serverKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverKindMeta);
+    }
+    if (data.containsKey('capabilities_json')) {
+      context.handle(
+        _capabilitiesJsonMeta,
+        capabilitiesJson.isAcceptableOrUnknown(
+          data['capabilities_json']!,
+          _capabilitiesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {forumHostId};
+  @override
+  ForumHost map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ForumHost(
+      forumHostId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forum_host_id'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      baseUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_url'],
+      )!,
+      canonicalHostUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}canonical_host_uri'],
+      )!,
+      serverKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_kind'],
+      )!,
+      capabilitiesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}capabilities_json'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ForumHostsTable createAlias(String alias) {
+    return $ForumHostsTable(attachedDatabase, alias);
+  }
+}
+
+class ForumHost extends DataClass implements Insertable<ForumHost> {
+  final String forumHostId;
+  final String displayName;
+  final String baseUrl;
+  final String canonicalHostUri;
+  final String serverKind;
+  final String capabilitiesJson;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ForumHost({
+    required this.forumHostId,
+    required this.displayName,
+    required this.baseUrl,
+    required this.canonicalHostUri,
+    required this.serverKind,
+    required this.capabilitiesJson,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['forum_host_id'] = Variable<String>(forumHostId);
+    map['display_name'] = Variable<String>(displayName);
+    map['base_url'] = Variable<String>(baseUrl);
+    map['canonical_host_uri'] = Variable<String>(canonicalHostUri);
+    map['server_kind'] = Variable<String>(serverKind);
+    map['capabilities_json'] = Variable<String>(capabilitiesJson);
+    map['is_active'] = Variable<bool>(isActive);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ForumHostsCompanion toCompanion(bool nullToAbsent) {
+    return ForumHostsCompanion(
+      forumHostId: Value(forumHostId),
+      displayName: Value(displayName),
+      baseUrl: Value(baseUrl),
+      canonicalHostUri: Value(canonicalHostUri),
+      serverKind: Value(serverKind),
+      capabilitiesJson: Value(capabilitiesJson),
+      isActive: Value(isActive),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ForumHost.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ForumHost(
+      forumHostId: serializer.fromJson<String>(json['forumHostId']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      baseUrl: serializer.fromJson<String>(json['baseUrl']),
+      canonicalHostUri: serializer.fromJson<String>(json['canonicalHostUri']),
+      serverKind: serializer.fromJson<String>(json['serverKind']),
+      capabilitiesJson: serializer.fromJson<String>(json['capabilitiesJson']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'forumHostId': serializer.toJson<String>(forumHostId),
+      'displayName': serializer.toJson<String>(displayName),
+      'baseUrl': serializer.toJson<String>(baseUrl),
+      'canonicalHostUri': serializer.toJson<String>(canonicalHostUri),
+      'serverKind': serializer.toJson<String>(serverKind),
+      'capabilitiesJson': serializer.toJson<String>(capabilitiesJson),
+      'isActive': serializer.toJson<bool>(isActive),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ForumHost copyWith({
+    String? forumHostId,
+    String? displayName,
+    String? baseUrl,
+    String? canonicalHostUri,
+    String? serverKind,
+    String? capabilitiesJson,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ForumHost(
+    forumHostId: forumHostId ?? this.forumHostId,
+    displayName: displayName ?? this.displayName,
+    baseUrl: baseUrl ?? this.baseUrl,
+    canonicalHostUri: canonicalHostUri ?? this.canonicalHostUri,
+    serverKind: serverKind ?? this.serverKind,
+    capabilitiesJson: capabilitiesJson ?? this.capabilitiesJson,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ForumHost copyWithCompanion(ForumHostsCompanion data) {
+    return ForumHost(
+      forumHostId: data.forumHostId.present
+          ? data.forumHostId.value
+          : this.forumHostId,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      baseUrl: data.baseUrl.present ? data.baseUrl.value : this.baseUrl,
+      canonicalHostUri: data.canonicalHostUri.present
+          ? data.canonicalHostUri.value
+          : this.canonicalHostUri,
+      serverKind: data.serverKind.present
+          ? data.serverKind.value
+          : this.serverKind,
+      capabilitiesJson: data.capabilitiesJson.present
+          ? data.capabilitiesJson.value
+          : this.capabilitiesJson,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ForumHost(')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('displayName: $displayName, ')
+          ..write('baseUrl: $baseUrl, ')
+          ..write('canonicalHostUri: $canonicalHostUri, ')
+          ..write('serverKind: $serverKind, ')
+          ..write('capabilitiesJson: $capabilitiesJson, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    forumHostId,
+    displayName,
+    baseUrl,
+    canonicalHostUri,
+    serverKind,
+    capabilitiesJson,
+    isActive,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ForumHost &&
+          other.forumHostId == this.forumHostId &&
+          other.displayName == this.displayName &&
+          other.baseUrl == this.baseUrl &&
+          other.canonicalHostUri == this.canonicalHostUri &&
+          other.serverKind == this.serverKind &&
+          other.capabilitiesJson == this.capabilitiesJson &&
+          other.isActive == this.isActive &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ForumHostsCompanion extends UpdateCompanion<ForumHost> {
+  final Value<String> forumHostId;
+  final Value<String> displayName;
+  final Value<String> baseUrl;
+  final Value<String> canonicalHostUri;
+  final Value<String> serverKind;
+  final Value<String> capabilitiesJson;
+  final Value<bool> isActive;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ForumHostsCompanion({
+    this.forumHostId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.baseUrl = const Value.absent(),
+    this.canonicalHostUri = const Value.absent(),
+    this.serverKind = const Value.absent(),
+    this.capabilitiesJson = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ForumHostsCompanion.insert({
+    required String forumHostId,
+    required String displayName,
+    required String baseUrl,
+    required String canonicalHostUri,
+    required String serverKind,
+    this.capabilitiesJson = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : forumHostId = Value(forumHostId),
+       displayName = Value(displayName),
+       baseUrl = Value(baseUrl),
+       canonicalHostUri = Value(canonicalHostUri),
+       serverKind = Value(serverKind);
+  static Insertable<ForumHost> custom({
+    Expression<String>? forumHostId,
+    Expression<String>? displayName,
+    Expression<String>? baseUrl,
+    Expression<String>? canonicalHostUri,
+    Expression<String>? serverKind,
+    Expression<String>? capabilitiesJson,
+    Expression<bool>? isActive,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (forumHostId != null) 'forum_host_id': forumHostId,
+      if (displayName != null) 'display_name': displayName,
+      if (baseUrl != null) 'base_url': baseUrl,
+      if (canonicalHostUri != null) 'canonical_host_uri': canonicalHostUri,
+      if (serverKind != null) 'server_kind': serverKind,
+      if (capabilitiesJson != null) 'capabilities_json': capabilitiesJson,
+      if (isActive != null) 'is_active': isActive,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ForumHostsCompanion copyWith({
+    Value<String>? forumHostId,
+    Value<String>? displayName,
+    Value<String>? baseUrl,
+    Value<String>? canonicalHostUri,
+    Value<String>? serverKind,
+    Value<String>? capabilitiesJson,
+    Value<bool>? isActive,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ForumHostsCompanion(
+      forumHostId: forumHostId ?? this.forumHostId,
+      displayName: displayName ?? this.displayName,
+      baseUrl: baseUrl ?? this.baseUrl,
+      canonicalHostUri: canonicalHostUri ?? this.canonicalHostUri,
+      serverKind: serverKind ?? this.serverKind,
+      capabilitiesJson: capabilitiesJson ?? this.capabilitiesJson,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (forumHostId.present) {
+      map['forum_host_id'] = Variable<String>(forumHostId.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (baseUrl.present) {
+      map['base_url'] = Variable<String>(baseUrl.value);
+    }
+    if (canonicalHostUri.present) {
+      map['canonical_host_uri'] = Variable<String>(canonicalHostUri.value);
+    }
+    if (serverKind.present) {
+      map['server_kind'] = Variable<String>(serverKind.value);
+    }
+    if (capabilitiesJson.present) {
+      map['capabilities_json'] = Variable<String>(capabilitiesJson.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ForumHostsCompanion(')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('displayName: $displayName, ')
+          ..write('baseUrl: $baseUrl, ')
+          ..write('canonicalHostUri: $canonicalHostUri, ')
+          ..write('serverKind: $serverKind, ')
+          ..write('capabilitiesJson: $capabilitiesJson, ')
+          ..write('isActive: $isActive, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HostedBoardProjectionsTable extends HostedBoardProjections
+    with TableInfo<$HostedBoardProjectionsTable, HostedBoardProjection> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HostedBoardProjectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _localBoardIdMeta = const VerificationMeta(
+    'localBoardId',
+  );
+  @override
+  late final GeneratedColumn<String> localBoardId = GeneratedColumn<String>(
+    'local_board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _forumHostIdMeta = const VerificationMeta(
+    'forumHostId',
+  );
+  @override
+  late final GeneratedColumn<String> forumHostId = GeneratedColumn<String>(
+    'forum_host_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hostedBoardIdMeta = const VerificationMeta(
+    'hostedBoardId',
+  );
+  @override
+  late final GeneratedColumn<String> hostedBoardId = GeneratedColumn<String>(
+    'hosted_board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _canonicalBoardUriMeta = const VerificationMeta(
+    'canonicalBoardUri',
+  );
+  @override
+  late final GeneratedColumn<String> canonicalBoardUri =
+      GeneratedColumn<String>(
+        'canonical_board_uri',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _remoteSlugMeta = const VerificationMeta(
+    'remoteSlug',
+  );
+  @override
+  late final GeneratedColumn<String> remoteSlug = GeneratedColumn<String>(
+    'remote_slug',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localSlugMeta = const VerificationMeta(
+    'localSlug',
+  );
+  @override
+  late final GeneratedColumn<String> localSlug = GeneratedColumn<String>(
+    'local_slug',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _permissionsJsonMeta = const VerificationMeta(
+    'permissionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> permissionsJson = GeneratedColumn<String>(
+    'permissions_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _lastSeenCursorMeta = const VerificationMeta(
+    'lastSeenCursor',
+  );
+  @override
+  late final GeneratedColumn<int> lastSeenCursor = GeneratedColumn<int>(
+    'last_seen_cursor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    localBoardId,
+    forumHostId,
+    hostedBoardId,
+    canonicalBoardUri,
+    remoteSlug,
+    localSlug,
+    title,
+    description,
+    permissionsJson,
+    lastSeenCursor,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'hosted_board_projections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HostedBoardProjection> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('local_board_id')) {
+      context.handle(
+        _localBoardIdMeta,
+        localBoardId.isAcceptableOrUnknown(
+          data['local_board_id']!,
+          _localBoardIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localBoardIdMeta);
+    }
+    if (data.containsKey('forum_host_id')) {
+      context.handle(
+        _forumHostIdMeta,
+        forumHostId.isAcceptableOrUnknown(
+          data['forum_host_id']!,
+          _forumHostIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_forumHostIdMeta);
+    }
+    if (data.containsKey('hosted_board_id')) {
+      context.handle(
+        _hostedBoardIdMeta,
+        hostedBoardId.isAcceptableOrUnknown(
+          data['hosted_board_id']!,
+          _hostedBoardIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_hostedBoardIdMeta);
+    }
+    if (data.containsKey('canonical_board_uri')) {
+      context.handle(
+        _canonicalBoardUriMeta,
+        canonicalBoardUri.isAcceptableOrUnknown(
+          data['canonical_board_uri']!,
+          _canonicalBoardUriMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_canonicalBoardUriMeta);
+    }
+    if (data.containsKey('remote_slug')) {
+      context.handle(
+        _remoteSlugMeta,
+        remoteSlug.isAcceptableOrUnknown(data['remote_slug']!, _remoteSlugMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteSlugMeta);
+    }
+    if (data.containsKey('local_slug')) {
+      context.handle(
+        _localSlugMeta,
+        localSlug.isAcceptableOrUnknown(data['local_slug']!, _localSlugMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localSlugMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('permissions_json')) {
+      context.handle(
+        _permissionsJsonMeta,
+        permissionsJson.isAcceptableOrUnknown(
+          data['permissions_json']!,
+          _permissionsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_seen_cursor')) {
+      context.handle(
+        _lastSeenCursorMeta,
+        lastSeenCursor.isAcceptableOrUnknown(
+          data['last_seen_cursor']!,
+          _lastSeenCursorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {localBoardId};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {forumHostId, hostedBoardId},
+  ];
+  @override
+  HostedBoardProjection map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HostedBoardProjection(
+      localBoardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_board_id'],
+      )!,
+      forumHostId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forum_host_id'],
+      )!,
+      hostedBoardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hosted_board_id'],
+      )!,
+      canonicalBoardUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}canonical_board_uri'],
+      )!,
+      remoteSlug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_slug'],
+      )!,
+      localSlug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_slug'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      permissionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}permissions_json'],
+      )!,
+      lastSeenCursor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_seen_cursor'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $HostedBoardProjectionsTable createAlias(String alias) {
+    return $HostedBoardProjectionsTable(attachedDatabase, alias);
+  }
+}
+
+class HostedBoardProjection extends DataClass
+    implements Insertable<HostedBoardProjection> {
+  final String localBoardId;
+  final String forumHostId;
+  final String hostedBoardId;
+  final String canonicalBoardUri;
+  final String remoteSlug;
+  final String localSlug;
+  final String title;
+  final String? description;
+  final String permissionsJson;
+  final int lastSeenCursor;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isDeleted;
+  const HostedBoardProjection({
+    required this.localBoardId,
+    required this.forumHostId,
+    required this.hostedBoardId,
+    required this.canonicalBoardUri,
+    required this.remoteSlug,
+    required this.localSlug,
+    required this.title,
+    this.description,
+    required this.permissionsJson,
+    required this.lastSeenCursor,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.isDeleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['local_board_id'] = Variable<String>(localBoardId);
+    map['forum_host_id'] = Variable<String>(forumHostId);
+    map['hosted_board_id'] = Variable<String>(hostedBoardId);
+    map['canonical_board_uri'] = Variable<String>(canonicalBoardUri);
+    map['remote_slug'] = Variable<String>(remoteSlug);
+    map['local_slug'] = Variable<String>(localSlug);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['permissions_json'] = Variable<String>(permissionsJson);
+    map['last_seen_cursor'] = Variable<int>(lastSeenCursor);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    return map;
+  }
+
+  HostedBoardProjectionsCompanion toCompanion(bool nullToAbsent) {
+    return HostedBoardProjectionsCompanion(
+      localBoardId: Value(localBoardId),
+      forumHostId: Value(forumHostId),
+      hostedBoardId: Value(hostedBoardId),
+      canonicalBoardUri: Value(canonicalBoardUri),
+      remoteSlug: Value(remoteSlug),
+      localSlug: Value(localSlug),
+      title: Value(title),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      permissionsJson: Value(permissionsJson),
+      lastSeenCursor: Value(lastSeenCursor),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+    );
+  }
+
+  factory HostedBoardProjection.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HostedBoardProjection(
+      localBoardId: serializer.fromJson<String>(json['localBoardId']),
+      forumHostId: serializer.fromJson<String>(json['forumHostId']),
+      hostedBoardId: serializer.fromJson<String>(json['hostedBoardId']),
+      canonicalBoardUri: serializer.fromJson<String>(json['canonicalBoardUri']),
+      remoteSlug: serializer.fromJson<String>(json['remoteSlug']),
+      localSlug: serializer.fromJson<String>(json['localSlug']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String?>(json['description']),
+      permissionsJson: serializer.fromJson<String>(json['permissionsJson']),
+      lastSeenCursor: serializer.fromJson<int>(json['lastSeenCursor']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'localBoardId': serializer.toJson<String>(localBoardId),
+      'forumHostId': serializer.toJson<String>(forumHostId),
+      'hostedBoardId': serializer.toJson<String>(hostedBoardId),
+      'canonicalBoardUri': serializer.toJson<String>(canonicalBoardUri),
+      'remoteSlug': serializer.toJson<String>(remoteSlug),
+      'localSlug': serializer.toJson<String>(localSlug),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String?>(description),
+      'permissionsJson': serializer.toJson<String>(permissionsJson),
+      'lastSeenCursor': serializer.toJson<int>(lastSeenCursor),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+    };
+  }
+
+  HostedBoardProjection copyWith({
+    String? localBoardId,
+    String? forumHostId,
+    String? hostedBoardId,
+    String? canonicalBoardUri,
+    String? remoteSlug,
+    String? localSlug,
+    String? title,
+    Value<String?> description = const Value.absent(),
+    String? permissionsJson,
+    int? lastSeenCursor,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isDeleted,
+  }) => HostedBoardProjection(
+    localBoardId: localBoardId ?? this.localBoardId,
+    forumHostId: forumHostId ?? this.forumHostId,
+    hostedBoardId: hostedBoardId ?? this.hostedBoardId,
+    canonicalBoardUri: canonicalBoardUri ?? this.canonicalBoardUri,
+    remoteSlug: remoteSlug ?? this.remoteSlug,
+    localSlug: localSlug ?? this.localSlug,
+    title: title ?? this.title,
+    description: description.present ? description.value : this.description,
+    permissionsJson: permissionsJson ?? this.permissionsJson,
+    lastSeenCursor: lastSeenCursor ?? this.lastSeenCursor,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+  );
+  HostedBoardProjection copyWithCompanion(
+    HostedBoardProjectionsCompanion data,
+  ) {
+    return HostedBoardProjection(
+      localBoardId: data.localBoardId.present
+          ? data.localBoardId.value
+          : this.localBoardId,
+      forumHostId: data.forumHostId.present
+          ? data.forumHostId.value
+          : this.forumHostId,
+      hostedBoardId: data.hostedBoardId.present
+          ? data.hostedBoardId.value
+          : this.hostedBoardId,
+      canonicalBoardUri: data.canonicalBoardUri.present
+          ? data.canonicalBoardUri.value
+          : this.canonicalBoardUri,
+      remoteSlug: data.remoteSlug.present
+          ? data.remoteSlug.value
+          : this.remoteSlug,
+      localSlug: data.localSlug.present ? data.localSlug.value : this.localSlug,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      permissionsJson: data.permissionsJson.present
+          ? data.permissionsJson.value
+          : this.permissionsJson,
+      lastSeenCursor: data.lastSeenCursor.present
+          ? data.lastSeenCursor.value
+          : this.lastSeenCursor,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HostedBoardProjection(')
+          ..write('localBoardId: $localBoardId, ')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('hostedBoardId: $hostedBoardId, ')
+          ..write('canonicalBoardUri: $canonicalBoardUri, ')
+          ..write('remoteSlug: $remoteSlug, ')
+          ..write('localSlug: $localSlug, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('permissionsJson: $permissionsJson, ')
+          ..write('lastSeenCursor: $lastSeenCursor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    localBoardId,
+    forumHostId,
+    hostedBoardId,
+    canonicalBoardUri,
+    remoteSlug,
+    localSlug,
+    title,
+    description,
+    permissionsJson,
+    lastSeenCursor,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HostedBoardProjection &&
+          other.localBoardId == this.localBoardId &&
+          other.forumHostId == this.forumHostId &&
+          other.hostedBoardId == this.hostedBoardId &&
+          other.canonicalBoardUri == this.canonicalBoardUri &&
+          other.remoteSlug == this.remoteSlug &&
+          other.localSlug == this.localSlug &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.permissionsJson == this.permissionsJson &&
+          other.lastSeenCursor == this.lastSeenCursor &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
+}
+
+class HostedBoardProjectionsCompanion
+    extends UpdateCompanion<HostedBoardProjection> {
+  final Value<String> localBoardId;
+  final Value<String> forumHostId;
+  final Value<String> hostedBoardId;
+  final Value<String> canonicalBoardUri;
+  final Value<String> remoteSlug;
+  final Value<String> localSlug;
+  final Value<String> title;
+  final Value<String?> description;
+  final Value<String> permissionsJson;
+  final Value<int> lastSeenCursor;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<int> rowid;
+  const HostedBoardProjectionsCompanion({
+    this.localBoardId = const Value.absent(),
+    this.forumHostId = const Value.absent(),
+    this.hostedBoardId = const Value.absent(),
+    this.canonicalBoardUri = const Value.absent(),
+    this.remoteSlug = const Value.absent(),
+    this.localSlug = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.permissionsJson = const Value.absent(),
+    this.lastSeenCursor = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HostedBoardProjectionsCompanion.insert({
+    required String localBoardId,
+    required String forumHostId,
+    required String hostedBoardId,
+    required String canonicalBoardUri,
+    required String remoteSlug,
+    required String localSlug,
+    required String title,
+    this.description = const Value.absent(),
+    this.permissionsJson = const Value.absent(),
+    this.lastSeenCursor = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : localBoardId = Value(localBoardId),
+       forumHostId = Value(forumHostId),
+       hostedBoardId = Value(hostedBoardId),
+       canonicalBoardUri = Value(canonicalBoardUri),
+       remoteSlug = Value(remoteSlug),
+       localSlug = Value(localSlug),
+       title = Value(title);
+  static Insertable<HostedBoardProjection> custom({
+    Expression<String>? localBoardId,
+    Expression<String>? forumHostId,
+    Expression<String>? hostedBoardId,
+    Expression<String>? canonicalBoardUri,
+    Expression<String>? remoteSlug,
+    Expression<String>? localSlug,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<String>? permissionsJson,
+    Expression<int>? lastSeenCursor,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (localBoardId != null) 'local_board_id': localBoardId,
+      if (forumHostId != null) 'forum_host_id': forumHostId,
+      if (hostedBoardId != null) 'hosted_board_id': hostedBoardId,
+      if (canonicalBoardUri != null) 'canonical_board_uri': canonicalBoardUri,
+      if (remoteSlug != null) 'remote_slug': remoteSlug,
+      if (localSlug != null) 'local_slug': localSlug,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (permissionsJson != null) 'permissions_json': permissionsJson,
+      if (lastSeenCursor != null) 'last_seen_cursor': lastSeenCursor,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HostedBoardProjectionsCompanion copyWith({
+    Value<String>? localBoardId,
+    Value<String>? forumHostId,
+    Value<String>? hostedBoardId,
+    Value<String>? canonicalBoardUri,
+    Value<String>? remoteSlug,
+    Value<String>? localSlug,
+    Value<String>? title,
+    Value<String?>? description,
+    Value<String>? permissionsJson,
+    Value<int>? lastSeenCursor,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+    Value<int>? rowid,
+  }) {
+    return HostedBoardProjectionsCompanion(
+      localBoardId: localBoardId ?? this.localBoardId,
+      forumHostId: forumHostId ?? this.forumHostId,
+      hostedBoardId: hostedBoardId ?? this.hostedBoardId,
+      canonicalBoardUri: canonicalBoardUri ?? this.canonicalBoardUri,
+      remoteSlug: remoteSlug ?? this.remoteSlug,
+      localSlug: localSlug ?? this.localSlug,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      permissionsJson: permissionsJson ?? this.permissionsJson,
+      lastSeenCursor: lastSeenCursor ?? this.lastSeenCursor,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (localBoardId.present) {
+      map['local_board_id'] = Variable<String>(localBoardId.value);
+    }
+    if (forumHostId.present) {
+      map['forum_host_id'] = Variable<String>(forumHostId.value);
+    }
+    if (hostedBoardId.present) {
+      map['hosted_board_id'] = Variable<String>(hostedBoardId.value);
+    }
+    if (canonicalBoardUri.present) {
+      map['canonical_board_uri'] = Variable<String>(canonicalBoardUri.value);
+    }
+    if (remoteSlug.present) {
+      map['remote_slug'] = Variable<String>(remoteSlug.value);
+    }
+    if (localSlug.present) {
+      map['local_slug'] = Variable<String>(localSlug.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (permissionsJson.present) {
+      map['permissions_json'] = Variable<String>(permissionsJson.value);
+    }
+    if (lastSeenCursor.present) {
+      map['last_seen_cursor'] = Variable<int>(lastSeenCursor.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HostedBoardProjectionsCompanion(')
+          ..write('localBoardId: $localBoardId, ')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('hostedBoardId: $hostedBoardId, ')
+          ..write('canonicalBoardUri: $canonicalBoardUri, ')
+          ..write('remoteSlug: $remoteSlug, ')
+          ..write('localSlug: $localSlug, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('permissionsJson: $permissionsJson, ')
+          ..write('lastSeenCursor: $lastSeenCursor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BoardSubscriptionsTable extends BoardSubscriptions
+    with TableInfo<$BoardSubscriptionsTable, BoardSubscription> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BoardSubscriptionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _subscriptionIdMeta = const VerificationMeta(
+    'subscriptionId',
+  );
+  @override
+  late final GeneratedColumn<String> subscriptionId = GeneratedColumn<String>(
+    'subscription_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _forumHostIdMeta = const VerificationMeta(
+    'forumHostId',
+  );
+  @override
+  late final GeneratedColumn<String> forumHostId = GeneratedColumn<String>(
+    'forum_host_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hostedBoardIdMeta = const VerificationMeta(
+    'hostedBoardId',
+  );
+  @override
+  late final GeneratedColumn<String> hostedBoardId = GeneratedColumn<String>(
+    'hosted_board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localBoardIdMeta = const VerificationMeta(
+    'localBoardId',
+  );
+  @override
+  late final GeneratedColumn<String> localBoardId = GeneratedColumn<String>(
+    'local_board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _readEnabledMeta = const VerificationMeta(
+    'readEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> readEnabled = GeneratedColumn<bool>(
+    'read_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("read_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _writeEnabledMeta = const VerificationMeta(
+    'writeEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> writeEnabled = GeneratedColumn<bool>(
+    'write_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("write_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _syncCursorMeta = const VerificationMeta(
+    'syncCursor',
+  );
+  @override
+  late final GeneratedColumn<int> syncCursor = GeneratedColumn<int>(
+    'sync_cursor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    subscriptionId,
+    forumHostId,
+    hostedBoardId,
+    localBoardId,
+    readEnabled,
+    writeEnabled,
+    syncCursor,
+    retentionDays,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'board_subscriptions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BoardSubscription> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('subscription_id')) {
+      context.handle(
+        _subscriptionIdMeta,
+        subscriptionId.isAcceptableOrUnknown(
+          data['subscription_id']!,
+          _subscriptionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_subscriptionIdMeta);
+    }
+    if (data.containsKey('forum_host_id')) {
+      context.handle(
+        _forumHostIdMeta,
+        forumHostId.isAcceptableOrUnknown(
+          data['forum_host_id']!,
+          _forumHostIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_forumHostIdMeta);
+    }
+    if (data.containsKey('hosted_board_id')) {
+      context.handle(
+        _hostedBoardIdMeta,
+        hostedBoardId.isAcceptableOrUnknown(
+          data['hosted_board_id']!,
+          _hostedBoardIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_hostedBoardIdMeta);
+    }
+    if (data.containsKey('local_board_id')) {
+      context.handle(
+        _localBoardIdMeta,
+        localBoardId.isAcceptableOrUnknown(
+          data['local_board_id']!,
+          _localBoardIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localBoardIdMeta);
+    }
+    if (data.containsKey('read_enabled')) {
+      context.handle(
+        _readEnabledMeta,
+        readEnabled.isAcceptableOrUnknown(
+          data['read_enabled']!,
+          _readEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('write_enabled')) {
+      context.handle(
+        _writeEnabledMeta,
+        writeEnabled.isAcceptableOrUnknown(
+          data['write_enabled']!,
+          _writeEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_cursor')) {
+      context.handle(
+        _syncCursorMeta,
+        syncCursor.isAcceptableOrUnknown(data['sync_cursor']!, _syncCursorMeta),
+      );
+    }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {subscriptionId};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {forumHostId, hostedBoardId},
+  ];
+  @override
+  BoardSubscription map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BoardSubscription(
+      subscriptionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subscription_id'],
+      )!,
+      forumHostId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forum_host_id'],
+      )!,
+      hostedBoardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hosted_board_id'],
+      )!,
+      localBoardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_board_id'],
+      )!,
+      readEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}read_enabled'],
+      )!,
+      writeEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}write_enabled'],
+      )!,
+      syncCursor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_cursor'],
+      )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BoardSubscriptionsTable createAlias(String alias) {
+    return $BoardSubscriptionsTable(attachedDatabase, alias);
+  }
+}
+
+class BoardSubscription extends DataClass
+    implements Insertable<BoardSubscription> {
+  final String subscriptionId;
+  final String forumHostId;
+  final String hostedBoardId;
+  final String localBoardId;
+  final bool readEnabled;
+  final bool writeEnabled;
+  final int syncCursor;
+  final int? retentionDays;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BoardSubscription({
+    required this.subscriptionId,
+    required this.forumHostId,
+    required this.hostedBoardId,
+    required this.localBoardId,
+    required this.readEnabled,
+    required this.writeEnabled,
+    required this.syncCursor,
+    this.retentionDays,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['subscription_id'] = Variable<String>(subscriptionId);
+    map['forum_host_id'] = Variable<String>(forumHostId);
+    map['hosted_board_id'] = Variable<String>(hostedBoardId);
+    map['local_board_id'] = Variable<String>(localBoardId);
+    map['read_enabled'] = Variable<bool>(readEnabled);
+    map['write_enabled'] = Variable<bool>(writeEnabled);
+    map['sync_cursor'] = Variable<int>(syncCursor);
+    if (!nullToAbsent || retentionDays != null) {
+      map['retention_days'] = Variable<int>(retentionDays);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BoardSubscriptionsCompanion toCompanion(bool nullToAbsent) {
+    return BoardSubscriptionsCompanion(
+      subscriptionId: Value(subscriptionId),
+      forumHostId: Value(forumHostId),
+      hostedBoardId: Value(hostedBoardId),
+      localBoardId: Value(localBoardId),
+      readEnabled: Value(readEnabled),
+      writeEnabled: Value(writeEnabled),
+      syncCursor: Value(syncCursor),
+      retentionDays: retentionDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(retentionDays),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BoardSubscription.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BoardSubscription(
+      subscriptionId: serializer.fromJson<String>(json['subscriptionId']),
+      forumHostId: serializer.fromJson<String>(json['forumHostId']),
+      hostedBoardId: serializer.fromJson<String>(json['hostedBoardId']),
+      localBoardId: serializer.fromJson<String>(json['localBoardId']),
+      readEnabled: serializer.fromJson<bool>(json['readEnabled']),
+      writeEnabled: serializer.fromJson<bool>(json['writeEnabled']),
+      syncCursor: serializer.fromJson<int>(json['syncCursor']),
+      retentionDays: serializer.fromJson<int?>(json['retentionDays']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'subscriptionId': serializer.toJson<String>(subscriptionId),
+      'forumHostId': serializer.toJson<String>(forumHostId),
+      'hostedBoardId': serializer.toJson<String>(hostedBoardId),
+      'localBoardId': serializer.toJson<String>(localBoardId),
+      'readEnabled': serializer.toJson<bool>(readEnabled),
+      'writeEnabled': serializer.toJson<bool>(writeEnabled),
+      'syncCursor': serializer.toJson<int>(syncCursor),
+      'retentionDays': serializer.toJson<int?>(retentionDays),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BoardSubscription copyWith({
+    String? subscriptionId,
+    String? forumHostId,
+    String? hostedBoardId,
+    String? localBoardId,
+    bool? readEnabled,
+    bool? writeEnabled,
+    int? syncCursor,
+    Value<int?> retentionDays = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BoardSubscription(
+    subscriptionId: subscriptionId ?? this.subscriptionId,
+    forumHostId: forumHostId ?? this.forumHostId,
+    hostedBoardId: hostedBoardId ?? this.hostedBoardId,
+    localBoardId: localBoardId ?? this.localBoardId,
+    readEnabled: readEnabled ?? this.readEnabled,
+    writeEnabled: writeEnabled ?? this.writeEnabled,
+    syncCursor: syncCursor ?? this.syncCursor,
+    retentionDays: retentionDays.present
+        ? retentionDays.value
+        : this.retentionDays,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BoardSubscription copyWithCompanion(BoardSubscriptionsCompanion data) {
+    return BoardSubscription(
+      subscriptionId: data.subscriptionId.present
+          ? data.subscriptionId.value
+          : this.subscriptionId,
+      forumHostId: data.forumHostId.present
+          ? data.forumHostId.value
+          : this.forumHostId,
+      hostedBoardId: data.hostedBoardId.present
+          ? data.hostedBoardId.value
+          : this.hostedBoardId,
+      localBoardId: data.localBoardId.present
+          ? data.localBoardId.value
+          : this.localBoardId,
+      readEnabled: data.readEnabled.present
+          ? data.readEnabled.value
+          : this.readEnabled,
+      writeEnabled: data.writeEnabled.present
+          ? data.writeEnabled.value
+          : this.writeEnabled,
+      syncCursor: data.syncCursor.present
+          ? data.syncCursor.value
+          : this.syncCursor,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardSubscription(')
+          ..write('subscriptionId: $subscriptionId, ')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('hostedBoardId: $hostedBoardId, ')
+          ..write('localBoardId: $localBoardId, ')
+          ..write('readEnabled: $readEnabled, ')
+          ..write('writeEnabled: $writeEnabled, ')
+          ..write('syncCursor: $syncCursor, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    subscriptionId,
+    forumHostId,
+    hostedBoardId,
+    localBoardId,
+    readEnabled,
+    writeEnabled,
+    syncCursor,
+    retentionDays,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BoardSubscription &&
+          other.subscriptionId == this.subscriptionId &&
+          other.forumHostId == this.forumHostId &&
+          other.hostedBoardId == this.hostedBoardId &&
+          other.localBoardId == this.localBoardId &&
+          other.readEnabled == this.readEnabled &&
+          other.writeEnabled == this.writeEnabled &&
+          other.syncCursor == this.syncCursor &&
+          other.retentionDays == this.retentionDays &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BoardSubscriptionsCompanion extends UpdateCompanion<BoardSubscription> {
+  final Value<String> subscriptionId;
+  final Value<String> forumHostId;
+  final Value<String> hostedBoardId;
+  final Value<String> localBoardId;
+  final Value<bool> readEnabled;
+  final Value<bool> writeEnabled;
+  final Value<int> syncCursor;
+  final Value<int?> retentionDays;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const BoardSubscriptionsCompanion({
+    this.subscriptionId = const Value.absent(),
+    this.forumHostId = const Value.absent(),
+    this.hostedBoardId = const Value.absent(),
+    this.localBoardId = const Value.absent(),
+    this.readEnabled = const Value.absent(),
+    this.writeEnabled = const Value.absent(),
+    this.syncCursor = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BoardSubscriptionsCompanion.insert({
+    required String subscriptionId,
+    required String forumHostId,
+    required String hostedBoardId,
+    required String localBoardId,
+    this.readEnabled = const Value.absent(),
+    this.writeEnabled = const Value.absent(),
+    this.syncCursor = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : subscriptionId = Value(subscriptionId),
+       forumHostId = Value(forumHostId),
+       hostedBoardId = Value(hostedBoardId),
+       localBoardId = Value(localBoardId);
+  static Insertable<BoardSubscription> custom({
+    Expression<String>? subscriptionId,
+    Expression<String>? forumHostId,
+    Expression<String>? hostedBoardId,
+    Expression<String>? localBoardId,
+    Expression<bool>? readEnabled,
+    Expression<bool>? writeEnabled,
+    Expression<int>? syncCursor,
+    Expression<int>? retentionDays,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (subscriptionId != null) 'subscription_id': subscriptionId,
+      if (forumHostId != null) 'forum_host_id': forumHostId,
+      if (hostedBoardId != null) 'hosted_board_id': hostedBoardId,
+      if (localBoardId != null) 'local_board_id': localBoardId,
+      if (readEnabled != null) 'read_enabled': readEnabled,
+      if (writeEnabled != null) 'write_enabled': writeEnabled,
+      if (syncCursor != null) 'sync_cursor': syncCursor,
+      if (retentionDays != null) 'retention_days': retentionDays,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BoardSubscriptionsCompanion copyWith({
+    Value<String>? subscriptionId,
+    Value<String>? forumHostId,
+    Value<String>? hostedBoardId,
+    Value<String>? localBoardId,
+    Value<bool>? readEnabled,
+    Value<bool>? writeEnabled,
+    Value<int>? syncCursor,
+    Value<int?>? retentionDays,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return BoardSubscriptionsCompanion(
+      subscriptionId: subscriptionId ?? this.subscriptionId,
+      forumHostId: forumHostId ?? this.forumHostId,
+      hostedBoardId: hostedBoardId ?? this.hostedBoardId,
+      localBoardId: localBoardId ?? this.localBoardId,
+      readEnabled: readEnabled ?? this.readEnabled,
+      writeEnabled: writeEnabled ?? this.writeEnabled,
+      syncCursor: syncCursor ?? this.syncCursor,
+      retentionDays: retentionDays ?? this.retentionDays,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (subscriptionId.present) {
+      map['subscription_id'] = Variable<String>(subscriptionId.value);
+    }
+    if (forumHostId.present) {
+      map['forum_host_id'] = Variable<String>(forumHostId.value);
+    }
+    if (hostedBoardId.present) {
+      map['hosted_board_id'] = Variable<String>(hostedBoardId.value);
+    }
+    if (localBoardId.present) {
+      map['local_board_id'] = Variable<String>(localBoardId.value);
+    }
+    if (readEnabled.present) {
+      map['read_enabled'] = Variable<bool>(readEnabled.value);
+    }
+    if (writeEnabled.present) {
+      map['write_enabled'] = Variable<bool>(writeEnabled.value);
+    }
+    if (syncCursor.present) {
+      map['sync_cursor'] = Variable<int>(syncCursor.value);
+    }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardSubscriptionsCompanion(')
+          ..write('subscriptionId: $subscriptionId, ')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('hostedBoardId: $hostedBoardId, ')
+          ..write('localBoardId: $localBoardId, ')
+          ..write('readEnabled: $readEnabled, ')
+          ..write('writeEnabled: $writeEnabled, ')
+          ..write('syncCursor: $syncCursor, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BoardPublicationTargetsTable extends BoardPublicationTargets
+    with TableInfo<$BoardPublicationTargetsTable, BoardPublicationTarget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BoardPublicationTargetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localSourceIdMeta = const VerificationMeta(
+    'localSourceId',
+  );
+  @override
+  late final GeneratedColumn<String> localSourceId = GeneratedColumn<String>(
+    'local_source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _forumHostIdMeta = const VerificationMeta(
+    'forumHostId',
+  );
+  @override
+  late final GeneratedColumn<String> forumHostId = GeneratedColumn<String>(
+    'forum_host_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hostedBoardIdMeta = const VerificationMeta(
+    'hostedBoardId',
+  );
+  @override
+  late final GeneratedColumn<String> hostedBoardId = GeneratedColumn<String>(
+    'hosted_board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _remoteThreadIdMeta = const VerificationMeta(
+    'remoteThreadId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteThreadId = GeneratedColumn<String>(
+    'remote_thread_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remotePostIdMeta = const VerificationMeta(
+    'remotePostId',
+  );
+  @override
+  late final GeneratedColumn<String> remotePostId = GeneratedColumn<String>(
+    'remote_post_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+    'error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    targetId,
+    localSourceId,
+    sourceType,
+    forumHostId,
+    hostedBoardId,
+    mode,
+    status,
+    remoteThreadId,
+    remotePostId,
+    error,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'board_publication_targets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BoardPublicationTarget> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetIdMeta);
+    }
+    if (data.containsKey('local_source_id')) {
+      context.handle(
+        _localSourceIdMeta,
+        localSourceId.isAcceptableOrUnknown(
+          data['local_source_id']!,
+          _localSourceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localSourceIdMeta);
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceTypeMeta);
+    }
+    if (data.containsKey('forum_host_id')) {
+      context.handle(
+        _forumHostIdMeta,
+        forumHostId.isAcceptableOrUnknown(
+          data['forum_host_id']!,
+          _forumHostIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_forumHostIdMeta);
+    }
+    if (data.containsKey('hosted_board_id')) {
+      context.handle(
+        _hostedBoardIdMeta,
+        hostedBoardId.isAcceptableOrUnknown(
+          data['hosted_board_id']!,
+          _hostedBoardIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_hostedBoardIdMeta);
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modeMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('remote_thread_id')) {
+      context.handle(
+        _remoteThreadIdMeta,
+        remoteThreadId.isAcceptableOrUnknown(
+          data['remote_thread_id']!,
+          _remoteThreadIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('remote_post_id')) {
+      context.handle(
+        _remotePostIdMeta,
+        remotePostId.isAcceptableOrUnknown(
+          data['remote_post_id']!,
+          _remotePostIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+        _errorMeta,
+        error.isAcceptableOrUnknown(data['error']!, _errorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {targetId};
+  @override
+  BoardPublicationTarget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BoardPublicationTarget(
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      )!,
+      localSourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_source_id'],
+      )!,
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      )!,
+      forumHostId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forum_host_id'],
+      )!,
+      hostedBoardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hosted_board_id'],
+      )!,
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      remoteThreadId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_thread_id'],
+      ),
+      remotePostId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_post_id'],
+      ),
+      error: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BoardPublicationTargetsTable createAlias(String alias) {
+    return $BoardPublicationTargetsTable(attachedDatabase, alias);
+  }
+}
+
+class BoardPublicationTarget extends DataClass
+    implements Insertable<BoardPublicationTarget> {
+  final String targetId;
+  final String localSourceId;
+  final String sourceType;
+  final String forumHostId;
+  final String hostedBoardId;
+  final String mode;
+  final String status;
+  final String? remoteThreadId;
+  final String? remotePostId;
+  final String? error;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BoardPublicationTarget({
+    required this.targetId,
+    required this.localSourceId,
+    required this.sourceType,
+    required this.forumHostId,
+    required this.hostedBoardId,
+    required this.mode,
+    required this.status,
+    this.remoteThreadId,
+    this.remotePostId,
+    this.error,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['target_id'] = Variable<String>(targetId);
+    map['local_source_id'] = Variable<String>(localSourceId);
+    map['source_type'] = Variable<String>(sourceType);
+    map['forum_host_id'] = Variable<String>(forumHostId);
+    map['hosted_board_id'] = Variable<String>(hostedBoardId);
+    map['mode'] = Variable<String>(mode);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || remoteThreadId != null) {
+      map['remote_thread_id'] = Variable<String>(remoteThreadId);
+    }
+    if (!nullToAbsent || remotePostId != null) {
+      map['remote_post_id'] = Variable<String>(remotePostId);
+    }
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BoardPublicationTargetsCompanion toCompanion(bool nullToAbsent) {
+    return BoardPublicationTargetsCompanion(
+      targetId: Value(targetId),
+      localSourceId: Value(localSourceId),
+      sourceType: Value(sourceType),
+      forumHostId: Value(forumHostId),
+      hostedBoardId: Value(hostedBoardId),
+      mode: Value(mode),
+      status: Value(status),
+      remoteThreadId: remoteThreadId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteThreadId),
+      remotePostId: remotePostId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remotePostId),
+      error: error == null && nullToAbsent
+          ? const Value.absent()
+          : Value(error),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BoardPublicationTarget.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BoardPublicationTarget(
+      targetId: serializer.fromJson<String>(json['targetId']),
+      localSourceId: serializer.fromJson<String>(json['localSourceId']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
+      forumHostId: serializer.fromJson<String>(json['forumHostId']),
+      hostedBoardId: serializer.fromJson<String>(json['hostedBoardId']),
+      mode: serializer.fromJson<String>(json['mode']),
+      status: serializer.fromJson<String>(json['status']),
+      remoteThreadId: serializer.fromJson<String?>(json['remoteThreadId']),
+      remotePostId: serializer.fromJson<String?>(json['remotePostId']),
+      error: serializer.fromJson<String?>(json['error']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'targetId': serializer.toJson<String>(targetId),
+      'localSourceId': serializer.toJson<String>(localSourceId),
+      'sourceType': serializer.toJson<String>(sourceType),
+      'forumHostId': serializer.toJson<String>(forumHostId),
+      'hostedBoardId': serializer.toJson<String>(hostedBoardId),
+      'mode': serializer.toJson<String>(mode),
+      'status': serializer.toJson<String>(status),
+      'remoteThreadId': serializer.toJson<String?>(remoteThreadId),
+      'remotePostId': serializer.toJson<String?>(remotePostId),
+      'error': serializer.toJson<String?>(error),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BoardPublicationTarget copyWith({
+    String? targetId,
+    String? localSourceId,
+    String? sourceType,
+    String? forumHostId,
+    String? hostedBoardId,
+    String? mode,
+    String? status,
+    Value<String?> remoteThreadId = const Value.absent(),
+    Value<String?> remotePostId = const Value.absent(),
+    Value<String?> error = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BoardPublicationTarget(
+    targetId: targetId ?? this.targetId,
+    localSourceId: localSourceId ?? this.localSourceId,
+    sourceType: sourceType ?? this.sourceType,
+    forumHostId: forumHostId ?? this.forumHostId,
+    hostedBoardId: hostedBoardId ?? this.hostedBoardId,
+    mode: mode ?? this.mode,
+    status: status ?? this.status,
+    remoteThreadId: remoteThreadId.present
+        ? remoteThreadId.value
+        : this.remoteThreadId,
+    remotePostId: remotePostId.present ? remotePostId.value : this.remotePostId,
+    error: error.present ? error.value : this.error,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BoardPublicationTarget copyWithCompanion(
+    BoardPublicationTargetsCompanion data,
+  ) {
+    return BoardPublicationTarget(
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      localSourceId: data.localSourceId.present
+          ? data.localSourceId.value
+          : this.localSourceId,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      forumHostId: data.forumHostId.present
+          ? data.forumHostId.value
+          : this.forumHostId,
+      hostedBoardId: data.hostedBoardId.present
+          ? data.hostedBoardId.value
+          : this.hostedBoardId,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      status: data.status.present ? data.status.value : this.status,
+      remoteThreadId: data.remoteThreadId.present
+          ? data.remoteThreadId.value
+          : this.remoteThreadId,
+      remotePostId: data.remotePostId.present
+          ? data.remotePostId.value
+          : this.remotePostId,
+      error: data.error.present ? data.error.value : this.error,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardPublicationTarget(')
+          ..write('targetId: $targetId, ')
+          ..write('localSourceId: $localSourceId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('hostedBoardId: $hostedBoardId, ')
+          ..write('mode: $mode, ')
+          ..write('status: $status, ')
+          ..write('remoteThreadId: $remoteThreadId, ')
+          ..write('remotePostId: $remotePostId, ')
+          ..write('error: $error, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    targetId,
+    localSourceId,
+    sourceType,
+    forumHostId,
+    hostedBoardId,
+    mode,
+    status,
+    remoteThreadId,
+    remotePostId,
+    error,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BoardPublicationTarget &&
+          other.targetId == this.targetId &&
+          other.localSourceId == this.localSourceId &&
+          other.sourceType == this.sourceType &&
+          other.forumHostId == this.forumHostId &&
+          other.hostedBoardId == this.hostedBoardId &&
+          other.mode == this.mode &&
+          other.status == this.status &&
+          other.remoteThreadId == this.remoteThreadId &&
+          other.remotePostId == this.remotePostId &&
+          other.error == this.error &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BoardPublicationTargetsCompanion
+    extends UpdateCompanion<BoardPublicationTarget> {
+  final Value<String> targetId;
+  final Value<String> localSourceId;
+  final Value<String> sourceType;
+  final Value<String> forumHostId;
+  final Value<String> hostedBoardId;
+  final Value<String> mode;
+  final Value<String> status;
+  final Value<String?> remoteThreadId;
+  final Value<String?> remotePostId;
+  final Value<String?> error;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const BoardPublicationTargetsCompanion({
+    this.targetId = const Value.absent(),
+    this.localSourceId = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.forumHostId = const Value.absent(),
+    this.hostedBoardId = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.status = const Value.absent(),
+    this.remoteThreadId = const Value.absent(),
+    this.remotePostId = const Value.absent(),
+    this.error = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BoardPublicationTargetsCompanion.insert({
+    required String targetId,
+    required String localSourceId,
+    required String sourceType,
+    required String forumHostId,
+    required String hostedBoardId,
+    required String mode,
+    this.status = const Value.absent(),
+    this.remoteThreadId = const Value.absent(),
+    this.remotePostId = const Value.absent(),
+    this.error = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : targetId = Value(targetId),
+       localSourceId = Value(localSourceId),
+       sourceType = Value(sourceType),
+       forumHostId = Value(forumHostId),
+       hostedBoardId = Value(hostedBoardId),
+       mode = Value(mode);
+  static Insertable<BoardPublicationTarget> custom({
+    Expression<String>? targetId,
+    Expression<String>? localSourceId,
+    Expression<String>? sourceType,
+    Expression<String>? forumHostId,
+    Expression<String>? hostedBoardId,
+    Expression<String>? mode,
+    Expression<String>? status,
+    Expression<String>? remoteThreadId,
+    Expression<String>? remotePostId,
+    Expression<String>? error,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (targetId != null) 'target_id': targetId,
+      if (localSourceId != null) 'local_source_id': localSourceId,
+      if (sourceType != null) 'source_type': sourceType,
+      if (forumHostId != null) 'forum_host_id': forumHostId,
+      if (hostedBoardId != null) 'hosted_board_id': hostedBoardId,
+      if (mode != null) 'mode': mode,
+      if (status != null) 'status': status,
+      if (remoteThreadId != null) 'remote_thread_id': remoteThreadId,
+      if (remotePostId != null) 'remote_post_id': remotePostId,
+      if (error != null) 'error': error,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BoardPublicationTargetsCompanion copyWith({
+    Value<String>? targetId,
+    Value<String>? localSourceId,
+    Value<String>? sourceType,
+    Value<String>? forumHostId,
+    Value<String>? hostedBoardId,
+    Value<String>? mode,
+    Value<String>? status,
+    Value<String?>? remoteThreadId,
+    Value<String?>? remotePostId,
+    Value<String?>? error,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return BoardPublicationTargetsCompanion(
+      targetId: targetId ?? this.targetId,
+      localSourceId: localSourceId ?? this.localSourceId,
+      sourceType: sourceType ?? this.sourceType,
+      forumHostId: forumHostId ?? this.forumHostId,
+      hostedBoardId: hostedBoardId ?? this.hostedBoardId,
+      mode: mode ?? this.mode,
+      status: status ?? this.status,
+      remoteThreadId: remoteThreadId ?? this.remoteThreadId,
+      remotePostId: remotePostId ?? this.remotePostId,
+      error: error ?? this.error,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (localSourceId.present) {
+      map['local_source_id'] = Variable<String>(localSourceId.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (forumHostId.present) {
+      map['forum_host_id'] = Variable<String>(forumHostId.value);
+    }
+    if (hostedBoardId.present) {
+      map['hosted_board_id'] = Variable<String>(hostedBoardId.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (remoteThreadId.present) {
+      map['remote_thread_id'] = Variable<String>(remoteThreadId.value);
+    }
+    if (remotePostId.present) {
+      map['remote_post_id'] = Variable<String>(remotePostId.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardPublicationTargetsCompanion(')
+          ..write('targetId: $targetId, ')
+          ..write('localSourceId: $localSourceId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('forumHostId: $forumHostId, ')
+          ..write('hostedBoardId: $hostedBoardId, ')
+          ..write('mode: $mode, ')
+          ..write('status: $status, ')
+          ..write('remoteThreadId: $remoteThreadId, ')
+          ..write('remotePostId: $remotePostId, ')
+          ..write('error: $error, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ThreadsTable extends Threads with TableInfo<$ThreadsTable, Thread> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -19015,10 +21780,496 @@ class IdentityBindingsCompanion extends UpdateCompanion<IdentityBinding> {
   }
 }
 
+class $LocalCollectionsTable extends LocalCollections
+    with TableInfo<$LocalCollectionsTable, LocalCollection> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalCollectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _collectionIdMeta = const VerificationMeta(
+    'collectionId',
+  );
+  @override
+  late final GeneratedColumn<String> collectionId = GeneratedColumn<String>(
+    'collection_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerDidMeta = const VerificationMeta(
+    'ownerDid',
+  );
+  @override
+  late final GeneratedColumn<String> ownerDid = GeneratedColumn<String>(
+    'owner_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    collectionId,
+    ownerDid,
+    title,
+    description,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_collections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalCollection> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('collection_id')) {
+      context.handle(
+        _collectionIdMeta,
+        collectionId.isAcceptableOrUnknown(
+          data['collection_id']!,
+          _collectionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_collectionIdMeta);
+    }
+    if (data.containsKey('owner_did')) {
+      context.handle(
+        _ownerDidMeta,
+        ownerDid.isAcceptableOrUnknown(data['owner_did']!, _ownerDidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerDidMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {collectionId};
+  @override
+  LocalCollection map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalCollection(
+      collectionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}collection_id'],
+      )!,
+      ownerDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_did'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalCollectionsTable createAlias(String alias) {
+    return $LocalCollectionsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalCollection extends DataClass implements Insertable<LocalCollection> {
+  final String collectionId;
+  final String ownerDid;
+  final String title;
+  final String? description;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isDeleted;
+  const LocalCollection({
+    required this.collectionId,
+    required this.ownerDid,
+    required this.title,
+    this.description,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.isDeleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['collection_id'] = Variable<String>(collectionId);
+    map['owner_did'] = Variable<String>(ownerDid);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    return map;
+  }
+
+  LocalCollectionsCompanion toCompanion(bool nullToAbsent) {
+    return LocalCollectionsCompanion(
+      collectionId: Value(collectionId),
+      ownerDid: Value(ownerDid),
+      title: Value(title),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+    );
+  }
+
+  factory LocalCollection.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalCollection(
+      collectionId: serializer.fromJson<String>(json['collectionId']),
+      ownerDid: serializer.fromJson<String>(json['ownerDid']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String?>(json['description']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'collectionId': serializer.toJson<String>(collectionId),
+      'ownerDid': serializer.toJson<String>(ownerDid),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String?>(description),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+    };
+  }
+
+  LocalCollection copyWith({
+    String? collectionId,
+    String? ownerDid,
+    String? title,
+    Value<String?> description = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isDeleted,
+  }) => LocalCollection(
+    collectionId: collectionId ?? this.collectionId,
+    ownerDid: ownerDid ?? this.ownerDid,
+    title: title ?? this.title,
+    description: description.present ? description.value : this.description,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+  );
+  LocalCollection copyWithCompanion(LocalCollectionsCompanion data) {
+    return LocalCollection(
+      collectionId: data.collectionId.present
+          ? data.collectionId.value
+          : this.collectionId,
+      ownerDid: data.ownerDid.present ? data.ownerDid.value : this.ownerDid,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCollection(')
+          ..write('collectionId: $collectionId, ')
+          ..write('ownerDid: $ownerDid, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    collectionId,
+    ownerDid,
+    title,
+    description,
+    createdAt,
+    updatedAt,
+    isDeleted,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalCollection &&
+          other.collectionId == this.collectionId &&
+          other.ownerDid == this.ownerDid &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
+}
+
+class LocalCollectionsCompanion extends UpdateCompanion<LocalCollection> {
+  final Value<String> collectionId;
+  final Value<String> ownerDid;
+  final Value<String> title;
+  final Value<String?> description;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<int> rowid;
+  const LocalCollectionsCompanion({
+    this.collectionId = const Value.absent(),
+    this.ownerDid = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalCollectionsCompanion.insert({
+    required String collectionId,
+    required String ownerDid,
+    required String title,
+    this.description = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : collectionId = Value(collectionId),
+       ownerDid = Value(ownerDid),
+       title = Value(title),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<LocalCollection> custom({
+    Expression<String>? collectionId,
+    Expression<String>? ownerDid,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (collectionId != null) 'collection_id': collectionId,
+      if (ownerDid != null) 'owner_did': ownerDid,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalCollectionsCompanion copyWith({
+    Value<String>? collectionId,
+    Value<String>? ownerDid,
+    Value<String>? title,
+    Value<String?>? description,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isDeleted,
+    Value<int>? rowid,
+  }) {
+    return LocalCollectionsCompanion(
+      collectionId: collectionId ?? this.collectionId,
+      ownerDid: ownerDid ?? this.ownerDid,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (collectionId.present) {
+      map['collection_id'] = Variable<String>(collectionId.value);
+    }
+    if (ownerDid.present) {
+      map['owner_did'] = Variable<String>(ownerDid.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCollectionsCompanion(')
+          ..write('collectionId: $collectionId, ')
+          ..write('ownerDid: $ownerDid, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $BoardsTable boards = $BoardsTable(this);
+  late final $ForumHostsTable forumHosts = $ForumHostsTable(this);
+  late final $HostedBoardProjectionsTable hostedBoardProjections =
+      $HostedBoardProjectionsTable(this);
+  late final $BoardSubscriptionsTable boardSubscriptions =
+      $BoardSubscriptionsTable(this);
+  late final $BoardPublicationTargetsTable boardPublicationTargets =
+      $BoardPublicationTargetsTable(this);
   late final $ThreadsTable threads = $ThreadsTable(this);
   late final $PostsTable posts = $PostsTable(this);
   late final $ReactionsTable reactions = $ReactionsTable(this);
@@ -19072,12 +22323,19 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $IdentityBindingsTable identityBindings = $IdentityBindingsTable(
     this,
   );
+  late final $LocalCollectionsTable localCollections = $LocalCollectionsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     boards,
+    forumHosts,
+    hostedBoardProjections,
+    boardSubscriptions,
+    boardPublicationTargets,
     threads,
     posts,
     reactions,
@@ -19111,6 +22369,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     publicationIntents,
     publicationTargets,
     identityBindings,
+    localCollections,
   ];
 }
 
@@ -19729,6 +22988,1364 @@ typedef $$BoardsTableProcessedTableManager =
         bool boardAclRefs,
         bool postMetadataRefs,
       })
+    >;
+typedef $$ForumHostsTableCreateCompanionBuilder =
+    ForumHostsCompanion Function({
+      required String forumHostId,
+      required String displayName,
+      required String baseUrl,
+      required String canonicalHostUri,
+      required String serverKind,
+      Value<String> capabilitiesJson,
+      Value<bool> isActive,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ForumHostsTableUpdateCompanionBuilder =
+    ForumHostsCompanion Function({
+      Value<String> forumHostId,
+      Value<String> displayName,
+      Value<String> baseUrl,
+      Value<String> canonicalHostUri,
+      Value<String> serverKind,
+      Value<String> capabilitiesJson,
+      Value<bool> isActive,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ForumHostsTableFilterComposer
+    extends Composer<_$AppDatabase, $ForumHostsTable> {
+  $$ForumHostsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseUrl => $composableBuilder(
+    column: $table.baseUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get canonicalHostUri => $composableBuilder(
+    column: $table.canonicalHostUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverKind => $composableBuilder(
+    column: $table.serverKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get capabilitiesJson => $composableBuilder(
+    column: $table.capabilitiesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ForumHostsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ForumHostsTable> {
+  $$ForumHostsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseUrl => $composableBuilder(
+    column: $table.baseUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get canonicalHostUri => $composableBuilder(
+    column: $table.canonicalHostUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverKind => $composableBuilder(
+    column: $table.serverKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get capabilitiesJson => $composableBuilder(
+    column: $table.capabilitiesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ForumHostsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ForumHostsTable> {
+  $$ForumHostsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get baseUrl =>
+      $composableBuilder(column: $table.baseUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get canonicalHostUri => $composableBuilder(
+    column: $table.canonicalHostUri,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get serverKind => $composableBuilder(
+    column: $table.serverKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get capabilitiesJson => $composableBuilder(
+    column: $table.capabilitiesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ForumHostsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ForumHostsTable,
+          ForumHost,
+          $$ForumHostsTableFilterComposer,
+          $$ForumHostsTableOrderingComposer,
+          $$ForumHostsTableAnnotationComposer,
+          $$ForumHostsTableCreateCompanionBuilder,
+          $$ForumHostsTableUpdateCompanionBuilder,
+          (
+            ForumHost,
+            BaseReferences<_$AppDatabase, $ForumHostsTable, ForumHost>,
+          ),
+          ForumHost,
+          PrefetchHooks Function()
+        > {
+  $$ForumHostsTableTableManager(_$AppDatabase db, $ForumHostsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ForumHostsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ForumHostsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ForumHostsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> forumHostId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<String> baseUrl = const Value.absent(),
+                Value<String> canonicalHostUri = const Value.absent(),
+                Value<String> serverKind = const Value.absent(),
+                Value<String> capabilitiesJson = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ForumHostsCompanion(
+                forumHostId: forumHostId,
+                displayName: displayName,
+                baseUrl: baseUrl,
+                canonicalHostUri: canonicalHostUri,
+                serverKind: serverKind,
+                capabilitiesJson: capabilitiesJson,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String forumHostId,
+                required String displayName,
+                required String baseUrl,
+                required String canonicalHostUri,
+                required String serverKind,
+                Value<String> capabilitiesJson = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ForumHostsCompanion.insert(
+                forumHostId: forumHostId,
+                displayName: displayName,
+                baseUrl: baseUrl,
+                canonicalHostUri: canonicalHostUri,
+                serverKind: serverKind,
+                capabilitiesJson: capabilitiesJson,
+                isActive: isActive,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ForumHostsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ForumHostsTable,
+      ForumHost,
+      $$ForumHostsTableFilterComposer,
+      $$ForumHostsTableOrderingComposer,
+      $$ForumHostsTableAnnotationComposer,
+      $$ForumHostsTableCreateCompanionBuilder,
+      $$ForumHostsTableUpdateCompanionBuilder,
+      (ForumHost, BaseReferences<_$AppDatabase, $ForumHostsTable, ForumHost>),
+      ForumHost,
+      PrefetchHooks Function()
+    >;
+typedef $$HostedBoardProjectionsTableCreateCompanionBuilder =
+    HostedBoardProjectionsCompanion Function({
+      required String localBoardId,
+      required String forumHostId,
+      required String hostedBoardId,
+      required String canonicalBoardUri,
+      required String remoteSlug,
+      required String localSlug,
+      required String title,
+      Value<String?> description,
+      Value<String> permissionsJson,
+      Value<int> lastSeenCursor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+typedef $$HostedBoardProjectionsTableUpdateCompanionBuilder =
+    HostedBoardProjectionsCompanion Function({
+      Value<String> localBoardId,
+      Value<String> forumHostId,
+      Value<String> hostedBoardId,
+      Value<String> canonicalBoardUri,
+      Value<String> remoteSlug,
+      Value<String> localSlug,
+      Value<String> title,
+      Value<String?> description,
+      Value<String> permissionsJson,
+      Value<int> lastSeenCursor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+
+class $$HostedBoardProjectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $HostedBoardProjectionsTable> {
+  $$HostedBoardProjectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get canonicalBoardUri => $composableBuilder(
+    column: $table.canonicalBoardUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteSlug => $composableBuilder(
+    column: $table.remoteSlug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localSlug => $composableBuilder(
+    column: $table.localSlug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get permissionsJson => $composableBuilder(
+    column: $table.permissionsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSeenCursor => $composableBuilder(
+    column: $table.lastSeenCursor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HostedBoardProjectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $HostedBoardProjectionsTable> {
+  $$HostedBoardProjectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get canonicalBoardUri => $composableBuilder(
+    column: $table.canonicalBoardUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteSlug => $composableBuilder(
+    column: $table.remoteSlug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localSlug => $composableBuilder(
+    column: $table.localSlug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get permissionsJson => $composableBuilder(
+    column: $table.permissionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastSeenCursor => $composableBuilder(
+    column: $table.lastSeenCursor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HostedBoardProjectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HostedBoardProjectionsTable> {
+  $$HostedBoardProjectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get canonicalBoardUri => $composableBuilder(
+    column: $table.canonicalBoardUri,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteSlug => $composableBuilder(
+    column: $table.remoteSlug,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localSlug =>
+      $composableBuilder(column: $table.localSlug, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get permissionsJson => $composableBuilder(
+    column: $table.permissionsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastSeenCursor => $composableBuilder(
+    column: $table.lastSeenCursor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+}
+
+class $$HostedBoardProjectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HostedBoardProjectionsTable,
+          HostedBoardProjection,
+          $$HostedBoardProjectionsTableFilterComposer,
+          $$HostedBoardProjectionsTableOrderingComposer,
+          $$HostedBoardProjectionsTableAnnotationComposer,
+          $$HostedBoardProjectionsTableCreateCompanionBuilder,
+          $$HostedBoardProjectionsTableUpdateCompanionBuilder,
+          (
+            HostedBoardProjection,
+            BaseReferences<
+              _$AppDatabase,
+              $HostedBoardProjectionsTable,
+              HostedBoardProjection
+            >,
+          ),
+          HostedBoardProjection,
+          PrefetchHooks Function()
+        > {
+  $$HostedBoardProjectionsTableTableManager(
+    _$AppDatabase db,
+    $HostedBoardProjectionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HostedBoardProjectionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$HostedBoardProjectionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HostedBoardProjectionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> localBoardId = const Value.absent(),
+                Value<String> forumHostId = const Value.absent(),
+                Value<String> hostedBoardId = const Value.absent(),
+                Value<String> canonicalBoardUri = const Value.absent(),
+                Value<String> remoteSlug = const Value.absent(),
+                Value<String> localSlug = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String> permissionsJson = const Value.absent(),
+                Value<int> lastSeenCursor = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HostedBoardProjectionsCompanion(
+                localBoardId: localBoardId,
+                forumHostId: forumHostId,
+                hostedBoardId: hostedBoardId,
+                canonicalBoardUri: canonicalBoardUri,
+                remoteSlug: remoteSlug,
+                localSlug: localSlug,
+                title: title,
+                description: description,
+                permissionsJson: permissionsJson,
+                lastSeenCursor: lastSeenCursor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String localBoardId,
+                required String forumHostId,
+                required String hostedBoardId,
+                required String canonicalBoardUri,
+                required String remoteSlug,
+                required String localSlug,
+                required String title,
+                Value<String?> description = const Value.absent(),
+                Value<String> permissionsJson = const Value.absent(),
+                Value<int> lastSeenCursor = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HostedBoardProjectionsCompanion.insert(
+                localBoardId: localBoardId,
+                forumHostId: forumHostId,
+                hostedBoardId: hostedBoardId,
+                canonicalBoardUri: canonicalBoardUri,
+                remoteSlug: remoteSlug,
+                localSlug: localSlug,
+                title: title,
+                description: description,
+                permissionsJson: permissionsJson,
+                lastSeenCursor: lastSeenCursor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HostedBoardProjectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HostedBoardProjectionsTable,
+      HostedBoardProjection,
+      $$HostedBoardProjectionsTableFilterComposer,
+      $$HostedBoardProjectionsTableOrderingComposer,
+      $$HostedBoardProjectionsTableAnnotationComposer,
+      $$HostedBoardProjectionsTableCreateCompanionBuilder,
+      $$HostedBoardProjectionsTableUpdateCompanionBuilder,
+      (
+        HostedBoardProjection,
+        BaseReferences<
+          _$AppDatabase,
+          $HostedBoardProjectionsTable,
+          HostedBoardProjection
+        >,
+      ),
+      HostedBoardProjection,
+      PrefetchHooks Function()
+    >;
+typedef $$BoardSubscriptionsTableCreateCompanionBuilder =
+    BoardSubscriptionsCompanion Function({
+      required String subscriptionId,
+      required String forumHostId,
+      required String hostedBoardId,
+      required String localBoardId,
+      Value<bool> readEnabled,
+      Value<bool> writeEnabled,
+      Value<int> syncCursor,
+      Value<int?> retentionDays,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$BoardSubscriptionsTableUpdateCompanionBuilder =
+    BoardSubscriptionsCompanion Function({
+      Value<String> subscriptionId,
+      Value<String> forumHostId,
+      Value<String> hostedBoardId,
+      Value<String> localBoardId,
+      Value<bool> readEnabled,
+      Value<bool> writeEnabled,
+      Value<int> syncCursor,
+      Value<int?> retentionDays,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$BoardSubscriptionsTableFilterComposer
+    extends Composer<_$AppDatabase, $BoardSubscriptionsTable> {
+  $$BoardSubscriptionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get subscriptionId => $composableBuilder(
+    column: $table.subscriptionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get readEnabled => $composableBuilder(
+    column: $table.readEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get writeEnabled => $composableBuilder(
+    column: $table.writeEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncCursor => $composableBuilder(
+    column: $table.syncCursor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BoardSubscriptionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BoardSubscriptionsTable> {
+  $$BoardSubscriptionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get subscriptionId => $composableBuilder(
+    column: $table.subscriptionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get readEnabled => $composableBuilder(
+    column: $table.readEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get writeEnabled => $composableBuilder(
+    column: $table.writeEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncCursor => $composableBuilder(
+    column: $table.syncCursor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BoardSubscriptionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BoardSubscriptionsTable> {
+  $$BoardSubscriptionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get subscriptionId => $composableBuilder(
+    column: $table.subscriptionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get readEnabled => $composableBuilder(
+    column: $table.readEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get writeEnabled => $composableBuilder(
+    column: $table.writeEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get syncCursor => $composableBuilder(
+    column: $table.syncCursor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BoardSubscriptionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BoardSubscriptionsTable,
+          BoardSubscription,
+          $$BoardSubscriptionsTableFilterComposer,
+          $$BoardSubscriptionsTableOrderingComposer,
+          $$BoardSubscriptionsTableAnnotationComposer,
+          $$BoardSubscriptionsTableCreateCompanionBuilder,
+          $$BoardSubscriptionsTableUpdateCompanionBuilder,
+          (
+            BoardSubscription,
+            BaseReferences<
+              _$AppDatabase,
+              $BoardSubscriptionsTable,
+              BoardSubscription
+            >,
+          ),
+          BoardSubscription,
+          PrefetchHooks Function()
+        > {
+  $$BoardSubscriptionsTableTableManager(
+    _$AppDatabase db,
+    $BoardSubscriptionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BoardSubscriptionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BoardSubscriptionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BoardSubscriptionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> subscriptionId = const Value.absent(),
+                Value<String> forumHostId = const Value.absent(),
+                Value<String> hostedBoardId = const Value.absent(),
+                Value<String> localBoardId = const Value.absent(),
+                Value<bool> readEnabled = const Value.absent(),
+                Value<bool> writeEnabled = const Value.absent(),
+                Value<int> syncCursor = const Value.absent(),
+                Value<int?> retentionDays = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BoardSubscriptionsCompanion(
+                subscriptionId: subscriptionId,
+                forumHostId: forumHostId,
+                hostedBoardId: hostedBoardId,
+                localBoardId: localBoardId,
+                readEnabled: readEnabled,
+                writeEnabled: writeEnabled,
+                syncCursor: syncCursor,
+                retentionDays: retentionDays,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String subscriptionId,
+                required String forumHostId,
+                required String hostedBoardId,
+                required String localBoardId,
+                Value<bool> readEnabled = const Value.absent(),
+                Value<bool> writeEnabled = const Value.absent(),
+                Value<int> syncCursor = const Value.absent(),
+                Value<int?> retentionDays = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BoardSubscriptionsCompanion.insert(
+                subscriptionId: subscriptionId,
+                forumHostId: forumHostId,
+                hostedBoardId: hostedBoardId,
+                localBoardId: localBoardId,
+                readEnabled: readEnabled,
+                writeEnabled: writeEnabled,
+                syncCursor: syncCursor,
+                retentionDays: retentionDays,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BoardSubscriptionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BoardSubscriptionsTable,
+      BoardSubscription,
+      $$BoardSubscriptionsTableFilterComposer,
+      $$BoardSubscriptionsTableOrderingComposer,
+      $$BoardSubscriptionsTableAnnotationComposer,
+      $$BoardSubscriptionsTableCreateCompanionBuilder,
+      $$BoardSubscriptionsTableUpdateCompanionBuilder,
+      (
+        BoardSubscription,
+        BaseReferences<
+          _$AppDatabase,
+          $BoardSubscriptionsTable,
+          BoardSubscription
+        >,
+      ),
+      BoardSubscription,
+      PrefetchHooks Function()
+    >;
+typedef $$BoardPublicationTargetsTableCreateCompanionBuilder =
+    BoardPublicationTargetsCompanion Function({
+      required String targetId,
+      required String localSourceId,
+      required String sourceType,
+      required String forumHostId,
+      required String hostedBoardId,
+      required String mode,
+      Value<String> status,
+      Value<String?> remoteThreadId,
+      Value<String?> remotePostId,
+      Value<String?> error,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$BoardPublicationTargetsTableUpdateCompanionBuilder =
+    BoardPublicationTargetsCompanion Function({
+      Value<String> targetId,
+      Value<String> localSourceId,
+      Value<String> sourceType,
+      Value<String> forumHostId,
+      Value<String> hostedBoardId,
+      Value<String> mode,
+      Value<String> status,
+      Value<String?> remoteThreadId,
+      Value<String?> remotePostId,
+      Value<String?> error,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$BoardPublicationTargetsTableFilterComposer
+    extends Composer<_$AppDatabase, $BoardPublicationTargetsTable> {
+  $$BoardPublicationTargetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localSourceId => $composableBuilder(
+    column: $table.localSourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteThreadId => $composableBuilder(
+    column: $table.remoteThreadId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remotePostId => $composableBuilder(
+    column: $table.remotePostId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BoardPublicationTargetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BoardPublicationTargetsTable> {
+  $$BoardPublicationTargetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localSourceId => $composableBuilder(
+    column: $table.localSourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteThreadId => $composableBuilder(
+    column: $table.remoteThreadId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remotePostId => $composableBuilder(
+    column: $table.remotePostId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BoardPublicationTargetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BoardPublicationTargetsTable> {
+  $$BoardPublicationTargetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<String> get localSourceId => $composableBuilder(
+    column: $table.localSourceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get forumHostId => $composableBuilder(
+    column: $table.forumHostId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get hostedBoardId => $composableBuilder(
+    column: $table.hostedBoardId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteThreadId => $composableBuilder(
+    column: $table.remoteThreadId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remotePostId => $composableBuilder(
+    column: $table.remotePostId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BoardPublicationTargetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BoardPublicationTargetsTable,
+          BoardPublicationTarget,
+          $$BoardPublicationTargetsTableFilterComposer,
+          $$BoardPublicationTargetsTableOrderingComposer,
+          $$BoardPublicationTargetsTableAnnotationComposer,
+          $$BoardPublicationTargetsTableCreateCompanionBuilder,
+          $$BoardPublicationTargetsTableUpdateCompanionBuilder,
+          (
+            BoardPublicationTarget,
+            BaseReferences<
+              _$AppDatabase,
+              $BoardPublicationTargetsTable,
+              BoardPublicationTarget
+            >,
+          ),
+          BoardPublicationTarget,
+          PrefetchHooks Function()
+        > {
+  $$BoardPublicationTargetsTableTableManager(
+    _$AppDatabase db,
+    $BoardPublicationTargetsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BoardPublicationTargetsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$BoardPublicationTargetsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$BoardPublicationTargetsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> targetId = const Value.absent(),
+                Value<String> localSourceId = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
+                Value<String> forumHostId = const Value.absent(),
+                Value<String> hostedBoardId = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> remoteThreadId = const Value.absent(),
+                Value<String?> remotePostId = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BoardPublicationTargetsCompanion(
+                targetId: targetId,
+                localSourceId: localSourceId,
+                sourceType: sourceType,
+                forumHostId: forumHostId,
+                hostedBoardId: hostedBoardId,
+                mode: mode,
+                status: status,
+                remoteThreadId: remoteThreadId,
+                remotePostId: remotePostId,
+                error: error,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String targetId,
+                required String localSourceId,
+                required String sourceType,
+                required String forumHostId,
+                required String hostedBoardId,
+                required String mode,
+                Value<String> status = const Value.absent(),
+                Value<String?> remoteThreadId = const Value.absent(),
+                Value<String?> remotePostId = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BoardPublicationTargetsCompanion.insert(
+                targetId: targetId,
+                localSourceId: localSourceId,
+                sourceType: sourceType,
+                forumHostId: forumHostId,
+                hostedBoardId: hostedBoardId,
+                mode: mode,
+                status: status,
+                remoteThreadId: remoteThreadId,
+                remotePostId: remotePostId,
+                error: error,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BoardPublicationTargetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BoardPublicationTargetsTable,
+      BoardPublicationTarget,
+      $$BoardPublicationTargetsTableFilterComposer,
+      $$BoardPublicationTargetsTableOrderingComposer,
+      $$BoardPublicationTargetsTableAnnotationComposer,
+      $$BoardPublicationTargetsTableCreateCompanionBuilder,
+      $$BoardPublicationTargetsTableUpdateCompanionBuilder,
+      (
+        BoardPublicationTarget,
+        BaseReferences<
+          _$AppDatabase,
+          $BoardPublicationTargetsTable,
+          BoardPublicationTarget
+        >,
+      ),
+      BoardPublicationTarget,
+      PrefetchHooks Function()
     >;
 typedef $$ThreadsTableCreateCompanionBuilder =
     ThreadsCompanion Function({
@@ -34169,12 +38786,274 @@ typedef $$IdentityBindingsTableProcessedTableManager =
       IdentityBinding,
       PrefetchHooks Function()
     >;
+typedef $$LocalCollectionsTableCreateCompanionBuilder =
+    LocalCollectionsCompanion Function({
+      required String collectionId,
+      required String ownerDid,
+      required String title,
+      Value<String?> description,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+typedef $$LocalCollectionsTableUpdateCompanionBuilder =
+    LocalCollectionsCompanion Function({
+      Value<String> collectionId,
+      Value<String> ownerDid,
+      Value<String> title,
+      Value<String?> description,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+
+class $$LocalCollectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalCollectionsTable> {
+  $$LocalCollectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerDid => $composableBuilder(
+    column: $table.ownerDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalCollectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalCollectionsTable> {
+  $$LocalCollectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerDid => $composableBuilder(
+    column: $table.ownerDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalCollectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalCollectionsTable> {
+  $$LocalCollectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ownerDid =>
+      $composableBuilder(column: $table.ownerDid, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+}
+
+class $$LocalCollectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalCollectionsTable,
+          LocalCollection,
+          $$LocalCollectionsTableFilterComposer,
+          $$LocalCollectionsTableOrderingComposer,
+          $$LocalCollectionsTableAnnotationComposer,
+          $$LocalCollectionsTableCreateCompanionBuilder,
+          $$LocalCollectionsTableUpdateCompanionBuilder,
+          (
+            LocalCollection,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalCollectionsTable,
+              LocalCollection
+            >,
+          ),
+          LocalCollection,
+          PrefetchHooks Function()
+        > {
+  $$LocalCollectionsTableTableManager(
+    _$AppDatabase db,
+    $LocalCollectionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalCollectionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalCollectionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalCollectionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> collectionId = const Value.absent(),
+                Value<String> ownerDid = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalCollectionsCompanion(
+                collectionId: collectionId,
+                ownerDid: ownerDid,
+                title: title,
+                description: description,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String collectionId,
+                required String ownerDid,
+                required String title,
+                Value<String?> description = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalCollectionsCompanion.insert(
+                collectionId: collectionId,
+                ownerDid: ownerDid,
+                title: title,
+                description: description,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalCollectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalCollectionsTable,
+      LocalCollection,
+      $$LocalCollectionsTableFilterComposer,
+      $$LocalCollectionsTableOrderingComposer,
+      $$LocalCollectionsTableAnnotationComposer,
+      $$LocalCollectionsTableCreateCompanionBuilder,
+      $$LocalCollectionsTableUpdateCompanionBuilder,
+      (
+        LocalCollection,
+        BaseReferences<_$AppDatabase, $LocalCollectionsTable, LocalCollection>,
+      ),
+      LocalCollection,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
   $$BoardsTableTableManager get boards =>
       $$BoardsTableTableManager(_db, _db.boards);
+  $$ForumHostsTableTableManager get forumHosts =>
+      $$ForumHostsTableTableManager(_db, _db.forumHosts);
+  $$HostedBoardProjectionsTableTableManager get hostedBoardProjections =>
+      $$HostedBoardProjectionsTableTableManager(
+        _db,
+        _db.hostedBoardProjections,
+      );
+  $$BoardSubscriptionsTableTableManager get boardSubscriptions =>
+      $$BoardSubscriptionsTableTableManager(_db, _db.boardSubscriptions);
+  $$BoardPublicationTargetsTableTableManager get boardPublicationTargets =>
+      $$BoardPublicationTargetsTableTableManager(
+        _db,
+        _db.boardPublicationTargets,
+      );
   $$ThreadsTableTableManager get threads =>
       $$ThreadsTableTableManager(_db, _db.threads);
   $$PostsTableTableManager get posts =>
@@ -34247,4 +39126,6 @@ class $AppDatabaseManager {
       $$PublicationTargetsTableTableManager(_db, _db.publicationTargets);
   $$IdentityBindingsTableTableManager get identityBindings =>
       $$IdentityBindingsTableTableManager(_db, _db.identityBindings);
+  $$LocalCollectionsTableTableManager get localCollections =>
+      $$LocalCollectionsTableTableManager(_db, _db.localCollections);
 }
