@@ -76,7 +76,7 @@ class SettingsHomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '4 個身分 · 3 台裝置 · ${_shortDid(did)}',
+                        '本機 DID · ${_shortDid(did)}',
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
@@ -109,20 +109,26 @@ class SettingsHomeScreen extends StatelessWidget {
           _SettingsSection(
             label: '身分與裝置 · IDENTITY',
             children: [
-              AnsibleSettingsRow(
-                glyph: '◎',
-                label: '錢包',
-                en: 'WALLET',
-                sub: '4 個身分 · 公開 / 圈內 / 本人',
-                value: '4',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => WalletScreen(
-                        holderDid: did,
-                        repository: DriftWalletRepository(db),
-                      ),
-                    ),
+              FutureBuilder<List<WalletCredential>>(
+                future: DriftWalletRepository(db).listCredentials(),
+                builder: (context, snapshot) {
+                  final count = snapshot.data?.length ?? 0;
+                  return AnsibleSettingsRow(
+                    glyph: '◎',
+                    label: '錢包',
+                    en: 'WALLET',
+                    sub: count == 0 ? '尚無憑證' : '$count 個憑證',
+                    value: count == 0 ? '空' : '$count',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => WalletScreen(
+                            holderDid: did,
+                            repository: DriftWalletRepository(db),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),

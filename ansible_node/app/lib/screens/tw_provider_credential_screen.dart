@@ -87,7 +87,11 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
     super.initState();
     _vcIssuerClient = widget.vcIssuerClient ?? VcIssuerClient();
     _urlLauncher = widget.urlLauncher ?? const UrlLauncherExternalUrlLauncher();
-    _walletRepository = widget.walletRepository ?? InMemoryWalletRepository();
+    final walletRepository = widget.walletRepository;
+    if (walletRepository == null) {
+      throw StateError('TwProviderCredentialPanel requires a WalletRepository');
+    }
+    _walletRepository = walletRepository;
   }
 
   @override

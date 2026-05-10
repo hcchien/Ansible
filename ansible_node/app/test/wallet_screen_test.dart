@@ -56,7 +56,28 @@ void main() {
 
     await _scrollWallet(tester);
     expect(find.text('還沒有憑證'), findsOneWidget);
-    expect(find.text('產生新身分'), findsOneWidget);
+    expect(find.text('新增憑證'), findsWidgets);
+  });
+
+  testWidgets('wallet screen does not render hard-coded identity mocks', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WalletScreen(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          repository: InMemoryWalletRepository(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('公開 · Tris'), findsNothing);
+    expect(find.text('讀書會 · Tris'), findsNothing);
+    expect(find.text('匿名瀏覽'), findsNothing);
+    expect(find.textContaining('8c4d'), findsNothing);
+    expect(find.textContaining('c91a'), findsNothing);
+    expect(find.text('本人'), findsOneWidget);
   });
 
   testWidgets('empty wallet add credential expands inline wizard', (
@@ -74,7 +95,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await _scrollWallet(tester);
-    await tester.tap(find.text('產生新身分'));
+    await tester.tap(find.text('新增憑證').first);
     await tester.pumpAndSettle();
 
     expect(find.byType(CredentialIssuanceWizard), findsOneWidget);
@@ -110,7 +131,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await _scrollWallet(tester);
-    await tester.tap(find.text('產生新身分'));
+    await tester.tap(find.text('新增憑證').first);
     await tester.pumpAndSettle();
 
     expect(find.byType(CredentialIssuanceWizard), findsOneWidget);
@@ -139,7 +160,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await _scrollWallet(tester);
-    await tester.tap(find.text('產生新身分'));
+    await tester.tap(find.text('新增憑證').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('TW 身份驗證'));
     await tester.pumpAndSettle();

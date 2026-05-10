@@ -116,48 +116,16 @@ class _WalletScreenState extends State<WalletScreen> {
                 name: '本人',
                 en: 'ROOT · MASTER PASSKEY',
                 type: 'master passkey',
-                sub: '此裝置上產生的源頭。不能改名、不能複製、不能離開這台。',
-                uses: '所有圈與發布物的根',
-                age: '建立 312 天前',
+                sub: '此裝置目前使用的本機 DID。憑證會綁定到這個 holder。',
+                uses: '本機錢包 holder',
+                age: '本機',
                 keyFragment: _fragment(widget.holderDid),
-              ),
-              const SizedBox(height: 12),
-              const _IdentityCard(
-                accent: true,
-                name: '公開 · Tris',
-                en: 'PUBLIC HANDLE',
-                type: '衍生身分',
-                sub: '在討論串裡露出的名字。讀者只會看到這個。',
-                uses: '公開討論 · 23 處',
-                age: '278 天',
-                keyFragment: 'pk · 8c4d ... 22fa',
-              ),
-              const SizedBox(height: 12),
-              const _IdentityCard(
-                name: '讀書會 · Tris',
-                en: 'CIRCLE HANDLE',
-                type: '圈內身分',
-                sub: '只在「週四讀書會」內可見。離開圈就消失。',
-                uses: '1 個圈',
-                age: '92 天',
-                keyFragment: 'pk · c91a ... 6d02',
-              ),
-              const SizedBox(height: 12),
-              const _IdentityCard(
-                dim: true,
-                name: '匿名瀏覽',
-                en: 'OBSERVER',
-                type: '只讀身分',
-                sub: '拿來閱讀別人的公開內容；不留下任何痕跡。',
-                uses: '未啟用',
-                age: '未使用',
-                keyFragment: 'pk · observer',
               ),
               const SizedBox(height: 18),
               OutlinedButton.icon(
                 onPressed: _openAddCredential,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('產生新身分'),
+                label: const Text('新增憑證'),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(
                     color: AnsibleDesign.rule,
@@ -195,7 +163,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
-                  '身分都從「本人」衍生而來。彼此之間不可互推。\n就算公開的我被看穿了，圈內的我仍是隱密的。',
+                  '憑證只會從已完成的核發流程加入。這裡不顯示預設或示範資料。',
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.7,
@@ -302,8 +270,6 @@ class _IdentityCard extends StatelessWidget {
     required this.age,
     required this.keyFragment,
     this.primary = false,
-    this.accent = false,
-    this.dim = false,
   });
 
   final String name;
@@ -314,152 +280,135 @@ class _IdentityCard extends StatelessWidget {
   final String age;
   final String keyFragment;
   final bool primary;
-  final bool accent;
-  final bool dim;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: dim ? 0.65 : 1,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: primary
-              ? AnsibleDesign.paperDeep.withValues(alpha: 0.45)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: primary ? AnsibleDesign.ink : AnsibleDesign.rule,
-            width: 0.5,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primary
+            ? AnsibleDesign.paperDeep.withValues(alpha: 0.45)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: primary ? AnsibleDesign.ink : AnsibleDesign.rule,
+          width: 0.5,
         ),
-        child: Stack(
-          children: [
-            if (accent)
-              const Positioned(
-                left: -16,
-                top: 0,
-                bottom: 0,
-                child: SizedBox(
-                  width: 2,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(color: AnsibleDesign.accent),
+      ),
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      en,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 9,
+                        letterSpacing: 1.4,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
                   ),
+                  Text(
+                    age,
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 9,
+                      letterSpacing: 1,
+                      color: AnsibleDesign.inkFaint,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: primary ? 22 : 17,
+                      fontWeight: FontWeight.w500,
+                      color: AnsibleDesign.ink,
+                    ),
+                  ),
+                  if (primary)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AnsibleDesign.accent,
+                          width: 0.5,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: const Text(
+                        '主',
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 8,
+                          letterSpacing: 1.4,
+                          color: AnsibleDesign.accent,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                sub,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  height: 1.55,
+                  color: AnsibleDesign.inkMuted,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        en,
-                        style: const TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 9,
-                          letterSpacing: 1.4,
-                          color: AnsibleDesign.inkFaint,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      age,
-                      style: const TextStyle(
-                        fontFamily: AnsibleDesign.mono,
-                        fontSize: 9,
-                        letterSpacing: 1,
-                        color: AnsibleDesign.inkFaint,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 10),
+              Text(
+                keyFragment,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                  color: AnsibleDesign.inkFaint,
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: primary ? 22 : 17,
-                        fontWeight: FontWeight.w500,
-                        color: AnsibleDesign.ink,
-                      ),
+              ),
+              const SizedBox(height: 8),
+              const Divider(color: AnsibleDesign.ruleSoft, height: 1),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    type,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AnsibleDesign.inkMuted,
                     ),
-                    if (primary)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: AnsibleDesign.accent,
-                            width: 0.5,
-                          ),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: const Text(
-                          '主',
-                          style: TextStyle(
-                            fontFamily: AnsibleDesign.mono,
-                            fontSize: 8,
-                            letterSpacing: 1.4,
-                            color: AnsibleDesign.accent,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  sub,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    height: 1.55,
-                    color: AnsibleDesign.inkMuted,
-                    fontStyle: FontStyle.italic,
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  keyFragment,
-                  style: const TextStyle(
-                    fontFamily: AnsibleDesign.mono,
-                    fontSize: 10,
-                    letterSpacing: 0.5,
-                    color: AnsibleDesign.inkFaint,
+                  const Spacer(),
+                  Text(
+                    uses,
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 9,
+                      letterSpacing: 1,
+                      color: AnsibleDesign.inkFaint,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Divider(color: AnsibleDesign.ruleSoft, height: 1),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      type,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AnsibleDesign.inkMuted,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      uses,
-                      style: const TextStyle(
-                        fontFamily: AnsibleDesign.mono,
-                        fontSize: 9,
-                        letterSpacing: 1,
-                        color: AnsibleDesign.inkFaint,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
