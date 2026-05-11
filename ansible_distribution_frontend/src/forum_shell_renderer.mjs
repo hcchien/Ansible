@@ -16,7 +16,7 @@ export function renderAppShell({ viewModel, bodyHtml }) {
 }
 
 export function renderCommandHeader(viewModel) {
-  const label = viewModel.host?.displayName || 'Forum Relay';
+  const hostLabel = viewModel.host?.displayName || 'Forum Relay';
   const nav = viewModel.navigation
     .map((item) => {
       const current = item.id === viewModel.page.id ? ' aria-current="page"' : '';
@@ -26,7 +26,11 @@ export function renderCommandHeader(viewModel) {
 
   return `
     <header class="command-header">
-      <a class="brand-lockup" href="#/">${escapeHtml(label)}</a>
+      <a class="brand-lockup" href="#/" aria-label="Elix forum home">
+        ${renderElixMark()}
+        <span class="brand-word">Elix</span>
+        <span class="brand-host">${escapeHtml(hostLabel)}</span>
+      </a>
       <nav class="command-nav" aria-label="Forum">${nav}</nav>
       <div class="command-context">
         <span class="route-title">${escapeHtml(viewModel.page.title)}</span>
@@ -34,6 +38,20 @@ export function renderCommandHeader(viewModel) {
         ${renderPrimaryAction(viewModel)}
       </div>
     </header>
+  `;
+}
+
+export function renderElixMark() {
+  return `
+    <svg class="elix-mark" viewBox="-100 -100 200 200" aria-hidden="true" focusable="false">
+      <g transform="rotate(30)">
+        <path d="M -60 40 L 60 40 M -60 40 L 0 -60 M 60 40 L 0 -60" />
+        <circle cx="-60" cy="40" r="14" />
+        <circle cx="60" cy="40" r="14" />
+        <circle cx="0" cy="-60" r="14" />
+        <circle class="elix-mark__center" cx="0" cy="6" r="8" />
+      </g>
+    </svg>
   `;
 }
 

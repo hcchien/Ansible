@@ -1,18 +1,27 @@
 :root {
-  color-scheme: dark;
-  --background: #0f1720;
-  --header: #101c27;
-  --surface: #142230;
-  --border: #253646;
-  --muted-fill: #31505b;
-  --accent: #7dd3c7;
-  --warning: #f2c14e;
-  --danger: #f97066;
-  --text: #dce7e5;
-  --muted: #93a4ad;
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  color-scheme: light;
+  --background: #faf6ec;
+  --background-soft: #f0ebda;
+  --surface: #faf6ec;
+  --surface-raised: #f0ebda;
+  --surface-deep: #e8e1cf;
+  --border: #d9d2be;
+  --border-soft: #e4ddc8;
+  --muted-fill: #e8e1cf;
+  --accent: #b97a3c;
+  --warning: #7a3e1e;
+  --danger: #7a3e1e;
+  --success: #4a6b5e;
+  --text: #1a1815;
+  --muted: #3a3530;
+  --faint: #8a847a;
+  --serif: "Noto Serif TC", Newsreader, Georgia, serif;
+  --serif-en: Newsreader, "Noto Serif TC", Georgia, serif;
+  --sans: "Noto Sans TC", Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
+    Menlo, monospace;
+  font-family: var(--serif);
 }
 
 * {
@@ -84,13 +93,15 @@ h2,
 h3,
 h4 {
   color: var(--text);
-  line-height: 1.15;
+  font-family: var(--serif);
+  font-weight: 500;
+  line-height: 1.12;
   letter-spacing: 0;
 }
 
 p {
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.72;
 }
 
 .forum-shell {
@@ -99,22 +110,68 @@ p {
 }
 
 .command-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(260px, 1.2fr) minmax(360px, 1.5fr);
-  gap: 16px;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, auto) minmax(360px, 1.2fr);
+  gap: 18px;
   align-items: center;
-  min-height: 72px;
-  padding: 12px 24px;
+  min-height: 76px;
+  padding: 13px 24px;
   border-bottom: 1px solid var(--border);
-  background: var(--header);
+  background: var(--background);
 }
 
 .brand-lockup {
+  display: inline-grid;
+  grid-template-columns: 34px auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
   min-width: 0;
   color: var(--text);
-  font-weight: 800;
+}
+
+.elix-mark {
+  width: 34px;
+  height: 34px;
+}
+
+.elix-mark path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3.2;
+  opacity: 0.74;
+}
+
+.elix-mark circle {
+  fill: currentColor;
+}
+
+.elix-mark__center {
+  fill: var(--accent) !important;
+}
+
+.brand-word {
+  color: var(--text);
+  font-family: var(--serif-en);
+  font-size: 1.46rem;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.brand-host {
+  min-width: 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -129,23 +186,29 @@ p {
 
 .command-nav {
   justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--surface-raised);
 }
 
 .command-nav a,
 .route-links a {
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 8px 10px;
   color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .command-nav a[aria-current="page"],
 .command-nav a:hover,
 .route-links a:hover {
-  border-color: var(--border);
-  background: var(--surface);
+  border-color: var(--border-soft);
+  background: var(--background);
   color: var(--text);
 }
 
@@ -156,9 +219,11 @@ p {
 
 .route-title {
   max-width: 16rem;
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 700;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -174,9 +239,10 @@ p {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
-  font-size: 0.82rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
   white-space: nowrap;
 }
 
@@ -187,8 +253,9 @@ p {
 }
 
 .session-chip strong {
-  color: var(--accent);
-  font-size: 0.75rem;
+  color: var(--success);
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .session-chip.is-anonymous strong {
@@ -205,13 +272,14 @@ button.danger-action {
   align-items: center;
   justify-content: center;
   min-height: 38px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--text);
   border-radius: 8px;
-  padding: 0 13px;
-  background: var(--accent);
-  color: #081113;
-  font-size: 0.9rem;
-  font-weight: 800;
+  padding: 0 16px;
+  background: var(--text);
+  color: var(--background);
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -219,9 +287,9 @@ button.danger-action {
 .primary-action:hover,
 button.header-action:hover:not(:disabled),
 button.primary-action:hover:not(:disabled) {
-  border-color: var(--text);
-  background: var(--text);
-  color: #081113;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--background);
 }
 
 .danger-action,
@@ -238,34 +306,37 @@ button.header-action.is-danger {
 button.danger-action:hover:not(:disabled),
 button.header-action.is-danger:hover:not(:disabled) {
   background: var(--danger);
-  color: #160909;
+  color: var(--background);
 }
 
 .forum-main {
   display: grid;
-  gap: 18px;
-  width: min(1120px, calc(100% - 32px));
+  gap: 20px;
+  width: min(1120px, calc(100% - 40px));
   margin: 0 auto;
-  padding: 28px 0 48px;
+  padding: 34px 0 54px;
 }
 
 .page-heading {
   display: grid;
-  gap: 6px;
-  padding-bottom: 12px;
+  gap: 7px;
+  padding-bottom: 15px;
   border-bottom: 1px solid var(--border);
 }
 
 .page-heading h1 {
   margin: 0;
-  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-family: var(--serif-en);
+  font-size: clamp(2.15rem, 5vw, 4.1rem);
+  font-weight: 400;
 }
 
 .section-label {
   margin: 0;
   color: var(--accent);
-  font-size: 0.76rem;
-  font-weight: 800;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -282,7 +353,7 @@ button.header-action.is-danger:hover:not(:disabled) {
 .error-banner {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-raised);
 }
 
 .home-overview,
@@ -293,7 +364,7 @@ button.header-action.is-danger:hover:not(:disabled) {
 .login-challenge {
   display: grid;
   gap: 14px;
-  padding: 20px;
+  padding: 22px;
 }
 
 .home-overview h2,
@@ -303,7 +374,7 @@ button.header-action.is-danger:hover:not(:disabled) {
 .not-found-page h2,
 .board-heading h2 {
   margin: 0;
-  font-size: 1.55rem;
+  font-size: 1.62rem;
 }
 
 .home-overview p,
@@ -316,7 +387,9 @@ button.header-action.is-danger:hover:not(:disabled) {
 
 .permission-copy {
   color: var(--warning);
-  font-weight: 800;
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .board-page {
@@ -324,7 +397,7 @@ button.header-action.is-danger:hover:not(:disabled) {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 16px;
   align-items: center;
-  padding: 20px;
+  padding: 22px;
 }
 
 .board-heading {
@@ -343,15 +416,16 @@ button.header-action.is-danger:hover:not(:disabled) {
 
 .permission-state span,
 .permission-state strong {
-  font-size: 0.86rem;
+  font-family: var(--mono);
+  font-size: 0.76rem;
 }
 
 .permission-state span {
-  color: var(--muted);
+  color: var(--faint);
 }
 
 .permission-state strong {
-  color: var(--accent);
+  color: var(--success);
 }
 
 .board-directory,
@@ -383,7 +457,7 @@ button.header-action.is-danger:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
-  background: var(--header);
+  background: var(--background);
 }
 
 .board-directory li a,
@@ -391,7 +465,7 @@ button.header-action.is-danger:hover:not(:disabled) {
   margin: 0;
   color: var(--text);
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .board-directory li p,
@@ -402,13 +476,14 @@ button.header-action.is-danger:hover:not(:disabled) {
 .board-directory li span,
 .empty-state,
 .scope-empty {
-  color: var(--muted);
-  font-size: 0.9rem;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.78rem;
 }
 
 .board-directory li span {
   color: var(--warning);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .thread-list h3:last-child,
@@ -431,13 +506,14 @@ button.header-action.is-danger:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
-  background: var(--header);
+  background: var(--background);
 }
 
 dt {
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 800;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -445,15 +521,13 @@ dd {
   margin: 6px 0 0;
   color: var(--text);
   overflow-wrap: anywhere;
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 0.86rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
 }
 
 code {
   color: var(--accent);
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: var(--mono);
 }
 
 .scope-list {
@@ -461,19 +535,20 @@ code {
 }
 
 .scope-list li {
-  border: 1px solid var(--muted-fill);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 10px;
-  color: var(--accent);
-  font-size: 0.86rem;
-  font-weight: 800;
+  color: var(--success);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .route-link {
   justify-self: start;
   border-bottom: 1px solid var(--accent);
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .route-links {
@@ -486,7 +561,7 @@ code {
   gap: 10px;
   align-items: start;
   padding: 12px 14px;
-  background: #231d1d;
+  background: #f2e5d2;
 }
 
 .error-banner strong {
@@ -498,7 +573,7 @@ code {
 }
 
 .error-banner.is-warning {
-  background: #25230f;
+  background: #efe7d0;
 }
 
 .error-banner.is-warning strong {
@@ -510,6 +585,10 @@ code {
     grid-template-columns: 1fr;
     gap: 10px;
     padding: 12px 16px;
+  }
+
+  .brand-lockup {
+    grid-template-columns: 34px auto 1fr;
   }
 
   .command-nav,
@@ -534,11 +613,11 @@ code {
 
   .forum-main {
     width: min(100% - 24px, 1120px);
-    padding: 20px 0 34px;
+    padding: 22px 0 38px;
   }
 
   .page-heading h1 {
-    font-size: 2rem;
+    font-size: 2.15rem;
   }
 
   .board-page {

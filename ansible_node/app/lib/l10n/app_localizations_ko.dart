@@ -9,7 +9,7 @@ class AppLocalizationsKo extends AppLocalizations {
   AppLocalizationsKo([String locale = 'ko']) : super(locale);
 
   @override
-  String get appTitle => 'Ansible Node';
+  String get appTitle => 'Elix';
 
   @override
   String get settingsTitle => '설정';
@@ -125,7 +125,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get blockedListSubtitle => '서로 볼 수 없습니다';
 
   @override
-  String get about => 'Ansible 정보';
+  String get about => 'Elix 정보';
 
   @override
   String get aboutSubtitle => '별 사이의 거리를 건너는 신호';

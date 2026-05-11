@@ -1,6 +1,6 @@
 {
   "@@locale": "ko",
-  "appTitle": "Ansible Node",
+  "appTitle": "Elix",
   "settingsTitle": "설정",
   "done": "완료",
   "localIdentity": "로컬 신원",
@@ -38,7 +38,7 @@
   "notSet": "설정 안 됨",
   "blockedList": "차단 목록",
   "blockedListSubtitle": "서로 볼 수 없습니다",
-  "about": "Ansible 정보",
+  "about": "Elix 정보",
   "aboutSubtitle": "별 사이의 거리를 건너는 신호",
   "manual": "사용 설명서",
   "signOutDevice": "이 기기에서 로그아웃",

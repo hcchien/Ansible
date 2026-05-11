@@ -13,53 +13,63 @@ assert.match(
 );
 assert.match(
   css,
-  /--background:\s*#0f1720;/,
-  'network console background token is required',
+  /--background:\s*#faf6ec;/,
+  'Elix paper background token is required',
 );
 assert.match(
   css,
-  /--header:\s*#101c27;/,
-  'network console header token is required',
+  /--surface-raised:\s*#f0ebda;/,
+  'Elix raised paper token is required',
 );
 assert.match(
   css,
-  /--surface:\s*#142230;/,
-  'network console surface token is required',
+  /--surface-deep:\s*#e8e1cf;/,
+  'Elix deep paper token is required',
 );
 assert.match(
   css,
-  /--border:\s*#253646;/,
-  'network console border token is required',
+  /--border:\s*#d9d2be;/,
+  'Elix rule token is required',
 );
 assert.match(
   css,
-  /--muted-fill:\s*#31505b;/,
-  'network console muted fill token is required',
+  /--muted-fill:\s*#e8e1cf;/,
+  'Elix muted fill token is required',
 );
 assert.match(
   css,
-  /--accent:\s*#7dd3c7;/,
-  'network console accent token is required',
+  /--accent:\s*#b97a3c;/,
+  'Elix amber accent token is required',
 );
 assert.match(
   css,
-  /--warning:\s*#f2c14e;/,
-  'network console warning token is required',
+  /--warning:\s*#7a3e1e;/,
+  'Elix ember warning token is required',
 );
 assert.match(
   css,
-  /--danger:\s*#f97066;/,
-  'network console danger token is required',
+  /--danger:\s*#7a3e1e;/,
+  'Elix danger token is required',
 );
 assert.match(
   css,
-  /--text:\s*#dce7e5;/,
-  'network console text token is required',
+  /--success:\s*#4a6b5e;/,
+  'Elix sage success token is required',
 );
 assert.match(
   css,
-  /--muted:\s*#93a4ad;/,
-  'network console muted token is required',
+  /--text:\s*#1a1815;/,
+  'Elix ink token is required',
+);
+assert.match(
+  css,
+  /--muted:\s*#3a3530;/,
+  'Elix soft ink token is required',
+);
+assert.match(
+  css,
+  /\.elix-mark\s*\{[^}]*width:\s*34px;/s,
+  'Elix constellation mark must be present',
 );
 assert.match(
   css,
@@ -97,7 +107,7 @@ assert.equal(
     ),
   ),
   undefined,
-  'network console UI must not rely on decorative background gradients',
+  'Elix UI must not rely on decorative background gradients',
 );
 
 console.log('ok - hidden elements stay hidden');

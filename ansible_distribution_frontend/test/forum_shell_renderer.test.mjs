@@ -15,7 +15,9 @@ const anonymousVm = buildAppViewModel({
 });
 
 const header = renderCommandHeader(anonymousVm);
-assert.match(header, /Forum Relay|Local Forum Host/);
+assert.match(header, /Elix/);
+assert.match(header, /Local Forum Host/);
+assert.match(header, /class="elix-mark"/);
 assert.match(header, /href="#\/boards"/);
 assert.match(header, /Anonymous/);
 assert.match(header, /Sign in/);

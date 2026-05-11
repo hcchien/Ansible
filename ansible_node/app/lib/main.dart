@@ -183,7 +183,7 @@ class _MyAppState extends State<MyApp> {
         return MaterialApp(
           navigatorKey: _navigatorKey,
           scaffoldMessengerKey: _scaffoldMessengerKey,
-          title: 'Ansible Node',
+          title: AnsibleDesign.brandName,
           theme: AnsibleDesign.theme(),
           locale: _localeController.locale,
           supportedLocales: AppLocalizations.supportedLocales,

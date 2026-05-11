@@ -23,7 +23,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('ansible'), findsOneWidget);
+    expect(find.text('Elix'), findsOneWidget);
     expect(find.text('在這裡，\n先慢一點。'), findsOneWidget);
     expect(find.text('沒有帳號 · 沒有雲端 · 不會被收集'), findsOneWidget);
   });

@@ -6,6 +6,7 @@ import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
 import '../services/relay_identity_client.dart';
+import '../theme/ansible_design.dart';
 
 /// Phase 1 — Identity Anchoring screen.
 ///
@@ -217,16 +218,10 @@ class _IdentityAnchorScreenState extends State<IdentityAnchorScreen> {
                 const Icon(
                   Icons.verified_user_outlined,
                   size: 72,
-                  color: Color(0xFF1A56A4),
+                  color: AnsibleDesign.accent,
                 ),
                 const SizedBox(height: 24),
-                Text(
-                  'Ansible',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1A56A4),
-                  ),
-                ),
+                const ElixWordmark(fontSize: 34),
                 const SizedBox(height: 8),
                 Text(
                   '護照身份驗證',

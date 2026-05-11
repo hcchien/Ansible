@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'Ansible Node';
+  String get appTitle => 'Elix';
 
   @override
   String get settingsTitle => 'SETTINGS';
@@ -125,7 +125,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get blockedListSubtitle => '你看不到，他們也看不到你';
 
   @override
-  String get about => '關於 Ansible';
+  String get about => '關於 Elix';
 
   @override
   String get aboutSubtitle => '信號越過星際的距離';
@@ -537,7 +537,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
 
   @override
-  String get appTitle => 'Ansible Node';
+  String get appTitle => 'Elix';
 
   @override
   String get settingsTitle => 'SETTINGS';
@@ -653,7 +653,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get blockedListSubtitle => '你看不到，他們也看不到你';
 
   @override
-  String get about => '關於 Ansible';
+  String get about => '關於 Elix';
 
   @override
   String get aboutSubtitle => '信號越過星際的距離';

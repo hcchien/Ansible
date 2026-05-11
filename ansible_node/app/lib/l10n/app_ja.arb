@@ -1,6 +1,6 @@
 {
   "@@locale": "ja",
-  "appTitle": "Ansible Node",
+  "appTitle": "Elix",
   "settingsTitle": "設定",
   "done": "完了",
   "localIdentity": "ローカル ID",
@@ -38,7 +38,7 @@
   "notSet": "未設定",
   "blockedList": "ブロックリスト",
   "blockedListSubtitle": "相手もあなたも互いに見えません",
-  "about": "Ansible について",
+  "about": "Elix について",
   "aboutSubtitle": "星間距離を越える信号",
   "manual": "マニュアル",
   "signOutDevice": "この端末からサインアウト",

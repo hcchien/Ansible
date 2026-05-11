@@ -9,7 +9,7 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
-  String get appTitle => 'Ansible Node';
+  String get appTitle => 'Elix';
 
   @override
   String get settingsTitle => '設定';
@@ -125,7 +125,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get blockedListSubtitle => '相手もあなたも互いに見えません';
 
   @override
-  String get about => 'Ansible について';
+  String get about => 'Elix について';
 
   @override
   String get aboutSubtitle => '星間距離を越える信号';

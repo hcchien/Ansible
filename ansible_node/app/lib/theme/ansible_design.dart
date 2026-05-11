@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 
 class AnsibleDesign {
-  static const paper = Color(0xFFF0EEE6);
-  static const paperElev = Color(0xFFF8F5EC);
-  static const paperDeep = Color(0xFFE7E2D6);
-  static const ink = Color(0xFF2F2A20);
-  static const inkMuted = Color(0xFF6B6253);
-  static const inkFaint = Color(0xFF988F80);
-  static const rule = Color(0xFFD4CCBD);
-  static const ruleSoft = Color(0xFFE2DCD0);
-  static const accent = Color(0xFFC76C35);
-  static const accentSoft = Color(0xFFEAD1B9);
-  static const spore = Color(0xFF6F8B55);
-  static const danger = Color(0xFFA34432);
+  static const brandName = 'Elix';
+  static const paper = Color(0xFFFAF6EC);
+  static const paperElev = Color(0xFFF0EBDA);
+  static const paperDeep = Color(0xFFE8E1CF);
+  static const ink = Color(0xFF1A1815);
+  static const inkMuted = Color(0xFF3A3530);
+  static const inkFaint = Color(0xFF8A847A);
+  static const rule = Color(0xFFD9D2BE);
+  static const ruleSoft = Color(0xFFE4DDC8);
+  static const accent = Color(0xFFB97A3C);
+  static const accentSoft = Color(0xFFF0EBDA);
+  static const spore = Color(0xFF4A6B5E);
+  static const danger = Color(0xFF7A3E1E);
 
   static const serif = 'Noto Serif TC';
+  static const serifEn = 'Newsreader';
   static const sans = 'Noto Sans TC';
   static const mono = 'JetBrains Mono';
   static const appTextScale = 1.08;
@@ -143,61 +145,78 @@ class AnsibleMark extends StatelessWidget {
     final c = color ?? AnsibleDesign.ink;
     return CustomPaint(
       size: Size.square(size),
-      painter: _AnsibleMarkPainter(c),
+      painter: _ElixMarkPainter(c, AnsibleDesign.accent),
     );
   }
 }
 
-class _AnsibleMarkPainter extends CustomPainter {
-  const _AnsibleMarkPainter(this.color);
+class ElixWordmark extends StatelessWidget {
+  const ElixWordmark({super.key, this.fontSize = 24, this.color});
+
+  final double fontSize;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      AnsibleDesign.brandName,
+      style: TextStyle(
+        fontFamily: AnsibleDesign.serifEn,
+        fontFamilyFallback: AnsibleDesign.fallback,
+        fontSize: fontSize,
+        fontWeight: FontWeight.w400,
+        height: 1,
+        letterSpacing: 0,
+        color: color ?? AnsibleDesign.ink,
+      ),
+    );
+  }
+}
+
+class _ElixMarkPainter extends CustomPainter {
+  const _ElixMarkPainter(this.color, this.accent);
 
   final Color color;
+  final Color accent;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scale = size.width / 32;
+    final s = size.shortestSide / 200;
+    final center = Offset(size.width / 2, size.height / 2);
+    Offset p(double x, double y) => center + Offset(x * s, y * s);
     final stroke = Paint()
-      ..color = color
+      ..color = color.withValues(alpha: 0.74)
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 3.2 * s;
     final fill = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
 
-    stroke.strokeWidth = 1.5 * scale;
-    canvas.drawArc(
-      Rect.fromCircle(
-        center: Offset(11 * scale, 16 * scale),
-        radius: 5 * scale,
-      ),
-      -1.5708,
-      3.1416,
-      false,
-      stroke,
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(0.5235987756);
+    canvas.translate(-center.dx, -center.dy);
+    canvas.drawLine(p(-60, 40), p(60, 40), stroke);
+    canvas.drawLine(p(-60, 40), p(0, -60), stroke);
+    canvas.drawLine(p(60, 40), p(0, -60), stroke);
+    canvas.drawCircle(p(-60, 40), 14 * s, fill);
+    canvas.drawCircle(p(60, 40), 14 * s, fill);
+    canvas.drawCircle(p(0, -60), 14 * s, fill);
+    canvas.drawCircle(
+      p(0, 6),
+      8 * s,
+      Paint()
+        ..color = accent
+        ..style = PaintingStyle.fill,
     );
-    stroke
-      ..strokeWidth = 1 * scale
-      ..color = color.withValues(alpha: 0.55);
-    canvas.drawArc(
-      Rect.fromCircle(
-        center: Offset(11 * scale, 16 * scale),
-        radius: 8 * scale,
-      ),
-      -1.5708,
-      3.1416,
-      false,
-      stroke,
-    );
-    canvas.drawCircle(Offset(11 * scale, 16 * scale), 2.5 * scale, fill);
-    stroke
-      ..strokeWidth = 1.25 * scale
-      ..color = color;
-    canvas.drawCircle(Offset(24 * scale, 16 * scale), 2.5 * scale, stroke);
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _AnsibleMarkPainter oldDelegate) {
-    return oldDelegate.color != color;
+  bool shouldRepaint(covariant _ElixMarkPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.accent != accent;
   }
 }
 
@@ -216,14 +235,7 @@ class AnsibleHeader extends StatelessWidget {
         children: [
           const AnsibleMark(size: 22),
           const SizedBox(width: 9),
-          const Text(
-            'ansible',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w300,
-              letterSpacing: 0,
-            ),
-          ),
+          const ElixWordmark(fontSize: 23),
           const Spacer(),
           actions ??
               AnsibleStatusChip(label: chip, dot: dot ?? AnsibleDesign.spore),

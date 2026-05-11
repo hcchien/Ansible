@@ -1,6 +1,6 @@
 {
   "@@locale": "zh",
-  "appTitle": "Ansible Node",
+  "appTitle": "Elix",
   "settingsTitle": "SETTINGS",
   "done": "完成",
   "localIdentity": "本機身分",
@@ -39,7 +39,7 @@
   "notSet": "未設",
   "blockedList": "封鎖名單",
   "blockedListSubtitle": "你看不到，他們也看不到你",
-  "about": "關於 Ansible",
+  "about": "關於 Elix",
   "aboutSubtitle": "信號越過星際的距離",
   "manual": "使用手冊",
   "signOutDevice": "登出此裝置",

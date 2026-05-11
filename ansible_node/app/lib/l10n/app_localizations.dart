@@ -114,7 +114,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'Ansible Node'**
+  /// **'Elix'**
   String get appTitle;
 
   /// No description provided for @settingsTitle.
@@ -342,7 +342,7 @@ abstract class AppLocalizations {
   /// No description provided for @about.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'關於 Ansible'**
+  /// **'關於 Elix'**
   String get about;
 
   /// No description provided for @aboutSubtitle.

@@ -1478,13 +1478,7 @@ class _TopBar extends StatelessWidget {
                   AnsibleMark(size: compact ? 34 : 38),
                   if (!compact) ...[
                     const SizedBox(width: 10),
-                    const Text(
-                      'ansible',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w300,
-                        fontSize: 24,
-                      ),
-                    ),
+                    const ElixWordmark(fontSize: 24),
                   ],
                 ],
               ),

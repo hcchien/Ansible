@@ -514,7 +514,7 @@ class _SettingsText {
   String get notSet => l10n?.notSet ?? '未設';
   String get blockedList => l10n?.blockedList ?? '封鎖名單';
   String get blockedListSubtitle => l10n?.blockedListSubtitle ?? '你看不到，他們也看不到你';
-  String get about => l10n?.about ?? '關於 Ansible';
+  String get about => l10n?.about ?? '關於 Elix';
   String get aboutSubtitle => l10n?.aboutSubtitle ?? '信號越過星際的距離';
   String get manual => l10n?.manual ?? '使用手冊';
   String get signOutDevice => l10n?.signOutDevice ?? '登出此裝置';

@@ -316,15 +316,7 @@ class _PasskeysRegistrationScreenState
                           color: AnsibleDesign.accent,
                         ),
                         const SizedBox(height: 22),
-                        const Text(
-                          'ansible',
-                          style: TextStyle(
-                            fontSize: 38,
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: 0,
-                            height: 1.1,
-                          ),
-                        ),
+                        const ElixWordmark(fontSize: 38),
                         const SizedBox(height: 22),
                         const Text(
                           '在這裡，\n先慢一點。',
