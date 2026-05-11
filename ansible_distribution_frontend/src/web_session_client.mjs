@@ -1,3 +1,5 @@
+import { createRelayApiClient } from './relay_api_client.mjs';
+
 export const WEB_SESSION_TOKEN_KEY = 'trisaura.web_session_token';
 
 export const TRUST_TIERS = Object.freeze({
@@ -27,22 +29,14 @@ export async function createWebSessionChallenge({
   scopes,
   fetchImpl = globalThis.fetch,
 }) {
-  assertFetch(fetchImpl);
-
-  const response = await fetchImpl(
-    `${trimTrailingSlash(relayBaseUrl)}/api/v1/web-sessions/challenges`,
+  return createRelayApiClient({ relayBaseUrl, fetchImpl }).postJson(
+    '/api/v1/web-sessions/challenges',
     {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        web_origin: webOrigin,
-        relay_origin: relayOrigin,
-        scopes,
-      }),
+      web_origin: webOrigin,
+      relay_origin: relayOrigin,
+      scopes,
     },
   );
-
-  return parseJsonResponse(response);
 }
 
 export async function fetchChallengeStatus({
@@ -50,16 +44,51 @@ export async function fetchChallengeStatus({
   challengeId,
   fetchImpl = globalThis.fetch,
 }) {
-  assertFetch(fetchImpl);
+  return createRelayApiClient({ relayBaseUrl, fetchImpl }).getJson(
+    `/api/v1/web-sessions/challenges/${encodeURIComponent(challengeId)}`,
+  );
+}
 
-  const response = await fetchImpl(
-    `${trimTrailingSlash(
-      relayBaseUrl,
-    )}/api/v1/web-sessions/challenges/${encodeURIComponent(challengeId)}`,
-    { method: 'GET' },
+export async function fetchCurrentWebSession({
+  relayBaseUrl,
+  storage = globalThis.localStorage,
+  fetchImpl = globalThis.fetch,
+}) {
+  return createRelayApiClient({ relayBaseUrl, storage, fetchImpl }).getJson(
+    '/api/v1/web-sessions/me',
+    { authenticated: true },
+  );
+}
+
+export async function listWebSessions({
+  relayBaseUrl,
+  storage = globalThis.localStorage,
+  fetchImpl = globalThis.fetch,
+}) {
+  return createRelayApiClient({ relayBaseUrl, storage, fetchImpl }).getJson(
+    '/api/v1/web-sessions',
+    { authenticated: true },
+  );
+}
+
+export async function revokeWebSession({
+  relayBaseUrl,
+  storage = globalThis.localStorage,
+  fetchImpl = globalThis.fetch,
+  sessionToken,
+} = {}) {
+  const body = sessionToken ? { session_token: sessionToken } : {};
+  const result = await createRelayApiClient({ relayBaseUrl, storage, fetchImpl }).postJson(
+    '/api/v1/web-sessions/revoke',
+    body,
+    { authenticated: true },
   );
 
-  return parseJsonResponse(response);
+  if (!sessionToken || sessionToken === readWebSessionToken(storage)) {
+    clearWebSessionToken(storage);
+  }
+
+  return result;
 }
 
 export function resolveChallengePollResult(challenge, storage) {
@@ -120,25 +149,4 @@ export function readWebSessionToken(storage) {
 
 export function clearWebSessionToken(storage) {
   storage.removeItem(WEB_SESSION_TOKEN_KEY);
-}
-
-function assertFetch(fetchImpl) {
-  if (typeof fetchImpl !== 'function') {
-    throw new TypeError('fetchImpl is required');
-  }
-}
-
-async function parseJsonResponse(response) {
-  const body = await response.json();
-
-  if (!response.ok) {
-    const message = body?.error ?? `request failed with HTTP ${response.status}`;
-    throw new Error(message);
-  }
-
-  return body;
-}
-
-function trimTrailingSlash(value) {
-  return value.replace(/\/+$/, '');
 }

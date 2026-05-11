@@ -1,7 +1,7 @@
+import { createHostedWebThread } from './forum_host_client.mjs';
 import {
   createWebSessionChallenge,
   fetchChallengeStatus,
-  readWebSessionToken,
   resolveChallengePollResult,
 } from './web_session_client.mjs';
 
@@ -73,30 +73,7 @@ export function createForumLoginController({
   }
 
   async function createThreadSmoke({ title }) {
-    const sessionToken = readWebSessionToken(storage);
-
-    if (!sessionToken) {
-      throw new Error('web session token is required');
-    }
-
-    const response = await fetchImpl(
-      `${trimTrailingSlash(relayBaseUrl)}/api/v1/forum-host/web/threads`,
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${sessionToken}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({ title }),
-      },
-    );
-    const body = await response.json();
-
-    if (!response.ok) {
-      throw new Error(body?.error ?? `request failed with HTTP ${response.status}`);
-    }
-
-    return body;
+    return createHostedWebThread({ relayBaseUrl, storage, fetchImpl, title });
   }
 
   function getState() {

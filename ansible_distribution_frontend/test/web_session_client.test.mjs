@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {
   TRUST_TIERS,
   classifyTrustTier,
+  fetchCurrentWebSession,
+  listWebSessions,
+  revokeWebSession,
   resolveChallengePollResult,
   WEB_SESSION_TOKEN_KEY,
 } from '../src/web_session_client.mjs';
@@ -123,6 +126,82 @@ test('clears token state for rejected and expired challenges', () => {
   });
   assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
 });
+
+test('loads current and active web sessions through authenticated relay APIs', async () => {
+  const storage = new MemoryStorage();
+  storage.setItem(WEB_SESSION_TOKEN_KEY, 'wst_current');
+  const requests = [];
+  const fetchImpl = async (url, init) => {
+    requests.push({ url, init });
+
+    if (url.endsWith('/api/v1/web-sessions/me')) {
+      return jsonResponse(200, {
+        session_token: 'wst_current',
+        subject_did: 'did:plc:abc',
+        trust_tier: 'self_custody_did',
+      });
+    }
+
+    return jsonResponse(200, {
+      sessions: [{ session_token: 'wst_current', trust_tier: 'self_custody_did' }],
+    });
+  };
+
+  const current = await fetchCurrentWebSession({
+    relayBaseUrl: 'http://localhost:4001/',
+    storage,
+    fetchImpl,
+  });
+  const sessions = await listWebSessions({
+    relayBaseUrl: 'http://localhost:4001/',
+    storage,
+    fetchImpl,
+  });
+
+  assert.equal(current.subject_did, 'did:plc:abc');
+  assert.deepEqual(sessions.sessions, [
+    { session_token: 'wst_current', trust_tier: 'self_custody_did' },
+  ]);
+  assert.deepEqual(
+    requests.map((request) => request.url),
+    [
+      'http://localhost:4001/api/v1/web-sessions/me',
+      'http://localhost:4001/api/v1/web-sessions',
+    ],
+  );
+  assert.equal(requests[0].init.headers.authorization, 'Bearer wst_current');
+});
+
+test('revokes web sessions and clears local token when revoking the current session', async () => {
+  const storage = new MemoryStorage();
+  storage.setItem(WEB_SESSION_TOKEN_KEY, 'wst_current');
+  const requests = [];
+
+  const result = await revokeWebSession({
+    relayBaseUrl: 'http://localhost:4001',
+    storage,
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(200, { revoked: true });
+    },
+  });
+
+  assert.deepEqual(result, { revoked: true });
+  assert.equal(requests[0].url, 'http://localhost:4001/api/v1/web-sessions/revoke');
+  assert.equal(requests[0].init.headers.authorization, 'Bearer wst_current');
+  assert.equal(requests[0].init.body, '{}');
+  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
+});
+
+function jsonResponse(status, body) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    async json() {
+      return body;
+    },
+  };
+}
 
 for (const { name, body } of tests) {
   await body();
