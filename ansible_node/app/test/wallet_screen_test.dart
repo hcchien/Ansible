@@ -39,8 +39,8 @@ void main() {
     expect(find.text('錢包'), findsOneWidget);
     await _scrollWallet(tester);
     expect(find.text('Verified Human'), findsOneWidget);
-    expect(find.text('Active'), findsOneWidget);
-    expect(find.text('Expires 2026-08-02'), findsOneWidget);
+    expect(find.text('有效'), findsOneWidget);
+    expect(find.text('到期 2026-08-02'), findsOneWidget);
   });
 
   testWidgets('wallet screen shows empty state', (tester) async {

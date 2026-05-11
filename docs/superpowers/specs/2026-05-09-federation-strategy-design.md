@@ -62,6 +62,17 @@ Forum Host ownership is the board boundary:
   a shared multi-primary board identity.
 - Purely local personal organization belongs to Local Collections.
 
+Web distribution must support users who have not installed the app:
+
+- The distribution frontend reads and writes through the Forum Host / relay API,
+  not through app-local storage.
+- Web users may start as hosted or passkey-authenticated accounts with lower
+  trust tiers and stricter limits.
+- Users who already have the app can upgrade a web session to their
+  self-custody DID through an app-mediated approval flow.
+- The web frontend must not receive or persist the app user's root DID private
+  key.
+
 ## Identity Model
 
 Each local account may have multiple public bindings:
@@ -73,15 +84,27 @@ Each local account may have multiple public bindings:
   `https://relay.trisaura.io/users/alice`.
 - NIP-05 identifier: alias such as `alice@trisaura.io`.
 - AT Protocol identity: optional `did:plc` / handle alias.
+- Web session identity: relay-issued browser session bound either to a hosted web
+  account or to a short-lived app-signed session grant.
 
 The canonical ActivityPub Actor must be stable under the relay domain. AT
 Protocol handles and NIP-05 names can change and must not replace stored follow
 targets. Nostr follows store pubkeys, not handles.
 
+Identity strength is explicit:
+
+- `basic_web`: hosted browser account with rate limits and moderation-first
+  posting.
+- `web_passkey`: browser account authenticated by WebAuthn/passkey, still treated
+  as web custody unless it also has a self-custody grant.
+- `self_custody_did`: app-held DID key approves the current web session. The app
+  signs a short-lived grant; the browser never receives the root private key.
+- `verified_human`: a DID/account with accepted VC or reputation upgrade.
+
 ## Distribution Model
 
 The app handles local authoring, visibility, and Nostr publication. The relay
-handles ActivityPub federation.
+handles ActivityPub federation and web distribution frontend state.
 
 ```text
 Private content:
@@ -92,10 +115,21 @@ Nostr:
 
 ActivityPub:
   app -> signed publication intent -> relay -> ActivityPub federation
+
+Web self-custody session:
+  web -> relay challenge -> app approval/signature -> relay web session
+  web -> relay/forum write API -> relay enforces session scope
 ```
 
 The relay may later mirror app-authored Nostr events, but app direct publish is
 the primary Nostr path.
+
+For self-custody web use, the first supported path is app-mediated session
+approval. The relay issues a login challenge, the app verifies the origin and
+requested scopes, the app signs a session grant with the local DID key, and the
+relay exchanges that grant for a short-lived browser session. Delegated browser
+signing keys are a later extension; v1 sessions do not grant an unbounded signing
+capability to the browser.
 
 ## Protocol Boundaries
 
@@ -149,3 +183,5 @@ Ansible state.
   abstraction first, then Nostr, then relay-managed ActivityPub.
 - New board work treats Forum Hosts as the canonical owner of discussion boards
   and treats local boards as migration projections.
+- New web work treats app-mediated sessions as scoped grants, not DID key export
+  into browser storage.

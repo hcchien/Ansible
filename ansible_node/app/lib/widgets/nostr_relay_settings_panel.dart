@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/subpage_l10n.dart';
 import '../theme/ansible_design.dart';
 import 'ansible_screen_chrome.dart';
 
@@ -34,12 +35,13 @@ class _NostrRelaySettingsPanelState extends State<NostrRelaySettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AnsibleMonoLabel(
-          'Nostr relays · NOSTR',
-          padding: EdgeInsets.fromLTRB(22, 20, 22, 8),
+        AnsibleMonoLabel(
+          text.t('nostrRelays'),
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
         ),
         Container(
           decoration: const BoxDecoration(
@@ -79,6 +81,7 @@ class _NostrRelaySettingsPanelState extends State<NostrRelaySettingsPanel> {
   }
 
   Widget _buildAddRelayRow() {
+    final text = SubpageL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 12, 14, 12),
       child: Column(
@@ -103,7 +106,7 @@ class _NostrRelaySettingsPanelState extends State<NostrRelaySettingsPanel> {
               const SizedBox(width: 8),
               IconButton.filledTonal(
                 key: const Key('nostr_add_relay_button'),
-                tooltip: '新增 relay',
+                tooltip: text.t('addRelay'),
                 icon: const Icon(Icons.add, size: 18),
                 onPressed: _addRelay,
               ),
@@ -206,6 +209,7 @@ class _RelayPreferenceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(
@@ -243,7 +247,7 @@ class _RelayPreferenceRow extends StatelessWidget {
           ),
           IconButton(
             key: Key('nostr_remove_relay_$index'),
-            tooltip: '移除 relay',
+            tooltip: text.t('removeRelay'),
             icon: const Icon(Icons.delete_outline, size: 18),
             onPressed: onRemove,
           ),
@@ -302,16 +306,21 @@ class _EmptyRelayRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(22, 13, 22, 13),
+    final text = SubpageL10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 13, 22, 13),
       child: Row(
         children: [
-          Icon(Icons.hub_outlined, size: 17, color: AnsibleDesign.inkFaint),
-          SizedBox(width: 12),
+          const Icon(
+            Icons.hub_outlined,
+            size: 17,
+            color: AnsibleDesign.inkFaint,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '尚未設定 Nostr relay。公開內容只會在你加入可寫 relay 後離開本機。',
-              style: TextStyle(
+              text.t('emptyNostrRelay'),
+              style: const TextStyle(
                 fontSize: 12,
                 height: 1.5,
                 color: AnsibleDesign.inkMuted,

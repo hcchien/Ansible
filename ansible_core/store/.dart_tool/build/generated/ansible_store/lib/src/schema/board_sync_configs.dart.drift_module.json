@@ -108,6 +108,36 @@
         },
         {
           "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": true,
+          "nameInSql": "retention_days",
+          "nameInDart": "retentionDays",
+          "declaration": {
+            "source_uri": "package:ansible_store/src/schema/board_sync_configs.dart",
+            "offset": 290,
+            "name": "retentionDays"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(90)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
             "builtin": "dateTime"
           },
           "nullable": false,
@@ -115,7 +145,7 @@
           "nameInDart": "createdAt",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/board_sync_configs.dart",
-            "offset": 295,
+            "offset": 390,
             "name": "createdAt"
           },
           "typeConverter": null,
@@ -143,7 +173,7 @@
           "nameInDart": "updatedAt",
           "declaration": {
             "source_uri": "package:ansible_store/src/schema/board_sync_configs.dart",
-            "offset": 375,
+            "offset": 470,
             "name": "updatedAt"
           },
           "typeConverter": null,

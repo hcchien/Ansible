@@ -14,12 +14,6 @@
       "languageVersion": "3.9"
     },
     {
-      "name": "ansible_domain",
-      "rootUri": "../../domain",
-      "packageUri": "lib/",
-      "languageVersion": "3.10"
-    },
-    {
       "name": "args",
       "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/args-2.7.0",
       "packageUri": "lib/",
@@ -146,12 +140,6 @@
       "languageVersion": "3.5"
     },
     {
-      "name": "equatable",
-      "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/equatable-2.0.7",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
-    },
-    {
       "name": "ffi",
       "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/ffi-2.1.4",
       "packageUri": "lib/",
@@ -184,12 +172,6 @@
     {
       "name": "graphs",
       "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/graphs-2.3.2",
-      "packageUri": "lib/",
-      "languageVersion": "3.4"
-    },
-    {
-      "name": "http",
-      "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/http-1.6.0",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },

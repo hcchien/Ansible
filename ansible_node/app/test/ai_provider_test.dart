@@ -30,6 +30,22 @@ void main() {
       expect(result.structuredJson['body'], contains('Raw thought'));
     });
 
+    test('manual provider does not invent placeholder output', () async {
+      final provider = ManualAiProvider();
+
+      final result = await provider.complete(
+        const AiProviderRequest(
+          task: 'discussion_summary',
+          contextPack: {'sources': []},
+          outputSchema: {'type': 'object'},
+        ),
+      );
+
+      expect(result.providerType, 'manual');
+      expect(result.structuredJson['summary'], isEmpty);
+      expect(result.rawText, isNot(contains('placeholder')));
+    });
+
     test('OpenAI-compatible provider sends messages and parses JSON', () async {
       final provider = OpenAiCompatibleProvider(
         baseUrl: Uri.parse('https://llm.example/v1'),

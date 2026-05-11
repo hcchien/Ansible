@@ -11,6 +11,7 @@ defmodule AnsibleRelay.Application do
       AnsibleRelay.Repo,
       AnsibleRelay.IdentityCache,
       AnsibleRelay.DidAccountCache,
+      AnsibleRelay.WebSessionStore,
       AnsibleRelay.AbuseDetector,
       AnsibleRelay.OpStore,
       {Bandit, plug: AnsibleRelay.Web.Router, port: port}

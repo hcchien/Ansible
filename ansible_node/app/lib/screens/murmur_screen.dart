@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/content_visibility_sheet.dart';
 import 'murmur_detail_screen.dart';
@@ -76,7 +77,7 @@ class _MurmurScreenState extends State<MurmurScreen> {
     });
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('已送出')));
+    ).showSnackBar(SnackBar(content: Text(context.l10n.sent)));
   }
 
   Future<void> _showVisibilitySheet() async {
@@ -97,14 +98,15 @@ class _MurmurScreenState extends State<MurmurScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text(
-              'MURMUR · 碎念',
-              style: TextStyle(
+            Text(
+              l10n.murmurTitle,
+              style: const TextStyle(
                 fontFamily: AnsibleDesign.mono,
                 fontSize: 10,
                 letterSpacing: 1.6,
@@ -112,11 +114,11 @@ class _MurmurScreenState extends State<MurmurScreen> {
               ),
             ),
             const Spacer(),
-            const AnsibleStatusChip(label: '本地', dot: AnsibleDesign.spore),
+            AnsibleStatusChip(label: l10n.local, dot: AnsibleDesign.spore),
             const SizedBox(width: 8),
             FilledButton(
               onPressed: _saving ? null : _save,
-              child: const Text('送出'),
+              child: Text(l10n.send),
             ),
           ],
         ),
@@ -125,9 +127,9 @@ class _MurmurScreenState extends State<MurmurScreen> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              const Text(
-                '現在腦子裡\n有什麼半成形的東西嗎？',
-                style: TextStyle(
+              Text(
+                l10n.murmurPrompt,
+                style: const TextStyle(
                   fontSize: 23,
                   height: 1.4,
                   fontWeight: FontWeight.w500,
@@ -137,8 +139,8 @@ class _MurmurScreenState extends State<MurmurScreen> {
               const SizedBox(height: 8),
               Text(
                 _visibility == ContentVisibility.private
-                    ? '一句話、一個直覺、一個還沒理順的問題都可以。沒人會看到。'
-                    : '一句話、一個直覺、一個還沒理順的問題都可以。這則會標記為可同步。',
+                    ? l10n.murmurPrivateHint
+                    : l10n.murmurSyncHint,
                 style: const TextStyle(
                   fontSize: 13,
                   height: 1.65,
@@ -183,8 +185,8 @@ class _MurmurScreenState extends State<MurmurScreen> {
                           ),
                         );
                       },
-                  decoration: const InputDecoration(
-                    hintText: '這幾個月一直在想的事情是',
+                  decoration: InputDecoration(
+                    hintText: l10n.murmurInputHint,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -208,9 +210,12 @@ class _MurmurScreenState extends State<MurmurScreen> {
                   Expanded(
                     child: Text(
                       switch (_visibility) {
-                        ContentVisibility.private => '只給自己',
-                        ContentVisibility.unlisted => '不列出但可同步',
-                        ContentVisibility.public => '公開發布',
+                        ContentVisibility.private =>
+                          l10n.murmurPrivateVisibilityHint,
+                        ContentVisibility.unlisted =>
+                          l10n.murmurUnlistedVisibilityHint,
+                        ContentVisibility.public =>
+                          l10n.murmurPublicVisibilityHint,
                       },
                       style: const TextStyle(
                         color: AnsibleDesign.inkFaint,
@@ -222,11 +227,11 @@ class _MurmurScreenState extends State<MurmurScreen> {
                 ],
               ),
               const SizedBox(height: 22),
-              const AnsibleSectionHead(zh: '散落', en: 'LOOSE MURMURS'),
+              AnsibleSectionHead(zh: l10n.looseMurmurs, en: 'LOOSE MURMURS'),
               if (widget.recentMurmurs.isEmpty)
-                const Text(
-                  '送出的碎念會先留在這裡。',
-                  style: TextStyle(
+                Text(
+                  l10n.looseMurmursEmpty,
+                  style: const TextStyle(
                     color: AnsibleDesign.inkMuted,
                     fontStyle: FontStyle.italic,
                   ),
@@ -297,7 +302,9 @@ class _RecentMurmurRow extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  referenceCount == 0 ? '未使用' : '$referenceCount 篇引用',
+                  referenceCount == 0
+                      ? context.l10n.unused
+                      : context.l10n.referenceCount(referenceCount),
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 9,
@@ -371,7 +378,7 @@ class _RecentMurmurRow extends StatelessWidget {
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('已刪除碎念')));
+      ).showSnackBar(SnackBar(content: Text(context.l10n.deletedMurmur)));
     }
     return true;
   }

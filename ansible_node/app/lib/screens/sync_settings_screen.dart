@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
+import '../l10n/subpage_l10n.dart';
 import '../services/content_publication_service.dart';
 import '../services/app_sync_service.dart';
 import '../services/nostr_publication_service.dart';
@@ -110,9 +111,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
+        final text = SubpageL10n.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(text.f('loadError', {'error': e}))),
+        );
       }
     }
   }
@@ -155,9 +157,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         accessToken = response['access_token'] as String?;
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Authentication failed: $e')));
+          final text = SubpageL10n.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(text.f('authFailed', {'error': e}))),
+          );
         }
         return;
       }
@@ -177,9 +180,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     await _loadData();
 
     if (mounted) {
+      final text = SubpageL10n.of(context);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Forum Host added')));
+      ).showSnackBar(SnackBar(content: Text(text.t('forumHostAdded'))));
     }
   }
 
@@ -200,9 +204,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         accessToken = response['access_token'] as String?;
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Authentication failed: $e')));
+          final text = SubpageL10n.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(text.f('authFailed', {'error': e}))),
+          );
         }
         return;
       }
@@ -219,29 +224,29 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     await _loadData();
 
     if (mounted) {
+      final text = SubpageL10n.of(context);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Forum Host updated')));
+      ).showSnackBar(SnackBar(content: Text(text.t('forumHostUpdated'))));
     }
   }
 
   Future<void> _deleteRemoteNode(RemoteNode node) async {
+    final text = SubpageL10n.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Forum Host'),
-        content: Text(
-          'Are you sure you want to delete "${node.name}"?\n\nThis will also remove hosted board subscription settings for this Forum Host.',
-        ),
+        title: Text(text.t('deleteForumHostTitle')),
+        content: Text(text.f('deleteForumHostConfirm', {'name': node.name})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(MaterialLocalizations.of(context).deleteButtonTooltip),
           ),
         ],
       ),
@@ -254,7 +259,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Forum Host deleted')));
+        ).showSnackBar(SnackBar(content: Text(text.t('forumHostDeleted'))));
       }
     }
   }
@@ -523,7 +528,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result.published > 0 ? 'Nostr 發佈已重試' : 'Nostr 發佈仍未成功'),
+        content: Text(
+          result.published > 0
+              ? SubpageL10n.of(context).t('nostrRetrySuccess')
+              : SubpageL10n.of(context).t('nostrRetryFailed'),
+        ),
       ),
     );
   }
@@ -532,9 +541,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     await _publicationRepo.resetTargetForRetry(target.targetId);
     await _loadData();
     if (!mounted) return;
+    final text = SubpageL10n.of(context);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Nostr 發佈已重設為待重試')));
+    ).showSnackBar(SnackBar(content: Text(text.t('nostrResetDone'))));
   }
 
   Future<void> _updateNostrRelays(List<NostrRelayPreference> relays) async {
@@ -547,18 +557,19 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final text = SubpageL10n.of(context);
     final hasSyncTargets =
         _remoteNodes.isNotEmpty || _nostrRelays.any((relay) => relay.write);
 
     return AnsibleScreenScaffold(
       title: 'SYNC',
-      leadingLabel: '← 設定',
+      leadingLabel: text.t('backSettings'),
       trailing: IconButton(
         onPressed: !hasSyncTargets || _syncingNodes.values.any((v) => v)
             ? null
             : _syncAllNodes,
         icon: const Icon(Icons.sync),
-        tooltip: '全部同步',
+        tooltip: text.t('syncAll'),
       ),
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -569,11 +580,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AnsibleMonoLabel('同步 · SYNC'),
+                      AnsibleMonoLabel(text.t('syncLabel')),
                       const SizedBox(height: 6),
-                      const Text(
-                        '點對點 · 無雲',
-                        style: TextStyle(
+                      Text(
+                        text.t('peerNoCloud'),
+                        style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w500,
                           color: AnsibleDesign.ink,
@@ -586,15 +597,18 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                           color: AnsibleDesign.paperDeep.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Row(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            AnsibleMark(size: 18, color: AnsibleDesign.accent),
-                            SizedBox(width: 12),
+                            const AnsibleMark(
+                              size: 18,
+                              color: AnsibleDesign.accent,
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                '你的內容只在你信任的裝置與圈裡流動。沒有伺服器在中間留副本。',
-                                style: TextStyle(
+                                text.t('syncHeroDescription'),
+                                style: const TextStyle(
                                   fontSize: 12.5,
                                   height: 1.6,
                                   color: AnsibleDesign.inkMuted,
@@ -607,9 +621,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     ],
                   ),
                 ),
-                const AnsibleMonoLabel(
-                  'Forum Hosts',
-                  padding: EdgeInsets.fromLTRB(22, 0, 22, 8),
+                AnsibleMonoLabel(
+                  text.t('forumHosts'),
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
                 ),
                 if (_remoteNodes.isEmpty)
                   _buildEmptyState(theme)
@@ -620,28 +634,21 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         _buildServerCard(_remoteNodes[i], theme),
                     ],
                   ),
-                const AnsibleMonoLabel(
-                  '同步的圈 · CIRCLES',
-                  padding: EdgeInsets.fromLTRB(22, 20, 22, 8),
+                AnsibleMonoLabel(
+                  text.t('syncedCircles'),
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
                 ),
                 AnsibleRuleGroup(
                   children: [
                     for (var i = 0; i < _boards.take(3).length; i += 1)
                       _CircleSyncRow(
                         name: _boards[i].title,
-                        members: i == 0 ? 4 : 2,
-                        when: i == 0 ? '2 小時前' : '今晨',
+                        subtitle: text.t('hostedBoardProjection'),
                         status: i == 2
                             ? _CircleSyncStatus.paused
                             : _CircleSyncStatus.live,
                       ),
-                    if (_boards.isEmpty)
-                      const _CircleSyncRow(
-                        name: '週四讀書會',
-                        members: 4,
-                        when: '2 小時前',
-                        status: _CircleSyncStatus.live,
-                      ),
+                    if (_boards.isEmpty) const _EmptyCircleSyncRow(),
                   ],
                 ),
                 NostrPublicationRetryPanel(
@@ -653,31 +660,35 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   relays: _nostrRelays,
                   onChanged: _updateNostrRelays,
                 ),
-                const AnsibleMonoLabel(
-                  '進階 · ADVANCED',
-                  padding: EdgeInsets.fromLTRB(22, 20, 22, 8),
+                AnsibleMonoLabel(
+                  text.t('advanced'),
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
                 ),
-                const AnsibleRuleGroup(
+                AnsibleRuleGroup(
                   children: [
                     _SyncSwitchRow(
-                      label: '只在 Wi-Fi 同步',
-                      sub: '行動網路時暫停',
+                      label: text.t('wifiOnly'),
+                      sub: text.t('wifiOnlySub'),
                       on: true,
                     ),
-                    _SyncSwitchRow(label: '附件大檔同步', sub: '預設只同步文字', on: false),
                     _SyncSwitchRow(
-                      label: '背景同步',
-                      sub: 'App 關閉時也保持',
+                      label: text.t('largeAttachments'),
+                      sub: text.t('largeAttachmentsSub'),
+                      on: false,
+                    ),
+                    _SyncSwitchRow(
+                      label: text.t('backgroundSync'),
+                      sub: text.t('backgroundSyncSub'),
                       on: true,
                       last: true,
                     ),
                   ],
                 ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(22, 14, 22, 24),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
                   child: Text(
-                    '一切都是端到端加密的。連我們也讀不到。',
-                    style: TextStyle(
+                    text.t('syncEncryptedFooter'),
+                    style: const TextStyle(
                       fontSize: 11.5,
                       height: 1.6,
                       color: AnsibleDesign.inkFaint,
@@ -691,6 +702,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   }
 
   Widget _buildEmptyState(ThemeData theme) {
+    final text = SubpageL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
       child: Column(
@@ -709,7 +721,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '還沒有設定 Forum Host。新增一個可信任的 Forum Host 後，公開討論看板才會離開本機。',
+                    text.t('noForumHost'),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AnsibleDesign.inkMuted,
                       height: 1.55,
@@ -723,7 +735,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           OutlinedButton.icon(
             onPressed: _showAddRemoteNodeDialog,
             icon: const Icon(Icons.add),
-            label: const Text('新增 Forum Host'),
+            label: Text(text.t('addForumHost')),
           ),
         ],
       ),
@@ -731,6 +743,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   }
 
   Widget _buildServerCard(RemoteNode node, ThemeData theme) {
+    final text = SubpageL10n.of(context);
     final isExpanded = _expandedNodeId == node.id;
     final isSyncing = _syncingNodes[node.id] ?? false;
     final boardSyncStatus = _boardSyncStatusByNode[node.id] ?? {};
@@ -798,8 +811,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             const SizedBox(width: 4),
                             Text(
                               node.lastSyncAt != null
-                                  ? 'Last: ${_formatDateTime(node.lastSyncAt!)}'
-                                  : 'Never synced',
+                                  ? text.f('lastSync', {
+                                      'time': _formatDateTime(node.lastSyncAt!),
+                                    })
+                                  : text.t('neverSynced'),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AnsibleDesign.inkFaint,
                               ),
@@ -813,8 +828,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             const SizedBox(width: 4),
                             Text(
                               enabledCount > 0
-                                  ? '$enabledCount hosted boards selected'
-                                  : 'No hosted boards selected',
+                                  ? text.f('hostedBoardsSelected', {
+                                      'count': enabledCount,
+                                    })
+                                  : text.t('noHostedBoardsSelected'),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AnsibleDesign.inkFaint,
                               ),
@@ -834,7 +851,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.sync),
-                    tooltip: 'Sync now',
+                    tooltip: text.t('syncNow'),
                   ),
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -856,7 +873,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   Row(
                     children: [
                       Text(
-                        'Hosted boards',
+                        text.t('hostedBoards'),
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -869,7 +886,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             await _toggleBoardSync(node.id, board.id, true);
                           }
                         },
-                        child: const Text('Select All'),
+                        child: Text(text.t('selectAll')),
                       ),
                       TextButton(
                         onPressed: () async {
@@ -878,13 +895,13 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             await _toggleBoardSync(node.id, board.id, false);
                           }
                         },
-                        child: const Text('Clear All'),
+                        child: Text(text.t('clearAll')),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Select hosted board projections to sync from this Forum Host.',
+                    text.t('hostedBoardsDescription'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AnsibleDesign.inkMuted,
                     ),
@@ -894,7 +911,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        'No hosted boards available',
+                        text.t('noHostedBoardsAvailable'),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: AnsibleDesign.inkMuted,
                         ),
@@ -938,13 +955,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                   initialValue: retentionValue,
                                   decoration: const InputDecoration(
                                     isDense: true,
-                                    labelText: 'Retain',
+                                    labelText: null,
                                   ),
                                   items: _retentionOptions
                                       .map(
                                         (days) => DropdownMenuItem<int>(
                                           value: days,
-                                          child: Text(_formatRetention(days)),
+                                          child: Text(
+                                            _formatRetention(days, text),
+                                          ),
                                         ),
                                       )
                                       .toList(),
@@ -975,15 +994,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   TextButton.icon(
                     onPressed: () => _showEditRemoteNodeDialog(node),
                     icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Edit'),
+                    label: Text(SubpageL10n.of(context).t('editRemoteNode')),
                   ),
                   const SizedBox(width: 8),
                   TextButton.icon(
                     onPressed: () => _deleteRemoteNode(node),
                     icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                    label: const Text(
-                      'Delete',
-                      style: TextStyle(color: Colors.red),
+                    label: Text(
+                      MaterialLocalizations.of(context).deleteButtonTooltip,
+                      style: const TextStyle(color: Colors.red),
                     ),
                   ),
                 ],
@@ -1000,24 +1019,44 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
-  static String _formatRetention(int days) {
-    return days == _retainForeverValue ? 'Forever' : '${days}d';
+  static String _formatRetention(int days, SubpageL10n text) {
+    return days == _retainForeverValue
+        ? text.t('forever')
+        : text.f('daysShort', {'count': days});
   }
 }
 
 enum _CircleSyncStatus { live, paused, behind }
 
+class _EmptyCircleSyncRow extends StatelessWidget {
+  const _EmptyCircleSyncRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+      child: Text(
+        text.t('noSyncedCircles'),
+        style: const TextStyle(
+          fontSize: 13,
+          height: 1.6,
+          color: AnsibleDesign.inkMuted,
+        ),
+      ),
+    );
+  }
+}
+
 class _CircleSyncRow extends StatelessWidget {
   const _CircleSyncRow({
     required this.name,
-    required this.members,
-    required this.when,
+    required this.subtitle,
     required this.status,
   });
 
   final String name;
-  final int members;
-  final String when;
+  final String subtitle;
   final _CircleSyncStatus status;
 
   @override
@@ -1067,7 +1106,7 @@ class _CircleSyncRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$members 人 · 上次 $when',
+                  subtitle,
                   style: const TextStyle(
                     fontSize: 11.5,
                     color: AnsibleDesign.inkFaint,

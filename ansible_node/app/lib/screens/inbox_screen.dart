@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/subpage_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
@@ -8,10 +9,11 @@ class InboxScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AnsibleScreenScaffold(
+    final text = SubpageL10n.of(context);
+    return AnsibleScreenScaffold(
       title: 'INBOX',
-      leadingLabel: '← 草地',
-      child: _EmptyInbox(),
+      leadingLabel: text.t('backWorkspace'),
+      child: const _EmptyInbox(),
     );
   }
 }
@@ -21,23 +23,24 @@ class _EmptyInbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
       children: [
-        const AnsibleMonoLabel('收信 · INBOX'),
+        AnsibleMonoLabel(text.t('inboxLabel')),
         const SizedBox(height: 4),
-        const Text(
-          '這一陣子',
-          style: TextStyle(
+        Text(
+          text.t('inboxHero'),
+          style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w500,
             color: AnsibleDesign.ink,
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          '沒有新的回應、圈內事件或同步通知。',
-          style: TextStyle(
+        Text(
+          text.t('inboxSubtitle'),
+          style: const TextStyle(
             fontSize: 12.5,
             color: AnsibleDesign.inkFaint,
             fontStyle: FontStyle.italic,
@@ -51,24 +54,24 @@ class _EmptyInbox extends StatelessWidget {
             border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Column(
+          child: Column(
             children: [
-              AnsibleGlyphBox(glyph: '◐'),
-              SizedBox(height: 14),
+              const AnsibleGlyphBox(glyph: '◐'),
+              const SizedBox(height: 14),
               Text(
-                '目前沒有收信',
+                text.t('emptyInbox'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
                   color: AnsibleDesign.ink,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
-                '等有真實回覆、圈內邀請或同步事件時，才會出現在這裡。',
+                text.t('emptyInboxBody'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12.5,
                   height: 1.6,
                   color: AnsibleDesign.inkMuted,

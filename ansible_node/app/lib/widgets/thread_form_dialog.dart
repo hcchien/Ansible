@@ -1,6 +1,8 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+
 class ThreadFormDialog extends StatefulWidget {
   const ThreadFormDialog({
     super.key,
@@ -38,9 +40,10 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final hasBoards = widget.boards.isNotEmpty;
     return AlertDialog(
-      title: const Text('建立討論'),
+      title: Text(l10n.createDiscussion),
       content: Form(
         key: _formKey,
         child: Column(
@@ -54,11 +57,11 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
                   )
                   .toList(),
               onChanged: (value) => setState(() => _selectedBoardId = value),
-              decoration: const InputDecoration(labelText: '選擇 hosted board'),
+              decoration: InputDecoration(labelText: l10n.chooseHostedBoard),
               validator: (_) {
-                if (!hasBoards) return '請先加入或建立 Forum Host 的 hosted board';
+                if (!hasBoards) return l10n.hostedBoardMissing;
                 if (_selectedBoardId == null || _selectedBoardId!.isEmpty) {
-                  return '請選擇 hosted board';
+                  return l10n.hostedBoardRequired;
                 }
                 return null;
               },
@@ -66,14 +69,14 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: '標題',
-                hintText: '輸入討論標題',
+              decoration: InputDecoration(
+                labelText: l10n.titleLabel,
+                hintText: l10n.discussionTitleHint,
               ),
               autofocus: true,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return '標題為必填';
+                  return l10n.titleRequired;
                 }
                 return null;
               },
@@ -81,15 +84,15 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _contentController,
-              decoration: const InputDecoration(
-                labelText: '內容',
-                hintText: '輸入討論內容',
+              decoration: InputDecoration(
+                labelText: l10n.contentLabel,
+                hintText: l10n.discussionContentHint,
               ),
               minLines: 3,
               maxLines: 6,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return '內容為必填';
+                  return l10n.contentRequired;
                 }
                 return null;
               },
@@ -100,7 +103,7 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -112,7 +115,7 @@ class _ThreadFormDialogState extends State<ThreadFormDialog> {
               });
             }
           },
-          child: const Text('建立'),
+          child: Text(l10n.create),
         ),
       ],
     );

@@ -105,6 +105,21 @@ Forum Hosts may later federate with each other, mirror to Nostr, or distribute
 to ActivityPub. That is host/server behavior and must not change the app's
 canonical ownership rules.
 
+Web distribution frontend:
+
+```text
+Hosted web account:
+  web UI -> Forum Host account/session -> hosted board writes
+
+App-mediated self-custody DID:
+  web UI -> relay web-session challenge -> app approval/signature
+  web UI -> scoped Forum Host write APIs as approved DID
+```
+
+The Forum Host must accept web-originated writes without requiring local app
+storage. It must still preserve identity tier and provenance: hosted web accounts
+are not the same trust tier as app-approved self-custody DID sessions.
+
 ## Create Flows
 
 ### Create Hosted Board
@@ -308,6 +323,12 @@ advanced:
 - primary target: one hosted board
 - optional cross-post targets: zero or more hosted boards
 
+The distribution web UI may create threads and replies directly through Forum
+Host APIs. If the user is using an app-mediated self-custody session, the host
+must verify the relay-issued web session and required scope before accepting the
+write. If the user is using a hosted web account, the host must apply the lower
+trust tier's rate limits and moderation policy.
+
 ### Project Note/Murmur
 
 Visibility controls stay on personal content, but distribution settings should
@@ -347,6 +368,9 @@ Migration phases:
 - Treating cross-posted copies as one canonical thread.
 - ActivityPub endpoints in the app client.
 - Private content federation.
+- Treating a hosted web account as equivalent to an app-approved self-custody DID
+  session.
+- Exporting the app user's DID private key to browser storage.
 
 ## Acceptance Criteria
 
@@ -358,3 +382,5 @@ Migration phases:
   board synchronization.
 - Migration path preserves existing tests while adding new hosted-board
   binding semantics.
+- Web-originated forum writes are supported through Forum Host APIs, with
+  explicit trust tier and scope enforcement.

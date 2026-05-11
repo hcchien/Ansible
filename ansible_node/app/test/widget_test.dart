@@ -1,6 +1,7 @@
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/home_shell.dart';
+import 'package:ansible_node/services/app_locale_controller.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -49,21 +50,57 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('討論串'), findsOneWidget);
-    expect(find.text('公開 · OPEN'), findsOneWidget);
-    expect(find.text('目前沒有貼文'), findsOneWidget);
-    expect(find.text('訂閱'), findsNothing);
+    expect(find.text('Discussion Area'), findsOneWidget);
+    expect(find.text('Public · Open'), findsOneWidget);
+    expect(find.text('No posts yet'), findsOneWidget);
+    expect(find.text('Subscribe'), findsNothing);
 
-    await tester.tap(find.byTooltip('設定'));
+    await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
 
     expect(find.text('SETTINGS'), findsOneWidget);
-    expect(find.text('錢包'), findsOneWidget);
-    expect(find.text('同步'), findsOneWidget);
-    await tester.drag(find.byType(ListView), const Offset(0, -520));
-    await tester.pumpAndSettle();
-    expect(find.text('登出此裝置'), findsOneWidget);
+    expect(find.text('Wallet'), findsOneWidget);
+    expect(find.text('Sync'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.text('Sign out of this device'),
+      find.byType(ListView),
+      const Offset(0, -300),
+    );
+    expect(find.text('Sign out of this device'), findsOneWidget);
     expect(find.text('清除身份 (Clear Identity)'), findsNothing);
+  });
+
+  testWidgets('forum controls do not overflow on phone width in German', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    final localeController = AppLocaleController(
+      store: InMemoryAppLocalePreferenceStore(),
+    );
+    addTearDown(() => db.close());
+    await localeController.setPreference(AppLocalePreference.de);
+
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _ExistingDidPlcManager(),
+        localeController: localeController,
+      ),
+    );
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(find.text('Diskussionsbereich'), findsOneWidget);
+    expect(find.text('Noch keine Beiträge'), findsOneWidget);
+    expect(find.text('Forum'), findsOneWidget);
+    expect(find.text('AI Zusammenfassung'), findsOneWidget);
   });
 
   testWidgets('applies the app text size step globally', (tester) async {

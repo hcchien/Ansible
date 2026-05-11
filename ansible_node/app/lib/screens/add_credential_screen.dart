@@ -1,3 +1,4 @@
+import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
@@ -14,6 +15,8 @@ class AddCredentialScreen extends StatelessWidget {
     this.relayClient,
     this.credentialWallet,
     this.vpBuilder,
+    this.walletRepository,
+    this.onCredentialStored,
   });
 
   /// The holder's DID (from registration).
@@ -27,6 +30,8 @@ class AddCredentialScreen extends StatelessWidget {
   final AtProtoClient? relayClient;
   final CredentialWallet? credentialWallet;
   final VpBuilder? vpBuilder;
+  final WalletRepository? walletRepository;
+  final VoidCallback? onCredentialStored;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +43,8 @@ class AddCredentialScreen extends StatelessWidget {
         relayClient: relayClient,
         credentialWallet: credentialWallet,
         vpBuilder: vpBuilder,
+        walletRepository: walletRepository,
+        onCredentialStored: onCredentialStored,
         onEmailCredentialAdded: onCredentialAdded,
       ),
     );

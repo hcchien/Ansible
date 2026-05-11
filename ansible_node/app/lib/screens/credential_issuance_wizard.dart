@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
@@ -133,6 +135,8 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
           relayClient: widget.relayClient,
           credentialWallet: widget.credentialWallet,
           vpBuilder: widget.vpBuilder,
+          walletRepository: widget.walletRepository,
+          onCredentialStored: widget.onCredentialStored,
           onCredentialAdded: widget.onEmailCredentialAdded ?? (_) {},
         );
       case null:
@@ -150,6 +154,8 @@ class EmailOtpCredentialPanel extends StatefulWidget {
     this.relayClient,
     this.credentialWallet,
     this.vpBuilder,
+    this.walletRepository,
+    this.onCredentialStored,
   });
 
   final String holderDid;
@@ -158,6 +164,8 @@ class EmailOtpCredentialPanel extends StatefulWidget {
   final AtProtoClient? relayClient;
   final CredentialWallet? credentialWallet;
   final VpBuilder? vpBuilder;
+  final WalletRepository? walletRepository;
+  final VoidCallback? onCredentialStored;
 
   @override
   State<EmailOtpCredentialPanel> createState() =>
@@ -260,7 +268,10 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         vp: vp.toJson(),
       );
 
+      await _storeInWalletRepository(vc);
+
       setState(() => _phase = _EmailOtpPhase.done);
+      widget.onCredentialStored?.call();
       widget.onCredentialAdded(tier);
     } catch (error) {
       if (!mounted) return;
@@ -273,6 +284,36 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         _errorMessage = _formatError(error);
       });
     }
+  }
+
+  Future<void> _storeInWalletRepository(VerifiableCredential vc) async {
+    final repository = widget.walletRepository;
+    if (repository == null) return;
+
+    final now = DateTime.now().toUtc();
+    final validFrom = DateTime.parse(vc.issuanceDate).toUtc();
+    final validUntil = vc.expirationDate == null
+        ? validFrom.add(const Duration(days: 90))
+        : DateTime.parse(vc.expirationDate!).toUtc();
+
+    await repository.saveCredential(
+      metadata: WalletCredential(
+        credentialId: vc.id,
+        issuerDid: vc.issuer,
+        holderDid: vc.holderDid ?? widget.holderDid,
+        credentialType: vc.type.contains('TrisAuraHumanityCredential')
+            ? 'TrisAuraHumanityCredential'
+            : vc.type.last,
+        status: WalletCredentialStatus.active,
+        validFrom: validFrom,
+        validUntil: validUntil,
+        displayName: 'Verified Human',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      encryptedPayload: jsonEncode(vc.toJson()),
+      encryptionVersion: 'plain-json-v1',
+    );
   }
 
   String _formatError(Object error) {
@@ -469,8 +510,12 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
 
     return Column(
       children: steps.map((step) {
-        final isDone = _phase.index > step.phase.index;
-        final isCurrent = _phase == step.phase;
+        final isDone =
+            _phase.index > step.phase.index ||
+            (_phase == _EmailOtpPhase.done &&
+                step.phase == _EmailOtpPhase.done);
+        final isCurrent =
+            _phase == step.phase && step.phase != _EmailOtpPhase.done;
         return ListTile(
           dense: true,
           leading: isCurrent

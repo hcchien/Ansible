@@ -6,15 +6,28 @@ import '../widgets/ansible_screen_chrome.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({
     super.key,
-    this.displayName = '林下',
-    this.handle = 'under-the-canopy',
+    this.did,
+    this.displayName,
+    this.handle,
+    this.publicKeyLabel,
+    this.bio,
   });
 
-  final String displayName;
-  final String handle;
+  final String? did;
+  final String? displayName;
+  final String? handle;
+  final String? publicKeyLabel;
+  final String? bio;
 
   @override
   Widget build(BuildContext context) {
+    final name = _blankToNull(displayName) ?? '尚未設定公開身分';
+    final handleLabel = _blankToNull(handle) ?? '尚未設定 handle';
+    final keyLabel =
+        _blankToNull(publicKeyLabel) ??
+        (did == null ? 'pk · 未設定' : 'did · ${_shortDid(did!)}');
+    final bioText = _blankToNull(bio) ?? '尚未設定公開簡介。';
+
     return AnsibleScreenScaffold(
       title: '',
       leadingLabel: '← 討論串',
@@ -47,7 +60,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        displayName.characters.first,
+                        name.characters.first,
                         style: const TextStyle(
                           fontSize: 26,
                           color: AnsibleDesign.inkMuted,
@@ -60,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            displayName,
+                            name,
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w500,
@@ -69,7 +82,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 1),
                           Text(
-                            handle,
+                            handleLabel,
                             style: const TextStyle(
                               fontSize: 13,
                               color: AnsibleDesign.inkMuted,
@@ -77,8 +90,8 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            'pk · a3f1 … 2c9b',
+                          Text(
+                            keyLabel,
                             style: TextStyle(
                               fontFamily: AnsibleDesign.mono,
                               fontSize: 9,
@@ -92,8 +105,8 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-                const Text(
-                  '在台北的某個老房子裡寫字。最近在想 patches、補丁、與不必修復的鬆動感。',
+                Text(
+                  bioText,
                   style: TextStyle(
                     fontSize: 13.5,
                     height: 1.7,
@@ -104,23 +117,19 @@ class ProfileScreen extends StatelessWidget {
                 const Wrap(
                   spacing: 12,
                   runSpacing: 8,
-                  children: [
-                    _ProfileMeta('加入 · 312 天'),
-                    _ProfileMeta('3 個共同的圈'),
-                    _ProfileMeta('14 分前在線', dot: AnsibleDesign.spore),
-                  ],
+                  children: [_ProfileMeta('公開身分尚未發布'), _ProfileMeta('0 個共同的圈')],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: FilledButton(
-                        onPressed: () {},
+                        onPressed: null,
                         child: const Text('追蹤公開發布'),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton(onPressed: () {}, child: const Text('邀請進圈')),
+                    OutlinedButton(onPressed: null, child: const Text('邀請進圈')),
                   ],
                 ),
               ],
@@ -145,7 +154,7 @@ class ProfileScreen extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '你看到的是「公開 · 林下」這個身分。「圈內」與「本人」對你不可見。',
+                      '公開身分尚未設定，因此目前沒有可顯示的公開資料。',
                       style: TextStyle(
                         fontSize: 11.5,
                         height: 1.6,
@@ -158,56 +167,59 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const AnsibleMonoLabel(
-            '公開發布 · PUBLIC · 18',
+            '公開發布 · PUBLIC · 0',
             padding: EdgeInsets.fromLTRB(22, 0, 22, 8),
           ),
-          AnsibleRuleGroup(
-            children: const [
-              _PublicPostRow(
-                tag: 'PHIL',
-                title: '我們在「廢墟」裡到底在尋找什麼？',
-                sub: '23 回 · 2 小時前',
-              ),
-              _PublicPostRow(tag: 'NOTE', title: '一個老房子的牆角', sub: '7 回 · 昨日'),
-              _PublicPostRow(
-                tag: 'PHIL',
-                title: '為什麼我們抗拒「重建」這個詞',
-                sub: '4 回 · 5 天',
-              ),
-              _PublicPostRow(
-                tag: 'TOOL',
-                title: '寫不下去的時候——一個方法',
-                sub: '11 回 · 11 天',
-                last: true,
-              ),
-            ],
-          ),
+          const AnsibleRuleGroup(children: [_EmptyProfileRow('目前沒有公開發布')]),
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  static String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
+  }
+
+  static String _shortDid(String did) {
+    if (did.length <= 18) return did;
+    return '${did.substring(0, 10)}…${did.substring(did.length - 6)}';
+  }
+}
+
+class _EmptyProfileRow extends StatelessWidget {
+  const _EmptyProfileRow(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12.5,
+          height: 1.6,
+          color: AnsibleDesign.inkMuted,
+        ),
       ),
     );
   }
 }
 
 class _ProfileMeta extends StatelessWidget {
-  const _ProfileMeta(this.label, {this.dot});
+  const _ProfileMeta(this.label);
 
   final String label;
-  final Color? dot;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (dot != null) ...[
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
-          ),
-          const SizedBox(width: 5),
-        ],
         Text(
           label,
           style: const TextStyle(
@@ -218,67 +230,6 @@ class _ProfileMeta extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PublicPostRow extends StatelessWidget {
-  const _PublicPostRow({
-    required this.tag,
-    required this.title,
-    required this.sub,
-    this.last = false,
-  });
-
-  final String tag;
-  final String title;
-  final String sub;
-  final bool last;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: last
-              ? BorderSide.none
-              : const BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            tag,
-            style: const TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 8.5,
-              letterSpacing: 1.4,
-              color: AnsibleDesign.inkFaint,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14.5,
-              color: AnsibleDesign.ink,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            sub,
-            style: const TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 9,
-              letterSpacing: 1,
-              color: AnsibleDesign.inkFaint,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

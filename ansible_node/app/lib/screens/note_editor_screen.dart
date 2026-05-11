@@ -37,7 +37,6 @@ class NoteEditorScreen extends StatefulWidget {
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
-  bool _drawerOpen = true;
   bool _isSending = false;
   String? _errorMessage;
 
@@ -204,17 +203,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       enabled: !_isSending,
                       onChanged: () => setState(() {}),
                     ),
-                    const _EmbeddedMurmur(),
                     const _ContinuationHint(),
                   ],
                 ),
               ),
             ),
             const _FormatToolbar(),
-            _MurmurDrawer(
-              open: _drawerOpen,
-              onToggle: () => setState(() => _drawerOpen = !_drawerOpen),
-            ),
             _EditorFooter(
               did: _truncatedDid,
               characterCount: _composedContent.length,
@@ -344,7 +338,7 @@ class _TitleField extends StatelessWidget {
       decoration: const InputDecoration(
         isDense: true,
         filled: false,
-        hintText: '末日松茸採集',
+        hintText: '筆記標題',
         hintStyle: TextStyle(
           color: AnsibleDesign.inkFaint,
           fontSize: 28,
@@ -451,7 +445,7 @@ class _BodyField extends StatelessWidget {
       ),
       decoration: const InputDecoration(
         filled: false,
-        hintText: '一朵一朵地撿，慢慢撿。林下不是空的——只是用看不見的方式生長著。',
+        hintText: '寫下筆記內容',
         hintStyle: TextStyle(
           color: AnsibleDesign.inkFaint,
           fontSize: AnsibleDesign.readingTextSize,
@@ -467,78 +461,6 @@ class _BodyField extends StatelessWidget {
   }
 }
 
-class _EmbeddedMurmur extends StatelessWidget {
-  const _EmbeddedMurmur();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(0, 8, 0, 14),
-      padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paperElev,
-        border: Border(
-          left: BorderSide(color: AnsibleDesign.accent, width: 1.5),
-        ),
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(8),
-          bottomRight: Radius.circular(8),
-        ),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '松茸喜歡的是被擾動過、卻沒被毀掉的林子。',
-            style: TextStyle(
-              fontSize: 13.5,
-              height: 1.6,
-              color: AnsibleDesign.ink,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          SizedBox(height: 6),
-          Row(
-            children: [
-              Text(
-                'MURMUR · 04.27 14:36',
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 8.5,
-                  color: AnsibleDesign.inkFaint,
-                  letterSpacing: 1.1,
-                ),
-              ),
-              SizedBox(width: 8),
-              _Dot(color: AnsibleDesign.inkFaint, size: 3),
-              SizedBox(width: 8),
-              Text(
-                '編入此處',
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 8.5,
-                  color: AnsibleDesign.inkFaint,
-                  letterSpacing: 1.1,
-                ),
-              ),
-              Spacer(),
-              Text(
-                '取消編入',
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 8.5,
-                  color: AnsibleDesign.inkMuted,
-                  letterSpacing: 1.1,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ContinuationHint extends StatelessWidget {
   const _ContinuationHint();
 
@@ -547,7 +469,7 @@ class _ContinuationHint extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.only(bottom: 12),
       child: Text(
-        '繼續寫下去，或從下方拖一個 murmur 進來……',
+        '繼續寫下去……',
         style: TextStyle(
           fontSize: AnsibleDesign.readingTextSize,
           height: 1.8,
@@ -641,159 +563,6 @@ class _FormatTool {
   final FontWeight weight;
   final FontStyle style;
   final TextDecoration decoration;
-}
-
-class _MurmurDrawer extends StatelessWidget {
-  const _MurmurDrawer({required this.open, required this.onToggle});
-
-  final bool open;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      key: const Key('note_editor_murmur_drawer'),
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paperElev,
-        border: Border(
-          top: BorderSide(color: AnsibleDesign.rule, width: 0.5),
-          left: BorderSide(color: AnsibleDesign.rule, width: 0.5),
-          right: BorderSide(color: AnsibleDesign.rule, width: 0.5),
-        ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            onTap: onToggle,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 12, 6),
-              child: Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: AnsibleDesign.rule,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const Spacer(),
-                  const Text(
-                    '編入 · DRAW IN',
-                    style: TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 9.5,
-                      color: AnsibleDesign.inkFaint,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    open
-                        ? Icons.keyboard_arrow_down_rounded
-                        : Icons.keyboard_arrow_up_rounded,
-                    size: 18,
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (open)
-            SizedBox(
-              height: 112,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                itemBuilder: (context, index) {
-                  final murmur = _murmurs[index];
-                  return _MurmurCard(murmur: murmur);
-                },
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemCount: _murmurs.length,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MurmurCard extends StatelessWidget {
-  const _MurmurCard({required this.murmur});
-
-  final _MurmurPreview murmur;
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: murmur.used ? 0.62 : 1,
-      child: Container(
-        width: 168,
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        decoration: BoxDecoration(
-          color: AnsibleDesign.paper,
-          border: Border.all(
-            color: murmur.used ? AnsibleDesign.accent : AnsibleDesign.rule,
-            width: 0.5,
-          ),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${murmur.quote ? 'QUOTE' : 'MURMUR'} · ${murmur.date}',
-                  style: const TextStyle(
-                    fontFamily: AnsibleDesign.mono,
-                    fontSize: 8.5,
-                    color: AnsibleDesign.inkFaint,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  murmur.text,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.55,
-                    color: AnsibleDesign.ink,
-                    fontStyle: murmur.quote
-                        ? FontStyle.italic
-                        : FontStyle.normal,
-                  ),
-                ),
-              ],
-            ),
-            if (murmur.used)
-              const Positioned(
-                top: 0,
-                right: 0,
-                child: Text(
-                  '已編入',
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.mono,
-                    fontSize: 8,
-                    color: AnsibleDesign.accent,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _EditorFooter extends StatelessWidget {
@@ -908,30 +677,3 @@ class _Dot extends StatelessWidget {
     );
   }
 }
-
-class _MurmurPreview {
-  const _MurmurPreview({
-    required this.date,
-    required this.text,
-    this.used = false,
-    this.quote = false,
-  });
-
-  final String date;
-  final String text;
-  final bool used;
-  final bool quote;
-}
-
-const _murmurs = [
-  _MurmurPreview(date: '04.27', text: '松茸喜歡的是被擾動過……', used: true),
-  _MurmurPreview(date: '04.27', text: '不必修復的鬆動感'),
-  _MurmurPreview(
-    date: '04.26',
-    text: '“The mushroom at the end of the world.”',
-    quote: true,
-  ),
-  _MurmurPreview(date: '04.24', text: '為什麼是「擾動過卻沒被毀掉」'),
-  _MurmurPreview(date: '04.22', text: 'Tsing 的 patches'),
-  _MurmurPreview(date: '04.21', text: '林下不是空的——'),
-];

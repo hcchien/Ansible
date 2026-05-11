@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/subpage_l10n.dart';
 import '../theme/ansible_design.dart';
 
 class NostrPublicationRetryPanel extends StatelessWidget {
@@ -18,15 +19,16 @@ class NostrPublicationRetryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (failedTargets.isEmpty) return const SizedBox.shrink();
+    final text = SubpageL10n.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(22, 20, 22, 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
           child: Text(
-            'Nostr 發佈待處理',
-            style: TextStyle(
+            text.t('nostrRetryPending'),
+            style: const TextStyle(
               fontSize: 11,
               letterSpacing: 0,
               fontWeight: FontWeight.w600,
@@ -73,6 +75,7 @@ class _FailedTargetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(
@@ -121,13 +124,13 @@ class _FailedTargetRow extends StatelessWidget {
             ),
             IconButton(
               key: ValueKey('retry-${target.targetId}'),
-              tooltip: '重試',
+              tooltip: text.t('retry'),
               icon: const Icon(Icons.refresh, size: 18),
               onPressed: () => onRetry(target),
             ),
             IconButton(
               key: ValueKey('reset-${target.targetId}'),
-              tooltip: '重設',
+              tooltip: text.t('reset'),
               icon: const Icon(Icons.restart_alt, size: 18),
               onPressed: () => onReset(target),
             ),

@@ -14,7 +14,7 @@ class NoteMarkdownEditingController extends TextEditingController {
     return buildNoteMarkdownTextSpan(
       text: text,
       baseStyle: style,
-      stripSyntax: true,
+      stripSyntax: false,
     );
   }
 }

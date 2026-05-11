@@ -7,13 +7,29 @@
       },
       "declaration": {
         "source_uri": "package:ansible_store/src/db/app_database.dart",
-        "offset": 811,
+        "offset": 2450,
         "name": "AppDatabase"
       },
       "references": [
         {
           "library_uri": "package:ansible_store/src/schema/boards.dart",
           "name": "boards"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/forum_hosts.dart",
+          "name": "forum_hosts"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/hosted_board_projections.dart",
+          "name": "hosted_board_projections"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_subscriptions.dart",
+          "name": "board_subscriptions"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_publication_targets.dart",
+          "name": "board_publication_targets"
         },
         {
           "library_uri": "package:ansible_store/src/schema/threads.dart",
@@ -50,6 +66,106 @@
         {
           "library_uri": "package:ansible_store/src/schema/ops_queue.dart",
           "name": "ops_queue"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/wallet_credentials.dart",
+          "name": "wallet_credentials"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/wallet_credential_payloads.dart",
+          "name": "wallet_credential_payloads"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/wallet_presentations.dart",
+          "name": "wallet_presentations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/follow_targets.dart",
+          "name": "follow_targets"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/follow_edges.dart",
+          "name": "follow_edges"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/follow_activity_events.dart",
+          "name": "follow_activity_events"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/outbound_follow_activities.dart",
+          "name": "outbound_follow_activities"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_items.dart",
+          "name": "content_items"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "murmur_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "note_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "post_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "discussion_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_relations.dart",
+          "name": "content_relations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/transformation_jobs.dart",
+          "name": "transformation_jobs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/transformation_jobs.dart",
+          "name": "transformation_sources"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/projections.dart",
+          "name": "projections"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/discussion_nodes.dart",
+          "name": "discussion_nodes"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/ownership_policies.dart",
+          "name": "ownership_policies"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/ai_provider_configs.dart",
+          "name": "ai_provider_configs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/context_packs.dart",
+          "name": "context_packs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/summary_jobs.dart",
+          "name": "summary_jobs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/publication_intents.dart",
+          "name": "publication_intents"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/publication_targets.dart",
+          "name": "publication_targets"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/identity_bindings.dart",
+          "name": "identity_bindings"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/local_collections.dart",
+          "name": "local_collections"
         }
       ],
       "type": "database",
@@ -59,6 +175,22 @@
           "name": "boards"
         },
         {
+          "library_uri": "package:ansible_store/src/schema/forum_hosts.dart",
+          "name": "forum_hosts"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/hosted_board_projections.dart",
+          "name": "hosted_board_projections"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_subscriptions.dart",
+          "name": "board_subscriptions"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/board_publication_targets.dart",
+          "name": "board_publication_targets"
+        },
+        {
           "library_uri": "package:ansible_store/src/schema/threads.dart",
           "name": "threads"
         },
@@ -93,12 +225,112 @@
         {
           "library_uri": "package:ansible_store/src/schema/ops_queue.dart",
           "name": "ops_queue"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/wallet_credentials.dart",
+          "name": "wallet_credentials"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/wallet_credential_payloads.dart",
+          "name": "wallet_credential_payloads"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/wallet_presentations.dart",
+          "name": "wallet_presentations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/follow_targets.dart",
+          "name": "follow_targets"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/follow_edges.dart",
+          "name": "follow_edges"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/follow_activity_events.dart",
+          "name": "follow_activity_events"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/outbound_follow_activities.dart",
+          "name": "outbound_follow_activities"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_items.dart",
+          "name": "content_items"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "murmur_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "note_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "post_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_metadata.dart",
+          "name": "discussion_metadata"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/content_relations.dart",
+          "name": "content_relations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/transformation_jobs.dart",
+          "name": "transformation_jobs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/transformation_jobs.dart",
+          "name": "transformation_sources"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/projections.dart",
+          "name": "projections"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/discussion_nodes.dart",
+          "name": "discussion_nodes"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/ownership_policies.dart",
+          "name": "ownership_policies"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/ai_provider_configs.dart",
+          "name": "ai_provider_configs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/context_packs.dart",
+          "name": "context_packs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/summary_jobs.dart",
+          "name": "summary_jobs"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/publication_intents.dart",
+          "name": "publication_intents"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/publication_targets.dart",
+          "name": "publication_targets"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/identity_bindings.dart",
+          "name": "identity_bindings"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/local_collections.dart",
+          "name": "local_collections"
         }
       ],
       "views": [],
       "includes": [],
       "queries": [],
-      "schema_version": 7,
+      "schema_version": 14,
       "daos": [],
       "has_constructor_arg": true
     }
@@ -107,15 +339,40 @@
     "package:drift/drift.dart",
     "package:drift/native.dart",
     "package:path/path.dart",
-    "package:ansible_store/src/schema/boards.dart",
-    "package:ansible_store/src/schema/threads.dart",
-    "package:ansible_store/src/schema/posts.dart",
-    "package:ansible_store/src/schema/reactions.dart",
-    "package:ansible_store/src/schema/board_acl.dart",
     "package:ansible_store/src/schema/activity_log.dart",
-    "package:ansible_store/src/schema/remote_nodes.dart",
+    "package:ansible_store/src/schema/board_publication_targets.dart",
+    "package:ansible_store/src/schema/board_acl.dart",
+    "package:ansible_store/src/schema/board_subscriptions.dart",
     "package:ansible_store/src/schema/board_sync_configs.dart",
+    "package:ansible_store/src/schema/boards.dart",
+    "package:ansible_store/src/schema/ai_provider_configs.dart",
+    "package:ansible_store/src/schema/content_items.dart",
+    "package:ansible_store/src/schema/content_metadata.dart",
+    "package:ansible_store/src/schema/content_relations.dart",
+    "package:ansible_store/src/schema/context_packs.dart",
+    "package:ansible_store/src/schema/discussion_nodes.dart",
+    "package:ansible_store/src/schema/follow_activity_events.dart",
+    "package:ansible_store/src/schema/follow_edges.dart",
+    "package:ansible_store/src/schema/follow_targets.dart",
+    "package:ansible_store/src/schema/forum_hosts.dart",
+    "package:ansible_store/src/schema/hosted_board_projections.dart",
     "package:ansible_store/src/schema/identities.dart",
-    "package:ansible_store/src/schema/ops_queue.dart"
+    "package:ansible_store/src/schema/identity_bindings.dart",
+    "package:ansible_store/src/schema/local_collections.dart",
+    "package:ansible_store/src/schema/ops_queue.dart",
+    "package:ansible_store/src/schema/outbound_follow_activities.dart",
+    "package:ansible_store/src/schema/ownership_policies.dart",
+    "package:ansible_store/src/schema/posts.dart",
+    "package:ansible_store/src/schema/publication_intents.dart",
+    "package:ansible_store/src/schema/publication_targets.dart",
+    "package:ansible_store/src/schema/projections.dart",
+    "package:ansible_store/src/schema/reactions.dart",
+    "package:ansible_store/src/schema/remote_nodes.dart",
+    "package:ansible_store/src/schema/summary_jobs.dart",
+    "package:ansible_store/src/schema/threads.dart",
+    "package:ansible_store/src/schema/transformation_jobs.dart",
+    "package:ansible_store/src/schema/wallet_credential_payloads.dart",
+    "package:ansible_store/src/schema/wallet_credentials.dart",
+    "package:ansible_store/src/schema/wallet_presentations.dart"
   ]
 }

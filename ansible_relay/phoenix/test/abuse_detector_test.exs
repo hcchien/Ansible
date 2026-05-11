@@ -1,5 +1,6 @@
 defmodule AnsibleRelay.AbuseDetectorTest do
   use ExUnit.Case, async: false
+  import ExUnit.CaptureLog
 
   alias AnsibleRelay.AbuseDetector
 
@@ -70,5 +71,25 @@ defmodule AnsibleRelay.AbuseDetectorTest do
     assert :ok = AbuseDetector.check_peer(peer_id)
     assert {:error, :rate_limited, detail} = AbuseDetector.check_peer(peer_id)
     assert detail.reason == "peer_rate_limited"
+  end
+
+  test "rate-limit logs separate raw DID and IP metadata behind hashes" do
+    did = "did:plc:raw-log-test"
+    ip = "203.0.113.55"
+
+    log =
+      capture_log(fn ->
+        AbuseDetector.check_did(did)
+        AbuseDetector.check_did(did)
+        AbuseDetector.check_did(did)
+        AbuseDetector.check_peer("web_session_challenge:#{ip}")
+        AbuseDetector.check_peer("web_session_challenge:#{ip}")
+      end)
+
+    assert log =~ "subject_type=did"
+    assert log =~ "subject_type=peer"
+    assert log =~ "subject_hash="
+    refute log =~ did
+    refute log =~ ip
   end
 end

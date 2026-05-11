@@ -1,4 +1,9 @@
+import 'package:ansible_node/screens/sync_settings_screen.dart';
 import 'package:ansible_node/services/app_sync_service.dart';
+import 'package:ansible_store/ansible_store.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,5 +15,22 @@ void main() {
 
     expect(summary.failed, 1);
     expect(summary.errorMessage, contains('Relay publication failed'));
+  });
+
+  testWidgets('sync settings shows empty circle state instead of mock board', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(MaterialApp(home: SyncSettingsScreen(db: db)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('SYNC'), findsOneWidget);
+    expect(find.text('目前沒有同步的圈'), findsOneWidget);
+    expect(find.text('週四讀書會'), findsNothing);
+    expect(find.textContaining('讀書會'), findsNothing);
   });
 }

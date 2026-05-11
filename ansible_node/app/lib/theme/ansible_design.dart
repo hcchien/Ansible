@@ -294,12 +294,16 @@ class AnsibleSectionHead extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Text(
-            zh,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: AnsibleDesign.ink,
+          Flexible(
+            child: Text(
+              zh,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: AnsibleDesign.ink,
+              ),
             ),
           ),
           const SizedBox(width: 10),

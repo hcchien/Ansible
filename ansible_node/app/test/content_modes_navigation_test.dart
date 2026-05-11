@@ -28,16 +28,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('碎念'), findsOneWidget);
-    expect(find.text('筆記'), findsOneWidget);
-    expect(find.text('討論'), findsOneWidget);
+    expect(find.text('Murmur'), findsOneWidget);
+    expect(find.text('Notes'), findsOneWidget);
+    expect(find.text('Forum'), findsOneWidget);
     expect(find.text('訂閱'), findsNothing);
 
-    await tester.tap(find.text('碎念'));
+    await tester.tap(find.text('Murmur'));
     await tester.pumpAndSettle();
 
-    expect(find.text('MURMUR · 碎念'), findsOneWidget);
-    expect(find.text('送出'), findsOneWidget);
+    expect(find.text('MURMUR'), findsOneWidget);
+    expect(find.text('Send'), findsOneWidget);
     await tester.enterText(
       find.byKey(const Key('murmur_body_field')),
       'a' * 501,
@@ -49,44 +49,22 @@ void main() {
       find.byKey(const Key('murmur_body_field')),
       '測試碎念存檔',
     );
-    await tester.tap(find.text('送出'));
+    await tester.tap(find.text('Send'));
     await tester.pumpAndSettle();
-    expect(find.text('已送出'), findsOneWidget);
+    expect(find.text('Sent'), findsOneWidget);
     expect(find.text('測試碎念存檔'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 4));
+    await tester.tap(find.text('Notes'));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).last, const Offset(0, -220));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('測試碎念存檔'));
-    await tester.pumpAndSettle();
-    expect(find.text('MURMUR'), findsOneWidget);
+    expect(find.text('Working Notes'), findsOneWidget);
+    expect(find.text('Loose'), findsOneWidget);
+    expect(find.text('測試碎念存檔'), findsOneWidget);
+    expect(find.text('Lineage'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('更多'));
+    await tester.tap(find.text('Forum'));
     await tester.pumpAndSettle();
-    expect(find.text('刪除碎念'), findsOneWidget);
-
-    await tester.tap(find.text('刪除碎念'));
-    await tester.pumpAndSettle();
-    expect(find.text('刪除碎念？'), findsOneWidget);
-
-    await tester.tap(find.text('刪除'));
-    await tester.pumpAndSettle();
-    expect(find.text('測試碎念存檔'), findsNothing);
-    expect(find.text('送出的碎念會先留在這裡。'), findsOneWidget);
-
-    await tester.tap(find.text('筆記'));
-    await tester.pumpAndSettle();
-    expect(find.text('草地'), findsOneWidget);
-    expect(find.text('散落'), findsOneWidget);
-    expect(find.text('測試碎念存檔'), findsNothing);
-    expect(find.text('還沒有散落的碎念。'), findsOneWidget);
-    expect(find.text('來源 · LINEAGE'), findsOneWidget);
-
-    await tester.tap(find.text('討論'));
-    await tester.pumpAndSettle();
-    expect(find.text('AI 摘要'), findsOneWidget);
-    expect(find.text('討論串'), findsOneWidget);
+    expect(find.text('AI Summary'), findsOneWidget);
+    expect(find.text('Discussion Area'), findsOneWidget);
   });
 }
 

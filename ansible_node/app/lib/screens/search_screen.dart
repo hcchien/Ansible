@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import 'murmur_detail_screen.dart';
@@ -17,7 +18,7 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final _queryController = TextEditingController(text: '廢墟');
+  final _queryController = TextEditingController();
   _SearchScope _scope = _SearchScope.all;
 
   @override
@@ -28,14 +29,16 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final query = _queryController.text.trim();
     final notes = _matches(ContentMode.note, query);
     final murmurs = _matches(ContentMode.murmur, query);
-    final total = notes.length + murmurs.length + _sampleThreads.length;
+    final threads = _matches(ContentMode.discussion, query);
+    final total = notes.length + murmurs.length + threads.length;
 
     return AnsibleScreenScaffold(
       title: 'SEARCH',
-      leadingLabel: '← 草地',
+      leadingLabel: l10n.searchBack,
       child: ListView(
         children: [
           Padding(
@@ -49,14 +52,14 @@ class _SearchScreenState extends State<SearchScreen> {
                 suffixIcon: query.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: '清除',
+                        tooltip: l10n.clear,
                         onPressed: () {
                           _queryController.clear();
                           setState(() {});
                         },
                         icon: const Icon(Icons.close, size: 16),
                       ),
-                hintText: '搜尋 murmur、筆記、討論',
+                hintText: l10n.searchHint,
                 filled: true,
                 fillColor: AnsibleDesign.paperDeep.withValues(alpha: 0.45),
                 border: OutlineInputBorder(
@@ -81,22 +84,22 @@ class _SearchScreenState extends State<SearchScreen> {
               runSpacing: 6,
               children: [
                 _ScopeChip(
-                  label: '全部',
+                  label: l10n.searchScopeAll,
                   selected: _scope == _SearchScope.all,
                   onTap: () => setState(() => _scope = _SearchScope.all),
                 ),
                 _ScopeChip(
-                  label: '我的',
+                  label: l10n.searchScopeMy,
                   selected: _scope == _SearchScope.private,
                   onTap: () => setState(() => _scope = _SearchScope.private),
                 ),
                 _ScopeChip(
-                  label: '圈內',
+                  label: l10n.searchScopeCircle,
                   selected: _scope == _SearchScope.circle,
                   onTap: () => setState(() => _scope = _SearchScope.circle),
                 ),
                 _ScopeChip(
-                  label: '公開',
+                  label: l10n.searchScopePublic,
                   selected: _scope == _SearchScope.public,
                   onTap: () => setState(() => _scope = _SearchScope.public),
                 ),
@@ -107,20 +110,8 @@ class _SearchScreenState extends State<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
             child: Row(
               children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: '找到 '),
-                      TextSpan(
-                        text: '$total',
-                        style: const TextStyle(
-                          color: AnsibleDesign.ink,
-                          fontStyle: FontStyle.normal,
-                        ),
-                      ),
-                      const TextSpan(text: ' 處提及'),
-                    ],
-                  ),
+                Text(
+                  l10n.searchResultCount(total),
                   style: const TextStyle(
                     fontSize: 13,
                     color: AnsibleDesign.inkMuted,
@@ -128,9 +119,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 const Spacer(),
-                const Text(
-                  '↓ 相關',
-                  style: TextStyle(
+                Text(
+                  l10n.searchSortRelevant,
+                  style: const TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 9.5,
                     letterSpacing: 1.1,
@@ -141,45 +132,47 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
           _ResultSection(
-            label: '筆記 · NOTES · ${notes.length}',
+            label: l10n.notesSectionCount(notes.length),
+            emptyLabel: query.isEmpty ? l10n.noNotesYet : l10n.noMatchingNotes,
             rows: [
-              if (notes.isEmpty)
-                for (final row in _sampleNotes)
-                  _ResultRow(data: row, query: query)
-              else
-                for (final item in notes)
-                  _ResultRow(
-                    data: _ResultData.fromContentItem(item),
-                    query: query,
-                  ),
+              for (final item in notes)
+                _ResultRow(
+                  data: _ResultData.fromContentItem(item),
+                  query: query,
+                ),
             ],
           ),
           _ResultSection(
-            label: '碎念 · MURMURS · ${murmurs.length}',
+            label: l10n.murmursSectionCount(murmurs.length),
+            emptyLabel: query.isEmpty
+                ? l10n.noMurmursYet
+                : l10n.noMatchingMurmurs,
             rows: [
-              if (murmurs.isEmpty)
-                for (final row in _sampleMurmurs)
-                  _ResultRow(data: row, query: query)
-              else
-                for (final item in murmurs)
-                  _ResultRow(
-                    data: _ResultData.fromContentItem(item),
-                    query: query,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => MurmurDetailScreen(murmur: item),
-                        ),
-                      );
-                    },
-                  ),
+              for (final item in murmurs)
+                _ResultRow(
+                  data: _ResultData.fromContentItem(item),
+                  query: query,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MurmurDetailScreen(murmur: item),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
           _ResultSection(
-            label: '討論串 · FORUM · ${_sampleThreads.length}',
+            label: l10n.threadsSectionCount(threads.length),
+            emptyLabel: query.isEmpty
+                ? l10n.noThreadsYet
+                : l10n.noMatchingThreads,
             rows: [
-              for (final row in _sampleThreads)
-                _ResultRow(data: row, query: query),
+              for (final item in threads)
+                _ResultRow(
+                  data: _ResultData.fromContentItem(item),
+                  query: query,
+                ),
             ],
           ),
           const SizedBox(height: 24),
@@ -252,9 +245,14 @@ class _ScopeChip extends StatelessWidget {
 }
 
 class _ResultSection extends StatelessWidget {
-  const _ResultSection({required this.label, required this.rows});
+  const _ResultSection({
+    required this.label,
+    required this.emptyLabel,
+    required this.rows,
+  });
 
   final String label;
+  final String emptyLabel;
   final List<Widget> rows;
 
   @override
@@ -266,8 +264,31 @@ class _ResultSection extends StatelessWidget {
           label,
           padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
         ),
-        AnsibleRuleGroup(children: rows),
+        AnsibleRuleGroup(
+          children: rows.isEmpty ? [_EmptyResultRow(emptyLabel)] : rows,
+        ),
       ],
+    );
+  }
+}
+
+class _EmptyResultRow extends StatelessWidget {
+  const _EmptyResultRow(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12.5,
+          height: 1.6,
+          color: AnsibleDesign.inkMuted,
+        ),
+      ),
     );
   }
 }
@@ -410,57 +431,6 @@ class _ResultData {
   final String when;
   final Color visibilityColor;
 }
-
-const _sampleNotes = [
-  _ResultData(
-    kindLabel: 'NOTE',
-    title: '廢墟中的協作',
-    body: '信任不是 default-on 的，這是廢墟狀態下協作的前提。',
-    when: '今日',
-    visibilityColor: AnsibleDesign.inkMuted,
-  ),
-  _ResultData(
-    kindLabel: 'NOTE',
-    title: '關於 Le Guin 的 Ansible',
-    body: '廢墟的另一面是 distance；ansible 跨越的不只是空間。',
-    when: '3天',
-    visibilityColor: AnsibleDesign.inkMuted,
-  ),
-];
-
-const _sampleMurmurs = [
-  _ResultData(
-    kindLabel: 'MURM',
-    title: '',
-    body: 'Anna Tsing 寫的 patches 並不浪漫，是在廢墟之後才看見的某種共生。',
-    when: '2小時',
-    visibilityColor: AnsibleDesign.inkMuted,
-  ),
-  _ResultData(
-    kindLabel: 'MURM',
-    title: '',
-    body: '為什麼自己會抗拒「重建」這個詞，也許因為廢墟本身已經是一種完整。',
-    when: '昨日',
-    visibilityColor: AnsibleDesign.accent,
-  ),
-];
-
-const _sampleThreads = [
-  _ResultData(
-    kindLabel: 'THRD',
-    title: '我們在「廢墟」裡到底在尋找什麼？',
-    body: '林下 · 23 回 · 公開',
-    when: '2小時',
-    visibilityColor: AnsibleDesign.spore,
-  ),
-  _ResultData(
-    kindLabel: 'THRD',
-    title: '荒涼感作為一種介面語言',
-    body: 'Tris · 14 回 · 公開',
-    when: '3天',
-    visibilityColor: AnsibleDesign.spore,
-  ),
-];
 
 Color _visibilityColor(ContentVisibility visibility) {
   return switch (visibility) {

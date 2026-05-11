@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/subpage_l10n.dart';
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
 import '../theme/ansible_design.dart';
@@ -63,13 +64,14 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     return AnsibleScreenScaffold(
       title: 'WALLET',
-      leadingLabel: '← 設定',
+      leadingLabel: text.t('backSettings'),
       trailing: IconButton(
         onPressed: _reload,
         icon: const Icon(Icons.refresh),
-        tooltip: '重新整理',
+        tooltip: text.t('refresh'),
       ),
       child: FutureBuilder<List<WalletCredential>>(
         future: _credentials,
@@ -82,29 +84,29 @@ class _WalletScreenState extends State<WalletScreen> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
             children: [
-              const AnsibleMonoLabel('身分 · IDENTITIES'),
+              AnsibleMonoLabel(text.t('walletLabel')),
               const SizedBox(height: 6),
-              const Text(
-                '錢包',
-                style: TextStyle(
+              Text(
+                text.t('walletHero'),
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w500,
                   color: AnsibleDesign.ink,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'one device, many selves',
-                style: TextStyle(
+              Text(
+                text.t('walletHeroSub'),
+                style: const TextStyle(
                   fontSize: 13,
                   color: AnsibleDesign.inkMuted,
                   fontStyle: FontStyle.italic,
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
-                '這些都是你。但你選擇在哪裡是哪一個。',
-                style: TextStyle(
+              Text(
+                text.t('walletHeroBody'),
+                style: const TextStyle(
                   fontSize: 13,
                   height: 1.6,
                   color: AnsibleDesign.inkMuted,
@@ -113,19 +115,19 @@ class _WalletScreenState extends State<WalletScreen> {
               const SizedBox(height: 18),
               _IdentityCard(
                 primary: true,
-                name: '本人',
-                en: 'ROOT · MASTER PASSKEY',
-                type: 'master passkey',
-                sub: '此裝置目前使用的本機 DID。憑證會綁定到這個 holder。',
-                uses: '本機錢包 holder',
-                age: '本機',
+                name: text.t('rootName'),
+                en: text.t('rootMeta'),
+                type: text.t('rootType'),
+                sub: text.t('rootSub'),
+                uses: text.t('rootUses'),
+                age: text.t('local'),
                 keyFragment: _fragment(widget.holderDid),
               ),
               const SizedBox(height: 18),
               OutlinedButton.icon(
                 onPressed: _openAddCredential,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('新增憑證'),
+                label: Text(text.t('addCredential')),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(
                     color: AnsibleDesign.rule,
@@ -143,7 +145,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 _buildCredentialWizard(),
                 const SizedBox(height: 16),
               ],
-              const AnsibleMonoLabel('憑證 · CREDENTIALS'),
+              AnsibleMonoLabel(text.t('credentialsLabel')),
               const SizedBox(height: 8),
               if (credentials.isEmpty)
                 _EmptyWalletState(onAddCredential: _openAddCredential)
@@ -162,9 +164,9 @@ class _WalletScreenState extends State<WalletScreen> {
                   color: AnsibleDesign.paperDeep.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
-                  '憑證只會從已完成的核發流程加入。這裡不顯示預設或示範資料。',
-                  style: TextStyle(
+                child: Text(
+                  text.t('walletFooter'),
+                  style: const TextStyle(
                     fontSize: 12,
                     height: 1.7,
                     color: AnsibleDesign.inkMuted,
@@ -204,6 +206,7 @@ class _EmptyWalletState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -226,22 +229,22 @@ class _EmptyWalletState extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '還沒有憑證',
-                  style: TextStyle(
+                  text.t('noCredentials'),
+                  style: const TextStyle(
                     color: AnsibleDesign.ink,
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  '驗證憑證核發後會出現在這裡。',
-                  style: TextStyle(
+                  text.t('noCredentialsSub'),
+                  style: const TextStyle(
                     color: AnsibleDesign.inkMuted,
                     fontSize: 12.5,
                   ),
@@ -252,7 +255,7 @@ class _EmptyWalletState extends StatelessWidget {
           IconButton(
             onPressed: onAddCredential,
             icon: const Icon(Icons.add),
-            tooltip: '新增憑證',
+            tooltip: text.t('addCredential'),
           ),
         ],
       ),
@@ -350,9 +353,9 @@ class _IdentityCard extends StatelessWidget {
                         ),
                         borderRadius: BorderRadius.circular(2),
                       ),
-                      child: const Text(
-                        '主',
-                        style: TextStyle(
+                      child: Text(
+                        SubpageL10n.of(context).t('primary'),
+                        style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 8,
                           letterSpacing: 1.4,
@@ -422,6 +425,7 @@ class _CredentialTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -463,7 +467,9 @@ class _CredentialTile extends StatelessWidget {
                   children: [
                     _StatusChip(status: credential.status),
                     Text(
-                      'Expires ${_formatDate(credential.validUntil)}',
+                      text.f('expires', {
+                        'date': _formatDate(credential.validUntil),
+                      }),
                       style: const TextStyle(color: AnsibleDesign.inkMuted),
                     ),
                   ],
@@ -484,7 +490,7 @@ class _CredentialTile extends StatelessWidget {
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline),
             color: AnsibleDesign.inkMuted,
-            tooltip: 'Delete local credential',
+            tooltip: text.t('deleteLocalCredential'),
           ),
         ],
       ),
@@ -500,6 +506,7 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(status);
+    final text = SubpageL10n.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -508,7 +515,7 @@ class _StatusChip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
-        _statusLabel(status),
+        _statusLabel(status, text),
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w700,
@@ -532,18 +539,18 @@ Color _statusColor(WalletCredentialStatus status) {
   }
 }
 
-String _statusLabel(WalletCredentialStatus status) {
+String _statusLabel(WalletCredentialStatus status, SubpageL10n text) {
   switch (status) {
     case WalletCredentialStatus.active:
-      return 'Active';
+      return text.t('statusActive');
     case WalletCredentialStatus.expired:
-      return 'Expired';
+      return text.t('statusExpired');
     case WalletCredentialStatus.revoked:
-      return 'Revoked';
+      return text.t('statusRevoked');
     case WalletCredentialStatus.suspended:
-      return 'Suspended';
+      return text.t('statusSuspended');
     case WalletCredentialStatus.deleted:
-      return 'Deleted';
+      return text.t('statusDeleted');
   }
 }
 

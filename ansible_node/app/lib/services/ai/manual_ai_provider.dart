@@ -5,9 +5,7 @@ class ManualAiProvider implements AiProvider {
   Future<AiProviderResult> complete(AiProviderRequest request) async {
     final sourceText = _extractSourceText(request.contextPack);
     if (request.task.endsWith('_summary')) {
-      final summary = sourceText.isEmpty
-          ? 'Manual summary placeholder. Edit this before saving.'
-          : sourceText;
+      final summary = sourceText;
       final structuredJson = <String, dynamic>{'summary': summary};
       return AiProviderResult(
         providerType: 'manual',
@@ -16,9 +14,7 @@ class ManualAiProvider implements AiProvider {
       );
     }
     final title = 'Manual ${request.task.replaceAll('_', ' ')} draft';
-    final body = sourceText.isEmpty
-        ? 'Manual draft placeholder. Edit this before accepting.'
-        : sourceText;
+    final body = sourceText;
     final structuredJson = <String, dynamic>{'title': title, 'body': body};
     return AiProviderResult(
       providerType: 'manual',

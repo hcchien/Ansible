@@ -8,6 +8,8 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   """
 
   import Plug.Conn
+  alias AnsibleRelay.AbuseDetector
+  alias AnsibleRelay.Web.Plugs.VerifyWebSession
 
   @default_base_url "http://localhost:4001"
 
@@ -38,6 +40,32 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
       _ ->
         send_json(conn, 422, %{error: "invalid_board"})
+    end
+  end
+
+  def create_web_thread(conn, params) do
+    conn = VerifyWebSession.call(conn, ["forum:post"])
+
+    if conn.halted do
+      conn
+    else
+      title = Map.get(params, "title")
+
+      if is_binary(title) and String.trim(title) != "" do
+        case AbuseDetector.check_did(conn.assigns.verified_did) do
+          :ok ->
+            send_json(conn, 202, %{
+              accepted: true,
+              subject_did: conn.assigns.verified_did,
+              trust_tier: conn.assigns.web_session.trust_tier
+            })
+
+          {:error, :rate_limited, detail} ->
+            send_json(conn, 429, %{error: "rate_limited", detail: detail})
+        end
+      else
+        send_json(conn, 422, %{error: "invalid_thread"})
+      end
     end
   end
 

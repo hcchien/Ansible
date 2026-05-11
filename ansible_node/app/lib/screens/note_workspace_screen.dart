@@ -2,6 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/content_visibility_sheet.dart';
 import '../widgets/note_markdown_text.dart';
@@ -38,6 +39,7 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final sortedNotes = [...widget.notes]..sort(_compareNotes);
     final sortedMurmurs = [...widget.murmurs]
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
@@ -47,8 +49,11 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
       children: [
         Row(
           children: [
-            const Expanded(
-              child: AnsibleSectionHead(zh: '草地', en: 'WORKING NOTES'),
+            Expanded(
+              child: AnsibleSectionHead(
+                zh: l10n.workingNotes,
+                en: 'WORKING NOTES',
+              ),
             ),
             TextButton.icon(
               key: const Key('note_sort_toggle'),
@@ -59,7 +64,7 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
                     : Icons.arrow_upward_rounded,
                 size: 15,
               ),
-              label: Text(_recentFirst ? '最近' : '最舊'),
+              label: Text(_recentFirst ? l10n.newest : l10n.oldest),
               style: TextButton.styleFrom(
                 foregroundColor: AnsibleDesign.inkMuted,
                 textStyle: const TextStyle(
@@ -77,7 +82,7 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
                   ? null
                   : () => _openCreateNoteEditor(context),
               icon: const Icon(Icons.note_add_outlined, size: 18),
-              label: const Text('新增筆記'),
+              label: Text(l10n.newNote),
             ),
           ],
         ),
@@ -93,11 +98,15 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
               onPublishContentItem: widget.onPublishContentItem,
             ),
         const SizedBox(height: 18),
-        const AnsibleSectionHead(zh: '散落', en: 'LOOSE MURMURS', action: '↗ 編入'),
+        AnsibleSectionHead(
+          zh: l10n.looseMurmurs,
+          en: 'LOOSE MURMURS',
+          action: l10n.drawInAction,
+        ),
         if (sortedMurmurs.isEmpty)
-          const Text(
-            '還沒有散落的碎念。',
-            style: TextStyle(
+          Text(
+            l10n.noLooseMurmursYet,
+            style: const TextStyle(
               fontSize: 13,
               color: AnsibleDesign.inkMuted,
               fontStyle: FontStyle.italic,
@@ -107,7 +116,7 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
           for (final murmur in sortedMurmurs.take(5))
             _MurmurRow(murmur: murmur),
         const SizedBox(height: 20),
-        const AnsibleSectionHead(zh: '來源 · LINEAGE', en: 'LOCAL CONTENT GRAPH'),
+        AnsibleSectionHead(zh: l10n.lineage, en: 'LOCAL CONTENT GRAPH'),
         const _LineagePreview(),
       ],
     );
@@ -163,7 +172,7 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('已建立筆記')));
+    ).showSnackBar(SnackBar(content: Text(context.l10n.noteCreated)));
   }
 }
 
@@ -249,6 +258,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final titleMissing = _showErrors && _titleController.text.trim().isEmpty;
     final bodyMissing = _showErrors && _bodyController.text.trim().isEmpty;
 
@@ -265,7 +275,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                   TextButton.icon(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded, size: 17),
-                    label: const Text('取消'),
+                    label: Text(l10n.cancel),
                     style: TextButton.styleFrom(
                       foregroundColor: AnsibleDesign.inkMuted,
                       textStyle: const TextStyle(
@@ -276,14 +286,14 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                     ),
                   ),
                   const Spacer(),
-                  const Row(
+                  Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _EditorDot(color: AnsibleDesign.spore, size: 5),
-                      SizedBox(width: 8),
+                      const _EditorDot(color: AnsibleDesign.spore, size: 5),
+                      const SizedBox(width: 8),
                       Text(
-                        '草稿保留 · 本機',
-                        style: TextStyle(
+                        l10n.draftLocal,
+                        style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 9.5,
                           color: AnsibleDesign.inkFaint,
@@ -308,9 +318,9 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                       ),
                       minimumSize: const Size(0, 34),
                     ),
-                    child: const Text(
-                      '完成',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.done,
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -319,13 +329,13 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(22, 4, 22, 0),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '編輯中 · EDITING',
-                  style: TextStyle(
+                  l10n.editing,
+                  style: const TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 9.5,
                     color: AnsibleDesign.inkFaint,
@@ -354,38 +364,38 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         isDense: true,
                         filled: false,
-                        hintText: '末日松茸採集',
-                        hintStyle: TextStyle(
+                        hintText: l10n.noteTitleHint,
+                        hintStyle: const TextStyle(
                           color: AnsibleDesign.inkFaint,
                           fontSize: 28,
                           fontStyle: FontStyle.normal,
                           fontWeight: FontWeight.w500,
                         ),
-                        border: UnderlineInputBorder(
+                        border: const UnderlineInputBorder(
                           borderSide: BorderSide(
                             color: AnsibleDesign.ruleSoft,
                             width: 0.5,
                           ),
                         ),
-                        enabledBorder: UnderlineInputBorder(
+                        enabledBorder: const UnderlineInputBorder(
                           borderSide: BorderSide(
                             color: AnsibleDesign.ruleSoft,
                             width: 0.5,
                           ),
                         ),
-                        focusedBorder: UnderlineInputBorder(
+                        focusedBorder: const UnderlineInputBorder(
                           borderSide: BorderSide(
                             color: AnsibleDesign.accent,
                             width: 1,
                           ),
                         ),
-                        contentPadding: EdgeInsets.fromLTRB(0, 4, 0, 8),
+                        contentPadding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
                       ),
                     ),
-                    if (titleMissing) const _InlineError('請輸入標題'),
+                    if (titleMissing) _InlineError(l10n.noteTitleRequired),
                     const SizedBox(height: 10),
                     _EditorVisibilityRow(
                       visibility: _visibility,
@@ -431,10 +441,10 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                               height: 1.8,
                               color: AnsibleDesign.ink,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               filled: false,
-                              hintText: '繼續寫下去，或從下方拖一個 murmur 進來……',
-                              hintStyle: TextStyle(
+                              hintText: l10n.noteBodyHint,
+                              hintStyle: const TextStyle(
                                 color: AnsibleDesign.inkFaint,
                                 fontSize: AnsibleDesign.readingTextSize,
                                 height: 1.8,
@@ -449,7 +459,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                         );
                       },
                     ),
-                    if (bodyMissing) const _InlineError('請輸入內文'),
+                    if (bodyMissing) _InlineError(l10n.noteBodyRequired),
                   ],
                 ),
               ),
@@ -490,7 +500,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
         visibility: _visibility,
         distributionPreference: _distributionPreference,
       ),
-      subjectLabel: '這篇 note',
+      subjectLabel: context.l10n.noteSubjectLabel,
     );
     if (choice == null || !mounted) return;
     setState(() {
@@ -527,9 +537,11 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
       ),
     };
 
-    _bodyController.text = text.replaceRange(start, end, formatted.text);
-    _bodyController.selection = TextSelection.collapsed(
-      offset: start + formatted.text.length,
+    final nextText = text.replaceRange(start, end, formatted.text);
+    _bodyController.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: start + formatted.text.length),
+      composing: TextRange.empty,
     );
     _bodyFocusNode.requestFocus();
     setState(() {});
@@ -545,14 +557,20 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
         ? '$quote\n\n'
         : '\n\n$quote\n\n';
     final selection = _bodyController.selection;
-    final insertAt = selection.isValid
-        ? selection.baseOffset.clamp(0, _bodyController.text.length)
-        : _bodyController.text.length;
     final text = _bodyController.text;
-
-    _bodyController.text = text.replaceRange(insertAt, insertAt, insertion);
-    _bodyController.selection = TextSelection.collapsed(
-      offset: insertAt + insertion.length,
+    final (start, end) = selection.isValid
+        ? (
+            selection.start.clamp(0, text.length),
+            selection.end.clamp(0, text.length),
+          )
+        : (text.length, text.length);
+    final insertAt = start < end ? start : end;
+    final replaceEnd = start < end ? end : start;
+    final nextText = text.replaceRange(insertAt, replaceEnd, insertion);
+    _bodyController.value = TextEditingValue(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: insertAt + insertion.length),
+      composing: TextRange.empty,
     );
     _bodyFocusNode.requestFocus();
     setState(() {});
@@ -592,7 +610,7 @@ class _EditorVisibilityRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _summary,
+              _summary(context),
               style: const TextStyle(
                 fontSize: 11.5,
                 height: 1.4,
@@ -606,14 +624,14 @@ class _EditorVisibilityRow extends StatelessWidget {
     );
   }
 
-  String get _summary {
-    if (visibility == ContentVisibility.private) return '還沒讓任何人看見';
+  String _summary(BuildContext context) {
+    final l10n = context.l10n;
+    if (visibility == ContentVisibility.private) return l10n.notePrivateSummary;
     return switch (distributionPreference) {
-      DistributionPreference.nostr => '公開後會送到 Nostr relays',
-      DistributionPreference.activityPub => '公開後會送到 ActivityPub relay',
-      DistributionPreference.nostrAndActivityPub =>
-        '公開後會送到 Nostr relays 與 ActivityPub relay',
-      DistributionPreference.localOnly => '公開狀態，但暫不送出',
+      DistributionPreference.nostr => l10n.noteNostrSummary,
+      DistributionPreference.activityPub => l10n.noteActivityPubSummary,
+      DistributionPreference.nostrAndActivityPub => l10n.noteBothSummary,
+      DistributionPreference.localOnly => l10n.noteLocalPublicSummary,
     };
   }
 }
@@ -791,9 +809,9 @@ class _EditorMurmurDrawer extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    '編入 · DRAW IN',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.drawIn,
+                    style: const TextStyle(
                       fontFamily: AnsibleDesign.mono,
                       fontSize: 9.5,
                       color: AnsibleDesign.inkFaint,
@@ -816,13 +834,13 @@ class _EditorMurmurDrawer extends StatelessWidget {
             SizedBox(
               height: 112,
               child: items.isEmpty
-                  ? const Align(
+                  ? Align(
                       alignment: Alignment.topLeft,
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         child: Text(
-                          '還沒有可以編入的 murmur。',
-                          style: TextStyle(
+                          context.l10n.noMurmursToDraw,
+                          style: const TextStyle(
                             color: AnsibleDesign.inkMuted,
                             fontStyle: FontStyle.italic,
                             fontSize: 12,
@@ -979,21 +997,21 @@ class _EmptyNotesPreview extends StatelessWidget {
           horizontal: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
         ),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '還沒有筆記',
-            style: TextStyle(
+            context.l10n.noNotesYet,
+            style: const TextStyle(
               fontSize: 18,
               color: AnsibleDesign.ink,
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            '碎念會先散落在本地；等它們慢慢靠近，再編成一篇筆記。',
-            style: TextStyle(
+            context.l10n.noNotesDescription,
+            style: const TextStyle(
               fontSize: 13,
               height: 1.6,
               color: AnsibleDesign.inkMuted,
@@ -1150,7 +1168,7 @@ class _NoteRow extends StatelessWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('已更新筆記')));
+    ).showSnackBar(SnackBar(content: Text(context.l10n.noteUpdated)));
   }
 }
 
@@ -1192,7 +1210,7 @@ class _VisibilityMenu extends StatelessWidget {
     final choice = await showContentDistributionSheet(
       context: context,
       current: ContentDistributionChoice.forVisibility(note.visibility),
-      subjectLabel: '這篇 note',
+      subjectLabel: context.l10n.noteSubjectLabel,
     );
     if (choice == null) return;
     if (!context.mounted) return;
@@ -1232,7 +1250,7 @@ class _VisibilityMenu extends StatelessWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('可見性已更新')));
+    ).showSnackBar(SnackBar(content: Text(context.l10n.visibilityUpdated)));
   }
 }
 
@@ -1308,17 +1326,17 @@ class _LineagePreview extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text(
-            '由 murmur 編成的筆記會在這裡保留來源。',
-            style: TextStyle(
+            context.l10n.lineageDescription,
+            style: const TextStyle(
               color: AnsibleDesign.inkMuted,
               height: 1.55,
               fontStyle: FontStyle.italic,
             ),
           ),
-          SizedBox(height: 10),
-          Text(
+          const SizedBox(height: 10),
+          const Text(
             'MURMUR · NOTE · THREAD',
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,

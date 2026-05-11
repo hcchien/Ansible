@@ -52,7 +52,7 @@ void main() {
   });
 
   testWidgets(
-    'note markdown editor hides source syntax while styling content',
+    'note markdown editor keeps source offsets while styling content',
     (tester) async {
       final controller = NoteMarkdownEditingController(text: '**Bold**');
       addTearDown(controller.dispose);
@@ -71,7 +71,7 @@ void main() {
       final spans = span.children!.whereType<TextSpan>().toList();
 
       expect(controller.text, '**Bold**');
-      expect(span.toPlainText(), 'Bold');
+      expect(span.toPlainText(), '**Bold**');
       expect(
         spans.any(
           (child) =>
@@ -250,7 +250,7 @@ void main() {
               withComposing: false,
             )
             .toPlainText(),
-        '正文',
+        '**正文**',
       );
     },
   );
@@ -296,6 +296,10 @@ void main() {
       find.byKey(const Key('note_body_field')),
     );
     expect(bodyField.controller?.text, contains('> 松茸喜歡的是被擾動過、卻沒被毀掉的林子。'));
+    expect(
+      bodyField.controller?.selection.baseOffset,
+      bodyField.controller?.text.length,
+    );
   });
 
   testWidgets('note editor title remains editable after toolbar interaction', (

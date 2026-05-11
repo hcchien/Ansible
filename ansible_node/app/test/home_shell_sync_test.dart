@@ -5,6 +5,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -42,6 +43,60 @@ void main() {
 
     expect(syncCalls, 1);
     expect(find.textContaining('public publish 1/1 targets'), findsOneWidget);
+  });
+
+  testWidgets('compact header shows network status', (tester) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final network = _FakeNetworkStatusMonitor(NetworkStatus.online);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: network,
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(find.byTooltip('已連線 · WiFi'), findsOneWidget);
+  });
+
+  testWidgets('header sync prompts setup when no sync target is configured', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final network = _FakeNetworkStatusMonitor(NetworkStatus.online);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: network,
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    await tester.tap(find.byTooltip('同步'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('請先在同步設定新增 Forum Host'), findsOneWidget);
+    expect(find.textContaining('同步完成'), findsNothing);
   });
 
   testWidgets('startup pull refresh runs when online with active relay', (

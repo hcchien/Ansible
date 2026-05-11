@@ -7,10 +7,13 @@ import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import '../l10n/app_l10n.dart';
+import '../l10n/subpage_l10n.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
 import '../services/ai/ai_provider_config_store.dart';
+import '../services/app_locale_controller.dart';
 import '../services/app_sync_service.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
@@ -46,6 +49,7 @@ class HomeShell extends StatefulWidget {
     this.syncRunner,
     this.pullRefreshRunner,
     this.networkStatusMonitor,
+    this.localeController,
   });
 
   final AppDatabase db;
@@ -54,6 +58,7 @@ class HomeShell extends StatefulWidget {
   final Future<AppSyncResult> Function()? syncRunner;
   final Future<RelayPullSummary> Function()? pullRefreshRunner;
   final NetworkStatusMonitor? networkStatusMonitor;
+  final AppLocaleController? localeController;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -122,8 +127,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _lastNetworkStatus = _networkStatusService.status;
     _networkStatusService.addListener(_handleNetworkStatusChanged);
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_loadData());
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_loadData());
       unawaited(_runForegroundPullIfConfigured());
     });
   }
@@ -147,6 +153,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
+    final l10n = context.l10n;
     final boards = await _boardRepo.list();
     final contentItems = await _contentItemRepo.list(authorDid: widget.did);
     final murmurReferenceCounts = <String, int>{};
@@ -197,7 +204,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
 
     threads.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
     final postCards = followingEntries == null
         ? threads.map((t) {
             final board = boardMap[t.boardId];
@@ -206,7 +212,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             final counts = reactionCounts[t.id] ?? const {};
             return PostCardData(
               thread: t,
-              category: board?.title ?? '未分類',
+              category: board?.title ?? l10n.uncategorized,
               title: t.title,
               author: t.authorId,
               board: board?.title ?? t.boardId,
@@ -309,6 +315,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     Map<String, Board> boardMap,
   ) async {
     final cards = <PostCardData>[];
+    final l10n = context.l10n;
     for (final entry in entries) {
       final posts = await _postRepo.list(threadId: entry.thread.id);
       final reactions = await _reactionRepo.listByTarget(
@@ -329,7 +336,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       cards.add(
         PostCardData(
           thread: entry.thread,
-          category: board?.title ?? '未分類',
+          category: board?.title ?? l10n.uncategorized,
           title: entry.thread.title,
           author: entry.post.authorId,
           board: board?.title ?? entry.post.boardId,
@@ -350,11 +357,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         .toList();
     if (forumHosts.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('請先在同步設定新增 Forum Host。討論看板由 Forum Host 建立。'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.addForumHostFirst)));
       return;
     }
     if (!mounted) return;
@@ -510,17 +515,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     ).publishContentItem(item, distributionPreference: distributionPreference);
     if (!mounted) return;
     if (result.published > 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('已同步 ${result.published} 篇公開內容')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.syncedPublicCount(result.published)),
+        ),
+      );
     } else if (result.failed > 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('公開內容已排入同步，但 relay 發佈失敗')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.publicQueuedRelayFailed)),
+      );
     } else if (result.skippedReason == 'no_write_relays') {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('尚未設定可寫入的 Nostr relay')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.noWritableNostrRelay)),
+      );
     }
   }
 
@@ -607,6 +614,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     bool pullRemote = true,
   }) async {
     if (_syncing) return;
+    if (showSnackBar &&
+        widget.syncRunner == null &&
+        !await _hasConfiguredSyncTargets()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(SubpageL10n.of(context).t('configureSyncTargets')),
+        ),
+      );
+      return;
+    }
     setState(() => _syncing = true);
     try {
       await _flushPendingOps();
@@ -627,7 +645,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     } catch (error) {
       if (!mounted || !showSnackBar) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('同步失敗：$error'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(context.l10n.syncFailedMessage(error.toString())),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {
@@ -640,14 +661,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     await showDialog<void>(
       context: context,
       builder: (context) {
+        final l10n = context.l10n;
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('管理看板'),
+              title: Text(l10n.manageBoards),
               content: SizedBox(
                 width: 400,
                 child: _boards.isEmpty
-                    ? const Text('目前沒有看板')
+                    ? Text(l10n.noBoardsYet)
                     : ListView.separated(
                         shrinkWrap: true,
                         itemCount: _boards.length,
@@ -710,15 +732,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                                     final confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        title: const Text('刪除看板'),
+                                        title: Text(l10n.deleteBoard),
                                         content: Text(
-                                          '確定刪除「${board.title}」？此動作不可恢復。',
+                                          l10n.deleteBoardConfirm(board.title),
                                         ),
                                         actions: [
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(ctx, false),
-                                            child: const Text('取消'),
+                                            child: Text(l10n.cancel),
                                           ),
                                           TextButton(
                                             onPressed: () =>
@@ -726,7 +748,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                                             style: TextButton.styleFrom(
                                               foregroundColor: Colors.red,
                                             ),
-                                            child: const Text('刪除'),
+                                            child: Text(l10n.delete),
                                           ),
                                         ],
                                       ),
@@ -747,7 +769,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('關閉'),
+                  child: Text(l10n.close),
                 ),
                 FilledButton.icon(
                   onPressed: () async {
@@ -755,7 +777,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     await _createBoard();
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('新增看板'),
+                  label: Text(l10n.addBoard),
                 ),
               ],
             );
@@ -792,10 +814,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   String _formatTimeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return '剛剛';
-    if (diff.inHours < 1) return '${diff.inMinutes} 分鐘前';
-    if (diff.inDays < 1) return '${diff.inHours} 小時前';
-    return '${diff.inDays} 天前';
+    final l10n = context.l10n;
+    if (diff.inMinutes < 1) return l10n.justNow;
+    if (diff.inHours < 1) return l10n.minutesAgo(diff.inMinutes);
+    if (diff.inDays < 1) return l10n.hoursAgo(diff.inHours);
+    return l10n.daysAgo(diff.inDays);
   }
 
   @override
@@ -810,6 +833,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               final mainPanel = _MainPanel(
                 db: widget.db,
                 did: widget.did,
+                localeController: widget.localeController,
                 opsQueueRepo: _opsQueueRepo,
                 opsDispatchService: _opsDispatchService,
                 onFlushPendingOps: _flushPendingOps,
@@ -909,6 +933,7 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       decoration: BoxDecoration(
         color: AnsibleDesign.paperElev,
@@ -922,9 +947,9 @@ class _Sidebar extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
-                '圈 · CIRCLE',
-                style: TextStyle(
+              Text(
+                l10n.circleSection,
+                style: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 10,
                   letterSpacing: 1.4,
@@ -948,8 +973,8 @@ class _Sidebar extends StatelessWidget {
                 if (index == 0) {
                   return _BoardTile(
                     item: BoardNavItem(
-                      title: '全部動態',
-                      badge: '${boards.length} 看板',
+                      title: l10n.allActivity,
+                      badge: l10n.boardCount(boards.length),
                       accent: AnsibleDesign.accent,
                     ),
                     selected: selectedBoardId == null,
@@ -974,7 +999,7 @@ class _Sidebar extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onManageBoards,
             icon: const Icon(Icons.settings_outlined, size: 18),
-            label: const Text('管理訂閱'),
+            label: Text(l10n.manageSubscriptions),
             style: OutlinedButton.styleFrom(
               foregroundColor: AnsibleDesign.ink,
               side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
@@ -1103,6 +1128,7 @@ class _MainPanel extends StatelessWidget {
     this.onClearIdentity,
     required this.db,
     required this.did,
+    this.localeController,
     required this.opsQueueRepo,
     required this.opsDispatchService,
     required this.onFlushPendingOps,
@@ -1135,6 +1161,7 @@ class _MainPanel extends StatelessWidget {
   final VoidCallback? onClearIdentity;
   final AppDatabase db;
   final String did;
+  final AppLocaleController? localeController;
   final OpsQueueRepository opsQueueRepo;
   final OpsDispatchService opsDispatchService;
   final Future<void> Function() onFlushPendingOps;
@@ -1166,6 +1193,7 @@ class _MainPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 640;
@@ -1180,6 +1208,7 @@ class _MainPanel extends StatelessWidget {
               onClearIdentity: onClearIdentity,
               db: db,
               did: did,
+              localeController: localeController,
               opsQueueRepo: opsQueueRepo,
               onSync: onSync,
               syncing: syncing,
@@ -1228,7 +1257,7 @@ class _MainPanel extends StatelessWidget {
                                                   )
                                                   .map((b) => b.title)
                                                   .firstOrNull ??
-                                              '新討論',
+                                              l10n.newDiscussion,
                                           atProtoClient: atProtoClient,
                                         ),
                                       ),
@@ -1236,7 +1265,7 @@ class _MainPanel extends StatelessWidget {
                                   }
                                 : null,
                             icon: const Icon(Icons.edit_outlined, size: 20),
-                            label: const Text('新貼文'),
+                            label: Text(l10n.newPost),
                             style: FilledButton.styleFrom(
                               backgroundColor: AnsibleDesign.ink,
                               foregroundColor: AnsibleDesign.paper,
@@ -1257,39 +1286,69 @@ class _MainPanel extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Tooltip(
-                            message: '新增看板',
-                            child: IconButton.filled(
-                              onPressed: onCreateBoard,
-                              icon: const Icon(Icons.add),
-                            ),
-                          ),
-                          FilledButton.icon(
-                            onPressed: hasSelectedBoard ? onCreateThread : null,
-                            icon: const Icon(Icons.forum_outlined),
-                            label: Text(compact ? '新討論' : '建立新討論'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: onManageBoards,
-                            icon: const Icon(Icons.settings_outlined),
-                            label: Text(compact ? '看板' : '管理看板'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: onStartAiAction,
-                            icon: const Icon(Icons.auto_awesome),
-                            label: const Text('AI 助手'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: onStartAiAction,
-                            icon: const Icon(Icons.summarize_outlined),
-                            label: const Text('AI 摘要'),
-                          ),
-                        ],
+                      LayoutBuilder(
+                        builder: (context, actionConstraints) {
+                          final actionWidth = compact
+                              ? (actionConstraints.maxWidth - 10) / 2
+                              : null;
+
+                          Widget action(Widget child) {
+                            if (!compact) return child;
+                            return SizedBox(width: actionWidth, child: child);
+                          }
+
+                          return Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
+                              action(
+                                OutlinedButton.icon(
+                                  onPressed: onCreateBoard,
+                                  icon: const Icon(Icons.add),
+                                  label: _ActionLabel(l10n.addBoardTooltip),
+                                ),
+                              ),
+                              action(
+                                FilledButton.icon(
+                                  onPressed: hasSelectedBoard
+                                      ? onCreateThread
+                                      : null,
+                                  icon: const Icon(Icons.forum_outlined),
+                                  label: _ActionLabel(
+                                    compact
+                                        ? l10n.newDiscussion
+                                        : l10n.createNewDiscussion,
+                                  ),
+                                ),
+                              ),
+                              action(
+                                OutlinedButton.icon(
+                                  onPressed: onManageBoards,
+                                  icon: const Icon(Icons.settings_outlined),
+                                  label: _ActionLabel(
+                                    compact
+                                        ? l10n.boardsShort
+                                        : l10n.manageBoardsShort,
+                                  ),
+                                ),
+                              ),
+                              action(
+                                OutlinedButton.icon(
+                                  onPressed: onStartAiAction,
+                                  icon: const Icon(Icons.auto_awesome),
+                                  label: _ActionLabel(l10n.aiAssistant),
+                                ),
+                              ),
+                              action(
+                                OutlinedButton.icon(
+                                  onPressed: onStartAiAction,
+                                  icon: const Icon(Icons.summarize_outlined),
+                                  label: _ActionLabel(l10n.aiSummary),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -1323,7 +1382,7 @@ class _MainPanel extends StatelessWidget {
                               : posts.isEmpty
                               ? Center(
                                   child: Text(
-                                    '目前沒有貼文',
+                                    l10n.noPostsYet,
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium
@@ -1357,11 +1416,23 @@ class _MainPanel extends StatelessWidget {
   }
 }
 
+class _ActionLabel extends StatelessWidget {
+  const _ActionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+  }
+}
+
 class _TopBar extends StatelessWidget {
   const _TopBar({
     this.onClearIdentity,
     required this.db,
     required this.did,
+    this.localeController,
     required this.opsQueueRepo,
     required this.onSync,
     required this.syncing,
@@ -1372,6 +1443,7 @@ class _TopBar extends StatelessWidget {
   final VoidCallback? onClearIdentity;
   final AppDatabase db;
   final String did;
+  final AppLocaleController? localeController;
   final OpsQueueRepository opsQueueRepo;
   final Future<void> Function() onSync;
   final bool syncing;
@@ -1385,6 +1457,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
@@ -1402,33 +1475,32 @@ class _TopBar extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AnsibleMark(size: compact ? 26 : 30),
+                  AnsibleMark(size: compact ? 34 : 38),
                   if (!compact) ...[
                     const SizedBox(width: 10),
                     const Text(
                       'ansible',
                       style: TextStyle(
                         fontWeight: FontWeight.w300,
-                        fontSize: 22,
+                        fontSize: 24,
                       ),
                     ),
                   ],
                 ],
               ),
               const Spacer(),
-              if (!compact) ...[
-                ListenableBuilder(
-                  listenable: networkStatusService,
-                  builder: (context, _) {
-                    return _NetworkStatusIndicator(
-                      status: networkStatusService.status,
-                      connectionType: networkStatusService.connectionType,
-                      onTap: () => networkStatusService.checkStatus(),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-              ],
+              ListenableBuilder(
+                listenable: networkStatusService,
+                builder: (context, _) {
+                  return _NetworkStatusIndicator(
+                    status: networkStatusService.status,
+                    connectionType: networkStatusService.connectionType,
+                    compact: compact,
+                    onTap: () => networkStatusService.checkStatus(),
+                  );
+                },
+              ),
+              SizedBox(width: compact ? 2 : 8),
               IconButton(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -1439,7 +1511,7 @@ class _TopBar extends StatelessWidget {
                 },
                 icon: const Icon(Icons.search),
                 color: AnsibleDesign.inkMuted,
-                tooltip: '搜尋',
+                tooltip: l10n.search,
               ),
               IconButton(
                 onPressed: () {
@@ -1449,7 +1521,7 @@ class _TopBar extends StatelessWidget {
                 },
                 icon: const Icon(Icons.inbox_outlined),
                 color: AnsibleDesign.inkMuted,
-                tooltip: '收信',
+                tooltip: l10n.inbox,
               ),
               if (!compact)
                 TextButton.icon(
@@ -1467,7 +1539,7 @@ class _TopBar extends StatelessWidget {
                     Icons.account_balance_wallet_outlined,
                     size: 18,
                   ),
-                  label: const Text('錢包'),
+                  label: Text(l10n.wallet),
                   style: TextButton.styleFrom(
                     foregroundColor: AnsibleDesign.paper,
                     backgroundColor: AnsibleDesign.ink,
@@ -1525,18 +1597,20 @@ class _TopBar extends StatelessWidget {
                       )
                     : const Icon(Icons.sync),
                 color: AnsibleDesign.inkMuted,
-                tooltip: '同步',
+                tooltip: l10n.sync,
               ),
               if (!compact)
                 IconButton(
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => ProfileScreen(did: did),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.person_outline),
                   color: AnsibleDesign.inkMuted,
-                  tooltip: '公開身分',
+                  tooltip: l10n.publicIdentity,
                 ),
               IconButton(
                 onPressed: () {
@@ -1545,6 +1619,7 @@ class _TopBar extends StatelessWidget {
                       builder: (_) => SettingsHomeScreen(
                         db: db,
                         did: did,
+                        localeController: localeController,
                         onClearIdentity: onClearIdentity,
                       ),
                     ),
@@ -1554,7 +1629,7 @@ class _TopBar extends StatelessWidget {
                   Icons.settings_outlined,
                   color: AnsibleDesign.inkMuted,
                 ),
-                tooltip: '設定',
+                tooltip: l10n.settingsNav,
               ),
             ],
           );
@@ -1572,35 +1647,54 @@ class _ModeNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<_ContentModeTab>(
-      style: SegmentedButton.styleFrom(
-        backgroundColor: AnsibleDesign.paper,
-        selectedBackgroundColor: AnsibleDesign.paperDeep,
-        foregroundColor: AnsibleDesign.inkMuted,
-        selectedForegroundColor: AnsibleDesign.ink,
-        side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
-      ),
-      segments: const [
-        ButtonSegment(
-          value: _ContentModeTab.murmur,
-          icon: Icon(Icons.chat_bubble_outline),
-          label: Text('碎念'),
-        ),
-        ButtonSegment(
-          value: _ContentModeTab.notes,
-          icon: Icon(Icons.sticky_note_2_outlined),
-          label: Text('筆記'),
-        ),
-        ButtonSegment(
-          value: _ContentModeTab.discussions,
-          icon: Icon(Icons.forum_outlined),
-          label: Text('討論'),
-        ),
-      ],
-      selected: {selected},
-      showSelectedIcon: false,
-      onSelectionChanged: (selection) => onChanged(selection.single),
+    final l10n = context.l10n;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 430;
+        return SegmentedButton<_ContentModeTab>(
+          style: SegmentedButton.styleFrom(
+            backgroundColor: AnsibleDesign.paper,
+            selectedBackgroundColor: AnsibleDesign.paperDeep,
+            foregroundColor: AnsibleDesign.inkMuted,
+            selectedForegroundColor: AnsibleDesign.ink,
+            side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
+          ),
+          segments: [
+            ButtonSegment(
+              value: _ContentModeTab.murmur,
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: _SegmentLabel(l10n.murmurTab),
+            ),
+            ButtonSegment(
+              value: _ContentModeTab.notes,
+              icon: const Icon(Icons.sticky_note_2_outlined),
+              label: _SegmentLabel(l10n.notesTab),
+            ),
+            ButtonSegment(
+              value: _ContentModeTab.discussions,
+              icon: const Icon(Icons.forum_outlined),
+              label: _SegmentLabel(
+                compact ? l10n.discussionsTabCompact : l10n.discussionsTab,
+              ),
+            ),
+          ],
+          selected: {selected},
+          showSelectedIcon: false,
+          onSelectionChanged: (selection) => onChanged(selection.single),
+        );
+      },
     );
+  }
+}
+
+class _SegmentLabel extends StatelessWidget {
+  const _SegmentLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 }
 
@@ -1608,34 +1702,41 @@ class _NetworkStatusIndicator extends StatelessWidget {
   const _NetworkStatusIndicator({
     required this.status,
     required this.connectionType,
+    this.compact = false,
     this.onTap,
   });
 
   final NetworkStatus status;
   final String connectionType;
+  final bool compact;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     IconData icon;
     Color color;
     String tooltip;
+    String label;
 
     switch (status) {
       case NetworkStatus.online:
-        icon = Icons.wifi;
+        icon = Icons.wifi_rounded;
         color = Colors.green;
-        tooltip = 'Online ($connectionType)';
+        label = connectionType;
+        tooltip = '${l10n.networkOnline} · $connectionType';
         break;
       case NetworkStatus.offline:
-        icon = Icons.wifi_off;
+        icon = Icons.wifi_off_rounded;
         color = Colors.red;
-        tooltip = 'Offline';
+        label = l10n.networkOffline;
+        tooltip = l10n.networkOffline;
         break;
       case NetworkStatus.checking:
-        icon = Icons.wifi_find;
+        icon = Icons.wifi_find_rounded;
         color = Colors.orange;
-        tooltip = 'Checking connection...';
+        label = l10n.networkChecking;
+        tooltip = l10n.networkChecking;
         break;
     }
 
@@ -1651,38 +1752,38 @@ class _NetworkStatusIndicator extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (status == NetworkStatus.checking)
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: color,
-                  ),
-                )
-              else
-                Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                status == NetworkStatus.online
-                    ? connectionType
-                    : status == NetworkStatus.offline
-                    ? 'Offline'
-                    : 'Checking',
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+          child: compact
+              ? _NetworkStatusGlyph(icon: icon, color: color)
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _NetworkStatusGlyph(icon: icon, color: color),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
+  }
+}
+
+class _NetworkStatusGlyph extends StatelessWidget {
+  const _NetworkStatusGlyph({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(icon, size: 16, color: color);
   }
 }
 
@@ -1693,28 +1794,29 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Row(
       children: [
         IconButton(
           onPressed: onOpenBoards,
           icon: const Icon(Icons.view_sidebar_outlined),
           color: AnsibleDesign.inkMuted,
-          tooltip: '訂閱',
+          tooltip: l10n.subscribe,
         ),
         const SizedBox(width: 8),
-        const Expanded(
+        Expanded(
           child: Text(
-            '討論串',
+            l10n.discussionAreaTitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 23,
               fontWeight: FontWeight.w500,
               color: AnsibleDesign.ink,
             ),
           ),
         ),
-        const AnsibleStatusChip(label: '公開 · OPEN', dot: AnsibleDesign.accent),
+        AnsibleStatusChip(label: l10n.publicOpen, dot: AnsibleDesign.accent),
       ],
     );
   }
@@ -1902,7 +2004,7 @@ class _PostCardState extends State<PostCard> {
               ),
               const SizedBox(height: 8),
               Text(
-                data.content.isEmpty ? '（尚無內容）' : data.content,
+                data.content.isEmpty ? context.l10n.noContentYet : data.content,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -2030,7 +2132,7 @@ class _CommentChip extends StatelessWidget {
     return TextButton.icon(
       onPressed: onTap,
       icon: const Icon(Icons.chat_bubble_outline, size: 18),
-      label: Text('$count 則留言'),
+      label: Text(context.l10n.commentsCount(count)),
       style: TextButton.styleFrom(
         foregroundColor: AnsibleDesign.ink,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

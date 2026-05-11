@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/subpage_l10n.dart';
+
 class RemoteNodeFormDialog extends StatefulWidget {
   final String? initialName;
   final String? initialUrl;
@@ -44,10 +46,11 @@ class _RemoteNodeFormDialogState extends State<RemoteNodeFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
     final isEdit = widget.initialName != null;
 
     return AlertDialog(
-      title: Text(isEdit ? 'Edit Remote Node' : 'Add Remote Node'),
+      title: Text(isEdit ? text.t('editRemoteNode') : text.t('addRemoteNode')),
       content: SizedBox(
         width: 400,
         child: Form(
@@ -57,14 +60,14 @@ class _RemoteNodeFormDialogState extends State<RemoteNodeFormDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  hintText: 'e.g., Main Server',
+                decoration: InputDecoration(
+                  labelText: text.t('remoteNodeName'),
+                  hintText: text.t('remoteNodeNameHint'),
                 ),
                 autofocus: true,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Name is required';
+                    return text.t('nameRequired');
                   }
                   return null;
                 },
@@ -72,18 +75,18 @@ class _RemoteNodeFormDialogState extends State<RemoteNodeFormDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: 'Server URL',
-                  hintText: 'e.g., https://relay.example.com',
+                decoration: InputDecoration(
+                  labelText: text.t('serverUrl'),
+                  hintText: text.t('serverUrlHint'),
                 ),
                 keyboardType: TextInputType.url,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'URL is required';
+                    return text.t('urlRequired');
                   }
                   final uri = Uri.tryParse(value.trim());
                   if (uri == null || !uri.hasScheme) {
-                    return 'Please enter a valid URL';
+                    return text.t('urlInvalid');
                   }
                   return null;
                 },
@@ -91,20 +94,24 @@ class _RemoteNodeFormDialogState extends State<RemoteNodeFormDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: 'Username (optional)',
-                  hintText: 'Enter username for authentication',
+                decoration: InputDecoration(
+                  labelText: text.t('usernameOptional'),
+                  hintText: text.t('usernameHint'),
                 ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
                 decoration: InputDecoration(
-                  labelText: isEdit ? 'Password (leave blank to keep)' : 'Password (optional)',
-                  hintText: 'Enter password',
+                  labelText: isEdit
+                      ? text.t('passwordKeep')
+                      : text.t('passwordOptional'),
+                  hintText: text.t('passwordHint'),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
                     onPressed: () {
                       setState(() {
@@ -122,7 +129,7 @@ class _RemoteNodeFormDialogState extends State<RemoteNodeFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
         ),
         FilledButton(
           onPressed: () {
@@ -139,7 +146,7 @@ class _RemoteNodeFormDialogState extends State<RemoteNodeFormDialog> {
               });
             }
           },
-          child: const Text('Save'),
+          child: Text(text.t('save')),
         ),
       ],
     );
