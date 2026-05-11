@@ -1,5 +1,6 @@
 import { DEFAULT_LOGIN_SCOPES } from './forum_login_app.mjs';
-import { RelayApiError, trimTrailingSlash } from './relay_api_client.mjs';
+import { normalizeFrontendError } from './error_taxonomy.mjs';
+import { trimTrailingSlash } from './relay_api_client.mjs';
 import {
   TRUST_TIERS,
   createWebSessionChallenge,
@@ -213,31 +214,7 @@ export function capabilitiesForScopes(scopes) {
 }
 
 export function mapRelayErrorToSessionError(error) {
-  if (error instanceof RelayApiError) {
-    if (error.status === 401) {
-      return { type: 'unauthenticated', message: error.message, retryable: true };
-    }
-
-    if (error.status === 403) {
-      return { type: 'missing_scope', message: error.message, retryable: false };
-    }
-
-    if (error.status === 429) {
-      return { type: 'rate_limited', message: error.message, retryable: true };
-    }
-
-    return { type: error.code ?? 'relay_error', message: error.message, retryable: true };
-  }
-
-  if (error instanceof TypeError) {
-    return { type: 'network_unavailable', message: error.message, retryable: true };
-  }
-
-  return {
-    type: 'unknown_error',
-    message: error?.message ?? 'unknown_error',
-    retryable: true,
-  };
+  return compactSessionError(normalizeFrontendError(error));
 }
 
 function pendingChallengeViewModel(challenge) {
@@ -274,4 +251,12 @@ function sessionModeForTrustTier(trustTier) {
   }
 
   return 'public';
+}
+
+function compactSessionError(error) {
+  return {
+    type: error.type,
+    message: error.message,
+    retryable: error.retryable,
+  };
 }
