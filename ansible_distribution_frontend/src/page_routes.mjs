@@ -1,0 +1,115 @@
+import { buildAppViewModel, initialAppState, PAGE_IDS } from './state_model.mjs';
+import { DEFAULT_SESSION_VIEW_MODEL } from './session_lifecycle.mjs';
+
+export function parseRoute(hash) {
+  const path = normalizeHashPath(hash);
+  const segments = path.split('/').filter(Boolean).map(decodeURIComponent);
+
+  if (segments.length === 0) {
+    return { pageId: PAGE_IDS.home, params: {} };
+  }
+
+  if (segments.length === 1 && segments[0] === 'boards') {
+    return { pageId: PAGE_IDS.boards, params: {} };
+  }
+
+  if (segments.length === 2 && segments[0] === 'boards') {
+    return { pageId: PAGE_IDS.board, params: { boardId: segments[1] } };
+  }
+
+  if (segments.length === 1 && segments[0] === 'sessions') {
+    return { pageId: PAGE_IDS.sessions, params: {} };
+  }
+
+  if (segments.length === 1 && segments[0] === 'login') {
+    return { pageId: PAGE_IDS.login, params: {} };
+  }
+
+  return { pageId: PAGE_IDS.notFound, params: { path } };
+}
+
+export function routeToHash(route) {
+  switch (route.pageId) {
+    case PAGE_IDS.home:
+      return '#/';
+
+    case PAGE_IDS.boards:
+      return '#/boards';
+
+    case PAGE_IDS.board:
+      return `#/boards/${encodeURIComponent(route.params.boardId)}`;
+
+    case PAGE_IDS.sessions:
+      return '#/sessions';
+
+    case PAGE_IDS.login:
+      return '#/login';
+
+    default:
+      return '#/404';
+  }
+}
+
+export function createPageController({
+  getCurrentHash = () => globalThis.location?.hash ?? '#/',
+  sessionLifecycle,
+  forumDataAdapter,
+}) {
+  let state = initialAppState();
+
+  async function loadCurrentRoute() {
+    return loadRoute(parseRoute(getCurrentHash()));
+  }
+
+  async function loadRoute(route) {
+    if (route.pageId === PAGE_IDS.login) {
+      return setState(route, DEFAULT_SESSION_VIEW_MODEL, null);
+    }
+
+    const sessionState = await sessionLifecycle.restore();
+    const session = sessionState.viewModel;
+
+    if (route.pageId === PAGE_IDS.home || route.pageId === PAGE_IDS.boards) {
+      const forum = await forumDataAdapter.loadForumHome({
+        sessionViewModel: session,
+      });
+      return setState(route, session, forum);
+    }
+
+    if (route.pageId === PAGE_IDS.board) {
+      const forum = await forumDataAdapter.loadBoardPage({
+        boardId: route.params.boardId,
+        sessionViewModel: session,
+      });
+      return setState(route, session, forum);
+    }
+
+    return setState(route, session, null);
+  }
+
+  function getState() {
+    return state;
+  }
+
+  function setState(route, session, forum) {
+    state = {
+      route,
+      session,
+      forum,
+      loading: false,
+      error: forum?.error ?? session?.error ?? null,
+      viewModel: buildAppViewModel({ route, session, forum }),
+    };
+
+    return state;
+  }
+
+  return { loadCurrentRoute, loadRoute, getState };
+}
+
+function normalizeHashPath(hash) {
+  const value = hash || '#/';
+  const withoutHash = value.startsWith('#') ? value.slice(1) : value;
+  const path = withoutHash.startsWith('/') ? withoutHash : `/${withoutHash}`;
+  return path.replace(/\/+$/, '') || '/';
+}

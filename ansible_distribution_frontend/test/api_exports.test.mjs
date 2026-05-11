@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createHostedWebThread,
   createForumDataAdapter,
+  createPageController,
   createRelayApiClient,
   createSessionLifecycle,
   createWebSessionChallenge,
@@ -11,6 +12,8 @@ import {
   fetchHostedBoards,
   listWebSessions,
   normalizeFrontendError,
+  PAGE_IDS,
+  parseRoute,
   revokeWebSession,
 } from '../src/api.mjs';
 
@@ -24,6 +27,9 @@ assert.equal(typeof createHostedWebThread, 'function');
 assert.equal(typeof createSessionLifecycle, 'function');
 assert.equal(typeof createForumDataAdapter, 'function');
 assert.equal(typeof normalizeFrontendError, 'function');
+assert.equal(typeof createPageController, 'function');
+assert.equal(typeof parseRoute, 'function');
 assert.equal(ERROR_TYPES.missingScope, 'missing_scope');
+assert.equal(PAGE_IDS.board, 'board');
 
 console.log('ok - api barrel exports frontend relay clients');
