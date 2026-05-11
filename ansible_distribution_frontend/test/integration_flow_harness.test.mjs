@@ -9,6 +9,8 @@ import {
   runThreadDraftFlow,
 } from '../src/integration_flow_harness.mjs';
 import { ERROR_TYPES } from '../src/error_taxonomy.mjs';
+import { renderAppShell } from '../src/forum_shell_renderer.mjs';
+import { renderPageBody } from '../src/forum_page_renderers.mjs';
 import { PAGE_IDS } from '../src/state_model.mjs';
 import { WEB_SESSION_TOKEN_KEY } from '../src/web_session_client.mjs';
 
@@ -21,6 +23,13 @@ assert.equal(publicHome.route.pageId, PAGE_IDS.home);
 assert.equal(publicHome.session.authenticated, false);
 assert.equal(publicHome.viewModel.actions.showLogin, true);
 assert.equal(publicHome.viewModel.boards[0].id, 'general');
+const renderedHome = renderAppShell({
+  viewModel: publicHome.viewModel,
+  bodyHtml: renderPageBody(publicHome.viewModel),
+});
+assert.match(renderedHome, /Local Forum Host/);
+assert.match(renderedHome, /Anonymous/);
+assert.match(renderedHome, /Browse boards/);
 console.log('ok - runs public home flow');
 
 const boardHarness = createFrontendFlowHarness({
@@ -32,6 +41,12 @@ assert.equal(boardPage.route.pageId, PAGE_IDS.board);
 assert.equal(boardPage.session.trustTier, 'self_custody_did');
 assert.equal(boardPage.viewModel.page.title, 'General');
 assert.equal(boardPage.viewModel.actions.canCreateThread, true);
+const renderedBoard = renderAppShell({
+  viewModel: boardPage.viewModel,
+  bodyHtml: renderPageBody(boardPage.viewModel),
+});
+assert.match(renderedBoard, /Self-custody DID/);
+assert.match(renderedBoard, /New thread/);
 console.log('ok - runs authenticated board route flow');
 
 const loginHarness = createFrontendFlowHarness({
@@ -52,6 +67,11 @@ const invalidHarness = createFrontendFlowHarness({
 const invalidState = await runInvalidSessionRestoreFlow(invalidHarness);
 assert.equal(invalidState.session.error.type, ERROR_TYPES.unauthenticated);
 assert.equal(invalidHarness.storage.getItem(WEB_SESSION_TOKEN_KEY), null);
+const renderedInvalid = renderAppShell({
+  viewModel: invalidState.viewModel,
+  bodyHtml: renderPageBody(invalidState.viewModel),
+});
+assert.match(renderedInvalid, /Session unavailable/);
 console.log('ok - runs invalid session restore flow');
 
 const draftHarness = createFrontendFlowHarness({
