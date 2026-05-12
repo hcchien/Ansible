@@ -1,4 +1,5 @@
 import { shortIdentity, trustTierLabel } from './forum_ui_text.mjs';
+import { t } from './web_i18n.mjs';
 
 export function renderAppShell({ viewModel, bodyHtml }) {
   return `
@@ -14,7 +15,7 @@ export function renderAppShell({ viewModel, bodyHtml }) {
 }
 
 export function renderCommandHeader(viewModel) {
-  const hostLabel = viewModel.host?.displayName || 'Elix Relay';
+  const hostLabel = viewModel.host?.displayName || t('common.relay');
   const nav = viewModel.navigation
     .map((item) => {
       const current = item.id === viewModel.page.id ? ' aria-current="page"' : '';
@@ -24,16 +25,16 @@ export function renderCommandHeader(viewModel) {
 
   return `
     <header class="command-header topbar">
-      <a class="brand-lockup" href="#/" aria-label="Elix forum home">
+      <a class="brand-lockup" href="#/" aria-label="${escapeAttribute(t('common.elixHomeAria'))}">
         ${renderElixMark()}
         <span class="brand-word">Elix</span>
-        <span class="brand-host">SOCIAL IDENTITY</span>
+        <span class="brand-host">${escapeHtml(t('common.socialIdentity'))}</span>
       </a>
-      <div class="searchbox" role="search" aria-label="Elix search">
-        <span>找人、找討論板、找關鍵字 ...</span>
+      <div class="searchbox" role="search" aria-label="${escapeAttribute(t('common.searchAria'))}">
+        <span>${escapeHtml(t('common.searchPlaceholder'))}</span>
       </div>
       <div class="command-context">
-        <nav class="command-nav" aria-label="Elix">${nav}</nav>
+        <nav class="command-nav" aria-label="${escapeAttribute(t('common.navAria'))}">${nav}</nav>
         <span class="route-title">${escapeHtml(hostLabel)}</span>
         ${renderSessionChip(viewModel.session)}
         ${renderPrimaryAction(viewModel)}
@@ -58,7 +59,7 @@ export function renderElixMark() {
 
 export function renderSessionChip(session) {
   if (!session?.authenticated) {
-    return '<a class="session-chip is-anonymous" href="#/login"><span>Anonymous</span><strong>Read only</strong></a>';
+    return `<span class="session-chip is-anonymous" aria-label="${escapeAttribute(t('common.session'))}"><span>${escapeHtml(t('common.anonymous'))}</span><strong>${escapeHtml(t('common.readOnly'))}</strong></span>`;
   }
 
   return `
@@ -71,63 +72,29 @@ export function renderSessionChip(session) {
 
 export function renderPrimaryAction(viewModel) {
   if (viewModel.actions?.canRevokeSession && viewModel.page.id === 'sessions') {
-    return '<button class="header-action is-danger" type="button" data-action="revoke-session">Revoke</button>';
+    return `<button class="header-action is-danger" type="button" data-action="revoke-session">${escapeHtml(t('common.revoke'))}</button>`;
   }
 
   if (viewModel.actions?.canCreateThread && viewModel.page.id === 'board') {
-    return '<button class="header-action" type="button" data-action="new-thread">New thread</button>';
+    return `<button class="header-action" type="button" data-action="new-thread">${escapeHtml(t('common.newThread'))}</button>`;
   }
 
   if (viewModel.actions?.showLogin) {
-    return '<a class="header-action" href="#/login">Sign in</a>';
+    return '';
   }
 
   return '';
 }
 
-function pageKicker(viewModel) {
-  switch (viewModel.page?.id) {
-    case 'home':
-      return 'FEED · 動態';
-    case 'boards':
-      return 'BOARD DIRECTORY · 討論板目錄';
-    case 'board':
-      return 'BOARD · 討論板';
-    case 'login':
-      return 'APP-MEDIATED SESSION · 由 APP 中介';
-    case 'sessions':
-      return 'CURRENT SESSION · 當前工作階段';
-    default:
-      return 'ROUTE · 路徑';
-  }
-}
-
-function pageIntro(viewModel) {
-  switch (viewModel.page?.id) {
-    case 'home':
-      return 'Elix is a social app that treats identity as the infrastructure behind every post.';
-    case 'boards':
-      return 'Boards are subscribed conversation spaces that can enter your feed beside people you follow.';
-    case 'board':
-      return viewModel.board?.description || 'Read current threads and create a signed thread when your session has permission.';
-    case 'login':
-      return 'The browser never receives your keys. Start a challenge here, then approve it from the Elix app.';
-    case 'sessions':
-      return 'This web session is scoped to this browser. You can inspect its rights and revoke it at any time.';
-    default:
-      return 'Return to the forum host or board directory to keep reading.';
-  }
-}
-
 function renderAppFooter(viewModel) {
-  const hostLabel = viewModel.host?.displayName || 'Forum Relay';
+  const hostLabel = viewModel.host?.displayName || t('common.relay');
   const pageLabel = viewModel.page?.id === 'sessions'
     ? shortFooterIdentity(viewModel.session?.subjectDid || viewModel.session?.subject)
     : hostLabel;
 
   return `
     <footer class="app-footer">
-      <span>Elix · identity-backed social app</span>
+      <span>${escapeHtml(t('common.identityBackedSocialApp'))}</span>
       <span>${escapeHtml(pageLabel)}</span>
     </footer>
   `;
@@ -135,18 +102,18 @@ function renderAppFooter(viewModel) {
 
 function renderMobileTabBar(viewModel) {
   const items = [
-    { id: 'home', label: 'Feed', href: '#/', icon: renderElixMark() },
-    { id: 'boards', label: 'Boards', href: '#/boards', icon: renderBoardIcon() },
+    { id: 'home', label: t('common.feed'), href: '#/', icon: renderElixMark() },
+    { id: 'boards', label: t('common.boards'), href: '#/boards', icon: renderBoardIcon() },
     {
       id: viewModel.session?.authenticated ? 'sessions' : 'login',
-      label: viewModel.session?.authenticated ? 'You' : 'Login',
+      label: viewModel.session?.authenticated ? t('common.you') : t('common.login'),
       href: viewModel.session?.authenticated ? '#/sessions' : '#/login',
       icon: renderUserIcon(),
     },
   ];
 
   return `
-    <nav class="mobile-tabbar" aria-label="Mobile forum navigation">
+    <nav class="mobile-tabbar" aria-label="${escapeAttribute(t('common.mobileNavAria'))}">
       ${items
         .map((item) => {
           const current = item.id === viewModel.page?.id ? ' aria-current="page"' : '';
@@ -177,7 +144,7 @@ function renderUserIcon() {
 
 function shortFooterIdentity(identity) {
   const value = String(identity ?? '');
-  if (!value) return 'Anonymous';
+  if (!value) return t('common.anonymous');
   if (value.length <= 18) return value;
   return `${value.slice(0, 10)}...${value.slice(-4)}`;
 }

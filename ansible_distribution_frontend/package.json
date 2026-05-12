@@ -1,0 +1,9 @@
+{
+  "name": "@elix/forum-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "test": "for f in test/*.test.mjs; do node \"$f\" || exit 1; done"
+  }
+}

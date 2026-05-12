@@ -105,7 +105,11 @@ cd ansible_relay/phoenix
 mix deps.get && mix ecto.create && mix ecto.migrate
 mix run --no-halt          # listens on :4001 in dev
 
-# 3. Run Flutter app (separate terminal)
+# 3. Run web frontend server (separate terminal, optional for web testing)
+cd ansible_distribution_frontend
+npm run dev                # listens on :5173 and proxies /api/* to :4001
+
+# 4. Run Flutter app (separate terminal)
 cd ansible_node/app
 flutter run
 ```

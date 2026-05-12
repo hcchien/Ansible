@@ -37,7 +37,13 @@ export function createForumDataAdapter({
     if (!board) {
       return {
         ...home,
-        board: null,
+        board: {
+          id: boardId,
+          slug: boardId,
+          title: boardId,
+          description: null,
+          missing: true,
+        },
         threads: [],
         error: notFoundError('board_not_found', { boardId }),
       };

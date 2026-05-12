@@ -142,7 +142,8 @@ test('loads board data and marks missing boards with a semantic error', async ()
 
   const missing = await adapter.loadBoardPage({ boardId: 'missing' });
   assert.equal(missing.error.type, ERROR_TYPES.notFound);
-  assert.equal(missing.board, null);
+  assert.equal(missing.board.id, 'missing');
+  assert.equal(missing.board.missing, true);
 });
 
 test('submits thread drafts only when the session can post', async () => {

@@ -83,6 +83,16 @@ assert.match(
 );
 assert.match(
   css,
+  /\.rail,\s*\.right-rail\s*\{[^}]*align-self:\s*start;/s,
+  'side rails must align to the top of the central wall',
+);
+assert.doesNotMatch(
+  css,
+  /\.rail,\s*\.right-rail\s*\{[^}]*top:\s*96px;/s,
+  'side rails should not use a sticky offset that creates top misalignment',
+);
+assert.match(
+  css,
   /\.feed\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s,
   'feed column must provide a stable vertical post stack',
 );
@@ -98,8 +108,8 @@ assert.match(
 );
 assert.match(
   css,
-  /\.murmur-player\s*\{[^}]*grid-template-columns:\s*1fr repeat\(3,\s*8px\);/s,
-  'murmur posts must include the compact audio/player affordance',
+  /\.forum-main\s*\{[^}]*width:\s*100%;[^}]*overflow-x:\s*hidden;/s,
+  'main surface must stay within the viewport',
 );
 assert.match(
   css,
@@ -108,8 +118,13 @@ assert.match(
 );
 assert.match(
   css,
-  /\.qr-preview\s*\{[^}]*grid-template-columns:\s*repeat\(12,\s*1fr\);/s,
-  'login challenge must include a code-native QR preview grid',
+  /\.challenge-payload-preview span\s*\{[^}]*overflow-wrap:\s*anywhere;/s,
+  'login challenge instruction copy must stay readable beside the QR',
+);
+assert.match(
+  css,
+  /\.qr-code\s*\{[^}]*shape-rendering:\s*crispEdges;/s,
+  'login challenge QR must render as crisp SVG modules',
 );
 assert.match(
   css,

@@ -28,9 +28,10 @@ const renderedHome = renderAppShell({
   bodyHtml: renderPageBody(publicHome.viewModel),
 });
 assert.match(renderedHome, /Local Forum Host/);
-assert.match(renderedHome, /Anonymous/);
+assert.match(renderedHome, /匿名/);
 assert.match(renderedHome, /Elix 是重視身分的社群 App/);
-assert.match(renderedHome, /FROM A FOLLOW/);
+assert.match(renderedHome, /RELAY · BOARD · #general/);
+assert.doesNotMatch(renderedHome, /Anonymous|Read only|Sign in|Open board/);
 console.log('ok - runs public home flow');
 
 const boardHarness = createFrontendFlowHarness({
@@ -46,8 +47,9 @@ const renderedBoard = renderAppShell({
   viewModel: boardPage.viewModel,
   bodyHtml: renderPageBody(boardPage.viewModel),
 });
-assert.match(renderedBoard, /Self-custody DID/);
-assert.match(renderedBoard, /New thread/);
+assert.match(renderedBoard, /自持有 DID/);
+assert.match(renderedBoard, /新討論串/);
+assert.doesNotMatch(renderedBoard, /Self-custody DID|New thread|Sign in to post/);
 console.log('ok - runs authenticated board route flow');
 
 const loginHarness = createFrontendFlowHarness({
@@ -72,7 +74,7 @@ const renderedInvalid = renderAppShell({
   viewModel: invalidState.viewModel,
   bodyHtml: renderPageBody(invalidState.viewModel),
 });
-assert.match(renderedInvalid, /Session unavailable/);
+assert.match(renderedInvalid, /工作階段不可用/);
 console.log('ok - runs invalid session restore flow');
 
 const draftHarness = createFrontendFlowHarness({

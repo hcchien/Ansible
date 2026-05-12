@@ -24,7 +24,7 @@ const publicHome = buildAppViewModel({
   },
 });
 assert.equal(publicHome.page.id, PAGE_IDS.home);
-assert.equal(publicHome.page.title, 'Feed');
+assert.equal(publicHome.page.title, '動態');
 assert.equal(publicHome.actions.showLogin, true);
 assert.equal(publicHome.actions.canCreateThread, false);
 assert.equal(publicHome.boards.length, 1);
@@ -62,13 +62,13 @@ assert.equal(boardPage.actions.canReply, true);
 console.log('ok - builds authenticated board view model');
 
 assert.deepEqual(deriveNavigationItems(DEFAULT_SESSION_VIEW_MODEL), [
-  { id: PAGE_IDS.home, label: 'Feed', href: '#/' },
-  { id: PAGE_IDS.boards, label: 'Boards', href: '#/boards' },
-  { id: PAGE_IDS.login, label: 'Login', href: '#/login' },
+  { id: PAGE_IDS.home, label: '動態', href: '#/' },
+  { id: PAGE_IDS.boards, label: '看板', href: '#/boards' },
+  { id: PAGE_IDS.login, label: '登入', href: '#/login' },
 ]);
 assert.deepEqual(deriveNavigationItems(authenticatedSession), [
-  { id: PAGE_IDS.home, label: 'Feed', href: '#/' },
-  { id: PAGE_IDS.boards, label: 'Boards', href: '#/boards' },
-  { id: PAGE_IDS.sessions, label: 'You', href: '#/sessions' },
+  { id: PAGE_IDS.home, label: '動態', href: '#/' },
+  { id: PAGE_IDS.boards, label: '看板', href: '#/boards' },
+  { id: PAGE_IDS.sessions, label: '你', href: '#/sessions' },
 ]);
 console.log('ok - derives navigation from session mode');

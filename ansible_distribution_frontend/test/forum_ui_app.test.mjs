@@ -23,28 +23,38 @@ const app = createForumUiApp({
 
 await app.start();
 assert.match(root.innerHTML, /Local Forum Host/);
-assert.match(root.innerHTML, /Anonymous/);
+assert.match(root.innerHTML, /匿名/);
 assert.match(root.innerHTML, /href="#\/login"/);
 assert.match(root.innerHTML, /class="cols social-home"/);
-assert.match(root.innerHTML, /FROM A FOLLOW/);
+assert.match(root.innerHTML, /RELAY · BOARD · #general/);
 assert.match(root.innerHTML, /mobile-tabbar/);
+assert.doesNotMatch(root.innerHTML, /RELAY · 來源|Relay 資料/);
+assert.doesNotMatch(root.innerHTML, /Anonymous|Sign in|Read only|Open board/);
 
 await app.navigate('#/boards/general');
 assert.match(root.innerHTML, /General/);
-assert.match(root.innerHTML, /Sign in to post/);
+assert.match(root.innerHTML, /登入後發文/);
 assert.match(root.innerHTML, /class="board-head"/);
+assert.doesNotMatch(root.innerHTML, /Sign in to post|New thread/);
 
 await app.navigate('#/login');
-assert.match(root.innerHTML, /Start app login/);
+assert.match(root.innerHTML, /產生登入 QR code/);
 assert.match(root.innerHTML, /class="login-grid"/);
 
 await app.startLogin();
-assert.match(root.innerHTML, /App login challenge/);
+assert.match(root.innerHTML, /用 Elix app 登入/);
 assert.match(root.innerHTML, /wsc_fixture/);
-assert.match(root.innerHTML, /class="qr-preview"/);
+assert.match(root.innerHTML, /class="challenge-payload-preview"/);
+assert.match(root.innerHTML, /class="qr-code"/);
+assert.match(root.innerHTML, /用 Elix app 掃描/);
+assert.match(root.innerHTML, /我已在 app 核准/);
+assert.doesNotMatch(root.innerHTML, /data-action="start-login"/);
+assert.doesNotMatch(root.innerHTML, /登入挑戰|建立挑戰|有效挑戰|Start app login|App login challenge|Scan with Elix app/);
+assert.doesNotMatch(root.innerHTML, /Deep link|QR payload|Open in app/);
+assert.doesNotMatch(root.innerHTML, /trisaura:\/\/web-session\/approve/);
 
 await app.pollLoginOnce();
-assert.match(root.innerHTML, /Self-custody DID/);
+assert.match(root.innerHTML, /自持有 DID/);
 
 app.stop();
 
@@ -101,7 +111,7 @@ const failureApp = createForumUiApp({
 await failureApp.start();
 await failureApp.startLogin();
 await assert.rejects(() => failureApp.pollLoginOnce(), /poll failed/);
-assert.match(failureRoot.innerHTML, /Forum error/);
+assert.match(failureRoot.innerHTML, /Forum 錯誤/);
 assert.match(failureRoot.innerHTML, /poll failed/);
 await failureRoot.listeners.get('click')({
   target: createContainedActionElement(failureRoot, 'poll-login'),

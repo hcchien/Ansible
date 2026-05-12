@@ -122,6 +122,12 @@ test('starts app login and exposes pending challenge state for the future UI', a
     'identity:display',
   ]);
   assert.equal(state.status, 'login_pending');
+  assert.deepEqual(state.viewModel.scopes, [
+    'forum:read',
+    'forum:post',
+    'forum:reply',
+    'identity:display',
+  ]);
   assert.deepEqual(state.viewModel.challenge, {
     challengeId: 'wsc_123',
     expiresAt: '2026-05-11T13:00:00Z',

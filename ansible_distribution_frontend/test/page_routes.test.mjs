@@ -21,8 +21,8 @@ assert.deepEqual(parseRoute('#/sessions'), {
 });
 assert.deepEqual(parseRoute('#/login'), { pageId: PAGE_IDS.login, params: {} });
 assert.deepEqual(parseRoute('#/unknown/path'), {
-  pageId: PAGE_IDS.notFound,
-  params: { path: '/unknown/path' },
+  pageId: PAGE_IDS.home,
+  params: { recoveredFrom: '/unknown/path' },
 });
 console.log('ok - parses hash routes');
 
@@ -87,6 +87,6 @@ const loginController = createPageController({
 });
 const loginState = await loginController.loadCurrentRoute();
 assert.equal(loginState.route.pageId, PAGE_IDS.login);
-assert.equal(loginState.viewModel.page.title, 'Login');
+assert.equal(loginState.viewModel.page.title, '登入');
 assert.equal(loginState.viewModel.actions.showLogin, true);
 console.log('ok - loads login page without data dependencies');

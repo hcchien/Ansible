@@ -81,7 +81,7 @@ export function createSessionLifecycle({
       status: 'login_pending',
       challenge: normalizeChallenge(challenge),
       session: null,
-      viewModel: pendingChallengeViewModel(challenge),
+      viewModel: pendingChallengeViewModel(challenge, scopes),
     };
 
     return state;
@@ -217,10 +217,11 @@ export function mapRelayErrorToSessionError(error) {
   return compactSessionError(normalizeFrontendError(error));
 }
 
-function pendingChallengeViewModel(challenge) {
+function pendingChallengeViewModel(challenge, scopes = []) {
   return {
     ...DEFAULT_SESSION_VIEW_MODEL,
     mode: 'login_pending',
+    scopes,
     challenge: {
       ...normalizeChallenge(challenge),
       continuePolling: true,

@@ -1,37 +1,40 @@
 import { ERROR_TYPES } from './error_taxonomy.mjs';
+import { t } from './web_i18n.mjs';
 
-const SCOPE_LABELS = Object.freeze({
-  'forum:read': 'Read forum',
-  'forum:post': 'Post threads',
-  'forum:reply': 'Reply',
-  'identity:display': 'Display identity',
-  'session:revoke': 'Revoke sessions',
+const SCOPE_LABEL_KEYS = Object.freeze({
+  'forum:read': 'scope.forum.read',
+  'forum:post': 'scope.forum.post',
+  'forum:reply': 'scope.forum.reply',
+  'identity:display': 'scope.identity.display',
+  'session:revoke': 'scope.session.revoke',
 });
 
 const TRUST_TIER_LABELS = Object.freeze({
-  anonymous: 'Anonymous',
-  basic_web: 'Basic web',
-  web_passkey: 'Web passkey',
-  self_custody_did: 'Self-custody DID',
-  verified_human: 'Verified human',
+  anonymous: 'trust.anonymous',
+  basic_web: 'trust.basicWeb',
+  web_passkey: 'trust.webPasskey',
+  self_custody_did: 'trust.selfCustodyDid',
+  verified_human: 'trust.verifiedHuman',
 });
 
 export function shortIdentity(value) {
-  if (!value) return 'Anonymous';
+  if (!value) return t('common.anonymous');
   if (value.length <= 16) return value;
   return `${value.slice(0, 7)}...${value.slice(-6)}`;
 }
 
 export function trustTierLabel(value) {
-  return TRUST_TIER_LABELS[value] ?? value ?? 'Anonymous';
+  const key = TRUST_TIER_LABELS[value];
+  return key ? t(key) : value ?? t('common.anonymous');
 }
 
 export function formatScope(scope) {
-  return SCOPE_LABELS[scope] ?? scope;
+  const key = SCOPE_LABEL_KEYS[scope];
+  return key ? t(key) : scope;
 }
 
 export function formatExpiry(value) {
-  if (!value) return 'No expiry';
+  if (!value) return t('common.noExpiry');
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
@@ -43,12 +46,12 @@ export function describeError(error) {
   if (error.type === ERROR_TYPES.missingScope) {
     const requiredScope = error.detail?.requiredScope;
     const message = requiredScope
-      ? `This action needs the ${formatScope(requiredScope)} scope.`
-      : 'This action needs an additional forum scope.';
+      ? t('error.signInRequired.scopeMessage', { scope: formatScope(requiredScope) })
+      : t('error.signInRequired.genericMessage');
 
     return {
       tone: 'warning',
-      title: 'Sign in required',
+      title: t('error.signInRequired.title'),
       message,
     };
   }
@@ -56,30 +59,30 @@ export function describeError(error) {
   if (error.type === ERROR_TYPES.unauthenticated) {
     return {
       tone: 'danger',
-      title: 'Session unavailable',
-      message: 'Start a new app-approved browser session to continue.',
+      title: t('error.sessionUnavailable.title'),
+      message: t('error.sessionUnavailable.message'),
     };
   }
 
   if (error.type === ERROR_TYPES.notFound) {
     return {
       tone: 'danger',
-      title: 'Not found',
-      message: 'This forum route or resource is unavailable.',
+      title: t('error.notFound.title'),
+      message: t('error.notFound.message'),
     };
   }
 
   if (error.type === ERROR_TYPES.rateLimited) {
     return {
       tone: 'warning',
-      title: 'Rate limited',
-      message: 'Wait before retrying this forum action.',
+      title: t('error.rateLimited.title'),
+      message: t('error.rateLimited.message'),
     };
   }
 
   return {
     tone: 'danger',
-    title: 'Forum error',
-    message: error.message || 'The forum frontend could not complete the request.',
+    title: t('error.forum.title'),
+    message: error.message || t('error.forum.message'),
   };
 }

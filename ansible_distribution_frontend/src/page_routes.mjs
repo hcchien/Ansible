@@ -25,7 +25,7 @@ export function parseRoute(hash) {
     return { pageId: PAGE_IDS.login, params: {} };
   }
 
-  return { pageId: PAGE_IDS.notFound, params: { path } };
+  return { pageId: PAGE_IDS.home, params: { recoveredFrom: path } };
 }
 
 export function routeToHash(route) {

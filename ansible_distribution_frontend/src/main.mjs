@@ -2,6 +2,8 @@ import { createForumDataAdapter } from './forum_data_adapter.mjs';
 import { createForumUiApp } from './forum_ui_app.mjs';
 import { createPageController } from './page_routes.mjs';
 import { createSessionLifecycle } from './session_lifecycle.mjs';
+import { resolveFrontendRuntimeConfig } from './runtime_config.mjs';
+import { setCurrentLocale } from './web_i18n.mjs';
 
 const root = document.querySelector('#forum-root');
 
@@ -9,11 +11,16 @@ if (!root) {
   throw new Error('Missing #forum-root mount element');
 }
 
-const relayBaseUrl = localStorage.getItem('trisaura.relay_base_url') ?? window.location.origin;
-const webOrigin = window.location.origin;
+const { relayBaseUrl, relayOrigin, webOrigin, locale } = resolveFrontendRuntimeConfig({
+  location: window.location,
+  storage: localStorage,
+  navigatorLike: navigator,
+});
+setCurrentLocale(locale);
 
 const sessionLifecycle = createSessionLifecycle({
   relayBaseUrl,
+  relayOrigin,
   webOrigin,
   storage: localStorage,
 });

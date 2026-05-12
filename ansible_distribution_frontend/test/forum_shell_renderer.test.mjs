@@ -19,10 +19,12 @@ assert.match(header, /Elix/);
 assert.match(header, /Local Forum Host/);
 assert.match(header, /class="elix-mark"/);
 assert.match(header, /href="#\/boards"/);
-assert.match(header, /Anonymous/);
-assert.match(header, /Login/);
+assert.match(header, /匿名/);
+assert.match(header, /登入/);
 assert.match(header, /找人、找討論板、找關鍵字/);
-assert.doesNotMatch(header, /Diagnostics|Profile|Settings/);
+assert.doesNotMatch(header, /class="header-action" href="#\/login"/);
+assert.doesNotMatch(header, /class="session-chip is-anonymous" href="#\/login"/);
+assert.doesNotMatch(header, /Anonymous|Login|Sign in|Diagnostics|Profile|Settings/);
 
 const authenticatedVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.board, params: { boardId: 'general' } },
@@ -44,12 +46,12 @@ const shell = renderAppShell({
   viewModel: authenticatedVm,
   bodyHtml: '<section class="page-panel">Body</section>',
 });
-assert.match(shell, /Self-custody DID/);
-assert.match(shell, /New thread/);
+assert.match(shell, /自持有 DID/);
+assert.match(shell, /新討論串/);
 assert.match(shell, /<section class="page-panel">Body<\/section>/);
 assert.match(shell, /mobile-tabbar/);
 assert.match(shell, /app-footer/);
-assert.match(shell, /identity-backed social app/);
+assert.match(shell, /以身分支撐的社群 App/);
 
 const staleSessionsVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.sessions, params: {} },
@@ -75,8 +77,8 @@ const sessionsShell = renderAppShell({
   },
   bodyHtml: '<section class="page-panel">Sessions</section>',
 });
-assert.match(sessionsShell, /Revoke/);
-assert.doesNotMatch(sessionsShell, /New thread/);
+assert.match(sessionsShell, /撤銷/);
+assert.doesNotMatch(sessionsShell, /New thread|新討論串/);
 
 const escaped = renderAppShell({
   viewModel: {

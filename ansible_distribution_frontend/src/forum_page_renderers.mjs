@@ -7,41 +7,8 @@ import {
   trustTierLabel,
 } from './forum_ui_text.mjs';
 import { escapeHtml } from './forum_shell_renderer.mjs';
-
-const FEED_POSTS = [
-  {
-    source: 'FROM A FOLLOW',
-    type: 'MURMUR',
-    time: '0:42',
-    author: 'Miki Chen',
-    handle: 'did:plc:miki',
-    body: '把身分握在自己手裡，不是為了變成錢包，而是讓每一次發文都能確定來自我。',
-    stats: '8 replies · 31 resonance',
-    tone: 'murmur',
-  },
-  {
-    source: 'FROM A FOLLOW',
-    type: 'NOTE',
-    time: '12:08',
-    author: 'Ting Wang',
-    handle: 'did:plc:ting',
-    body: 'Note 像個人版上的長一點發文。它可以被追蹤者看見，也能投射到板上形成討論。',
-    stats: '14 replies · 52 resonance',
-    tone: 'note',
-  },
-  {
-    source: 'BOARD · #PHILOSOPHY',
-    type: 'THREAD',
-    time: '18:33',
-    author: 'General board',
-    handle: 'hosted board',
-    body: '板不是首頁，板是你訂閱的公共討論空間。追蹤的人與訂閱的板會一起構成你的動態。',
-    stats: '23 replies · 6 new',
-    tone: 'board',
-  },
-];
-
-const FOLLOWING_PEOPLE = ['Miki Chen', 'Ting Wang', 'Hiro Lin'];
+import { renderQrCodeSvg } from './qr_code.mjs';
+import { t } from './web_i18n.mjs';
 
 export function renderPageBody(viewModel, uiState = {}) {
   const pageId = viewModel?.page?.id ?? viewModel?.route?.pageId;
@@ -72,22 +39,22 @@ function renderHome(viewModel) {
       <section class="feed" aria-labelledby="feed-title">
         <div class="feed-head">
           <div>
-            <p class="section-label">FEED · 動態</p>
-            <h1 id="feed-title">你選擇看見的人與板</h1>
-            <p>Elix 是重視身分的社群 App。功能重點是社群，身分工具在背後確保每則 Note、Murmur 與板上討論都能被驗證。</p>
+            <p class="section-label">${escapeHtml(t('home.kicker'))}</p>
+            <h1 id="feed-title">${escapeHtml(t('home.title'))}</h1>
+            <p>${escapeHtml(t('home.subtitle'))}</p>
           </div>
           <span class="permission-copy">${renderPermissionLabel(viewModel)}</span>
         </div>
         ${renderComposeCard(viewModel)}
-        <nav class="feed-tabs" aria-label="Feed filters">
-          <a aria-current="page" href="#/">動態</a>
-          <a href="#/">追蹤</a>
-          <a href="#/boards">板</a>
-          <a href="#/">圈內</a>
+        <nav class="feed-tabs" aria-label="${escapeAttribute(t('common.feedFiltersAria'))}">
+          <a aria-current="page" href="#/">${escapeHtml(t('common.feed'))}</a>
+          <a href="#/">${escapeHtml(t('home.followingTab'))}</a>
+          <a href="#/boards">${escapeHtml(t('home.boardsTab'))}</a>
+          <a href="#/">${escapeHtml(t('home.circleTab'))}</a>
         </nav>
-        ${FEED_POSTS.map(renderFeedPost).join('')}
+        ${renderRelayFeed(boards, viewModel)}
       </section>
-      ${renderRightRail(boards)}
+      ${renderRightRail(viewModel, boards)}
     </section>
   `;
 }
@@ -100,29 +67,33 @@ function renderBoards(viewModel) {
       <section class="feed boards-page" aria-labelledby="boards-title">
         <div class="feed-head">
           <div>
-            <p class="section-label">BOARDS · 訂閱的板</p>
-            <h1 id="boards-title">Boards</h1>
-            <p>板是可訂閱的公共討論空間。訂閱後，板上的新 thread 會和追蹤者的 Note、Murmur 一起出現在 feed。</p>
+            <p class="section-label">${escapeHtml(t('boards.kicker'))}</p>
+            <h1 id="boards-title">${escapeHtml(t('boards.title'))}</h1>
+            <p>${escapeHtml(t('boards.subtitle'))}</p>
           </div>
-          <a class="primary-action" href="#/">Back to feed</a>
+          <a class="primary-action" href="#/">${escapeHtml(t('common.backToFeed'))}</a>
         </div>
         ${renderBoardDirectory(viewModel.boards ?? [], {
-          title: 'Subscribed and available boards · 看板',
-          emptyText: 'No boards are available.',
+          title: t('boards.directoryTitle'),
+          emptyText: t('boards.directoryEmpty'),
         })}
       </section>
-      ${renderRightRail(viewModel.boards ?? [])}
+      ${renderRightRail(viewModel, viewModel.boards ?? [])}
     </section>
   `;
 }
 
 function renderBoard(viewModel) {
   const board = viewModel.board ?? {};
-  const boardTitle = board.title || viewModel.page?.title || 'Board';
+  if (board.missing) {
+    return renderMissingBoard(viewModel, board);
+  }
+
+  const boardTitle = board.title || viewModel.page?.title || t('common.board');
   const threads = viewModel.threads ?? [];
   const postAction = viewModel.actions?.canCreateThread
-    ? '<button class="primary-action" type="button" data-action="new-thread">New thread</button>'
-    : '<a class="primary-action" href="#/login">Sign in to post</a>';
+    ? `<button class="primary-action" type="button" data-action="new-thread">${escapeHtml(t('common.newThread'))}</button>`
+    : `<a class="primary-action" href="#/login">${escapeHtml(t('board.signInToPost'))}</a>`;
 
   return `
     ${renderError(viewModel.error)}
@@ -131,28 +102,54 @@ function renderBoard(viewModel) {
       <section class="feed board-detail" aria-labelledby="board-title">
         <section class="board-head" aria-labelledby="board-title">
           <div class="heading">
-            <p class="section-label">BOARD · 討論板</p>
+            <p class="section-label">${escapeHtml(t('board.kicker'))}</p>
             <h1 id="board-title">${escapeHtml(boardTitle)}</h1>
             ${board.description ? `<p>${escapeHtml(board.description)}</p>` : ''}
-            <p>這個板會作為 feed 的一個來源。你可以閱讀 thread，也可以把 Note 或 Murmur 延伸成板上的討論。</p>
+            <p>${escapeHtml(t('board.description'))}</p>
           </div>
-          <div class="permission-state" aria-label="Permission state">
-            <span class="lbl">Permission</span>
+          <div class="permission-state" aria-label="${escapeAttribute(t('common.permission'))}">
+            <span class="lbl">${escapeHtml(t('common.permission'))}</span>
             <span class="val">${renderPermissionLabel(viewModel)}</span>
-            <span class="lbl">Trust tier</span>
+            <span class="lbl">${escapeHtml(t('common.trustTier'))}</span>
             <span class="val">${escapeHtml(trustTierLabel(viewModel.session?.trustTier ?? 'anonymous'))}</span>
           </div>
           ${postAction}
         </section>
         <section class="card thread-list" aria-labelledby="thread-list-title">
           <div class="head">
-            <h3 id="thread-list-title">Threads · ${threads.length}</h3>
-            <span class="label-mono">BOARD ACTIVITY</span>
+            <h3 id="thread-list-title">${escapeHtml(t('board.threadListTitle', { count: threads.length }))}</h3>
+            <span class="label-mono">${escapeHtml(t('board.activity'))}</span>
           </div>
           ${renderThreadList(threads)}
         </section>
       </section>
-      ${renderRightRail(viewModel.boards ?? [])}
+      ${renderRightRail(viewModel, viewModel.boards ?? [])}
+    </section>
+  `;
+}
+
+function renderMissingBoard(viewModel, board) {
+  const boards = viewModel.boards ?? [];
+  const boardTitle = board.title || board.id || t('common.board');
+
+  return `
+    <section class="cols" aria-labelledby="missing-board-title">
+      ${renderLeftRail(viewModel, 'boards')}
+      <section class="feed board-detail" aria-labelledby="missing-board-title">
+        <section class="feed-head">
+          <div>
+            <p class="section-label">${escapeHtml(t('board.notAvailableKicker'))}</p>
+            <h1 id="missing-board-title">${escapeHtml(boardTitle)}</h1>
+            <p>${escapeHtml(t('board.notAvailableBody'))}</p>
+          </div>
+          <a class="primary-action" href="#/">${escapeHtml(t('common.backToFeed'))}</a>
+        </section>
+        ${renderBoardDirectory(boards, {
+          title: t('boards.fromRelayTitle'),
+          emptyText: t('boards.fromRelayEmpty'),
+        })}
+      </section>
+      ${renderRightRail(viewModel, boards)}
     </section>
   `;
 }
@@ -167,31 +164,29 @@ function renderLogin(viewModel, loginState = {}) {
     ${renderError(viewModel.error)}
     <section class="login-grid" aria-labelledby="login-title">
       <div class="qr-block">
-        ${renderQrPreview(challenge?.qrPayload ?? status)}
-        <span class="label-mono">SCAN WITH ELIX APP</span>
-        ${
-          challenge
-            ? `<a class="route-link" href="${safeHref(challenge.deepLink)}">Open in app</a>`
-            : '<button class="primary-action" type="button" data-action="start-login">Create challenge</button>'
-        }
+        ${renderChallengePayloadPreview(challenge)}
+        <span class="label-mono">${escapeHtml(challenge ? t('login.scanWithApp') : t('login.appLogin'))}</span>
+        <span class="qr-hint">${escapeHtml(challenge ? t('login.qrHint') : t('login.createApprovalRequest'))}</span>
       </div>
       <div class="card login-page">
-        <p class="section-label">CHALLENGE · 挑戰</p>
-        <h2 id="login-title">App login challenge</h2>
+        <p class="section-label">${escapeHtml(t('login.kicker'))}</p>
+        <h2 id="login-title">${escapeHtml(t('login.title'))}</h2>
         <p>${escapeHtml(statusCopy.message)}</p>
-        <button class="primary-action" type="button" data-action="start-login">${escapeHtml(statusCopy.button)}</button>
-        ${challenge ? '<button class="header-action" type="button" data-action="poll-login">Check approval</button>' : ''}
-        ${statusCopy.retry ? '<a class="route-link" href="#/login" data-action="start-login">Try again</a>' : ''}
-        ${challenge ? renderLoginChallengeDetails(challenge) : ''}
-        <p class="section-label">REQUESTED SCOPES · 要求權限</p>
+        ${
+          challenge
+            ? `<button class="primary-action" type="button" data-action="poll-login">${escapeHtml(t('login.checkApproval'))}</button>`
+            : `<button class="primary-action" type="button" data-action="start-login">${escapeHtml(statusCopy.button)}</button>`
+        }
+        ${challenge ? renderLoginChallengeDetails(challenge) : `<p class="scope-empty">${escapeHtml(t('login.noChallenge'))}</p>`}
+        <p class="section-label">${escapeHtml(t('login.requestedScopes'))}</p>
         ${renderScopeChips(requestedScopes)}
       </div>
     </section>
     <aside class="info-banner">
       <span class="icon"></span>
       <div>
-        <strong>The key stays in the app</strong>
-        <span>Approving the challenge grants this browser only the scopes shown above. Posting still requires signed intent.</span>
+        <strong>${escapeHtml(t('login.identityStaysTitle'))}</strong>
+        <span>${escapeHtml(t('login.identityStaysBody'))}</span>
       </div>
     </aside>
   `;
@@ -204,18 +199,18 @@ function renderSessions(viewModel) {
   return `
     ${renderError(viewModel.error)}
     <section class="card sessions-page" aria-labelledby="sessions-title">
-      <p class="section-label">CURRENT SESSION · 當前工作階段</p>
-      <h2 id="sessions-title">${escapeHtml(shortIdentity(session.subjectDid || session.subject))}</h2>
-      <p>This browser session is scoped and revocable. It does not expose the app key material.</p>
+      <p class="section-label">${escapeHtml(t('sessions.kicker'))}</p>
+      <h2 id="sessions-title">${escapeHtml(shortIdentity(session.subjectDid || session.subject) || t('sessions.titleFallback'))}</h2>
+      <p>${escapeHtml(t('sessions.description'))}</p>
       <dl class="session-details">
-        ${renderSessionMetric('Trust tier', trustTierLabel(session.trustTier), 'Permission inherited from the approving app session.')}
-        ${renderSessionMetric('Expiry', formatExpiry(session.expiresAt), 'The browser must ask the app again after this time.')}
+        ${renderSessionMetric(t('common.trustTier'), trustTierLabel(session.trustTier), t('sessions.trustTierHelp'))}
+        ${renderSessionMetric(t('common.expiry'), formatExpiry(session.expiresAt), t('sessions.expiryHelp'))}
       </dl>
-      <p class="section-label">SCOPES · 授權範圍</p>
+      <p class="section-label">${escapeHtml(t('common.scopes'))}</p>
       ${renderScopeChips(scopes)}
       ${
         viewModel.actions?.canRevokeSession
-          ? '<button class="danger-action" type="button" data-action="revoke-session">Revoke current session</button>'
+          ? `<button class="danger-action" type="button" data-action="revoke-session">${escapeHtml(t('sessions.revokeCurrent'))}</button>`
           : ''
       }
     </section>
@@ -228,12 +223,12 @@ function renderNotFound(viewModel) {
   return `
     ${renderError(viewModel?.error)}
     <section class="card not-found-page" aria-labelledby="not-found-title">
-      <p class="section-label">Not found</p>
-      <h2 id="not-found-title">Route unavailable</h2>
-      ${path ? `<p>${escapeHtml(path)} is not available in this forum console.</p>` : ''}
-      <nav class="route-links" aria-label="Route recovery">
-        <a href="#/">Home</a>
-        <a href="#/boards">Boards</a>
+      <p class="section-label">${escapeHtml(t('notFound.kicker'))}</p>
+      <h2 id="not-found-title">${escapeHtml(t('notFound.title'))}</h2>
+      ${path ? `<p>${escapeHtml(t('notFound.body', { path }))}</p>` : ''}
+      <nav class="route-links" aria-label="${escapeAttribute(t('common.routeRecovery'))}">
+        <a href="#/">${escapeHtml(t('common.home'))}</a>
+        <a href="#/boards">${escapeHtml(t('common.boards'))}</a>
       </nav>
     </section>
   `;
@@ -255,21 +250,21 @@ function renderError(error) {
 }
 
 function renderComposeCard(viewModel) {
-  const audience = viewModel.session?.authenticated ? '追蹤我的人 · 24' : '追蹤我的人 · 登入後可發布';
+  const audience = viewModel.session?.authenticated ? t('home.signedBySession') : t('home.loginRequiredForPosting');
   const action = viewModel.actions?.showLogin
-    ? '<a class="primary-action" href="#/login">Login to post</a>'
-    : '<button class="primary-action" type="button" data-action="new-thread">Publish</button>';
+    ? `<a class="primary-action" href="#/login">${escapeHtml(t('home.loginToPost'))}</a>`
+    : `<button class="primary-action" type="button" data-action="new-thread">${escapeHtml(t('common.publish'))}</button>`;
 
   return `
-    <section class="compose" aria-label="Create post">
+    <section class="compose" aria-label="${escapeAttribute(t('common.createPostAria'))}">
       <div class="compose-prompt">
         <span class="avatar">E</span>
-        <p>說點什麼。Murmur 是短發文，Note 是較完整的個人版發文；有追蹤你的人會在他們的 feed 上看到。</p>
+        <p>${escapeHtml(t('home.composePrompt'))}</p>
       </div>
       <div class="compose-actions">
-        <button type="button">Note</button>
-        <button type="button">Murmur</button>
-        <a href="#/boards">到板上發言</a>
+        <button type="button">${escapeHtml(t('common.note'))}</button>
+        <button type="button">${escapeHtml(t('common.murmur'))}</button>
+        <a href="#/boards">${escapeHtml(t('home.composeBoardAction'))}</a>
         <span>${escapeHtml(audience)}</span>
         ${action}
       </div>
@@ -279,16 +274,14 @@ function renderComposeCard(viewModel) {
 
 function renderLeftRail(viewModel, active) {
   const navItems = [
-    { id: 'feed', label: '動態', href: '#/' },
-    { id: 'discover', label: '發現', href: '#/' },
-    { id: 'notifications', label: '通知', href: '#/' },
-    { id: 'circle', label: '圈內', href: '#/' },
-    { id: 'boards', label: '論壇板', href: '#/boards' },
+    { id: 'feed', label: t('common.feed'), href: '#/' },
+    { id: 'boards', label: t('common.boards'), href: '#/boards' },
   ];
+  const upcomingItems = [t('home.discover'), t('home.notifications'), t('home.circleTab')];
 
   return `
-    <aside class="rail" aria-label="Elix navigation">
-      <p class="rail-label">NAVIGATE</p>
+    <aside class="rail" aria-label="${escapeAttribute(t('common.navigationAria'))}">
+      <p class="rail-label">${escapeHtml(t('common.navigate'))}</p>
       <nav class="rail-nav">
         ${navItems
           .map((item) => {
@@ -298,57 +291,65 @@ function renderLeftRail(viewModel, active) {
           .join('')}
       </nav>
       <div class="rail-block">
-        <p class="rail-label">FOLLOWING</p>
-        ${FOLLOWING_PEOPLE.map((name) => `<span>${escapeHtml(name)}</span>`).join('')}
+        <p class="rail-label">${escapeHtml(t('common.comingSoon'))}</p>
+        ${upcomingItems.map((label) => `<span class="rail-muted">${escapeHtml(label)}</span>`).join('')}
       </div>
       <div class="rail-block">
-        <p class="rail-label">SESSION</p>
-        <span>${escapeHtml(viewModel.session?.authenticated ? shortIdentity(viewModel.session.subjectDid || viewModel.session.subject) : 'Anonymous')}</span>
-      </div>
-      <div class="rail-block">
-        <p class="rail-label">RELAY</p>
-        <span>${escapeHtml(viewModel.host?.displayName || 'Elix Relay')}</span>
+        <p class="rail-label">${escapeHtml(t('common.boards'))}</p>
+        <span>${escapeHtml(t('common.boardCount', { count: (viewModel.boards ?? []).length }))}</span>
       </div>
     </aside>
   `;
 }
 
-function renderRightRail(boards) {
+function renderRightRail(viewModel, boards) {
   return `
-    <aside class="right-rail" aria-label="Feed context">
+    <aside class="right-rail" aria-label="${escapeAttribute(t('common.feedContextAria'))}">
       <section class="side-panel">
-        <p class="section-label">CIRCLE · 圈</p>
-        <h2>24 people follow you</h2>
-        <p>你的 Note 與 Murmur 會先出現在追蹤者的動態裡。板上討論則依照訂閱流動。</p>
-      </section>
-      <section class="side-panel">
-        <p class="section-label">SUBSCRIBED BOARDS</p>
-        ${boards.length ? boards.slice(0, 4).map((board) => `<a href="#/boards/${encodeURIComponent(board.slug || board.id || '')}">#${escapeHtml(board.title || board.id)}</a>`).join('') : '<span>No boards yet</span>'}
+        <p class="section-label">${escapeHtml(t('home.subscribedBoards'))}</p>
+        ${boards.length ? boards.slice(0, 4).map((board) => `<a href="#/boards/${encodeURIComponent(board.slug || board.id || '')}">#${escapeHtml(board.title || board.id)}</a>`).join('') : `<span>${escapeHtml(t('common.noBoardsYet'))}</span>`}
       </section>
       <section class="side-note">
-        動態是按時間排序的，沒有演算法決定你看見什麼。你看見的是你選擇看見的。
+        ${escapeHtml(t('home.feedNote'))}
       </section>
     </aside>
   `;
 }
 
-function renderFeedPost(post) {
+function renderRelayFeed(boards, viewModel) {
+  if (!boards.length) {
+    return `
+      <article class="post empty-state-card">
+        <div class="post-source">${escapeHtml(t('home.subscribedBoards'))}</div>
+        <p class="post-body">${escapeHtml(t('home.emptyBoardsBody'))}</p>
+      </article>
+    `;
+  }
+
+  return boards.map((board) => renderBoardFeedPost(board, viewModel)).join('');
+}
+
+function renderBoardFeedPost(board, viewModel) {
+  const title = board.title || board.id || t('common.board');
+  const slug = board.slug || board.id || title;
+  const hostName = viewModel.host?.displayName || t('common.relay');
+  const description = board.description || t('home.boardFallbackDescription');
+  const href = `#/boards/${encodeURIComponent(slug)}`;
+
   return `
-    <article class="post post-${escapeAttribute(post.tone)}">
-      <div class="post-source">${escapeHtml(post.source)} · ${escapeHtml(post.type)} · ${escapeHtml(post.time)}</div>
+    <article class="post post-board">
+      <div class="post-source">${escapeHtml(t('home.boardSource', { slug }))}</div>
       <div class="post-author">
-        <span class="avatar">${escapeHtml(post.author.charAt(0))}</span>
+        <span class="avatar">${escapeHtml(title.charAt(0).toUpperCase() || 'B')}</span>
         <div>
-          <strong>${escapeHtml(post.author)}</strong>
-          <span>${escapeHtml(post.handle)}</span>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(hostName)}</span>
         </div>
       </div>
-      <p class="post-body">${escapeHtml(post.body)}</p>
-      ${post.type === 'MURMUR' ? '<div class="murmur-player"><span></span><i></i><i></i><i></i></div>' : ''}
+      <p class="post-body">${escapeHtml(description)}</p>
       <div class="post-actions">
-        <button type="button">Reply</button>
-        <button type="button">Resonate</button>
-        <span>${escapeHtml(post.stats)}</span>
+        <a href="${escapeAttribute(href)}">${escapeHtml(t('home.openBoard'))}</a>
+        <span>${escapeHtml(board.permissions?.canWrite ? t('home.postingAllowedByRelay') : t('home.readOnlyFromRelay'))}</span>
       </div>
     </article>
   `;
@@ -368,7 +369,7 @@ function renderBoardDirectory(boards, { title, emptyText }) {
     <section class="card directory board-directory" aria-labelledby="board-directory-title">
       <div class="directory-head">
         <h3 id="board-directory-title">${escapeHtml(title)}</h3>
-        <span class="label-mono">${boards.length} PUBLIC</span>
+        <span class="label-mono">${escapeHtml(t('common.publicCount', { count: boards.length }))}</span>
       </div>
       <ul>
         ${boards.map(renderBoardDirectoryItem).join('')}
@@ -378,13 +379,13 @@ function renderBoardDirectory(boards, { title, emptyText }) {
 }
 
 function renderBoardDirectoryItem(board) {
-  const title = board.title || board.id || 'Board';
+  const title = board.title || board.id || t('common.board');
   const href = `#/boards/${encodeURIComponent(board.slug || board.id || '')}`;
 
   return `
     <li>
       <a href="${escapeAttribute(href)}">${escapeHtml(title)}</a>
-      <span class="perm${board.permissions?.canWrite ? '' : ' read'}">${board.permissions?.canWrite ? 'Posting' : 'Read only'}</span>
+      <span class="perm${board.permissions?.canWrite ? '' : ' read'}">${escapeHtml(board.permissions?.canWrite ? t('boards.posting') : t('boards.readOnly'))}</span>
       ${board.description ? `<p class="descr">${escapeHtml(board.description)}</p>` : ''}
     </li>
   `;
@@ -392,7 +393,7 @@ function renderBoardDirectoryItem(board) {
 
 function renderThreadList(threads) {
   if (!threads.length) {
-    return '<p class="empty-state">No threads have been posted yet.</p>';
+    return `<p class="empty-state">${escapeHtml(t('board.noThreads'))}</p>`;
   }
 
   return `
@@ -403,7 +404,7 @@ function renderThreadList(threads) {
 }
 
 function renderThreadItem(thread) {
-  const title = thread.title || thread.subject || 'Untitled thread';
+  const title = thread.title || thread.subject || t('common.threadFallback');
   const author = thread.authorDid || thread.subjectDid || thread.author || null;
   const signed = Boolean(author);
   const initial = title.trim().charAt(0).toUpperCase() || 'T';
@@ -413,11 +414,11 @@ function renderThreadItem(thread) {
       <div class="av">${escapeHtml(initial)}</div>
       <div>
         <h4 class="ttl">${escapeHtml(title)}</h4>
-        <p class="author">${escapeHtml(shortIdentity(author))}${signed ? '<span class="signed-dot"></span>signed' : ''}</p>
+        <p class="author">${escapeHtml(shortIdentity(author))}${signed ? `<span class="signed-dot"></span>${escapeHtml(t('common.signed'))}` : ''}</p>
       </div>
       <div class="meta">
-        <span class="replies">${escapeHtml(thread.replyCount ?? thread.replies ?? 0)} replies</span>
-        <span class="ago">${escapeHtml(thread.updatedAt ? formatExpiry(thread.updatedAt) : 'recent')}</span>
+        <span class="replies">${escapeHtml(t('board.replyCount', { count: thread.replyCount ?? thread.replies ?? 0 }))}</span>
+        <span class="ago">${escapeHtml(thread.updatedAt ? formatExpiry(thread.updatedAt) : t('common.recent'))}</span>
       </div>
     </li>
   `;
@@ -427,27 +428,23 @@ function renderLoginChallengeDetails(challenge) {
   return `
     <dl class="challenge-details">
       <div>
-        <dt>Challenge ID</dt>
+        <dt>${escapeHtml(t('login.challengeId'))}</dt>
         <dd><code>${escapeHtml(challenge.challengeId)}</code></dd>
       </div>
       <div>
-        <dt>Expires</dt>
+        <dt>${escapeHtml(t('login.expires'))}</dt>
         <dd>${escapeHtml(formatExpiry(challenge.expiresAt))}</dd>
       </div>
       <div>
-        <dt>Deep link</dt>
-        <dd><a href="${safeHref(challenge.deepLink)}">${escapeHtml(challenge.deepLink)}</a></dd>
-      </div>
-      <div>
-        <dt>QR payload</dt>
-        <dd><code>${escapeHtml(challenge.qrPayload)}</code></dd>
+        <dt>${escapeHtml(t('login.approval'))}</dt>
+        <dd>${escapeHtml(t('login.approvalBody'))}</dd>
       </div>
     </dl>
   `;
 }
 
 function renderScopeChips(scopes) {
-  if (!scopes.length) return '<p class="scope-empty">No scopes granted.</p>';
+  if (!scopes.length) return `<p class="scope-empty">${escapeHtml(t('scope.empty'))}</p>`;
 
   return `
     <ul class="scope-list" aria-label="Scopes">
@@ -466,51 +463,59 @@ function renderSessionMetric(label, value, copy) {
   `;
 }
 
-function renderQrPreview(seed) {
-  const cells = Array.from({ length: 144 }, (_, index) => {
-    const code = String(seed ?? '').charCodeAt(index % String(seed ?? '').length || 0) || 17;
-    const active = (index + code + index * 7) % 5 !== 0;
-    const amber = active && (index + code) % 17 === 0;
-    return `<i class="${active ? (amber ? 'amber' : '') : 'off'}"></i>`;
-  });
+function renderChallengePayloadPreview(challenge) {
+  if (!challenge) {
+    return `
+      <div class="challenge-payload-preview" aria-label="${escapeAttribute(t('login.emptyAria'))}">
+        <strong>${escapeHtml(t('login.noActiveChallenge'))}</strong>
+        <span>${escapeHtml(t('login.createApprovalRequest'))}</span>
+      </div>
+    `;
+  }
 
-  return `<div class="qr-preview" aria-label="Login challenge QR preview">${cells.join('')}</div>`;
+  return `
+    <div class="challenge-payload-preview" aria-label="${escapeAttribute(t('login.activeQrAria'))}">
+      ${renderQrCodeSvg(challenge.qrPayload || challenge.deepLink || '', { ariaLabel: t('login.qrAria') })}
+      <strong>${escapeHtml(challenge.challengeId)}</strong>
+      <span>${escapeHtml(t('login.scanInstruction'))}</span>
+    </div>
+  `;
 }
 
 function renderPermissionLabel(viewModel) {
-  if (viewModel.actions?.canCreateThread) return 'Posting available';
-  if (viewModel.session?.authenticated) return 'Read only';
-  return 'Read only';
+  if (viewModel.actions?.canCreateThread) return t('common.postingAvailable');
+  if (viewModel.session?.authenticated) return t('common.readOnly');
+  return t('common.readOnly');
 }
 
 function loginStatusCopy(status) {
   if (status === 'pending') {
     return {
-      button: 'Start app login',
-      message: 'Approve this pending challenge in the app to continue.',
+      button: t('login.status.pending.button'),
+      message: t('login.status.pending.message'),
       retry: false,
     };
   }
 
   if (status === 'rejected') {
     return {
-      button: 'Start app login',
-      message: 'The app rejected this login challenge.',
+      button: t('login.status.rejected.button'),
+      message: t('login.status.rejected.message'),
       retry: true,
     };
   }
 
   if (status === 'expired') {
     return {
-      button: 'Start app login',
-      message: 'This login challenge expired.',
+      button: t('login.status.expired.button'),
+      message: t('login.status.expired.message'),
       retry: true,
     };
   }
 
   return {
-    button: 'Start app login',
-    message: 'Start a challenge and approve it in the app.',
+    button: t('login.status.idle.button'),
+    message: t('login.status.idle.message'),
     retry: false,
   };
 }

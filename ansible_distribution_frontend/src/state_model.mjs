@@ -1,4 +1,5 @@
 import { DEFAULT_SESSION_VIEW_MODEL } from './session_lifecycle.mjs';
+import { t } from './web_i18n.mjs';
 
 export const PAGE_IDS = Object.freeze({
   home: 'home',
@@ -53,14 +54,14 @@ export function buildAppViewModel({
 
 export function deriveNavigationItems(session = DEFAULT_SESSION_VIEW_MODEL) {
   const items = [
-    { id: PAGE_IDS.home, label: 'Feed', href: '#/' },
-    { id: PAGE_IDS.boards, label: 'Boards', href: '#/boards' },
+    { id: PAGE_IDS.home, label: t('common.feed'), href: '#/' },
+    { id: PAGE_IDS.boards, label: t('common.boards'), href: '#/boards' },
   ];
 
   if (session?.authenticated) {
-    items.push({ id: PAGE_IDS.sessions, label: 'You', href: '#/sessions' });
+    items.push({ id: PAGE_IDS.sessions, label: t('common.you'), href: '#/sessions' });
   } else {
-    items.push({ id: PAGE_IDS.login, label: 'Login', href: '#/login' });
+    items.push({ id: PAGE_IDS.login, label: t('common.login'), href: '#/login' });
   }
 
   return items;
@@ -71,25 +72,25 @@ function pageDescriptor(route, forum) {
     case PAGE_IDS.home:
       return {
         id: PAGE_IDS.home,
-        title: 'Feed',
+        title: t('common.feed'),
       };
 
     case PAGE_IDS.boards:
-      return { id: PAGE_IDS.boards, title: 'Boards' };
+      return { id: PAGE_IDS.boards, title: t('common.boards') };
 
     case PAGE_IDS.board:
       return {
         id: PAGE_IDS.board,
-        title: forum?.board?.title || route.params?.boardId || 'Board',
+        title: forum?.board?.title || route.params?.boardId || t('common.board'),
       };
 
     case PAGE_IDS.sessions:
-      return { id: PAGE_IDS.sessions, title: 'You' };
+      return { id: PAGE_IDS.sessions, title: t('common.you') };
 
     case PAGE_IDS.login:
-      return { id: PAGE_IDS.login, title: 'Login' };
+      return { id: PAGE_IDS.login, title: t('common.login') };
 
     default:
-      return { id: PAGE_IDS.notFound, title: 'Not found' };
+      return { id: PAGE_IDS.notFound, title: t('common.notFound') };
   }
 }
