@@ -33,15 +33,15 @@ function renderHome(viewModel) {
 
   return `
     ${renderError(viewModel.error)}
-    <section class="home-overview" aria-labelledby="home-overview-title">
-      <p class="section-label">Forum host overview</p>
+    <section class="card home-overview" aria-labelledby="home-overview-title">
+      <p class="section-label">OVERVIEW · 概覽</p>
       <h2 id="home-overview-title">${escapeHtml(hostName)}</h2>
-      <p>Public reading is available from this web console.</p>
+      <p>This relay is a public reading surface. Posting remains tied to an app-approved or passkey-backed session, so the browser is only the window.</p>
       <p class="permission-copy">${renderPermissionLabel(viewModel)}</p>
       <a class="route-link" href="#/boards">Browse boards</a>
     </section>
     ${renderBoardDirectory(boards, {
-      title: 'Board directory',
+      title: 'Board directory · 討論板目錄',
       emptyText: 'No public boards are available.',
     })}
   `;
@@ -50,13 +50,13 @@ function renderHome(viewModel) {
 function renderBoards(viewModel) {
   return `
     ${renderError(viewModel.error)}
-    <section class="boards-page" aria-labelledby="boards-title">
-      <p class="section-label">Directory</p>
+    <section class="card boards-page" aria-labelledby="boards-title">
+      <p class="section-label">DIRECTORY · 目錄</p>
       <h2 id="boards-title">Boards</h2>
-      <p>Browse public forum boards hosted by this relay.</p>
+      <p>Each board carries its own write policy. Open a board to inspect trust requirements before starting a signed thread.</p>
     </section>
     ${renderBoardDirectory(viewModel.boards ?? [], {
-      title: 'Available boards',
+      title: 'Available boards · 可用討論板',
       emptyText: 'No boards are available.',
     })}
   `;
@@ -72,20 +72,25 @@ function renderBoard(viewModel) {
 
   return `
     ${renderError(viewModel.error)}
-    <section class="board-page" aria-labelledby="board-title">
-      <div class="board-heading">
-        <p class="section-label">Board</p>
+    <section class="board-head" aria-labelledby="board-title">
+      <div class="heading">
+        <p class="section-label">BOARD · 討論板</p>
         <h2 id="board-title">${escapeHtml(boardTitle)}</h2>
         ${board.description ? `<p>${escapeHtml(board.description)}</p>` : ''}
       </div>
       <div class="permission-state" aria-label="Permission state">
-        <span>${renderPermissionLabel(viewModel)}</span>
-        <strong>${escapeHtml(trustTierLabel(viewModel.session?.trustTier ?? 'anonymous'))}</strong>
+        <span class="lbl">Permission</span>
+        <span class="val">${renderPermissionLabel(viewModel)}</span>
+        <span class="lbl">Trust tier</span>
+        <span class="val">${escapeHtml(trustTierLabel(viewModel.session?.trustTier ?? 'anonymous'))}</span>
       </div>
       ${postAction}
     </section>
-    <section class="thread-list" aria-labelledby="thread-list-title">
-      <h3 id="thread-list-title">Threads</h3>
+    <section class="card thread-list" aria-labelledby="thread-list-title">
+      <div class="head">
+        <h3 id="thread-list-title">Threads · ${threads.length}</h3>
+        <span class="label-mono">RECENT ACTIVITY</span>
+      </div>
       ${renderThreadList(threads)}
     </section>
   `;
@@ -99,14 +104,35 @@ function renderLogin(viewModel, loginState = {}) {
 
   return `
     ${renderError(viewModel.error)}
-    <section class="login-page" aria-labelledby="login-title">
-      <p class="section-label">App-mediated session</p>
-      <h2 id="login-title">App login challenge</h2>
-      <p>${escapeHtml(statusCopy.message)}</p>
-      <button class="primary-action" type="button" data-action="start-login">${escapeHtml(statusCopy.button)}</button>
-      ${statusCopy.retry ? '<a class="route-link" href="#/login" data-action="start-login">Try again</a>' : ''}
+    <section class="login-grid" aria-labelledby="login-title">
+      <div class="qr-block">
+        ${renderQrPreview(challenge?.qrPayload ?? status)}
+        <span class="label-mono">SCAN WITH ELIX APP</span>
+        ${
+          challenge
+            ? `<a class="route-link" href="${safeHref(challenge.deepLink)}">Open in app</a>`
+            : '<button class="primary-action" type="button" data-action="start-login">Create challenge</button>'
+        }
+      </div>
+      <div class="card login-page">
+        <p class="section-label">CHALLENGE · 挑戰</p>
+        <h2 id="login-title">App login challenge</h2>
+        <p>${escapeHtml(statusCopy.message)}</p>
+        <button class="primary-action" type="button" data-action="start-login">${escapeHtml(statusCopy.button)}</button>
+        ${challenge ? '<button class="header-action" type="button" data-action="poll-login">Check approval</button>' : ''}
+        ${statusCopy.retry ? '<a class="route-link" href="#/login" data-action="start-login">Try again</a>' : ''}
+        ${challenge ? renderLoginChallengeDetails(challenge) : ''}
+        <p class="section-label">REQUESTED SCOPES · 要求權限</p>
+        ${renderScopeChips(requestedScopes)}
+      </div>
     </section>
-    ${challenge ? renderLoginChallenge(challenge, requestedScopes) : ''}
+    <aside class="info-banner">
+      <span class="icon"></span>
+      <div>
+        <strong>The key stays in the app</strong>
+        <span>Approving the challenge grants this browser only the scopes shown above. Posting still requires signed intent.</span>
+      </div>
+    </aside>
   `;
 }
 
@@ -116,19 +142,15 @@ function renderSessions(viewModel) {
 
   return `
     ${renderError(viewModel.error)}
-    <section class="sessions-page" aria-labelledby="sessions-title">
-      <p class="section-label">Current web session</p>
+    <section class="card sessions-page" aria-labelledby="sessions-title">
+      <p class="section-label">CURRENT SESSION · 當前工作階段</p>
       <h2 id="sessions-title">${escapeHtml(shortIdentity(session.subjectDid || session.subject))}</h2>
+      <p>This browser session is scoped and revocable. It does not expose the app key material.</p>
       <dl class="session-details">
-        <div>
-          <dt>Trust tier</dt>
-          <dd>${escapeHtml(trustTierLabel(session.trustTier))}</dd>
-        </div>
-        <div>
-          <dt>Expiry</dt>
-          <dd>${escapeHtml(formatExpiry(session.expiresAt))}</dd>
-        </div>
+        ${renderSessionMetric('Trust tier', trustTierLabel(session.trustTier), 'Permission inherited from the approving app session.')}
+        ${renderSessionMetric('Expiry', formatExpiry(session.expiresAt), 'The browser must ask the app again after this time.')}
       </dl>
+      <p class="section-label">SCOPES · 授權範圍</p>
       ${renderScopeChips(scopes)}
       ${
         viewModel.actions?.canRevokeSession
@@ -144,7 +166,7 @@ function renderNotFound(viewModel) {
 
   return `
     ${renderError(viewModel?.error)}
-    <section class="not-found-page" aria-labelledby="not-found-title">
+    <section class="card not-found-page" aria-labelledby="not-found-title">
       <p class="section-label">Not found</p>
       <h2 id="not-found-title">Route unavailable</h2>
       ${path ? `<p>${escapeHtml(path)} is not available in this forum console.</p>` : ''}
@@ -161,9 +183,12 @@ function renderError(error) {
   if (!description) return '';
 
   return `
-    <aside class="error-banner is-${escapeAttribute(description.tone)}" role="status">
-      <strong>${escapeHtml(description.title)}</strong>
-      <span>${escapeHtml(description.message)}</span>
+    <aside class="info-banner is-${escapeAttribute(description.tone)}" role="status">
+      <span class="icon"></span>
+      <div>
+        <strong>${escapeHtml(description.title)}</strong>
+        <span>${escapeHtml(description.message)}</span>
+      </div>
     </aside>
   `;
 }
@@ -171,7 +196,7 @@ function renderError(error) {
 function renderBoardDirectory(boards, { title, emptyText }) {
   if (!boards.length) {
     return `
-      <section class="board-directory" aria-labelledby="board-directory-title">
+      <section class="card directory board-directory" aria-labelledby="board-directory-title">
         <h3 id="board-directory-title">${escapeHtml(title)}</h3>
         <p>${escapeHtml(emptyText)}</p>
       </section>
@@ -179,8 +204,11 @@ function renderBoardDirectory(boards, { title, emptyText }) {
   }
 
   return `
-    <section class="board-directory" aria-labelledby="board-directory-title">
-      <h3 id="board-directory-title">${escapeHtml(title)}</h3>
+    <section class="card directory board-directory" aria-labelledby="board-directory-title">
+      <div class="directory-head">
+        <h3 id="board-directory-title">${escapeHtml(title)}</h3>
+        <span class="label-mono">${boards.length} PUBLIC</span>
+      </div>
       <ul>
         ${boards.map(renderBoardDirectoryItem).join('')}
       </ul>
@@ -195,8 +223,8 @@ function renderBoardDirectoryItem(board) {
   return `
     <li>
       <a href="${escapeAttribute(href)}">${escapeHtml(title)}</a>
-      ${board.description ? `<p>${escapeHtml(board.description)}</p>` : ''}
-      <span>${board.permissions?.canWrite ? 'Posting available' : 'Read only'}</span>
+      <span class="perm${board.permissions?.canWrite ? '' : ' read'}">${board.permissions?.canWrite ? 'Posting' : 'Read only'}</span>
+      ${board.description ? `<p class="descr">${escapeHtml(board.description)}</p>` : ''}
     </li>
   `;
 }
@@ -216,39 +244,44 @@ function renderThreadList(threads) {
 function renderThreadItem(thread) {
   const title = thread.title || thread.subject || 'Untitled thread';
   const author = thread.authorDid || thread.subjectDid || thread.author || null;
+  const signed = Boolean(author);
+  const initial = title.trim().charAt(0).toUpperCase() || 'T';
 
   return `
-    <li>
-      <h4>${escapeHtml(title)}</h4>
-      <p>${escapeHtml(shortIdentity(author))}</p>
+    <li${signed ? ' class="signed"' : ''}>
+      <div class="av">${escapeHtml(initial)}</div>
+      <div>
+        <h4 class="ttl">${escapeHtml(title)}</h4>
+        <p class="author">${escapeHtml(shortIdentity(author))}${signed ? '<span class="signed-dot"></span>signed' : ''}</p>
+      </div>
+      <div class="meta">
+        <span class="replies">${escapeHtml(thread.replyCount ?? thread.replies ?? 0)} replies</span>
+        <span class="ago">${escapeHtml(thread.updatedAt ? formatExpiry(thread.updatedAt) : 'recent')}</span>
+      </div>
     </li>
   `;
 }
 
-function renderLoginChallenge(challenge, requestedScopes) {
+function renderLoginChallengeDetails(challenge) {
   return `
-    <section class="login-challenge" aria-labelledby="challenge-title">
-      <h3 id="challenge-title">Challenge details</h3>
-      <dl>
-        <div>
-          <dt>Challenge ID</dt>
-          <dd><code>${escapeHtml(challenge.challengeId)}</code></dd>
-        </div>
-        <div>
-          <dt>Expires</dt>
-          <dd>${escapeHtml(formatExpiry(challenge.expiresAt))}</dd>
-        </div>
-        <div>
-          <dt>Deep link</dt>
-          <dd><a href="${safeHref(challenge.deepLink)}">${escapeHtml(challenge.deepLink)}</a></dd>
-        </div>
-        <div>
-          <dt>QR payload</dt>
-          <dd><code>${escapeHtml(challenge.qrPayload)}</code></dd>
-        </div>
-      </dl>
-      ${renderScopeChips(requestedScopes)}
-    </section>
+    <dl class="challenge-details">
+      <div>
+        <dt>Challenge ID</dt>
+        <dd><code>${escapeHtml(challenge.challengeId)}</code></dd>
+      </div>
+      <div>
+        <dt>Expires</dt>
+        <dd>${escapeHtml(formatExpiry(challenge.expiresAt))}</dd>
+      </div>
+      <div>
+        <dt>Deep link</dt>
+        <dd><a href="${safeHref(challenge.deepLink)}">${escapeHtml(challenge.deepLink)}</a></dd>
+      </div>
+      <div>
+        <dt>QR payload</dt>
+        <dd><code>${escapeHtml(challenge.qrPayload)}</code></dd>
+      </div>
+    </dl>
   `;
 }
 
@@ -260,6 +293,27 @@ function renderScopeChips(scopes) {
       ${scopes.map((scope) => `<li>${escapeHtml(formatScope(scope))}</li>`).join('')}
     </ul>
   `;
+}
+
+function renderSessionMetric(label, value, copy) {
+  return `
+    <div>
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${escapeHtml(value)}</dd>
+      <p>${escapeHtml(copy)}</p>
+    </div>
+  `;
+}
+
+function renderQrPreview(seed) {
+  const cells = Array.from({ length: 144 }, (_, index) => {
+    const code = String(seed ?? '').charCodeAt(index % String(seed ?? '').length || 0) || 17;
+    const active = (index + code + index * 7) % 5 !== 0;
+    const amber = active && (index + code) % 17 === 0;
+    return `<i class="${active ? (amber ? 'amber' : '') : 'off'}"></i>`;
+  });
+
+  return `<div class="qr-preview" aria-label="Login challenge QR preview">${cells.join('')}</div>`;
 }
 
 function renderPermissionLabel(viewModel) {

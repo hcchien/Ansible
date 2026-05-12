@@ -78,6 +78,36 @@ assert.match(
 );
 assert.match(
   css,
+  /\.card\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s,
+  'Elix cards must provide the shared component container model',
+);
+assert.match(
+  css,
+  /\.board-head\s*\{[^}]*grid-template-columns:\s*1fr auto auto;/s,
+  'board detail must use the Elix board-head hierarchy on desktop',
+);
+assert.match(
+  css,
+  /\.login-grid\s*\{[^}]*grid-template-columns:\s*1\.15fr 1fr;/s,
+  'login page must use the Elix challenge and QR split layout on desktop',
+);
+assert.match(
+  css,
+  /\.qr-preview\s*\{[^}]*grid-template-columns:\s*repeat\(12,\s*1fr\);/s,
+  'login challenge must include a code-native QR preview grid',
+);
+assert.match(
+  css,
+  /\.mobile-tabbar\s*\{[^}]*display:\s*none;/s,
+  'mobile tab bar should stay hidden on desktop',
+);
+assert.match(
+  css,
+  /@media\s*\(max-width:\s*560px\)[\s\S]*\.mobile-tabbar\s*\{[^}]*display:\s*flex;/,
+  'mobile breakpoint must reveal the Elix tab bar',
+);
+assert.match(
+  css,
   /\.focus-visible\s*,\s*button:focus-visible\s*,\s*a:focus-visible\s*\{/,
   'focus-visible class must share the focus outline treatment',
 );

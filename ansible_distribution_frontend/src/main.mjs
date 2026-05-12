@@ -9,7 +9,7 @@ if (!root) {
   throw new Error('Missing #forum-root mount element');
 }
 
-const relayBaseUrl = localStorage.getItem('trisaura.relay_base_url') ?? 'http://localhost:4001';
+const relayBaseUrl = localStorage.getItem('trisaura.relay_base_url') ?? window.location.origin;
 const webOrigin = window.location.origin;
 
 const sessionLifecycle = createSessionLifecycle({

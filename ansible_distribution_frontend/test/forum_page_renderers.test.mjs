@@ -14,6 +14,9 @@ const homeHtml = renderPageBody(homeState.viewModel);
 assert.match(homeHtml, /Local Forum Host/);
 assert.match(homeHtml, /General/);
 assert.match(homeHtml, /Read only/);
+assert.match(homeHtml, /class="card home-overview"/);
+assert.match(homeHtml, /class="card directory board-directory"/);
+assert.match(homeHtml, /Board directory · 討論板目錄/);
 assert.doesNotMatch(homeHtml, /App-approved web session login/);
 
 const boardHarness = createFrontendFlowHarness({
@@ -25,6 +28,9 @@ const boardHtml = renderPageBody(boardState.viewModel);
 assert.match(boardHtml, /General/);
 assert.match(boardHtml, /New thread/);
 assert.match(boardHtml, /Self-custody DID/);
+assert.match(boardHtml, /class="board-head"/);
+assert.match(boardHtml, /class="card thread-list"/);
+assert.match(boardHtml, /RECENT ACTIVITY/);
 
 const loginVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.login, params: {} },
@@ -46,6 +52,10 @@ const loginHtml = renderPageBody(loginVm, {
 assert.match(loginHtml, /App login challenge/);
 assert.match(loginHtml, /wsc_fixture/);
 assert.match(loginHtml, /Post threads/);
+assert.match(loginHtml, /class="login-grid"/);
+assert.match(loginHtml, /class="qr-preview"/);
+assert.match(loginHtml, /data-action="poll-login"/);
+assert.match(loginHtml, /The key stays in the app/);
 
 const unsafeLoginHtml = renderPageBody(loginVm, {
   login: {
@@ -79,6 +89,8 @@ const sessionsHtml = renderPageBody(sessionsVm);
 assert.match(sessionsHtml, /Self-custody DID/);
 assert.match(sessionsHtml, /Post threads/);
 assert.match(sessionsHtml, /Revoke current session/);
+assert.match(sessionsHtml, /class="card sessions-page"/);
+assert.match(sessionsHtml, /This browser session is scoped and revocable/);
 
 const notFoundVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.notFound, params: { path: '/missing' } },

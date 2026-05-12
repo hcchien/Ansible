@@ -46,6 +46,9 @@ const shell = renderAppShell({
 assert.match(shell, /Self-custody DID/);
 assert.match(shell, /New thread/);
 assert.match(shell, /<section class="page-panel">Body<\/section>/);
+assert.match(shell, /mobile-tabbar/);
+assert.match(shell, /app-footer/);
+assert.match(shell, /Read current threads and create a signed thread/);
 
 const staleSessionsVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.sessions, params: {} },

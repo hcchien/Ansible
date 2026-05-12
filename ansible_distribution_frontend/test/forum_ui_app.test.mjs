@@ -25,17 +25,22 @@ await app.start();
 assert.match(root.innerHTML, /Local Forum Host/);
 assert.match(root.innerHTML, /Anonymous/);
 assert.match(root.innerHTML, /href="#\/login"/);
+assert.match(root.innerHTML, /class="card home-overview"/);
+assert.match(root.innerHTML, /mobile-tabbar/);
 
 await app.navigate('#/boards/general');
 assert.match(root.innerHTML, /General/);
 assert.match(root.innerHTML, /Sign in to post/);
+assert.match(root.innerHTML, /class="board-head"/);
 
 await app.navigate('#/login');
 assert.match(root.innerHTML, /Start app login/);
+assert.match(root.innerHTML, /class="login-grid"/);
 
 await app.startLogin();
 assert.match(root.innerHTML, /App login challenge/);
 assert.match(root.innerHTML, /wsc_fixture/);
+assert.match(root.innerHTML, /class="qr-preview"/);
 
 await app.pollLoginOnce();
 assert.match(root.innerHTML, /Self-custody DID/);
