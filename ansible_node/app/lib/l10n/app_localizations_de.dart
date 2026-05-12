@@ -149,7 +149,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Spracheinstellung dieses Geräts verwenden';
 
   @override
-  String get feedAll => 'Alle';
+  String get feedAll => 'Feed';
 
   @override
   String get feedFollowing => 'Folge ich';
@@ -289,10 +289,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notesTab => 'Notizen';
 
   @override
-  String get discussionsTab => 'Diskussionen';
+  String get discussionsTab => 'Boards';
 
   @override
-  String get discussionsTabCompact => 'Forum';
+  String get discussionsTabCompact => 'Boards';
 
   @override
   String get networkOnline => 'Online';
@@ -488,10 +488,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addBoardTooltip => 'Board hinzufügen';
 
   @override
-  String get newDiscussion => 'Neue Diskussion';
+  String get newDiscussion => 'Neuer Board-Thread';
 
   @override
-  String get createNewDiscussion => 'Neue Diskussion erstellen';
+  String get createNewDiscussion => 'Board-Thread erstellen';
 
   @override
   String get boardsShort => 'Boards';
@@ -506,16 +506,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get aiSummary => 'AI Zusammenfassung';
 
   @override
-  String get noPostsYet => 'Noch keine Beiträge';
+  String get noPostsYet => 'Noch keine Feed-Beiträge';
 
   @override
   String get subscribe => 'Abonnieren';
 
   @override
-  String get discussionAreaTitle => 'Diskussionsbereich';
+  String get discussionAreaTitle => 'Feed';
 
   @override
-  String get publicOpen => 'Öffentlich · Open';
+  String get feedSocialIdentitySubtitle =>
+      'Notes und Murmurs sind persönliche Beiträge. Menschen, die dir folgen, sehen sie im Feed; Boards bringen gemeinsame Diskussionen dazu.';
+
+  @override
+  String get publicOpen => 'Menschen + Boards';
 
   @override
   String get noContentYet => '(Noch kein Inhalt)';

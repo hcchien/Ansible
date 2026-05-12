@@ -74,17 +74,32 @@ assert.match(
 assert.match(
   css,
   /\.command-header\s*\{[^}]*display:\s*grid;/s,
-  'command header must be a stable grid',
+  'command header must keep the stable grid shell',
 );
 assert.match(
   css,
-  /\.card\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s,
-  'Elix cards must provide the shared component container model',
+  /\.cols\s*\{[^}]*grid-template-columns:\s*260px minmax\(0,\s*1fr\) 300px;/s,
+  'Elix web home must use the three-column social layout',
 );
 assert.match(
   css,
-  /\.board-head\s*\{[^}]*grid-template-columns:\s*1fr auto auto;/s,
-  'board detail must use the Elix board-head hierarchy on desktop',
+  /\.feed\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s,
+  'feed column must provide a stable vertical post stack',
+);
+assert.match(
+  css,
+  /\.compose\s*\{[^}]*padding:\s*14px;/s,
+  'compose card must be present for Note and Murmur posting',
+);
+assert.match(
+  css,
+  /\.post\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s,
+  'post cards must provide the shared feed item model',
+);
+assert.match(
+  css,
+  /\.murmur-player\s*\{[^}]*grid-template-columns:\s*1fr repeat\(3,\s*8px\);/s,
+  'murmur posts must include the compact audio/player affordance',
 );
 assert.match(
   css,

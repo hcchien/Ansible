@@ -30,7 +30,7 @@ void main() {
 
     expect(find.text('Murmur'), findsOneWidget);
     expect(find.text('Notes'), findsOneWidget);
-    expect(find.text('Forum'), findsOneWidget);
+    expect(find.text('Boards'), findsWidgets);
     expect(find.text('訂閱'), findsNothing);
 
     await tester.tap(find.text('Murmur'));
@@ -61,10 +61,14 @@ void main() {
     expect(find.text('測試碎念存檔'), findsOneWidget);
     expect(find.text('Lineage'), findsOneWidget);
 
-    await tester.tap(find.text('Forum'));
+    await tester.tap(find.text('Boards').first);
     await tester.pumpAndSettle();
     expect(find.text('AI Summary'), findsOneWidget);
-    expect(find.text('Discussion Area'), findsOneWidget);
+    expect(find.text('Feed'), findsWidgets);
+    expect(
+      find.textContaining('Notes and Murmurs are personal posts'),
+      findsOneWidget,
+    );
   });
 }
 

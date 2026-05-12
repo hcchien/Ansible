@@ -146,10 +146,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageSystemDescription => '使用裝置的語言設定';
 
   @override
-  String get feedAll => '全部';
+  String get feedAll => '動態';
 
   @override
-  String get feedFollowing => '圈內';
+  String get feedFollowing => '追蹤';
 
   @override
   String get feedBoards => '看板';
@@ -282,10 +282,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notesTab => '筆記';
 
   @override
-  String get discussionsTab => '討論';
+  String get discussionsTab => '看板';
 
   @override
-  String get discussionsTabCompact => '討論';
+  String get discussionsTabCompact => '看板';
 
   @override
   String get networkOnline => '已連線';
@@ -471,10 +471,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addBoardTooltip => '新增看板';
 
   @override
-  String get newDiscussion => '新討論';
+  String get newDiscussion => '新板上討論';
 
   @override
-  String get createNewDiscussion => '建立新討論';
+  String get createNewDiscussion => '建立板上討論';
 
   @override
   String get boardsShort => '看板';
@@ -489,16 +489,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiSummary => 'AI 摘要';
 
   @override
-  String get noPostsYet => '目前沒有貼文';
+  String get noPostsYet => '目前沒有動態';
 
   @override
   String get subscribe => '訂閱';
 
   @override
-  String get discussionAreaTitle => '討論區';
+  String get discussionAreaTitle => '動態';
 
   @override
-  String get publicOpen => '公開 · OPEN';
+  String get feedSocialIdentitySubtitle =>
+      'Note 與 Murmur 是個人版發文類型；追蹤你的人會在他們的 feed 上看到，訂閱的看板則帶入公共討論。';
+
+  @override
+  String get publicOpen => '追蹤 + 看板';
 
   @override
   String get noContentYet => '（尚無內容）';
@@ -674,10 +678,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get languageSystemDescription => '使用裝置的語言設定';
 
   @override
-  String get feedAll => '全部';
+  String get feedAll => '動態';
 
   @override
-  String get feedFollowing => '圈內';
+  String get feedFollowing => '追蹤';
 
   @override
   String get feedBoards => '看板';
@@ -810,10 +814,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get notesTab => '筆記';
 
   @override
-  String get discussionsTab => '討論';
+  String get discussionsTab => '看板';
 
   @override
-  String get discussionsTabCompact => '討論';
+  String get discussionsTabCompact => '看板';
 
   @override
   String get networkOnline => '已連線';
@@ -999,10 +1003,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get addBoardTooltip => '新增看板';
 
   @override
-  String get newDiscussion => '新討論';
+  String get newDiscussion => '新板上討論';
 
   @override
-  String get createNewDiscussion => '建立新討論';
+  String get createNewDiscussion => '建立板上討論';
 
   @override
   String get boardsShort => '看板';
@@ -1017,16 +1021,20 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get aiSummary => 'AI 摘要';
 
   @override
-  String get noPostsYet => '目前沒有貼文';
+  String get noPostsYet => '目前沒有動態';
 
   @override
   String get subscribe => '訂閱';
 
   @override
-  String get discussionAreaTitle => '討論區';
+  String get discussionAreaTitle => '動態';
 
   @override
-  String get publicOpen => '公開 · OPEN';
+  String get feedSocialIdentitySubtitle =>
+      'Note 與 Murmur 是個人版發文類型；追蹤你的人會在他們的 feed 上看到，訂閱的看板則帶入公共討論。';
+
+  @override
+  String get publicOpen => '追蹤 + 看板';
 
   @override
   String get noContentYet => '（尚無內容）';

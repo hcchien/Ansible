@@ -384,13 +384,13 @@ abstract class AppLocalizations {
   /// No description provided for @feedAll.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'全部'**
+  /// **'動態'**
   String get feedAll;
 
   /// No description provided for @feedFollowing.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'圈內'**
+  /// **'追蹤'**
   String get feedFollowing;
 
   /// No description provided for @feedBoards.
@@ -636,13 +636,13 @@ abstract class AppLocalizations {
   /// No description provided for @discussionsTab.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'討論'**
+  /// **'看板'**
   String get discussionsTab;
 
   /// No description provided for @discussionsTabCompact.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'討論'**
+  /// **'看板'**
   String get discussionsTabCompact;
 
   /// No description provided for @networkOnline.
@@ -990,13 +990,13 @@ abstract class AppLocalizations {
   /// No description provided for @newDiscussion.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'新討論'**
+  /// **'新板上討論'**
   String get newDiscussion;
 
   /// No description provided for @createNewDiscussion.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'建立新討論'**
+  /// **'建立板上討論'**
   String get createNewDiscussion;
 
   /// No description provided for @boardsShort.
@@ -1026,7 +1026,7 @@ abstract class AppLocalizations {
   /// No description provided for @noPostsYet.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'目前沒有貼文'**
+  /// **'目前沒有動態'**
   String get noPostsYet;
 
   /// No description provided for @subscribe.
@@ -1038,13 +1038,19 @@ abstract class AppLocalizations {
   /// No description provided for @discussionAreaTitle.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'討論區'**
+  /// **'動態'**
   String get discussionAreaTitle;
+
+  /// No description provided for @feedSocialIdentitySubtitle.
+  ///
+  /// In zh_Hant, this message translates to:
+  /// **'Note 與 Murmur 是個人版發文類型；追蹤你的人會在他們的 feed 上看到，訂閱的看板則帶入公共討論。'**
+  String get feedSocialIdentitySubtitle;
 
   /// No description provided for @publicOpen.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'公開 · OPEN'**
+  /// **'追蹤 + 看板'**
   String get publicOpen;
 
   /// No description provided for @noContentYet.

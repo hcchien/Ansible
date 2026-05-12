@@ -63,7 +63,7 @@ void main() {
 
     expect(find.text('Murmur'), findsOneWidget);
     expect(find.text('Notes'), findsOneWidget);
-    expect(find.text('Discussions'), findsOneWidget);
+    expect(find.text('Boards'), findsWidgets);
     expect(find.byTooltip('Search'), findsOneWidget);
     expect(find.byTooltip('Settings'), findsOneWidget);
 

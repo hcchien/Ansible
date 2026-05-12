@@ -27,7 +27,7 @@ void main() {
       locale: const Locale('en'),
     );
 
-    expect(find.text('All'), findsWidgets);
+    expect(find.text('Feed'), findsWidgets);
     expect(find.text('My'), findsOneWidget);
     expect(find.text('Public'), findsOneWidget);
     expect(find.text('Send'), findsOneWidget);

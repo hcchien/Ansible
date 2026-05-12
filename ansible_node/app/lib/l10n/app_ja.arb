@@ -155,6 +155,7 @@
   "noPostsYet": "投稿はまだありません",
   "subscribe": "購読",
   "discussionAreaTitle": "議論エリア",
+  "feedSocialIdentitySubtitle": "Note と Murmur は個人ページの投稿タイプです。フォローしている人の feed に表示され、ボードは共有の議論を追加します。",
   "publicOpen": "公開 · Open",
   "noContentYet": "（内容はまだありません）",
   "commentsCount": "{count} 件のコメント",

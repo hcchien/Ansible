@@ -147,7 +147,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageSystemDescription => 'Use this device\'s language setting';
 
   @override
-  String get feedAll => 'All';
+  String get feedAll => 'Feed';
 
   @override
   String get feedFollowing => 'Following';
@@ -285,10 +285,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notesTab => 'Notes';
 
   @override
-  String get discussionsTab => 'Discussions';
+  String get discussionsTab => 'Boards';
 
   @override
-  String get discussionsTabCompact => 'Forum';
+  String get discussionsTabCompact => 'Boards';
 
   @override
   String get networkOnline => 'Online';
@@ -481,10 +481,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addBoardTooltip => 'Add Board';
 
   @override
-  String get newDiscussion => 'New Discussion';
+  String get newDiscussion => 'New Board Thread';
 
   @override
-  String get createNewDiscussion => 'Create New Discussion';
+  String get createNewDiscussion => 'Create Board Thread';
 
   @override
   String get boardsShort => 'Boards';
@@ -499,16 +499,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiSummary => 'AI Summary';
 
   @override
-  String get noPostsYet => 'No posts yet';
+  String get noPostsYet => 'No feed posts yet';
 
   @override
   String get subscribe => 'Subscribe';
 
   @override
-  String get discussionAreaTitle => 'Discussion Area';
+  String get discussionAreaTitle => 'Feed';
 
   @override
-  String get publicOpen => 'Public · Open';
+  String get feedSocialIdentitySubtitle =>
+      'Notes and Murmurs are personal posts. People who follow you see them in their feed; boards add shared discussions.';
+
+  @override
+  String get publicOpen => 'People + Boards';
 
   @override
   String get noContentYet => '(No content yet)';

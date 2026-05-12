@@ -501,6 +501,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get discussionAreaTitle => '토론 구역';
 
   @override
+  String get feedSocialIdentitySubtitle =>
+      'Note와 Murmur는 개인 게시글 유형입니다. 나를 팔로우한 사람의 feed에 보이고, 보드는 공동 토론을 더합니다.';
+
+  @override
   String get publicOpen => '공개 · Open';
 
   @override

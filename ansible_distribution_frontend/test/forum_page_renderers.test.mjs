@@ -14,9 +14,13 @@ const homeHtml = renderPageBody(homeState.viewModel);
 assert.match(homeHtml, /Local Forum Host/);
 assert.match(homeHtml, /General/);
 assert.match(homeHtml, /Read only/);
-assert.match(homeHtml, /class="card home-overview"/);
-assert.match(homeHtml, /class="card directory board-directory"/);
-assert.match(homeHtml, /Board directory · 討論板目錄/);
+assert.match(homeHtml, /Elix 是重視身分的社群 App/);
+assert.match(homeHtml, /FROM A FOLLOW/);
+assert.match(homeHtml, /MURMUR/);
+assert.match(homeHtml, /Note/);
+assert.match(homeHtml, /追蹤我的人/);
+assert.match(homeHtml, /class="cols social-home"/);
+assert.match(homeHtml, /class="compose"/);
 assert.doesNotMatch(homeHtml, /App-approved web session login/);
 
 const boardHarness = createFrontendFlowHarness({
@@ -30,7 +34,7 @@ assert.match(boardHtml, /New thread/);
 assert.match(boardHtml, /Self-custody DID/);
 assert.match(boardHtml, /class="board-head"/);
 assert.match(boardHtml, /class="card thread-list"/);
-assert.match(boardHtml, /RECENT ACTIVITY/);
+assert.match(boardHtml, /BOARD ACTIVITY/);
 
 const loginVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.login, params: {} },

@@ -24,8 +24,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Elix'), findsOneWidget);
-    expect(find.text('在這裡，\n先慢一點。'), findsOneWidget);
-    expect(find.text('沒有帳號 · 沒有雲端 · 不會被收集'), findsOneWidget);
+    expect(find.text('先建立身分，\n再開始社群。'), findsOneWidget);
+    expect(find.text('重視身分的社群 App · 由 passkey 支撐'), findsOneWidget);
   });
 
   testWidgets('uses a single-column forum layout on phone width', (
@@ -50,9 +50,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('Discussion Area'), findsOneWidget);
-    expect(find.text('Public · Open'), findsOneWidget);
-    expect(find.text('No posts yet'), findsOneWidget);
+    expect(find.text('Feed'), findsWidgets);
+    expect(find.text('People + Boards'), findsOneWidget);
+    expect(find.text('No feed posts yet'), findsOneWidget);
+    expect(
+      find.textContaining('Notes and Murmurs are personal posts'),
+      findsOneWidget,
+    );
     expect(find.text('Subscribe'), findsNothing);
 
     await tester.tap(find.byTooltip('Settings'));
@@ -97,9 +101,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('Diskussionsbereich'), findsOneWidget);
-    expect(find.text('Noch keine Beiträge'), findsOneWidget);
-    expect(find.text('Forum'), findsOneWidget);
+    expect(find.text('Feed'), findsWidgets);
+    expect(find.text('Noch keine Feed-Beiträge'), findsOneWidget);
+    expect(find.text('Boards'), findsWidgets);
     expect(find.text('AI Zusammenfassung'), findsOneWidget);
   });
 

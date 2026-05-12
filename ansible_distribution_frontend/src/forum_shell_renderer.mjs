@@ -4,12 +4,7 @@ export function renderAppShell({ viewModel, bodyHtml }) {
   return `
     <div class="forum-shell">
       ${renderCommandHeader(viewModel)}
-      <main class="forum-main" aria-labelledby="page-title">
-        <div class="page-heading">
-          <p class="section-label">${escapeHtml(pageKicker(viewModel))}</p>
-          <h1 id="page-title">${escapeHtml(viewModel.page.title)}</h1>
-          <p>${escapeHtml(pageIntro(viewModel))}</p>
-        </div>
+      <main class="forum-main">
         ${bodyHtml}
       </main>
       ${renderAppFooter(viewModel)}
@@ -19,7 +14,7 @@ export function renderAppShell({ viewModel, bodyHtml }) {
 }
 
 export function renderCommandHeader(viewModel) {
-  const hostLabel = viewModel.host?.displayName || 'Forum Relay';
+  const hostLabel = viewModel.host?.displayName || 'Elix Relay';
   const nav = viewModel.navigation
     .map((item) => {
       const current = item.id === viewModel.page.id ? ' aria-current="page"' : '';
@@ -28,15 +23,18 @@ export function renderCommandHeader(viewModel) {
     .join('');
 
   return `
-    <header class="command-header">
+    <header class="command-header topbar">
       <a class="brand-lockup" href="#/" aria-label="Elix forum home">
         ${renderElixMark()}
         <span class="brand-word">Elix</span>
-        <span class="brand-host">${escapeHtml(hostLabel)}</span>
+        <span class="brand-host">SOCIAL IDENTITY</span>
       </a>
-      <nav class="command-nav" aria-label="Forum">${nav}</nav>
+      <div class="searchbox" role="search" aria-label="Elix search">
+        <span>找人、找討論板、找關鍵字 ...</span>
+      </div>
       <div class="command-context">
-        <span class="route-title">${escapeHtml(viewModel.page.title)}</span>
+        <nav class="command-nav" aria-label="Elix">${nav}</nav>
+        <span class="route-title">${escapeHtml(hostLabel)}</span>
         ${renderSessionChip(viewModel.session)}
         ${renderPrimaryAction(viewModel)}
       </div>
@@ -90,7 +88,7 @@ export function renderPrimaryAction(viewModel) {
 function pageKicker(viewModel) {
   switch (viewModel.page?.id) {
     case 'home':
-      return 'FORUM HOST · 論壇主機';
+      return 'FEED · 動態';
     case 'boards':
       return 'BOARD DIRECTORY · 討論板目錄';
     case 'board':
@@ -107,9 +105,9 @@ function pageKicker(viewModel) {
 function pageIntro(viewModel) {
   switch (viewModel.page?.id) {
     case 'home':
-      return 'Public reading stays open. Posting is signed from your app or passkey-backed session.';
+      return 'Elix is a social app that treats identity as the infrastructure behind every post.';
     case 'boards':
-      return 'Browse public boards hosted by this relay, then open the board that matches the conversation you want.';
+      return 'Boards are subscribed conversation spaces that can enter your feed beside people you follow.';
     case 'board':
       return viewModel.board?.description || 'Read current threads and create a signed thread when your session has permission.';
     case 'login':
@@ -129,7 +127,7 @@ function renderAppFooter(viewModel) {
 
   return `
     <footer class="app-footer">
-      <span>Elix · local-first forum access</span>
+      <span>Elix · identity-backed social app</span>
       <span>${escapeHtml(pageLabel)}</span>
     </footer>
   `;
@@ -137,7 +135,7 @@ function renderAppFooter(viewModel) {
 
 function renderMobileTabBar(viewModel) {
   const items = [
-    { id: 'home', label: 'Home', href: '#/', icon: renderElixMark() },
+    { id: 'home', label: 'Feed', href: '#/', icon: renderElixMark() },
     { id: 'boards', label: 'Boards', href: '#/boards', icon: renderBoardIcon() },
     {
       id: viewModel.session?.authenticated ? 'sessions' : 'login',

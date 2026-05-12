@@ -514,6 +514,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discussionAreaTitle => 'Área de discusión';
 
   @override
+  String get feedSocialIdentitySubtitle =>
+      'Notes y Murmurs son publicaciones personales. Quienes te siguen las ven en su feed; los boards suman discusiones compartidas.';
+
+  @override
   String get publicOpen => 'Público · Open';
 
   @override

@@ -501,6 +501,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get discussionAreaTitle => '議論エリア';
 
   @override
+  String get feedSocialIdentitySubtitle =>
+      'Note と Murmur は個人ページの投稿タイプです。フォローしている人の feed に表示され、ボードは共有の議論を追加します。';
+
+  @override
   String get publicOpen => '公開 · Open';
 
   @override

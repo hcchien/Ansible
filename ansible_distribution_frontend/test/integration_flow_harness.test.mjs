@@ -29,7 +29,8 @@ const renderedHome = renderAppShell({
 });
 assert.match(renderedHome, /Local Forum Host/);
 assert.match(renderedHome, /Anonymous/);
-assert.match(renderedHome, /Browse boards/);
+assert.match(renderedHome, /Elix 是重視身分的社群 App/);
+assert.match(renderedHome, /FROM A FOLLOW/);
 console.log('ok - runs public home flow');
 
 const boardHarness = createFrontendFlowHarness({

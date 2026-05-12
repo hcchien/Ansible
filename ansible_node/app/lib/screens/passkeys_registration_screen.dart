@@ -300,7 +300,7 @@ class _PasskeysRegistrationScreenState
                             ),
                             Spacer(),
                             Text(
-                              '本地優先',
+                              'SOCIAL FIRST',
                               style: TextStyle(
                                 fontFamily: AnsibleDesign.mono,
                                 fontSize: 10,
@@ -319,7 +319,7 @@ class _PasskeysRegistrationScreenState
                         const ElixWordmark(fontSize: 38),
                         const SizedBox(height: 22),
                         const Text(
-                          '在這裡，\n先慢一點。',
+                          '先建立身分，\n再開始社群。',
                           style: TextStyle(
                             fontSize: 23,
                             height: 1.5,
@@ -328,7 +328,7 @@ class _PasskeysRegistrationScreenState
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          '一個給碎念、筆記、與不急著被聽見的話的地方。先寫給自己；如果哪天想讓人看見，你會知道的。',
+                          'Elix 是重視身分的社群 App。你追蹤的人、訂閱的板、以及你發出的 Note 與 Murmur，會一起形成動態。',
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.7,
@@ -350,16 +350,17 @@ class _PasskeysRegistrationScreenState
                             children: [
                               const _PromiseRow(
                                 dot: AnsibleDesign.spore,
-                                label: '留在你這裡',
-                                meta: 'STAYS LOCAL',
-                                body: '碎念、筆記、草稿與沒寄出的句子，預設只在你的裝置裡。',
+                                label: '身分在你這裡',
+                                meta: 'IDENTITY',
+                                body: 'Elix 不會替你保管你的身分。每一次公開發文都由你的裝置簽出。',
                               ),
                               const Divider(height: 1),
                               const _PromiseRow(
                                 dot: AnsibleDesign.accent,
-                                label: '送出前會先問你',
-                                meta: 'ASKS FIRST',
-                                body: '請 AI 整理、分享到圈子或公開之前，都會清楚列出會離開裝置的內容。',
+                                label: '社群是首頁',
+                                meta: 'FEED',
+                                body:
+                                    'Murmur 與 Note 是個人版發文類型；追蹤你的人會在他們的 feed 上看到。',
                               ),
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
@@ -439,7 +440,7 @@ class _PasskeysRegistrationScreenState
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        '沒有帳號 · 沒有雲端 · 不會被收集',
+                        '重視身分的社群 App · 由 passkey 支撐',
                         style: TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 9,

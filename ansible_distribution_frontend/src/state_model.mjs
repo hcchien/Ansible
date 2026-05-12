@@ -53,14 +53,14 @@ export function buildAppViewModel({
 
 export function deriveNavigationItems(session = DEFAULT_SESSION_VIEW_MODEL) {
   const items = [
-    { id: PAGE_IDS.home, label: 'Home', href: '#/' },
+    { id: PAGE_IDS.home, label: 'Feed', href: '#/' },
     { id: PAGE_IDS.boards, label: 'Boards', href: '#/boards' },
   ];
 
   if (session?.authenticated) {
-    items.push({ id: PAGE_IDS.sessions, label: 'Sessions', href: '#/sessions' });
+    items.push({ id: PAGE_IDS.sessions, label: 'You', href: '#/sessions' });
   } else {
-    items.push({ id: PAGE_IDS.login, label: 'Sign in', href: '#/login' });
+    items.push({ id: PAGE_IDS.login, label: 'Login', href: '#/login' });
   }
 
   return items;
@@ -71,7 +71,7 @@ function pageDescriptor(route, forum) {
     case PAGE_IDS.home:
       return {
         id: PAGE_IDS.home,
-        title: forum?.host?.displayName || 'Forum',
+        title: 'Feed',
       };
 
     case PAGE_IDS.boards:
@@ -84,10 +84,10 @@ function pageDescriptor(route, forum) {
       };
 
     case PAGE_IDS.sessions:
-      return { id: PAGE_IDS.sessions, title: 'Sessions' };
+      return { id: PAGE_IDS.sessions, title: 'You' };
 
     case PAGE_IDS.login:
-      return { id: PAGE_IDS.login, title: 'Sign in' };
+      return { id: PAGE_IDS.login, title: 'Login' };
 
     default:
       return { id: PAGE_IDS.notFound, title: 'Not found' };

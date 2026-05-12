@@ -20,7 +20,8 @@ assert.match(header, /Local Forum Host/);
 assert.match(header, /class="elix-mark"/);
 assert.match(header, /href="#\/boards"/);
 assert.match(header, /Anonymous/);
-assert.match(header, /Sign in/);
+assert.match(header, /Login/);
+assert.match(header, /找人、找討論板、找關鍵字/);
 assert.doesNotMatch(header, /Diagnostics|Profile|Settings/);
 
 const authenticatedVm = buildAppViewModel({
@@ -48,7 +49,7 @@ assert.match(shell, /New thread/);
 assert.match(shell, /<section class="page-panel">Body<\/section>/);
 assert.match(shell, /mobile-tabbar/);
 assert.match(shell, /app-footer/);
-assert.match(shell, /Read current threads and create a signed thread/);
+assert.match(shell, /identity-backed social app/);
 
 const staleSessionsVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.sessions, params: {} },
@@ -80,7 +81,7 @@ assert.doesNotMatch(sessionsShell, /New thread/);
 const escaped = renderAppShell({
   viewModel: {
     ...anonymousVm,
-    page: { ...anonymousVm.page, title: '<script>alert(1)</script>' },
+    host: { displayName: '<script>alert(1)</script>' },
   },
   bodyHtml: '<p>Safe body</p>',
 });

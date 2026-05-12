@@ -155,6 +155,7 @@
   "noPostsYet": "Aucune publication pour le moment",
   "subscribe": "S’abonner",
   "discussionAreaTitle": "Espace de discussion",
+  "feedSocialIdentitySubtitle": "Les Notes et Murmurs sont des publications personnelles. Les personnes qui vous suivent les voient dans leur feed; les forums ajoutent des discussions partagées.",
   "publicOpen": "Public · Open",
   "noContentYet": "(Aucun contenu pour le moment)",
   "commentsCount": "{count} commentaires",

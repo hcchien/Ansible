@@ -1790,27 +1790,53 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          onPressed: onOpenBoards,
-          icon: const Icon(Icons.view_sidebar_outlined),
-          color: AnsibleDesign.inkMuted,
-          tooltip: l10n.subscribe,
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: IconButton(
+            onPressed: onOpenBoards,
+            icon: const Icon(Icons.view_sidebar_outlined),
+            color: AnsibleDesign.inkMuted,
+            tooltip: l10n.subscribe,
+          ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            l10n.discussionAreaTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.w500,
-              color: AnsibleDesign.ink,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.discussionAreaTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w500,
+                  color: AnsibleDesign.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.feedSocialIdentitySubtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: AnsibleDesign.inkMuted,
+                ),
+              ),
+            ],
           ),
         ),
-        AnsibleStatusChip(label: l10n.publicOpen, dot: AnsibleDesign.accent),
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: AnsibleStatusChip(
+            label: l10n.publicOpen,
+            dot: AnsibleDesign.accent,
+          ),
+        ),
       ],
     );
   }

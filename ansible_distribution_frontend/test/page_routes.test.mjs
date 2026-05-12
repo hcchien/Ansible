@@ -87,6 +87,6 @@ const loginController = createPageController({
 });
 const loginState = await loginController.loadCurrentRoute();
 assert.equal(loginState.route.pageId, PAGE_IDS.login);
-assert.equal(loginState.viewModel.page.title, 'Sign in');
+assert.equal(loginState.viewModel.page.title, 'Login');
 assert.equal(loginState.viewModel.actions.showLogin, true);
 console.log('ok - loads login page without data dependencies');

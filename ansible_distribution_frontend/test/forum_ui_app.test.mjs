@@ -25,7 +25,8 @@ await app.start();
 assert.match(root.innerHTML, /Local Forum Host/);
 assert.match(root.innerHTML, /Anonymous/);
 assert.match(root.innerHTML, /href="#\/login"/);
-assert.match(root.innerHTML, /class="card home-overview"/);
+assert.match(root.innerHTML, /class="cols social-home"/);
+assert.match(root.innerHTML, /FROM A FOLLOW/);
 assert.match(root.innerHTML, /mobile-tabbar/);
 
 await app.navigate('#/boards/general');
