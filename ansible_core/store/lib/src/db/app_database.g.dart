@@ -18648,6 +18648,744 @@ class AiProviderConfigsCompanion extends UpdateCompanion<AiProviderConfig> {
   }
 }
 
+class $ContactRecordsTable extends ContactRecords
+    with TableInfo<$ContactRecordsTable, ContactRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ContactRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _subjectDidMeta = const VerificationMeta(
+    'subjectDid',
+  );
+  @override
+  late final GeneratedColumn<String> subjectDid = GeneratedColumn<String>(
+    'subject_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _handleMeta = const VerificationMeta('handle');
+  @override
+  late final GeneratedColumn<String> handle = GeneratedColumn<String>(
+    'handle',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localAliasMeta = const VerificationMeta(
+    'localAlias',
+  );
+  @override
+  late final GeneratedColumn<String> localAlias = GeneratedColumn<String>(
+    'local_alias',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _avatarUrlMeta = const VerificationMeta(
+    'avatarUrl',
+  );
+  @override
+  late final GeneratedColumn<String> avatarUrl = GeneratedColumn<String>(
+    'avatar_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _relationshipMeta = const VerificationMeta(
+    'relationship',
+  );
+  @override
+  late final GeneratedColumn<String> relationship = GeneratedColumn<String>(
+    'relationship',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unknown'),
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unknown'),
+  );
+  static const VerificationMeta _trustStateMeta = const VerificationMeta(
+    'trustState',
+  );
+  @override
+  late final GeneratedColumn<String> trustState = GeneratedColumn<String>(
+    'trust_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unverified'),
+  );
+  static const VerificationMeta _messengerAvailabilityMeta =
+      const VerificationMeta('messengerAvailability');
+  @override
+  late final GeneratedColumn<String> messengerAvailability =
+      GeneratedColumn<String>(
+        'messenger_availability',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('unresolved'),
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastResolvedAtMeta = const VerificationMeta(
+    'lastResolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastResolvedAt =
+      GeneratedColumn<DateTime>(
+        'last_resolved_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    subjectDid,
+    handle,
+    displayName,
+    localAlias,
+    avatarUrl,
+    relationship,
+    source,
+    trustState,
+    messengerAvailability,
+    createdAt,
+    updatedAt,
+    lastResolvedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'contact_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ContactRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('subject_did')) {
+      context.handle(
+        _subjectDidMeta,
+        subjectDid.isAcceptableOrUnknown(data['subject_did']!, _subjectDidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subjectDidMeta);
+    }
+    if (data.containsKey('handle')) {
+      context.handle(
+        _handleMeta,
+        handle.isAcceptableOrUnknown(data['handle']!, _handleMeta),
+      );
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('local_alias')) {
+      context.handle(
+        _localAliasMeta,
+        localAlias.isAcceptableOrUnknown(data['local_alias']!, _localAliasMeta),
+      );
+    }
+    if (data.containsKey('avatar_url')) {
+      context.handle(
+        _avatarUrlMeta,
+        avatarUrl.isAcceptableOrUnknown(data['avatar_url']!, _avatarUrlMeta),
+      );
+    }
+    if (data.containsKey('relationship')) {
+      context.handle(
+        _relationshipMeta,
+        relationship.isAcceptableOrUnknown(
+          data['relationship']!,
+          _relationshipMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('trust_state')) {
+      context.handle(
+        _trustStateMeta,
+        trustState.isAcceptableOrUnknown(data['trust_state']!, _trustStateMeta),
+      );
+    }
+    if (data.containsKey('messenger_availability')) {
+      context.handle(
+        _messengerAvailabilityMeta,
+        messengerAvailability.isAcceptableOrUnknown(
+          data['messenger_availability']!,
+          _messengerAvailabilityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('last_resolved_at')) {
+      context.handle(
+        _lastResolvedAtMeta,
+        lastResolvedAt.isAcceptableOrUnknown(
+          data['last_resolved_at']!,
+          _lastResolvedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {subjectDid};
+  @override
+  ContactRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ContactRecord(
+      subjectDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject_did'],
+      )!,
+      handle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}handle'],
+      ),
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      ),
+      localAlias: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_alias'],
+      ),
+      avatarUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}avatar_url'],
+      ),
+      relationship: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relationship'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      trustState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trust_state'],
+      )!,
+      messengerAvailability: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}messenger_availability'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      lastResolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_resolved_at'],
+      ),
+    );
+  }
+
+  @override
+  $ContactRecordsTable createAlias(String alias) {
+    return $ContactRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class ContactRecord extends DataClass implements Insertable<ContactRecord> {
+  final String subjectDid;
+  final String? handle;
+  final String? displayName;
+  final String? localAlias;
+  final String? avatarUrl;
+  final String relationship;
+  final String source;
+  final String trustState;
+  final String messengerAvailability;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? lastResolvedAt;
+  const ContactRecord({
+    required this.subjectDid,
+    this.handle,
+    this.displayName,
+    this.localAlias,
+    this.avatarUrl,
+    required this.relationship,
+    required this.source,
+    required this.trustState,
+    required this.messengerAvailability,
+    required this.createdAt,
+    required this.updatedAt,
+    this.lastResolvedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['subject_did'] = Variable<String>(subjectDid);
+    if (!nullToAbsent || handle != null) {
+      map['handle'] = Variable<String>(handle);
+    }
+    if (!nullToAbsent || displayName != null) {
+      map['display_name'] = Variable<String>(displayName);
+    }
+    if (!nullToAbsent || localAlias != null) {
+      map['local_alias'] = Variable<String>(localAlias);
+    }
+    if (!nullToAbsent || avatarUrl != null) {
+      map['avatar_url'] = Variable<String>(avatarUrl);
+    }
+    map['relationship'] = Variable<String>(relationship);
+    map['source'] = Variable<String>(source);
+    map['trust_state'] = Variable<String>(trustState);
+    map['messenger_availability'] = Variable<String>(messengerAvailability);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || lastResolvedAt != null) {
+      map['last_resolved_at'] = Variable<DateTime>(lastResolvedAt);
+    }
+    return map;
+  }
+
+  ContactRecordsCompanion toCompanion(bool nullToAbsent) {
+    return ContactRecordsCompanion(
+      subjectDid: Value(subjectDid),
+      handle: handle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(handle),
+      displayName: displayName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(displayName),
+      localAlias: localAlias == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localAlias),
+      avatarUrl: avatarUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(avatarUrl),
+      relationship: Value(relationship),
+      source: Value(source),
+      trustState: Value(trustState),
+      messengerAvailability: Value(messengerAvailability),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      lastResolvedAt: lastResolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastResolvedAt),
+    );
+  }
+
+  factory ContactRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ContactRecord(
+      subjectDid: serializer.fromJson<String>(json['subjectDid']),
+      handle: serializer.fromJson<String?>(json['handle']),
+      displayName: serializer.fromJson<String?>(json['displayName']),
+      localAlias: serializer.fromJson<String?>(json['localAlias']),
+      avatarUrl: serializer.fromJson<String?>(json['avatarUrl']),
+      relationship: serializer.fromJson<String>(json['relationship']),
+      source: serializer.fromJson<String>(json['source']),
+      trustState: serializer.fromJson<String>(json['trustState']),
+      messengerAvailability: serializer.fromJson<String>(
+        json['messengerAvailability'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      lastResolvedAt: serializer.fromJson<DateTime?>(json['lastResolvedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'subjectDid': serializer.toJson<String>(subjectDid),
+      'handle': serializer.toJson<String?>(handle),
+      'displayName': serializer.toJson<String?>(displayName),
+      'localAlias': serializer.toJson<String?>(localAlias),
+      'avatarUrl': serializer.toJson<String?>(avatarUrl),
+      'relationship': serializer.toJson<String>(relationship),
+      'source': serializer.toJson<String>(source),
+      'trustState': serializer.toJson<String>(trustState),
+      'messengerAvailability': serializer.toJson<String>(messengerAvailability),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'lastResolvedAt': serializer.toJson<DateTime?>(lastResolvedAt),
+    };
+  }
+
+  ContactRecord copyWith({
+    String? subjectDid,
+    Value<String?> handle = const Value.absent(),
+    Value<String?> displayName = const Value.absent(),
+    Value<String?> localAlias = const Value.absent(),
+    Value<String?> avatarUrl = const Value.absent(),
+    String? relationship,
+    String? source,
+    String? trustState,
+    String? messengerAvailability,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> lastResolvedAt = const Value.absent(),
+  }) => ContactRecord(
+    subjectDid: subjectDid ?? this.subjectDid,
+    handle: handle.present ? handle.value : this.handle,
+    displayName: displayName.present ? displayName.value : this.displayName,
+    localAlias: localAlias.present ? localAlias.value : this.localAlias,
+    avatarUrl: avatarUrl.present ? avatarUrl.value : this.avatarUrl,
+    relationship: relationship ?? this.relationship,
+    source: source ?? this.source,
+    trustState: trustState ?? this.trustState,
+    messengerAvailability: messengerAvailability ?? this.messengerAvailability,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    lastResolvedAt: lastResolvedAt.present
+        ? lastResolvedAt.value
+        : this.lastResolvedAt,
+  );
+  ContactRecord copyWithCompanion(ContactRecordsCompanion data) {
+    return ContactRecord(
+      subjectDid: data.subjectDid.present
+          ? data.subjectDid.value
+          : this.subjectDid,
+      handle: data.handle.present ? data.handle.value : this.handle,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      localAlias: data.localAlias.present
+          ? data.localAlias.value
+          : this.localAlias,
+      avatarUrl: data.avatarUrl.present ? data.avatarUrl.value : this.avatarUrl,
+      relationship: data.relationship.present
+          ? data.relationship.value
+          : this.relationship,
+      source: data.source.present ? data.source.value : this.source,
+      trustState: data.trustState.present
+          ? data.trustState.value
+          : this.trustState,
+      messengerAvailability: data.messengerAvailability.present
+          ? data.messengerAvailability.value
+          : this.messengerAvailability,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      lastResolvedAt: data.lastResolvedAt.present
+          ? data.lastResolvedAt.value
+          : this.lastResolvedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ContactRecord(')
+          ..write('subjectDid: $subjectDid, ')
+          ..write('handle: $handle, ')
+          ..write('displayName: $displayName, ')
+          ..write('localAlias: $localAlias, ')
+          ..write('avatarUrl: $avatarUrl, ')
+          ..write('relationship: $relationship, ')
+          ..write('source: $source, ')
+          ..write('trustState: $trustState, ')
+          ..write('messengerAvailability: $messengerAvailability, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastResolvedAt: $lastResolvedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    subjectDid,
+    handle,
+    displayName,
+    localAlias,
+    avatarUrl,
+    relationship,
+    source,
+    trustState,
+    messengerAvailability,
+    createdAt,
+    updatedAt,
+    lastResolvedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ContactRecord &&
+          other.subjectDid == this.subjectDid &&
+          other.handle == this.handle &&
+          other.displayName == this.displayName &&
+          other.localAlias == this.localAlias &&
+          other.avatarUrl == this.avatarUrl &&
+          other.relationship == this.relationship &&
+          other.source == this.source &&
+          other.trustState == this.trustState &&
+          other.messengerAvailability == this.messengerAvailability &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.lastResolvedAt == this.lastResolvedAt);
+}
+
+class ContactRecordsCompanion extends UpdateCompanion<ContactRecord> {
+  final Value<String> subjectDid;
+  final Value<String?> handle;
+  final Value<String?> displayName;
+  final Value<String?> localAlias;
+  final Value<String?> avatarUrl;
+  final Value<String> relationship;
+  final Value<String> source;
+  final Value<String> trustState;
+  final Value<String> messengerAvailability;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> lastResolvedAt;
+  final Value<int> rowid;
+  const ContactRecordsCompanion({
+    this.subjectDid = const Value.absent(),
+    this.handle = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.localAlias = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
+    this.relationship = const Value.absent(),
+    this.source = const Value.absent(),
+    this.trustState = const Value.absent(),
+    this.messengerAvailability = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.lastResolvedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ContactRecordsCompanion.insert({
+    required String subjectDid,
+    this.handle = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.localAlias = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
+    this.relationship = const Value.absent(),
+    this.source = const Value.absent(),
+    this.trustState = const Value.absent(),
+    this.messengerAvailability = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.lastResolvedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : subjectDid = Value(subjectDid),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ContactRecord> custom({
+    Expression<String>? subjectDid,
+    Expression<String>? handle,
+    Expression<String>? displayName,
+    Expression<String>? localAlias,
+    Expression<String>? avatarUrl,
+    Expression<String>? relationship,
+    Expression<String>? source,
+    Expression<String>? trustState,
+    Expression<String>? messengerAvailability,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? lastResolvedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (subjectDid != null) 'subject_did': subjectDid,
+      if (handle != null) 'handle': handle,
+      if (displayName != null) 'display_name': displayName,
+      if (localAlias != null) 'local_alias': localAlias,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+      if (relationship != null) 'relationship': relationship,
+      if (source != null) 'source': source,
+      if (trustState != null) 'trust_state': trustState,
+      if (messengerAvailability != null)
+        'messenger_availability': messengerAvailability,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (lastResolvedAt != null) 'last_resolved_at': lastResolvedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ContactRecordsCompanion copyWith({
+    Value<String>? subjectDid,
+    Value<String?>? handle,
+    Value<String?>? displayName,
+    Value<String?>? localAlias,
+    Value<String?>? avatarUrl,
+    Value<String>? relationship,
+    Value<String>? source,
+    Value<String>? trustState,
+    Value<String>? messengerAvailability,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? lastResolvedAt,
+    Value<int>? rowid,
+  }) {
+    return ContactRecordsCompanion(
+      subjectDid: subjectDid ?? this.subjectDid,
+      handle: handle ?? this.handle,
+      displayName: displayName ?? this.displayName,
+      localAlias: localAlias ?? this.localAlias,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      relationship: relationship ?? this.relationship,
+      source: source ?? this.source,
+      trustState: trustState ?? this.trustState,
+      messengerAvailability:
+          messengerAvailability ?? this.messengerAvailability,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lastResolvedAt: lastResolvedAt ?? this.lastResolvedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (subjectDid.present) {
+      map['subject_did'] = Variable<String>(subjectDid.value);
+    }
+    if (handle.present) {
+      map['handle'] = Variable<String>(handle.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (localAlias.present) {
+      map['local_alias'] = Variable<String>(localAlias.value);
+    }
+    if (avatarUrl.present) {
+      map['avatar_url'] = Variable<String>(avatarUrl.value);
+    }
+    if (relationship.present) {
+      map['relationship'] = Variable<String>(relationship.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (trustState.present) {
+      map['trust_state'] = Variable<String>(trustState.value);
+    }
+    if (messengerAvailability.present) {
+      map['messenger_availability'] = Variable<String>(
+        messengerAvailability.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (lastResolvedAt.present) {
+      map['last_resolved_at'] = Variable<DateTime>(lastResolvedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ContactRecordsCompanion(')
+          ..write('subjectDid: $subjectDid, ')
+          ..write('handle: $handle, ')
+          ..write('displayName: $displayName, ')
+          ..write('localAlias: $localAlias, ')
+          ..write('avatarUrl: $avatarUrl, ')
+          ..write('relationship: $relationship, ')
+          ..write('source: $source, ')
+          ..write('trustState: $trustState, ')
+          ..write('messengerAvailability: $messengerAvailability, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('lastResolvedAt: $lastResolvedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ContextPacksTable extends ContextPacks
     with TableInfo<$ContextPacksTable, ContextPack> {
   @override
@@ -25335,6 +26073,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $OwnershipPoliciesTable(this);
   late final $AiProviderConfigsTable aiProviderConfigs =
       $AiProviderConfigsTable(this);
+  late final $ContactRecordsTable contactRecords = $ContactRecordsTable(this);
   late final $ContextPacksTable contextPacks = $ContextPacksTable(this);
   late final $SummaryJobsTable summaryJobs = $SummaryJobsTable(this);
   late final $PublicationIntentsTable publicationIntents =
@@ -25399,6 +26138,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     discussionNodes,
     ownershipPolicies,
     aiProviderConfigs,
+    contactRecords,
     contextPacks,
     summaryJobs,
     publicationIntents,
@@ -39727,6 +40467,355 @@ typedef $$AiProviderConfigsTableProcessedTableManager =
       AiProviderConfig,
       PrefetchHooks Function({bool summaryJobsRefs})
     >;
+typedef $$ContactRecordsTableCreateCompanionBuilder =
+    ContactRecordsCompanion Function({
+      required String subjectDid,
+      Value<String?> handle,
+      Value<String?> displayName,
+      Value<String?> localAlias,
+      Value<String?> avatarUrl,
+      Value<String> relationship,
+      Value<String> source,
+      Value<String> trustState,
+      Value<String> messengerAvailability,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> lastResolvedAt,
+      Value<int> rowid,
+    });
+typedef $$ContactRecordsTableUpdateCompanionBuilder =
+    ContactRecordsCompanion Function({
+      Value<String> subjectDid,
+      Value<String?> handle,
+      Value<String?> displayName,
+      Value<String?> localAlias,
+      Value<String?> avatarUrl,
+      Value<String> relationship,
+      Value<String> source,
+      Value<String> trustState,
+      Value<String> messengerAvailability,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> lastResolvedAt,
+      Value<int> rowid,
+    });
+
+class $$ContactRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $ContactRecordsTable> {
+  $$ContactRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get subjectDid => $composableBuilder(
+    column: $table.subjectDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get handle => $composableBuilder(
+    column: $table.handle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localAlias => $composableBuilder(
+    column: $table.localAlias,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get avatarUrl => $composableBuilder(
+    column: $table.avatarUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relationship => $composableBuilder(
+    column: $table.relationship,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get trustState => $composableBuilder(
+    column: $table.trustState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get messengerAvailability => $composableBuilder(
+    column: $table.messengerAvailability,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastResolvedAt => $composableBuilder(
+    column: $table.lastResolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ContactRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ContactRecordsTable> {
+  $$ContactRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get subjectDid => $composableBuilder(
+    column: $table.subjectDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get handle => $composableBuilder(
+    column: $table.handle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localAlias => $composableBuilder(
+    column: $table.localAlias,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get avatarUrl => $composableBuilder(
+    column: $table.avatarUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relationship => $composableBuilder(
+    column: $table.relationship,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get trustState => $composableBuilder(
+    column: $table.trustState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get messengerAvailability => $composableBuilder(
+    column: $table.messengerAvailability,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastResolvedAt => $composableBuilder(
+    column: $table.lastResolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ContactRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ContactRecordsTable> {
+  $$ContactRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get subjectDid => $composableBuilder(
+    column: $table.subjectDid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get handle =>
+      $composableBuilder(column: $table.handle, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localAlias => $composableBuilder(
+    column: $table.localAlias,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get avatarUrl =>
+      $composableBuilder(column: $table.avatarUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get relationship => $composableBuilder(
+    column: $table.relationship,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get trustState => $composableBuilder(
+    column: $table.trustState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get messengerAvailability => $composableBuilder(
+    column: $table.messengerAvailability,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastResolvedAt => $composableBuilder(
+    column: $table.lastResolvedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$ContactRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ContactRecordsTable,
+          ContactRecord,
+          $$ContactRecordsTableFilterComposer,
+          $$ContactRecordsTableOrderingComposer,
+          $$ContactRecordsTableAnnotationComposer,
+          $$ContactRecordsTableCreateCompanionBuilder,
+          $$ContactRecordsTableUpdateCompanionBuilder,
+          (
+            ContactRecord,
+            BaseReferences<_$AppDatabase, $ContactRecordsTable, ContactRecord>,
+          ),
+          ContactRecord,
+          PrefetchHooks Function()
+        > {
+  $$ContactRecordsTableTableManager(
+    _$AppDatabase db,
+    $ContactRecordsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ContactRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ContactRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ContactRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> subjectDid = const Value.absent(),
+                Value<String?> handle = const Value.absent(),
+                Value<String?> displayName = const Value.absent(),
+                Value<String?> localAlias = const Value.absent(),
+                Value<String?> avatarUrl = const Value.absent(),
+                Value<String> relationship = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> trustState = const Value.absent(),
+                Value<String> messengerAvailability = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> lastResolvedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ContactRecordsCompanion(
+                subjectDid: subjectDid,
+                handle: handle,
+                displayName: displayName,
+                localAlias: localAlias,
+                avatarUrl: avatarUrl,
+                relationship: relationship,
+                source: source,
+                trustState: trustState,
+                messengerAvailability: messengerAvailability,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                lastResolvedAt: lastResolvedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String subjectDid,
+                Value<String?> handle = const Value.absent(),
+                Value<String?> displayName = const Value.absent(),
+                Value<String?> localAlias = const Value.absent(),
+                Value<String?> avatarUrl = const Value.absent(),
+                Value<String> relationship = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> trustState = const Value.absent(),
+                Value<String> messengerAvailability = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> lastResolvedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ContactRecordsCompanion.insert(
+                subjectDid: subjectDid,
+                handle: handle,
+                displayName: displayName,
+                localAlias: localAlias,
+                avatarUrl: avatarUrl,
+                relationship: relationship,
+                source: source,
+                trustState: trustState,
+                messengerAvailability: messengerAvailability,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                lastResolvedAt: lastResolvedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ContactRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ContactRecordsTable,
+      ContactRecord,
+      $$ContactRecordsTableFilterComposer,
+      $$ContactRecordsTableOrderingComposer,
+      $$ContactRecordsTableAnnotationComposer,
+      $$ContactRecordsTableCreateCompanionBuilder,
+      $$ContactRecordsTableUpdateCompanionBuilder,
+      (
+        ContactRecord,
+        BaseReferences<_$AppDatabase, $ContactRecordsTable, ContactRecord>,
+      ),
+      ContactRecord,
+      PrefetchHooks Function()
+    >;
 typedef $$ContextPacksTableCreateCompanionBuilder =
     ContextPacksCompanion Function({
       required String contextPackId,
@@ -43722,6 +44811,8 @@ class $AppDatabaseManager {
       $$OwnershipPoliciesTableTableManager(_db, _db.ownershipPolicies);
   $$AiProviderConfigsTableTableManager get aiProviderConfigs =>
       $$AiProviderConfigsTableTableManager(_db, _db.aiProviderConfigs);
+  $$ContactRecordsTableTableManager get contactRecords =>
+      $$ContactRecordsTableTableManager(_db, _db.contactRecords);
   $$ContextPacksTableTableManager get contextPacks =>
       $$ContextPacksTableTableManager(_db, _db.contextPacks);
   $$SummaryJobsTableTableManager get summaryJobs =>

@@ -13,6 +13,7 @@ export 'src/entities/board_publication_target.dart';
 export 'src/entities/local_collection.dart';
 export 'src/entities/messenger_entities.dart';
 export 'src/entities/board_sync_config.dart';
+export 'src/entities/contact_entities.dart';
 export 'src/entities/follow_target.dart';
 export 'src/entities/follow_edge.dart';
 export 'src/entities/follow_activity_event.dart';
@@ -60,6 +61,7 @@ export 'src/repositories/ai_provider_config_repository.dart';
 export 'src/repositories/context_pack_repository.dart';
 export 'src/repositories/summary_job_repository.dart';
 export 'src/repositories/messenger_repository.dart';
+export 'src/repositories/contact_repository.dart';
 
 // === CRDT Op Builder (V1.1 Comp B) ===
 export 'src/crdt/crdt_op_builder.dart';
@@ -113,6 +115,7 @@ export 'src/repositories/drift/drift_ai_provider_config_repository.dart';
 export 'src/repositories/drift/drift_context_pack_repository.dart';
 export 'src/repositories/drift/drift_summary_job_repository.dart';
 export 'src/repositories/drift/drift_messenger_repository.dart';
+export 'src/repositories/drift/drift_contact_repository.dart';
 export 'src/db/app_database.dart'
     hide
         Board,
@@ -151,4 +154,5 @@ export 'src/db/app_database.dart'
         MessengerSession,
         MessengerConversation,
         MessengerMessage,
-        MessengerMailboxCursor;
+        MessengerMailboxCursor,
+        ContactRecord;

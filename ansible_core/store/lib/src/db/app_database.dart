@@ -11,6 +11,7 @@ import '../schema/board_subscriptions.dart';
 import '../schema/board_sync_configs.dart';
 import '../schema/boards.dart';
 import '../schema/ai_provider_configs.dart';
+import '../schema/contact_records.dart';
 import '../schema/content_items.dart';
 import '../schema/content_metadata.dart';
 import '../schema/content_relations.dart';
@@ -83,6 +84,7 @@ part 'app_database.g.dart';
     DiscussionNodes,
     OwnershipPolicies,
     AiProviderConfigs,
+    ContactRecords,
     ContextPacks,
     SummaryJobs,
     PublicationIntents,
@@ -101,7 +103,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,6 +165,9 @@ class AppDatabase extends _$AppDatabase {
         await _createTableIfMissing(m, messengerConversations);
         await _createTableIfMissing(m, messengerMessages);
         await _createTableIfMissing(m, messengerMailboxCursors);
+      }
+      if (from < 16) {
+        await _createTableIfMissing(m, contactRecords);
       }
       await _addColumnIfMissing(
         m,
