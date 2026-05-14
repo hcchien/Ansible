@@ -163,9 +163,14 @@ class MessengerRelayClient {
     Uri? relayBaseUrl,
     String baseUrl = kDefaultRelayBaseUrl,
     http.Client? client,
+    http.Client? httpClient,
     this.timeout = const Duration(seconds: 10),
-  }) : relayBaseUrl = relayBaseUrl ?? Uri.parse(baseUrl),
-       _client = client ?? http.Client();
+  }) : assert(
+         client == null || httpClient == null,
+         'Pass either client or httpClient, not both.',
+       ),
+       relayBaseUrl = relayBaseUrl ?? Uri.parse(baseUrl),
+       _client = client ?? httpClient ?? http.Client();
 
   Future<void> publishDevice({
     required String subjectDid,

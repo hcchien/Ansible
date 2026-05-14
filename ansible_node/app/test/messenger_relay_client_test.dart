@@ -6,6 +6,28 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('constructor accepts implementation-plan httpClient alias', () async {
+    final requests = <http.Request>[];
+    final client = MessengerRelayClient(
+      relayBaseUrl: Uri.parse('http://localhost:4001'),
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        return http.Response(
+          jsonEncode({'subject_did': 'did:plc:bob', 'devices': []}),
+          200,
+        );
+      }),
+    );
+
+    final bundle = await client.fetchPreKeyBundle('did:plc:bob');
+
+    expect(bundle.devices, isEmpty);
+    expect(
+      requests.single.url.path,
+      '/api/v1/messenger/pre-key-bundles/did%3Aplc%3Abob',
+    );
+  });
+
   test('publishes device and sends ciphertext through relay APIs', () async {
     final requests = <http.Request>[];
     final client = MessengerRelayClient(
