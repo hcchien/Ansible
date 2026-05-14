@@ -12,3 +12,5 @@ pub mod api_zkp;
 pub mod api_crdt;
 pub mod atproto;
 pub mod api_atproto;
+pub mod api_messenger;
+pub mod messenger;
