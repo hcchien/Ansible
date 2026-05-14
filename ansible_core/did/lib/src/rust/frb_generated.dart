@@ -174,6 +174,49 @@ class RustLib {
     ];
   }
 
+  Future<MessengerCiphertext> apiMessengerEncryptInitialMessage({
+    required MessengerEncryptInput input,
+  }) async {
+    final envelope = {
+      'protocol_version': 'signal-mvp-v1',
+      'ciphertext_type': 'pre_key_signal_message',
+      'sender_did': input.localDevice.subjectDid,
+      'sender_device_id': input.localDevice.deviceId,
+      'recipient_did': input.remoteBundle.subjectDid,
+      'recipient_device_id': input.remoteBundle.deviceId,
+      'body': base64Encode(input.plaintext),
+    };
+    return MessengerCiphertext(
+      protocolVersion: 'signal-mvp-v1',
+      ciphertextType: 'pre_key_signal_message',
+      ciphertext: Uint8List.fromList(utf8.encode(jsonEncode(envelope))),
+      updatedSessionState:
+          'dev_session:${input.localDevice.deviceId}:${input.remoteBundle.deviceId}',
+    );
+  }
+
+  Future<MessengerPlaintext> apiMessengerDecryptInboundMessage({
+    required MessengerDevice localDevice,
+    required MessengerCiphertext ciphertext,
+  }) async {
+    if (ciphertext.protocolVersion != 'signal-mvp-v1') {
+      throw ArgumentError('messenger_protocol_version_unsupported');
+    }
+    if (ciphertext.ciphertextType != 'pre_key_signal_message') {
+      throw ArgumentError('messenger_ciphertext_type_unsupported');
+    }
+    final envelope =
+        jsonDecode(utf8.decode(ciphertext.ciphertext)) as Map<String, dynamic>;
+    if (envelope['recipient_device_id'] != localDevice.deviceId) {
+      throw ArgumentError('messenger_ciphertext_recipient_mismatch');
+    }
+    return MessengerPlaintext(
+      body: Uint8List.fromList(base64Decode(envelope['body'] as String)),
+      updatedSessionState:
+          'dev_session:${localDevice.deviceId}:${envelope['sender_device_id']}',
+    );
+  }
+
   String _localPlcSuffix(String seed) {
     const alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
     final buffer = StringBuffer();
@@ -256,6 +299,64 @@ class MessengerPreKey {
     required this.preKeyId,
     required this.publicKey,
     required this.privateKey,
+  });
+}
+
+class MessengerPreKeyBundle {
+  final String subjectDid;
+  final String deviceId;
+  final String identityKey;
+  final int signedPreKeyId;
+  final String signedPreKey;
+  final String signedPreKeySignature;
+  final int oneTimePreKeyId;
+  final String oneTimePreKey;
+
+  const MessengerPreKeyBundle({
+    required this.subjectDid,
+    required this.deviceId,
+    required this.identityKey,
+    required this.signedPreKeyId,
+    required this.signedPreKey,
+    required this.signedPreKeySignature,
+    required this.oneTimePreKeyId,
+    required this.oneTimePreKey,
+  });
+}
+
+class MessengerEncryptInput {
+  final MessengerDevice localDevice;
+  final MessengerPreKeyBundle remoteBundle;
+  final Uint8List plaintext;
+
+  const MessengerEncryptInput({
+    required this.localDevice,
+    required this.remoteBundle,
+    required this.plaintext,
+  });
+}
+
+class MessengerCiphertext {
+  final String protocolVersion;
+  final String ciphertextType;
+  final Uint8List ciphertext;
+  final String updatedSessionState;
+
+  const MessengerCiphertext({
+    required this.protocolVersion,
+    required this.ciphertextType,
+    required this.ciphertext,
+    required this.updatedSessionState,
+  });
+}
+
+class MessengerPlaintext {
+  final Uint8List body;
+  final String updatedSessionState;
+
+  const MessengerPlaintext({
+    required this.body,
+    required this.updatedSessionState,
   });
 }
 

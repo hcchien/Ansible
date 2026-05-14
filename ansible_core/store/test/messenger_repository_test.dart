@@ -59,5 +59,9 @@ void main() {
     final messages = await repo.messagesForConversation('did:plc:bob');
     expect(messages.single.plaintext, 'hello bob');
     expect(messages.single.status, MessengerMessageStatus.sent);
+
+    expect(await repo.mailboxCursorFor('msgdev_alice'), isNull);
+    await repo.saveMailboxCursor('msgdev_alice', 'cursor-2');
+    expect(await repo.mailboxCursorFor('msgdev_alice'), 'cursor-2');
   });
 }

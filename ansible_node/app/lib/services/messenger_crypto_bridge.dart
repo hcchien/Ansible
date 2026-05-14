@@ -134,14 +134,40 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
   Future<MessengerCiphertextEnvelope> encryptInitialMessage(
     MessengerEncryptRequest request,
   ) async {
-    throw UnimplementedError('Messenger encryption is wired in Task 6.');
+    final ciphertext = await frb.RustLib.instance
+        .apiMessengerEncryptInitialMessage(
+          input: frb.MessengerEncryptInput(
+            localDevice: _deviceToRust(request.localDevice),
+            remoteBundle: _remoteBundleToRust(request.remoteBundle),
+            plaintext: request.plaintext,
+          ),
+        );
+    return MessengerCiphertextEnvelope(
+      protocolVersion: ciphertext.protocolVersion,
+      ciphertextType: ciphertext.ciphertextType,
+      ciphertext: ciphertext.ciphertext,
+      updatedSessionState: ciphertext.updatedSessionState,
+    );
   }
 
   @override
   Future<MessengerPlaintextEnvelope> decryptInboundMessage(
     MessengerDecryptRequest request,
   ) async {
-    throw UnimplementedError('Messenger decryption is wired in Task 6.');
+    final plaintext = await frb.RustLib.instance
+        .apiMessengerDecryptInboundMessage(
+          localDevice: _deviceToRust(request.localDevice),
+          ciphertext: frb.MessengerCiphertext(
+            protocolVersion: request.ciphertext.protocolVersion,
+            ciphertextType: request.ciphertext.ciphertextType,
+            ciphertext: request.ciphertext.ciphertext,
+            updatedSessionState: request.ciphertext.updatedSessionState,
+          ),
+        );
+    return MessengerPlaintextEnvelope(
+      body: plaintext.body,
+      updatedSessionState: plaintext.updatedSessionState,
+    );
   }
 
   MessengerDeviceBundle _deviceFromRust(frb.MessengerDevice device) {
@@ -172,5 +198,41 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
       oneTimePreKeys: const [],
       nextPreKeyId: 1,
     );
+  }
+
+  frb.MessengerPreKeyBundle _remoteBundleToRust(
+    Map<String, Object?> remoteBundle,
+  ) {
+    return frb.MessengerPreKeyBundle(
+      subjectDid: _string(remoteBundle, 'subject_did'),
+      deviceId: _string(remoteBundle, 'device_id'),
+      identityKey: _string(
+        remoteBundle,
+        'identity_key',
+        fallbackKey: 'messenger_identity_key',
+      ),
+      signedPreKeyId: _int(remoteBundle, 'signed_pre_key_id'),
+      signedPreKey: _string(remoteBundle, 'signed_pre_key'),
+      signedPreKeySignature: _string(remoteBundle, 'signed_pre_key_signature'),
+      oneTimePreKeyId: _int(remoteBundle, 'one_time_pre_key_id'),
+      oneTimePreKey: _string(remoteBundle, 'one_time_pre_key'),
+    );
+  }
+
+  String _string(
+    Map<String, Object?> value,
+    String key, {
+    String? fallbackKey,
+  }) {
+    final raw = value[key] ?? (fallbackKey == null ? null : value[fallbackKey]);
+    if (raw is String && raw.isNotEmpty) return raw;
+    throw ArgumentError('Missing messenger bundle string "$key"');
+  }
+
+  int _int(Map<String, Object?> value, String key) {
+    final raw = value[key];
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    throw ArgumentError('Missing messenger bundle integer "$key"');
   }
 }

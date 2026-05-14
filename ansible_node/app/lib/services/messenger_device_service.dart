@@ -67,6 +67,8 @@ class MessengerDeviceService {
       _bundleFromRecord(record),
       preKeyReplenishCount,
     );
+    if (generated.isEmpty) return;
+
     final createdAt = now();
     final preKeyRecords = [
       for (final preKey in generated)

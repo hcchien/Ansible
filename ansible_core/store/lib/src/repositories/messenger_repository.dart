@@ -26,5 +26,7 @@ abstract class MessengerRepository {
     String conversationId,
   );
 
+  Future<String?> mailboxCursorFor(String localDeviceId);
+
   Future<void> saveMailboxCursor(String localDeviceId, String cursor);
 }

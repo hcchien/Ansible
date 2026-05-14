@@ -160,6 +160,15 @@ class DriftMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<String?> mailboxCursorFor(String localDeviceId) async {
+    final row =
+        await (_db.select(_db.messengerMailboxCursors)
+              ..where((table) => table.localDeviceId.equals(localDeviceId)))
+            .getSingleOrNull();
+    return row?.cursor;
+  }
+
+  @override
   Future<void> saveMailboxCursor(String localDeviceId, String cursor) async {
     await _db
         .into(_db.messengerMailboxCursors)

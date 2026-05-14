@@ -299,5 +299,10 @@ class _FakeMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<String?> mailboxCursorFor(String localDeviceId) async {
+    return null;
+  }
+
+  @override
   Future<void> saveMailboxCursor(String localDeviceId, String cursor) async {}
 }
