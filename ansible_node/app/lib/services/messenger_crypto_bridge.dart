@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+// ignore: implementation_imports
 import 'package:ansible_did/src/rust/frb_generated.dart' as frb;
 
 class MessengerDeviceBundle {

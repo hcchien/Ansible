@@ -20,6 +20,8 @@ abstract class MessengerRepository {
     String remoteDeviceId,
   );
 
+  Future<List<MessengerConversationRecord>> conversationList();
+
   Future<void> saveMessage(MessengerMessageRecord message);
 
   Future<List<MessengerMessageRecord>> messagesForConversation(

@@ -289,6 +289,11 @@ class _FakeMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<List<MessengerConversationRecord>> conversationList() async {
+    return const [];
+  }
+
+  @override
   Future<void> saveMessage(MessengerMessageRecord message) async {}
 
   @override

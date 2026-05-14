@@ -374,6 +374,29 @@ class _InMemoryMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<List<MessengerConversationRecord>> conversationList() async {
+    final conversationIds = messages.values
+        .map((message) => message.conversationId)
+        .toSet();
+    return [
+      for (final conversationId in conversationIds)
+        MessengerConversationRecord(
+          conversationId: conversationId,
+          peerDid: conversationId,
+          createdAt: messages.values
+              .where((message) => message.conversationId == conversationId)
+              .map((message) => message.createdAt)
+              .reduce((a, b) => a.isBefore(b) ? a : b),
+          updatedAt: DateTime.utc(2026, 5, 14),
+          lastMessageAt: messages.values
+              .where((message) => message.conversationId == conversationId)
+              .map((message) => message.createdAt)
+              .reduce((a, b) => a.isAfter(b) ? a : b),
+        ),
+    ];
+  }
+
+  @override
   Future<void> saveMessage(MessengerMessageRecord message) async {
     messages[message.messageId] = message;
   }

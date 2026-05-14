@@ -60,6 +60,13 @@ void main() {
     expect(messages.single.plaintext, 'hello bob');
     expect(messages.single.status, MessengerMessageStatus.sent);
 
+    final conversations = await repo.conversationList();
+    expect(conversations.single.conversationId, 'did:plc:bob');
+    expect(
+      conversations.single.lastMessageAt?.toUtc(),
+      DateTime.utc(2026, 5, 14),
+    );
+
     expect(await repo.mailboxCursorFor('msgdev_alice'), isNull);
     await repo.saveMailboxCursor('msgdev_alice', 'cursor-2');
     expect(await repo.mailboxCursorFor('msgdev_alice'), 'cursor-2');

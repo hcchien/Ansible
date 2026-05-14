@@ -115,6 +115,17 @@ class DriftMessengerRepository implements MessengerRepository {
   }
 
   @override
+  Future<List<entity.MessengerConversationRecord>> conversationList() async {
+    final rows =
+        await (_db.select(_db.messengerConversations)..orderBy([
+              (table) => OrderingTerm.desc(table.lastMessageAt),
+              (table) => OrderingTerm.desc(table.updatedAt),
+            ]))
+            .get();
+    return rows.map(_mapConversation).toList(growable: false);
+  }
+
+  @override
   Future<void> saveMessage(entity.MessengerMessageRecord message) async {
     await _db.transaction(() async {
       await _db
@@ -240,6 +251,19 @@ class DriftMessengerRepository implements MessengerRepository {
       remoteDeviceId: row.remoteDeviceId,
       sessionState: row.sessionState,
       updatedAt: row.updatedAt,
+    );
+  }
+
+  entity.MessengerConversationRecord _mapConversation(
+    MessengerConversation row,
+  ) {
+    return entity.MessengerConversationRecord(
+      conversationId: row.conversationId,
+      peerDid: row.peerDid,
+      title: row.title,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      lastMessageAt: row.lastMessageAt,
     );
   }
 
