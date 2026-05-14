@@ -129,6 +129,45 @@ void main() {
     expect(bundle.devices.single.oneTimePreKey, 'bob_one_time_pre_key');
   });
 
+  test(
+    'reads device availability without reserved one-time pre-key fields',
+    () async {
+      final requests = <http.Request>[];
+      final client = MessengerRelayClient(
+        relayBaseUrl: Uri.parse('http://localhost:4001'),
+        client: MockClient((request) async {
+          requests.add(request);
+          return http.Response(
+            jsonEncode({
+              'subject_did': 'did:plc:bob',
+              'devices': [
+                {
+                  'device_id': 'msgdev_bob',
+                  'messenger_identity_key': 'bob_identity',
+                  'signed_pre_key_id': 42,
+                  'signed_pre_key': 'bob_signed_pre_key',
+                  'signed_pre_key_signature': 'bob_signature',
+                  'has_one_time_pre_keys': true,
+                },
+              ],
+            }),
+            200,
+          );
+        }),
+      );
+
+      final availability = await client.fetchDeviceAvailability('did:plc:bob');
+
+      expect(
+        requests.single.url.path,
+        '/api/v1/messenger/devices/did%3Aplc%3Abob',
+      );
+      expect(availability.subjectDid, 'did:plc:bob');
+      expect(availability.devices.single.hasOneTimePreKeys, true);
+      expect(availability.devices.single.deviceId, 'msgdev_bob');
+    },
+  );
+
   test('pulls mailbox and acks received messages', () async {
     final requests = <http.Request>[];
     final client = MessengerRelayClient(

@@ -70,6 +70,64 @@ class MessengerPreKeyBundleDevice {
   }
 }
 
+class MessengerDeviceAvailabilityResponse {
+  final String subjectDid;
+  final List<MessengerDeviceAvailability> devices;
+
+  const MessengerDeviceAvailabilityResponse({
+    required this.subjectDid,
+    required this.devices,
+  });
+
+  factory MessengerDeviceAvailabilityResponse.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    final devices = json['devices'];
+    return MessengerDeviceAvailabilityResponse(
+      subjectDid: json['subject_did'] as String,
+      devices: devices is List
+          ? devices
+                .whereType<Map>()
+                .map(
+                  (device) => MessengerDeviceAvailability.fromJson(
+                    Map<String, dynamic>.from(device),
+                  ),
+                )
+                .toList(growable: false)
+          : const [],
+    );
+  }
+}
+
+class MessengerDeviceAvailability {
+  final String deviceId;
+  final String messengerIdentityKey;
+  final int signedPreKeyId;
+  final String signedPreKey;
+  final String signedPreKeySignature;
+  final bool hasOneTimePreKeys;
+
+  const MessengerDeviceAvailability({
+    required this.deviceId,
+    required this.messengerIdentityKey,
+    required this.signedPreKeyId,
+    required this.signedPreKey,
+    required this.signedPreKeySignature,
+    required this.hasOneTimePreKeys,
+  });
+
+  factory MessengerDeviceAvailability.fromJson(Map<String, dynamic> json) {
+    return MessengerDeviceAvailability(
+      deviceId: json['device_id'] as String,
+      messengerIdentityKey: json['messenger_identity_key'] as String,
+      signedPreKeyId: json['signed_pre_key_id'] as int,
+      signedPreKey: json['signed_pre_key'] as String,
+      signedPreKeySignature: json['signed_pre_key_signature'] as String,
+      hasOneTimePreKeys: json['has_one_time_pre_keys'] == true,
+    );
+  }
+}
+
 class MessengerMailboxResponse {
   final List<MessengerMailboxMessage> messages;
   final String? nextCursor;
@@ -209,6 +267,15 @@ class MessengerRelayClient {
       '/api/v1/messenger/pre-key-bundles/${Uri.encodeComponent(subjectDid)}',
     );
     return MessengerPreKeyBundleResponse.fromJson(body);
+  }
+
+  Future<MessengerDeviceAvailabilityResponse> fetchDeviceAvailability(
+    String subjectDid,
+  ) async {
+    final body = await _getJson(
+      '/api/v1/messenger/devices/${Uri.encodeComponent(subjectDid)}',
+    );
+    return MessengerDeviceAvailabilityResponse.fromJson(body);
   }
 
   Future<void> sendMessage({
