@@ -111,6 +111,36 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.WebSessionController.me(conn, conn.req_headers)
   end
 
+  # Encrypted messenger relay
+  post "/api/v1/messenger/devices" do
+    AnsibleRelay.Web.Controllers.MessengerController.publish_device(conn, conn.body_params)
+  end
+
+  post "/api/v1/messenger/pre-keys" do
+    AnsibleRelay.Web.Controllers.MessengerController.publish_pre_keys(conn, conn.body_params)
+  end
+
+  get "/api/v1/messenger/pre-key-bundles/:subject_did" do
+    AnsibleRelay.Web.Controllers.MessengerController.pre_key_bundle(conn, %{
+      "subject_did" => subject_did
+    })
+  end
+
+  post "/api/v1/messenger/messages" do
+    AnsibleRelay.Web.Controllers.MessengerController.send_message(conn, conn.body_params)
+  end
+
+  get "/api/v1/messenger/messages" do
+    AnsibleRelay.Web.Controllers.MessengerController.mailbox(conn, conn.query_params)
+  end
+
+  post "/api/v1/messenger/messages/:message_id/ack" do
+    AnsibleRelay.Web.Controllers.MessengerController.ack(
+      conn,
+      Map.put(conn.body_params, "message_id", message_id)
+    )
+  end
+
   # V2 — Passkeys Identity
   post "/api/v2/identity/register" do
     AnsibleRelay.Web.Controllers.IdentityV2Controller.register(conn, conn.body_params)
