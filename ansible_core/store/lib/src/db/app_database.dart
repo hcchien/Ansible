@@ -24,6 +24,12 @@ import '../schema/hosted_board_projections.dart';
 import '../schema/identities.dart';
 import '../schema/identity_bindings.dart';
 import '../schema/local_collections.dart';
+import '../schema/messenger_conversations.dart';
+import '../schema/messenger_devices.dart';
+import '../schema/messenger_mailbox_cursors.dart';
+import '../schema/messenger_messages.dart';
+import '../schema/messenger_pre_keys.dart';
+import '../schema/messenger_sessions.dart';
 import '../schema/ops_queue.dart';
 import '../schema/outbound_follow_activities.dart';
 import '../schema/ownership_policies.dart';
@@ -83,13 +89,19 @@ part 'app_database.g.dart';
     PublicationTargets,
     IdentityBindings,
     LocalCollections,
+    MessengerDevices,
+    MessengerPreKeys,
+    MessengerSessions,
+    MessengerConversations,
+    MessengerMessages,
+    MessengerMailboxCursors,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -143,6 +155,14 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 14) {
         await _createTableIfMissing(m, localCollections);
+      }
+      if (from < 15) {
+        await _createTableIfMissing(m, messengerDevices);
+        await _createTableIfMissing(m, messengerPreKeys);
+        await _createTableIfMissing(m, messengerSessions);
+        await _createTableIfMissing(m, messengerConversations);
+        await _createTableIfMissing(m, messengerMessages);
+        await _createTableIfMissing(m, messengerMailboxCursors);
       }
       await _addColumnIfMissing(
         m,
