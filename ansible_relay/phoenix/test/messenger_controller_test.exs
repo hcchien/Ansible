@@ -107,6 +107,39 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
     assert %{"messages" => []} = Jason.decode!(empty_mailbox.resp_body)
   end
 
+  test "device availability does not consume one-time pre-keys" do
+    assert post_json("/api/v1/messenger/devices", %{
+             "subject_did" => "did:plc:bob",
+             "device_id" => "msgdev_bob",
+             "bundle" => %{
+               "messenger_identity_key" => "bob_identity_public",
+               "signed_pre_key_id" => 42,
+               "signed_pre_key" => "bob_signed_pre_key",
+               "signed_pre_key_signature" => "bob_signed_pre_key_sig"
+             },
+             "binding" => %{"subject_did" => "did:plc:bob", "device_id" => "msgdev_bob"},
+             "binding_signature" => "dev-signature"
+           }).status == 201
+
+    assert post_json("/api/v1/messenger/pre-keys", %{
+             "subject_did" => "did:plc:bob",
+             "device_id" => "msgdev_bob",
+             "pre_keys" => [%{"pre_key_id" => 1001, "pre_key" => "bob_one_time_pre_key"}],
+             "request_signature" => "dev-signature"
+           }).status == 201
+
+    availability = get_json("/api/v1/messenger/devices/did:plc:bob")
+    assert availability.status == 200
+    assert %{"devices" => [device]} = Jason.decode!(availability.resp_body)
+    assert device["has_one_time_pre_keys"] == true
+    refute Map.has_key?(device, "one_time_pre_key")
+    refute Map.has_key?(device, "one_time_pre_key_id")
+
+    consuming_bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:bob")
+    assert %{"devices" => [reserved_device]} = Jason.decode!(consuming_bundle.resp_body)
+    assert reserved_device["one_time_pre_key_id"] == 1001
+  end
+
   test "rejects message payloads that contain plaintext-shaped fields" do
     response =
       post_json("/api/v1/messenger/messages", %{

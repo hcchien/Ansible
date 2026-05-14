@@ -45,6 +45,11 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
     end
   end
 
+  def devices(conn, %{"subject_did" => subject_did}) do
+    {:ok, body} = MessengerStore.device_availability(subject_did)
+    send_json(conn, 200, body)
+  end
+
   def send_message(conn, params) do
     case MessengerStore.store_message(params) do
       {:ok, message} ->

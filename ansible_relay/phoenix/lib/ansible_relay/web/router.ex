@@ -120,6 +120,12 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.MessengerController.publish_pre_keys(conn, conn.body_params)
   end
 
+  get "/api/v1/messenger/devices/:subject_did" do
+    AnsibleRelay.Web.Controllers.MessengerController.devices(conn, %{
+      "subject_did" => subject_did
+    })
+  end
+
   get "/api/v1/messenger/pre-key-bundles/:subject_did" do
     AnsibleRelay.Web.Controllers.MessengerController.pre_key_bundle(conn, %{
       "subject_did" => subject_did

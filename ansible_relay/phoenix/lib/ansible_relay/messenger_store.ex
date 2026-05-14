@@ -184,6 +184,21 @@ defmodule AnsibleRelay.MessengerStore do
     end
   end
 
+  def device_availability(subject_did) do
+    devices =
+      Device
+      |> where([device], device.subject_did == ^subject_did)
+      |> order_by([device], asc: device.device_id)
+      |> Repo.all()
+      |> Enum.map(fn device ->
+        device
+        |> device_map()
+        |> Map.put("has_one_time_pre_keys", has_available_pre_keys?(device))
+      end)
+
+    {:ok, %{subject_did: subject_did, devices: devices}}
+  end
+
   def store_message(attrs) do
     with :ok <- reject_plaintext_fields(attrs),
          {:ok, message_id} <- fetch_string(attrs, "message_id"),
@@ -339,6 +354,17 @@ defmodule AnsibleRelay.MessengerStore do
     device
     |> Map.put("one_time_pre_key_id", pre_key["pre_key_id"])
     |> Map.put("one_time_pre_key", pre_key["pre_key"])
+  end
+
+  defp has_available_pre_keys?(device) do
+    Repo.exists?(
+      from(pre_key in PreKey,
+        where:
+          pre_key.subject_did == ^device.subject_did and
+            pre_key.device_id == ^device.device_id and
+            is_nil(pre_key.reserved_at)
+      )
+    )
   end
 
   defp ensure_device_exists(subject_did, device_id) do
