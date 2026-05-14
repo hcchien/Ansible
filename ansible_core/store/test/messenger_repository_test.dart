@@ -17,6 +17,22 @@ void main() {
         createdAt: DateTime.utc(2026, 5, 14),
       ),
     );
+    final localDevice = await repo.localDeviceForSubject('did:plc:alice');
+    expect(localDevice!.deviceId, 'msgdev_alice');
+
+    await repo.savePreKeys([
+      MessengerPreKeyRecord(
+        deviceId: 'msgdev_alice',
+        preKeyId: 1001,
+        publicKey: 'pre_key_public',
+        privateKeyRef: 'secure:pre_key_1001',
+        createdAt: DateTime.utc(2026, 5, 14),
+      ),
+    ]);
+    expect(await repo.unpublishedPreKeys('msgdev_alice'), hasLength(1));
+
+    await repo.markPreKeyPublished('msgdev_alice', 1001);
+    expect(await repo.unpublishedPreKeys('msgdev_alice'), isEmpty);
 
     await repo.saveSession(
       MessengerSessionRecord(

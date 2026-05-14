@@ -10,6 +10,22 @@ class DriftMessengerRepository implements MessengerRepository {
   final AppDatabase _db;
 
   @override
+  Future<entity.MessengerDeviceRecord?> localDeviceForSubject(
+    String subjectDid,
+  ) async {
+    final row =
+        await (_db.select(_db.messengerDevices)
+              ..where(
+                (table) =>
+                    table.subjectDid.equals(subjectDid) &
+                    table.isLocal.equals(true),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row == null ? null : _mapDevice(row);
+  }
+
+  @override
   Future<void> upsertLocalDevice(entity.MessengerDeviceRecord device) async {
     await _upsertDevice(device.copyWith(isLocal: true));
   }
@@ -38,6 +54,23 @@ class DriftMessengerRepository implements MessengerRepository {
         );
       }
     });
+  }
+
+  @override
+  Future<List<entity.MessengerPreKeyRecord>> unpublishedPreKeys(
+    String deviceId,
+  ) async {
+    final rows =
+        await (_db.select(_db.messengerPreKeys)
+              ..where(
+                (table) =>
+                    table.deviceId.equals(deviceId) &
+                    table.publishedAt.isNull() &
+                    table.consumedAt.isNull(),
+              )
+              ..orderBy([(table) => OrderingTerm.asc(table.preKeyId)]))
+            .get();
+    return rows.map(_mapPreKey).toList();
   }
 
   @override
@@ -159,6 +192,36 @@ class DriftMessengerRepository implements MessengerRepository {
             updatedAt: Value(device.updatedAt),
           ),
         );
+  }
+
+  entity.MessengerDeviceRecord _mapDevice(MessengerDevice row) {
+    return entity.MessengerDeviceRecord(
+      subjectDid: row.subjectDid,
+      deviceId: row.deviceId,
+      identityKeyPublic: row.identityKeyPublic,
+      identityKeyPrivateRef: row.identityKeyPrivateRef,
+      isLocal: row.isLocal,
+      signedPreKeyId: row.signedPreKeyId,
+      signedPreKeyPublic: row.signedPreKeyPublic,
+      signedPreKeyPrivateRef: row.signedPreKeyPrivateRef,
+      signedPreKeySignature: row.signedPreKeySignature,
+      bindingJson: row.bindingJson,
+      bindingSignature: row.bindingSignature,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    );
+  }
+
+  entity.MessengerPreKeyRecord _mapPreKey(MessengerPreKey row) {
+    return entity.MessengerPreKeyRecord(
+      deviceId: row.deviceId,
+      preKeyId: row.preKeyId,
+      publicKey: row.publicKey,
+      privateKeyRef: row.privateKeyRef,
+      createdAt: row.createdAt,
+      publishedAt: row.publishedAt,
+      consumedAt: row.consumedAt,
+    );
   }
 
   entity.MessengerSessionRecord _mapSession(MessengerSession row) {

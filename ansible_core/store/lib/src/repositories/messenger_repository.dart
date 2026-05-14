@@ -1,11 +1,15 @@
 import '../entities/messenger_entities.dart';
 
 abstract class MessengerRepository {
+  Future<MessengerDeviceRecord?> localDeviceForSubject(String subjectDid);
+
   Future<void> upsertLocalDevice(MessengerDeviceRecord device);
 
   Future<void> upsertRemoteDevice(MessengerDeviceRecord device);
 
   Future<void> savePreKeys(List<MessengerPreKeyRecord> preKeys);
+
+  Future<List<MessengerPreKeyRecord>> unpublishedPreKeys(String deviceId);
 
   Future<void> markPreKeyPublished(String deviceId, int preKeyId);
 

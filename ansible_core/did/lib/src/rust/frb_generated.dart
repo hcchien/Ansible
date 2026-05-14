@@ -142,6 +142,38 @@ class RustLib {
     return 'devsig$lenHex${'00' * 60}';
   }
 
+  Future<MessengerDevice> apiMessengerCreateDevice({
+    required String subjectDid,
+  }) async {
+    return MessengerDevice(
+      subjectDid: subjectDid,
+      deviceId: 'msgdev_dev_${_localPlcSuffix(subjectDid).substring(0, 12)}',
+      identityKeyPublic: 'dev_identity_public_$subjectDid',
+      identityKeyPrivate: 'secure:dev_identity_private_$subjectDid',
+      signedPreKeyId: 1,
+      signedPreKeyPublic: 'dev_signed_pre_key_public_$subjectDid',
+      signedPreKeyPrivate: 'secure:dev_signed_pre_key_private_$subjectDid',
+      signedPreKeySignature: 'dev_signed_pre_key_signature_$subjectDid',
+      sessionState: null,
+      oneTimePreKeys: const [],
+      nextPreKeyId: 1,
+    );
+  }
+
+  Future<List<MessengerPreKey>> apiMessengerGeneratePreKeys({
+    required MessengerDevice device,
+    required int count,
+  }) async {
+    return [
+      for (var i = 0; i < count; i += 1)
+        MessengerPreKey(
+          preKeyId: device.nextPreKeyId + i,
+          publicKey: 'dev_pre_key_public_${device.deviceId}_$i',
+          privateKey: 'secure:dev_pre_key_private_${device.deviceId}_$i',
+        ),
+    ];
+  }
+
   String _localPlcSuffix(String seed) {
     const alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
     final buffer = StringBuffer();
@@ -185,6 +217,46 @@ class DidPlcBytes {
   final String genesisJson;
 
   const DidPlcBytes({required this.did, required this.genesisJson});
+}
+
+class MessengerDevice {
+  final String subjectDid;
+  final String deviceId;
+  final String identityKeyPublic;
+  final String identityKeyPrivate;
+  final int signedPreKeyId;
+  final String signedPreKeyPublic;
+  final String signedPreKeyPrivate;
+  final String signedPreKeySignature;
+  final String? sessionState;
+  final List<MessengerPreKey> oneTimePreKeys;
+  final int nextPreKeyId;
+
+  const MessengerDevice({
+    required this.subjectDid,
+    required this.deviceId,
+    required this.identityKeyPublic,
+    required this.identityKeyPrivate,
+    required this.signedPreKeyId,
+    required this.signedPreKeyPublic,
+    required this.signedPreKeyPrivate,
+    required this.signedPreKeySignature,
+    required this.sessionState,
+    required this.oneTimePreKeys,
+    required this.nextPreKeyId,
+  });
+}
+
+class MessengerPreKey {
+  final int preKeyId;
+  final String publicKey;
+  final String privateKey;
+
+  const MessengerPreKey({
+    required this.preKeyId,
+    required this.publicKey,
+    required this.privateKey,
+  });
 }
 
 /// Input struct for apiCborEncodeRecord — mirrors the Rust LexiconRecord frb struct.
