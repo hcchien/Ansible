@@ -1,43 +1,89 @@
 defmodule AnsibleRelay.MessengerStore do
   @moduledoc """
-  In-memory encrypted messenger relay store.
+  Ecto-backed encrypted messenger relay store.
 
   The relay stores public device bundles, one-time pre-keys, and opaque
   ciphertext messages. It never accepts plaintext message fields.
   """
 
   use GenServer
+  import Ecto.Query
+
+  alias AnsibleRelay.Repo
 
   @plaintext_fields ["plaintext", "body", "message", "text"]
+
+  defmodule Device do
+    use Ecto.Schema
+
+    @timestamps_opts [type: :utc_datetime_usec]
+    schema "messenger_devices" do
+      field(:subject_did, :string)
+      field(:device_id, :string)
+      field(:messenger_identity_key, :string)
+      field(:signed_pre_key_id, :integer)
+      field(:signed_pre_key, :string)
+      field(:signed_pre_key_signature, :string)
+      field(:expires_at, :string)
+      field(:binding, :map, default: %{})
+      field(:binding_signature, :string)
+
+      timestamps()
+    end
+  end
+
+  defmodule PreKey do
+    use Ecto.Schema
+
+    @timestamps_opts [type: :utc_datetime_usec]
+    schema "messenger_pre_keys" do
+      field(:subject_did, :string)
+      field(:device_id, :string)
+      field(:pre_key_id, :integer)
+      field(:pre_key, :string)
+      field(:reserved_at, :utc_datetime_usec)
+
+      timestamps()
+    end
+  end
+
+  defmodule Message do
+    use Ecto.Schema
+
+    @timestamps_opts [type: :utc_datetime_usec]
+    schema "messenger_messages" do
+      field(:message_id, :string)
+      field(:sender_did, :string)
+      field(:sender_device_id, :string)
+      field(:recipient_did, :string)
+      field(:recipient_device_id, :string)
+      field(:ciphertext_type, :string)
+      field(:ciphertext, :string)
+      field(:protocol_version, :string)
+      field(:message_created_at, :string)
+
+      timestamps()
+    end
+  end
+
+  defmodule Ack do
+    use Ecto.Schema
+
+    @timestamps_opts [type: :utc_datetime_usec]
+    schema "messenger_message_acks" do
+      field(:message_id, :string)
+      field(:recipient_device_id, :string)
+      field(:acked_at, :utc_datetime_usec)
+
+      timestamps()
+    end
+  end
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def publish_device(attrs), do: GenServer.call(__MODULE__, {:publish_device, attrs})
-  def publish_pre_keys(attrs), do: GenServer.call(__MODULE__, {:publish_pre_keys, attrs})
-  def reserve_bundle(subject_did), do: GenServer.call(__MODULE__, {:reserve_bundle, subject_did})
-  def store_message(attrs), do: GenServer.call(__MODULE__, {:store_message, attrs})
-
-  def mailbox(recipient_device_id),
-    do: GenServer.call(__MODULE__, {:mailbox, recipient_device_id})
-
-  def ack(message_id, recipient_device_id),
-    do: GenServer.call(__MODULE__, {:ack, message_id, recipient_device_id})
-
-  def reset, do: GenServer.call(__MODULE__, :reset)
-
-  @impl true
-  def init(_opts) do
-    {:ok, empty_state()}
-  end
-
-  @impl true
-  def handle_call(:reset, _from, _state) do
-    {:reply, :ok, empty_state()}
-  end
-
-  def handle_call({:publish_device, attrs}, _from, state) do
+  def publish_device(attrs) do
     with {:ok, subject_did} <- fetch_string(attrs, "subject_did"),
          {:ok, device_id} <- fetch_string(attrs, "device_id"),
          {:ok, bundle} <- fetch_map(attrs, "bundle"),
@@ -46,119 +92,245 @@ defmodule AnsibleRelay.MessengerStore do
          {:ok, signed_pre_key} <- fetch_string(bundle, "signed_pre_key"),
          {:ok, signed_pre_key_signature} <- fetch_string(bundle, "signed_pre_key_signature"),
          {:ok, binding_signature} <- fetch_string(attrs, "binding_signature") do
-      device = %{
-        "subject_did" => subject_did,
-        "device_id" => device_id,
-        "messenger_identity_key" => messenger_identity_key,
-        "signed_pre_key_id" => signed_pre_key_id,
-        "signed_pre_key" => signed_pre_key,
-        "signed_pre_key_signature" => signed_pre_key_signature,
-        "expires_at" => Map.get(bundle, "expires_at"),
-        "binding" => Map.get(attrs, "binding", %{}),
-        "binding_signature" => binding_signature
+      now = now()
+
+      changes = %{
+        subject_did: subject_did,
+        device_id: device_id,
+        messenger_identity_key: messenger_identity_key,
+        signed_pre_key_id: signed_pre_key_id,
+        signed_pre_key: signed_pre_key,
+        signed_pre_key_signature: signed_pre_key_signature,
+        expires_at: Map.get(bundle, "expires_at"),
+        binding: Map.get(attrs, "binding", %{}),
+        binding_signature: binding_signature,
+        inserted_at: now,
+        updated_at: now
       }
 
-      state = put_in(state, [:devices, {subject_did, device_id}], device)
-      {:reply, {:ok, device}, state}
+      {:ok, device} =
+        %Device{}
+        |> struct(changes)
+        |> Repo.insert(
+          on_conflict: [
+            set: [
+              messenger_identity_key: messenger_identity_key,
+              signed_pre_key_id: signed_pre_key_id,
+              signed_pre_key: signed_pre_key,
+              signed_pre_key_signature: signed_pre_key_signature,
+              expires_at: Map.get(bundle, "expires_at"),
+              binding: Map.get(attrs, "binding", %{}),
+              binding_signature: binding_signature,
+              updated_at: now
+            ]
+          ],
+          conflict_target: [:subject_did, :device_id],
+          returning: true
+        )
+
+      {:ok, device_map(device)}
     else
-      {:error, reason} -> {:reply, {:error, reason}, state}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  def handle_call({:publish_pre_keys, attrs}, _from, state) do
+  def publish_pre_keys(attrs) do
     with {:ok, subject_did} <- fetch_string(attrs, "subject_did"),
          {:ok, device_id} <- fetch_string(attrs, "device_id"),
          {:ok, pre_keys} <- fetch_list(attrs, "pre_keys"),
-         :ok <- ensure_device_exists(state, subject_did, device_id),
+         :ok <- ensure_device_exists(subject_did, device_id),
          {:ok, normalized_pre_keys} <- normalize_pre_keys(pre_keys) do
-      state =
-        Enum.reduce(normalized_pre_keys, state, fn pre_key, acc ->
-          put_in(acc, [:pre_keys, {subject_did, device_id, pre_key["pre_key_id"]}], pre_key)
+      now = now()
+
+      rows =
+        Enum.map(normalized_pre_keys, fn pre_key ->
+          %{
+            subject_did: subject_did,
+            device_id: device_id,
+            pre_key_id: pre_key["pre_key_id"],
+            pre_key: pre_key["pre_key"],
+            inserted_at: now,
+            updated_at: now
+          }
         end)
 
-      {:reply, {:ok, normalized_pre_keys}, state}
+      Repo.insert_all(PreKey, rows,
+        on_conflict: :nothing,
+        conflict_target: [:subject_did, :device_id, :pre_key_id]
+      )
+
+      {:ok, normalized_pre_keys}
     else
-      {:error, reason} -> {:reply, {:error, reason}, state}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  def handle_call({:reserve_bundle, subject_did}, _from, state) do
-    {devices, state} =
-      state.devices
-      |> Map.values()
-      |> Enum.filter(&(&1["subject_did"] == subject_did))
-      |> Enum.sort_by(& &1["device_id"])
-      |> Enum.map_reduce(state, fn device, acc ->
-        {one_time_pre_key, acc} =
-          pop_next_pre_key(acc, device["subject_did"], device["device_id"])
+  def reserve_bundle(subject_did) do
+    Repo.transaction(fn ->
+      devices =
+        Device
+        |> where([device], device.subject_did == ^subject_did)
+        |> order_by([device], asc: device.device_id)
+        |> Repo.all()
 
-        {bundle_device(device, one_time_pre_key), acc}
+      Enum.map(devices, fn device ->
+        pre_key = reserve_next_pre_key(device.subject_did, device.device_id)
+        bundle_device(device_map(device), pre_key)
       end)
-
-    {:reply, {:ok, %{subject_did: subject_did, devices: devices}}, state}
+    end)
+    |> case do
+      {:ok, devices} -> {:ok, %{subject_did: subject_did, devices: devices}}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
-  def handle_call({:store_message, attrs}, _from, state) do
+  def store_message(attrs) do
     with :ok <- reject_plaintext_fields(attrs),
          {:ok, message_id} <- fetch_string(attrs, "message_id"),
-         {:ok, _sender_did} <- fetch_string(attrs, "sender_did"),
-         {:ok, _sender_device_id} <- fetch_string(attrs, "sender_device_id"),
-         {:ok, _recipient_did} <- fetch_string(attrs, "recipient_did"),
-         {:ok, _recipient_device_id} <- fetch_string(attrs, "recipient_device_id"),
-         {:ok, _ciphertext_type} <- fetch_string(attrs, "ciphertext_type"),
-         {:ok, _ciphertext} <- fetch_string(attrs, "ciphertext"),
-         {:ok, _protocol_version} <- fetch_string(attrs, "protocol_version"),
-         :ok <- reject_duplicate_message(state, message_id) do
-      message =
-        attrs
-        |> Map.take([
-          "message_id",
-          "sender_did",
-          "sender_device_id",
-          "recipient_did",
-          "recipient_device_id",
-          "ciphertext_type",
-          "ciphertext",
-          "protocol_version",
-          "created_at"
-        ])
+         {:ok, sender_did} <- fetch_string(attrs, "sender_did"),
+         {:ok, sender_device_id} <- fetch_string(attrs, "sender_device_id"),
+         {:ok, recipient_did} <- fetch_string(attrs, "recipient_did"),
+         {:ok, recipient_device_id} <- fetch_string(attrs, "recipient_device_id"),
+         {:ok, ciphertext_type} <- fetch_string(attrs, "ciphertext_type"),
+         {:ok, ciphertext} <- fetch_string(attrs, "ciphertext"),
+         {:ok, protocol_version} <- fetch_string(attrs, "protocol_version"),
+         :ok <- reject_duplicate_message(message_id) do
+      now = now()
 
-      state = put_in(state, [:messages, message_id], message)
-      {:reply, {:ok, message}, state}
+      message = %Message{
+        message_id: message_id,
+        sender_did: sender_did,
+        sender_device_id: sender_device_id,
+        recipient_did: recipient_did,
+        recipient_device_id: recipient_device_id,
+        ciphertext_type: ciphertext_type,
+        ciphertext: ciphertext,
+        protocol_version: protocol_version,
+        message_created_at: Map.get(attrs, "created_at"),
+        inserted_at: now,
+        updated_at: now
+      }
+
+      {:ok, message} = Repo.insert(message)
+      {:ok, message_map(message)}
     else
-      {:error, reason} -> {:reply, {:error, reason}, state}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  def handle_call({:mailbox, recipient_device_id}, _from, state) do
-    messages =
-      state.messages
-      |> Map.values()
-      |> Enum.filter(fn message ->
-        message["recipient_device_id"] == recipient_device_id &&
-          !MapSet.member?(state.acks, {message["message_id"], recipient_device_id})
-      end)
-      |> Enum.sort_by(&Map.get(&1, "created_at", ""))
+  def mailbox(recipient_device_id) do
+    acked_message_ids =
+      Ack
+      |> where([ack], ack.recipient_device_id == ^recipient_device_id)
+      |> select([ack], ack.message_id)
+      |> Repo.all()
+      |> MapSet.new()
 
-    {:reply, {:ok, messages}, state}
+    messages =
+      Message
+      |> where([message], message.recipient_device_id == ^recipient_device_id)
+      |> order_by([message], asc: message.message_created_at, asc: message.inserted_at)
+      |> Repo.all()
+      |> Enum.reject(&MapSet.member?(acked_message_ids, &1.message_id))
+      |> Enum.map(&message_map/1)
+
+    {:ok, messages}
   end
 
-  def handle_call({:ack, message_id, recipient_device_id}, _from, state) do
-    case Map.get(state.messages, message_id) do
+  def ack(message_id, recipient_device_id) do
+    case Repo.get_by(Message, message_id: message_id) do
       nil ->
-        {:reply, {:error, :not_found}, state}
+        {:error, :not_found}
 
-      %{"recipient_device_id" => ^recipient_device_id} = message ->
-        state = %{state | acks: MapSet.put(state.acks, {message_id, recipient_device_id})}
-        {:reply, {:ok, message}, state}
+      %Message{recipient_device_id: ^recipient_device_id} = message ->
+        now = now()
+
+        %Ack{
+          message_id: message_id,
+          recipient_device_id: recipient_device_id,
+          acked_at: now,
+          inserted_at: now,
+          updated_at: now
+        }
+        |> Repo.insert(
+          on_conflict: :nothing,
+          conflict_target: [:message_id, :recipient_device_id]
+        )
+
+        {:ok, message_map(message)}
 
       _message ->
-        {:reply, {:error, :recipient_mismatch}, state}
+        {:error, :recipient_mismatch}
     end
   end
 
-  defp empty_state do
-    %{devices: %{}, pre_keys: %{}, messages: %{}, acks: MapSet.new()}
+  def reset do
+    Repo.delete_all(Ack)
+    Repo.delete_all(Message)
+    Repo.delete_all(PreKey)
+    Repo.delete_all(Device)
+    :ok
+  end
+
+  @impl true
+  def init(_opts), do: {:ok, %{}}
+
+  defp reserve_next_pre_key(subject_did, device_id) do
+    query =
+      PreKey
+      |> where(
+        [pre_key],
+        pre_key.subject_did == ^subject_did and pre_key.device_id == ^device_id and
+          is_nil(pre_key.reserved_at)
+      )
+      |> order_by([pre_key], asc: pre_key.pre_key_id)
+      |> limit(1)
+      |> lock("FOR UPDATE SKIP LOCKED")
+
+    case Repo.one(query) do
+      nil ->
+        nil
+
+      pre_key ->
+        {1, _} =
+          PreKey
+          |> where([candidate], candidate.id == ^pre_key.id)
+          |> Repo.update_all(set: [reserved_at: now(), updated_at: now()])
+
+        pre_key_map(pre_key)
+    end
+  end
+
+  defp device_map(device) do
+    %{
+      "subject_did" => device.subject_did,
+      "device_id" => device.device_id,
+      "messenger_identity_key" => device.messenger_identity_key,
+      "signed_pre_key_id" => device.signed_pre_key_id,
+      "signed_pre_key" => device.signed_pre_key,
+      "signed_pre_key_signature" => device.signed_pre_key_signature,
+      "expires_at" => device.expires_at,
+      "binding" => device.binding || %{},
+      "binding_signature" => device.binding_signature
+    }
+  end
+
+  defp pre_key_map(pre_key) do
+    %{"pre_key_id" => pre_key.pre_key_id, "pre_key" => pre_key.pre_key}
+  end
+
+  defp message_map(message) do
+    %{
+      "message_id" => message.message_id,
+      "sender_did" => message.sender_did,
+      "sender_device_id" => message.sender_device_id,
+      "recipient_did" => message.recipient_did,
+      "recipient_device_id" => message.recipient_device_id,
+      "ciphertext_type" => message.ciphertext_type,
+      "ciphertext" => message.ciphertext,
+      "protocol_version" => message.protocol_version,
+      "created_at" => message.message_created_at
+    }
   end
 
   defp bundle_device(device, nil), do: device
@@ -169,25 +341,12 @@ defmodule AnsibleRelay.MessengerStore do
     |> Map.put("one_time_pre_key", pre_key["pre_key"])
   end
 
-  defp pop_next_pre_key(state, subject_did, device_id) do
-    candidates =
-      state.pre_keys
-      |> Enum.filter(fn {{pre_key_subject_did, pre_key_device_id, _pre_key_id}, _pre_key} ->
-        pre_key_subject_did == subject_did && pre_key_device_id == device_id
-      end)
-      |> Enum.sort_by(fn {{_subject_did, _device_id, pre_key_id}, _pre_key} -> pre_key_id end)
-
-    case candidates do
-      [] ->
-        {nil, state}
-
-      [{key, pre_key} | _rest] ->
-        {pre_key, update_in(state, [:pre_keys], &Map.delete(&1, key))}
-    end
-  end
-
-  defp ensure_device_exists(state, subject_did, device_id) do
-    if Map.has_key?(state.devices, {subject_did, device_id}) do
+  defp ensure_device_exists(subject_did, device_id) do
+    if Repo.exists?(
+         from(device in Device,
+           where: device.subject_did == ^subject_did and device.device_id == ^device_id
+         )
+       ) do
       :ok
     else
       {:error, :device_not_found}
@@ -218,8 +377,8 @@ defmodule AnsibleRelay.MessengerStore do
     end
   end
 
-  defp reject_duplicate_message(state, message_id) do
-    if Map.has_key?(state.messages, message_id) do
+  defp reject_duplicate_message(message_id) do
+    if Repo.exists?(from(message in Message, where: message.message_id == ^message_id)) do
       {:error, :duplicate_message}
     else
       :ok
@@ -256,4 +415,6 @@ defmodule AnsibleRelay.MessengerStore do
       _ -> {:error, :"#{key}_required"}
     end
   end
+
+  defp now, do: DateTime.utc_now()
 end

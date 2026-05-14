@@ -4,10 +4,14 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
 
   alias AnsibleRelay.Web.Router
   alias AnsibleRelay.MessengerStore
+  alias AnsibleRelay.Repo
 
   @router_opts Router.init([])
 
   setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+
     case MessengerStore.start_link([]) do
       {:ok, _pid} -> :ok
       {:error, {:already_started, _pid}} -> MessengerStore.reset()
@@ -120,5 +124,40 @@ defmodule AnsibleRelay.Web.MessengerControllerTest do
 
     assert response.status == 422
     assert Jason.decode!(response.resp_body)["error"] == "plaintext_not_allowed"
+  end
+
+  test "messenger data survives store process restart" do
+    assert post_json("/api/v1/messenger/devices", %{
+             "subject_did" => "did:plc:persisted",
+             "device_id" => "msgdev_persisted",
+             "bundle" => %{
+               "messenger_identity_key" => "persisted_identity_public",
+               "signed_pre_key_id" => 7,
+               "signed_pre_key" => "persisted_signed_pre_key",
+               "signed_pre_key_signature" => "persisted_signed_pre_key_sig"
+             },
+             "binding" => %{
+               "subject_did" => "did:plc:persisted",
+               "device_id" => "msgdev_persisted"
+             },
+             "binding_signature" => "dev-signature"
+           }).status == 201
+
+    assert post_json("/api/v1/messenger/pre-keys", %{
+             "subject_did" => "did:plc:persisted",
+             "device_id" => "msgdev_persisted",
+             "pre_keys" => [%{"pre_key_id" => 2001, "pre_key" => "persisted_one_time_key"}],
+             "request_signature" => "dev-signature"
+           }).status == 201
+
+    MessengerStore |> Process.whereis() |> GenServer.stop(:normal)
+    Process.sleep(50)
+
+    bundle = get_json("/api/v1/messenger/pre-key-bundles/did:plc:persisted")
+    assert bundle.status == 200
+    assert %{"devices" => [device]} = Jason.decode!(bundle.resp_body)
+    assert device["device_id"] == "msgdev_persisted"
+    assert device["one_time_pre_key_id"] == 2001
+    assert device["one_time_pre_key"] == "persisted_one_time_key"
   end
 end
