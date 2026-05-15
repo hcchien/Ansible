@@ -12,11 +12,13 @@ class MessengerThreadScreen extends StatefulWidget {
     required this.conversationId,
     required this.messengerService,
     this.senderDid = 'did:plc:local',
+    this.contact,
   });
 
   final String conversationId;
   final String senderDid;
   final MessengerSyncService messengerService;
+  final ContactRecord? contact;
 
   @override
   State<MessengerThreadScreen> createState() => _MessengerThreadScreenState();
@@ -95,15 +97,32 @@ class _MessengerThreadScreenState extends State<MessengerThreadScreen> {
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                widget.conversationId,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: AnsibleDesign.ink,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.contact?.label ?? widget.conversationId,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: AnsibleDesign.ink,
+                    ),
+                  ),
+                  if (widget.contact != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.contact!.handle ?? widget.contact!.shortDid,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),

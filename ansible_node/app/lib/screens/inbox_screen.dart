@@ -6,9 +6,10 @@ import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
 class InboxScreen extends StatelessWidget {
-  const InboxScreen({super.key, this.repository});
+  const InboxScreen({super.key, this.repository, this.contactRepository});
 
   final MessengerRepository? repository;
+  final ContactRepository? contactRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -18,15 +19,19 @@ class InboxScreen extends StatelessWidget {
       leadingLabel: text.t('backWorkspace'),
       child: repository == null
           ? const _EmptyInbox()
-          : _InboxBody(repository: repository!),
+          : _InboxBody(
+              repository: repository!,
+              contactRepository: contactRepository,
+            ),
     );
   }
 }
 
 class _InboxBody extends StatelessWidget {
-  const _InboxBody({required this.repository});
+  const _InboxBody({required this.repository, this.contactRepository});
 
   final MessengerRepository repository;
+  final ContactRepository? contactRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -60,11 +65,15 @@ class _InboxBody extends StatelessWidget {
       final messages = await repository.messagesForConversation(
         conversation.conversationId,
       );
+      final contact = await contactRepository?.contactForDid(
+        conversation.peerDid,
+      );
       final latest = messages.isEmpty ? null : messages.last;
       previews.add(
         _InboxConversationPreview(
           conversation: conversation,
           latestMessage: latest,
+          contact: contact,
         ),
       );
     }
@@ -143,7 +152,7 @@ class _ConversationRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  preview.conversation.peerDid,
+                  preview.contact?.label ?? preview.conversation.peerDid,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -214,10 +223,12 @@ class _InboxError extends StatelessWidget {
 class _InboxConversationPreview {
   final MessengerConversationRecord conversation;
   final MessengerMessageRecord? latestMessage;
+  final ContactRecord? contact;
 
   const _InboxConversationPreview({
     required this.conversation,
     required this.latestMessage,
+    this.contact,
   });
 }
 

@@ -115,6 +115,35 @@ void main() {
     expect(relay.acceptedPlaintexts, ['hi bob']);
     expect(find.text('hi bob'), findsOneWidget);
   });
+
+  testWidgets('thread header uses contact label and handle when provided', (
+    tester,
+  ) async {
+    final service = _serviceWith(
+      repository: _InMemoryMessengerRepository(messages: const []),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MessengerThreadScreen(
+          conversationId: 'did:plc:bob',
+          messengerService: service,
+          contact: ContactRecord(
+            subjectDid: 'did:plc:bob',
+            handle: 'bob.elix.app',
+            displayName: 'Bob',
+            createdAt: DateTime.utc(2026, 5, 14),
+            updatedAt: DateTime.utc(2026, 5, 14),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Bob'), findsOneWidget);
+    expect(find.text('bob.elix.app'), findsOneWidget);
+    expect(find.text('did:plc:bob'), findsNothing);
+  });
 }
 
 MessengerSyncService _serviceWith({

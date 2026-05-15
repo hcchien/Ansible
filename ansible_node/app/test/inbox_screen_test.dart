@@ -52,6 +52,39 @@ void main() {
     expect(find.text('hello from bob'), findsOneWidget);
     expect(find.text('目前沒有收信'), findsNothing);
   });
+
+  testWidgets('inbox uses contact labels when available', (tester) async {
+    final repository = _FakeMessengerRepository(
+      conversations: [
+        MessengerConversationRecord(
+          conversationId: 'did:plc:bob',
+          peerDid: 'did:plc:bob',
+          createdAt: DateTime.utc(2026, 5, 14, 8),
+          updatedAt: DateTime.utc(2026, 5, 14, 9),
+          lastMessageAt: DateTime.utc(2026, 5, 14, 9),
+        ),
+      ],
+    );
+    final contacts = _FakeContactRepository({
+      'did:plc:bob': ContactRecord(
+        subjectDid: 'did:plc:bob',
+        handle: 'bob.elix.app',
+        displayName: 'Bob',
+        createdAt: DateTime.utc(2026, 5, 14),
+        updatedAt: DateTime.utc(2026, 5, 14),
+      ),
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InboxScreen(repository: repository, contactRepository: contacts),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Bob'), findsOneWidget);
+    expect(find.text('did:plc:bob'), findsNothing);
+  });
 }
 
 class _FakeMessengerRepository implements MessengerRepository {
@@ -122,4 +155,42 @@ class _FakeMessengerRepository implements MessengerRepository {
 
   @override
   Future<void> upsertRemoteDevice(MessengerDeviceRecord device) async {}
+}
+
+class _FakeContactRepository implements ContactRepository {
+  _FakeContactRepository(this.contacts);
+
+  final Map<String, ContactRecord> contacts;
+
+  @override
+  Future<ContactRecord?> contactForDid(String subjectDid) async {
+    return contacts[subjectDid];
+  }
+
+  @override
+  Future<ContactRecord?> contactForHandle(String handle) async {
+    for (final contact in contacts.values) {
+      if (contact.handle == handle) return contact;
+    }
+    return null;
+  }
+
+  @override
+  Future<List<ContactRecord>> listContacts() async {
+    return contacts.values.toList(growable: false);
+  }
+
+  @override
+  Future<ContactRecord> recordHandleResolution({
+    required String handle,
+    required String resolvedDid,
+    required DateTime resolvedAt,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> upsertContact(ContactRecord contact) async {
+    contacts[contact.subjectDid] = contact;
+  }
 }
