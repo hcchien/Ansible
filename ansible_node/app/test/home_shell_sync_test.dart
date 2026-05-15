@@ -128,6 +128,56 @@ void main() {
     expect(pullCalls, 1);
   });
 
+  testWidgets('startup syncs accepted user follows into local contacts', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final now = DateTime.utc(2026, 5, 15);
+    final followRepo = DriftFollowRepository(db);
+    await followRepo.upsertTarget(
+      FollowTarget(
+        targetId: 'target-bob',
+        targetType: FollowTargetType.user,
+        canonicalUri: 'https://relay.example/users/bob',
+        displayName: 'Bob',
+        handle: 'bob.elix.app',
+        did: 'did:plc:bob',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await followRepo.upsertEdge(
+      FollowEdge(
+        followId: 'follow-bob',
+        followerDid: 'did:plc:alice',
+        targetId: 'target-bob',
+        targetType: FollowTargetType.user,
+        direction: FollowDirection.outbound,
+        status: FollowStatus.accepted,
+        visibility: FollowVisibility.localOnly,
+        createdAt: now,
+        updatedAt: now,
+        acceptedAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(db: db, did: 'did:plc:alice'),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final contact = await DriftContactRepository(
+      db,
+    ).contactForDid('did:plc:bob');
+    expect(contact!.label, 'Bob');
+    expect(contact.handle, 'bob.elix.app');
+  });
+
   testWidgets('foreground resume pull refresh runs when online', (
     tester,
   ) async {

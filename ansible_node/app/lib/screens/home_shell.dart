@@ -15,6 +15,7 @@ import '../services/atproto_client.dart';
 import '../services/ai/ai_provider_config_store.dart';
 import '../services/app_locale_controller.dart';
 import '../services/app_sync_service.dart';
+import '../services/contact_source_sync_service.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/content_publication_service.dart';
@@ -70,6 +71,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final DriftPostRepository _postRepo;
   late final DriftReactionRepository _reactionRepo;
   late final DriftFollowRepository _followRepo;
+  late final DriftContactRepository _contactRepo;
+  late final DriftMessengerRepository _messengerRepo;
   late final DriftRemoteNodeRepository _remoteNodeRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
   late final DriftContentItemRepository _contentItemRepo;
@@ -107,6 +110,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _postRepo = DriftPostRepository(widget.db);
     _reactionRepo = DriftReactionRepository(widget.db);
     _followRepo = DriftFollowRepository(widget.db);
+    _contactRepo = DriftContactRepository(widget.db);
+    _messengerRepo = DriftMessengerRepository(widget.db);
     _remoteNodeRepo = DriftRemoteNodeRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _contentItemRepo = DriftContentItemRepository(widget.db);
@@ -154,6 +159,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     final l10n = context.l10n;
+    await ContactSourceSyncService(
+      followRepository: _followRepo,
+      contactRepository: _contactRepo,
+      messengerRepository: _messengerRepo,
+    ).syncForIdentity(widget.did);
     final boards = await _boardRepo.list();
     final contentItems = await _contentItemRepo.list(authorDid: widget.did);
     final murmurReferenceCounts = <String, int>{};
@@ -1510,7 +1520,12 @@ class _TopBar extends StatelessWidget {
               IconButton(
                 onPressed: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const InboxScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => InboxScreen(
+                        repository: DriftMessengerRepository(db),
+                        contactRepository: DriftContactRepository(db),
+                      ),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.inbox_outlined),
