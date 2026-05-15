@@ -10,6 +10,7 @@ import 'messenger_relay_client.dart';
 
 class MessengerSyncService {
   final MessengerRepository repository;
+  final ContactRepository? contactRepository;
   final MessengerDeviceService deviceService;
   final MessengerRelayClient relayClient;
   final MessengerCryptoBridge crypto;
@@ -19,6 +20,7 @@ class MessengerSyncService {
 
   MessengerSyncService({
     required this.repository,
+    this.contactRepository,
     required this.deviceService,
     required this.relayClient,
     required this.crypto,
@@ -124,7 +126,9 @@ class MessengerSyncService {
     return sent;
   }
 
-  Future<void> pullAndDecrypt({required String recipientDid}) async {
+  Future<MessengerPullResult> pullAndDecrypt({
+    required String recipientDid,
+  }) async {
     final localDevice = await deviceService.ensurePublishedDevice(
       subjectDid: recipientDid,
       didSigner: didSigner,
@@ -135,14 +139,22 @@ class MessengerSyncService {
       cursor: cursor,
     );
 
+    var receivedMessages = 0;
+    var messageRequests = 0;
     for (final message in mailbox.messages) {
-      await _decryptAndStore(localDevice, message);
+      final result = await _decryptAndStore(localDevice, message);
+      if (result.received) receivedMessages += 1;
+      if (result.messageRequest) messageRequests += 1;
     }
 
     final nextCursor = mailbox.nextCursor;
     if (nextCursor != null && nextCursor.isNotEmpty) {
       await repository.saveMailboxCursor(localDevice.deviceId, nextCursor);
     }
+    return MessengerPullResult(
+      receivedMessages: receivedMessages,
+      messageRequests: messageRequests,
+    );
   }
 
   Future<List<MessengerMessageRecord>> messagesForConversation(
@@ -151,7 +163,7 @@ class MessengerSyncService {
     return repository.messagesForConversation(conversationId);
   }
 
-  Future<void> _decryptAndStore(
+  Future<_DecryptStoreResult> _decryptAndStore(
     MessengerDeviceRecord localDevice,
     MessengerMailboxMessage message,
   ) async {
@@ -182,6 +194,10 @@ class MessengerSyncService {
           updatedAt: updatedAt,
         ),
       );
+      final isRequest = await _recordMessageRequestIfNeeded(
+        message.senderDid,
+        updatedAt,
+      );
       await repository.saveSession(
         MessengerSessionRecord(
           localDeviceId: localDevice.deviceId,
@@ -201,6 +217,7 @@ class MessengerSyncService {
           'recipient_device_id': localDevice.deviceId,
         }),
       );
+      return _DecryptStoreResult(received: true, messageRequest: isRequest);
     } catch (_) {
       final failedAt = now().toUtc();
       await repository.saveMessage(
@@ -215,7 +232,44 @@ class MessengerSyncService {
           updatedAt: failedAt,
         ),
       );
+      return const _DecryptStoreResult(received: false, messageRequest: false);
     }
+  }
+
+  Future<bool> _recordMessageRequestIfNeeded(
+    String senderDid,
+    DateTime timestamp,
+  ) async {
+    final contacts = contactRepository;
+    if (contacts == null) return false;
+    final existing = await contacts.contactForDid(senderDid);
+    if (existing == null) {
+      await contacts.upsertContact(
+        ContactRecord(
+          subjectDid: senderDid,
+          relationship: ContactRelationship.invite,
+          source: 'message_request',
+          trustState: ContactTrustState.unverified,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          lastResolvedAt: timestamp,
+        ),
+      );
+      return true;
+    }
+    if (existing.relationship == ContactRelationship.unknown) {
+      await contacts.upsertContact(
+        existing.copyWith(
+          relationship: ContactRelationship.invite,
+          source: 'message_request',
+          updatedAt: timestamp,
+          lastResolvedAt: timestamp,
+        ),
+      );
+      return true;
+    }
+    return existing.relationship == ContactRelationship.invite ||
+        existing.source == 'message_request';
   }
 
   MessengerDeviceBundle _bundleFromRecord(MessengerDeviceRecord record) {
@@ -271,4 +325,24 @@ class MessengerSyncService {
     }
     return jsonEncode(value);
   }
+}
+
+class MessengerPullResult {
+  const MessengerPullResult({
+    required this.receivedMessages,
+    required this.messageRequests,
+  });
+
+  final int receivedMessages;
+  final int messageRequests;
+}
+
+class _DecryptStoreResult {
+  const _DecryptStoreResult({
+    required this.received,
+    required this.messageRequest,
+  });
+
+  final bool received;
+  final bool messageRequest;
 }

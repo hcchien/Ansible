@@ -15,7 +15,12 @@ import '../services/atproto_client.dart';
 import '../services/ai/ai_provider_config_store.dart';
 import '../services/app_locale_controller.dart';
 import '../services/app_sync_service.dart';
+import '../services/contact_resolver.dart';
 import '../services/contact_source_sync_service.dart';
+import '../services/messenger_contact_resolver.dart';
+import '../services/messenger_device_service.dart';
+import '../services/messenger_relay_client.dart';
+import '../services/messenger_sync_service.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/content_publication_service.dart';
@@ -31,6 +36,7 @@ import 'murmur_screen.dart';
 import 'note_editor_screen.dart';
 import 'note_workspace_screen.dart';
 import 'posts_view_screen.dart';
+import 'contact_picker_screen.dart' show ContactInputResolver;
 import 'inbox_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
@@ -73,11 +79,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final DriftFollowRepository _followRepo;
   late final DriftContactRepository _contactRepo;
   late final DriftMessengerRepository _messengerRepo;
+  late final MessengerRelayClient _messengerRelayClient;
+  late final MessengerDeviceService _messengerDeviceService;
+  late final MessengerSyncService _messengerSyncService;
+  late final MessengerContactResolver _messengerContactResolver;
+  late final ContactResolver _contactResolver;
   late final DriftRemoteNodeRepository _remoteNodeRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
   late final DriftContentItemRepository _contentItemRepo;
   late final DriftContentRelationRepository _contentRelationRepo;
   late final DriftPublicationRepository _publicationRepo;
+  late final DriftForumHostRepository _forumHostRepo;
   late final DriftHostedBoardRepository _hostedBoardRepo;
   late final DriftAiProviderConfigRepository _aiProviderConfigRepo;
   late final AiProviderConfigStore _aiProviderConfigStore;
@@ -95,6 +107,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   bool _loading = true;
   bool _syncing = false;
   bool _pullRefreshing = false;
+  bool _hasActiveMessengerRelay = false;
   NetworkStatus? _lastNetworkStatus;
   DateTime? _lastAutoSyncAt;
   String? _selectedBoardId;
@@ -112,11 +125,29 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _followRepo = DriftFollowRepository(widget.db);
     _contactRepo = DriftContactRepository(widget.db);
     _messengerRepo = DriftMessengerRepository(widget.db);
+    _messengerRelayClient = MessengerRelayClient();
+    _messengerDeviceService = MessengerDeviceService(
+      repository: _messengerRepo,
+      relayClient: _messengerRelayClient,
+    );
+    _messengerSyncService = MessengerSyncService(
+      repository: _messengerRepo,
+      contactRepository: _contactRepo,
+      deviceService: _messengerDeviceService,
+      relayClient: _messengerRelayClient,
+      crypto: _messengerDeviceService.crypto,
+      didSigner: DidSignerImpl(),
+    );
+    _messengerContactResolver = MessengerContactResolver(
+      relayClient: _messengerRelayClient,
+    );
+    _contactResolver = ContactResolver(repository: _contactRepo);
     _remoteNodeRepo = DriftRemoteNodeRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _contentItemRepo = DriftContentItemRepository(widget.db);
     _contentRelationRepo = DriftContentRelationRepository(widget.db);
     _publicationRepo = DriftPublicationRepository(widget.db);
+    _forumHostRepo = DriftForumHostRepository(widget.db);
     _hostedBoardRepo = DriftHostedBoardRepository(widget.db);
     _aiProviderConfigRepo = DriftAiProviderConfigRepository(widget.db);
     _aiProviderConfigStore = AiProviderConfigStore(
@@ -146,6 +177,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (_ownsNetworkStatusService) {
       _networkStatusService.dispose();
     }
+    _messengerRelayClient.close();
     super.dispose();
   }
 
@@ -164,6 +196,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       contactRepository: _contactRepo,
       messengerRepository: _messengerRepo,
     ).syncForIdentity(widget.did);
+    final hasActiveRelay = (await _forumHostRepo.listActive()).isNotEmpty;
     final boards = await _boardRepo.list();
     final contentItems = await _contentItemRepo.list(authorDid: widget.did);
     final murmurReferenceCounts = <String, int>{};
@@ -240,6 +273,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _posts = postCards;
       _contentItems = contentItems;
       _murmurReferenceCounts = murmurReferenceCounts;
+      _hasActiveMessengerRelay = hasActiveRelay;
       _loading = false;
     });
   }
@@ -846,6 +880,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 localeController: widget.localeController,
                 opsQueueRepo: _opsQueueRepo,
                 opsDispatchService: _opsDispatchService,
+                messengerSyncService: _messengerSyncService,
+                contactAvailabilityResolver:
+                    _messengerContactResolver.resolveAvailability,
+                contactInputResolver: _contactResolver.resolveInput,
+                hasActiveRelay: _hasActiveMessengerRelay,
                 onFlushPendingOps: _flushPendingOps,
                 onSync: () => _runHeaderSync(),
                 syncing: _syncing,
@@ -1141,6 +1180,10 @@ class _MainPanel extends StatelessWidget {
     this.localeController,
     required this.opsQueueRepo,
     required this.opsDispatchService,
+    required this.messengerSyncService,
+    required this.contactAvailabilityResolver,
+    required this.contactInputResolver,
+    required this.hasActiveRelay,
     required this.onFlushPendingOps,
     required this.onSync,
     required this.syncing,
@@ -1174,6 +1217,10 @@ class _MainPanel extends StatelessWidget {
   final AppLocaleController? localeController;
   final OpsQueueRepository opsQueueRepo;
   final OpsDispatchService opsDispatchService;
+  final MessengerSyncService messengerSyncService;
+  final ContactAvailabilityResolver contactAvailabilityResolver;
+  final ContactInputResolver contactInputResolver;
+  final bool hasActiveRelay;
   final Future<void> Function() onFlushPendingOps;
   final Future<void> Function() onSync;
   final bool syncing;
@@ -1224,6 +1271,10 @@ class _MainPanel extends StatelessWidget {
               syncing: syncing,
               networkStatusService: networkStatusService,
               contentItems: contentItems,
+              messengerSyncService: messengerSyncService,
+              contactAvailabilityResolver: contactAvailabilityResolver,
+              contactInputResolver: contactInputResolver,
+              hasActiveRelay: hasActiveRelay,
             ),
             Expanded(
               child: Padding(
@@ -1448,6 +1499,10 @@ class _TopBar extends StatelessWidget {
     required this.syncing,
     required this.networkStatusService,
     required this.contentItems,
+    required this.messengerSyncService,
+    required this.contactAvailabilityResolver,
+    required this.contactInputResolver,
+    required this.hasActiveRelay,
   });
 
   final VoidCallback? onClearIdentity;
@@ -1459,6 +1514,10 @@ class _TopBar extends StatelessWidget {
   final bool syncing;
   final NetworkStatusMonitor networkStatusService;
   final List<ContentItem> contentItems;
+  final MessengerSyncService messengerSyncService;
+  final ContactAvailabilityResolver contactAvailabilityResolver;
+  final ContactInputResolver contactInputResolver;
+  final bool hasActiveRelay;
 
   String get _truncatedDid {
     if (did.length <= 24) return did;
@@ -1524,6 +1583,11 @@ class _TopBar extends StatelessWidget {
                       builder: (_) => InboxScreen(
                         repository: DriftMessengerRepository(db),
                         contactRepository: DriftContactRepository(db),
+                        messengerService: messengerSyncService,
+                        senderDid: did,
+                        relayConfigured: hasActiveRelay,
+                        resolveContactAvailability: contactAvailabilityResolver,
+                        resolveContactInput: contactInputResolver,
                       ),
                     ),
                   );

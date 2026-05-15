@@ -140,6 +140,51 @@ void main() {
     expect(messages.single.status, MessengerMessageStatus.decryptFailed);
     expect(relay.ackedMessageIds, isEmpty);
   });
+
+  test('marks unknown inbound senders as message requests', () async {
+    final relay = _FakeMessengerRelayClient();
+    final crypto = _FakeMessengerCryptoBridge();
+    final repository = _InMemoryMessengerRepository();
+    final contacts = _FakeContactRepository();
+    final device = _deviceRecord(
+      subjectDid: 'did:plc:bob',
+      deviceId: 'msgdev_bob',
+    );
+    await repository.upsertLocalDevice(device);
+    relay.queueMessage(
+      const MessengerMailboxMessage(
+        messageId: 'msg_request',
+        senderDid: 'did:plc:alice',
+        senderDeviceId: 'msgdev_alice',
+        recipientDid: 'did:plc:bob',
+        recipientDeviceId: 'msgdev_bob',
+        ciphertextType: 'pre_key_signal_message',
+        ciphertext: 'aGVsbG8gYm9i',
+        protocolVersion: 'signal-mvp-v1',
+      ),
+    );
+    final service = MessengerSyncService(
+      repository: repository,
+      contactRepository: contacts,
+      deviceService: MessengerDeviceService(
+        repository: repository,
+        crypto: crypto,
+        relayClient: relay,
+      ),
+      relayClient: relay,
+      crypto: crypto,
+      didSigner: _FakeDidSigner(),
+      now: () => DateTime.utc(2026, 5, 15),
+    );
+
+    final result = await service.pullAndDecrypt(recipientDid: 'did:plc:bob');
+
+    expect(result.receivedMessages, 1);
+    expect(result.messageRequests, 1);
+    final contact = await contacts.contactForDid('did:plc:alice');
+    expect(contact!.relationship, ContactRelationship.invite);
+    expect(contact.source, 'message_request');
+  });
 }
 
 MessengerDeviceRecord _deviceRecord({
@@ -418,5 +463,50 @@ class _InMemoryMessengerRepository implements MessengerRepository {
   @override
   Future<void> saveMailboxCursor(String localDeviceId, String cursor) async {
     cursors[localDeviceId] = cursor;
+  }
+}
+
+class _FakeContactRepository implements ContactRepository {
+  final contacts = <String, ContactRecord>{};
+
+  @override
+  Future<ContactRecord?> contactForDid(String subjectDid) async {
+    return contacts[subjectDid];
+  }
+
+  @override
+  Future<ContactRecord?> contactForHandle(String handle) async {
+    return contacts.values
+        .where((contact) => contact.handle == handle)
+        .firstOrNull;
+  }
+
+  @override
+  Future<List<ContactRecord>> listContacts() async {
+    return contacts.values.toList(growable: false);
+  }
+
+  @override
+  Future<ContactRecord> recordHandleResolution({
+    required String handle,
+    required String resolvedDid,
+    required DateTime resolvedAt,
+  }) async {
+    final contact = ContactRecord(
+      subjectDid: resolvedDid,
+      handle: handle,
+      source: 'manual',
+      trustState: ContactTrustState.known,
+      createdAt: resolvedAt,
+      updatedAt: resolvedAt,
+      lastResolvedAt: resolvedAt,
+    );
+    await upsertContact(contact);
+    return contact;
+  }
+
+  @override
+  Future<void> upsertContact(ContactRecord contact) async {
+    contacts[contact.subjectDid] = contact;
   }
 }

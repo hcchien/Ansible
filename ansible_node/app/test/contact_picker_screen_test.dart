@@ -31,4 +31,37 @@ void main() {
     await tester.tap(find.text('Alice'));
     expect(selectedDid, 'did:plc:alice');
   });
+
+  testWidgets('contact picker resolves typed DID into selectable contact', (
+    tester,
+  ) async {
+    String? selectedDid;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ContactPickerScreen(
+          contacts: const [],
+          onResolveInput: (input) async {
+            return ContactRecord(
+              subjectDid: input,
+              messengerAvailability: MessengerAvailability.available,
+              createdAt: DateTime.utc(2026, 5, 15),
+              updatedAt: DateTime.utc(2026, 5, 15),
+            );
+          },
+          onContactSelected: (contact) => selectedDid = contact.subjectDid,
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('contact-id-input')),
+      'did:plc:bob',
+    );
+    await tester.tap(find.byTooltip('搜尋 ID'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('did:plc:bob'), findsWidgets);
+    await tester.tap(find.text('did:plc:bob').last);
+    expect(selectedDid, 'did:plc:bob');
+  });
 }

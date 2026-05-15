@@ -85,6 +85,152 @@ void main() {
     expect(find.text('Bob'), findsOneWidget);
     expect(find.text('did:plc:bob'), findsNothing);
   });
+
+  testWidgets('compose opens contact picker and routes selected contact', (
+    tester,
+  ) async {
+    final repository = _FakeMessengerRepository();
+    final contacts = _FakeContactRepository({
+      'did:plc:bob': ContactRecord(
+        subjectDid: 'did:plc:bob',
+        handle: 'bob.elix.app',
+        displayName: 'Bob',
+        createdAt: DateTime.utc(2026, 5, 14),
+        updatedAt: DateTime.utc(2026, 5, 14),
+      ),
+    });
+
+    String? selectedDid;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InboxScreen(
+          repository: repository,
+          contactRepository: contacts,
+          resolveContactAvailability: (contact) async {
+            return MessengerAvailability.available;
+          },
+          threadBuilder: (context, contact) {
+            selectedDid = contact.subjectDid;
+            return Scaffold(body: Text('thread:${contact.subjectDid}'));
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('新增訊息'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bob'), findsOneWidget);
+    expect(find.text('可私訊'), findsOneWidget);
+    expect(
+      (await contacts.contactForDid('did:plc:bob'))!.messengerAvailability,
+      MessengerAvailability.available,
+    );
+
+    await tester.tap(find.text('Bob'));
+    await tester.pumpAndSettle();
+
+    expect(selectedDid, 'did:plc:bob');
+    expect(find.text('thread:did:plc:bob'), findsOneWidget);
+  });
+
+  testWidgets('compose prompts for relay setup when relay is not configured', (
+    tester,
+  ) async {
+    final repository = _FakeMessengerRepository();
+    final contacts = _FakeContactRepository({
+      'did:plc:bob': ContactRecord(
+        subjectDid: 'did:plc:bob',
+        handle: 'bob.elix.app',
+        displayName: 'Bob',
+        messengerAvailability: MessengerAvailability.available,
+        createdAt: DateTime.utc(2026, 5, 14),
+        updatedAt: DateTime.utc(2026, 5, 14),
+      ),
+    });
+
+    var openedThread = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InboxScreen(
+          repository: repository,
+          contactRepository: contacts,
+          relayConfigured: false,
+          threadBuilder: (context, contact) {
+            openedThread = true;
+            return const Scaffold(body: Text('thread'));
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('新增訊息'));
+    await tester.pump();
+
+    expect(find.text('請先設定 Relay Server'), findsOneWidget);
+    expect(find.text('Bob'), findsNothing);
+    expect(openedThread, isFalse);
+  });
+
+  testWidgets('inbox lets user accept or block message requests', (
+    tester,
+  ) async {
+    final repository = _FakeMessengerRepository(
+      conversations: [
+        MessengerConversationRecord(
+          conversationId: 'did:plc:stranger',
+          peerDid: 'did:plc:stranger',
+          createdAt: DateTime.utc(2026, 5, 14, 8),
+          updatedAt: DateTime.utc(2026, 5, 14, 9),
+          lastMessageAt: DateTime.utc(2026, 5, 14, 9),
+        ),
+      ],
+      messages: {
+        'did:plc:stranger': [
+          MessengerMessageRecord(
+            messageId: 'msg_1',
+            conversationId: 'did:plc:stranger',
+            direction: MessengerMessageDirection.inbound,
+            status: MessengerMessageStatus.received,
+            plaintext: 'hello',
+            createdAt: DateTime.utc(2026, 5, 14, 9),
+          ),
+        ],
+      },
+    );
+    final contacts = _FakeContactRepository({
+      'did:plc:stranger': ContactRecord(
+        subjectDid: 'did:plc:stranger',
+        relationship: ContactRelationship.invite,
+        source: 'message_request',
+        createdAt: DateTime.utc(2026, 5, 14),
+        updatedAt: DateTime.utc(2026, 5, 14),
+      ),
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InboxScreen(
+          repository: repository,
+          contactRepository: contacts,
+          threadBuilder: (context, contact) =>
+              const Scaffold(body: Text('thread')),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('訊息請求'), findsOneWidget);
+    await tester.tap(find.text('接受'));
+    await tester.pump();
+
+    expect(
+      (await contacts.contactForDid('did:plc:stranger'))!.relationship,
+      ContactRelationship.conversation,
+    );
+  });
 }
 
 class _FakeMessengerRepository implements MessengerRepository {
