@@ -21,6 +21,8 @@ import 'services/web_session_approval_client.dart';
 import 'services/web_session_grant_service.dart';
 import 'theme/ansible_design.dart';
 
+final ElixThemeController themeController = ElixThemeController();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -29,6 +31,9 @@ void main() async {
   // real .so / .dylib via flutter_rust_bridge.
   await RustLib.init();
   await _resetLocalIdentityIfRequested();
+
+  // Load persisted theme before the first frame.
+  await themeController.load();
 
   // Initialise local SQLite store (Drift schema v7).
   // No username/password — identity is DID-based.
@@ -178,13 +183,15 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _localeController,
+      animation: Listenable.merge([_localeController, themeController]),
       builder: (context, _) {
         return MaterialApp(
           navigatorKey: _navigatorKey,
           scaffoldMessengerKey: _scaffoldMessengerKey,
           title: AnsibleDesign.brandName,
           theme: AnsibleDesign.theme(),
+          darkTheme: AnsibleDesign.darkTheme(),
+          themeMode: themeController.mode,
           locale: _localeController.locale,
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -197,7 +204,19 @@ class _MyAppState extends State<MyApp> {
               data: mediaQuery.copyWith(
                 textScaler: TextScaler.linear(effectiveScale),
               ),
-              child: child ?? const SizedBox.shrink(),
+              child: Stack(
+                children: [
+                  child ?? const SizedBox.shrink(),
+                  // Floating theme toggle pill — bottom-right corner
+                  Positioned(
+                    right: 16,
+                    bottom: mediaQuery.padding.bottom + 16,
+                    child: SafeArea(
+                      child: ElixThemePill(controller: themeController),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
           home: _loadingIdentity

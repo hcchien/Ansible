@@ -1,20 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Elix Forest Letter Design System
+// Light theme: Bone Goose  ·  Dark theme: Pine
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
   static const brandName = 'Elix';
-  static const paper = Color(0xFFFAF6EC);
-  static const paperElev = Color(0xFFF0EBDA);
-  static const paperDeep = Color(0xFFE8E1CF);
-  static const ink = Color(0xFF1A1815);
-  static const inkMuted = Color(0xFF3A3530);
-  static const inkFaint = Color(0xFF8A847A);
-  static const rule = Color(0xFFD9D2BE);
-  static const ruleSoft = Color(0xFFE4DDC8);
-  static const accent = Color(0xFFB97A3C);
-  static const accentSoft = Color(0xFFF0EBDA);
-  static const spore = Color(0xFF4A6B5E);
-  static const danger = Color(0xFF7A3E1E);
 
+  // ── Light (Bone Goose) ────────────────────────────────────────────────────
+  static const paper = Color(0xFFFBF7DC);
+  static const paperElev = Color(0xFFF4EEC6);
+  static const paperDeep = Color(0xFFE8DEAA);
+  static const ink = Color(0xFF1F2E20);
+  static const inkMuted = Color(0xFF3D4E3D);
+  static const inkFaint = Color(0xFF88826E);
+  static const rule = Color(0xFFD6CB94);
+  static const ruleSoft = Color(0xFFE3DAB0);
+  static const accent = Color(0xFFB88C2E); // ochre (trust dot)
+  static const accentSoft = Color(0xFFD6B66B); // lighter ochre
+  static const spore = Color(0xFF5A6E3A); // Moss
+  static const moss = Color(0xFF5A6E3A); // alias — Forest Letter "moss"
+  static const danger = Color(0xFF7E4A1E); // ember
+  static const ember = Color(0xFF7E4A1E); // alias — Forest Letter "ember"
+  static const ochre = Color(0xFFB88C2E); // alias — Forest Letter "ochre"
+
+  // ── Dark (Pine) ───────────────────────────────────────────────────────────
+  static const darkPaper = Color(0xFF0E1A0F);
+  static const darkPaperElev = Color(0xFF16221A);
+  static const darkPaperDeep = Color(0xFF1F2D24);
+  static const darkInk = Color(0xFFE8E0BE);
+  static const darkInkMuted = Color(0xFFB8B49A);
+  static const darkInkFaint = Color(0xFF7C8071);
+  static const darkRule = Color(0xFF2A3526);
+  static const darkRuleSoft = Color(0xFF1F291E);
+  static const darkOchre = Color(0xFFD9AB4E);
+  static const darkMoss = Color(0xFF93A971);
+
+  // ── Typography ────────────────────────────────────────────────────────────
   static const serif = 'Noto Serif TC';
   static const serifEn = 'Newsreader';
   static const sans = 'Noto Sans TC';
@@ -32,6 +56,7 @@ class AnsibleDesign {
     'MingLiU',
   ];
 
+  // ── Light theme ───────────────────────────────────────────────────────────
   static ThemeData theme() {
     final scheme = ColorScheme.fromSeed(
       seedColor: accent,
@@ -132,7 +157,145 @@ class AnsibleDesign {
       ),
     );
   }
+
+  // ── Dark theme (Pine) ─────────────────────────────────────────────────────
+  static ThemeData darkTheme() {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: darkOchre,
+      brightness: Brightness.dark,
+      primary: darkInk,
+      onPrimary: darkPaper,
+      secondary: darkOchre,
+      onSecondary: darkPaper,
+      surface: darkPaper,
+      onSurface: darkInk,
+      surfaceContainerHighest: darkPaperElev,
+      outline: darkRule,
+      error: ember,
+    );
+
+    final base = ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: darkPaper,
+      fontFamily: serif,
+      fontFamilyFallback: fallback,
+    );
+
+    return base.copyWith(
+      textTheme: base.textTheme.apply(
+        bodyColor: darkInk,
+        displayColor: darkInk,
+        fontFamily: serif,
+        fontFamilyFallback: fallback,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: darkPaper,
+        foregroundColor: darkInk,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerTheme:
+          const DividerThemeData(color: darkRuleSoft, thickness: 0.5),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: darkPaperElev,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: darkRule),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: darkRule),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: darkInk),
+        ),
+        labelStyle: const TextStyle(color: darkInkMuted),
+        hintStyle: const TextStyle(
+          color: darkInkFaint,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: darkInk,
+          foregroundColor: darkPaper,
+          shape: const StadiumBorder(),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          textStyle: const TextStyle(
+            fontFamily: serif,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.6,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: darkInk,
+          side: const BorderSide(color: darkRule, width: 0.5),
+          shape: const StadiumBorder(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: darkInkMuted),
+      ),
+      iconTheme: const IconThemeData(color: darkInkMuted),
+      cardTheme: CardThemeData(
+        color: darkPaperElev,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: const BorderSide(color: darkRuleSoft, width: 0.5),
+        ),
+      ),
+      chipTheme: base.chipTheme.copyWith(
+        backgroundColor: darkPaperElev,
+        selectedColor: darkPaperDeep,
+        side: const BorderSide(color: darkRule, width: 0.5),
+        labelStyle:
+            const TextStyle(color: darkInkMuted, fontFamily: mono),
+      ),
+    );
+  }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ElixThemeController — persists ThemeMode to SharedPreferences
+// ─────────────────────────────────────────────────────────────────────────────
+
+class ElixThemeController extends ChangeNotifier {
+  static const _key = 'elix-theme';
+
+  ThemeMode _mode = ThemeMode.light;
+  ThemeMode get mode => _mode;
+  bool get isDark => _mode == ThemeMode.dark;
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_key);
+    if (saved == 'dark') {
+      _mode = ThemeMode.dark;
+    } else {
+      _mode = ThemeMode.light;
+    }
+    notifyListeners();
+  }
+
+  Future<void> toggle() async {
+    _mode = isDark ? ThemeMode.light : ThemeMode.dark;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, isDark ? 'dark' : 'light');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Existing components — kept intact
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleMark extends StatelessWidget {
   const AnsibleMark({super.key, this.size = 24, this.color});
@@ -343,6 +506,238 @@ class AnsibleSectionHead extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// New Elix UI components
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Trust badge pill. [kind] is one of: 'PK', 'DID', 'WEB', 'BASIC'.
+class ElixSignedPill extends StatelessWidget {
+  const ElixSignedPill({super.key, required this.kind});
+
+  final String kind; // 'PK' | 'DID' | 'WEB' | 'BASIC'
+
+  Color _bg(bool dark) {
+    switch (kind) {
+      case 'PK':
+        return dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+      case 'DID':
+        return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
+      case 'WEB':
+        return dark
+            ? AnsibleDesign.darkPaperElev
+            : AnsibleDesign.paperElev;
+      default: // BASIC
+        return dark
+            ? AnsibleDesign.darkPaperDeep
+            : AnsibleDesign.paperDeep;
+    }
+  }
+
+  Color _fg(bool dark) {
+    switch (kind) {
+      case 'PK':
+      case 'DID':
+        return dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+      default:
+        return dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: _bg(dark),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '✓',
+            style: TextStyle(
+              fontSize: 9,
+              color: _fg(dark),
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            kind,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+              color: _fg(dark),
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Why this post" mono-caps label row.
+/// [kind] is one of: 'follow', 'board', 'circle', 'murmur', 'note'.
+class ElixSourceLabel extends StatelessWidget {
+  const ElixSourceLabel({super.key, required this.kind, this.label});
+
+  final String kind; // 'follow' | 'board' | 'circle' | 'murmur' | 'note'
+  final String? label;
+
+  static const _icons = {
+    'follow': '↳',
+    'board': '▦',
+    'circle': '◎',
+    'murmur': '∿',
+    'note': '✎',
+  };
+
+  Color _color(bool dark) {
+    switch (kind) {
+      case 'board':
+        return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
+      case 'circle':
+        return dark ? AnsibleDesign.ember : AnsibleDesign.ember;
+      default:
+        return dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final color = _color(dark);
+    final icon = _icons[kind] ?? '·';
+    final text = label ?? kind.toUpperCase();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(icon, style: TextStyle(fontSize: 10, color: color, height: 1)),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: AnsibleDesign.mono,
+            fontSize: 9.5,
+            letterSpacing: 1.2,
+            color: color,
+            height: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Colored audience chip.
+/// [kind]: 'followers' (ochre), 'board' (moss), 'circle' (ember/warning).
+class AudienceChip extends StatelessWidget {
+  const AudienceChip({super.key, required this.label, required this.kind});
+
+  final String label;
+  final String kind; // 'followers' | 'board' | 'circle'
+
+  Color _bg(bool dark) {
+    switch (kind) {
+      case 'followers':
+        return (dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre)
+            .withValues(alpha: 0.15);
+      case 'board':
+        return (dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss)
+            .withValues(alpha: 0.15);
+      case 'circle':
+        return AnsibleDesign.ember.withValues(alpha: 0.15);
+      default:
+        return dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    }
+  }
+
+  Color _fg(bool dark) {
+    switch (kind) {
+      case 'followers':
+        return dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+      case 'board':
+        return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
+      case 'circle':
+        return AnsibleDesign.ember;
+      default:
+        return dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: _bg(dark),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: AnsibleDesign.mono,
+          fontSize: 10,
+          letterSpacing: 0.8,
+          color: _fg(dark),
+          height: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating theme toggle pill: "PAPER · LIGHT" / "INK · DARK".
+class ElixThemePill extends StatelessWidget {
+  const ElixThemePill({super.key, required this.controller});
+
+  final ElixThemeController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final dark = controller.isDark;
+        final bg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+        final fg = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+        final border =
+            dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+        final label = dark ? 'INK · DARK' : 'PAPER · LIGHT';
+
+        return GestureDetector(
+          onTap: controller.toggle,
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: border, width: 0.5),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 10,
+                letterSpacing: 1.2,
+                color: fg,
+                height: 1,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
