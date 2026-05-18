@@ -855,8 +855,8 @@ class DiaryEntryCard extends StatelessWidget {
     final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
     final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
     final pipColor = kind == 'murmur'
-        ? (dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre)
-        : (dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss);
+        ? AnsibleDesign.ember
+        : (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink);
 
     return GestureDetector(
       onTap: onTap,
