@@ -51,7 +51,7 @@ enum _ElixRoom { personal, forum, circle }
 // Within the "圈內" room, a sub-selection between murmur and notes.
 enum _CircleTab { murmur, notes }
 
-enum _PersonalFilter { all, notes, murmurs, threads }
+// _PersonalFilter removed — personal board no longer uses filter tabs (A·01 design)
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -120,7 +120,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   FeedFilter _feedFilter = FeedFilter.all;
   _ElixRoom _selectedRoom = _ElixRoom.personal;
   _CircleTab _selectedCircleTab = _CircleTab.murmur;
-  _PersonalFilter _selectedPersonalFilter = _PersonalFilter.all;
   final _uuid = const Uuid();
 
   @override
@@ -310,10 +309,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   void _selectCircleTab(_CircleTab tab) {
     setState(() => _selectedCircleTab = tab);
-  }
-
-  void _selectPersonalFilter(_PersonalFilter f) {
-    setState(() => _selectedPersonalFilter = f);
   }
 
   Future<void> _startAiTransformation() async {
@@ -923,8 +918,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onRoomChanged: _selectRoom,
                 selectedCircleTab: _selectedCircleTab,
                 onCircleTabChanged: _selectCircleTab,
-                selectedPersonalFilter: _selectedPersonalFilter,
-                onPersonalFilterChanged: _selectPersonalFilter,
                 contentItemRepository: _contentItemRepo,
                 contentItems: _contentItems,
                 murmurReferenceCounts: _murmurReferenceCounts,
@@ -1225,8 +1218,6 @@ class _MainPanel extends StatelessWidget {
     required this.onRoomChanged,
     required this.selectedCircleTab,
     required this.onCircleTabChanged,
-    required this.selectedPersonalFilter,
-    required this.onPersonalFilterChanged,
     required this.contentItemRepository,
     required this.contentItems,
     required this.murmurReferenceCounts,
@@ -1266,8 +1257,6 @@ class _MainPanel extends StatelessWidget {
   final ValueChanged<_ElixRoom> onRoomChanged;
   final _CircleTab selectedCircleTab;
   final ValueChanged<_CircleTab> onCircleTabChanged;
-  final _PersonalFilter selectedPersonalFilter;
-  final ValueChanged<_PersonalFilter> onPersonalFilterChanged;
   final ContentItemRepository contentItemRepository;
   final List<ContentItem> contentItems;
   final Map<String, int> murmurReferenceCounts;
@@ -1291,6 +1280,8 @@ class _MainPanel extends StatelessWidget {
   List<ElixRoomItem> _roomItems(_ElixRoom current) {
     final noteCount = contentItems.where((i) => i.mode == ContentMode.note).length;
     final murmurCount = contentItems.where((i) => i.mode == ContentMode.murmur).length;
+    // A·02 design: only 個人版 / 討論區 / 設定 appear in the dropdown.
+    // 圈內 remains navigable programmatically but is NOT shown in the picker.
     return [
       ElixRoomItem(
         id: 'personal',
@@ -1304,11 +1295,6 @@ class _MainPanel extends StatelessWidget {
         label: '討論區',
         active: current == _ElixRoom.forum,
         badge: posts.isNotEmpty ? posts.length : null,
-      ),
-      ElixRoomItem(
-        id: 'circle',
-        label: '圈內',
-        active: current == _ElixRoom.circle,
       ),
       const ElixRoomItem(id: 'settings', label: '設定'),
     ];
@@ -1336,21 +1322,32 @@ class _MainPanel extends StatelessWidget {
     }
   }
 
-  // ── Personal board (個人版) ─────────────────────────────────────────────
+  // ── Personal board (個人版) — A·01 spec ──────────────────────────────────
   Widget _buildPersonalBoard(BuildContext context, bool compact) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final fgColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
     final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
     final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
-    final borderColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final bgSoftColor = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
     final borderSoft = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
-    final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+    final emberColor = AnsibleDesign.ember;
 
+    // A·01 time-ago formatting — matches design's "昨 14:36 / 前天 / MM.DD" style
     String timeAgo(DateTime dt) {
-      final diff = DateTime.now().difference(dt);
+      final now = DateTime.now();
+      final diff = now.difference(dt);
       if (diff.inMinutes < 1) return '剛剛';
-      if (diff.inHours < 1) return '${diff.inMinutes} 分鐘前';
-      if (diff.inDays < 1) return '${diff.inHours} 小時前';
+      if (diff.inDays < 1) {
+        final hh = dt.hour.toString().padLeft(2, '0');
+        final mm = dt.minute.toString().padLeft(2, '0');
+        return diff.inHours < 1 ? '${diff.inMinutes}m' : '今 $hh:$mm';
+      }
+      if (diff.inDays == 1) {
+        final hh = dt.hour.toString().padLeft(2, '0');
+        final mm = dt.minute.toString().padLeft(2, '0');
+        return '昨 $hh:$mm';
+      }
+      if (diff.inDays == 2) return '前天';
       if (diff.inDays < 7) return '${diff.inDays} 天前';
       return '${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
     }
@@ -1358,120 +1355,87 @@ class _MainPanel extends StatelessWidget {
     final allSorted = [...contentItems]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final notes = allSorted.where((i) => i.mode == ContentMode.note).toList();
-    final murmurs = allSorted.where((i) => i.mode == ContentMode.murmur).toList();
+    // Split into this-week and earlier
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStartDay = DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final thisWeek = allSorted.where((i) => i.createdAt.isAfter(weekStartDay)).toList();
+    final earlier = allSorted.where((i) => !i.createdAt.isAfter(weekStartDay)).toList();
 
-    // Filter logic
-    final List<ContentItem> displayNotes;
-    final List<ContentItem> displayMurmurs;
-    switch (selectedPersonalFilter) {
-      case _PersonalFilter.notes:
-        displayNotes = notes;
-        displayMurmurs = [];
-      case _PersonalFilter.murmurs:
-        displayNotes = [];
-        displayMurmurs = murmurs;
-      case _PersonalFilter.threads:
-        displayNotes = [];
-        displayMurmurs = [];
-      case _PersonalFilter.all:
-        displayNotes = notes;
-        displayMurmurs = murmurs;
-    }
+    // ── diary entry card (A·01 style) ──
+    // Shows: pip + type-label + time on top row, then title (for notes), then italic preview
+    Widget diaryCard(ContentItem item) {
+      final isNote = item.mode == ContentMode.note;
+      final pipColor = isNote ? fgColor : emberColor;
+      final typeLabel = isNote
+          ? 'NOTE${item.body.isNotEmpty ? "" : ""}'
+          : 'MURMUR';
 
-    // ── filter tab helper ──
-    Widget filterTab(String zh, String en, _PersonalFilter filter) {
-      final on = selectedPersonalFilter == filter;
-      return GestureDetector(
-        onTap: () => onPersonalFilterChanged(filter),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(zh, style: TextStyle(
-              fontFamily: AnsibleDesign.serif,
-              fontSize: 13,
-              color: on ? fgColor : faintColor,
-            )),
-            const SizedBox(height: 2),
-            Text(en, style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 8,
-              letterSpacing: 1.6,
-              color: faintColor,
-            )),
-            const SizedBox(height: 6),
-            Container(
-              height: 1,
-              width: double.infinity,
-              color: on ? fgColor : Colors.transparent,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // ── note row ──
-    Widget noteRow(ContentItem item, bool isLast) {
-      final murmurRefs = murmurReferenceCounts[item.id] ?? 0;
-      final vizLabel = item.visibility == ContentVisibility.private
-          ? 'PRIVATE'
-          : item.visibility == ContentVisibility.public
-          ? 'PUBLIC'
-          : 'UNLISTED';
-      final vizDot = item.visibility == ContentVisibility.private
-          ? faintColor
-          : item.visibility == ContentVisibility.public
-          ? ochreColor
-          : AnsibleDesign.moss;
       return GestureDetector(
         onTap: () {
           onRoomChanged(_ElixRoom.circle);
-          onCircleTabChanged(_CircleTab.notes);
+          onCircleTabChanged(isNote ? _CircleTab.notes : _CircleTab.murmur);
         },
         behavior: HitTestBehavior.opaque,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            border: isLast
-                ? null
-                : Border(bottom: BorderSide(color: borderSoft, width: 0.5)),
+            color: dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderSoft, width: 0.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Meta row: pip · TYPE · time
               Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Expanded(
-                    child: Text(
-                      (item.title == null || item.title!.isEmpty) ? '（無標題）' : item.title!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AnsibleDesign.serif,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w500,
-                        color: fgColor,
-                        letterSpacing: 0.1,
-                      ),
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: pipColor),
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    typeLabel,
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 8.5,
+                      letterSpacing: 1.4,
+                      color: faintColor,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const Spacer(),
                   Text(
                     timeAgo(item.createdAt),
                     style: TextStyle(
                       fontFamily: AnsibleDesign.mono,
-                      fontSize: 9.5,
+                      fontSize: 8.5,
+                      letterSpacing: 0.5,
                       color: faintColor,
-                      letterSpacing: 0.8,
                     ),
                   ),
                 ],
               ),
+              // Title — only for notes
+              if (isNote && item.title != null && item.title!.isNotEmpty) ...[
+                const SizedBox(height: 7),
+                Text(
+                  item.title!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: fgColor,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+              // Preview body
               if (item.body.isNotEmpty) ...[
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
                 Text(
                   item.body,
                   maxLines: 2,
@@ -1480,241 +1444,166 @@ class _MainPanel extends StatelessWidget {
                     fontFamily: AnsibleDesign.serif,
                     fontSize: 13,
                     color: mutedColor,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Text(
-                    murmurRefs > 0 ? '· $murmurRefs murmur' : '· 新筆記',
-                    style: TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 9.5,
-                      color: faintColor,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: borderColor, width: 0.5),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(width: 4, height: 4, decoration: BoxDecoration(shape: BoxShape.circle, color: vizDot)),
-                        const SizedBox(width: 5),
-                        Text(vizLabel, style: TextStyle(fontFamily: AnsibleDesign.mono, fontSize: 9, color: mutedColor, letterSpacing: 1.0)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // ── murmur row ──
-    Widget murmurRow(ContentItem item, bool isLast) {
-      return GestureDetector(
-        onTap: () {
-          onRoomChanged(_ElixRoom.circle);
-          onCircleTabChanged(_CircleTab.murmur);
-        },
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            border: isLast
-                ? null
-                : Border(bottom: BorderSide(color: borderSoft, width: 0.5)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: faintColor,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  item.body.isEmpty ? '（空碎念）' : item.body,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontSize: 14,
-                    color: fgColor,
-                    fontStyle: FontStyle.italic,
+                    fontStyle: isNote ? FontStyle.normal : FontStyle.italic,
                     height: 1.55,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                timeAgo(item.createdAt),
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 9,
-                  color: faintColor,
-                  letterSpacing: 0.8,
-                ),
-              ),
+              ],
             ],
           ),
         ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── filter tabs ──
-        Container(
-          padding: const EdgeInsets.only(bottom: 0),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: borderSoft, width: 0.5)),
-          ),
-          child: Row(
-            children: [
-              filterTab('全部', 'ALL', _PersonalFilter.all),
-              const SizedBox(width: 22),
-              filterTab('筆記', 'NOTES', _PersonalFilter.notes),
-              const SizedBox(width: 22),
-              filterTab('碎念', 'MURMURS', _PersonalFilter.murmurs),
-              const SizedBox(width: 22),
-              filterTab('討論', 'THREADS', _PersonalFilter.threads),
-            ],
-          ),
+    // ── section kicker ──
+    Widget sectionKicker(String zh, String en) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
+        child: Row(
+          children: [
+            Text(
+              zh,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 9.5,
+                letterSpacing: 1.4,
+                color: faintColor,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '· $en',
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 9.5,
+                letterSpacing: 1.4,
+                color: faintColor,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
+      );
+    }
 
-        // ── main content ──
-        Expanded(
-          child: loading
-              ? const Center(child: CircularProgressIndicator())
-              : Stack(
-                  children: [
-                    ListView(
-                      padding: const EdgeInsets.only(bottom: 80),
-                      children: [
-                        // Notes section
-                        if (displayNotes.isNotEmpty) ...[
-                          _PersonalSectionHead(
-                            zh: '草地',
-                            en: 'WORKING NOTES · ${displayNotes.length}',
-                            action: '↓ 最近',
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: borderColor, width: 0.5),
-                                bottom: BorderSide(color: borderColor, width: 0.5),
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                for (int i = 0; i < displayNotes.length; i++)
-                                  noteRow(displayNotes[i], i == displayNotes.length - 1),
-                              ],
-                            ),
-                          ),
-                        ],
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                        // Murmurs section
-                        if (displayMurmurs.isNotEmpty) ...[
-                          _PersonalSectionHead(
-                            zh: '散落',
-                            en: 'LOOSE MURMURS · ${displayMurmurs.length}',
-                            action: '↗ 編入',
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: borderColor, width: 0.5),
-                                bottom: BorderSide(color: borderColor, width: 0.5),
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                for (int i = 0; i < displayMurmurs.length; i++)
-                                  murmurRow(displayMurmurs[i], i == displayMurmurs.length - 1),
-                              ],
-                            ),
-                          ),
-                        ],
-
-                        // Empty state
-                        if (displayNotes.isEmpty && displayMurmurs.isEmpty &&
-                            selectedPersonalFilter != _PersonalFilter.threads)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 48),
-                            child: Center(
-                              child: Text(
-                                '還沒有任何記錄',
-                                style: TextStyle(
-                                  fontFamily: AnsibleDesign.serif,
-                                  fontSize: 15,
-                                  color: faintColor,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                        if (selectedPersonalFilter == _PersonalFilter.threads)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 48),
-                            child: Center(
-                              child: Text(
-                                '討論串在廣場裡',
-                                style: TextStyle(
-                                  fontFamily: AnsibleDesign.serif,
-                                  fontSize: 15,
-                                  color: faintColor,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+    return Stack(
+      children: [
+        ListView(
+          padding: const EdgeInsets.only(bottom: 80),
+          children: [
+            // ── Compose prompt (A·01) ────────────────────────────────────
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              decoration: BoxDecoration(
+                color: bgSoftColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderSoft, width: 0.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '今天有什麼想記下的？',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                      color: fgColor,
+                      height: 1.4,
                     ),
-
-                    // ── Bottom capture bar (gradient fade) ──
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: _PersonalCaptureBar(
-                        onWriteMurmur: () {
-                          onRoomChanged(_ElixRoom.circle);
-                          onCircleTabChanged(_CircleTab.murmur);
-                        },
-                        onSearch: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => SearchScreen(contentItems: contentItems),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            onRoomChanged(_ElixRoom.circle);
+                            onCircleTabChanged(_CircleTab.notes);
+                          },
+                          icon: const Icon(Icons.edit_outlined, size: 14),
+                          label: const Text('寫一段'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            textStyle: const TextStyle(
+                              fontFamily: AnsibleDesign.serif,
+                              fontSize: 13,
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            onRoomChanged(_ElixRoom.circle);
+                            onCircleTabChanged(_CircleTab.murmur);
+                          },
+                          icon: Icon(Icons.mic_outlined, size: 14, color: fgColor),
+                          label: Text('錄一段', style: TextStyle(color: fgColor)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            textStyle: const TextStyle(
+                              fontFamily: AnsibleDesign.serif,
+                              fontSize: 13,
+                            ),
+                            backgroundColor: dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper,
+                            side: BorderSide(color: borderSoft, width: 0.5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── This week section ────────────────────────────────────────
+            if (thisWeek.isNotEmpty) ...[
+              sectionKicker('本週', 'THIS WEEK'),
+              ...thisWeek.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: diaryCard(item),
+                  )),
+            ],
+
+            // ── Earlier section ──────────────────────────────────────────
+            if (earlier.isNotEmpty) ...[
+              sectionKicker('上週', '更早'),
+              ...earlier.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: diaryCard(item),
+                  )),
+            ],
+
+            // ── Empty state ──────────────────────────────────────────────
+            if (allSorted.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 48),
+                child: Center(
+                  child: Text(
+                    '還沒有任何記錄',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 15,
+                      color: faintColor,
+                      fontStyle: FontStyle.italic,
                     ),
-                  ],
+                  ),
                 ),
+              ),
+          ],
+        ),
+
+        // ── Floating AI dot (A·01 bottom-right, 56×56) ──
+        Positioned(
+          right: 0,
+          bottom: 24,
+          child: ElixAIDot(onTap: onStartAiAction),
         ),
       ],
     );
@@ -1938,58 +1827,66 @@ class _MainPanel extends StatelessWidget {
                   contactInputResolver: contactInputResolver,
                   hasActiveRelay: hasActiveRelay,
                 ),
+                // ── Room header (A·01): full-width with bottom border ────
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 16 : 28,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: dark
+                            ? AnsibleDesign.darkRuleSoft
+                            : AnsibleDesign.ruleSoft,
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ElixRoomHeader(
+                        roomLabel: _roomLabel(selectedRoom),
+                        rooms: _roomItems(selectedRoom),
+                        onRoomSelected: (id) =>
+                            _handleRoomSelected(id, context),
+                      ),
+                      const Spacer(),
+                      if (selectedRoom == _ElixRoom.forum &&
+                          onOpenBoards != null)
+                        IconButton(
+                          onPressed: onOpenBoards,
+                          icon: const Icon(Icons.view_sidebar_outlined),
+                          color: AnsibleDesign.inkMuted,
+                          tooltip: '訂閱版塊',
+                        ),
+                      // Date display on right (A·01/A·02 spec)
+                      Text(
+                        _headerDate(),
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 10,
+                          color: dark
+                              ? AnsibleDesign.darkInkFaint
+                              : AnsibleDesign.inkFaint,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Room body ────────────────────────────────────────────
                 Expanded(
                   child: Padding(
                     padding: contentPadding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Room header ───────────────────────────────────
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            ElixRoomHeader(
-                              roomLabel: _roomLabel(selectedRoom),
-                              rooms: _roomItems(selectedRoom),
-                              onRoomSelected: (id) =>
-                                  _handleRoomSelected(id, context),
-                            ),
-                            const Spacer(),
-                            if (selectedRoom == _ElixRoom.forum &&
-                                onOpenBoards != null)
-                              IconButton(
-                                onPressed: onOpenBoards,
-                                icon: const Icon(Icons.view_sidebar_outlined),
-                                color: AnsibleDesign.inkMuted,
-                                tooltip: '訂閱版塊',
-                              ),
-                            // Date display (A·02 spec)
-                            Text(
-                              _headerDate(),
-                              style: TextStyle(
-                                fontFamily: AnsibleDesign.mono,
-                                fontSize: 10,
-                                color: dark
-                                    ? AnsibleDesign.darkInkFaint
-                                    : AnsibleDesign.inkFaint,
-                                letterSpacing: 0.08,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // ── Room body ─────────────────────────────────────
-                        Expanded(
-                          child: switch (selectedRoom) {
-                            _ElixRoom.personal =>
-                              _buildPersonalBoard(context, compact),
-                            _ElixRoom.forum => _buildForum(context, compact),
-                            _ElixRoom.circle => _buildCircle(context),
-                          },
-                        ),
-                      ],
-                    ),
+                    child: switch (selectedRoom) {
+                      _ElixRoom.personal =>
+                        _buildPersonalBoard(context, compact),
+                      _ElixRoom.forum => _buildForum(context, compact),
+                      _ElixRoom.circle => _buildCircle(context),
+                    },
                   ),
                 ),
               ],
@@ -2363,90 +2260,6 @@ class _NetworkStatusGlyph extends StatelessWidget {
   }
 }
 
-class _PersonalSectionHead extends StatelessWidget {
-  const _PersonalSectionHead({required this.zh, required this.en, this.action});
-  final String zh;
-  final String en;
-  final String? action;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final fgColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
-    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 20, 0, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Text(zh, style: TextStyle(fontFamily: AnsibleDesign.serif, fontSize: 14, color: fgColor)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(en, style: TextStyle(fontFamily: AnsibleDesign.mono, fontSize: 9.5, color: faintColor, letterSpacing: 1.8), overflow: TextOverflow.ellipsis),
-          ),
-          if (action != null)
-            Text(action!, style: TextStyle(fontFamily: AnsibleDesign.mono, fontSize: 10, color: mutedColor, letterSpacing: 1.0)),
-        ],
-      ),
-    );
-  }
-}
-
-class _PersonalCaptureBar extends StatelessWidget {
-  const _PersonalCaptureBar({required this.onWriteMurmur, required this.onSearch});
-  final VoidCallback onWriteMurmur;
-  final VoidCallback onSearch;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [bgColor.withValues(alpha: 0), bgColor, bgColor],
-          stops: const [0, 0.4, 1],
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: onWriteMurmur,
-              icon: const Icon(Icons.add, size: 14),
-              label: const Text('記下一段碎念'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(fontFamily: AnsibleDesign.serif, fontSize: 15, letterSpacing: 0.8),
-                elevation: 2,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev,
-              border: Border.all(color: dark ? AnsibleDesign.darkRule : AnsibleDesign.rule, width: 0.5),
-            ),
-            child: IconButton(
-              onPressed: onSearch,
-              icon: Icon(Icons.search, size: 18, color: dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted),
-              padding: EdgeInsets.zero,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class PostCardData {
   PostCardData({

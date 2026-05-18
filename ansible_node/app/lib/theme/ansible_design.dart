@@ -750,10 +750,14 @@ class _ElixRoomHeaderState extends State<ElixRoomHeader> {
     final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
     final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
     final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
-    final popupBg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    // A·02: popup bg = base paper (bg), not elevated — matches design's white-ish card
+    final popupBg = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
     final popupBorder = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
-    final bgSoftColor = dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+    // A·02: active row bg = bg-soft = paperElev (lighter tint)
+    final bgSoftColor = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
     final ruleColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    // Hairline separators between dropdown rows use rule-soft (lighter)
+    final ruleSoftColor = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
 
     return PopupMenuButton<String>(
       onOpened: () => setState(() => _isOpen = true),
@@ -785,6 +789,7 @@ class _ElixRoomHeaderState extends State<ElixRoomHeader> {
               ochreColor: ochreColor,
               bgSoftColor: bgSoftColor,
               ruleColor: ruleColor,
+              ruleSoftColor: ruleSoftColor,
             ),
           ),
       ],
@@ -833,6 +838,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
     required this.ochreColor,
     required this.bgSoftColor,
     required this.ruleColor,
+    required this.ruleSoftColor,
   });
 
   final ElixRoomItem room;
@@ -843,6 +849,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
   final Color ochreColor;
   final Color bgSoftColor;
   final Color ruleColor;
+  final Color ruleSoftColor;
 
   @override
   Widget build(BuildContext context) {
@@ -930,11 +937,11 @@ class _RoomMenuItemWidget extends StatelessWidget {
     );
 
     if (isFirst) return content;
-    // Non-first items: draw a hairline separator on top
+    // Non-first items: draw a hairline separator on top using rule-soft (A·02 design)
     return DecoratedBox(
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: ruleColor.withValues(alpha: 0.6), width: 0.5),
+          top: BorderSide(color: ruleSoftColor, width: 0.5),
         ),
       ),
       child: content,
