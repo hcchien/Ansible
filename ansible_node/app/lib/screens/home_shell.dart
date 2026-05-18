@@ -45,7 +45,11 @@ import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
 
-enum _ContentModeTab { murmur, notes, discussions }
+/// Focus Mode rooms — replaces the old flat tab model.
+enum _ElixRoom { personal, plaza, circle }
+
+// Within the "圈內" room, a sub-selection between murmur and notes.
+enum _CircleTab { murmur, notes }
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -112,7 +116,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   DateTime? _lastAutoSyncAt;
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
-  _ContentModeTab _selectedMode = _ContentModeTab.discussions;
+  _ElixRoom _selectedRoom = _ElixRoom.personal;
+  _CircleTab _selectedCircleTab = _CircleTab.murmur;
   final _uuid = const Uuid();
 
   @override
@@ -296,8 +301,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _loadData();
   }
 
-  void _selectMode(_ContentModeTab mode) {
-    setState(() => _selectedMode = mode);
+  void _selectRoom(_ElixRoom room) {
+    setState(() => _selectedRoom = room);
+  }
+
+  void _selectCircleTab(_CircleTab tab) {
+    setState(() => _selectedCircleTab = tab);
   }
 
   Future<void> _startAiTransformation() async {
@@ -903,8 +912,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 selectedBoardId: _selectedBoardId,
                 boards: _boards,
                 networkStatusService: _networkStatusService,
-                selectedMode: _selectedMode,
-                onModeChanged: _selectMode,
+                selectedRoom: _selectedRoom,
+                onRoomChanged: _selectRoom,
+                selectedCircleTab: _selectedCircleTab,
+                onCircleTabChanged: _selectCircleTab,
                 contentItemRepository: _contentItemRepo,
                 contentItems: _contentItems,
                 murmurReferenceCounts: _murmurReferenceCounts,
@@ -1201,8 +1212,10 @@ class _MainPanel extends StatelessWidget {
     required this.selectedBoardId,
     required this.boards,
     required this.networkStatusService,
-    required this.selectedMode,
-    required this.onModeChanged,
+    required this.selectedRoom,
+    required this.onRoomChanged,
+    required this.selectedCircleTab,
+    required this.onCircleTabChanged,
     required this.contentItemRepository,
     required this.contentItems,
     required this.murmurReferenceCounts,
@@ -1238,8 +1251,10 @@ class _MainPanel extends StatelessWidget {
   final String? selectedBoardId;
   final List<Board> boards;
   final NetworkStatusMonitor networkStatusService;
-  final _ContentModeTab selectedMode;
-  final ValueChanged<_ContentModeTab> onModeChanged;
+  final _ElixRoom selectedRoom;
+  final ValueChanged<_ElixRoom> onRoomChanged;
+  final _CircleTab selectedCircleTab;
+  final ValueChanged<_CircleTab> onCircleTabChanged;
   final ContentItemRepository contentItemRepository;
   final List<ContentItem> contentItems;
   final Map<String, int> murmurReferenceCounts;
@@ -1248,9 +1263,301 @@ class _MainPanel extends StatelessWidget {
   onPublishContentItem;
   final Future<void> Function() onStartAiAction;
 
+  // ── Room label helpers ────────────────────────────────────────────────────
+  String _roomLabel(_ElixRoom room) {
+    switch (room) {
+      case _ElixRoom.personal:
+        return '個人版';
+      case _ElixRoom.plaza:
+        return '廣場';
+      case _ElixRoom.circle:
+        return '圈內';
+    }
+  }
+
+  List<ElixRoomItem> _roomItems(_ElixRoom current) {
+    return [
+      ElixRoomItem(id: 'personal', label: '個人版', active: current == _ElixRoom.personal),
+      ElixRoomItem(id: 'plaza', label: '廣場', active: current == _ElixRoom.plaza),
+      ElixRoomItem(id: 'circle', label: '圈內', active: current == _ElixRoom.circle),
+      const ElixRoomItem(id: 'settings', label: '設定'),
+    ];
+  }
+
+  void _handleRoomSelected(String id, BuildContext context) {
+    switch (id) {
+      case 'personal':
+        onRoomChanged(_ElixRoom.personal);
+      case 'plaza':
+        onRoomChanged(_ElixRoom.plaza);
+      case 'circle':
+        onRoomChanged(_ElixRoom.circle);
+      case 'settings':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SettingsHomeScreen(
+              db: db,
+              did: did,
+              localeController: localeController,
+              onClearIdentity: onClearIdentity,
+            ),
+          ),
+        );
+    }
+  }
+
+  // ── Personal board (個人版) ─────────────────────────────────────────────
+  Widget _buildPersonalBoard(BuildContext context, bool compact) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    final borderColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final fillColor = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+
+    // Sort contentItems by most recent
+    final sorted = [...contentItems]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    String timeAgo(DateTime dt) {
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return '剛剛';
+      if (diff.inHours < 1) return '${diff.inMinutes} 分鐘前';
+      if (diff.inDays < 1) return '${diff.inHours} 小時前';
+      return '${diff.inDays} 天前';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Compose prompt
+        GestureDetector(
+          onTap: () {
+            onRoomChanged(_ElixRoom.circle);
+            onCircleTabChanged(_CircleTab.murmur);
+          },
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            decoration: BoxDecoration(
+              color: fillColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: 0.5),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '今天想記錄什麼？',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: faintColor,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                Icon(Icons.edit_outlined, size: 18, color: faintColor),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        if (loading)
+          const Expanded(child: Center(child: CircularProgressIndicator()))
+        else if (sorted.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text(
+                '還沒有任何記錄',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: mutedColor,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.separated(
+              itemCount: sorted.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final item = sorted[index];
+                final kind = item.mode == ContentMode.murmur ? 'murmur' : 'note';
+                final title = item.title ?? '';
+                final preview = item.body.replaceAll('\n', ' ');
+                return DiaryEntryCard(
+                  kind: kind,
+                  title: title,
+                  preview: preview.isEmpty ? '（無內容）' : preview,
+                  timeAgo: timeAgo(item.createdAt),
+                  onTap: () {
+                    // Navigate to circle → correct tab
+                    onRoomChanged(_ElixRoom.circle);
+                    onCircleTabChanged(
+                      item.mode == ContentMode.murmur
+                          ? _CircleTab.murmur
+                          : _CircleTab.notes,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Plaza board (廣場) ──────────────────────────────────────────────────
+  Widget _buildPlaza(BuildContext context, bool compact) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FeedFilterTabs(
+          selected: feedFilter,
+          onChanged: onFeedFilterChanged,
+        ),
+        const SizedBox(height: 12),
+        // Board actions row
+        LayoutBuilder(
+          builder: (context, actionConstraints) {
+            final actionWidth = compact
+                ? (actionConstraints.maxWidth - 10) / 2
+                : null;
+            Widget action(Widget child) =>
+                compact ? SizedBox(width: actionWidth, child: child) : child;
+
+            return Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                action(
+                  OutlinedButton.icon(
+                    onPressed: onCreateBoard,
+                    icon: const Icon(Icons.add),
+                    label: _ActionLabel(l10n.addBoardTooltip),
+                  ),
+                ),
+                action(
+                  FilledButton.icon(
+                    onPressed: hasSelectedBoard ? onCreateThread : null,
+                    icon: const Icon(Icons.forum_outlined),
+                    label: _ActionLabel(
+                      compact ? l10n.newDiscussion : l10n.createNewDiscussion,
+                    ),
+                  ),
+                ),
+                action(
+                  OutlinedButton.icon(
+                    onPressed: onManageBoards,
+                    icon: const Icon(Icons.settings_outlined),
+                    label: _ActionLabel(
+                      compact ? l10n.boardsShort : l10n.manageBoardsShort,
+                    ),
+                  ),
+                ),
+                action(
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      if (hasSelectedBoard && selectedBoardId != null) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => NoteEditorScreen(
+                              authorDid: did,
+                              boardId: selectedBoardId!,
+                              threadId: '',
+                              threadTitle: boards
+                                      .where((b) => b.id == selectedBoardId)
+                                      .map((b) => b.title)
+                                      .firstOrNull ??
+                                  l10n.newDiscussion,
+                              atProtoClient: atProtoClient,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.edit_outlined),
+                    label: _ActionLabel(l10n.newPost),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: loading
+              ? const Center(child: CircularProgressIndicator())
+              : posts.isEmpty
+              ? Center(
+                  child: Text(
+                    l10n.noPostsYet,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(color: AnsibleDesign.inkMuted),
+                  ),
+                )
+              : ListView.separated(
+                  itemCount: posts.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) => PostCard(
+                    db: db,
+                    data: posts[index],
+                    authorDid: did,
+                    opsDispatchService: opsDispatchService,
+                    onFlushPendingOps: onFlushPendingOps,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  // ── Inner circle (圈內) ─────────────────────────────────────────────────
+  Widget _buildCircle(BuildContext context) {
+    return Column(
+      children: [
+        // Sub-tab: Murmur / Notes
+        _CircleTabNav(
+          selected: selectedCircleTab,
+          onChanged: onCircleTabChanged,
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: switch (selectedCircleTab) {
+            _CircleTab.murmur => MurmurScreen(
+              authorDid: did,
+              contentItemRepository: contentItemRepository,
+              recentMurmurs: contentItems
+                  .where((item) => item.mode == ContentMode.murmur)
+                  .toList(),
+              murmurReferenceCounts: murmurReferenceCounts,
+              onSaved: onContentItemsChanged,
+              onPublishContentItem: onPublishContentItem,
+            ),
+            _CircleTab.notes => NoteWorkspaceScreen(
+              authorDid: did,
+              notes: contentItems
+                  .where((item) => item.mode == ContentMode.note)
+                  .toList(),
+              murmurs: contentItems
+                  .where((item) => item.mode == ContentMode.murmur)
+                  .toList(),
+              contentItemRepository: contentItemRepository,
+              onContentItemsChanged: onContentItemsChanged,
+              onPublishContentItem: onPublishContentItem,
+            ),
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 640;
@@ -1258,217 +1565,76 @@ class _MainPanel extends StatelessWidget {
             ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
             : const EdgeInsets.symmetric(horizontal: 28, vertical: 12);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return Stack(
           children: [
-            _TopBar(
-              onClearIdentity: onClearIdentity,
-              db: db,
-              did: did,
-              localeController: localeController,
-              opsQueueRepo: opsQueueRepo,
-              onSync: onSync,
-              syncing: syncing,
-              networkStatusService: networkStatusService,
-              contentItems: contentItems,
-              messengerSyncService: messengerSyncService,
-              contactAvailabilityResolver: contactAvailabilityResolver,
-              contactInputResolver: contactInputResolver,
-              hasActiveRelay: hasActiveRelay,
-            ),
-            Expanded(
-              child: Padding(
-                padding: contentPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionHeader(onOpenBoards: onOpenBoards),
-                    const SizedBox(height: 10),
-                    _ModeNavigation(
-                      selected: selectedMode,
-                      onChanged: onModeChanged,
-                    ),
-                    const SizedBox(height: 12),
-                    if (selectedMode == _ContentModeTab.discussions) ...[
-                      FeedFilterTabs(
-                        selected: feedFilter,
-                        onChanged: onFeedFilterChanged,
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: compact ? double.infinity : 340,
-                          child: FilledButton.icon(
-                            onPressed:
-                                (hasSelectedBoard && selectedBoardId != null)
-                                ? () {
-                                    // Use the selected board for a placeholder threadId.
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => NoteEditorScreen(
-                                          authorDid: did,
-                                          boardId: selectedBoardId!,
-                                          threadId: '',
-                                          threadTitle:
-                                              boards
-                                                  .where(
-                                                    (b) =>
-                                                        b.id == selectedBoardId,
-                                                  )
-                                                  .map((b) => b.title)
-                                                  .firstOrNull ??
-                                              l10n.newDiscussion,
-                                          atProtoClient: atProtoClient,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                : null,
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            label: Text(l10n.newPost),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AnsibleDesign.ink,
-                              foregroundColor: AnsibleDesign.paper,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
-                              elevation: 0,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      LayoutBuilder(
-                        builder: (context, actionConstraints) {
-                          final actionWidth = compact
-                              ? (actionConstraints.maxWidth - 10) / 2
-                              : null;
-
-                          Widget action(Widget child) {
-                            if (!compact) return child;
-                            return SizedBox(width: actionWidth, child: child);
-                          }
-
-                          return Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: [
-                              action(
-                                OutlinedButton.icon(
-                                  onPressed: onCreateBoard,
-                                  icon: const Icon(Icons.add),
-                                  label: _ActionLabel(l10n.addBoardTooltip),
-                                ),
-                              ),
-                              action(
-                                FilledButton.icon(
-                                  onPressed: hasSelectedBoard
-                                      ? onCreateThread
-                                      : null,
-                                  icon: const Icon(Icons.forum_outlined),
-                                  label: _ActionLabel(
-                                    compact
-                                        ? l10n.newDiscussion
-                                        : l10n.createNewDiscussion,
-                                  ),
-                                ),
-                              ),
-                              action(
-                                OutlinedButton.icon(
-                                  onPressed: onManageBoards,
-                                  icon: const Icon(Icons.settings_outlined),
-                                  label: _ActionLabel(
-                                    compact
-                                        ? l10n.boardsShort
-                                        : l10n.manageBoardsShort,
-                                  ),
-                                ),
-                              ),
-                              action(
-                                OutlinedButton.icon(
-                                  onPressed: onStartAiAction,
-                                  icon: const Icon(Icons.auto_awesome),
-                                  label: _ActionLabel(l10n.aiAssistant),
-                                ),
-                              ),
-                              action(
-                                OutlinedButton.icon(
-                                  onPressed: onStartAiAction,
-                                  icon: const Icon(Icons.summarize_outlined),
-                                  label: _ActionLabel(l10n.aiSummary),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: switch (selectedMode) {
-                        _ContentModeTab.murmur => MurmurScreen(
-                          authorDid: did,
-                          contentItemRepository: contentItemRepository,
-                          recentMurmurs: contentItems
-                              .where((item) => item.mode == ContentMode.murmur)
-                              .toList(),
-                          murmurReferenceCounts: murmurReferenceCounts,
-                          onSaved: onContentItemsChanged,
-                          onPublishContentItem: onPublishContentItem,
-                        ),
-                        _ContentModeTab.notes => NoteWorkspaceScreen(
-                          authorDid: did,
-                          notes: contentItems
-                              .where((item) => item.mode == ContentMode.note)
-                              .toList(),
-                          murmurs: contentItems
-                              .where((item) => item.mode == ContentMode.murmur)
-                              .toList(),
-                          contentItemRepository: contentItemRepository,
-                          onContentItemsChanged: onContentItemsChanged,
-                          onPublishContentItem: onPublishContentItem,
-                        ),
-                        _ContentModeTab.discussions =>
-                          loading
-                              ? const Center(child: CircularProgressIndicator())
-                              : posts.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    l10n.noPostsYet,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: AnsibleDesign.inkMuted,
-                                        ),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  itemCount: posts.length,
-                                  separatorBuilder: (_, _) =>
-                                      const SizedBox(height: 16),
-                                  itemBuilder: (context, index) => PostCard(
-                                    db: db,
-                                    data: posts[index],
-                                    authorDid: did,
-                                    opsDispatchService: opsDispatchService,
-                                    onFlushPendingOps: onFlushPendingOps,
-                                  ),
-                                ),
-                      },
-                    ),
-                  ],
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _TopBar(
+                  onClearIdentity: onClearIdentity,
+                  db: db,
+                  did: did,
+                  localeController: localeController,
+                  opsQueueRepo: opsQueueRepo,
+                  onSync: onSync,
+                  syncing: syncing,
+                  networkStatusService: networkStatusService,
+                  contentItems: contentItems,
+                  messengerSyncService: messengerSyncService,
+                  contactAvailabilityResolver: contactAvailabilityResolver,
+                  contactInputResolver: contactInputResolver,
+                  hasActiveRelay: hasActiveRelay,
                 ),
-              ),
+                Expanded(
+                  child: Padding(
+                    padding: contentPadding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Room header ───────────────────────────────────
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ElixRoomHeader(
+                              roomLabel: _roomLabel(selectedRoom),
+                              rooms: _roomItems(selectedRoom),
+                              onRoomSelected: (id) =>
+                                  _handleRoomSelected(id, context),
+                            ),
+                            const Spacer(),
+                            if (selectedRoom == _ElixRoom.plaza &&
+                                onOpenBoards != null)
+                              IconButton(
+                                onPressed: onOpenBoards,
+                                icon: const Icon(Icons.view_sidebar_outlined),
+                                color: AnsibleDesign.inkMuted,
+                                tooltip: '訂閱版塊',
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // ── Room body ─────────────────────────────────────
+                        Expanded(
+                          child: switch (selectedRoom) {
+                            _ElixRoom.personal =>
+                              _buildPersonalBoard(context, compact),
+                            _ElixRoom.plaza => _buildPlaza(context, compact),
+                            _ElixRoom.circle => _buildCircle(context),
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Floating AI dot ───────────────────────────────────────────
+            Positioned(
+              right: 16,
+              bottom: 88,
+              child: ElixAIDot(onTap: onStartAiAction),
             ),
           ],
         );
@@ -1712,62 +1878,40 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _ModeNavigation extends StatelessWidget {
-  const _ModeNavigation({required this.selected, required this.onChanged});
+/// Sub-navigation inside the 圈內 room: Murmur vs Notes.
+class _CircleTabNav extends StatelessWidget {
+  const _CircleTabNav({required this.selected, required this.onChanged});
 
-  final _ContentModeTab selected;
-  final ValueChanged<_ContentModeTab> onChanged;
+  final _CircleTab selected;
+  final ValueChanged<_CircleTab> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 430;
-        return SegmentedButton<_ContentModeTab>(
-          style: SegmentedButton.styleFrom(
-            backgroundColor: AnsibleDesign.paper,
-            selectedBackgroundColor: AnsibleDesign.paperDeep,
-            foregroundColor: AnsibleDesign.inkMuted,
-            selectedForegroundColor: AnsibleDesign.ink,
-            side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
-          ),
-          segments: [
-            ButtonSegment(
-              value: _ContentModeTab.murmur,
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: _SegmentLabel(l10n.murmurTab),
-            ),
-            ButtonSegment(
-              value: _ContentModeTab.notes,
-              icon: const Icon(Icons.sticky_note_2_outlined),
-              label: _SegmentLabel(l10n.notesTab),
-            ),
-            ButtonSegment(
-              value: _ContentModeTab.discussions,
-              icon: const Icon(Icons.forum_outlined),
-              label: _SegmentLabel(
-                compact ? l10n.discussionsTabCompact : l10n.discussionsTab,
-              ),
-            ),
-          ],
-          selected: {selected},
-          showSelectedIcon: false,
-          onSelectionChanged: (selection) => onChanged(selection.single),
-        );
-      },
+    return SegmentedButton<_CircleTab>(
+      style: SegmentedButton.styleFrom(
+        backgroundColor: AnsibleDesign.paper,
+        selectedBackgroundColor: AnsibleDesign.paperDeep,
+        foregroundColor: AnsibleDesign.inkMuted,
+        selectedForegroundColor: AnsibleDesign.ink,
+        side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
+      ),
+      segments: [
+        ButtonSegment(
+          value: _CircleTab.murmur,
+          icon: const Icon(Icons.chat_bubble_outline, size: 18),
+          label: Text(l10n.murmurTab, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+        ButtonSegment(
+          value: _CircleTab.notes,
+          icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
+          label: Text(l10n.notesTab, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ],
+      selected: {selected},
+      showSelectedIcon: false,
+      onSelectionChanged: (selection) => onChanged(selection.single),
     );
-  }
-}
-
-class _SegmentLabel extends StatelessWidget {
-  const _SegmentLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 }
 
@@ -1857,67 +2001,6 @@ class _NetworkStatusGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Icon(icon, size: 16, color: color);
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({this.onOpenBoards});
-
-  final VoidCallback? onOpenBoards;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: IconButton(
-            onPressed: onOpenBoards,
-            icon: const Icon(Icons.view_sidebar_outlined),
-            color: AnsibleDesign.inkMuted,
-            tooltip: l10n.subscribe,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.discussionAreaTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w500,
-                  color: AnsibleDesign.ink,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.feedSocialIdentitySubtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  height: 1.35,
-                  color: AnsibleDesign.inkMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: AnsibleStatusChip(
-            label: l10n.publicOpen,
-            dot: AnsibleDesign.accent,
-          ),
-        ),
-      ],
-    );
   }
 }
 

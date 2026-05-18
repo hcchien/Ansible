@@ -697,6 +697,391 @@ class AudienceChip extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Focus Mode — Room navigation + personal board components
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Data class for a room entry in the [ElixRoomHeader] dropdown.
+class ElixRoomItem {
+  const ElixRoomItem({
+    required this.id,
+    required this.label,
+    this.badge,
+    this.active = false,
+  });
+
+  final String id;
+  final String label;
+  final int? badge;
+  final bool active;
+}
+
+/// Room header: shows current room name + chevron; tap reveals inline
+/// `PopupMenuButton` dropdown — no modal dimming, no backdrop.
+class ElixRoomHeader extends StatelessWidget {
+  const ElixRoomHeader({
+    super.key,
+    required this.roomLabel,
+    required this.rooms,
+    required this.onRoomSelected,
+  });
+
+  final String roomLabel;
+  final List<ElixRoomItem> rooms;
+  final ValueChanged<String> onRoomSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+    final popupBg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    final popupBorder = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+
+    return PopupMenuButton<String>(
+      onSelected: onRoomSelected,
+      color: popupBg,
+      elevation: 6,
+      shadowColor: Colors.black.withValues(alpha: 0.14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: popupBorder, width: 0.5),
+      ),
+      offset: const Offset(0, 44),
+      itemBuilder: (_) => rooms.map((room) {
+        return PopupMenuItem<String>(
+          value: room.id,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: room.active ? ochreColor : Colors.transparent,
+                  border: Border.all(
+                    color: room.active ? ochreColor : mutedColor.withValues(alpha: 0.4),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                room.label,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 15,
+                  fontWeight: room.active ? FontWeight.w600 : FontWeight.w400,
+                  color: inkColor,
+                ),
+              ),
+              if (room.badge != null && room.badge! > 0) ...[
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: ochreColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${room.badge}',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 10,
+                      color: ochreColor,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              roomLabel,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 26,
+                fontWeight: FontWeight.w500,
+                color: inkColor,
+                height: 1.1,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 22,
+              color: mutedColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Personal board diary entry card.
+/// [kind] is `'murmur'` (ochre pip) or `'note'` (moss pip).
+class DiaryEntryCard extends StatelessWidget {
+  const DiaryEntryCard({
+    super.key,
+    required this.kind,
+    required this.title,
+    required this.preview,
+    required this.timeAgo,
+    this.onTap,
+  });
+
+  final String kind; // 'murmur' | 'note'
+  final String title;
+  final String preview;
+  final String timeAgo;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    final border = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+    final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    final pipColor = kind == 'murmur'
+        ? (dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre)
+        : (dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss);
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: border, width: 0.5),
+        ),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Type pip
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: pipColor),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (title.isNotEmpty) ...[
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: inkColor,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                  ],
+                  if (preview.isNotEmpty)
+                    Text(
+                      preview,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: mutedColor,
+                        height: 1.45,
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                  Text(
+                    timeAgo,
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 10,
+                      color: faintColor,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating 56 px circular AI action button with the Elix mark.
+class ElixAIDot extends StatelessWidget {
+  const ElixAIDot({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final markColor = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: bg,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(child: AnsibleMark(size: 26, color: markColor)),
+      ),
+    );
+  }
+}
+
+/// AI agent bottom sheet — ochre-accented top border, privacy note.
+/// Wrap the [body] with your result list or action buttons.
+class ElixAgentSheet extends StatelessWidget {
+  const ElixAgentSheet({
+    super.key,
+    required this.title,
+    required this.body,
+    this.onAccept,
+    this.onDismiss,
+    this.acceptLabel = '套用建議',
+    this.privacyNote = '僅處理本機內容，不離開裝置',
+  });
+
+  final String title;
+  final Widget body;
+  final VoidCallback? onAccept;
+  final VoidCallback? onDismiss;
+  final String acceptLabel;
+  final String privacyNote;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+    final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(
+          top: BorderSide(color: ochreColor.withValues(alpha: 0.55), width: 1.5),
+          left: BorderSide(color: ochreColor.withValues(alpha: 0.18), width: 0.5),
+          right: BorderSide(color: ochreColor.withValues(alpha: 0.18), width: 0.5),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ochreColor.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              AnsibleMark(size: 20, color: ochreColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: inkColor,
+                  ),
+                ),
+              ),
+              if (onDismiss != null)
+                GestureDetector(
+                  onTap: onDismiss,
+                  child: Icon(Icons.close, size: 20, color: mutedColor),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          body,
+          const SizedBox(height: 14),
+          // Privacy note
+          Row(
+            children: [
+              Icon(Icons.lock_outline, size: 12, color: mutedColor),
+              const SizedBox(width: 5),
+              Text(
+                privacyNote,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 10,
+                  color: mutedColor,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+          if (onAccept != null) ...[
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: onAccept,
+              style: FilledButton.styleFrom(
+                backgroundColor: ochreColor,
+                foregroundColor:
+                    dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper,
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(acceptLabel),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// Floating theme toggle pill: "PAPER · LIGHT" / "INK · DARK".
 class ElixThemePill extends StatelessWidget {
   const ElixThemePill({super.key, required this.controller});
