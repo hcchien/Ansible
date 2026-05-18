@@ -207,6 +207,8 @@ source of truth.
 - [ ] Put Cloud CDN and Cloud Armor deployment docs under infrastructure docs.
 - [ ] Enforce double verification: valid Ed25519 signature and non-expired DID.
 - [ ] Preserve verification status in rendered provenance.
+- [ ] Track LLM plugin and MCP agent access backlog in
+  `docs/superpowers/todos/2026-05-16-llm-plugin-mcp-access.md`.
 
 ### Anti-Centralization
 
