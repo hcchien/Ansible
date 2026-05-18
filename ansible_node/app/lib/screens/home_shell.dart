@@ -1295,13 +1295,15 @@ class _MainPanel extends StatelessWidget {
       ElixRoomItem(
         id: 'personal',
         label: '個人版',
-        badge: noteCount + murmurCount > 0 ? noteCount + murmurCount : null,
         active: current == _ElixRoom.personal,
+        murmurCount: murmurCount,
+        noteCount: noteCount,
       ),
       ElixRoomItem(
         id: 'forum',
         label: '討論區',
         active: current == _ElixRoom.forum,
+        badge: posts.isNotEmpty ? posts.length : null,
       ),
       ElixRoomItem(
         id: 'circle',
@@ -1897,8 +1899,18 @@ class _MainPanel extends StatelessWidget {
     );
   }
 
+  String _headerDate() {
+    final now = DateTime.now();
+    final weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    final wd = weekdays[now.weekday - 1];
+    final mm = now.month.toString().padLeft(2, '0');
+    final dd = now.day.toString().padLeft(2, '0');
+    return '${now.year}.$mm.$dd $wd';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 640;
@@ -1951,6 +1963,18 @@ class _MainPanel extends StatelessWidget {
                                 color: AnsibleDesign.inkMuted,
                                 tooltip: '訂閱版塊',
                               ),
+                            // Date display (A·02 spec)
+                            Text(
+                              _headerDate(),
+                              style: TextStyle(
+                                fontFamily: AnsibleDesign.mono,
+                                fontSize: 10,
+                                color: dark
+                                    ? AnsibleDesign.darkInkFaint
+                                    : AnsibleDesign.inkFaint,
+                                letterSpacing: 0.08,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 14),

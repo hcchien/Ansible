@@ -708,17 +708,23 @@ class ElixRoomItem {
     required this.label,
     this.badge,
     this.active = false,
+    this.murmurCount,
+    this.noteCount,
   });
 
   final String id;
   final String label;
   final int? badge;
   final bool active;
+  /// Number of murmurs — shown as a sub-row under the active personal room.
+  final int? murmurCount;
+  /// Number of notes — shown as a sub-row under the active personal room.
+  final int? noteCount;
 }
 
-/// Room header: shows current room name + chevron; tap reveals inline
-/// `PopupMenuButton` dropdown — no modal dimming, no backdrop.
-class ElixRoomHeader extends StatelessWidget {
+/// Room header: shows Elix mark + current room name + ochre chevron.
+/// Tap reveals an inline dropdown (A·02 spec) — no modal dimming, no backdrop.
+class ElixRoomHeader extends StatefulWidget {
   const ElixRoomHeader({
     super.key,
     required this.roomLabel,
@@ -731,98 +737,233 @@ class ElixRoomHeader extends StatelessWidget {
   final ValueChanged<String> onRoomSelected;
 
   @override
+  State<ElixRoomHeader> createState() => _ElixRoomHeaderState();
+}
+
+class _ElixRoomHeaderState extends State<ElixRoomHeader> {
+  bool _isOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
     final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
     final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
     final popupBg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
     final popupBorder = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final bgSoftColor = dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+    final ruleColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+
+    List<PopupMenuEntry<String>> buildItems() {
+      final items = <PopupMenuEntry<String>>[];
+      for (int i = 0; i < widget.rooms.length; i++) {
+        if (i > 0) items.add(const PopupMenuDivider(height: 1));
+        final room = widget.rooms[i];
+        items.add(PopupMenuItem<String>(
+          value: room.id,
+          padding: EdgeInsets.zero,
+          child: _RoomMenuItemWidget(
+            room: room,
+            inkColor: inkColor,
+            mutedColor: mutedColor,
+            faintColor: faintColor,
+            ochreColor: ochreColor,
+            bgSoftColor: bgSoftColor,
+            ruleColor: ruleColor,
+          ),
+        ));
+      }
+      return items;
+    }
 
     return PopupMenuButton<String>(
-      onSelected: onRoomSelected,
+      onOpened: () => setState(() => _isOpen = true),
+      onCanceled: () => setState(() => _isOpen = false),
+      onSelected: (id) {
+        setState(() => _isOpen = false);
+        widget.onRoomSelected(id);
+      },
       color: popupBg,
-      elevation: 6,
-      shadowColor: Colors.black.withValues(alpha: 0.14),
+      elevation: 8,
+      shadowColor: Colors.black.withValues(alpha: 0.18),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         side: BorderSide(color: popupBorder, width: 0.5),
       ),
-      offset: const Offset(0, 44),
-      itemBuilder: (_) => rooms.map((room) {
-        return PopupMenuItem<String>(
-          value: room.id,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: room.active ? ochreColor : Colors.transparent,
-                  border: Border.all(
-                    color: room.active ? ochreColor : mutedColor.withValues(alpha: 0.4),
-                    width: 1.2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                room.label,
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.serif,
-                  fontSize: 15,
-                  fontWeight: room.active ? FontWeight.w600 : FontWeight.w400,
-                  color: inkColor,
-                ),
-              ),
-              if (room.badge != null && room.badge! > 0) ...[
-                const Spacer(),
+      offset: const Offset(0, 36),
+      itemBuilder: (_) => buildItems(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          AnsibleMark(size: 14, color: inkColor),
+          const SizedBox(width: 7),
+          Text(
+            widget.roomLabel,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 17,
+              fontWeight: FontWeight.w500,
+              color: inkColor,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(width: 5),
+          AnimatedRotation(
+            turns: _isOpen ? 0.5 : 0,
+            duration: const Duration(milliseconds: 150),
+            child: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: ochreColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Single item in the room dropdown (A·02 spec).
+class _RoomMenuItemWidget extends StatelessWidget {
+  const _RoomMenuItemWidget({
+    required this.room,
+    required this.inkColor,
+    required this.mutedColor,
+    required this.faintColor,
+    required this.ochreColor,
+    required this.bgSoftColor,
+    required this.ruleColor,
+  });
+
+  final ElixRoomItem room;
+  final Color inkColor;
+  final Color mutedColor;
+  final Color faintColor;
+  final Color ochreColor;
+  final Color bgSoftColor;
+  final Color ruleColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: room.active
+          ? BoxDecoration(
+              color: bgSoftColor,
+              borderRadius: BorderRadius.circular(7),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Main row: dot · name · badge/"在這"
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            child: Row(
+              children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  width: room.active ? 7 : 6,
+                  height: room.active ? 7 : 6,
                   decoration: BoxDecoration(
-                    color: ochreColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${room.badge}',
-                    style: TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 10,
-                      color: ochreColor,
+                    shape: BoxShape.circle,
+                    color: room.active ? ochreColor : Colors.transparent,
+                    border: Border.all(
+                      color: room.active ? ochreColor : ruleColor,
+                      width: 1,
                     ),
                   ),
                 ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    room.label,
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 14,
+                      fontWeight: room.active ? FontWeight.w500 : FontWeight.w400,
+                      color: room.id == 'settings' ? mutedColor : inkColor,
+                    ),
+                  ),
+                ),
+                if (room.active)
+                  Text(
+                    '在這',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 9,
+                      color: ochreColor,
+                      letterSpacing: 0.10,
+                    ),
+                  )
+                else if (room.badge != null && room.badge! > 0)
+                  Text(
+                    '${room.badge} 新',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 9,
+                      color: faintColor,
+                      letterSpacing: 0.06,
+                    ),
+                  ),
               ],
-            ],
+            ),
           ),
-        );
-      }).toList(),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              roomLabel,
-              style: TextStyle(
-                fontFamily: AnsibleDesign.serif,
-                fontSize: 26,
-                fontWeight: FontWeight.w500,
-                color: inkColor,
-                height: 1.1,
-              ),
+          // Sub-rows for active room (murmur count + note count)
+          if (room.active && room.murmurCount != null)
+            _SubCountRow(
+              label: 'murmur · 短話 · ${room.murmurCount}',
+              faintColor: faintColor,
             ),
-            const SizedBox(width: 5),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 22,
-              color: mutedColor,
+          if (room.active && room.noteCount != null)
+            _SubCountRow(
+              label: 'note · 整理過的長文 · ${room.noteCount}',
+              faintColor: faintColor,
+              isLast: true,
             ),
-          ],
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubCountRow extends StatelessWidget {
+  const _SubCountRow({
+    required this.label,
+    required this.faintColor,
+    this.isLast = false,
+  });
+
+  final String label;
+  final Color faintColor;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(left: 32, right: 10, bottom: isLast ? 8 : 4),
+      child: Row(
+        children: [
+          Text(
+            '↳',
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9,
+              color: faintColor,
+              letterSpacing: 0.08,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 12.5,
+              color: faintColor,
+            ),
+          ),
+        ],
       ),
     );
   }
