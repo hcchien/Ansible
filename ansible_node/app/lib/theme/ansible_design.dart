@@ -755,28 +755,6 @@ class _ElixRoomHeaderState extends State<ElixRoomHeader> {
     final bgSoftColor = dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
     final ruleColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
 
-    List<PopupMenuEntry<String>> buildItems() {
-      final items = <PopupMenuEntry<String>>[];
-      for (int i = 0; i < widget.rooms.length; i++) {
-        if (i > 0) items.add(const PopupMenuDivider(height: 1));
-        final room = widget.rooms[i];
-        items.add(PopupMenuItem<String>(
-          value: room.id,
-          padding: EdgeInsets.zero,
-          child: _RoomMenuItemWidget(
-            room: room,
-            inkColor: inkColor,
-            mutedColor: mutedColor,
-            faintColor: faintColor,
-            ochreColor: ochreColor,
-            bgSoftColor: bgSoftColor,
-            ruleColor: ruleColor,
-          ),
-        ));
-      }
-      return items;
-    }
-
     return PopupMenuButton<String>(
       onOpened: () => setState(() => _isOpen = true),
       onCanceled: () => setState(() => _isOpen = false),
@@ -787,12 +765,29 @@ class _ElixRoomHeaderState extends State<ElixRoomHeader> {
       color: popupBg,
       elevation: 8,
       shadowColor: Colors.black.withValues(alpha: 0.18),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
         side: BorderSide(color: popupBorder, width: 0.5),
       ),
       offset: const Offset(0, 36),
-      itemBuilder: (_) => buildItems(),
+      itemBuilder: (_) => [
+        for (int i = 0; i < widget.rooms.length; i++)
+          PopupMenuItem<String>(
+            value: widget.rooms[i].id,
+            padding: EdgeInsets.zero,
+            child: _RoomMenuItemWidget(
+              room: widget.rooms[i],
+              isFirst: i == 0,
+              inkColor: inkColor,
+              mutedColor: mutedColor,
+              faintColor: faintColor,
+              ochreColor: ochreColor,
+              bgSoftColor: bgSoftColor,
+              ruleColor: ruleColor,
+            ),
+          ),
+      ],
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -826,9 +821,12 @@ class _ElixRoomHeaderState extends State<ElixRoomHeader> {
 }
 
 /// Single item in the room dropdown (A·02 spec).
+/// Uses a top-border separator instead of PopupMenuDivider to avoid
+/// Flutter's popup-height miscalculation with tiny-height dividers.
 class _RoomMenuItemWidget extends StatelessWidget {
   const _RoomMenuItemWidget({
     required this.room,
+    required this.isFirst,
     required this.inkColor,
     required this.mutedColor,
     required this.faintColor,
@@ -838,6 +836,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
   });
 
   final ElixRoomItem room;
+  final bool isFirst;
   final Color inkColor;
   final Color mutedColor;
   final Color faintColor;
@@ -847,7 +846,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final Widget content = Container(
       decoration: room.active
           ? BoxDecoration(
               color: bgSoftColor,
@@ -858,10 +857,11 @@ class _RoomMenuItemWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Main row: dot · name · badge/"在這"
+          // Main row: dot · name · badge / "在這"
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
+              mainAxisSize: MainAxisSize.max,
               children: [
                 Container(
                   width: room.active ? 7 : 6,
@@ -876,7 +876,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
+                Flexible(
                   child: Text(
                     room.label,
                     style: TextStyle(
@@ -887,7 +887,8 @@ class _RoomMenuItemWidget extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (room.active)
+                if (room.active) ...[
+                  const SizedBox(width: 8),
                   Text(
                     '在這',
                     style: TextStyle(
@@ -896,8 +897,9 @@ class _RoomMenuItemWidget extends StatelessWidget {
                       color: ochreColor,
                       letterSpacing: 0.10,
                     ),
-                  )
-                else if (room.badge != null && room.badge! > 0)
+                  ),
+                ] else if (room.badge != null && room.badge! > 0) ...[
+                  const SizedBox(width: 8),
                   Text(
                     '${room.badge} 新',
                     style: TextStyle(
@@ -907,6 +909,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
                       letterSpacing: 0.06,
                     ),
                   ),
+                ],
               ],
             ),
           ),
@@ -924,6 +927,17 @@ class _RoomMenuItemWidget extends StatelessWidget {
             ),
         ],
       ),
+    );
+
+    if (isFirst) return content;
+    // Non-first items: draw a hairline separator on top
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: ruleColor.withValues(alpha: 0.6), width: 0.5),
+        ),
+      ),
+      child: content,
     );
   }
 }
