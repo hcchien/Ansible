@@ -26018,6 +26018,344 @@ class MessengerMailboxCursorsCompanion
   }
 }
 
+class $MurmurEmbeddingsTable extends MurmurEmbeddings
+    with TableInfo<$MurmurEmbeddingsTable, MurmurEmbedding> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MurmurEmbeddingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _contentItemIdMeta = const VerificationMeta(
+    'contentItemId',
+  );
+  @override
+  late final GeneratedColumn<String> contentItemId = GeneratedColumn<String>(
+    'content_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES content_items (content_item_id)',
+    ),
+  );
+  static const VerificationMeta _modelVersionMeta = const VerificationMeta(
+    'modelVersion',
+  );
+  @override
+  late final GeneratedColumn<String> modelVersion = GeneratedColumn<String>(
+    'model_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vectorBlobMeta = const VerificationMeta(
+    'vectorBlob',
+  );
+  @override
+  late final GeneratedColumn<String> vectorBlob = GeneratedColumn<String>(
+    'vector_blob',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _computedAtMeta = const VerificationMeta(
+    'computedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> computedAt = GeneratedColumn<DateTime>(
+    'computed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    contentItemId,
+    modelVersion,
+    vectorBlob,
+    computedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'murmur_embeddings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MurmurEmbedding> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('content_item_id')) {
+      context.handle(
+        _contentItemIdMeta,
+        contentItemId.isAcceptableOrUnknown(
+          data['content_item_id']!,
+          _contentItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_contentItemIdMeta);
+    }
+    if (data.containsKey('model_version')) {
+      context.handle(
+        _modelVersionMeta,
+        modelVersion.isAcceptableOrUnknown(
+          data['model_version']!,
+          _modelVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_modelVersionMeta);
+    }
+    if (data.containsKey('vector_blob')) {
+      context.handle(
+        _vectorBlobMeta,
+        vectorBlob.isAcceptableOrUnknown(data['vector_blob']!, _vectorBlobMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_vectorBlobMeta);
+    }
+    if (data.containsKey('computed_at')) {
+      context.handle(
+        _computedAtMeta,
+        computedAt.isAcceptableOrUnknown(data['computed_at']!, _computedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_computedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {contentItemId};
+  @override
+  MurmurEmbedding map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MurmurEmbedding(
+      contentItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_item_id'],
+      )!,
+      modelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_version'],
+      )!,
+      vectorBlob: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vector_blob'],
+      )!,
+      computedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}computed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $MurmurEmbeddingsTable createAlias(String alias) {
+    return $MurmurEmbeddingsTable(attachedDatabase, alias);
+  }
+}
+
+class MurmurEmbedding extends DataClass implements Insertable<MurmurEmbedding> {
+  final String contentItemId;
+  final String modelVersion;
+  final String vectorBlob;
+  final DateTime computedAt;
+  const MurmurEmbedding({
+    required this.contentItemId,
+    required this.modelVersion,
+    required this.vectorBlob,
+    required this.computedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['content_item_id'] = Variable<String>(contentItemId);
+    map['model_version'] = Variable<String>(modelVersion);
+    map['vector_blob'] = Variable<String>(vectorBlob);
+    map['computed_at'] = Variable<DateTime>(computedAt);
+    return map;
+  }
+
+  MurmurEmbeddingsCompanion toCompanion(bool nullToAbsent) {
+    return MurmurEmbeddingsCompanion(
+      contentItemId: Value(contentItemId),
+      modelVersion: Value(modelVersion),
+      vectorBlob: Value(vectorBlob),
+      computedAt: Value(computedAt),
+    );
+  }
+
+  factory MurmurEmbedding.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MurmurEmbedding(
+      contentItemId: serializer.fromJson<String>(json['contentItemId']),
+      modelVersion: serializer.fromJson<String>(json['modelVersion']),
+      vectorBlob: serializer.fromJson<String>(json['vectorBlob']),
+      computedAt: serializer.fromJson<DateTime>(json['computedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'contentItemId': serializer.toJson<String>(contentItemId),
+      'modelVersion': serializer.toJson<String>(modelVersion),
+      'vectorBlob': serializer.toJson<String>(vectorBlob),
+      'computedAt': serializer.toJson<DateTime>(computedAt),
+    };
+  }
+
+  MurmurEmbedding copyWith({
+    String? contentItemId,
+    String? modelVersion,
+    String? vectorBlob,
+    DateTime? computedAt,
+  }) => MurmurEmbedding(
+    contentItemId: contentItemId ?? this.contentItemId,
+    modelVersion: modelVersion ?? this.modelVersion,
+    vectorBlob: vectorBlob ?? this.vectorBlob,
+    computedAt: computedAt ?? this.computedAt,
+  );
+  MurmurEmbedding copyWithCompanion(MurmurEmbeddingsCompanion data) {
+    return MurmurEmbedding(
+      contentItemId: data.contentItemId.present
+          ? data.contentItemId.value
+          : this.contentItemId,
+      modelVersion: data.modelVersion.present
+          ? data.modelVersion.value
+          : this.modelVersion,
+      vectorBlob: data.vectorBlob.present
+          ? data.vectorBlob.value
+          : this.vectorBlob,
+      computedAt: data.computedAt.present
+          ? data.computedAt.value
+          : this.computedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MurmurEmbedding(')
+          ..write('contentItemId: $contentItemId, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('vectorBlob: $vectorBlob, ')
+          ..write('computedAt: $computedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(contentItemId, modelVersion, vectorBlob, computedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MurmurEmbedding &&
+          other.contentItemId == this.contentItemId &&
+          other.modelVersion == this.modelVersion &&
+          other.vectorBlob == this.vectorBlob &&
+          other.computedAt == this.computedAt);
+}
+
+class MurmurEmbeddingsCompanion extends UpdateCompanion<MurmurEmbedding> {
+  final Value<String> contentItemId;
+  final Value<String> modelVersion;
+  final Value<String> vectorBlob;
+  final Value<DateTime> computedAt;
+  final Value<int> rowid;
+  const MurmurEmbeddingsCompanion({
+    this.contentItemId = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+    this.vectorBlob = const Value.absent(),
+    this.computedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MurmurEmbeddingsCompanion.insert({
+    required String contentItemId,
+    required String modelVersion,
+    required String vectorBlob,
+    required DateTime computedAt,
+    this.rowid = const Value.absent(),
+  }) : contentItemId = Value(contentItemId),
+       modelVersion = Value(modelVersion),
+       vectorBlob = Value(vectorBlob),
+       computedAt = Value(computedAt);
+  static Insertable<MurmurEmbedding> custom({
+    Expression<String>? contentItemId,
+    Expression<String>? modelVersion,
+    Expression<String>? vectorBlob,
+    Expression<DateTime>? computedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (contentItemId != null) 'content_item_id': contentItemId,
+      if (modelVersion != null) 'model_version': modelVersion,
+      if (vectorBlob != null) 'vector_blob': vectorBlob,
+      if (computedAt != null) 'computed_at': computedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MurmurEmbeddingsCompanion copyWith({
+    Value<String>? contentItemId,
+    Value<String>? modelVersion,
+    Value<String>? vectorBlob,
+    Value<DateTime>? computedAt,
+    Value<int>? rowid,
+  }) {
+    return MurmurEmbeddingsCompanion(
+      contentItemId: contentItemId ?? this.contentItemId,
+      modelVersion: modelVersion ?? this.modelVersion,
+      vectorBlob: vectorBlob ?? this.vectorBlob,
+      computedAt: computedAt ?? this.computedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (contentItemId.present) {
+      map['content_item_id'] = Variable<String>(contentItemId.value);
+    }
+    if (modelVersion.present) {
+      map['model_version'] = Variable<String>(modelVersion.value);
+    }
+    if (vectorBlob.present) {
+      map['vector_blob'] = Variable<String>(vectorBlob.value);
+    }
+    if (computedAt.present) {
+      map['computed_at'] = Variable<DateTime>(computedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MurmurEmbeddingsCompanion(')
+          ..write('contentItemId: $contentItemId, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('vectorBlob: $vectorBlob, ')
+          ..write('computedAt: $computedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -26100,6 +26438,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $MessengerMessagesTable(this);
   late final $MessengerMailboxCursorsTable messengerMailboxCursors =
       $MessengerMailboxCursorsTable(this);
+  late final $MurmurEmbeddingsTable murmurEmbeddings = $MurmurEmbeddingsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -26151,6 +26492,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     messengerConversations,
     messengerMessages,
     messengerMailboxCursors,
+    murmurEmbeddings,
   ];
 }
 
@@ -34311,6 +34653,31 @@ final class $$ContentItemsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$MurmurEmbeddingsTable, List<MurmurEmbedding>>
+  _murmurEmbeddingsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.murmurEmbeddings,
+    aliasName: $_aliasNameGenerator(
+      db.contentItems.contentItemId,
+      db.murmurEmbeddings.contentItemId,
+    ),
+  );
+
+  $$MurmurEmbeddingsTableProcessedTableManager get murmurEmbeddingsRefs {
+    final manager =
+        $$MurmurEmbeddingsTableTableManager($_db, $_db.murmurEmbeddings).filter(
+          (f) => f.contentItemId.contentItemId.sqlEquals(
+            $_itemColumn<String>('content_item_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _murmurEmbeddingsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ContentItemsTableFilterComposer
@@ -34654,6 +35021,31 @@ class $$ContentItemsTableFilterComposer
           }) => $$OwnershipPoliciesTableFilterComposer(
             $db: $db,
             $table: $db.ownershipPolicies,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> murmurEmbeddingsRefs(
+    Expression<bool> Function($$MurmurEmbeddingsTableFilterComposer f) f,
+  ) {
+    final $$MurmurEmbeddingsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.contentItemId,
+      referencedTable: $db.murmurEmbeddings,
+      getReferencedColumn: (t) => t.contentItemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MurmurEmbeddingsTableFilterComposer(
+            $db: $db,
+            $table: $db.murmurEmbeddings,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -35070,6 +35462,31 @@ class $$ContentItemsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> murmurEmbeddingsRefs<T extends Object>(
+    Expression<T> Function($$MurmurEmbeddingsTableAnnotationComposer a) f,
+  ) {
+    final $$MurmurEmbeddingsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.contentItemId,
+      referencedTable: $db.murmurEmbeddings,
+      getReferencedColumn: (t) => t.contentItemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MurmurEmbeddingsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.murmurEmbeddings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ContentItemsTableTableManager
@@ -35097,6 +35514,7 @@ class $$ContentItemsTableTableManager
             bool targetDiscussionProjections,
             bool discussionNodesRefs,
             bool ownershipPoliciesRefs,
+            bool murmurEmbeddingsRefs,
           })
         > {
   $$ContentItemsTableTableManager(_$AppDatabase db, $ContentItemsTable table)
@@ -35195,6 +35613,7 @@ class $$ContentItemsTableTableManager
                 targetDiscussionProjections = false,
                 discussionNodesRefs = false,
                 ownershipPoliciesRefs = false,
+                murmurEmbeddingsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -35210,6 +35629,7 @@ class $$ContentItemsTableTableManager
                     if (targetDiscussionProjections) db.projections,
                     if (discussionNodesRefs) db.discussionNodes,
                     if (ownershipPoliciesRefs) db.ownershipPolicies,
+                    if (murmurEmbeddingsRefs) db.murmurEmbeddings,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -35448,6 +35868,27 @@ class $$ContentItemsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (murmurEmbeddingsRefs)
+                        await $_getPrefetchedData<
+                          ContentItem,
+                          $ContentItemsTable,
+                          MurmurEmbedding
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ContentItemsTableReferences
+                              ._murmurEmbeddingsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ContentItemsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).murmurEmbeddingsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.contentItemId == item.contentItemId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -35480,6 +35921,7 @@ typedef $$ContentItemsTableProcessedTableManager =
         bool targetDiscussionProjections,
         bool discussionNodesRefs,
         bool ownershipPoliciesRefs,
+        bool murmurEmbeddingsRefs,
       })
     >;
 typedef $$MurmurMetadataTableCreateCompanionBuilder =
@@ -44729,6 +45171,324 @@ typedef $$MessengerMailboxCursorsTableProcessedTableManager =
       MessengerMailboxCursor,
       PrefetchHooks Function()
     >;
+typedef $$MurmurEmbeddingsTableCreateCompanionBuilder =
+    MurmurEmbeddingsCompanion Function({
+      required String contentItemId,
+      required String modelVersion,
+      required String vectorBlob,
+      required DateTime computedAt,
+      Value<int> rowid,
+    });
+typedef $$MurmurEmbeddingsTableUpdateCompanionBuilder =
+    MurmurEmbeddingsCompanion Function({
+      Value<String> contentItemId,
+      Value<String> modelVersion,
+      Value<String> vectorBlob,
+      Value<DateTime> computedAt,
+      Value<int> rowid,
+    });
+
+final class $$MurmurEmbeddingsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $MurmurEmbeddingsTable, MurmurEmbedding> {
+  $$MurmurEmbeddingsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ContentItemsTable _contentItemIdTable(_$AppDatabase db) =>
+      db.contentItems.createAlias(
+        $_aliasNameGenerator(
+          db.murmurEmbeddings.contentItemId,
+          db.contentItems.contentItemId,
+        ),
+      );
+
+  $$ContentItemsTableProcessedTableManager get contentItemId {
+    final $_column = $_itemColumn<String>('content_item_id')!;
+
+    final manager = $$ContentItemsTableTableManager(
+      $_db,
+      $_db.contentItems,
+    ).filter((f) => f.contentItemId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_contentItemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$MurmurEmbeddingsTableFilterComposer
+    extends Composer<_$AppDatabase, $MurmurEmbeddingsTable> {
+  $$MurmurEmbeddingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vectorBlob => $composableBuilder(
+    column: $table.vectorBlob,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get computedAt => $composableBuilder(
+    column: $table.computedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ContentItemsTableFilterComposer get contentItemId {
+    final $$ContentItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.contentItemId,
+      referencedTable: $db.contentItems,
+      getReferencedColumn: (t) => t.contentItemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ContentItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.contentItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$MurmurEmbeddingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MurmurEmbeddingsTable> {
+  $$MurmurEmbeddingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vectorBlob => $composableBuilder(
+    column: $table.vectorBlob,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get computedAt => $composableBuilder(
+    column: $table.computedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ContentItemsTableOrderingComposer get contentItemId {
+    final $$ContentItemsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.contentItemId,
+      referencedTable: $db.contentItems,
+      getReferencedColumn: (t) => t.contentItemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ContentItemsTableOrderingComposer(
+            $db: $db,
+            $table: $db.contentItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$MurmurEmbeddingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MurmurEmbeddingsTable> {
+  $$MurmurEmbeddingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get vectorBlob => $composableBuilder(
+    column: $table.vectorBlob,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get computedAt => $composableBuilder(
+    column: $table.computedAt,
+    builder: (column) => column,
+  );
+
+  $$ContentItemsTableAnnotationComposer get contentItemId {
+    final $$ContentItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.contentItemId,
+      referencedTable: $db.contentItems,
+      getReferencedColumn: (t) => t.contentItemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ContentItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.contentItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$MurmurEmbeddingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MurmurEmbeddingsTable,
+          MurmurEmbedding,
+          $$MurmurEmbeddingsTableFilterComposer,
+          $$MurmurEmbeddingsTableOrderingComposer,
+          $$MurmurEmbeddingsTableAnnotationComposer,
+          $$MurmurEmbeddingsTableCreateCompanionBuilder,
+          $$MurmurEmbeddingsTableUpdateCompanionBuilder,
+          (MurmurEmbedding, $$MurmurEmbeddingsTableReferences),
+          MurmurEmbedding,
+          PrefetchHooks Function({bool contentItemId})
+        > {
+  $$MurmurEmbeddingsTableTableManager(
+    _$AppDatabase db,
+    $MurmurEmbeddingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MurmurEmbeddingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MurmurEmbeddingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MurmurEmbeddingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> contentItemId = const Value.absent(),
+                Value<String> modelVersion = const Value.absent(),
+                Value<String> vectorBlob = const Value.absent(),
+                Value<DateTime> computedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MurmurEmbeddingsCompanion(
+                contentItemId: contentItemId,
+                modelVersion: modelVersion,
+                vectorBlob: vectorBlob,
+                computedAt: computedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String contentItemId,
+                required String modelVersion,
+                required String vectorBlob,
+                required DateTime computedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => MurmurEmbeddingsCompanion.insert(
+                contentItemId: contentItemId,
+                modelVersion: modelVersion,
+                vectorBlob: vectorBlob,
+                computedAt: computedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$MurmurEmbeddingsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({contentItemId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (contentItemId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.contentItemId,
+                                referencedTable:
+                                    $$MurmurEmbeddingsTableReferences
+                                        ._contentItemIdTable(db),
+                                referencedColumn:
+                                    $$MurmurEmbeddingsTableReferences
+                                        ._contentItemIdTable(db)
+                                        .contentItemId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$MurmurEmbeddingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MurmurEmbeddingsTable,
+      MurmurEmbedding,
+      $$MurmurEmbeddingsTableFilterComposer,
+      $$MurmurEmbeddingsTableOrderingComposer,
+      $$MurmurEmbeddingsTableAnnotationComposer,
+      $$MurmurEmbeddingsTableCreateCompanionBuilder,
+      $$MurmurEmbeddingsTableUpdateCompanionBuilder,
+      (MurmurEmbedding, $$MurmurEmbeddingsTableReferences),
+      MurmurEmbedding,
+      PrefetchHooks Function({bool contentItemId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -44843,4 +45603,6 @@ class $AppDatabaseManager {
         _db,
         _db.messengerMailboxCursors,
       );
+  $$MurmurEmbeddingsTableTableManager get murmurEmbeddings =>
+      $$MurmurEmbeddingsTableTableManager(_db, _db.murmurEmbeddings);
 }

@@ -1,4 +1,5 @@
 import Flutter
+import NaturalLanguage
 import UIKit
 
 @main
@@ -9,7 +10,53 @@ import UIKit
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     registerBackupPolicyChannel()
+    registerEmbeddingChannel()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private func registerEmbeddingChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      return
+    }
+    let channel = FlutterMethodChannel(
+      name: "ansible_node/embedding",
+      binaryMessenger: controller.binaryMessenger
+    )
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "embed" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard
+        let args = call.arguments as? [String: Any],
+        let text = args["text"] as? String
+      else {
+        result(FlutterError(
+          code: "invalid_arguments",
+          message: "Missing or invalid 'text' argument",
+          details: nil
+        ))
+        return
+      }
+      if #available(iOS 14.0, *) {
+        if let embedding = NLEmbedding.sentenceEmbedding(for: .traditionalChinese) {
+          let vector = embedding.vector(for: text) ?? []
+          result(vector)
+        } else {
+          result(FlutterError(
+            code: "model_unavailable",
+            message: "NLEmbedding for traditionalChinese not available",
+            details: nil
+          ))
+        }
+      } else {
+        result(FlutterError(
+          code: "unsupported_os",
+          message: "Sentence embedding requires iOS 14.0+",
+          details: nil
+        ))
+      }
+    }
   }
 
   private func registerBackupPolicyChannel() {

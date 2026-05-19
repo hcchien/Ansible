@@ -116,6 +116,7 @@ export 'src/repositories/drift/drift_context_pack_repository.dart';
 export 'src/repositories/drift/drift_summary_job_repository.dart';
 export 'src/repositories/drift/drift_messenger_repository.dart';
 export 'src/repositories/drift/drift_contact_repository.dart';
+export 'src/repositories/murmur_embedding_repository.dart';
 export 'src/db/app_database.dart'
     hide
         Board,

@@ -46,6 +46,7 @@ import '../schema/transformation_jobs.dart';
 import '../schema/wallet_credential_payloads.dart';
 import '../schema/wallet_credentials.dart';
 import '../schema/wallet_presentations.dart';
+import '../schema/murmur_embeddings.dart';
 
 part 'app_database.g.dart';
 
@@ -97,13 +98,14 @@ part 'app_database.g.dart';
     MessengerConversations,
     MessengerMessages,
     MessengerMailboxCursors,
+    MurmurEmbeddings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -168,6 +170,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 16) {
         await _createTableIfMissing(m, contactRecords);
+      }
+      if (from < 17) {
+        await _createTableIfMissing(m, murmurEmbeddings);
       }
       await _addColumnIfMissing(
         m,
