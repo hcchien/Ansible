@@ -9,10 +9,15 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
+import '../widgets/agent_sheet.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
 import '../services/ai/ai_provider_config_store.dart';
+import '../services/ai/apple_nl_embedding_service.dart';
+import '../services/ai/murmur_indexing_service.dart';
+import '../services/ai/openai_compatible_provider.dart';
+import '../services/ai/vector_search_service.dart';
 import '../services/app_locale_controller.dart';
 import '../services/app_sync_service.dart';
 import '../services/contact_resolver.dart';
@@ -31,7 +36,6 @@ import '../services/relay_ops_client.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
 import '../widgets/ops_queue_status_badge.dart';
-import '../widgets/transformation_review_sheet.dart';
 import 'murmur_screen.dart';
 import 'note_editor_screen.dart';
 import 'note_workspace_screen.dart';
@@ -99,6 +103,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final DriftHostedBoardRepository _hostedBoardRepo;
   late final DriftAiProviderConfigRepository _aiProviderConfigRepo;
   late final AiProviderConfigStore _aiProviderConfigStore;
+  late final AppleNLEmbeddingService _embeddingService;
+  late final DriftMurmurEmbeddingRepository _murmurEmbeddingRepo;
+  late final MurmurIndexingService _murmurIndexingService;
+  late final VectorSearchService _vectorSearchService;
   late final SecureStorageNostrKeyStore _nostrKeyStore;
   late final SecureStorageNostrRelaySettingsStore _nostrRelaySettingsStore;
   late final OpsDispatchService _opsDispatchService;
@@ -160,6 +168,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _aiProviderConfigStore = AiProviderConfigStore(
       repository: _aiProviderConfigRepo,
     );
+    _embeddingService = const AppleNLEmbeddingService();
+    _murmurEmbeddingRepo = DriftMurmurEmbeddingRepository(widget.db);
+    _murmurIndexingService = MurmurIndexingService(
+      embeddingService: _embeddingService,
+      embeddingRepository: _murmurEmbeddingRepo,
+      contentItemRepository: _contentItemRepo,
+    );
+    _vectorSearchService = VectorSearchService(
+      embeddingService: _embeddingService,
+      embeddingRepository: _murmurEmbeddingRepo,
+      contentItemRepository: _contentItemRepo,
+    );
     _nostrKeyStore = const SecureStorageNostrKeyStore();
     _nostrRelaySettingsStore = const SecureStorageNostrRelaySettingsStore();
     _opsDispatchService = OpsDispatchService(repository: _opsQueueRepo);
@@ -174,6 +194,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!mounted) return;
       unawaited(_loadData());
       unawaited(_runForegroundPullIfConfigured());
+      unawaited(_murmurIndexingService.indexAllPending());
     });
   }
 
@@ -311,10 +332,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     setState(() => _selectedCircleTab = tab);
   }
 
-  Future<void> _startAiTransformation() async {
+  Future<void> _startAiTransformation({
+    String? noteId,
+    String? noteTitle,
+    String? noteBody,
+  }) async {
     final providers = await _aiProviderConfigRepo.list();
     if (!mounted) return;
-    if (providers.isEmpty) {
+
+    // Build provider from first configured provider (if any)
+    OpenAiCompatibleProvider? aiProvider;
+    if (providers.isNotEmpty) {
+      final config = providers.first;
+      final apiKey = await _aiProviderConfigStore.readApiKey(config);
+      if (!mounted) return;
+      final baseUrl = config.baseUrl;
+      final modelName = config.modelName;
+      if (baseUrl != null && modelName != null) {
+        aiProvider = OpenAiCompatibleProvider(
+          baseUrl: Uri.parse(baseUrl),
+          model: modelName,
+          apiKey: apiKey ?? '',
+        );
+      }
+    }
+
+    if (aiProvider == null) {
+      // No provider configured — show setup sheet first
       final result = await showModalBottomSheet<AiProviderSetupResult>(
         context: context,
         backgroundColor: AnsibleDesign.paper,
@@ -323,7 +367,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         builder: (_) => const AiProviderSetupSheet(),
       );
       if (result == null) return;
-      await _aiProviderConfigStore.save(
+      final savedConfig = await _aiProviderConfigStore.save(
         displayName: result.displayName,
         providerType: result.providerType,
         baseUrl: result.baseUrl,
@@ -333,34 +377,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         defaultForSummaries: true,
       );
       if (!mounted) return;
+      final baseUrl = savedConfig.baseUrl;
+      final modelName = savedConfig.modelName;
+      if (baseUrl != null && modelName != null) {
+        aiProvider = OpenAiCompatibleProvider(
+          baseUrl: Uri.parse(baseUrl),
+          model: modelName,
+          apiKey: result.apiKey ?? '',
+        );
+      }
     }
 
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: AnsibleDesign.paper,
-      showDragHandle: true,
+      showDragHandle: false,
       isScrollControlled: true,
-      builder: (_) => TransformationReviewSheet(
-        title: 'Draft note',
-        body: 'Review AI output before it becomes local content.',
-        sourceLabels: const ['Current workspace'],
-        containsPrivateSource: true,
-        onAccept: (title, body) async {
-          final now = DateTime.now().toUtc();
-          await _contentItemRepo.create(
-            ContentItem(
-              id: _uuid.v4(),
-              authorDid: widget.did,
-              mode: ContentMode.note,
-              title: title,
-              body: body,
-              status: ContentStatus.active,
-              visibility: ContentVisibility.private,
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-        },
+      builder: (_) => AgentSheet(
+        searchService: _vectorSearchService,
+        authorDid: widget.did,
+        contentItemRepo: _contentItemRepo,
+        contentRelationRepo: _contentRelationRepo,
+        aiProvider: aiProvider!,
+        noteId: noteId,
+        noteTitle: noteTitle,
+        noteBody: noteBody,
+        onNoteUpdated: _loadData,
       ),
     );
   }
@@ -924,6 +967,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onContentItemsChanged: _loadData,
                 onPublishContentItem: _publishContentItem,
                 onStartAiAction: _startAiTransformation,
+                onSummonAiForNote: ({noteId, noteTitle, noteBody}) =>
+                    _startAiTransformation(
+                      noteId: noteId,
+                      noteTitle: noteTitle,
+                      noteBody: noteBody,
+                    ),
               );
 
               if (compact) {
@@ -1224,6 +1273,7 @@ class _MainPanel extends StatelessWidget {
     required this.onContentItemsChanged,
     required this.onPublishContentItem,
     required this.onStartAiAction,
+    required this.onSummonAiForNote,
   });
 
   final VoidCallback? onClearIdentity;
@@ -1264,6 +1314,11 @@ class _MainPanel extends StatelessWidget {
   final Future<void> Function(ContentItem, DistributionPreference)
   onPublishContentItem;
   final Future<void> Function() onStartAiAction;
+  final Future<void> Function({
+    String? noteId,
+    String? noteTitle,
+    String? noteBody,
+  }) onSummonAiForNote;
 
   // ── Room label helpers ────────────────────────────────────────────────────
   String _roomLabel(_ElixRoom room) {
@@ -1781,6 +1836,11 @@ class _MainPanel extends StatelessWidget {
               contentItemRepository: contentItemRepository,
               onContentItemsChanged: onContentItemsChanged,
               onPublishContentItem: onPublishContentItem,
+              onSummonAI: ({noteId, noteTitle, noteBody}) => onSummonAiForNote(
+                noteId: noteId,
+                noteTitle: noteTitle,
+                noteBody: noteBody,
+              ),
             ),
           },
         ),

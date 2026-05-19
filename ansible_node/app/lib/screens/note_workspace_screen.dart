@@ -17,6 +17,7 @@ class NoteWorkspaceScreen extends StatefulWidget {
     this.contentItemRepository,
     this.onContentItemsChanged,
     this.onPublishContentItem,
+    this.onSummonAI,
   });
 
   final String? authorDid;
@@ -29,6 +30,12 @@ class NoteWorkspaceScreen extends StatefulWidget {
     DistributionPreference preference,
   )?
   onPublishContentItem;
+  /// Called to open the AI agent search sheet, optionally anchored to a note.
+  final Future<void> Function({
+    String? noteId,
+    String? noteTitle,
+    String? noteBody,
+  })? onSummonAI;
 
   @override
   State<NoteWorkspaceScreen> createState() => _NoteWorkspaceScreenState();
@@ -44,8 +51,9 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
     final sortedMurmurs = [...widget.murmurs]
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
-    return ListView(
-      padding: EdgeInsets.zero,
+    final onSummonAI = widget.onSummonAI;
+    final content = ListView(
+      padding: const EdgeInsets.only(bottom: 0),
       children: [
         Row(
           children: [
@@ -118,6 +126,65 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
         const SizedBox(height: 20),
         AnsibleSectionHead(zh: l10n.lineage, en: 'LOCAL CONTENT GRAPH'),
         const _LineagePreview(),
+        // Extra space so content isn't hidden behind summon strip
+        if (onSummonAI != null) const SizedBox(height: 72),
+      ],
+    );
+
+    if (onSummonAI == null) return content;
+
+    return Column(
+      children: [
+        Expanded(child: content),
+        // Summon strip — B·04 design
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: const BoxDecoration(
+            border: Border(
+              top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+            ),
+            color: AnsibleDesign.paper,
+          ),
+          child: GestureDetector(
+            onTap: () => onSummonAI(),
+            child: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AnsibleDesign.ink,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.auto_awesome,
+                      size: 12,
+                      color: AnsibleDesign.paper,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    '想從之前的 murmur 找東西延伸這篇？',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 13,
+                      color: AnsibleDesign.inkMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward,
+                  size: 14,
+                  color: AnsibleDesign.inkFaint,
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
