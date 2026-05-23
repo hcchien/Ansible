@@ -4,6 +4,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../config/app_environment.dart';
 import '../services/atproto_client.dart';
 import '../theme/ansible_design.dart';
 
@@ -35,10 +36,8 @@ class PasskeysRegistrationScreen extends StatefulWidget {
     this.didPlcManager,
     this.atProtoClient,
     this.nonceSigner,
-    this.allowInsecureDevFallback = const bool.fromEnvironment(
-      'ANSIBLE_ALLOW_INSECURE_DEV_FALLBACK',
-      defaultValue: true,
-    ),
+    this.allowInsecureDevFallback =
+        AppEnvironment.allowInsecureIdentityFallback,
   });
 
   @override
@@ -51,10 +50,7 @@ class _PasskeysRegistrationScreenState
   _Phase _phase = _Phase.idle;
   String? _errorMessage;
   final TextEditingController _handleController = TextEditingController(
-    text: const String.fromEnvironment(
-      'ANSIBLE_DEFAULT_HANDLE_SUFFIX',
-      defaultValue: 'user',
-    ),
+    text: AppEnvironment.defaultHandleSuffix,
   );
 
   late final PasskeysManager _passkeysManager;

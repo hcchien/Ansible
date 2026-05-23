@@ -1,0 +1,7 @@
+.git
+.DS_Store
+_build
+deps
+erl_crash.dump
+priv/native/*.so
+native/*/target

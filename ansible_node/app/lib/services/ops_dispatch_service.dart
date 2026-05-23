@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
 
+import '../config/app_environment.dart';
 import 'relay_ops_client.dart';
 
 class OpsDispatchService {
@@ -29,10 +30,10 @@ class OpsDispatchService {
     try {
       final signature = await signer.sign(message);
       return entry.copyWith(signature: signature.hex);
-    } on UnimplementedError {
-      return entry.copyWith(signature: _devSignature(entry));
-    } on StateError {
-      return entry.copyWith(signature: _devSignature(entry));
+    } on UnimplementedError catch (error) {
+      return _signWithInsecureFallbackIfAllowed(entry, error);
+    } on StateError catch (error) {
+      return _signWithInsecureFallbackIfAllowed(entry, error);
     }
   }
 
@@ -63,5 +64,18 @@ class OpsDispatchService {
   String _devSignature(OpsQueueEntry entry) {
     final bytes = utf8.encode('${entry.opId}:${entry.payload}');
     return 'dev-${base64Url.encode(bytes).replaceAll('=', '')}';
+  }
+
+  OpsQueueEntry _signWithInsecureFallbackIfAllowed(
+    OpsQueueEntry entry,
+    Object error,
+  ) {
+    if (AppEnvironment.allowInsecureSigningFallback) {
+      return entry.copyWith(signature: _devSignature(entry));
+    }
+
+    throw StateError(
+      'DID signing failed and insecure signing fallback is disabled: $error',
+    );
   }
 }

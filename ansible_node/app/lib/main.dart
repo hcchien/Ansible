@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'config/app_environment.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_shell.dart';
 // import 'screens/identity_anchor_screen.dart'; // V1: DID anchoring via NFC passport (replaced by PasskeysRegistrationScreen in V2.0)
@@ -25,6 +26,7 @@ final ElixThemeController themeController = ElixThemeController();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppEnvironment.validateProductionReadiness();
 
   // Initialise the Rust native library (Ed25519, did:key, signing).
   // Placeholder stub until ./setup_codegen.sh is run; after that it loads the
@@ -53,10 +55,7 @@ Future<AppDatabase> _openAppDatabase({BackupPolicyPaths? storagePaths}) async {
 }
 
 Future<void> _resetLocalIdentityIfRequested() async {
-  const reset = bool.fromEnvironment(
-    'ANSIBLE_RESET_LOCAL_IDENTITY_ON_START',
-    defaultValue: false,
-  );
+  const reset = AppEnvironment.resetLocalIdentityOnStart;
   if (!reset) return;
 
   await DidPlcManagerImpl().deleteDid();

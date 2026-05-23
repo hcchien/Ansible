@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_environment.dart';
+
 /// HTTP client for the Tris-Aura Issuer Server (ansible_issuer).
 ///
 /// Endpoints:
@@ -80,13 +82,7 @@ class VcIssuerClient {
     String? baseUrl,
     http.Client? client,
     this.timeout = const Duration(seconds: 15),
-  }) : _baseUri = Uri.parse(
-         baseUrl ??
-             const String.fromEnvironment(
-               'ANSIBLE_ISSUER_BASE_URL',
-               defaultValue: 'http://localhost:4002',
-             ),
-       ),
+  }) : _baseUri = Uri.parse(baseUrl ?? AppEnvironment.issuerBaseUrl),
        _client = client ?? http.Client();
 
   /// POST /api/v1/vc/request

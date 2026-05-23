@@ -1,0 +1,75 @@
+# Cloud Build trigger:
+#   Build config: ansible_relay/phoenix/cloudbuild.yaml
+#   Included files: ansible_relay/phoenix/**
+
+substitutions:
+  _REGION: asia-east1
+  _REPOSITORY: ansible
+  _IMAGE_NAME: ansible-relay
+  _ELIXIR_IMAGE: hexpm/elixir:1.16.3-erlang-26.2.5.12-debian-bookworm-20260202-slim
+
+steps:
+  - id: start-postgres
+    name: gcr.io/cloud-builders/docker
+    args:
+      - run
+      - --detach
+      - --name
+      - relay-postgres
+      - --network
+      - cloudbuild
+      - --env
+      - POSTGRES_USER=postgres
+      - --env
+      - POSTGRES_PASSWORD=postgres
+      - --env
+      - POSTGRES_DB=ansible_relay_test
+      - postgres:16-alpine
+
+  - id: wait-for-postgres
+    name: postgres:16-alpine
+    entrypoint: sh
+    args:
+      - -c
+      - until pg_isready -h relay-postgres -U postgres; do sleep 1; done
+    waitFor: ["start-postgres"]
+
+  - id: test
+    name: ${_ELIXIR_IMAGE}
+    dir: ansible_relay/phoenix
+    entrypoint: sh
+    env:
+      - MIX_ENV=test
+      - POSTGRES_HOST=relay-postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ansible_relay_test
+    args:
+      - -c
+      - |
+        apt-get update
+        apt-get install -y --no-install-recommends build-essential cargo git pkg-config rustc
+        mix local.hex --force
+        mix local.rebar --force
+        mix deps.get
+        mix ecto.migrate
+        mix test
+    waitFor: ["wait-for-postgres"]
+
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+      - ansible_relay/phoenix
+    waitFor: ["test"]
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -2,10 +2,9 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-const kDefaultRelayBaseUrl = String.fromEnvironment(
-  'ANSIBLE_RELAY_BASE_URL',
-  defaultValue: 'http://127.0.0.1:4001',
-);
+import '../config/app_environment.dart';
+
+const kDefaultRelayBaseUrl = AppEnvironment.defaultRelayBaseUrl;
 
 const kDevZkpCircuitVersion = 'passport_v1_dev';
 const kDevVerificationKeyHash = 'sha256:dev-passport-v1-placeholder';

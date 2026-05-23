@@ -1,0 +1,32 @@
+# Cloud Build trigger:
+#   Build config: ansible_distribution_frontend/cloudbuild.yaml
+#   Included files: ansible_distribution_frontend/**
+
+substitutions:
+  _REGION: asia-east1
+  _REPOSITORY: ansible
+  _IMAGE_NAME: ansible-web
+
+steps:
+  - id: test
+    name: node:22-alpine
+    dir: ansible_distribution_frontend
+    entrypoint: npm
+    args: ["test"]
+
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+      - ansible_distribution_frontend
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

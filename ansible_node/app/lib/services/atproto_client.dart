@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_environment.dart';
+
 /// AT Protocol XRPC client for Tris-Aura V2.0.
 ///
 /// Implements the subset of AT Protocol HTTP API used by the App:
@@ -141,13 +143,7 @@ class AtProtoClient {
     String? baseUrl,
     http.Client? client,
     this.timeout = const Duration(seconds: 15),
-  }) : _baseUri = Uri.parse(
-         baseUrl ??
-             const String.fromEnvironment(
-               'ANSIBLE_RELAY_BASE_URL',
-               defaultValue: 'http://localhost:4001',
-             ),
-       ),
+  }) : _baseUri = Uri.parse(baseUrl ?? AppEnvironment.atProtoBaseUrl),
        _client = client ?? http.Client();
 
   /// POST /api/v2/identity/register

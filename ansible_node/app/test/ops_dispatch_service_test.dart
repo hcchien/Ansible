@@ -40,6 +40,27 @@ void main() {
     expect(payload['content'], 'hello');
   });
 
+  test('sign fails closed when the production signer is unavailable', () async {
+    final service = OpsDispatchService(
+      repository: InMemoryOpsQueueRepository(),
+      signer: _FailingSigner(),
+      relayClient: RelayOpsClient(
+        client: MockClient((_) async => http.Response('{}', 500)),
+      ),
+    );
+
+    expect(
+      () => service.sign(_entry()),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('insecure signing fallback is disabled'),
+        ),
+      ),
+    );
+  });
+
   test('flushPending marks accepted ops as synced', () async {
     final repo = InMemoryOpsQueueRepository();
     await repo.enqueue(_entry());
@@ -127,5 +148,12 @@ class _RecordingSigner implements DidSigner {
   @override
   Future<Ed25519Signature> sign(List<int> message) async {
     return Ed25519Signature('signed:${utf8.decode(message)}');
+  }
+}
+
+class _FailingSigner implements DidSigner {
+  @override
+  Future<Ed25519Signature> sign(List<int> message) async {
+    throw StateError('key unavailable');
   }
 }
