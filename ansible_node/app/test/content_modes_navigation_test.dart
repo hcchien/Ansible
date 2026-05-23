@@ -4,6 +4,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('phone navigation exposes content modes and murmur limit', (
@@ -13,6 +14,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'elix_board_swipe_shown': true});
 
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
@@ -28,7 +30,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    await tester.tap(find.byKey(const Key('home_tab_label_circle')));
+    await tester.tap(find.text('錄一段'));
     await tester.pumpAndSettle();
 
     expect(find.text('Murmur'), findsOneWidget);
@@ -63,10 +65,7 @@ void main() {
     expect(find.text('測試碎念存檔'), findsOneWidget);
     expect(find.text('Lineage'), findsOneWidget);
 
-    await tester.drag(
-      find.byKey(const Key('home_swipe_page_view')),
-      const Offset(340, 0),
-    );
+    await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();
     expect(find.text('還沒有任何記錄'), findsNothing);
   });

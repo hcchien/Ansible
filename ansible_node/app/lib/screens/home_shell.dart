@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show lerpDouble;
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_domain/ansible_domain.dart';
@@ -44,7 +45,7 @@ import 'note_editor_screen.dart';
 import 'note_workspace_screen.dart';
 import 'posts_view_screen.dart';
 import 'contact_picker_screen.dart' show ContactInputResolver;
-import 'inbox_screen.dart';
+import 'inbox_screen.dart' show ContactAvailabilityResolver;
 import 'search_screen.dart';
 import 'settings_home_screen.dart';
 import 'wallet_screen.dart';
@@ -52,8 +53,11 @@ import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 
-// Bottom navigation tabs (v4 design).
+// Persisted screen-style buckets. The current home surface uses feed/forum.
 enum _ElixTab { feed, circle, inbox, you }
+
+/// The two primary swipe boards.
+enum _Board { personal, forum }
 
 // Within the "圈內" room, a sub-selection between murmur and notes.
 enum _CircleTab { murmur, notes }
@@ -130,6 +134,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
   _ElixTab _selectedTab = _ElixTab.feed;
+  _Board _selectedBoard = _Board.personal;
+  bool _showCoachmark = false;
   _CircleTab _selectedCircleTab = _CircleTab.murmur;
   late final PageController _pageController;
   Map<_ElixTab, ElixScreenStyle> _screenStyles = {
@@ -140,7 +146,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _selectedTab.index);
+    _pageController = PageController(initialPage: 0);
     _boardRepo = DriftBoardRepository(widget.db);
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
@@ -204,6 +210,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       unawaited(_loadData());
       unawaited(_runForegroundPullIfConfigured());
       unawaited(_murmurIndexingService.indexAllPending());
+      unawaited(_checkCoachmark());
     });
   }
 
@@ -362,9 +369,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   void _handlePageChanged(int page) {
-    final tab = _ElixTab.values[page];
-    if (_selectedTab == tab) return;
-    setState(() => _selectedTab = tab);
+    final board = _Board.values[page.clamp(0, _Board.values.length - 1)];
+    final tab = board == _Board.personal ? _ElixTab.feed : _ElixTab.circle;
+    if (_selectedBoard == board && _selectedTab == tab) return;
+    setState(() {
+      _selectedBoard = board;
+      _selectedTab = tab;
+    });
   }
 
   void _selectTab(_ElixTab tab) {
@@ -380,6 +391,57 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ),
       );
     }
+  }
+
+  void _selectBoardSwipe(_Board board) {
+    if (_selectedBoard != board) {
+      setState(() {
+        _selectedBoard = board;
+        _selectedTab = board == _Board.personal
+            ? _ElixTab.feed
+            : _ElixTab.circle;
+      });
+    }
+    if (_pageController.hasClients) {
+      unawaited(
+        _pageController.animateToPage(
+          board.index,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    }
+  }
+
+  Future<void> _checkCoachmark() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final shown = prefs.getBool('elix_board_swipe_shown') ?? false;
+    if (!shown) setState(() => _showCoachmark = true);
+  }
+
+  Future<void> _dismissCoachmark() async {
+    setState(() => _showCoachmark = false);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('elix_board_swipe_shown', true);
+  }
+
+  void _openCircleScreen(BuildContext context, _CircleTab initialTab) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _CircleFullScreen(
+          did: widget.did,
+          db: widget.db,
+          initialTab: initialTab,
+          contentItems: _contentItems,
+          contentItemRepository: _contentItemRepo,
+          murmurReferenceCounts: _murmurReferenceCounts,
+          onContentItemsChanged: _loadData,
+          onPublishContentItem: _publishContentItem,
+          onSummonAiForNote: _startAiTransformation,
+        ),
+      ),
+    );
   }
 
   String _tabLabel(_ElixTab tab) {
@@ -441,8 +503,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               subtitle: 'MURMUR · 文字或語音',
               onTap: () {
                 Navigator.pop(context);
-                _selectTab(_ElixTab.circle);
-                _selectCircleTab(_CircleTab.murmur);
+                _openCircleScreen(context, _CircleTab.murmur);
               },
             ),
             const Divider(height: 0.5, color: AnsibleDesign.ruleSoft),
@@ -452,8 +513,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               subtitle: 'NOTE · 長文或想法',
               onTap: () {
                 Navigator.pop(context);
-                _selectTab(_ElixTab.circle);
-                _selectCircleTab(_CircleTab.notes);
+                _openCircleScreen(context, _CircleTab.notes);
               },
             ),
             const SizedBox(height: 8),
@@ -1097,9 +1157,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 boards: _boards,
                 networkStatusService: _networkStatusService,
                 pageController: _pageController,
-                selectedTab: _selectedTab,
+                selectedTab: _selectedBoard == _Board.personal
+                    ? _ElixTab.feed
+                    : _ElixTab.circle,
                 onTabChanged: _selectTab,
                 onPageChanged: _handlePageChanged,
+                selectedBoard: _selectedBoard,
+                onBoardChanged: _selectBoardSwipe,
+                showCoachmark: _showCoachmark,
+                onDismissCoachmark: _dismissCoachmark,
+                onOpenCircle: (ctx, tab) => _openCircleScreen(ctx, tab),
                 onComposeTap: () => _openCompose(context),
                 onScreenStyleTap: () => _openScreenStyleSheet(context),
                 screenStyles: _screenStyles,
@@ -1411,6 +1478,11 @@ class _MainPanel extends StatelessWidget {
     required this.selectedTab,
     required this.onTabChanged,
     required this.onPageChanged,
+    required this.selectedBoard,
+    required this.onBoardChanged,
+    required this.showCoachmark,
+    required this.onDismissCoachmark,
+    required this.onOpenCircle,
     required this.onComposeTap,
     required this.onScreenStyleTap,
     required this.screenStyles,
@@ -1456,6 +1528,11 @@ class _MainPanel extends StatelessWidget {
   final _ElixTab selectedTab;
   final ValueChanged<_ElixTab> onTabChanged;
   final ValueChanged<int> onPageChanged;
+  final _Board selectedBoard;
+  final ValueChanged<_Board> onBoardChanged;
+  final bool showCoachmark;
+  final VoidCallback onDismissCoachmark;
+  final void Function(BuildContext, _CircleTab) onOpenCircle;
   final VoidCallback onComposeTap;
   final VoidCallback onScreenStyleTap;
   final Map<_ElixTab, ElixScreenStyle> screenStyles;
@@ -1542,8 +1619,7 @@ class _MainPanel extends StatelessWidget {
 
       return GestureDetector(
         onTap: () {
-          onTabChanged(_ElixTab.circle);
-          onCircleTabChanged(isNote ? _CircleTab.notes : _CircleTab.murmur);
+          onOpenCircle(context, isNote ? _CircleTab.notes : _CircleTab.murmur);
         },
         behavior: HitTestBehavior.opaque,
         child: Container(
@@ -1693,10 +1769,8 @@ class _MainPanel extends StatelessWidget {
                     children: [
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: () {
-                            onTabChanged(_ElixTab.circle);
-                            onCircleTabChanged(_CircleTab.notes);
-                          },
+                          onPressed: () =>
+                              onOpenCircle(context, _CircleTab.notes),
                           icon: const Icon(Icons.edit_outlined, size: 14),
                           label: const Text('寫一段'),
                           style: FilledButton.styleFrom(
@@ -1711,10 +1785,8 @@ class _MainPanel extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            onTabChanged(_ElixTab.circle);
-                            onCircleTabChanged(_CircleTab.murmur);
-                          },
+                          onPressed: () =>
+                              onOpenCircle(context, _CircleTab.murmur),
                           icon: Icon(
                             Icons.mic_outlined,
                             size: 14,
@@ -1936,121 +2008,72 @@ class _MainPanel extends StatelessWidget {
     );
   }
 
-  // ── Inner circle (圈內) ─────────────────────────────────────────────────
-  Widget _buildCircle(BuildContext context) {
-    return Column(
-      children: [
-        // Sub-tab: Murmur / Notes
-        _CircleTabNav(
-          selected: selectedCircleTab,
-          onChanged: onCircleTabChanged,
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: switch (selectedCircleTab) {
-            _CircleTab.murmur => MurmurScreen(
-              authorDid: did,
-              contentItemRepository: contentItemRepository,
-              recentMurmurs: contentItems
-                  .where((item) => item.mode == ContentMode.murmur)
-                  .toList(),
-              murmurReferenceCounts: murmurReferenceCounts,
-              onSaved: onContentItemsChanged,
-              onPublishContentItem: onPublishContentItem,
-            ),
-            _CircleTab.notes => NoteWorkspaceScreen(
-              authorDid: did,
-              notes: contentItems
-                  .where((item) => item.mode == ContentMode.note)
-                  .toList(),
-              murmurs: contentItems
-                  .where((item) => item.mode == ContentMode.murmur)
-                  .toList(),
-              contentItemRepository: contentItemRepository,
-              onContentItemsChanged: onContentItemsChanged,
-              onPublishContentItem: onPublishContentItem,
-              onSummonAI: ({noteId, noteTitle, noteBody}) => onSummonAiForNote(
-                noteId: noteId,
-                noteTitle: noteTitle,
-                noteBody: noteBody,
-              ),
-            ),
-          },
-        ),
-      ],
-    );
-  }
-
-  // ── Inbox tab ──────────────────────────────────────────────────────────
-  Widget _buildInbox(BuildContext context) {
-    return InboxScreen(
-      repository: DriftMessengerRepository(db),
-      contactRepository: DriftContactRepository(db),
-      messengerService: messengerSyncService,
-      senderDid: did,
-      relayConfigured: hasActiveRelay,
-      resolveContactAvailability: contactAvailabilityResolver,
-      resolveContactInput: contactInputResolver,
-    );
-  }
-
-  // ── You / Profile tab ──────────────────────────────────────────────────
-  Widget _buildYou(BuildContext context) {
-    return SettingsHomeScreen(
-      db: db,
-      did: did,
-      localeController: localeController,
-      onClearIdentity: onClearIdentity,
-    );
-  }
-
-  Widget _buildStyledPage(_ElixTab tab, Widget child) {
-    final style = screenStyles[tab] ?? ElixScreenStyle.paper;
-    final data = style.data;
-    return ElixScreenStyleScope(
-      style: style,
-      child: AnimatedContainer(
-        key: Key('screen_style_scope_${tab.name}'),
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(color: data.background),
-        child: child,
-      ),
-    );
-  }
-
-  // ── Swipe Screen dispatcher ─────────────────────────────────────────────
-  Widget _buildSwipeScreens(BuildContext context, bool compact) {
+  Widget _buildBoardSwiper(BuildContext context, bool compact) {
     final contentPadding = compact
         ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
         : const EdgeInsets.symmetric(horizontal: 28, vertical: 12);
 
-    return PageView(
-      key: const Key('home_swipe_page_view'),
-      controller: pageController,
-      onPageChanged: onPageChanged,
-      physics: const PageScrollPhysics(),
+    Widget wrapPage(_ElixTab tab, Widget child) {
+      final style = screenStyles[tab] ?? ElixScreenStyle.paper;
+      final data = style.data;
+      return ElixScreenStyleScope(
+        style: style,
+        child: AnimatedContainer(
+          key: Key('screen_style_scope_${tab.name}'),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(color: data.background),
+          child: child,
+        ),
+      );
+    }
+
+    return Stack(
+      key: const Key('board_swipe_3d_stage'),
       children: [
-        _buildStyledPage(
-          _ElixTab.feed,
-          Padding(
-            padding: contentPadding,
-            child: _buildPersonalBoard(context, compact),
-          ),
-        ),
-        _buildStyledPage(
-          _ElixTab.circle,
-          Padding(
-            padding: EdgeInsets.only(
-              left: compact ? 16 : 28,
-              right: compact ? 16 : 28,
-              top: 12,
+        PageView(
+          key: const Key('board_swipe_page_view'),
+          controller: pageController,
+          onPageChanged: onPageChanged,
+          physics: const PageScrollPhysics(),
+          allowImplicitScrolling: true,
+          children: [
+            _BoardFlipPage(
+              key: const Key('board_swipe_page_transform_feed'),
+              pageController: pageController,
+              pageIndex: _Board.personal.index,
+              selectedBoard: selectedBoard,
+              child: wrapPage(
+                _ElixTab.feed,
+                Padding(
+                  padding: contentPadding,
+                  child: _buildPersonalBoard(context, compact),
+                ),
+              ),
             ),
-            child: _buildCircle(context),
-          ),
+            _BoardFlipPage(
+              key: const Key('board_swipe_page_transform_circle'),
+              pageController: pageController,
+              pageIndex: _Board.forum.index,
+              selectedBoard: selectedBoard,
+              child: wrapPage(
+                _ElixTab.circle,
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: compact ? 16 : 28,
+                    right: compact ? 16 : 28,
+                    top: 12,
+                  ),
+                  child: _buildForum(context, compact),
+                ),
+              ),
+            ),
+          ],
         ),
-        _buildStyledPage(_ElixTab.inbox, _buildInbox(context)),
-        _buildStyledPage(_ElixTab.you, _buildYou(context)),
+        _BoardSwipeProgressPill(
+          pageController: pageController,
+          compact: compact,
+        ),
       ],
     );
   }
@@ -2083,11 +2106,19 @@ class _MainPanel extends StatelessWidget {
               screenStyleLabel:
                   (screenStyles[selectedTab] ?? ElixScreenStyle.paper).label,
             ),
-            Expanded(child: _buildSwipeScreens(context, compact)),
-            _ElixTabBar(
-              selected: selectedTab,
-              onTabChanged: onTabChanged,
-              onComposeTap: onComposeTap,
+            _BoardSwipeHeader(
+              pageController: pageController,
+              selectedBoard: selectedBoard,
+              onTapBoard: onBoardChanged,
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  _buildBoardSwiper(context, compact),
+                  if (showCoachmark)
+                    _SwipeCoachmark(onDismiss: onDismissCoachmark),
+                ],
+              ),
             ),
           ],
         );
@@ -2431,6 +2462,24 @@ class _TopBar extends StatelessWidget {
                 color: styleData.muted,
                 tooltip: 'Screen style · $screenStyleLabel',
               ),
+              IconButton(
+                key: const Key('settings_button'),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SettingsHomeScreen(
+                        db: db,
+                        did: did,
+                        localeController: localeController,
+                        onClearIdentity: onClearIdentity,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.person_outline),
+                color: styleData.muted,
+                tooltip: l10n.settingsNav,
+              ),
               if (!compact)
                 TextButton.icon(
                   onPressed: () {
@@ -2515,92 +2564,644 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Bottom tab bar — v4 design.
-class _ElixTabBar extends StatelessWidget {
-  const _ElixTabBar({
-    required this.selected,
-    required this.onTabChanged,
-    required this.onComposeTap,
+double _boardPageValue(PageController controller, double fallback) {
+  if (!controller.hasClients) return fallback;
+  final position = controller.position;
+  if (!position.hasContentDimensions) return fallback;
+  return controller.page ?? fallback;
+}
+
+class _BoardFlipPage extends StatelessWidget {
+  const _BoardFlipPage({
+    super.key,
+    required this.pageController,
+    required this.pageIndex,
+    required this.selectedBoard,
+    required this.child,
   });
 
-  final _ElixTab selected;
-  final ValueChanged<_ElixTab> onTabChanged;
-  final VoidCallback onComposeTap;
+  final PageController pageController;
+  final int pageIndex;
+  final _Board selectedBoard;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AnsibleDesign.paper,
-        border: const Border(
-          top: BorderSide(color: AnsibleDesign.rule, width: 0.5),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return AnimatedBuilder(
+      animation: pageController,
+      child: child,
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        final reduceMotion =
+            media.disableAnimations || media.accessibleNavigation;
+        final currentPage = _boardPageValue(
+          pageController,
+          selectedBoard.index.toDouble(),
+        );
+        final delta = (currentPage - pageIndex).clamp(-1.0, 1.0).toDouble();
+        final depth = delta.abs();
+        final matrix = Matrix4.identity();
+        if (reduceMotion) {
+          matrix.translateByDouble(-delta * 10.0, 0.0, 0.0, 1.0);
+        } else {
+          matrix
+            ..setEntry(3, 2, 0.0012)
+            ..translateByDouble(-delta * 28.0, 0.0, 0.0, 1.0)
+            ..rotateY(-delta * 0.56);
+        }
+
+        final hinge = delta >= 0 ? Alignment.centerLeft : Alignment.centerRight;
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        final shadeColor = dark
+            ? Colors.black.withValues(alpha: 0.34)
+            : AnsibleDesign.ink.withValues(alpha: 0.20);
+        final spineColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+
+        return Transform(
+          alignment: hinge,
+          transform: matrix,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              _tab(context, _ElixTab.feed, Icons.home_outlined, '動態'),
-              _tab(
-                context,
-                _ElixTab.circle,
-                Icons.radio_button_unchecked,
-                '圈內',
-              ),
-              _centerTab(context),
-              _tab(context, _ElixTab.inbox, Icons.notifications_none, '通知'),
-              _tab(context, _ElixTab.you, Icons.person_outline, '你'),
+              child!,
+              if (!reduceMotion && depth > 0.01)
+                IgnorePointer(
+                  child: Opacity(
+                    opacity: depth.clamp(0.0, 0.82).toDouble(),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: delta >= 0
+                              ? Alignment.centerLeft
+                              : Alignment.centerRight,
+                          end: delta >= 0
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          colors: [Colors.transparent, shadeColor],
+                          stops: const [0.34, 1.0],
+                        ),
+                        border: Border(
+                          right: delta >= 0
+                              ? BorderSide(color: spineColor, width: 0.5)
+                              : BorderSide.none,
+                          left: delta < 0
+                              ? BorderSide(color: spineColor, width: 0.5)
+                              : BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BoardSwipeProgressPill extends StatelessWidget {
+  const _BoardSwipeProgressPill({
+    required this.pageController,
+    required this.compact,
+  });
+
+  final PageController pageController;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: pageController,
+      builder: (context, _) {
+        final page = _boardPageValue(
+          pageController,
+          0.0,
+        ).clamp(0.0, 1.0).toDouble();
+        final fractional = page - page.floorToDouble();
+        final distanceFromEdge = fractional <= 0.5
+            ? fractional
+            : 1.0 - fractional;
+        if (distanceFromEdge < 0.035) return const SizedBox.shrink();
+
+        final targetLabel = page < 0.5 ? '換到討論區' : '換到個人版';
+        final progress = page < 0.5 ? page : 1.0 - page;
+        final percent = (progress.clamp(0.0, 1.0) * 100).round();
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = dark
+            ? AnsibleDesign.darkPaperElev
+            : AnsibleDesign.paper;
+        final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+
+        return Positioned(
+          left: 0,
+          right: 0,
+          bottom: compact ? 18 : 26,
+          child: IgnorePointer(
+            child: Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: ochreColor, width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        page < 0.5
+                            ? Icons.chevron_left_rounded
+                            : Icons.chevron_right_rounded,
+                        size: 15,
+                        color: ochreColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$targetLabel · $percent%',
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                          color: ochreColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Centered swipe header with animated ochre underline.
+class _BoardSwipeHeader extends StatelessWidget {
+  const _BoardSwipeHeader({
+    required this.pageController,
+    required this.selectedBoard,
+    required this.onTapBoard,
+  });
+
+  final PageController pageController;
+  final _Board selectedBoard;
+  final ValueChanged<_Board> onTapBoard;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final faintColor = dark
+        ? AnsibleDesign.darkInkFaint
+        : AnsibleDesign.inkFaint;
+    final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+    final ruleColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final bgColor = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+
+    return AnimatedBuilder(
+      animation: pageController,
+      builder: (context, _) {
+        final page = _boardPageValue(
+          pageController,
+          selectedBoard.index.toDouble(),
+        ).clamp(0.0, 1.0).toDouble();
+
+        return Container(
+          color: bgColor,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _boardButton(
+                    board: _Board.personal,
+                    label: '個人版',
+                    tooltip: '個人版 · 你的 Note 和 Murmur',
+                    active: page < 0.5,
+                    textColor: Color.lerp(inkColor, faintColor, page)!,
+                    ochreColor: ochreColor,
+                  ),
+                  const SizedBox(width: 4),
+                  _boardButton(
+                    board: _Board.forum,
+                    label: '討論區',
+                    tooltip: '討論區 · 追蹤的人與板',
+                    active: page >= 0.5,
+                    textColor: Color.lerp(faintColor, inkColor, page)!,
+                    ochreColor: ochreColor,
+                  ),
+                ],
+              ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const itemW = 80.0;
+                  final centerX = constraints.maxWidth / 2;
+                  const underlineW = 40.0;
+                  const personalCenter = -(itemW / 2 + 2);
+                  const forumCenter = (itemW / 2 + 2);
+                  final offsetX = lerpDouble(
+                    personalCenter,
+                    forumCenter,
+                    page,
+                  )!;
+
+                  return SizedBox(
+                    height: 2,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: ruleColor,
+                                  width: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: centerX + offsetX - underlineW / 2,
+                          top: 0,
+                          width: underlineW,
+                          height: 2,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: ochreColor,
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _boardButton({
+    required _Board board,
+    required String label,
+    required String tooltip,
+    required bool active,
+    required Color textColor,
+    required Color ochreColor,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        selected: active,
+        label: tooltip,
+        child: InkWell(
+          key: Key('board_switch_${board.name}'),
+          onTap: () => onTapBoard(board),
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: active
+                  ? Colors.transparent
+                  : ochreColor.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: active
+                    ? Colors.transparent
+                    : ochreColor.withValues(alpha: 0.28),
+                width: 0.5,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+                height: 1.2,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _tab(BuildContext ctx, _ElixTab tab, IconData icon, String label) {
-    final active = selected == tab;
-    final color = active ? AnsibleDesign.ink : AnsibleDesign.inkFaint;
-    return GestureDetector(
-      onTap: () => onTabChanged(tab),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 60,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 2),
-            Text(
-              key: Key('home_tab_label_${tab.name}'),
-              label,
-              style: TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 8,
-                letterSpacing: 1.4,
-                color: color,
+/// First-launch swipe coachmark overlay (F·10).
+class _SwipeCoachmark extends StatefulWidget {
+  const _SwipeCoachmark({required this.onDismiss});
+  final VoidCallback onDismiss;
+  @override
+  State<_SwipeCoachmark> createState() => _SwipeCoachmarkState();
+}
+
+class _SwipeCoachmarkState extends State<_SwipeCoachmark>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _handCtrl;
+  late final Animation<double> _handX;
+
+  @override
+  void initState() {
+    super.initState();
+    _handCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _handX = Tween<double>(
+      begin: 0,
+      end: 24,
+    ).animate(CurvedAnimation(parent: _handCtrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _handCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+    final bgColor = dark
+        ? AnsibleDesign.darkPaperElev
+        : AnsibleDesign.paperElev;
+    final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final faintColor = dark
+        ? AnsibleDesign.darkInkFaint
+        : AnsibleDesign.inkFaint;
+
+    return Positioned.fill(
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.45),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: ochreColor.withValues(alpha: 0.55),
+                width: 1.5,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedBuilder(
+                  animation: _handX,
+                  builder: (context, _) => Transform.translate(
+                    offset: Offset(_handX.value, 0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.touch_app_outlined,
+                          color: ochreColor,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: ochreColor,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '左右滑動切換版面',
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: inkColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '個人版 ← 滑動 → 討論區',
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 11,
+                    letterSpacing: 0.8,
+                    color: faintColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '也可以點上方名稱直接切換',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: faintColor,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: widget.onDismiss,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: faintColor,
+                          side: BorderSide(
+                            color: ochreColor.withValues(alpha: 0.4),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text('知道了'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: widget.onDismiss,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: ochreColor,
+                          foregroundColor: AnsibleDesign.paper,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text('試試看·滑一下'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _centerTab(BuildContext ctx) {
-    return GestureDetector(
-      onTap: onComposeTap,
-      child: Container(
-        width: 46,
-        height: 46,
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: const BoxDecoration(
-          color: AnsibleDesign.ink,
-          shape: BoxShape.circle,
+/// Full-screen Circle (圈內) pushed via Navigator for compose flows.
+class _CircleFullScreen extends StatefulWidget {
+  const _CircleFullScreen({
+    required this.did,
+    required this.db,
+    required this.initialTab,
+    required this.contentItems,
+    required this.contentItemRepository,
+    required this.murmurReferenceCounts,
+    required this.onContentItemsChanged,
+    required this.onPublishContentItem,
+    required this.onSummonAiForNote,
+  });
+
+  final String did;
+  final AppDatabase db;
+  final _CircleTab initialTab;
+  final List<ContentItem> contentItems;
+  final ContentItemRepository contentItemRepository;
+  final Map<String, int> murmurReferenceCounts;
+  final Future<void> Function() onContentItemsChanged;
+  final Future<void> Function(ContentItem, DistributionPreference)
+  onPublishContentItem;
+  final Future<void> Function({
+    String? noteId,
+    String? noteTitle,
+    String? noteBody,
+  })
+  onSummonAiForNote;
+
+  @override
+  State<_CircleFullScreen> createState() => _CircleFullScreenState();
+}
+
+class _CircleFullScreenState extends State<_CircleFullScreen> {
+  late _CircleTab _tab;
+  late List<ContentItem> _contentItems;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = widget.initialTab;
+    _contentItems = [...widget.contentItems];
+  }
+
+  Future<void> _handleContentItemsChanged() async {
+    await widget.onContentItemsChanged();
+    final latest = await widget.contentItemRepository.list(
+      authorDid: widget.did,
+    );
+    if (!mounted) return;
+    setState(() => _contentItems = latest);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+                    onPressed: () => Navigator.pop(context),
+                    color: dark ? AnsibleDesign.darkInk : AnsibleDesign.ink,
+                  ),
+                  Expanded(
+                    child: _CircleTabNav(
+                      selected: _tab,
+                      onChanged: (t) => setState(() => _tab = t),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 0.5),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: switch (_tab) {
+                  _CircleTab.murmur => MurmurScreen(
+                    authorDid: widget.did,
+                    contentItemRepository: widget.contentItemRepository,
+                    recentMurmurs: _contentItems
+                        .where((i) => i.mode == ContentMode.murmur)
+                        .toList(),
+                    murmurReferenceCounts: widget.murmurReferenceCounts,
+                    onSaved: _handleContentItemsChanged,
+                    onPublishContentItem: widget.onPublishContentItem,
+                  ),
+                  _CircleTab.notes => NoteWorkspaceScreen(
+                    authorDid: widget.did,
+                    notes: _contentItems
+                        .where((i) => i.mode == ContentMode.note)
+                        .toList(),
+                    murmurs: _contentItems
+                        .where((i) => i.mode == ContentMode.murmur)
+                        .toList(),
+                    contentItemRepository: widget.contentItemRepository,
+                    onContentItemsChanged: _handleContentItemsChanged,
+                    onPublishContentItem: widget.onPublishContentItem,
+                    onSummonAI: ({noteId, noteTitle, noteBody}) =>
+                        widget.onSummonAiForNote(
+                          noteId: noteId,
+                          noteTitle: noteTitle,
+                          noteBody: noteBody,
+                        ),
+                  ),
+                },
+              ),
+            ),
+          ],
         ),
-        child: const Icon(Icons.add, color: AnsibleDesign.paper, size: 22),
       ),
     );
   }

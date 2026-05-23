@@ -16,24 +16,55 @@ void main() {
   testWidgets('home shell pages can be changed by horizontal swipe', (
     tester,
   ) async {
-    await _pumpHomeShell(tester);
+    await _pumpHomeShell(tester, coachmarkSeen: true);
 
-    expect(find.byKey(const Key('home_swipe_page_view')), findsOneWidget);
-    expect(_tabLabelColor(tester, 'feed'), AnsibleDesign.ink);
+    expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
+    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
 
     await tester.drag(
-      find.byKey(const Key('home_swipe_page_view')),
+      find.byKey(const Key('board_swipe_page_view')),
       const Offset(-340, 0),
     );
     await tester.pumpAndSettle();
 
-    expect(_tabLabelColor(tester, 'circle'), AnsibleDesign.ink);
+    expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
+  });
+
+  testWidgets('board switcher exposes tap tooltips and first-run guidance', (
+    tester,
+  ) async {
+    await _pumpHomeShell(tester);
+
+    expect(find.byTooltip('個人版 · 你的 Note 和 Murmur'), findsOneWidget);
+    expect(find.byTooltip('討論區 · 追蹤的人與板'), findsOneWidget);
+    expect(find.text('也可以點上方名稱直接切換'), findsOneWidget);
+  });
+
+  testWidgets('board swiper renders the 3D book-flip stage', (tester) async {
+    await _pumpHomeShell(tester, coachmarkSeen: true);
+
+    expect(find.byKey(const Key('board_swipe_3d_stage')), findsOneWidget);
+    expect(
+      find.byKey(const Key('board_swipe_page_transform_feed')),
+      findsOneWidget,
+    );
+
+    await tester.drag(
+      find.byKey(const Key('board_swipe_page_view')),
+      const Offset(-340, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('board_swipe_page_transform_circle')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('screen styles are configured independently per main screen', (
     tester,
   ) async {
-    await _pumpHomeShell(tester);
+    await _pumpHomeShell(tester, coachmarkSeen: true);
 
     await tester.tap(find.byKey(const Key('screen_style_button')));
     await tester.pumpAndSettle();
@@ -43,7 +74,7 @@ void main() {
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paperElev);
 
     await tester.drag(
-      find.byKey(const Key('home_swipe_page_view')),
+      find.byKey(const Key('board_swipe_page_view')),
       const Offset(-340, 0),
     );
     await tester.pumpAndSettle();
@@ -58,7 +89,7 @@ void main() {
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paperDeep);
 
     await tester.drag(
-      find.byKey(const Key('home_swipe_page_view')),
+      find.byKey(const Key('board_swipe_page_view')),
       const Offset(340, 0),
     );
     await tester.pumpAndSettle();
@@ -67,7 +98,13 @@ void main() {
   });
 }
 
-Future<void> _pumpHomeShell(WidgetTester tester) async {
+Future<void> _pumpHomeShell(
+  WidgetTester tester, {
+  bool coachmarkSeen = false,
+}) async {
+  SharedPreferences.setMockInitialValues({
+    if (coachmarkSeen) 'elix_board_swipe_shown': true,
+  });
   final db = AppDatabase(NativeDatabase.memory());
   addTearDown(() => db.close());
 
@@ -82,11 +119,6 @@ Future<void> _pumpHomeShell(WidgetTester tester) async {
     await tester.pump(const Duration(milliseconds: 50));
   }
   expect(find.byType(HomeShell), findsOneWidget);
-}
-
-Color? _tabLabelColor(WidgetTester tester, String tabName) {
-  final label = tester.widget<Text>(find.byKey(Key('home_tab_label_$tabName')));
-  return label.style?.color;
 }
 
 Color? _screenStyleColor(WidgetTester tester, String screenName) {

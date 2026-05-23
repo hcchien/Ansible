@@ -6,6 +6,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('renders identity anchor screen when no DID is persisted', (
@@ -33,6 +34,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'elix_board_swipe_shown': true});
 
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
@@ -48,14 +50,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.byKey(const Key('home_swipe_page_view')), findsOneWidget);
+    expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
     expect(find.byKey(const Key('screen_style_button')), findsOneWidget);
-    expect(find.byKey(const Key('home_tab_label_feed')), findsOneWidget);
-    expect(find.byKey(const Key('home_tab_label_circle')), findsOneWidget);
+    expect(find.byKey(const Key('settings_button')), findsOneWidget);
+    expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
+    expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
     expect(find.text('還沒有任何記錄'), findsOneWidget);
     expect(find.text('Subscribe'), findsNothing);
 
-    await tester.tap(find.byKey(const Key('home_tab_label_you')));
+    await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
 
     expect(find.text('SETTINGS'), findsOneWidget);
@@ -77,6 +80,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'elix_board_swipe_shown': true});
 
     final db = AppDatabase(NativeDatabase.memory());
     final localeController = AppLocaleController(
@@ -97,10 +101,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.byKey(const Key('home_swipe_page_view')), findsOneWidget);
+    expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
     expect(find.byKey(const Key('screen_style_button')), findsOneWidget);
-    expect(find.byKey(const Key('home_tab_label_feed')), findsOneWidget);
-    expect(find.byKey(const Key('home_tab_label_circle')), findsOneWidget);
+    expect(find.byKey(const Key('settings_button')), findsOneWidget);
+    expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
+    expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
   });
 
   testWidgets('applies the app text size step globally', (tester) async {

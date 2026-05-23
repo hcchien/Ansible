@@ -6,6 +6,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('settings language picker changes app locale preference', (
@@ -47,6 +48,7 @@ void main() {
       store: InMemoryAppLocalePreferenceStore(),
     );
     addTearDown(() => db.close());
+    SharedPreferences.setMockInitialValues({'elix_board_swipe_shown': true});
     await localeController.setPreference(AppLocalePreference.en);
 
     await tester.pumpWidget(
@@ -61,15 +63,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.byKey(const Key('home_swipe_page_view')), findsOneWidget);
+    expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
     expect(find.byTooltip('Search'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('home_tab_label_circle')));
-    await tester.pumpAndSettle();
-    expect(find.text('Murmur'), findsOneWidget);
-    expect(find.text('Notes'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('home_tab_label_you')));
+    await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Wallet'), findsOneWidget);
