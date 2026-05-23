@@ -20,7 +20,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    await tester.tap(find.text('AI 助手'));
+    await tester.tap(find.byKey(const Key('home_ai_button')));
     await tester.pumpAndSettle();
 
     expect(find.text('AI 提供者設定'), findsOneWidget);
@@ -40,7 +40,7 @@ void main() {
     await tester.tap(find.text('儲存並繼續'));
     await tester.pumpAndSettle();
 
-    expect(find.text('SYSTEM MESSAGE · 系統訊息'), findsOneWidget);
-    expect(find.text('下面這些內容會離開你的裝置，傳送給遠端 AI 做整理。'), findsOneWidget);
+    expect(find.text('AI · 從你的 murmur 找'), findsOneWidget);
+    expect(find.text('不會用來訓練。不會離開這台手機。'), findsOneWidget);
   });
 }

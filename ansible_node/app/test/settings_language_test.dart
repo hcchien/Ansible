@@ -61,13 +61,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
+    expect(find.byKey(const Key('home_swipe_page_view')), findsOneWidget);
+    expect(find.byTooltip('Search'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('home_tab_label_circle')));
+    await tester.pumpAndSettle();
     expect(find.text('Murmur'), findsOneWidget);
     expect(find.text('Notes'), findsOneWidget);
-    expect(find.text('Boards'), findsWidgets);
-    expect(find.byTooltip('Search'), findsOneWidget);
-    expect(find.byTooltip('Settings'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(find.byKey(const Key('home_tab_label_you')));
     await tester.pumpAndSettle();
 
     expect(find.text('Wallet'), findsOneWidget);

@@ -6,6 +6,7 @@ import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
@@ -13,8 +14,10 @@ import '../widgets/agent_sheet.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
+import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_provider_config_store.dart';
 import '../services/ai/apple_nl_embedding_service.dart';
+import '../services/ai/manual_ai_provider.dart';
 import '../services/ai/murmur_indexing_service.dart';
 import '../services/ai/openai_compatible_provider.dart';
 import '../services/ai/vector_search_service.dart';
@@ -42,15 +45,15 @@ import 'note_workspace_screen.dart';
 import 'posts_view_screen.dart';
 import 'contact_picker_screen.dart' show ContactInputResolver;
 import 'inbox_screen.dart';
-import 'profile_screen.dart';
 import 'search_screen.dart';
 import 'settings_home_screen.dart';
 import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 
-/// Focus Mode rooms — replaces the old flat tab model.
-enum _ElixRoom { personal, forum, circle }
+// Bottom navigation tabs (v4 design).
+enum _ElixTab { feed, circle, inbox, you }
 
 // Within the "圈內" room, a sub-selection between murmur and notes.
 enum _CircleTab { murmur, notes }
@@ -126,13 +129,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   DateTime? _lastAutoSyncAt;
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
-  _ElixRoom _selectedRoom = _ElixRoom.personal;
+  _ElixTab _selectedTab = _ElixTab.feed;
   _CircleTab _selectedCircleTab = _CircleTab.murmur;
+  late final PageController _pageController;
+  Map<_ElixTab, ElixScreenStyle> _screenStyles = {
+    for (final tab in _ElixTab.values) tab: ElixScreenStyle.paper,
+  };
   final _uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedTab.index);
     _boardRepo = DriftBoardRepository(widget.db);
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
@@ -192,6 +200,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      unawaited(_loadScreenStyles());
       unawaited(_loadData());
       unawaited(_runForegroundPullIfConfigured());
       unawaited(_murmurIndexingService.indexAllPending());
@@ -205,6 +214,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (_ownsNetworkStatusService) {
       _networkStatusService.dispose();
     }
+    _pageController.dispose();
     _messengerRelayClient.close();
     super.dispose();
   }
@@ -324,8 +334,133 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _loadData();
   }
 
-  void _selectRoom(_ElixRoom room) {
-    setState(() => _selectedRoom = room);
+  static String _screenStyleKey(_ElixTab tab) =>
+      'elix-screen-style.${tab.name}';
+
+  Future<void> _loadScreenStyles() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _screenStyles = {
+        for (final tab in _ElixTab.values)
+          tab: ElixScreenStyleUi.fromStorage(
+            prefs.getString(_screenStyleKey(tab)),
+          ),
+      };
+    });
+  }
+
+  Future<void> _setScreenStyle(
+    _ElixTab tab,
+    ElixScreenStyle screenStyle,
+  ) async {
+    setState(() {
+      _screenStyles = {..._screenStyles, tab: screenStyle};
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_screenStyleKey(tab), screenStyle.storageValue);
+  }
+
+  void _handlePageChanged(int page) {
+    final tab = _ElixTab.values[page];
+    if (_selectedTab == tab) return;
+    setState(() => _selectedTab = tab);
+  }
+
+  void _selectTab(_ElixTab tab) {
+    if (_selectedTab != tab) {
+      setState(() => _selectedTab = tab);
+    }
+    if (_pageController.hasClients) {
+      unawaited(
+        _pageController.animateToPage(
+          tab.index,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    }
+  }
+
+  String _tabLabel(_ElixTab tab) {
+    switch (tab) {
+      case _ElixTab.feed:
+        return '動態';
+      case _ElixTab.circle:
+        return '圈內';
+      case _ElixTab.inbox:
+        return '通知';
+      case _ElixTab.you:
+        return '你';
+    }
+  }
+
+  void _openScreenStyleSheet(BuildContext context) {
+    final tab = _selectedTab;
+    final currentStyle = _screenStyles[tab] ?? ElixScreenStyle.paper;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AnsibleDesign.paper,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => _ScreenStyleSheet(
+        screenLabel: _tabLabel(tab),
+        selected: currentStyle,
+        onSelected: (style) {
+          Navigator.pop(context);
+          unawaited(_setScreenStyle(tab, style));
+        },
+      ),
+    );
+  }
+
+  void _openCompose(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AnsibleDesign.paper,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(top: 10, bottom: 18),
+              decoration: BoxDecoration(
+                color: AnsibleDesign.rule,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            _ComposeActionItem(
+              icon: Icons.mic_outlined,
+              title: '碎念',
+              subtitle: 'MURMUR · 文字或語音',
+              onTap: () {
+                Navigator.pop(context);
+                _selectTab(_ElixTab.circle);
+                _selectCircleTab(_CircleTab.murmur);
+              },
+            ),
+            const Divider(height: 0.5, color: AnsibleDesign.ruleSoft),
+            _ComposeActionItem(
+              icon: Icons.edit_outlined,
+              title: '筆記',
+              subtitle: 'NOTE · 長文或想法',
+              onTap: () {
+                Navigator.pop(context);
+                _selectTab(_ElixTab.circle);
+                _selectCircleTab(_CircleTab.notes);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   void _selectCircleTab(_CircleTab tab) {
@@ -341,17 +476,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (!mounted) return;
 
     // Build provider from first configured provider (if any)
-    OpenAiCompatibleProvider? aiProvider;
+    AiProvider? aiProvider;
     if (providers.isNotEmpty) {
       final config = providers.first;
       final apiKey = await _aiProviderConfigStore.readApiKey(config);
       if (!mounted) return;
-      final baseUrl = config.baseUrl;
-      final modelName = config.modelName;
-      if (baseUrl != null && modelName != null) {
+      if (config.providerType == AiProviderType.manual) {
+        aiProvider = ManualAiProvider();
+      } else if (config.baseUrl != null && config.modelName != null) {
         aiProvider = OpenAiCompatibleProvider(
-          baseUrl: Uri.parse(baseUrl),
-          model: modelName,
+          baseUrl: Uri.parse(config.baseUrl!),
+          model: config.modelName!,
           apiKey: apiKey ?? '',
         );
       }
@@ -377,17 +512,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         defaultForSummaries: true,
       );
       if (!mounted) return;
-      final baseUrl = savedConfig.baseUrl;
-      final modelName = savedConfig.modelName;
-      if (baseUrl != null && modelName != null) {
+      if (savedConfig.providerType == AiProviderType.manual) {
+        aiProvider = ManualAiProvider();
+      } else if (savedConfig.baseUrl != null && savedConfig.modelName != null) {
         aiProvider = OpenAiCompatibleProvider(
-          baseUrl: Uri.parse(baseUrl),
-          model: modelName,
+          baseUrl: Uri.parse(savedConfig.baseUrl!),
+          model: savedConfig.modelName!,
           apiKey: result.apiKey ?? '',
         );
       }
     }
 
+    final resolvedProvider = aiProvider;
+    if (resolvedProvider == null) return;
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -399,7 +536,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         authorDid: widget.did,
         contentItemRepo: _contentItemRepo,
         contentRelationRepo: _contentRelationRepo,
-        aiProvider: aiProvider!,
+        aiProvider: resolvedProvider,
         noteId: noteId,
         noteTitle: noteTitle,
         noteBody: noteBody,
@@ -921,10 +1058,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final currentScreenStyle =
+        (_screenStyles[_selectedTab] ?? ElixScreenStyle.paper).data;
     return Scaffold(
       body: SafeArea(
         child: Container(
-          color: AnsibleDesign.paper,
+          color: currentScreenStyle.background,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 720;
@@ -957,8 +1096,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 selectedBoardId: _selectedBoardId,
                 boards: _boards,
                 networkStatusService: _networkStatusService,
-                selectedRoom: _selectedRoom,
-                onRoomChanged: _selectRoom,
+                pageController: _pageController,
+                selectedTab: _selectedTab,
+                onTabChanged: _selectTab,
+                onPageChanged: _handlePageChanged,
+                onComposeTap: () => _openCompose(context),
+                onScreenStyleTap: () => _openScreenStyleSheet(context),
+                screenStyles: _screenStyles,
                 selectedCircleTab: _selectedCircleTab,
                 onCircleTabChanged: _selectCircleTab,
                 contentItemRepository: _contentItemRepo,
@@ -1263,8 +1407,13 @@ class _MainPanel extends StatelessWidget {
     required this.selectedBoardId,
     required this.boards,
     required this.networkStatusService,
-    required this.selectedRoom,
-    required this.onRoomChanged,
+    required this.pageController,
+    required this.selectedTab,
+    required this.onTabChanged,
+    required this.onPageChanged,
+    required this.onComposeTap,
+    required this.onScreenStyleTap,
+    required this.screenStyles,
     required this.selectedCircleTab,
     required this.onCircleTabChanged,
     required this.contentItemRepository,
@@ -1303,8 +1452,13 @@ class _MainPanel extends StatelessWidget {
   final String? selectedBoardId;
   final List<Board> boards;
   final NetworkStatusMonitor networkStatusService;
-  final _ElixRoom selectedRoom;
-  final ValueChanged<_ElixRoom> onRoomChanged;
+  final PageController pageController;
+  final _ElixTab selectedTab;
+  final ValueChanged<_ElixTab> onTabChanged;
+  final ValueChanged<int> onPageChanged;
+  final VoidCallback onComposeTap;
+  final VoidCallback onScreenStyleTap;
+  final Map<_ElixTab, ElixScreenStyle> screenStyles;
   final _CircleTab selectedCircleTab;
   final ValueChanged<_CircleTab> onCircleTabChanged;
   final ContentItemRepository contentItemRepository;
@@ -1318,73 +1472,25 @@ class _MainPanel extends StatelessWidget {
     String? noteId,
     String? noteTitle,
     String? noteBody,
-  }) onSummonAiForNote;
-
-  // ── Room label helpers ────────────────────────────────────────────────────
-  String _roomLabel(_ElixRoom room) {
-    switch (room) {
-      case _ElixRoom.personal:
-        return '個人版';
-      case _ElixRoom.forum:
-        return '討論區';
-      case _ElixRoom.circle:
-        return '圈內';
-    }
-  }
-
-  List<ElixRoomItem> _roomItems(_ElixRoom current) {
-    final noteCount = contentItems.where((i) => i.mode == ContentMode.note).length;
-    final murmurCount = contentItems.where((i) => i.mode == ContentMode.murmur).length;
-    // A·02 design: only 個人版 / 討論區 / 設定 appear in the dropdown.
-    // 圈內 remains navigable programmatically but is NOT shown in the picker.
-    return [
-      ElixRoomItem(
-        id: 'personal',
-        label: '個人版',
-        active: current == _ElixRoom.personal,
-        murmurCount: murmurCount,
-        noteCount: noteCount,
-      ),
-      ElixRoomItem(
-        id: 'forum',
-        label: '討論區',
-        active: current == _ElixRoom.forum,
-        badge: posts.isNotEmpty ? posts.length : null,
-      ),
-      const ElixRoomItem(id: 'settings', label: '設定'),
-    ];
-  }
-
-  void _handleRoomSelected(String id, BuildContext context) {
-    switch (id) {
-      case 'personal':
-        onRoomChanged(_ElixRoom.personal);
-      case 'forum':
-        onRoomChanged(_ElixRoom.forum);
-      case 'circle':
-        onRoomChanged(_ElixRoom.circle);
-      case 'settings':
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => SettingsHomeScreen(
-              db: db,
-              did: did,
-              localeController: localeController,
-              onClearIdentity: onClearIdentity,
-            ),
-          ),
-        );
-    }
-  }
+  })
+  onSummonAiForNote;
 
   // ── Personal board (個人版) — A·01 spec ──────────────────────────────────
   Widget _buildPersonalBoard(BuildContext context, bool compact) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final fgColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
-    final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
-    final bgSoftColor = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
-    final borderSoft = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+    final mutedColor = dark
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
+    final faintColor = dark
+        ? AnsibleDesign.darkInkFaint
+        : AnsibleDesign.inkFaint;
+    final bgSoftColor = dark
+        ? AnsibleDesign.darkPaperElev
+        : AnsibleDesign.paperElev;
+    final borderSoft = dark
+        ? AnsibleDesign.darkRuleSoft
+        : AnsibleDesign.ruleSoft;
     final emberColor = AnsibleDesign.ember;
 
     // A·01 time-ago formatting — matches design's "昨 14:36 / 前天 / MM.DD" style
@@ -1413,9 +1519,17 @@ class _MainPanel extends StatelessWidget {
     // Split into this-week and earlier
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekStartDay = DateTime(weekStart.year, weekStart.month, weekStart.day);
-    final thisWeek = allSorted.where((i) => i.createdAt.isAfter(weekStartDay)).toList();
-    final earlier = allSorted.where((i) => !i.createdAt.isAfter(weekStartDay)).toList();
+    final weekStartDay = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+    );
+    final thisWeek = allSorted
+        .where((i) => i.createdAt.isAfter(weekStartDay))
+        .toList();
+    final earlier = allSorted
+        .where((i) => !i.createdAt.isAfter(weekStartDay))
+        .toList();
 
     // ── diary entry card (A·01 style) ──
     // Shows: pip + type-label + time on top row, then title (for notes), then italic preview
@@ -1428,7 +1542,7 @@ class _MainPanel extends StatelessWidget {
 
       return GestureDetector(
         onTap: () {
-          onRoomChanged(_ElixRoom.circle);
+          onTabChanged(_ElixTab.circle);
           onCircleTabChanged(isNote ? _CircleTab.notes : _CircleTab.murmur);
         },
         behavior: HitTestBehavior.opaque,
@@ -1448,7 +1562,10 @@ class _MainPanel extends StatelessWidget {
                   Container(
                     width: 5,
                     height: 5,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: pipColor),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: pipColor,
+                    ),
                   ),
                   const SizedBox(width: 7),
                   Text(
@@ -1577,7 +1694,7 @@ class _MainPanel extends StatelessWidget {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () {
-                            onRoomChanged(_ElixRoom.circle);
+                            onTabChanged(_ElixTab.circle);
                             onCircleTabChanged(_CircleTab.notes);
                           },
                           icon: const Icon(Icons.edit_outlined, size: 14),
@@ -1595,10 +1712,14 @@ class _MainPanel extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            onRoomChanged(_ElixRoom.circle);
+                            onTabChanged(_ElixTab.circle);
                             onCircleTabChanged(_CircleTab.murmur);
                           },
-                          icon: Icon(Icons.mic_outlined, size: 14, color: fgColor),
+                          icon: Icon(
+                            Icons.mic_outlined,
+                            size: 14,
+                            color: fgColor,
+                          ),
                           label: Text('錄一段', style: TextStyle(color: fgColor)),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 11),
@@ -1606,7 +1727,9 @@ class _MainPanel extends StatelessWidget {
                               fontFamily: AnsibleDesign.serif,
                               fontSize: 13,
                             ),
-                            backgroundColor: dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper,
+                            backgroundColor: dark
+                                ? AnsibleDesign.darkPaper
+                                : AnsibleDesign.paper,
                             side: BorderSide(color: borderSoft, width: 0.5),
                           ),
                         ),
@@ -1620,19 +1743,23 @@ class _MainPanel extends StatelessWidget {
             // ── This week section ────────────────────────────────────────
             if (thisWeek.isNotEmpty) ...[
               sectionKicker('本週', 'THIS WEEK'),
-              ...thisWeek.map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: diaryCard(item),
-                  )),
+              ...thisWeek.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: diaryCard(item),
+                ),
+              ),
             ],
 
             // ── Earlier section ──────────────────────────────────────────
             if (earlier.isNotEmpty) ...[
               sectionKicker('上週', '更早'),
-              ...earlier.map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: diaryCard(item),
-                  )),
+              ...earlier.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: diaryCard(item),
+                ),
+              ),
             ],
 
             // ── Empty state ──────────────────────────────────────────────
@@ -1658,22 +1785,23 @@ class _MainPanel extends StatelessWidget {
         Positioned(
           right: 0,
           bottom: 24,
-          child: ElixAIDot(onTap: onStartAiAction),
+          child: ElixAIDot(
+            key: const Key('home_ai_button'),
+            onTap: onStartAiAction,
+          ),
         ),
       ],
     );
   }
 
   // ── Forum board (討論區) ────────────────────────────────────────────────
+  // ignore: unused_element -- retained for the forum surface while the swipe shell exposes primary tabs first.
   Widget _buildForum(BuildContext context, bool compact) {
     final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FeedFilterTabs(
-          selected: feedFilter,
-          onChanged: onFeedFilterChanged,
-        ),
+        FeedFilterTabs(selected: feedFilter, onChanged: onFeedFilterChanged),
         const SizedBox(height: 12),
         // Board actions row
         LayoutBuilder(
@@ -1723,7 +1851,8 @@ class _MainPanel extends StatelessWidget {
                               authorDid: did,
                               boardId: selectedBoardId!,
                               threadId: '',
-                              threadTitle: boards
+                              threadTitle:
+                                  boards
                                       .where((b) => b.id == selectedBoardId)
                                       .map((b) => b.title)
                                       .firstOrNull ??
@@ -1750,10 +1879,9 @@ class _MainPanel extends StatelessWidget {
               ? Center(
                   child: Text(
                     l10n.noPostsYet,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(color: AnsibleDesign.inkMuted),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AnsibleDesign.inkMuted,
+                    ),
                   ),
                 )
               : ListView.separated(
@@ -1772,7 +1900,9 @@ class _MainPanel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5)),
+            border: Border(
+              top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+            ),
             color: AnsibleDesign.paper,
           ),
           child: Row(
@@ -1792,7 +1922,10 @@ class _MainPanel extends StatelessWidget {
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('發文'),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   textStyle: const TextStyle(fontSize: 13),
                 ),
               ),
@@ -1848,110 +1981,114 @@ class _MainPanel extends StatelessWidget {
     );
   }
 
-  String _headerDate() {
-    final now = DateTime.now();
-    final weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-    final wd = weekdays[now.weekday - 1];
-    final mm = now.month.toString().padLeft(2, '0');
-    final dd = now.day.toString().padLeft(2, '0');
-    return '${now.year}.$mm.$dd $wd';
+  // ── Inbox tab ──────────────────────────────────────────────────────────
+  Widget _buildInbox(BuildContext context) {
+    return InboxScreen(
+      repository: DriftMessengerRepository(db),
+      contactRepository: DriftContactRepository(db),
+      messengerService: messengerSyncService,
+      senderDid: did,
+      relayConfigured: hasActiveRelay,
+      resolveContactAvailability: contactAvailabilityResolver,
+      resolveContactInput: contactInputResolver,
+    );
+  }
+
+  // ── You / Profile tab ──────────────────────────────────────────────────
+  Widget _buildYou(BuildContext context) {
+    return SettingsHomeScreen(
+      db: db,
+      did: did,
+      localeController: localeController,
+      onClearIdentity: onClearIdentity,
+    );
+  }
+
+  Widget _buildStyledPage(_ElixTab tab, Widget child) {
+    final style = screenStyles[tab] ?? ElixScreenStyle.paper;
+    final data = style.data;
+    return ElixScreenStyleScope(
+      style: style,
+      child: AnimatedContainer(
+        key: Key('screen_style_scope_${tab.name}'),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(color: data.background),
+        child: child,
+      ),
+    );
+  }
+
+  // ── Swipe Screen dispatcher ─────────────────────────────────────────────
+  Widget _buildSwipeScreens(BuildContext context, bool compact) {
+    final contentPadding = compact
+        ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+        : const EdgeInsets.symmetric(horizontal: 28, vertical: 12);
+
+    return PageView(
+      key: const Key('home_swipe_page_view'),
+      controller: pageController,
+      onPageChanged: onPageChanged,
+      physics: const PageScrollPhysics(),
+      children: [
+        _buildStyledPage(
+          _ElixTab.feed,
+          Padding(
+            padding: contentPadding,
+            child: _buildPersonalBoard(context, compact),
+          ),
+        ),
+        _buildStyledPage(
+          _ElixTab.circle,
+          Padding(
+            padding: EdgeInsets.only(
+              left: compact ? 16 : 28,
+              right: compact ? 16 : 28,
+              top: 12,
+            ),
+            child: _buildCircle(context),
+          ),
+        ),
+        _buildStyledPage(_ElixTab.inbox, _buildInbox(context)),
+        _buildStyledPage(_ElixTab.you, _buildYou(context)),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 640;
-        final contentPadding = compact
-            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-            : const EdgeInsets.symmetric(horizontal: 28, vertical: 12);
 
-        return Stack(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _TopBar(
-                  onClearIdentity: onClearIdentity,
-                  db: db,
-                  did: did,
-                  localeController: localeController,
-                  opsQueueRepo: opsQueueRepo,
-                  onSync: onSync,
-                  syncing: syncing,
-                  networkStatusService: networkStatusService,
-                  contentItems: contentItems,
-                  messengerSyncService: messengerSyncService,
-                  contactAvailabilityResolver: contactAvailabilityResolver,
-                  contactInputResolver: contactInputResolver,
-                  hasActiveRelay: hasActiveRelay,
-                ),
-                // ── Room header (A·01): full-width with bottom border ────
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 16 : 28,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: dark
-                            ? AnsibleDesign.darkRuleSoft
-                            : AnsibleDesign.ruleSoft,
-                        width: 0.5,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      ElixRoomHeader(
-                        roomLabel: _roomLabel(selectedRoom),
-                        rooms: _roomItems(selectedRoom),
-                        onRoomSelected: (id) =>
-                            _handleRoomSelected(id, context),
-                      ),
-                      const Spacer(),
-                      if (selectedRoom == _ElixRoom.forum &&
-                          onOpenBoards != null)
-                        IconButton(
-                          onPressed: onOpenBoards,
-                          icon: const Icon(Icons.view_sidebar_outlined),
-                          color: AnsibleDesign.inkMuted,
-                          tooltip: '訂閱版塊',
-                        ),
-                      // Date display on right (A·01/A·02 spec)
-                      Text(
-                        _headerDate(),
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 10,
-                          color: dark
-                              ? AnsibleDesign.darkInkFaint
-                              : AnsibleDesign.inkFaint,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── Room body ────────────────────────────────────────────
-                Expanded(
-                  child: Padding(
-                    padding: contentPadding,
-                    child: switch (selectedRoom) {
-                      _ElixRoom.personal =>
-                        _buildPersonalBoard(context, compact),
-                      _ElixRoom.forum => _buildForum(context, compact),
-                      _ElixRoom.circle => _buildCircle(context),
-                    },
-                  ),
-                ),
-              ],
+            _TopBar(
+              onClearIdentity: onClearIdentity,
+              db: db,
+              did: did,
+              localeController: localeController,
+              opsQueueRepo: opsQueueRepo,
+              onSync: onSync,
+              syncing: syncing,
+              networkStatusService: networkStatusService,
+              contentItems: contentItems,
+              messengerSyncService: messengerSyncService,
+              contactAvailabilityResolver: contactAvailabilityResolver,
+              contactInputResolver: contactInputResolver,
+              hasActiveRelay: hasActiveRelay,
+              screenStyle: screenStyles[selectedTab] ?? ElixScreenStyle.paper,
+              onScreenStyleTap: onScreenStyleTap,
+              screenStyleLabel:
+                  (screenStyles[selectedTab] ?? ElixScreenStyle.paper).label,
             ),
-
+            Expanded(child: _buildSwipeScreens(context, compact)),
+            _ElixTabBar(
+              selected: selectedTab,
+              onTabChanged: onTabChanged,
+              onComposeTap: onComposeTap,
+            ),
           ],
         );
       },
@@ -1970,6 +2107,230 @@ class _ActionLabel extends StatelessWidget {
   }
 }
 
+class _ComposeActionItem extends StatelessWidget {
+  const _ComposeActionItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AnsibleDesign.paperElev,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: AnsibleDesign.ink),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AnsibleDesign.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    letterSpacing: 1.0,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            const Icon(
+              Icons.chevron_right,
+              color: AnsibleDesign.inkFaint,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScreenStyleSheet extends StatelessWidget {
+  const _ScreenStyleSheet({
+    required this.screenLabel,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String screenLabel;
+  final ElixScreenStyle selected;
+  final ValueChanged<ElixScreenStyle> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AnsibleDesign.rule,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                '$screenLabel Screen 風格',
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AnsibleDesign.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '只套用到目前 Screen，並保存在這台裝置上。',
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 12.5,
+                  color: AnsibleDesign.inkFaint,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 16),
+              for (final style in ElixScreenStyle.values)
+                _ScreenStyleOption(
+                  style: style,
+                  selected: selected == style,
+                  onTap: () => onSelected(style),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScreenStyleOption extends StatelessWidget {
+  const _ScreenStyleOption({
+    required this.style,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ElixScreenStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = style.data;
+    return InkWell(
+      key: Key('screen_style_choice_${style.name}'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: selected ? AnsibleDesign.paperElev : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? data.accent : AnsibleDesign.ruleSoft,
+            width: 0.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: data.background,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: data.rule, width: 0.5),
+              ),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: Container(
+                  width: 13,
+                  height: 13,
+                  margin: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: data.accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    style.zhLabel,
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 14.5,
+                      color: AnsibleDesign.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${style.label.toUpperCase()} · ${style.description}',
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 8.5,
+                      letterSpacing: 1.2,
+                      color: AnsibleDesign.inkFaint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected ? Icons.check_circle : Icons.circle_outlined,
+              size: 18,
+              color: selected ? data.accent : AnsibleDesign.inkFaint,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TopBar extends StatelessWidget {
   const _TopBar({
     this.onClearIdentity,
@@ -1985,6 +2346,9 @@ class _TopBar extends StatelessWidget {
     required this.contactAvailabilityResolver,
     required this.contactInputResolver,
     required this.hasActiveRelay,
+    required this.screenStyle,
+    required this.onScreenStyleTap,
+    required this.screenStyleLabel,
   });
 
   final VoidCallback? onClearIdentity;
@@ -2000,6 +2364,9 @@ class _TopBar extends StatelessWidget {
   final ContactAvailabilityResolver contactAvailabilityResolver;
   final ContactInputResolver contactInputResolver;
   final bool hasActiveRelay;
+  final ElixScreenStyle screenStyle;
+  final VoidCallback onScreenStyleTap;
+  final String screenStyleLabel;
 
   String get _truncatedDid {
     if (did.length <= 24) return did;
@@ -2009,13 +2376,12 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final styleData = screenStyle.data;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paper,
-        border: Border(
-          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-        ),
+      decoration: BoxDecoration(
+        color: styleData.background,
+        border: Border(bottom: BorderSide(color: styleData.rule, width: 0.5)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -2055,28 +2421,15 @@ class _TopBar extends StatelessWidget {
                   );
                 },
                 icon: const Icon(Icons.search),
-                color: AnsibleDesign.inkMuted,
+                color: styleData.muted,
                 tooltip: l10n.search,
               ),
               IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => InboxScreen(
-                        repository: DriftMessengerRepository(db),
-                        contactRepository: DriftContactRepository(db),
-                        messengerService: messengerSyncService,
-                        senderDid: did,
-                        relayConfigured: hasActiveRelay,
-                        resolveContactAvailability: contactAvailabilityResolver,
-                        resolveContactInput: contactInputResolver,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.inbox_outlined),
-                color: AnsibleDesign.inkMuted,
-                tooltip: l10n.inbox,
+                key: const Key('screen_style_button'),
+                onPressed: onScreenStyleTap,
+                icon: const Icon(Icons.palette_outlined),
+                color: styleData.muted,
+                tooltip: 'Screen style · $screenStyleLabel',
               ),
               if (!compact)
                 TextButton.icon(
@@ -2151,44 +2504,103 @@ class _TopBar extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.sync),
-                color: AnsibleDesign.inkMuted,
+                color: styleData.muted,
                 tooltip: l10n.sync,
-              ),
-              if (!compact)
-                IconButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ProfileScreen(did: did),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.person_outline),
-                  color: AnsibleDesign.inkMuted,
-                  tooltip: l10n.publicIdentity,
-                ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => SettingsHomeScreen(
-                        db: db,
-                        did: did,
-                        localeController: localeController,
-                        onClearIdentity: onClearIdentity,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(
-                  Icons.settings_outlined,
-                  color: AnsibleDesign.inkMuted,
-                ),
-                tooltip: l10n.settingsNav,
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Bottom tab bar — v4 design.
+class _ElixTabBar extends StatelessWidget {
+  const _ElixTabBar({
+    required this.selected,
+    required this.onTabChanged,
+    required this.onComposeTap,
+  });
+
+  final _ElixTab selected;
+  final ValueChanged<_ElixTab> onTabChanged;
+  final VoidCallback onComposeTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paper,
+        border: const Border(
+          top: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _tab(context, _ElixTab.feed, Icons.home_outlined, '動態'),
+              _tab(
+                context,
+                _ElixTab.circle,
+                Icons.radio_button_unchecked,
+                '圈內',
+              ),
+              _centerTab(context),
+              _tab(context, _ElixTab.inbox, Icons.notifications_none, '通知'),
+              _tab(context, _ElixTab.you, Icons.person_outline, '你'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tab(BuildContext ctx, _ElixTab tab, IconData icon, String label) {
+    final active = selected == tab;
+    final color = active ? AnsibleDesign.ink : AnsibleDesign.inkFaint;
+    return GestureDetector(
+      onTap: () => onTabChanged(tab),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 60,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 22, color: color),
+            const SizedBox(height: 2),
+            Text(
+              key: Key('home_tab_label_${tab.name}'),
+              label,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 8,
+                letterSpacing: 1.4,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _centerTab(BuildContext ctx) {
+    return GestureDetector(
+      onTap: onComposeTap,
+      child: Container(
+        width: 46,
+        height: 46,
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: const BoxDecoration(
+          color: AnsibleDesign.ink,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.add, color: AnsibleDesign.paper, size: 22),
       ),
     );
   }
@@ -2216,12 +2628,20 @@ class _CircleTabNav extends StatelessWidget {
         ButtonSegment(
           value: _CircleTab.murmur,
           icon: const Icon(Icons.chat_bubble_outline, size: 18),
-          label: Text(l10n.murmurTab, maxLines: 1, overflow: TextOverflow.ellipsis),
+          label: Text(
+            l10n.murmurTab,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         ButtonSegment(
           value: _CircleTab.notes,
           icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
-          label: Text(l10n.notesTab, maxLines: 1, overflow: TextOverflow.ellipsis),
+          label: Text(
+            l10n.notesTab,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
       selected: {selected},
@@ -2319,7 +2739,6 @@ class _NetworkStatusGlyph extends StatelessWidget {
     return Icon(icon, size: 16, color: color);
   }
 }
-
 
 class PostCardData {
   PostCardData({

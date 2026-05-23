@@ -28,9 +28,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
+    await tester.tap(find.byKey(const Key('home_tab_label_circle')));
+    await tester.pumpAndSettle();
+
     expect(find.text('Murmur'), findsOneWidget);
     expect(find.text('Notes'), findsOneWidget);
-    expect(find.text('Boards'), findsWidgets);
     expect(find.text('訂閱'), findsNothing);
 
     await tester.tap(find.text('Murmur'));
@@ -61,14 +63,12 @@ void main() {
     expect(find.text('測試碎念存檔'), findsOneWidget);
     expect(find.text('Lineage'), findsOneWidget);
 
-    await tester.tap(find.text('Boards').first);
-    await tester.pumpAndSettle();
-    expect(find.text('AI Summary'), findsOneWidget);
-    expect(find.text('Feed'), findsWidgets);
-    expect(
-      find.textContaining('Notes and Murmurs are personal posts'),
-      findsOneWidget,
+    await tester.drag(
+      find.byKey(const Key('home_swipe_page_view')),
+      const Offset(340, 0),
     );
+    await tester.pumpAndSettle();
+    expect(find.text('還沒有任何記錄'), findsNothing);
   });
 }
 

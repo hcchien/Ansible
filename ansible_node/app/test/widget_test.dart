@@ -28,9 +28,7 @@ void main() {
     expect(find.text('重視身分的社群 App · 由 passkey 支撐'), findsOneWidget);
   });
 
-  testWidgets('uses a single-column forum layout on phone width', (
-    tester,
-  ) async {
+  testWidgets('uses swipe shell navigation on phone width', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -50,16 +48,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('Feed'), findsWidgets);
-    expect(find.text('People + Boards'), findsOneWidget);
-    expect(find.text('No feed posts yet'), findsOneWidget);
-    expect(
-      find.textContaining('Notes and Murmurs are personal posts'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('home_swipe_page_view')), findsOneWidget);
+    expect(find.byKey(const Key('screen_style_button')), findsOneWidget);
+    expect(find.byKey(const Key('home_tab_label_feed')), findsOneWidget);
+    expect(find.byKey(const Key('home_tab_label_circle')), findsOneWidget);
+    expect(find.text('還沒有任何記錄'), findsOneWidget);
     expect(find.text('Subscribe'), findsNothing);
 
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(find.byKey(const Key('home_tab_label_you')));
     await tester.pumpAndSettle();
 
     expect(find.text('SETTINGS'), findsOneWidget);
@@ -74,7 +70,7 @@ void main() {
     expect(find.text('清除身份 (Clear Identity)'), findsNothing);
   });
 
-  testWidgets('forum controls do not overflow on phone width in German', (
+  testWidgets('swipe shell controls do not overflow on phone width in German', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -101,10 +97,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.text('Feed'), findsWidgets);
-    expect(find.text('Noch keine Feed-Beiträge'), findsOneWidget);
-    expect(find.text('Boards'), findsWidgets);
-    expect(find.text('AI Zusammenfassung'), findsOneWidget);
+    expect(find.byKey(const Key('home_swipe_page_view')), findsOneWidget);
+    expect(find.byKey(const Key('screen_style_button')), findsOneWidget);
+    expect(find.byKey(const Key('home_tab_label_feed')), findsOneWidget);
+    expect(find.byKey(const Key('home_tab_label_circle')), findsOneWidget);
   });
 
   testWidgets('applies the app text size step globally', (tester) async {

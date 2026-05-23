@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 
 class AnsibleScreenScaffold extends StatelessWidget {
   const AnsibleScreenScaffold({
@@ -23,8 +24,9 @@ class AnsibleScreenScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final leading = leadingLabel ?? '← 草地';
+    final screenStyle = ElixScreenStyleScope.dataOf(context);
     return Scaffold(
-      backgroundColor: AnsibleDesign.paper,
+      backgroundColor: screenStyle.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -41,8 +43,7 @@ class AnsibleScreenScaffold extends StatelessWidget {
                         fontFamily: AnsibleDesign.mono,
                         fontSize: 10,
                         letterSpacing: 1.6,
-                        color: AnsibleDesign.inkFaint,
-                      ),
+                      ).copyWith(color: screenStyle.faint),
                     ),
                   ),
                   SizedBox(
