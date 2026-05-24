@@ -146,6 +146,7 @@ class ContentPublicationService {
     PublicationAction action = PublicationAction.publish,
   }) async {
     if (item.visibility == ContentVisibility.private ||
+        item.localOnly ||
         distributionPreference == DistributionPreference.localOnly) {
       return const ContentPublicationResult(
         enqueued: 0,

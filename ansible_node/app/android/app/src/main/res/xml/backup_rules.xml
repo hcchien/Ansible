@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <exclude domain="file" path="RemoteMirrorCache/" />
+    <!-- Exclude the SQLite database — it contains messenger pre-key references,
+         session state, and contact graph. Restoring to a different device would
+         break E2E sessions; leaking to a backup attacker exposes metadata. -->
+    <exclude domain="database" path="ansible.db" />
+    <exclude domain="database" path="ansible.db-shm" />
+    <exclude domain="database" path="ansible.db-wal" />
+    <!-- Exclude SharedPreferences (screen-style and coachmark flags are
+         non-sensitive, but prefs should not cross device boundaries). -->
+    <exclude domain="sharedpref" path="." />
 </full-backup-content>

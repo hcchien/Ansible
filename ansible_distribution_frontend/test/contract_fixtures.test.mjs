@@ -15,7 +15,8 @@ assert.equal(
   'self_custody_did',
 );
 assert.equal(CONTRACT_FIXTURES.challenge.pending.status, 'pending');
-assert.equal(CONTRACT_FIXTURES.challenge.approved.session_token, 'wst_fixture');
+assert.equal(CONTRACT_FIXTURES.challenge.approved.session_token, undefined);
+assert.equal(CONTRACT_FIXTURES.sessions.approvedDid.session_id, 'wsi_fixture');
 assert.equal(CONTRACT_FIXTURES.errors.missingScope.type, ERROR_TYPES.missingScope);
 assert.equal(CONTRACT_FIXTURES.errors.rateLimited.type, ERROR_TYPES.rateLimited);
 assert.equal(CONTRACT_FIXTURES.forum.host.forum_host_id, 'host-local-dev');

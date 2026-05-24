@@ -4,6 +4,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
 
 import '../config/app_environment.dart';
+import 'op_signature_payload.dart';
 import 'relay_ops_client.dart';
 
 class OpsDispatchService {
@@ -25,7 +26,7 @@ class OpsDispatchService {
   }
 
   Future<OpsQueueEntry> sign(OpsQueueEntry entry) async {
-    final message = utf8.encode(entry.opId + entry.payload);
+    final message = utf8.encode(OpSignaturePayload.fromQueueEntry(entry));
 
     try {
       final signature = await signer.sign(message);

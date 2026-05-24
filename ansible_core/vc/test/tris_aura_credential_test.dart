@@ -57,6 +57,36 @@ void main() {
       );
     });
 
+    test('rejects passport identifiers and personhood hashes', () {
+      for (final prohibited in [
+        'documentNumber',
+        'passportNumber',
+        'passportLocalUniqueId',
+        'nationalIdHash',
+        'national_id_hash',
+        'passportNumberHash',
+        'passport_number_hash',
+      ]) {
+        final json = Map<String, Object?>.from(humanityFixture);
+        json['credentialSubject'] = {
+          ...humanityFixture['credentialSubject']! as Map<String, Object?>,
+          prohibited: 'opaque-or-raw-value',
+        };
+
+        expect(
+          () => TrisAuraCredential.fromJson(json),
+          throwsA(
+            isA<TrisAuraCredentialException>().having(
+              (error) => error.code,
+              'code',
+              'prohibited_claim',
+            ),
+          ),
+          reason: 'credentialSubject must reject $prohibited',
+        );
+      }
+    });
+
     test('expired credential fails verification result', () {
       final credential = TrisAuraCredential.fromJson(expiredHumanityFixture);
       final verifier = VcVerifier(

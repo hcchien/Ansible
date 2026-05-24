@@ -51,10 +51,11 @@ export async function fetchChallengeStatus({
 
 export async function fetchCurrentWebSession({
   relayBaseUrl,
-  storage = globalThis.localStorage,
+  // storage is accepted for backward compatibility but no longer used for auth.
+  storage: _storage = globalThis.localStorage,
   fetchImpl = globalThis.fetch,
 }) {
-  return createRelayApiClient({ relayBaseUrl, storage, fetchImpl }).getJson(
+  return createRelayApiClient({ relayBaseUrl, fetchImpl }).getJson(
     '/api/v1/web-sessions/me',
     { authenticated: true },
   );
@@ -62,10 +63,11 @@ export async function fetchCurrentWebSession({
 
 export async function listWebSessions({
   relayBaseUrl,
-  storage = globalThis.localStorage,
+  // storage is accepted for backward compatibility but no longer used for auth.
+  storage: _storage = globalThis.localStorage,
   fetchImpl = globalThis.fetch,
 }) {
-  return createRelayApiClient({ relayBaseUrl, storage, fetchImpl }).getJson(
+  return createRelayApiClient({ relayBaseUrl, fetchImpl }).getJson(
     '/api/v1/web-sessions',
     { authenticated: true },
   );
@@ -73,25 +75,30 @@ export async function listWebSessions({
 
 export async function revokeWebSession({
   relayBaseUrl,
-  storage = globalThis.localStorage,
+  // storage is accepted for backward compatibility but no longer used for auth.
+  // The relay clears the httpOnly session cookie on successful revocation.
+  storage: _storage = globalThis.localStorage,
   fetchImpl = globalThis.fetch,
+  sessionId,
   sessionToken,
 } = {}) {
-  const body = sessionToken ? { session_token: sessionToken } : {};
-  const result = await createRelayApiClient({ relayBaseUrl, storage, fetchImpl }).postJson(
+  let body = {};
+  if (sessionId) {
+    body = { session_id: sessionId };
+  } else if (sessionToken) {
+    body = { session_token: sessionToken };
+  }
+
+  return createRelayApiClient({ relayBaseUrl, fetchImpl }).postJson(
     '/api/v1/web-sessions/revoke',
     body,
     { authenticated: true },
   );
-
-  if (!sessionToken || sessionToken === readWebSessionToken(storage)) {
-    clearWebSessionToken(storage);
-  }
-
-  return result;
 }
 
-export function resolveChallengePollResult(challenge, storage) {
+export function resolveChallengePollResult(challenge, _storage) {
+  // Note: _storage is accepted for backward compatibility but is no longer used.
+  // Session tokens are now managed via httpOnly cookies set by the relay server.
   switch (challenge.status) {
     case 'pending':
       return {
@@ -102,12 +109,8 @@ export function resolveChallengePollResult(challenge, storage) {
       };
 
     case 'approved':
-      if (!challenge.session_token) {
-        throw new Error('approved web-session challenge is missing session_token');
-      }
-
-      storeWebSessionToken(storage, challenge.session_token);
-
+      // The relay sets an httpOnly cookie on the poll_challenge response when approved.
+      // No token handling needed here — the cookie is set automatically by the server.
       return {
         state: 'approved',
         continuePolling: false,
@@ -117,7 +120,6 @@ export function resolveChallengePollResult(challenge, storage) {
       };
 
     case 'rejected':
-      clearWebSessionToken(storage);
       return {
         state: 'rejected',
         continuePolling: false,
@@ -126,7 +128,6 @@ export function resolveChallengePollResult(challenge, storage) {
       };
 
     case 'expired':
-      clearWebSessionToken(storage);
       return {
         state: 'expired',
         continuePolling: false,
@@ -139,14 +140,24 @@ export function resolveChallengePollResult(challenge, storage) {
   }
 }
 
-export function storeWebSessionToken(storage, sessionToken) {
-  storage.setItem(WEB_SESSION_TOKEN_KEY, sessionToken);
+/**
+ * @deprecated Session tokens are now managed via httpOnly cookies. This function is a no-op.
+ */
+export function storeWebSessionToken(_storage, _sessionToken) {
+  // no-op: session tokens are now set as httpOnly cookies by the relay server
 }
 
-export function readWebSessionToken(storage) {
-  return storage.getItem(WEB_SESSION_TOKEN_KEY);
+/**
+ * @deprecated Session tokens are now managed via httpOnly cookies. Always returns null.
+ */
+export function readWebSessionToken(_storage) {
+  return null;
 }
 
-export function clearWebSessionToken(storage) {
-  storage.removeItem(WEB_SESSION_TOKEN_KEY);
+/**
+ * @deprecated Session tokens are now managed via httpOnly cookies. This function is a no-op.
+ * Use revokeWebSession() to clear the session, which causes the relay to clear the cookie.
+ */
+export function clearWebSessionToken(_storage) {
+  // no-op: the relay clears the httpOnly cookie on revocation
 }

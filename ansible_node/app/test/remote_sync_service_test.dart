@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:ansible_node/services/op_signature_payload.dart';
 import 'package:ansible_node/services/remote_sync_service.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +29,8 @@ void main() {
                 "entity_id": "post-1",
                 "op_type": "insert",
                 "payload": "eyJib2FyZElkIjoiYm9hcmQtMSIsInRocmVhZElkIjoidGhyZWFkLTEiLCJjb250ZW50IjoiaGVsbG8ifQ==",
+                "signature": "${'a' * 128}",
+                "public_key_hex": "${'b' * 64}",
                 "received_at": "2026-05-09T12:00:00Z"
               }
             ],
@@ -46,6 +51,151 @@ void main() {
       expect(activities.single['activity']['boardId'], 'board-1');
       expect(activities.single['activity']['threadId'], 'thread-1');
       expect(activities.single['activity']['payload']['content'], 'hello');
+      expect(activities.single['signedOp']['signature'], 'a' * 128);
+      expect(activities.single['signedOp']['publicKeyHex'], 'b' * 64);
+    },
+  );
+
+  test(
+    'RemoteOpSignatureVerifier verifies canonical signed op envelope',
+    () async {
+      late String verifiedMessage;
+      final verifier = RemoteOpSignatureVerifier(
+        verify:
+            ({
+              required publicKeyHex,
+              required message,
+              required signatureHex,
+            }) async {
+              expect(publicKeyHex, 'b' * 64);
+              expect(signatureHex, 'a' * 128);
+              verifiedMessage = utf8.decode(message);
+              return true;
+            },
+      );
+      final entry = _signedActivityJson(
+        logId: 1,
+        opId: 'op-1',
+        authorDid: 'did:key:remote',
+        entityType: 'post',
+        entityId: 'post-1',
+        opType: 'insert',
+        payload: 'payload-base64',
+        signature: 'a' * 128,
+        publicKeyHex: 'b' * 64,
+      );
+
+      expect(await verifier.isTrusted(entry), isTrue);
+      expect(
+        verifiedMessage,
+        OpSignaturePayload.fromFields(
+          opId: 'op-1',
+          authorDid: 'did:key:remote',
+          entityType: 'post',
+          entityId: 'post-1',
+          opType: 'insert',
+          payload: 'payload-base64',
+        ),
+      );
+    },
+  );
+
+  test(
+    'RemoteOpSignatureVerifier rejects op when DID is not registered in relay',
+    () async {
+      final verifier = RemoteOpSignatureVerifier(
+        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        resolvePublicKey: (did) async => null, // DID not found
+      );
+      final entry = _signedActivityJson(
+        logId: 1,
+        opId: 'op-1',
+        authorDid: 'did:key:remote',
+        entityType: 'post',
+        entityId: 'post-1',
+        opType: 'insert',
+        payload: 'payload-base64',
+        signature: 'a' * 128,
+        publicKeyHex: 'b' * 64,
+      );
+
+      expect(await verifier.isTrusted(entry), isFalse);
+    },
+  );
+
+  test(
+    'RemoteOpSignatureVerifier rejects op when relay key does not match signed key',
+    () async {
+      final verifier = RemoteOpSignatureVerifier(
+        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        resolvePublicKey: (did) async => 'c' * 64, // different key from relay
+      );
+      final entry = _signedActivityJson(
+        logId: 1,
+        opId: 'op-1',
+        authorDid: 'did:key:remote',
+        entityType: 'post',
+        entityId: 'post-1',
+        opType: 'insert',
+        payload: 'payload-base64',
+        signature: 'a' * 128,
+        publicKeyHex: 'b' * 64, // key used to sign — doesn't match relay
+      );
+
+      expect(await verifier.isTrusted(entry), isFalse);
+    },
+  );
+
+  test(
+    'RemoteOpSignatureVerifier accepts op when relay key matches signed key',
+    () async {
+      final verifier = RemoteOpSignatureVerifier(
+        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        resolvePublicKey: (did) async => 'b' * 64, // same key as signed
+      );
+      final entry = _signedActivityJson(
+        logId: 1,
+        opId: 'op-1',
+        authorDid: 'did:key:remote',
+        entityType: 'post',
+        entityId: 'post-1',
+        opType: 'insert',
+        payload: 'payload-base64',
+        signature: 'a' * 128,
+        publicKeyHex: 'b' * 64,
+      );
+
+      expect(await verifier.isTrusted(entry), isTrue);
+    },
+  );
+
+  test(
+    'RemoteOpSignatureVerifier caches resolved key for subsequent ops',
+    () async {
+      var resolveCalls = 0;
+      final verifier = RemoteOpSignatureVerifier(
+        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        resolvePublicKey: (did) async {
+          resolveCalls++;
+          return 'b' * 64;
+        },
+      );
+      final entry = _signedActivityJson(
+        logId: 1,
+        opId: 'op-1',
+        authorDid: 'did:key:remote',
+        entityType: 'post',
+        entityId: 'post-1',
+        opType: 'insert',
+        payload: 'payload-base64',
+        signature: 'a' * 128,
+        publicKeyHex: 'b' * 64,
+      );
+
+      await verifier.isTrusted(entry);
+      await verifier.isTrusted(entry);
+
+      expect(resolveCalls, 1); // second call uses cache
     },
   );
 
@@ -73,6 +223,7 @@ void main() {
       boardRepo: boardRepo,
       threadRepo: threadRepo,
       postRepo: postRepo,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
     );
 
     final result = await service.syncFromNode(client, remoteNode);
@@ -85,6 +236,53 @@ void main() {
     expect(await boardRepo.list(), isEmpty);
     expect(await threadRepo.list(), isEmpty);
     expect(await postRepo.list(), isEmpty);
+  });
+
+  test('skips unsigned relay delta entries before applying them', () async {
+    final boardRepo = InMemoryBoardRepository();
+    final threadRepo = InMemoryThreadRepository();
+    final postRepo = InMemoryPostRepository();
+    final remoteNodeRepo = _FakeRemoteNodeRepository();
+    final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(
+      configs: const [],
+    );
+    final client = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 1,
+          'activity': {
+            'activityId': 'activity-board-1',
+            'type': 'create',
+            'entityType': 'board',
+            'entityId': 'board-1',
+            'boardId': 'board-1',
+            'authorId': 'did:key:remote',
+            'createdAt': '2026-05-04T00:00:00Z',
+            'payload': {'slug': 'general', 'title': 'General'},
+          },
+        },
+      ],
+    );
+    final remoteNode = RemoteNode(
+      id: 'remote-1',
+      name: 'Remote',
+      url: 'https://relay.example',
+      syncCursor: 0,
+      createdAt: DateTime.utc(2026, 5, 4),
+      updatedAt: DateTime.utc(2026, 5, 4),
+    );
+
+    final result = await RemoteSyncService(
+      remoteNodeRepo: remoteNodeRepo,
+      boardSyncConfigRepo: boardSyncConfigRepo,
+      boardRepo: boardRepo,
+      threadRepo: threadRepo,
+      postRepo: postRepo,
+    ).syncFromNode(client, remoteNode, requireBoardSyncConfig: false);
+
+    expect(result.success, isTrue);
+    expect(result.activitiesProcessed, 0);
+    expect(await boardRepo.list(), isEmpty);
   });
 
   test('foreground refresh applies relay feed without board opt-in', () async {
@@ -145,6 +343,7 @@ void main() {
       boardRepo: boardRepo,
       threadRepo: threadRepo,
       postRepo: postRepo,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
     );
 
     final result = await service.syncFromNode(
@@ -258,6 +457,7 @@ void main() {
         boardRepo: boardRepo,
         threadRepo: threadRepo,
         postRepo: postRepo,
+        opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
         now: () => now,
       ).syncFromNode(client, remoteNode);
 
@@ -327,6 +527,7 @@ void main() {
         boardRepo: boardRepo,
         threadRepo: threadRepo,
         postRepo: postRepo,
+        opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
       ).syncFromNode(client, remoteNode, requireBoardSyncConfig: false);
 
       final boards = await boardRepo.list();
@@ -387,6 +588,7 @@ void main() {
       boardRepo: boardRepo,
       threadRepo: threadRepo,
       postRepo: postRepo,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
       now: () => now,
     );
 
@@ -456,6 +658,7 @@ void main() {
       boardRepo: boardRepo,
       threadRepo: threadRepo,
       postRepo: postRepo,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
       now: () => now,
     );
 
@@ -496,6 +699,11 @@ class _FakeRelayApiClient extends RelayApiClient {
     getDeltaCalls += 1;
     return {'activities': activities, 'nextCursor': 124, 'hasMore': false};
   }
+}
+
+class _TrustingRemoteOpSignatureVerifier extends RemoteOpSignatureVerifier {
+  @override
+  Future<bool> isTrusted(Map<String, dynamic> entry) async => true;
 }
 
 class _FakeRemoteNodeRepository implements RemoteNodeRepository {
@@ -586,6 +794,43 @@ class _FakeBoardSyncConfigRepository implements BoardSyncConfigRepository {
 
   @override
   Future<void> update(BoardSyncConfig config) async {}
+}
+
+Map<String, dynamic> _signedActivityJson({
+  required int logId,
+  required String opId,
+  required String authorDid,
+  required String entityType,
+  required String entityId,
+  required String opType,
+  required String payload,
+  required String signature,
+  required String publicKeyHex,
+}) {
+  return {
+    'logId': logId,
+    'signedOp': {
+      'opId': opId,
+      'authorDid': authorDid,
+      'entityType': entityType,
+      'entityId': entityId,
+      'opType': opType,
+      'payload': payload,
+      'signature': signature,
+      'publicKeyHex': publicKeyHex,
+    },
+    'activity': {
+      'activityId': opId,
+      'type': 'create',
+      'entityType': entityType,
+      'entityId': entityId,
+      'boardId': 'board-1',
+      'threadId': 'thread-1',
+      'authorId': authorDid,
+      'createdAt': '2026-05-04T00:00:00Z',
+      'payload': {'content': 'hello'},
+    },
+  };
 }
 
 Map<String, dynamic> _postActivityJson({

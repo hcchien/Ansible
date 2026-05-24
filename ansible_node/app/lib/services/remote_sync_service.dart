@@ -1,8 +1,19 @@
 import 'dart:convert';
 
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:http/http.dart' as http;
+
+import 'op_signature_payload.dart';
+import 'relay_identity_client.dart';
+
+typedef RemoteOpEd25519Verifier =
+    Future<bool> Function({
+      required String publicKeyHex,
+      required List<int> message,
+      required String signatureHex,
+    });
 
 /// Compatibility client for the legacy board delta endpoint.
 ///
@@ -86,6 +97,18 @@ class RelayApiClient {
 
     return {
       'logId': op['log_id'] as int? ?? 0,
+      'signedOp': {
+        'opId': opId,
+        'authorDid': op['author_did'] as String? ?? '',
+        'entityType': entityType,
+        'entityId': entityId,
+        'opType': op['op_type'] as String? ?? '',
+        'payload': op['payload'] as String? ?? '',
+        'signature': op['signature'] as String? ?? '',
+        'publicKeyHex':
+            (op['public_key_hex'] as String?) ??
+            (op['publicKeyHex'] as String?),
+      },
       'activity': {
         'activityId': opId,
         'type': _activityType(op['op_type'] as String?),
@@ -120,6 +143,144 @@ class RelayApiClient {
   }
 }
 
+class RemoteOpSignatureVerifier {
+  final RemoteOpEd25519Verifier _verify;
+  final Future<String?> Function(String did)? _resolvePublicKey;
+  // Simple in-memory cache: did → verified public key hex
+  final Map<String, String> _keyCache = {};
+
+  RemoteOpSignatureVerifier({
+    RemoteOpEd25519Verifier? verify,
+    Future<String?> Function(String did)? resolvePublicKey,
+  }) : _verify = verify ?? _verifyWithDidSigner,
+       _resolvePublicKey = resolvePublicKey;
+
+  Future<bool> isTrusted(Map<String, dynamic> entry) async {
+    final signedOp = _signedOp(entry);
+    if (signedOp == null) return false;
+
+    final opId = _string(signedOp, 'opId');
+    final authorDid = _string(signedOp, 'authorDid');
+    final entityType = _string(signedOp, 'entityType');
+    final entityId = _string(signedOp, 'entityId');
+    final opType = _string(signedOp, 'opType');
+    final payload = _string(signedOp, 'payload');
+    final signature = _string(signedOp, 'signature');
+    final publicKeyHex = _string(signedOp, 'publicKeyHex');
+    if ([
+      opId,
+      authorDid,
+      entityType,
+      entityId,
+      opType,
+      payload,
+      signature,
+      publicKeyHex,
+    ].any((value) => value == null || value.isEmpty)) {
+      return false;
+    }
+    if (!_isHex(publicKeyHex!, 64) || !_isHex(signature!, 128)) {
+      return false;
+    }
+    if (!_matchesActivity(entry, signedOp)) {
+      return false;
+    }
+
+    final signingPayload = OpSignaturePayload.fromFields(
+      opId: opId!,
+      authorDid: authorDid!,
+      entityType: entityType!,
+      entityId: entityId!,
+      opType: opType!,
+      payload: payload!,
+    );
+    final signatureValid = await _verify(
+      publicKeyHex: publicKeyHex,
+      message: utf8.encode(signingPayload),
+      signatureHex: signature,
+    );
+    if (!signatureValid) return false;
+
+    // Verify the public key is bound to authorDid (prevents relay from re-signing under arbitrary DIDs)
+    final resolveKey = _resolvePublicKey;
+    if (resolveKey != null) {
+      final authorizedKey = _keyCache[authorDid] ?? await resolveKey(authorDid);
+      if (authorizedKey == null) return false; // DID not registered
+      if (authorizedKey.toLowerCase() != publicKeyHex.toLowerCase()) return false; // Key mismatch
+      _cacheKey(authorDid, authorizedKey); // Cache hit for future ops
+    }
+
+    return true;
+  }
+
+  void _cacheKey(String did, String keyHex) {
+    if (_keyCache.length >= 500) {
+      _keyCache.remove(_keyCache.keys.first);
+    }
+    _keyCache[did] = keyHex;
+  }
+
+  Map<String, dynamic>? _signedOp(Map<String, dynamic> entry) {
+    final raw = entry['signedOp'] ?? entry['signed_op'];
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return null;
+  }
+
+  String? _string(Map<String, dynamic> value, String key) {
+    final raw = value[key] ?? value[_snakeCase(key)];
+    if (raw is String) return raw;
+    return null;
+  }
+
+  bool _matchesActivity(
+    Map<String, dynamic> entry,
+    Map<String, dynamic> signedOp,
+  ) {
+    final rawActivity = entry['activity'];
+    if (rawActivity is! Map) return false;
+    final activity = Map<String, dynamic>.from(rawActivity);
+    return activity['activityId'] == _string(signedOp, 'opId') &&
+        activity['authorId'] == _string(signedOp, 'authorDid') &&
+        activity['entityType'] == _string(signedOp, 'entityType') &&
+        activity['entityId'] == _string(signedOp, 'entityId') &&
+        activity['type'] == _activityType(_string(signedOp, 'opType'));
+  }
+
+  bool _isHex(String value, int expectedLength) {
+    if (value.length != expectedLength) return false;
+    return RegExp(r'^[0-9a-fA-F]+$').hasMatch(value);
+  }
+
+  String _snakeCase(String key) {
+    return key.replaceAllMapped(
+      RegExp('[A-Z]'),
+      (match) => '_${match.group(0)!.toLowerCase()}',
+    );
+  }
+
+  String _activityType(String? opType) {
+    return switch (opType) {
+      'insert' => 'create',
+      'update' || 'crdt_merge' => 'update',
+      'delete' => 'delete',
+      _ => opType ?? 'update',
+    };
+  }
+
+  static Future<bool> _verifyWithDidSigner({
+    required String publicKeyHex,
+    required List<int> message,
+    required String signatureHex,
+  }) {
+    return DidSigner.verify(
+      publicKeyHex: publicKeyHex,
+      message: message,
+      signature: Ed25519Signature(signatureHex),
+    );
+  }
+}
+
 class RemoteSyncService {
   final RemoteNodeRepository _remoteNodeRepo;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
@@ -127,6 +288,7 @@ class RemoteSyncService {
   final BoardRepository _boardRepo;
   final ThreadRepository _threadRepo;
   final PostRepository _postRepo;
+  final RemoteOpSignatureVerifier _opSignatureVerifier;
   final DateTime Function() _now;
 
   RemoteSyncService({
@@ -136,6 +298,8 @@ class RemoteSyncService {
     required BoardRepository boardRepo,
     required ThreadRepository threadRepo,
     required PostRepository postRepo,
+    RemoteOpSignatureVerifier? opSignatureVerifier,
+    RelayIdentityClient? identityClient,
     DateTime Function()? now,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _boardSyncConfigRepo = boardSyncConfigRepo,
@@ -143,6 +307,13 @@ class RemoteSyncService {
        _boardRepo = boardRepo,
        _threadRepo = threadRepo,
        _postRepo = postRepo,
+       _opSignatureVerifier =
+           opSignatureVerifier ??
+           RemoteOpSignatureVerifier(
+             resolvePublicKey: identityClient != null
+                 ? (did) => identityClient.fetchPublicKey(did)
+                 : null,
+           ),
        _now = now ?? DateTime.now;
 
   Future<SyncResult> syncFromNode(
@@ -196,7 +367,10 @@ class RemoteSyncService {
           cursor: currentCursor > 0 ? currentCursor : null,
           limit: 100,
         );
-        final delta = DeltaResponse.fromJson(deltaJson);
+        final delta = DeltaResponse.fromJson({
+          ...deltaJson,
+          'activities': await _trustedActivities(deltaJson),
+        });
 
         for (final entry in delta.activities) {
           final hostedRoute = _routeHostedActivity(
@@ -249,6 +423,22 @@ class RemoteSyncService {
     } catch (e) {
       return SyncResult.failure(errorMessage: e.toString());
     }
+  }
+
+  Future<List<dynamic>> _trustedActivities(
+    Map<String, dynamic> deltaJson,
+  ) async {
+    final activities = deltaJson['activities'];
+    if (activities is! List<dynamic>) return const [];
+    final trusted = <dynamic>[];
+    for (final raw in activities) {
+      if (raw is! Map) continue;
+      final entry = Map<String, dynamic>.from(raw);
+      if (await _opSignatureVerifier.isTrusted(entry)) {
+        trusted.add(entry);
+      }
+    }
+    return trusted;
   }
 
   _HostedActivityRoute? _routeHostedActivity(

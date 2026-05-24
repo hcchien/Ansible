@@ -4,9 +4,14 @@ import 'package:ansible_node/services/external_url_launcher.dart';
 import 'package:ansible_node/services/vc_issuer_client.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
   testWidgets('wallet screen lists credential status and expiry', (
     tester,
   ) async {
@@ -220,8 +225,8 @@ class FakeTwIssuerClient extends VcIssuerClient {
       'id': 'urn:uuid:inline-humanity',
       'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
       'issuer': 'did:web:issuer.trisaura.io',
-      'issuanceDate': '2026-05-05T12:00:00Z',
-      'expirationDate': '2026-08-03T12:00:00Z',
+      'validFrom': '2026-05-05T12:00:00Z',
+      'validUntil': '2026-08-03T12:00:00Z',
       'credentialSubject': {'id': 'did:plc:abcdefghijklmnop', 'humanity': true},
       'proof': {
         'type': 'Ed25519Signature2020',

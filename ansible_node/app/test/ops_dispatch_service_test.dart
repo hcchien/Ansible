@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ansible_did/ansible_did.dart';
+import 'package:ansible_node/services/op_signature_payload.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
 import 'package:ansible_node/services/relay_ops_client.dart';
 import 'package:ansible_store/ansible_store.dart';
@@ -33,7 +34,10 @@ void main() {
         jsonDecode(utf8.decode(base64Decode(entry.payload)))
             as Map<String, dynamic>;
 
-    expect(signed.signature, 'signed:${entry.opId}${entry.payload}');
+    expect(
+      signed.signature,
+      'signed:${OpSignaturePayload.fromQueueEntry(entry)}',
+    );
     expect(queued.single.signature, signed.signature);
     expect(payload['boardId'], 'board-1');
     expect(payload['threadId'], 'thread-1');

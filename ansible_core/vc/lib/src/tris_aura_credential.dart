@@ -18,6 +18,21 @@ class TrisAuraCredential {
     'phone',
     'email',
     'rawProviderAssertion',
+    'documentNumber',
+    'passportNumber',
+    'passportLocalUniqueId',
+    'passportUid',
+    'passport_uid',
+    'nationalIdHash',
+    'national_id_hash',
+    'passportNumberHash',
+    'passport_number_hash',
+    'rawMrz',
+    'rawMRZ',
+    'dg1',
+    'dg2',
+    'sod',
+    'faceImage',
   };
 
   final Map<String, Object?> json;

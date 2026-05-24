@@ -65,9 +65,9 @@ test('loads Forum Host metadata and hosted boards through public read APIs', asy
   assert.equal(requests[0].init.headers.authorization, undefined);
 });
 
-test('creates hosted web threads with the stored relay session token', async () => {
+test('creates hosted web threads with the httpOnly session cookie', async () => {
   const requests = [];
-  const storage = new MemoryStorage([[WEB_SESSION_TOKEN_KEY, 'wst_forum']]);
+  const storage = new MemoryStorage([[WEB_SESSION_TOKEN_KEY, 'wst_legacy']]);
   const result = await createHostedWebThread({
     relayBaseUrl: 'http://localhost:4001',
     storage,
@@ -91,7 +91,8 @@ test('creates hosted web threads with the stored relay session token', async () 
     requests[0].url,
     'http://localhost:4001/api/v1/forum-host/web/threads',
   );
-  assert.equal(requests[0].init.headers.authorization, 'Bearer wst_forum');
+  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(requests[0].init.credentials, 'same-origin');
   assert.equal(requests[0].init.body, '{"title":"Hello Forum"}');
 });
 

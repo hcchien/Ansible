@@ -38,10 +38,11 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
   defp canonical(value), do: value |> deep_sort() |> Jason.encode!()
 
-  # Build a signed TrisAuraHumanityCredential VC.
-  defp build_vc(holder_did, issuer_priv) do
+  # Build a signed VC.
+  defp build_vc(holder_did, issuer_priv, opts \\ []) do
     now = DateTime.utc_now() |> DateTime.to_iso8601()
     valid_until = DateTime.add(DateTime.utc_now(), 90 * 86_400, :second) |> DateTime.to_iso8601()
+    credential_type = Keyword.get(opts, :credential_type, "TrisAuraHumanityCredential")
 
     vc_without_proof = %{
       "@context" => [
@@ -49,7 +50,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
         "https://trisaura.io/contexts/humanity/v1"
       ],
       "id" => "https://issuer.trisaura.io/vc/test001",
-      "type" => ["VerifiableCredential", "TrisAuraHumanityCredential"],
+      "type" => ["VerifiableCredential", credential_type],
       "issuer" => @issuer_did,
       "validFrom" => now,
       "validUntil" => valid_until,
@@ -132,6 +133,23 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     assert {:ok, %{reputation_tier: "verified_human"}} = DidAccountCache.get(@holder_did)
   end
 
+  test "present does not treat email credential as verified human",
+       %{issuer_priv: issuer_priv} do
+    {pub_hex, priv_key} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+
+    vc = build_vc(@holder_did, issuer_priv, credential_type: "EmailCredential")
+    vp = build_vp(@holder_did, priv_key, [vc])
+
+    response =
+      post_json("/api/v2/reputation/present", %{"holder_did" => @holder_did, "vp" => vp})
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["reputation_tier"] == "basic"
+    assert {:ok, %{reputation_tier: "basic"}} = DidAccountCache.get(@holder_did)
+  end
+
   test "present rejects VP with invalid holder proof", %{issuer_priv: issuer_priv} do
     {pub_hex, _priv_key} = holder_keypair()
     DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
@@ -162,6 +180,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
   test "present does not downgrade a higher tier", %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
+
     DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io",
       reputation_tier: "verified_human"
     )

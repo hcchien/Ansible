@@ -32,6 +32,16 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
     end
   end
 
+  # GET /api/v1/identity/public-key/:did
+  def public_key(conn, %{"did" => did}) do
+    case IdentityCache.public_key_hex(did) do
+      nil ->
+        send_json(conn, 404, %{error: "did_not_found"})
+      hex ->
+        send_json(conn, 200, %{did: did, public_key_hex: hex})
+    end
+  end
+
   # POST /api/v1/identity/anchor
   def anchor(conn, params) do
     with :ok <- validate_fields(params, @anchor_required_fields),

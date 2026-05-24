@@ -5,13 +5,17 @@ import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
 import '../services/atproto_client.dart';
+import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
+import '../services/passport_local_id_service.dart';
 import '../services/vc_issuer_client.dart';
 import 'tw_provider_credential_screen.dart';
 
-enum CredentialIssuanceFlow { twProvider, emailOtp }
+enum CredentialIssuanceFlow { twProvider, passportNfc, emailOtp }
 
 enum _EmailOtpPhase { idle, requesting, waitingOtp, issuing, presenting, done }
+
+enum _PassportNfcPhase { idle, scanning, issuing, done }
 
 class CredentialIssuanceWizard extends StatefulWidget {
   const CredentialIssuanceWizard({
@@ -23,6 +27,9 @@ class CredentialIssuanceWizard extends StatefulWidget {
     this.vpBuilder,
     this.urlLauncher,
     this.walletRepository,
+    this.passportReader,
+    this.passportLocalIdService,
+    this.passportZkpProver,
     this.pollInterval = const Duration(seconds: 2),
     this.pollTimeout = const Duration(minutes: 2),
     this.onCredentialStored,
@@ -36,6 +43,9 @@ class CredentialIssuanceWizard extends StatefulWidget {
   final VpBuilder? vpBuilder;
   final ExternalUrlLauncher? urlLauncher;
   final WalletRepository? walletRepository;
+  final NfcPassportReader? passportReader;
+  final PassportLocalIdService? passportLocalIdService;
+  final ZkpProver? passportZkpProver;
   final Duration pollInterval;
   final Duration pollTimeout;
   final VoidCallback? onCredentialStored;
@@ -88,6 +98,14 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                         onTap: () => _select(CredentialIssuanceFlow.twProvider),
                       ),
                       _FlowOptionButton(
+                        icon: Icons.nfc,
+                        label: 'Passport NFC',
+                        selected:
+                            _selectedFlow == CredentialIssuanceFlow.passportNfc,
+                        onTap: () =>
+                            _select(CredentialIssuanceFlow.passportNfc),
+                      ),
+                      _FlowOptionButton(
                         icon: Icons.email_outlined,
                         label: 'Email OTP / Legacy',
                         selected:
@@ -127,6 +145,17 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
           pollTimeout: widget.pollTimeout,
           onCredentialStored: widget.onCredentialStored,
         );
+      case CredentialIssuanceFlow.passportNfc:
+        return PassportNfcCredentialPanel(
+          key: const ValueKey('passport-nfc-panel'),
+          holderDid: widget.holderDid,
+          vcIssuerClient: widget.vcIssuerClient,
+          walletRepository: widget.walletRepository,
+          passportReader: widget.passportReader,
+          passportLocalIdService: widget.passportLocalIdService,
+          passportZkpProver: widget.passportZkpProver,
+          onCredentialStored: widget.onCredentialStored,
+        );
       case CredentialIssuanceFlow.emailOtp:
         return EmailOtpCredentialPanel(
           key: const ValueKey('email-otp-panel'),
@@ -142,6 +171,260 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
       case null:
         return const SizedBox.shrink(key: ValueKey('no-flow-selected'));
     }
+  }
+}
+
+class PassportNfcCredentialPanel extends StatefulWidget {
+  const PassportNfcCredentialPanel({
+    super.key,
+    required this.holderDid,
+    this.vcIssuerClient,
+    this.walletRepository,
+    this.passportReader,
+    this.passportLocalIdService,
+    this.passportZkpProver,
+    this.onCredentialStored,
+  });
+
+  final String holderDid;
+  final VcIssuerClient? vcIssuerClient;
+  final WalletRepository? walletRepository;
+  final NfcPassportReader? passportReader;
+  final PassportLocalIdService? passportLocalIdService;
+  final ZkpProver? passportZkpProver;
+  final VoidCallback? onCredentialStored;
+
+  @override
+  State<PassportNfcCredentialPanel> createState() =>
+      _PassportNfcCredentialPanelState();
+}
+
+class _PassportNfcCredentialPanelState
+    extends State<PassportNfcCredentialPanel> {
+  late final VcIssuerClient _vcIssuerClient;
+  late final WalletRepository _walletRepository;
+  late final NfcPassportReader _passportReader;
+  late final PassportLocalIdService _passportLocalIdService;
+  late final ZkpProver _passportZkpProver;
+
+  _PassportNfcPhase _phase = _PassportNfcPhase.idle;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _vcIssuerClient = widget.vcIssuerClient ?? VcIssuerClient();
+    final walletRepository = widget.walletRepository;
+    if (walletRepository == null) {
+      throw StateError(
+        'PassportNfcCredentialPanel requires a WalletRepository',
+      );
+    }
+    _walletRepository = walletRepository;
+    _passportReader = widget.passportReader ?? const MockNfcPassportReader();
+    _passportLocalIdService =
+        widget.passportLocalIdService ?? const PassportLocalIdService();
+    _passportZkpProver = widget.passportZkpProver ?? const ZkpProverImpl();
+  }
+
+  Future<void> _startScan() async {
+    setState(() {
+      _phase = _PassportNfcPhase.scanning;
+      _errorMessage = null;
+    });
+
+    try {
+      PassportData? scanned;
+      String? scanError;
+      await _passportReader.scan(
+        onPassportRead: (data) => scanned = data,
+        onError: (message) => scanError = message,
+      );
+      final error = scanError;
+      if (error != null) {
+        throw StateError(error);
+      }
+      final data = scanned;
+      if (data == null) {
+        throw StateError('護照 NFC 讀取失敗，請重新嘗試。');
+      }
+
+      final passportLocalUniqueId = await _passportLocalIdService
+          .deriveWithStoredSecret(
+            nationality: data.nationality,
+            documentNumber: data.documentNumber,
+          );
+      final existing = await _walletRepository
+          .getPassportExtensionByLocalUniqueId(passportLocalUniqueId);
+      if (existing != null) {
+        if (!mounted) return;
+        setState(() {
+          _phase = _PassportNfcPhase.idle;
+          _errorMessage = '這本護照已在此 Wallet 驗證過。';
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() => _phase = _PassportNfcPhase.issuing);
+
+      final passportProof = await _passportZkpProver.prove(
+        passportSecretHex: data.passportSecret,
+      );
+      final vcJson = await _vcIssuerClient.issuePassportCredential(
+        did: widget.holderDid,
+        nationality: data.nationality,
+        nationalIdHash: passportProof.nationalIdHash,
+        passportNumberHash: passportProof.passportNumberHash,
+        zkpProof: passportProof.proofHex,
+        zkpCircuitVersion: ZkpProof.kCircuitVersion,
+        verificationKeyHash: 'sha256:${passportProof.vkHash}',
+      );
+      final credential = TrisAuraCredential.fromJson(
+        Map<String, Object?>.from(vcJson),
+      );
+      if (credential.claims['assuranceMethod'] != 'passport_nfc') {
+        throw StateError('Issuer returned an unsupported passport credential.');
+      }
+      if (credential.claims['nationality'] != data.nationality) {
+        throw StateError('Issuer returned a mismatched passport credential.');
+      }
+
+      final now = DateTime.now().toUtc();
+      final payloadEnvelope = await const SecureCredentialPayloadCodec().seal(
+        credentialId: credential.id,
+        payloadJson: jsonEncode(credential.json),
+      );
+      await _walletRepository.saveCredential(
+        metadata: WalletCredential(
+          credentialId: credential.id,
+          issuerDid: credential.issuerDid,
+          holderDid: credential.holderDid,
+          credentialType:
+              credential.types.contains('TrisAuraHumanityCredential')
+              ? 'TrisAuraHumanityCredential'
+              : credential.types.last,
+          status: WalletCredentialStatus.active,
+          validFrom: credential.validFrom,
+          validUntil: credential.validUntil,
+          displayName: 'Passport Verified Human',
+          createdAt: now,
+          updatedAt: now,
+        ),
+        encryptedPayload: payloadEnvelope.encodedPayload,
+        encryptionVersion: payloadEnvelope.encryptionVersion,
+      );
+      await _walletRepository.savePassportExtension(
+        PassportWalletExtension(
+          credentialId: credential.id,
+          passportLocalUniqueId: passportLocalUniqueId,
+          nationalIdHash: passportProof.nationalIdHash,
+          passportNumberHash: passportProof.passportNumberHash,
+          nationality: data.nationality,
+          assuranceMethod: 'passport_nfc',
+          verifiedAt: now,
+        ),
+      );
+      widget.onCredentialStored?.call();
+
+      if (!mounted) return;
+      setState(() => _phase = _PassportNfcPhase.done);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _PassportNfcPhase.idle;
+        _errorMessage = _formatError(error);
+      });
+    }
+  }
+
+  String _formatError(Object error) {
+    if (error is VcIssuerException) {
+      if (error.error == 'personhood_already_bound') {
+        return '這本護照已綁定到另一個有效帳號。';
+      }
+      if (error.error == 'passport_verifier_unconfigured') {
+        return '護照驗證服務尚未啟用。';
+      }
+      if (error.error == 'invalid_passport_proof') {
+        return '護照驗證結果無法通過伺服器驗證。';
+      }
+      if (error.statusCode >= 500) return '發行伺服器暫時無法使用，請稍後再試。';
+      return '護照憑證發行失敗，請重新嘗試。';
+    }
+    if (error is StateError) {
+      return error.message;
+    }
+    return '護照 NFC 驗證暫時無法完成，請稍後再試。';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final busy =
+        _phase == _PassportNfcPhase.scanning ||
+        _phase == _PassportNfcPhase.issuing;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Icon(Icons.nfc, size: 56, color: Color(0xFF1A56A4)),
+        const SizedBox(height: 16),
+        Text(
+          'Passport NFC',
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '護照號碼不會送出或保存原文，只會產生本機識別值與伺服器去重用的不可逆 UID。',
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 24),
+        if (_errorMessage != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _errorMessage!,
+              style: TextStyle(color: Colors.red.shade800),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (_phase == _PassportNfcPhase.done)
+          FilledButton.icon(
+            onPressed: null,
+            icon: const Icon(Icons.check_circle),
+            label: const Text('護照憑證已加入'),
+          )
+        else
+          FilledButton.icon(
+            onPressed: busy ? null : _startScan,
+            icon: busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.nfc),
+            label: Text(
+              _phase == _PassportNfcPhase.issuing
+                  ? '發行憑證中'
+                  : _phase == _PassportNfcPhase.scanning
+                  ? '讀取護照中'
+                  : '掃描護照 NFC',
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -296,23 +579,32 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         ? validFrom.add(const Duration(days: 90))
         : DateTime.parse(vc.expirationDate!).toUtc();
 
+    final payloadEnvelope = await const SecureCredentialPayloadCodec().seal(
+      credentialId: vc.id,
+      payloadJson: jsonEncode(vc.toJson()),
+    );
+
     await repository.saveCredential(
       metadata: WalletCredential(
         credentialId: vc.id,
         issuerDid: vc.issuer,
         holderDid: vc.holderDid ?? widget.holderDid,
-        credentialType: vc.type.contains('TrisAuraHumanityCredential')
+        credentialType: vc.type.contains('EmailCredential')
+            ? 'EmailCredential'
+            : vc.type.contains('TrisAuraHumanityCredential')
             ? 'TrisAuraHumanityCredential'
             : vc.type.last,
         status: WalletCredentialStatus.active,
         validFrom: validFrom,
         validUntil: validUntil,
-        displayName: 'Verified Human',
+        displayName: vc.type.contains('EmailCredential')
+            ? 'Email Verified'
+            : 'Verified Human',
         createdAt: now,
         updatedAt: now,
       ),
-      encryptedPayload: jsonEncode(vc.toJson()),
-      encryptionVersion: 'plain-json-v1',
+      encryptedPayload: payloadEnvelope.encodedPayload,
+      encryptionVersion: payloadEnvelope.encryptionVersion,
     );
   }
 
@@ -362,7 +654,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         ),
         const SizedBox(height: 16),
         Text(
-          'Email 身份驗證',
+          'Email 聯絡方式驗證',
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -370,7 +662,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         ),
         const SizedBox(height: 8),
         Text(
-          '驗證 Email 後可獲得「Verified Human」信任等級',
+          '驗證 Email 後可取得聯絡方式驗證狀態',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),

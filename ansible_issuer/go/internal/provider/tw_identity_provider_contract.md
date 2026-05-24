@@ -72,5 +72,7 @@ Keep only:
 - audit-safe error counters without raw DID, IP, national ID, or provider
   assertion payloads.
 
-Discard provider assertion payloads after validation unless partner compliance
-documentation later requires a short encrypted retention window.
+Discard provider assertion payloads after validation. Any legally required
+retention path must be a documented break-glass exception with explicit
+purpose, time limit, encrypted storage, no application logs, and user-visible
+notice when safe.

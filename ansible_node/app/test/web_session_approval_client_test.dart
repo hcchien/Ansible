@@ -104,7 +104,7 @@ void main() {
           jsonEncode({
             'sessions': [
               {
-                'session_token': 'wst_current',
+                'session_id': 'wsi_current',
                 'subject_did': 'did:plc:abc23456789',
                 'approving_device_id': 'app_device_abc',
                 'web_origin': 'https://trisaura.io',
@@ -123,11 +123,12 @@ void main() {
 
     final sessions = await client.fetchSessions('wst_current');
 
-    expect(sessions.single.sessionToken, 'wst_current');
+    expect(sessions.single.sessionId, 'wsi_current');
+    expect(sessions.single.sessionToken, isNull);
     expect(sessions.single.trustTier, 'self_custody_did');
   });
 
-  test('revokeSession posts bearer and target session token', () async {
+  test('revokeSession posts bearer and target session id', () async {
     final client = WebSessionApprovalClient(
       baseUrl: 'http://relay.local',
       client: MockClient((request) async {
@@ -135,14 +136,14 @@ void main() {
         expect(request.url.path, '/api/v1/web-sessions/revoke');
         expect(request.headers['authorization'], 'Bearer wst_current');
         final body = jsonDecode(request.body) as Map<String, dynamic>;
-        expect(body['session_token'], 'wst_other');
+        expect(body['session_id'], 'wsi_other');
         return http.Response(jsonEncode({'revoked': true}), 200);
       }),
     );
 
     await client.revokeSession(
       bearerToken: 'wst_current',
-      sessionToken: 'wst_other',
+      sessionId: 'wsi_other',
     );
   });
 

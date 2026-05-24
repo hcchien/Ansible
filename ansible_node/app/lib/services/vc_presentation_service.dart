@@ -4,6 +4,8 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:crypto/crypto.dart';
 
+import 'credential_payload_codec.dart';
+
 class VcPresentationEnvelope {
   final String credentialId;
   final Map<String, Object?> verifiablePresentation;
@@ -32,14 +34,13 @@ class UnsupportedVpProofSigner implements VpProofSigner {
 }
 
 class JsonCredentialPayloadDecoder {
-  Map<String, Object?> decode(String encryptedPayload) {
-    final decoded = jsonDecode(encryptedPayload);
-    if (decoded is Map) {
-      return Map<String, Object?>.from(decoded);
-    }
-    throw const FormatException(
-      'Credential payload must decode to a JSON object.',
-    );
+  final SecureCredentialPayloadCodec _codec;
+
+  JsonCredentialPayloadDecoder({SecureCredentialPayloadCodec? codec})
+    : _codec = codec ?? const SecureCredentialPayloadCodec();
+
+  Future<Map<String, Object?>> decode(String encryptedPayload) {
+    return _codec.decode(encryptedPayload);
   }
 }
 
@@ -90,7 +91,7 @@ class VcPresentationService {
       final TrisAuraCredential credential;
       try {
         credential = TrisAuraCredential.fromJson(
-          payloadDecoder.decode(encryptedPayload),
+          await payloadDecoder.decode(encryptedPayload),
         );
       } on Object {
         continue;

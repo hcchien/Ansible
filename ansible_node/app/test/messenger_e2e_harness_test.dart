@@ -4,9 +4,14 @@ import 'package:ansible_node/services/messenger_device_service.dart';
 import 'package:ansible_node/services/messenger_relay_client.dart';
 import 'package:ansible_node/services/messenger_sync_service.dart';
 import 'package:ansible_store/ansible_store.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
   test('Alice sends encrypted message to Bob through relay mailbox', () async {
     final harness = MessengerE2eHarness.withInMemoryRelay();
     await harness.createIdentity('alice');
@@ -195,12 +200,18 @@ class _InMemoryRelayClient extends MessengerRelayClient {
 
   @override
   Future<MessengerMailboxResponse> pullMailbox({
+    required String recipientDid,
     required String recipientDeviceId,
+    required String requestSignature,
     String? cursor,
   }) async {
     return MessengerMailboxResponse(
       messages: _mailbox
-          .where((message) => message.recipientDeviceId == recipientDeviceId)
+          .where(
+            (message) =>
+                message.recipientDid == recipientDid &&
+                message.recipientDeviceId == recipientDeviceId,
+          )
           .toList(growable: false),
       nextCursor: 'cursor-${_mailbox.length}',
     );

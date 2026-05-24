@@ -23,7 +23,7 @@ class AddCredentialScreen extends StatelessWidget {
   final String holderDid;
 
   /// Called when the Email OTP flow completes with the reputation tier
-  /// returned by the Relay, e.g. "verified_human".
+  /// returned by the Relay, e.g. "basic".
   final void Function(String reputationTier) onCredentialAdded;
 
   final VcIssuerClient? vcIssuerClient;

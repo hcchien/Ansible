@@ -411,8 +411,9 @@ test('valid humanity presentation upgrades reputation tier', () async {
 
 Nonce (`challenge`), audience (`domain`), holder DID, issuer proof (Ed25519),
 `validUntil`/`expirationDate` expiry, VC subject binding, and credential type
-checks all implemented. `TrisAuraHumanityCredential` and `EmailCredential` both
-map to `verified_human`; tier downgrade is prevented.
+checks all implemented. `TrisAuraHumanityCredential` maps to `verified_human`.
+`EmailCredential` remains a contactability proof and maps to `basic`; tier
+downgrade is prevented.
 
 - [x] **Step 4: Run verifier tests**
 

@@ -30,7 +30,7 @@ void main() {
     await tester.tap(find.text('Email OTP / Legacy'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Email 身份驗證'), findsOneWidget);
+    expect(find.text('Email 聯絡方式驗證'), findsOneWidget);
     expect(find.text('發送驗證碼'), findsOneWidget);
   });
 }

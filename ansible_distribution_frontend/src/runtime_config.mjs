@@ -39,6 +39,12 @@ export function normalizeLocalRelayBaseUrl(value, fallbackValue = 'http://localh
     if (!['http:', 'https:'].includes(url.protocol)) {
       return fallbackValue;
     }
+    // Only allow loopback addresses via plain HTTP (development) or any host
+    // via HTTPS (production).  Plain HTTP to a non-loopback host would send
+    // bearer tokens in cleartext and is therefore rejected.
+    if (url.protocol === 'http:' && !isLoopbackHost(url.hostname)) {
+      return fallbackValue;
+    }
     if (url.protocol === 'http:' && isLoopbackHost(url.hostname) && url.port === '4001') {
       return 'http://localhost:4001';
     }

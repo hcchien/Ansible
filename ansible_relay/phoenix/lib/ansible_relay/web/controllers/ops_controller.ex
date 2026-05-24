@@ -18,7 +18,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          :ok <- check_abuse_limit(author_did),
          :ok <- check_op_not_duplicate(params["op_id"]),
          public_key = IdentityCache.public_key_hex(author_did),
-         message = params["op_id"] <> params["payload"],
+         message = signing_payload(params),
          :ok <- check_signature(public_key, message, params["signature"]) do
       op = %{
         op_id: params["op_id"],
@@ -80,7 +80,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       end
 
     send_json(conn, 200, %{
-      ops: visible,
+      ops: Enum.map(visible, &attach_public_key/1),
       next_cursor: next_cursor,
       has_more: has_more
     })
@@ -120,13 +120,49 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       else: {:error, :bad_signature}
   end
 
+  defp attach_public_key(%{author_did: author_did} = op) do
+    Map.put(op, :public_key_hex, IdentityCache.public_key_hex(author_did))
+  end
+
+  defp signing_payload(params) do
+    %{
+      "author_did" => params["author_did"],
+      "entity_id" => params["entity_id"],
+      "entity_type" => params["entity_type"],
+      "op_id" => params["op_id"],
+      "op_type" => params["op_type"],
+      "payload" => params["payload"]
+    }
+    |> canonical_json()
+  end
+
+  defp canonical_json(value) when is_map(value) do
+    entries =
+      value
+      |> Enum.map(fn {key, entry_value} -> {to_string(key), entry_value} end)
+      |> Enum.sort_by(fn {key, _entry_value} -> key end)
+      |> Enum.map(fn {key, entry_value} ->
+        Jason.encode!(key) <> ":" <> canonical_json(entry_value)
+      end)
+
+    "{" <> Enum.join(entries, ",") <> "}"
+  end
+
+  defp canonical_json(value) when is_list(value) do
+    "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
+  end
+
+  defp canonical_json(value), do: Jason.encode!(value)
+
   defp parse_int(nil, default), do: default
+
   defp parse_int(str, default) when is_binary(str) do
     case Integer.parse(str) do
       {n, _} -> n
       :error -> default
     end
   end
+
   defp parse_int(n, _default) when is_integer(n), do: n
 
   defp send_json(conn, status, body) do

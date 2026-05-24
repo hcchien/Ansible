@@ -22,12 +22,6 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     |> Router.call(@router_opts)
   end
 
-  defp post_json(path, body) do
-    conn(:post, path, Jason.encode!(body))
-    |> put_req_header("content-type", "application/json")
-    |> Router.call(@router_opts)
-  end
-
   defp post_json(path, body, headers) do
     Enum.reduce(headers, conn(:post, path, Jason.encode!(body)), fn {key, value}, conn ->
       put_req_header(conn, key, value)
@@ -36,11 +30,14 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     |> Router.call(@router_opts)
   end
 
-  defp approved_session_token(scopes) do
+  defp approved_session_token(scopes, did \\ nil) do
     case WebSessionStore.start_link([]) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
     end
+
+    did = did || "did:plc:forum#{System.unique_integer([:positive])}"
+    device_id = "app_device_forum_#{System.unique_integer([:positive])}"
 
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
@@ -52,8 +49,8 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
 
     {:ok, session} =
       WebSessionStore.approve_challenge(challenge.challenge_id, %{
-        subject_did: "did:plc:forum23456789",
-        approving_device_id: "app_device_forum",
+        subject_did: did,
+        approving_device_id: device_id,
         scopes: scopes,
         expires_at: DateTime.add(DateTime.utc_now(), 300, :second)
       })
@@ -84,16 +81,23 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
   end
 
   test "POST /api/v1/forum-host/boards accepts signed create-board intent" do
+    did = "did:plc:board23456789"
+    token = approved_session_token(["forum:post"], did)
+
     response =
-      post_json("/api/v1/forum-host/boards", %{
-        "intent_id" => "intent-1",
-        "author_did" => "did:key:z6MkUser",
-        "signature" => "sig-hex",
-        "board" => %{
-          "title" => "Reading Group",
-          "description" => "Open discussion"
-        }
-      })
+      post_json(
+        "/api/v1/forum-host/boards",
+        %{
+          "intent_id" => "intent-1",
+          "author_did" => did,
+          "signature" => "sig-hex",
+          "board" => %{
+            "title" => "Reading Group",
+            "description" => "Open discussion"
+          }
+        },
+        [{"authorization", "Bearer #{token}"}]
+      )
 
     assert response.status == 201
 
@@ -117,7 +121,8 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
   end
 
   test "web session with forum:post can create a hosted web thread" do
-    token = approved_session_token(["forum:read", "forum:post"])
+    did = "did:plc:forum23456789"
+    token = approved_session_token(["forum:read", "forum:post"], did)
 
     response =
       post_json(
@@ -129,7 +134,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert response.status == 202
     body = Jason.decode!(response.resp_body)
     assert body["accepted"] == true
-    assert body["subject_did"] == "did:plc:forum23456789"
+    assert body["subject_did"] == did
     assert body["trust_tier"] == "self_custody_did"
   end
 

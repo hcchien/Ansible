@@ -22,24 +22,34 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   end
 
   def create_board(conn, params) do
-    with :ok <- require_fields(params, ["intent_id", "author_did", "signature"]),
-         %{"title" => title} = board when is_binary(title) <- Map.get(params, "board") do
-      slug = slugify(title)
+    conn = VerifyWebSession.call(conn, ["forum:post"])
 
-      send_json(conn, 201, %{
-        hosted_board_id: slug,
-        canonical_board_uri: "#{base_url()}/boards/#{slug}",
-        slug: slug,
-        title: title,
-        description: Map.get(board, "description"),
-        permissions: %{"read" => true, "write" => true}
-      })
+    if conn.halted do
+      conn
     else
-      {:error, fields} ->
-        send_json(conn, 422, %{error: "missing_required_fields", fields: fields})
+      with :ok <- require_fields(params, ["intent_id", "author_did", "signature"]),
+           :ok <- check_author_matches_session(conn.assigns.verified_did, params["author_did"]),
+           %{"title" => title} = board when is_binary(title) <- Map.get(params, "board") do
+        slug = slugify(title)
 
-      _ ->
-        send_json(conn, 422, %{error: "invalid_board"})
+        send_json(conn, 201, %{
+          hosted_board_id: slug,
+          canonical_board_uri: "#{base_url()}/boards/#{slug}",
+          slug: slug,
+          title: title,
+          description: Map.get(board, "description"),
+          permissions: %{"read" => true, "write" => true}
+        })
+      else
+        {:error, :author_mismatch} ->
+          send_json(conn, 403, %{error: "author_did_mismatch"})
+
+        {:error, fields} ->
+          send_json(conn, 422, %{error: "missing_required_fields", fields: fields})
+
+        _ ->
+          send_json(conn, 422, %{error: "invalid_board"})
+      end
     end
   end
 
@@ -95,6 +105,10 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
         permissions: %{"read" => true, "write" => true}
       }
     ]
+  end
+
+  defp check_author_matches_session(session_did, author_did) do
+    if session_did == author_did, do: :ok, else: {:error, :author_mismatch}
   end
 
   defp require_fields(params, fields) do

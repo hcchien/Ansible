@@ -24,6 +24,28 @@ const MIME_TYPES = Object.freeze({
   '.ico': 'image/x-icon',
 });
 
+// Security headers applied to every response served by this frontend server.
+const SECURITY_HEADERS = Object.freeze({
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  // CSP: same-origin scripts only; no inline scripts; no plugins; no framing.
+  // The frontend is a plain ES-module SPA with no inline event handlers or
+  // eval usage, so this policy is safe to enforce without nonces.
+  'content-security-policy': [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self'",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "font-src 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; '),
+});
+
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
   'keep-alive',
@@ -80,10 +102,11 @@ async function handleRequest(request, response, context) {
   const url = new URL(request.url ?? '/', 'http://frontend.local');
 
   if (url.pathname === '/healthz') {
+    // Do not include relayBaseUrl in the response — it reveals internal service
+    // topology (host, port) to any caller that can reach this endpoint.
     sendJson(response, 200, {
       ok: true,
       service: 'elix-web-frontend',
-      relayBaseUrl: context.relayBaseUrl,
     });
     return;
   }
@@ -98,7 +121,7 @@ async function handleRequest(request, response, context) {
 
 async function serveFrontendAsset(request, response, url, { rootDir }) {
   if (!['GET', 'HEAD'].includes(request.method ?? 'GET')) {
-    response.writeHead(405, { allow: 'GET, HEAD' });
+    response.writeHead(405, { ...SECURITY_HEADERS, allow: 'GET, HEAD' });
     response.end();
     return;
   }
@@ -108,14 +131,14 @@ async function serveFrontendAsset(request, response, url, { rootDir }) {
   const filePath = resolve(rootDir, `.${requestedPath}`);
 
   if (!isPathInside(filePath, rootDir)) {
-    response.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' });
+    response.writeHead(403, { ...SECURITY_HEADERS, 'content-type': 'text/plain; charset=utf-8' });
     response.end('Forbidden');
     return;
   }
 
   const resolvedFilePath = await resolveStaticFile(filePath, rootDir, pathname);
   if (!resolvedFilePath) {
-    response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+    response.writeHead(404, { ...SECURITY_HEADERS, 'content-type': 'text/plain; charset=utf-8' });
     response.end('Not found');
     return;
   }
@@ -141,6 +164,7 @@ async function resolveStaticFile(filePath, rootDir, pathname) {
 async function streamFile(response, filePath, headOnly) {
   const fileStat = await stat(filePath);
   response.writeHead(200, {
+    ...SECURITY_HEADERS,
     'content-type': MIME_TYPES[extname(filePath)] ?? 'application/octet-stream',
     'content-length': fileStat.size,
     'cache-control': 'no-store',
@@ -173,7 +197,12 @@ function proxyRelayRequest(clientRequest, clientResponse, url, { relayBaseUrl })
         headers,
       },
       (relayResponse) => {
-        clientResponse.writeHead(relayResponse.statusCode ?? 502, filterProxyHeaders(relayResponse.headers));
+        // Merge security headers last so they cannot be overridden by relay.
+        const proxiedHeaders = {
+          ...filterProxyHeaders(relayResponse.headers),
+          ...SECURITY_HEADERS,
+        };
+        clientResponse.writeHead(relayResponse.statusCode ?? 502, proxiedHeaders);
         relayResponse.pipe(clientResponse);
         relayResponse.on('end', resolvePromise);
       },
@@ -197,6 +226,7 @@ function filterProxyHeaders(headers) {
 function sendJson(response, status, body) {
   const json = JSON.stringify(body);
   response.writeHead(status, {
+    ...SECURITY_HEADERS,
     'content-type': 'application/json; charset=utf-8',
     'content-length': Buffer.byteLength(json),
     'cache-control': 'no-store',

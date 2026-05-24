@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { resolveFrontendRuntimeConfig } from '../src/runtime_config.mjs';
+import { resolveFrontendRuntimeConfig, normalizeLocalRelayBaseUrl } from '../src/runtime_config.mjs';
 
 const localConfig = resolveFrontendRuntimeConfig({
   location: new URL('http://127.0.0.1:5173/#/login'),
@@ -38,6 +38,14 @@ assert.equal(customRelayConfig.webOrigin, 'https://web.elix.example');
 assert.equal(customRelayConfig.relayOrigin, 'https://relay.elix.example');
 assert.equal(customRelayConfig.relayBaseUrl, 'https://relay.elix.example');
 assert.equal(customRelayConfig.locale, 'zh-Hant');
+
+// Security: plain HTTP to a non-loopback host must be rejected — it would
+// send bearer tokens in cleartext to an attacker-controlled server.
+assert.equal(
+  normalizeLocalRelayBaseUrl('http://attacker.example/evil'),
+  'http://localhost:4001',
+  'non-loopback HTTP relay URL must fall back to default',
+);
 
 console.log('ok - runtime config');
 

@@ -8,7 +8,6 @@ import {
   runPublicHomeFlow,
   runThreadDraftFlow,
 } from '../src/integration_flow_harness.mjs';
-import { ERROR_TYPES } from '../src/error_taxonomy.mjs';
 import { renderAppShell } from '../src/forum_shell_renderer.mjs';
 import { renderPageBody } from '../src/forum_page_renderers.mjs';
 import { PAGE_IDS } from '../src/state_model.mjs';
@@ -60,7 +59,7 @@ const loginHarness = createFrontendFlowHarness({
 const loginState = await runApprovedLoginFlow(loginHarness);
 assert.equal(loginState.status, 'authenticated');
 assert.equal(loginState.viewModel.trustTier, 'self_custody_did');
-assert.equal(loginHarness.storage.getItem(WEB_SESSION_TOKEN_KEY), 'wst_fixture');
+assert.equal(loginHarness.storage.getItem(WEB_SESSION_TOKEN_KEY), null);
 console.log('ok - runs app-approved login flow');
 
 const invalidHarness = createFrontendFlowHarness({
@@ -68,13 +67,13 @@ const invalidHarness = createFrontendFlowHarness({
   sessionMode: 'invalid',
 });
 const invalidState = await runInvalidSessionRestoreFlow(invalidHarness);
-assert.equal(invalidState.session.error.type, ERROR_TYPES.unauthenticated);
+assert.equal(invalidState.session.authenticated, false);
 assert.equal(invalidHarness.storage.getItem(WEB_SESSION_TOKEN_KEY), null);
 const renderedInvalid = renderAppShell({
   viewModel: invalidState.viewModel,
   bodyHtml: renderPageBody(invalidState.viewModel),
 });
-assert.match(renderedInvalid, /工作階段不可用/);
+assert.match(renderedInvalid, /匿名/);
 console.log('ok - runs invalid session restore flow');
 
 const draftHarness = createFrontendFlowHarness({
@@ -98,7 +97,7 @@ const blockedHarness = createFrontendFlowHarness({
 await assert.rejects(
   () => runThreadDraftFlow(blockedHarness, { title: 'Blocked draft' }),
   (error) => {
-    assert.equal(error.type, ERROR_TYPES.missingScope);
+    assert.equal(error.type, 'missing_scope');
     assert.equal(error.detail.requiredScope, 'forum:post');
     return true;
   },

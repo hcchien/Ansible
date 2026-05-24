@@ -1,5 +1,6 @@
 import '../entities/wallet_credential.dart';
 import '../entities/wallet_presentation.dart';
+import '../entities/passport_wallet_extension.dart';
 
 abstract class WalletRepository {
   Future<void> saveCredential({
@@ -25,4 +26,14 @@ abstract class WalletRepository {
   Future<void> recordPresentation(WalletPresentation presentation);
 
   Future<List<WalletPresentation>> listPresentations(String credentialId);
+
+  Future<void> savePassportExtension(PassportWalletExtension extension);
+
+  Future<PassportWalletExtension?> getPassportExtensionByLocalUniqueId(
+    String passportLocalUniqueId,
+  );
+
+  Future<PassportWalletExtension?> getPassportExtensionForCredential(
+    String credentialId,
+  );
 }

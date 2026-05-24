@@ -6,7 +6,6 @@ import {
   createWebSessionChallenge,
   fetchChallengeStatus,
   fetchCurrentWebSession,
-  readWebSessionToken,
   resolveChallengePollResult,
   revokeWebSession,
 } from './web_session_client.mjs';
@@ -51,10 +50,6 @@ export function createSessionLifecycle({
   };
 
   async function restore() {
-    if (!readWebSessionToken(storage)) {
-      return setPublicState('signed_out');
-    }
-
     try {
       const session = await webSessionClient.fetchCurrentWebSession({
         relayBaseUrl,
@@ -64,6 +59,10 @@ export function createSessionLifecycle({
 
       return setSessionState(session);
     } catch (error) {
+      if (mapRelayErrorToSessionError(error).type === 'unauthenticated') {
+        return setPublicState('signed_out');
+      }
+
       return setErrorState(error);
     }
   }

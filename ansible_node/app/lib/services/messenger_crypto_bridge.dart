@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 // ignore: implementation_imports
 import 'package:ansible_did/src/rust/frb_generated.dart' as frb;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class MessengerDeviceBundle {
   final String subjectDid;
@@ -102,7 +103,79 @@ abstract interface class MessengerCryptoBridge {
   );
 }
 
+abstract interface class MessengerSecretStore {
+  bool isSecretReference(String value);
+
+  Future<String> putSecret({
+    required String namespace,
+    required String secretId,
+    required String secret,
+  });
+
+  Future<String> resolveSecret(String value);
+}
+
+class SecureStorageMessengerSecretStore implements MessengerSecretStore {
+  static const referencePrefix = 'secure-storage:v1:';
+  static const _storageKeyPrefix = 'trisaura.messenger.secret.';
+
+  final FlutterSecureStorage _secureStorage;
+
+  const SecureStorageMessengerSecretStore({FlutterSecureStorage? secureStorage})
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+
+  @override
+  bool isSecretReference(String value) {
+    return value.startsWith(referencePrefix) || value.startsWith('secure:');
+  }
+
+  @override
+  Future<String> putSecret({
+    required String namespace,
+    required String secretId,
+    required String secret,
+  }) async {
+    if (isSecretReference(secret)) return secret;
+    final reference = '$referencePrefix$namespace:$secretId';
+    await _secureStorage.write(
+      key: _storageKey(namespace, secretId),
+      value: secret,
+    );
+    return reference;
+  }
+
+  @override
+  Future<String> resolveSecret(String value) async {
+    if (!value.startsWith(referencePrefix)) return value;
+
+    final tail = value.substring(referencePrefix.length);
+    final separator = tail.lastIndexOf(':');
+    if (separator <= 0 || separator == tail.length - 1) {
+      throw StateError('Invalid messenger secret reference.');
+    }
+
+    final namespace = tail.substring(0, separator);
+    final secretId = tail.substring(separator + 1);
+    final secret = await _secureStorage.read(
+      key: _storageKey(namespace, secretId),
+    );
+    if (secret == null) {
+      throw StateError('Messenger secret is missing from secure storage.');
+    }
+    return secret;
+  }
+
+  String _storageKey(String namespace, String secretId) {
+    return '$_storageKeyPrefix$namespace.$secretId';
+  }
+}
+
 class RustMessengerCryptoBridge implements MessengerCryptoBridge {
+  final MessengerSecretStore secretStore;
+
+  const RustMessengerCryptoBridge({MessengerSecretStore? secretStore})
+    : secretStore = secretStore ?? const SecureStorageMessengerSecretStore();
+
   @override
   Future<MessengerDeviceBundle> createDevice(String subjectDid) async {
     final device = await frb.RustLib.instance.apiMessengerCreateDevice(
@@ -116,29 +189,37 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
     MessengerDeviceBundle device,
     int count,
   ) async {
+    final rustDevice = await _deviceToRust(device);
     final preKeys = await frb.RustLib.instance.apiMessengerGeneratePreKeys(
-      device: _deviceToRust(device),
+      device: rustDevice,
       count: count,
     );
-    return preKeys
-        .map(
-          (preKey) => MessengerCryptoPreKey(
-            preKeyId: preKey.preKeyId,
-            publicKey: preKey.publicKey,
-            privateKeyRef: preKey.privateKey,
+    final secured = <MessengerCryptoPreKey>[];
+    for (final preKey in preKeys) {
+      secured.add(
+        MessengerCryptoPreKey(
+          preKeyId: preKey.preKeyId,
+          publicKey: preKey.publicKey,
+          privateKeyRef: await secretStore.putSecret(
+            namespace: 'prekey.${device.deviceId}',
+            secretId: '${preKey.preKeyId}',
+            secret: preKey.privateKey,
           ),
-        )
-        .toList(growable: false);
+        ),
+      );
+    }
+    return secured;
   }
 
   @override
   Future<MessengerCiphertextEnvelope> encryptInitialMessage(
     MessengerEncryptRequest request,
   ) async {
+    final localDevice = await _deviceToRust(request.localDevice);
     final ciphertext = await frb.RustLib.instance
         .apiMessengerEncryptInitialMessage(
           input: frb.MessengerEncryptInput(
-            localDevice: _deviceToRust(request.localDevice),
+            localDevice: localDevice,
             remoteBundle: _remoteBundleToRust(request.remoteBundle),
             plaintext: request.plaintext,
           ),
@@ -155,9 +236,10 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
   Future<MessengerPlaintextEnvelope> decryptInboundMessage(
     MessengerDecryptRequest request,
   ) async {
+    final localDevice = await _deviceToRust(request.localDevice);
     final plaintext = await frb.RustLib.instance
         .apiMessengerDecryptInboundMessage(
-          localDevice: _deviceToRust(request.localDevice),
+          localDevice: localDevice,
           ciphertext: frb.MessengerCiphertext(
             protocolVersion: request.ciphertext.protocolVersion,
             ciphertextType: request.ciphertext.ciphertextType,
@@ -171,29 +253,45 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
     );
   }
 
-  MessengerDeviceBundle _deviceFromRust(frb.MessengerDevice device) {
+  Future<MessengerDeviceBundle> _deviceFromRust(
+    frb.MessengerDevice device,
+  ) async {
     return MessengerDeviceBundle(
       subjectDid: device.subjectDid,
       deviceId: device.deviceId,
       identityKeyPublic: device.identityKeyPublic,
-      identityKeyPrivateRef: device.identityKeyPrivate,
+      identityKeyPrivateRef: await secretStore.putSecret(
+        namespace: 'device.${device.deviceId}',
+        secretId: 'identity',
+        secret: device.identityKeyPrivate,
+      ),
       signedPreKeyId: device.signedPreKeyId,
       signedPreKeyPublic: device.signedPreKeyPublic,
-      signedPreKeyPrivateRef: device.signedPreKeyPrivate,
+      signedPreKeyPrivateRef: await secretStore.putSecret(
+        namespace: 'device.${device.deviceId}',
+        secretId: 'signed_pre_key',
+        secret: device.signedPreKeyPrivate,
+      ),
       signedPreKeySignature: device.signedPreKeySignature,
       sessionState: device.sessionState,
     );
   }
 
-  frb.MessengerDevice _deviceToRust(MessengerDeviceBundle device) {
+  Future<frb.MessengerDevice> _deviceToRust(
+    MessengerDeviceBundle device,
+  ) async {
     return frb.MessengerDevice(
       subjectDid: device.subjectDid,
       deviceId: device.deviceId,
       identityKeyPublic: device.identityKeyPublic,
-      identityKeyPrivate: device.identityKeyPrivateRef,
+      identityKeyPrivate: await secretStore.resolveSecret(
+        device.identityKeyPrivateRef,
+      ),
       signedPreKeyId: device.signedPreKeyId,
       signedPreKeyPublic: device.signedPreKeyPublic,
-      signedPreKeyPrivate: device.signedPreKeyPrivateRef,
+      signedPreKeyPrivate: await secretStore.resolveSecret(
+        device.signedPreKeyPrivateRef,
+      ),
       signedPreKeySignature: device.signedPreKeySignature,
       sessionState: device.sessionState,
       oneTimePreKeys: const [],

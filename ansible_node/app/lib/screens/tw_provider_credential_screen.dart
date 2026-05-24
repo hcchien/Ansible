@@ -5,6 +5,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
+import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
 
@@ -198,30 +199,33 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
       email: _emailController.text.trim(),
       offerId: offerId,
     );
-    final vc = VerifiableCredential.fromJson(vcJson);
+    final credential = TrisAuraCredential.fromJson(
+      Map<String, Object?>.from(vcJson),
+    );
     final now = DateTime.now().toUtc();
-    final validFrom = DateTime.parse(vc.issuanceDate).toUtc();
-    final validUntil = vc.expirationDate == null
-        ? validFrom.add(const Duration(days: 90))
-        : DateTime.parse(vc.expirationDate!).toUtc();
+
+    final payloadEnvelope = await const SecureCredentialPayloadCodec().seal(
+      credentialId: credential.id,
+      payloadJson: jsonEncode(credential.json),
+    );
 
     await _walletRepository.saveCredential(
       metadata: WalletCredential(
-        credentialId: vc.id,
-        issuerDid: vc.issuer,
-        holderDid: vc.holderDid ?? widget.holderDid,
-        credentialType: vc.type.contains('TrisAuraHumanityCredential')
+        credentialId: credential.id,
+        issuerDid: credential.issuerDid,
+        holderDid: credential.holderDid,
+        credentialType: credential.types.contains('TrisAuraHumanityCredential')
             ? 'TrisAuraHumanityCredential'
-            : vc.type.last,
+            : credential.types.last,
         status: WalletCredentialStatus.active,
-        validFrom: validFrom,
-        validUntil: validUntil,
+        validFrom: credential.validFrom,
+        validUntil: credential.validUntil,
         displayName: 'Verified Human',
         createdAt: now,
         updatedAt: now,
       ),
-      encryptedPayload: jsonEncode(vc.toJson()),
-      encryptionVersion: 'plain-json-v1',
+      encryptedPayload: payloadEnvelope.encodedPayload,
+      encryptionVersion: payloadEnvelope.encryptionVersion,
     );
     widget.onCredentialStored?.call();
 

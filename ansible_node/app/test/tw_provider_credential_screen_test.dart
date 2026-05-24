@@ -3,9 +3,14 @@ import 'package:ansible_node/services/external_url_launcher.dart';
 import 'package:ansible_node/services/vc_issuer_client.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
   testWidgets('panel starts TW provider flow and launches authorization URL', (
     tester,
   ) async {
@@ -103,7 +108,7 @@ void main() {
     expect(credentials.single.holderDid, 'did:plc:abcdefghijklmnop');
     expect(
       await repo.getEncryptedPayload(credentials.single.credentialId),
-      isNotNull,
+      startsWith('secure-storage-json-v1:'),
     );
     expect(find.text('憑證已加入 Wallet'), findsOneWidget);
   });
@@ -298,13 +303,20 @@ TwProviderOffer twOfferFixture() {
 
 Map<String, dynamic> humanityVcFixture() {
   return {
-    '@context': ['https://www.w3.org/ns/credentials/v2'],
+    '@context': [
+      'https://www.w3.org/ns/credentials/v2',
+      'https://trisaura.io/contexts/humanity/v1',
+    ],
     'id': 'urn:uuid:tw-provider-humanity',
     'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
     'issuer': 'did:web:issuer.trisaura.io',
-    'issuanceDate': '2026-05-05T12:00:00Z',
-    'expirationDate': '2026-08-03T12:00:00Z',
-    'credentialSubject': {'id': 'did:plc:abcdefghijklmnop', 'humanity': true},
+    'validFrom': '2026-05-05T12:00:00Z',
+    'validUntil': '2026-08-03T12:00:00Z',
+    'credentialSubject': {
+      'id': 'did:plc:abcdefghijklmnop',
+      'humanVerified': true,
+      'assuranceMethod': 'tw_fido_or_moica',
+    },
     'proof': {
       'type': 'Ed25519Signature2020',
       'created': '2026-05-05T12:00:00Z',

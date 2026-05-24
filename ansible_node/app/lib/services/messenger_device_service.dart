@@ -12,15 +12,18 @@ class MessengerDeviceService {
 
   final MessengerRepository repository;
   final MessengerCryptoBridge crypto;
+  final MessengerSecretStore secretStore;
   final MessengerRelayClient relayClient;
   final DateTime Function() now;
 
   MessengerDeviceService({
     required this.repository,
     MessengerCryptoBridge? crypto,
+    MessengerSecretStore? secretStore,
     MessengerRelayClient? relayClient,
     DateTime Function()? now,
   }) : crypto = crypto ?? RustMessengerCryptoBridge(),
+       secretStore = secretStore ?? _secretStoreFor(crypto),
        relayClient = relayClient ?? MessengerRelayClient(),
        now = now ?? (() => DateTime.now().toUtc());
 
@@ -29,8 +32,9 @@ class MessengerDeviceService {
     required DidSigner didSigner,
   }) async {
     final existing = await repository.localDeviceForSubject(subjectDid);
-    final device =
-        existing ?? await _createAndPublishDevice(subjectDid, didSigner);
+    final device = existing == null
+        ? await _createAndPublishDevice(subjectDid, didSigner)
+        : await _secureExistingDevice(existing);
     await _replenishPreKeysIfNeeded(device, didSigner);
     return device;
   }
@@ -40,7 +44,7 @@ class MessengerDeviceService {
     DidSigner didSigner,
   ) async {
     final bundle = await crypto.createDevice(subjectDid);
-    final record = _recordFromBundle(bundle, now());
+    final record = await _recordFromBundle(bundle, now());
     await repository.upsertLocalDevice(record);
 
     final binding = _binding(record);
@@ -60,7 +64,8 @@ class MessengerDeviceService {
     MessengerDeviceRecord record,
     DidSigner didSigner,
   ) async {
-    final unpublished = await repository.unpublishedPreKeys(record.deviceId);
+    var unpublished = await repository.unpublishedPreKeys(record.deviceId);
+    unpublished = await _secureExistingPreKeys(record, unpublished);
     if (unpublished.length >= minUnpublishedPreKeys) return;
 
     final generated = await crypto.generatePreKeys(
@@ -70,16 +75,22 @@ class MessengerDeviceService {
     if (generated.isEmpty) return;
 
     final createdAt = now();
-    final preKeyRecords = [
-      for (final preKey in generated)
+    final preKeyRecords = <MessengerPreKeyRecord>[];
+    for (final preKey in generated) {
+      preKeyRecords.add(
         MessengerPreKeyRecord(
           deviceId: record.deviceId,
           preKeyId: preKey.preKeyId,
           publicKey: preKey.publicKey,
-          privateKeyRef: preKey.privateKeyRef,
+          privateKeyRef: await _secureSecret(
+            namespace: 'prekey.${record.deviceId}',
+            secretId: '${preKey.preKeyId}',
+            value: preKey.privateKeyRef,
+          ),
           createdAt: createdAt,
         ),
-    ];
+      );
+    }
     await repository.savePreKeys(preKeyRecords);
 
     final relayPreKeys = [
@@ -103,23 +114,107 @@ class MessengerDeviceService {
     }
   }
 
-  MessengerDeviceRecord _recordFromBundle(
+  Future<MessengerDeviceRecord> _recordFromBundle(
     MessengerDeviceBundle bundle,
     DateTime createdAt,
-  ) {
+  ) async {
     return MessengerDeviceRecord(
       subjectDid: bundle.subjectDid,
       deviceId: bundle.deviceId,
       identityKeyPublic: bundle.identityKeyPublic,
-      identityKeyPrivateRef: bundle.identityKeyPrivateRef,
+      identityKeyPrivateRef: await _secureSecret(
+        namespace: 'device.${bundle.deviceId}',
+        secretId: 'identity',
+        value: bundle.identityKeyPrivateRef,
+      ),
       isLocal: true,
       signedPreKeyId: bundle.signedPreKeyId,
       signedPreKeyPublic: bundle.signedPreKeyPublic,
-      signedPreKeyPrivateRef: bundle.signedPreKeyPrivateRef,
+      signedPreKeyPrivateRef: await _secureSecret(
+        namespace: 'device.${bundle.deviceId}',
+        secretId: 'signed_pre_key',
+        value: bundle.signedPreKeyPrivateRef,
+      ),
       signedPreKeySignature: bundle.signedPreKeySignature,
       createdAt: createdAt,
       updatedAt: createdAt,
     );
+  }
+
+  Future<MessengerDeviceRecord> _secureExistingDevice(
+    MessengerDeviceRecord record,
+  ) async {
+    final identityRef = record.identityKeyPrivateRef == null
+        ? null
+        : await _secureSecret(
+            namespace: 'device.${record.deviceId}',
+            secretId: 'identity',
+            value: record.identityKeyPrivateRef!,
+          );
+    final signedPreKeyRef = record.signedPreKeyPrivateRef == null
+        ? null
+        : await _secureSecret(
+            namespace: 'device.${record.deviceId}',
+            secretId: 'signed_pre_key',
+            value: record.signedPreKeyPrivateRef!,
+          );
+    if (identityRef == record.identityKeyPrivateRef &&
+        signedPreKeyRef == record.signedPreKeyPrivateRef) {
+      return record;
+    }
+    final secured = MessengerDeviceRecord(
+      subjectDid: record.subjectDid,
+      deviceId: record.deviceId,
+      identityKeyPublic: record.identityKeyPublic,
+      identityKeyPrivateRef: identityRef,
+      isLocal: true,
+      signedPreKeyId: record.signedPreKeyId,
+      signedPreKeyPublic: record.signedPreKeyPublic,
+      signedPreKeyPrivateRef: signedPreKeyRef,
+      signedPreKeySignature: record.signedPreKeySignature,
+      bindingJson: record.bindingJson,
+      bindingSignature: record.bindingSignature,
+      createdAt: record.createdAt,
+      updatedAt: now(),
+    );
+    await repository.upsertLocalDevice(secured);
+    return secured;
+  }
+
+  Future<List<MessengerPreKeyRecord>> _secureExistingPreKeys(
+    MessengerDeviceRecord record,
+    List<MessengerPreKeyRecord> preKeys,
+  ) async {
+    final secured = <MessengerPreKeyRecord>[];
+    var changed = false;
+    for (final preKey in preKeys) {
+      final privateKeyRef = preKey.privateKeyRef;
+      if (privateKeyRef == null ||
+          secretStore.isSecretReference(privateKeyRef)) {
+        secured.add(preKey);
+        continue;
+      }
+      changed = true;
+      secured.add(
+        MessengerPreKeyRecord(
+          deviceId: preKey.deviceId,
+          preKeyId: preKey.preKeyId,
+          publicKey: preKey.publicKey,
+          privateKeyRef: await _secureSecret(
+            namespace: 'prekey.${record.deviceId}',
+            secretId: '${preKey.preKeyId}',
+            value: privateKeyRef,
+          ),
+          createdAt: preKey.createdAt,
+          publishedAt: preKey.publishedAt,
+          consumedAt: preKey.consumedAt,
+        ),
+      );
+    }
+    if (changed) {
+      await repository.savePreKeys(secured);
+    }
+    return secured;
   }
 
   MessengerDeviceBundle _bundleFromRecord(MessengerDeviceRecord record) {
@@ -176,5 +271,23 @@ class MessengerDeviceService {
       return '[${value.map(_canonicalJson).join(',')}]';
     }
     return jsonEncode(value);
+  }
+
+  Future<String> _secureSecret({
+    required String namespace,
+    required String secretId,
+    required String value,
+  }) async {
+    if (secretStore.isSecretReference(value)) return value;
+    return secretStore.putSecret(
+      namespace: namespace,
+      secretId: secretId,
+      secret: value,
+    );
+  }
+
+  static MessengerSecretStore _secretStoreFor(MessengerCryptoBridge? crypto) {
+    if (crypto is RustMessengerCryptoBridge) return crypto.secretStore;
+    return const SecureStorageMessengerSecretStore();
   }
 }

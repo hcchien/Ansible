@@ -169,7 +169,8 @@ class _FakeApprovalClient implements WebSessionApprovalGateway {
   @override
   Future<void> revokeSession({
     required String bearerToken,
-    required String sessionToken,
+    String? sessionId,
+    String? sessionToken,
   }) async {}
 }
 

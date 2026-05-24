@@ -50,7 +50,6 @@ try {
   assert.deepEqual(JSON.parse(health.body), {
     ok: true,
     service: 'elix-web-frontend',
-    relayBaseUrl: `http://127.0.0.1:${relay.address().port}`,
   });
 
   const proxied = await request(`${baseUrl}/api/v1/forum-host`, {

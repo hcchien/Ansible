@@ -84,7 +84,7 @@ void main() {
       () async {
         final vcFixture = <String, dynamic>{
           'id': 'urn:uuid:issued-vc',
-          'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
+          'type': ['VerifiableCredential', 'EmailCredential'],
           'issuer': 'did:web:issuer.trisaura.io',
         };
 
@@ -233,6 +233,53 @@ void main() {
         );
 
         expect(vc['id'], 'vc-1');
+      },
+    );
+  });
+
+  group('VcIssuerClient passport flow', () {
+    test(
+      'issuePassportCredential posts personhood hashes and proof fields',
+      () async {
+        final client = VcIssuerClient(
+          baseUrl: 'http://issuer.test',
+          client: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, '/api/v1/vc/passport/issue');
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body, {
+              'did': 'did:plc:abcdefghijklmnop',
+              'nationality': 'TWN',
+              'national_id_hash': 'national-id-hash-abc123',
+              'passport_number_hash': 'passport-number-hash-abc123',
+              'zkp_proof': 'proof-abc123',
+              'zkp_circuit_version': 'passport_v1_groth16_bn254',
+              'verification_key_hash': 'sha256:vk-hash-abc123',
+            });
+            expect(body.keys, isNot(contains('verified')));
+            expect(body.keys, isNot(contains('passport_uid')));
+            expect(body.keys, isNot(contains('documentNumber')));
+            expect(body.keys, isNot(contains('passportLocalUniqueId')));
+            return http.Response(
+              jsonEncode({
+                'vc': {'id': 'passport-vc-1'},
+              }),
+              200,
+            );
+          }),
+        );
+
+        final vc = await client.issuePassportCredential(
+          did: 'did:plc:abcdefghijklmnop',
+          nationality: 'TWN',
+          nationalIdHash: 'national-id-hash-abc123',
+          passportNumberHash: 'passport-number-hash-abc123',
+          zkpProof: 'proof-abc123',
+          zkpCircuitVersion: 'passport_v1_groth16_bn254',
+          verificationKeyHash: 'sha256:vk-hash-abc123',
+        );
+
+        expect(vc['id'], 'passport-vc-1');
       },
     );
   });

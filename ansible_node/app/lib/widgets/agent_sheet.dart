@@ -18,6 +18,7 @@ class AgentSheet extends StatefulWidget {
     required this.authorDid,
     required this.contentItemRepo,
     required this.aiProvider,
+    required this.aiProviderType,
     this.noteId,
     this.noteTitle,
     this.noteBody,
@@ -29,6 +30,7 @@ class AgentSheet extends StatefulWidget {
   final String authorDid;
   final DriftContentItemRepository contentItemRepo;
   final AiProvider aiProvider;
+  final AiProviderType aiProviderType;
   final String? noteId;
   final String? noteTitle;
   final String? noteBody;
@@ -73,7 +75,10 @@ class _AgentSheetState extends State<AgentSheet> {
         builder: (_) => MurmurResultSheet(
           results: results,
           query: query,
-          synthesisService: MurmurSynthesisService(widget.aiProvider),
+          synthesisService: MurmurSynthesisService(
+            widget.aiProvider,
+            providerType: widget.aiProviderType,
+          ),
           noteId: widget.noteId,
           noteTitle: widget.noteTitle,
           noteBody: widget.noteBody,
@@ -152,7 +157,7 @@ class _AgentSheetState extends State<AgentSheet> {
 
             // Body text
             const Text(
-              '我會在你的裝置上跑 — 過去說過的話只給你看到。',
+              '我會先檢查隱私範圍；遠端 AI 不會自動接收私人內容。',
               style: TextStyle(
                 fontFamily: AnsibleDesign.serif,
                 fontSize: 13,

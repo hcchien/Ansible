@@ -9334,6 +9334,570 @@ class WalletPresentationsCompanion extends UpdateCompanion<WalletPresentation> {
   }
 }
 
+class $PassportWalletExtensionsTable extends PassportWalletExtensions
+    with
+        TableInfo<
+          $PassportWalletExtensionsTable,
+          PassportWalletExtensionRecord
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PassportWalletExtensionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _credentialIdMeta = const VerificationMeta(
+    'credentialId',
+  );
+  @override
+  late final GeneratedColumn<String> credentialId = GeneratedColumn<String>(
+    'credential_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _passportLocalUniqueIdMeta =
+      const VerificationMeta('passportLocalUniqueId');
+  @override
+  late final GeneratedColumn<String> passportLocalUniqueId =
+      GeneratedColumn<String>(
+        'passport_local_unique_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+        defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+      );
+  static const VerificationMeta _nationalIdHashMeta = const VerificationMeta(
+    'nationalIdHash',
+  );
+  @override
+  late final GeneratedColumn<String> nationalIdHash = GeneratedColumn<String>(
+    'national_id_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _passportNumberHashMeta =
+      const VerificationMeta('passportNumberHash');
+  @override
+  late final GeneratedColumn<String> passportNumberHash =
+      GeneratedColumn<String>(
+        'passport_number_hash',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _nationalityMeta = const VerificationMeta(
+    'nationality',
+  );
+  @override
+  late final GeneratedColumn<String> nationality = GeneratedColumn<String>(
+    'nationality',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assuranceMethodMeta = const VerificationMeta(
+    'assuranceMethod',
+  );
+  @override
+  late final GeneratedColumn<String> assuranceMethod = GeneratedColumn<String>(
+    'assurance_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _verifiedAtMeta = const VerificationMeta(
+    'verifiedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> verifiedAt = GeneratedColumn<DateTime>(
+    'verified_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    credentialId,
+    passportLocalUniqueId,
+    nationalIdHash,
+    passportNumberHash,
+    nationality,
+    assuranceMethod,
+    verifiedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'passport_wallet_extensions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PassportWalletExtensionRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('credential_id')) {
+      context.handle(
+        _credentialIdMeta,
+        credentialId.isAcceptableOrUnknown(
+          data['credential_id']!,
+          _credentialIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_credentialIdMeta);
+    }
+    if (data.containsKey('passport_local_unique_id')) {
+      context.handle(
+        _passportLocalUniqueIdMeta,
+        passportLocalUniqueId.isAcceptableOrUnknown(
+          data['passport_local_unique_id']!,
+          _passportLocalUniqueIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_passportLocalUniqueIdMeta);
+    }
+    if (data.containsKey('national_id_hash')) {
+      context.handle(
+        _nationalIdHashMeta,
+        nationalIdHash.isAcceptableOrUnknown(
+          data['national_id_hash']!,
+          _nationalIdHashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('passport_number_hash')) {
+      context.handle(
+        _passportNumberHashMeta,
+        passportNumberHash.isAcceptableOrUnknown(
+          data['passport_number_hash']!,
+          _passportNumberHashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('nationality')) {
+      context.handle(
+        _nationalityMeta,
+        nationality.isAcceptableOrUnknown(
+          data['nationality']!,
+          _nationalityMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_nationalityMeta);
+    }
+    if (data.containsKey('assurance_method')) {
+      context.handle(
+        _assuranceMethodMeta,
+        assuranceMethod.isAcceptableOrUnknown(
+          data['assurance_method']!,
+          _assuranceMethodMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_assuranceMethodMeta);
+    }
+    if (data.containsKey('verified_at')) {
+      context.handle(
+        _verifiedAtMeta,
+        verifiedAt.isAcceptableOrUnknown(data['verified_at']!, _verifiedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_verifiedAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {credentialId};
+  @override
+  PassportWalletExtensionRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PassportWalletExtensionRecord(
+      credentialId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}credential_id'],
+      )!,
+      passportLocalUniqueId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}passport_local_unique_id'],
+      )!,
+      nationalIdHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}national_id_hash'],
+      )!,
+      passportNumberHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}passport_number_hash'],
+      )!,
+      nationality: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nationality'],
+      )!,
+      assuranceMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assurance_method'],
+      )!,
+      verifiedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}verified_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PassportWalletExtensionsTable createAlias(String alias) {
+    return $PassportWalletExtensionsTable(attachedDatabase, alias);
+  }
+}
+
+class PassportWalletExtensionRecord extends DataClass
+    implements Insertable<PassportWalletExtensionRecord> {
+  final String credentialId;
+  final String passportLocalUniqueId;
+  final String nationalIdHash;
+  final String passportNumberHash;
+  final String nationality;
+  final String assuranceMethod;
+  final DateTime verifiedAt;
+  final DateTime createdAt;
+  const PassportWalletExtensionRecord({
+    required this.credentialId,
+    required this.passportLocalUniqueId,
+    required this.nationalIdHash,
+    required this.passportNumberHash,
+    required this.nationality,
+    required this.assuranceMethod,
+    required this.verifiedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['credential_id'] = Variable<String>(credentialId);
+    map['passport_local_unique_id'] = Variable<String>(passportLocalUniqueId);
+    map['national_id_hash'] = Variable<String>(nationalIdHash);
+    map['passport_number_hash'] = Variable<String>(passportNumberHash);
+    map['nationality'] = Variable<String>(nationality);
+    map['assurance_method'] = Variable<String>(assuranceMethod);
+    map['verified_at'] = Variable<DateTime>(verifiedAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PassportWalletExtensionsCompanion toCompanion(bool nullToAbsent) {
+    return PassportWalletExtensionsCompanion(
+      credentialId: Value(credentialId),
+      passportLocalUniqueId: Value(passportLocalUniqueId),
+      nationalIdHash: Value(nationalIdHash),
+      passportNumberHash: Value(passportNumberHash),
+      nationality: Value(nationality),
+      assuranceMethod: Value(assuranceMethod),
+      verifiedAt: Value(verifiedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PassportWalletExtensionRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PassportWalletExtensionRecord(
+      credentialId: serializer.fromJson<String>(json['credentialId']),
+      passportLocalUniqueId: serializer.fromJson<String>(
+        json['passportLocalUniqueId'],
+      ),
+      nationalIdHash: serializer.fromJson<String>(json['nationalIdHash']),
+      passportNumberHash: serializer.fromJson<String>(
+        json['passportNumberHash'],
+      ),
+      nationality: serializer.fromJson<String>(json['nationality']),
+      assuranceMethod: serializer.fromJson<String>(json['assuranceMethod']),
+      verifiedAt: serializer.fromJson<DateTime>(json['verifiedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'credentialId': serializer.toJson<String>(credentialId),
+      'passportLocalUniqueId': serializer.toJson<String>(passportLocalUniqueId),
+      'nationalIdHash': serializer.toJson<String>(nationalIdHash),
+      'passportNumberHash': serializer.toJson<String>(passportNumberHash),
+      'nationality': serializer.toJson<String>(nationality),
+      'assuranceMethod': serializer.toJson<String>(assuranceMethod),
+      'verifiedAt': serializer.toJson<DateTime>(verifiedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PassportWalletExtensionRecord copyWith({
+    String? credentialId,
+    String? passportLocalUniqueId,
+    String? nationalIdHash,
+    String? passportNumberHash,
+    String? nationality,
+    String? assuranceMethod,
+    DateTime? verifiedAt,
+    DateTime? createdAt,
+  }) => PassportWalletExtensionRecord(
+    credentialId: credentialId ?? this.credentialId,
+    passportLocalUniqueId: passportLocalUniqueId ?? this.passportLocalUniqueId,
+    nationalIdHash: nationalIdHash ?? this.nationalIdHash,
+    passportNumberHash: passportNumberHash ?? this.passportNumberHash,
+    nationality: nationality ?? this.nationality,
+    assuranceMethod: assuranceMethod ?? this.assuranceMethod,
+    verifiedAt: verifiedAt ?? this.verifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PassportWalletExtensionRecord copyWithCompanion(
+    PassportWalletExtensionsCompanion data,
+  ) {
+    return PassportWalletExtensionRecord(
+      credentialId: data.credentialId.present
+          ? data.credentialId.value
+          : this.credentialId,
+      passportLocalUniqueId: data.passportLocalUniqueId.present
+          ? data.passportLocalUniqueId.value
+          : this.passportLocalUniqueId,
+      nationalIdHash: data.nationalIdHash.present
+          ? data.nationalIdHash.value
+          : this.nationalIdHash,
+      passportNumberHash: data.passportNumberHash.present
+          ? data.passportNumberHash.value
+          : this.passportNumberHash,
+      nationality: data.nationality.present
+          ? data.nationality.value
+          : this.nationality,
+      assuranceMethod: data.assuranceMethod.present
+          ? data.assuranceMethod.value
+          : this.assuranceMethod,
+      verifiedAt: data.verifiedAt.present
+          ? data.verifiedAt.value
+          : this.verifiedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PassportWalletExtensionRecord(')
+          ..write('credentialId: $credentialId, ')
+          ..write('passportLocalUniqueId: $passportLocalUniqueId, ')
+          ..write('nationalIdHash: $nationalIdHash, ')
+          ..write('passportNumberHash: $passportNumberHash, ')
+          ..write('nationality: $nationality, ')
+          ..write('assuranceMethod: $assuranceMethod, ')
+          ..write('verifiedAt: $verifiedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    credentialId,
+    passportLocalUniqueId,
+    nationalIdHash,
+    passportNumberHash,
+    nationality,
+    assuranceMethod,
+    verifiedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PassportWalletExtensionRecord &&
+          other.credentialId == this.credentialId &&
+          other.passportLocalUniqueId == this.passportLocalUniqueId &&
+          other.nationalIdHash == this.nationalIdHash &&
+          other.passportNumberHash == this.passportNumberHash &&
+          other.nationality == this.nationality &&
+          other.assuranceMethod == this.assuranceMethod &&
+          other.verifiedAt == this.verifiedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class PassportWalletExtensionsCompanion
+    extends UpdateCompanion<PassportWalletExtensionRecord> {
+  final Value<String> credentialId;
+  final Value<String> passportLocalUniqueId;
+  final Value<String> nationalIdHash;
+  final Value<String> passportNumberHash;
+  final Value<String> nationality;
+  final Value<String> assuranceMethod;
+  final Value<DateTime> verifiedAt;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const PassportWalletExtensionsCompanion({
+    this.credentialId = const Value.absent(),
+    this.passportLocalUniqueId = const Value.absent(),
+    this.nationalIdHash = const Value.absent(),
+    this.passportNumberHash = const Value.absent(),
+    this.nationality = const Value.absent(),
+    this.assuranceMethod = const Value.absent(),
+    this.verifiedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PassportWalletExtensionsCompanion.insert({
+    required String credentialId,
+    required String passportLocalUniqueId,
+    this.nationalIdHash = const Value.absent(),
+    this.passportNumberHash = const Value.absent(),
+    required String nationality,
+    required String assuranceMethod,
+    required DateTime verifiedAt,
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : credentialId = Value(credentialId),
+       passportLocalUniqueId = Value(passportLocalUniqueId),
+       nationality = Value(nationality),
+       assuranceMethod = Value(assuranceMethod),
+       verifiedAt = Value(verifiedAt);
+  static Insertable<PassportWalletExtensionRecord> custom({
+    Expression<String>? credentialId,
+    Expression<String>? passportLocalUniqueId,
+    Expression<String>? nationalIdHash,
+    Expression<String>? passportNumberHash,
+    Expression<String>? nationality,
+    Expression<String>? assuranceMethod,
+    Expression<DateTime>? verifiedAt,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (credentialId != null) 'credential_id': credentialId,
+      if (passportLocalUniqueId != null)
+        'passport_local_unique_id': passportLocalUniqueId,
+      if (nationalIdHash != null) 'national_id_hash': nationalIdHash,
+      if (passportNumberHash != null)
+        'passport_number_hash': passportNumberHash,
+      if (nationality != null) 'nationality': nationality,
+      if (assuranceMethod != null) 'assurance_method': assuranceMethod,
+      if (verifiedAt != null) 'verified_at': verifiedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PassportWalletExtensionsCompanion copyWith({
+    Value<String>? credentialId,
+    Value<String>? passportLocalUniqueId,
+    Value<String>? nationalIdHash,
+    Value<String>? passportNumberHash,
+    Value<String>? nationality,
+    Value<String>? assuranceMethod,
+    Value<DateTime>? verifiedAt,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return PassportWalletExtensionsCompanion(
+      credentialId: credentialId ?? this.credentialId,
+      passportLocalUniqueId:
+          passportLocalUniqueId ?? this.passportLocalUniqueId,
+      nationalIdHash: nationalIdHash ?? this.nationalIdHash,
+      passportNumberHash: passportNumberHash ?? this.passportNumberHash,
+      nationality: nationality ?? this.nationality,
+      assuranceMethod: assuranceMethod ?? this.assuranceMethod,
+      verifiedAt: verifiedAt ?? this.verifiedAt,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (credentialId.present) {
+      map['credential_id'] = Variable<String>(credentialId.value);
+    }
+    if (passportLocalUniqueId.present) {
+      map['passport_local_unique_id'] = Variable<String>(
+        passportLocalUniqueId.value,
+      );
+    }
+    if (nationalIdHash.present) {
+      map['national_id_hash'] = Variable<String>(nationalIdHash.value);
+    }
+    if (passportNumberHash.present) {
+      map['passport_number_hash'] = Variable<String>(passportNumberHash.value);
+    }
+    if (nationality.present) {
+      map['nationality'] = Variable<String>(nationality.value);
+    }
+    if (assuranceMethod.present) {
+      map['assurance_method'] = Variable<String>(assuranceMethod.value);
+    }
+    if (verifiedAt.present) {
+      map['verified_at'] = Variable<DateTime>(verifiedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PassportWalletExtensionsCompanion(')
+          ..write('credentialId: $credentialId, ')
+          ..write('passportLocalUniqueId: $passportLocalUniqueId, ')
+          ..write('nationalIdHash: $nationalIdHash, ')
+          ..write('passportNumberHash: $passportNumberHash, ')
+          ..write('nationality: $nationality, ')
+          ..write('assuranceMethod: $assuranceMethod, ')
+          ..write('verifiedAt: $verifiedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $FollowTargetsTable extends FollowTargets
     with TableInfo<$FollowTargetsTable, FollowTarget> {
   @override
@@ -26384,6 +26948,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $WalletCredentialPayloadsTable(this);
   late final $WalletPresentationsTable walletPresentations =
       $WalletPresentationsTable(this);
+  late final $PassportWalletExtensionsTable passportWalletExtensions =
+      $PassportWalletExtensionsTable(this);
   late final $FollowTargetsTable followTargets = $FollowTargetsTable(this);
   late final $FollowEdgesTable followEdges = $FollowEdgesTable(this);
   late final $FollowActivityEventsTable followActivityEvents =
@@ -26463,6 +27029,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     walletCredentials,
     walletCredentialPayloads,
     walletPresentations,
+    passportWalletExtensions,
     followTargets,
     followEdges,
     followActivityEvents,
@@ -32499,6 +33066,296 @@ typedef $$WalletPresentationsTableProcessedTableManager =
         >,
       ),
       WalletPresentation,
+      PrefetchHooks Function()
+    >;
+typedef $$PassportWalletExtensionsTableCreateCompanionBuilder =
+    PassportWalletExtensionsCompanion Function({
+      required String credentialId,
+      required String passportLocalUniqueId,
+      Value<String> nationalIdHash,
+      Value<String> passportNumberHash,
+      required String nationality,
+      required String assuranceMethod,
+      required DateTime verifiedAt,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$PassportWalletExtensionsTableUpdateCompanionBuilder =
+    PassportWalletExtensionsCompanion Function({
+      Value<String> credentialId,
+      Value<String> passportLocalUniqueId,
+      Value<String> nationalIdHash,
+      Value<String> passportNumberHash,
+      Value<String> nationality,
+      Value<String> assuranceMethod,
+      Value<DateTime> verifiedAt,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$PassportWalletExtensionsTableFilterComposer
+    extends Composer<_$AppDatabase, $PassportWalletExtensionsTable> {
+  $$PassportWalletExtensionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get passportLocalUniqueId => $composableBuilder(
+    column: $table.passportLocalUniqueId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nationalIdHash => $composableBuilder(
+    column: $table.nationalIdHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get passportNumberHash => $composableBuilder(
+    column: $table.passportNumberHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nationality => $composableBuilder(
+    column: $table.nationality,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assuranceMethod => $composableBuilder(
+    column: $table.assuranceMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get verifiedAt => $composableBuilder(
+    column: $table.verifiedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PassportWalletExtensionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PassportWalletExtensionsTable> {
+  $$PassportWalletExtensionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get passportLocalUniqueId => $composableBuilder(
+    column: $table.passportLocalUniqueId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nationalIdHash => $composableBuilder(
+    column: $table.nationalIdHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get passportNumberHash => $composableBuilder(
+    column: $table.passportNumberHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nationality => $composableBuilder(
+    column: $table.nationality,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get assuranceMethod => $composableBuilder(
+    column: $table.assuranceMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get verifiedAt => $composableBuilder(
+    column: $table.verifiedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PassportWalletExtensionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PassportWalletExtensionsTable> {
+  $$PassportWalletExtensionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get credentialId => $composableBuilder(
+    column: $table.credentialId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get passportLocalUniqueId => $composableBuilder(
+    column: $table.passportLocalUniqueId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get nationalIdHash => $composableBuilder(
+    column: $table.nationalIdHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get passportNumberHash => $composableBuilder(
+    column: $table.passportNumberHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get nationality => $composableBuilder(
+    column: $table.nationality,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get assuranceMethod => $composableBuilder(
+    column: $table.assuranceMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get verifiedAt => $composableBuilder(
+    column: $table.verifiedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$PassportWalletExtensionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PassportWalletExtensionsTable,
+          PassportWalletExtensionRecord,
+          $$PassportWalletExtensionsTableFilterComposer,
+          $$PassportWalletExtensionsTableOrderingComposer,
+          $$PassportWalletExtensionsTableAnnotationComposer,
+          $$PassportWalletExtensionsTableCreateCompanionBuilder,
+          $$PassportWalletExtensionsTableUpdateCompanionBuilder,
+          (
+            PassportWalletExtensionRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $PassportWalletExtensionsTable,
+              PassportWalletExtensionRecord
+            >,
+          ),
+          PassportWalletExtensionRecord,
+          PrefetchHooks Function()
+        > {
+  $$PassportWalletExtensionsTableTableManager(
+    _$AppDatabase db,
+    $PassportWalletExtensionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PassportWalletExtensionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PassportWalletExtensionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PassportWalletExtensionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> credentialId = const Value.absent(),
+                Value<String> passportLocalUniqueId = const Value.absent(),
+                Value<String> nationalIdHash = const Value.absent(),
+                Value<String> passportNumberHash = const Value.absent(),
+                Value<String> nationality = const Value.absent(),
+                Value<String> assuranceMethod = const Value.absent(),
+                Value<DateTime> verifiedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PassportWalletExtensionsCompanion(
+                credentialId: credentialId,
+                passportLocalUniqueId: passportLocalUniqueId,
+                nationalIdHash: nationalIdHash,
+                passportNumberHash: passportNumberHash,
+                nationality: nationality,
+                assuranceMethod: assuranceMethod,
+                verifiedAt: verifiedAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String credentialId,
+                required String passportLocalUniqueId,
+                Value<String> nationalIdHash = const Value.absent(),
+                Value<String> passportNumberHash = const Value.absent(),
+                required String nationality,
+                required String assuranceMethod,
+                required DateTime verifiedAt,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PassportWalletExtensionsCompanion.insert(
+                credentialId: credentialId,
+                passportLocalUniqueId: passportLocalUniqueId,
+                nationalIdHash: nationalIdHash,
+                passportNumberHash: passportNumberHash,
+                nationality: nationality,
+                assuranceMethod: assuranceMethod,
+                verifiedAt: verifiedAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PassportWalletExtensionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PassportWalletExtensionsTable,
+      PassportWalletExtensionRecord,
+      $$PassportWalletExtensionsTableFilterComposer,
+      $$PassportWalletExtensionsTableOrderingComposer,
+      $$PassportWalletExtensionsTableAnnotationComposer,
+      $$PassportWalletExtensionsTableCreateCompanionBuilder,
+      $$PassportWalletExtensionsTableUpdateCompanionBuilder,
+      (
+        PassportWalletExtensionRecord,
+        BaseReferences<
+          _$AppDatabase,
+          $PassportWalletExtensionsTable,
+          PassportWalletExtensionRecord
+        >,
+      ),
+      PassportWalletExtensionRecord,
       PrefetchHooks Function()
     >;
 typedef $$FollowTargetsTableCreateCompanionBuilder =
@@ -45536,6 +46393,11 @@ class $AppDatabaseManager {
       );
   $$WalletPresentationsTableTableManager get walletPresentations =>
       $$WalletPresentationsTableTableManager(_db, _db.walletPresentations);
+  $$PassportWalletExtensionsTableTableManager get passportWalletExtensions =>
+      $$PassportWalletExtensionsTableTableManager(
+        _db,
+        _db.passportWalletExtensions,
+      );
   $$FollowTargetsTableTableManager get followTargets =>
       $$FollowTargetsTableTableManager(_db, _db.followTargets);
   $$FollowEdgesTableTableManager get followEdges =>

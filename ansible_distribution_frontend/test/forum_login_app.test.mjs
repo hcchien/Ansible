@@ -66,7 +66,7 @@ test('starts an app login challenge with forum scopes', async () => {
   assert.equal(state.challenge.deepLink.startsWith('trisaura://'), true);
 });
 
-test('stores only the relay token after challenge approval', async () => {
+test('uses the relay httpOnly cookie after challenge approval', async () => {
   const storage = new MemoryStorage();
   const controller = createForumLoginController({
     relayBaseUrl: 'http://localhost:4001',
@@ -86,7 +86,6 @@ test('stores only the relay token after challenge approval', async () => {
         return {
           status: 'approved',
           challenge_id: 'wsc_test',
-          session_token: 'wst_test',
           trust_tier: 'self_custody_did',
         };
       },
@@ -99,12 +98,11 @@ test('stores only the relay token after challenge approval', async () => {
   assert.equal(state.status, 'approved');
   assert.equal(state.authenticated, true);
   assert.equal(state.trustTier, 'self_custody_did');
-  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), 'wst_test');
+  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
 });
 
-test('sends forum write smoke request with the web session bearer token', async () => {
+test('sends forum write smoke request with the httpOnly session cookie', async () => {
   const storage = new MemoryStorage();
-  storage.setItem(WEB_SESSION_TOKEN_KEY, 'wst_test');
   const requests = [];
   const controller = createForumLoginController({
     relayBaseUrl: 'http://localhost:4001/',
@@ -139,7 +137,8 @@ test('sends forum write smoke request with the web session bearer token', async 
     requests[0].url,
     'http://localhost:4001/api/v1/forum-host/web/threads',
   );
-  assert.equal(requests[0].init.headers.authorization, 'Bearer wst_test');
+  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(requests[0].init.credentials, 'same-origin');
 });
 
 for (const { name, body } of tests) {

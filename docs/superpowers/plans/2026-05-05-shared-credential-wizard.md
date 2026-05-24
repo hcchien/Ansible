@@ -31,9 +31,9 @@
 
 - [ ] Write failing tests that the wizard shows `TW 身份驗證` and `Email OTP / Legacy`.
 - [ ] Write failing tests that tapping TW shows `開始驗證`.
-- [ ] Write failing tests that tapping Email shows `Email 身份驗證`.
+- [ ] Write failing tests that tapping Email shows `Email 聯絡方式驗證`.
 - [ ] Implement `CredentialIssuanceWizard` with method selection and method panels.
-- [ ] For this task, use a placeholder `EmailOtpCredentialPanel` shell with title `Email 身份驗證`; Task 3 replaces it with real legacy behavior.
+- [ ] For this task, use a placeholder `EmailOtpCredentialPanel` shell with title `Email 聯絡方式驗證`; Task 3 replaces it with real legacy behavior.
 - [ ] Run `flutter test test/credential_issuance_wizard_test.dart`.
 - [ ] Commit `feat: add credential issuance wizard`.
 

@@ -18,7 +18,7 @@ export function createFrontendFlowHarness({
     token: sessionMode === 'anonymous' ? undefined : tokenForSessionMode(sessionMode),
   });
   const webSessionClient = createFixtureWebSessionClient({
-    sessionMode: sessionMode === 'anonymous' ? 'approvedDid' : sessionMode,
+    sessionMode: sessionMode === 'anonymous' ? 'invalid' : sessionMode,
     challengeStatus,
   });
   const forumHostClient = createFixtureForumHostClient();

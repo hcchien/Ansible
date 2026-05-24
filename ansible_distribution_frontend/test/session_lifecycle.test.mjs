@@ -32,7 +32,7 @@ function test(name, body) {
   tests.push({ name, body });
 }
 
-test('restores public mode without touching the relay when no token exists', async () => {
+test('restores public mode when the httpOnly cookie session is absent', async () => {
   let fetchCount = 0;
   const lifecycle = createSessionLifecycle({
     relayBaseUrl: 'http://localhost:4001',
@@ -41,13 +41,17 @@ test('restores public mode without touching the relay when no token exists', asy
     webSessionClient: {
       async fetchCurrentWebSession() {
         fetchCount += 1;
+        throw new RelayApiError('invalid_web_session', {
+          status: 401,
+          code: 'invalid_web_session',
+        });
       },
     },
   });
 
   const state = await lifecycle.restore();
 
-  assert.equal(fetchCount, 0);
+  assert.equal(fetchCount, 1);
   assert.deepEqual(state.viewModel, DEFAULT_SESSION_VIEW_MODEL);
 });
 
@@ -61,7 +65,7 @@ test('restores an app-approved DID session into a capability view model', async 
       async fetchCurrentWebSession({ relayBaseUrl }) {
         assert.equal(relayBaseUrl, 'http://localhost:4001');
         return {
-          session_token: 'wst_current',
+          session_id: 'wsi_current',
           subject_did: 'did:plc:abc',
           trust_tier: 'self_custody_did',
           scopes: ['forum:read', 'forum:post', 'session:revoke'],
@@ -137,7 +141,7 @@ test('starts app login and exposes pending challenge state for the future UI', a
   });
 });
 
-test('polls approved challenges, stores token, then loads the current session view model', async () => {
+test('polls approved challenges, then loads the current cookie-backed session view model', async () => {
   const storage = new MemoryStorage();
   const lifecycle = createSessionLifecycle({
     relayBaseUrl: 'http://localhost:4001',
@@ -156,13 +160,12 @@ test('polls approved challenges, stores token, then loads the current session vi
         return {
           status: 'approved',
           challenge_id: 'wsc_approved',
-          session_token: 'wst_new',
           trust_tier: 'self_custody_did',
         };
       },
       async fetchCurrentWebSession() {
         return {
-          session_token: 'wst_new',
+          session_id: 'wsi_new',
           subject_did: 'did:plc:new',
           trust_tier: 'self_custody_did',
           scopes: ['forum:read', 'forum:post', 'forum:reply'],
@@ -175,7 +178,7 @@ test('polls approved challenges, stores token, then loads the current session vi
   await lifecycle.startAppLogin();
   const state = await lifecycle.pollLoginChallenge();
 
-  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), 'wst_new');
+  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
   assert.equal(state.status, 'authenticated');
   assert.equal(state.viewModel.capabilities.canPost, true);
   assert.equal(state.viewModel.capabilities.canReply, true);

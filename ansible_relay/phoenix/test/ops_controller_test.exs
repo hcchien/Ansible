@@ -35,6 +35,36 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     |> Base.encode16(case: :lower)
   end
 
+  defp signing_payload(op) do
+    %{
+      "author_did" => op["author_did"],
+      "entity_id" => op["entity_id"],
+      "entity_type" => op["entity_type"],
+      "op_id" => op["op_id"],
+      "op_type" => op["op_type"],
+      "payload" => op["payload"]
+    }
+    |> canonical_json()
+  end
+
+  defp canonical_json(value) when is_map(value) do
+    entries =
+      value
+      |> Enum.map(fn {key, entry_value} -> {to_string(key), entry_value} end)
+      |> Enum.sort_by(fn {key, _entry_value} -> key end)
+      |> Enum.map(fn {key, entry_value} ->
+        Jason.encode!(key) <> ":" <> canonical_json(entry_value)
+      end)
+
+    "{" <> Enum.join(entries, ",") <> "}"
+  end
+
+  defp canonical_json(value) when is_list(value) do
+    "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
+  end
+
+  defp canonical_json(value), do: Jason.encode!(value)
+
   # Build a valid op body (all required fields present)
   defp valid_op(did, private_key) do
     op = %{
@@ -46,7 +76,7 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
       "payload" => Base.encode64("hello world")
     }
 
-    Map.put(op, "signature", sign(private_key, op["op_id"] <> op["payload"]))
+    Map.put(op, "signature", sign(private_key, signing_payload(op)))
   end
 
   setup do
@@ -190,17 +220,22 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     {public_key, private_key} = ed25519_keypair()
     seed_did(did, public_key)
 
+    base_response = get_json("/api/v1/ops/delta?cursor=0&limit=1000")
+    base_cursor = Jason.decode!(base_response.resp_body)["next_cursor"]
+
     # Insert a couple of ops
     post_json("/api/v1/ops", valid_op(did, private_key))
     post_json("/api/v1/ops", valid_op(did, private_key))
 
-    response = get_json("/api/v1/ops/delta?cursor=0&limit=100")
+    response = get_json("/api/v1/ops/delta?cursor=#{base_cursor}&limit=100")
     assert response.status == 200
 
     body = Jason.decode!(response.resp_body)
     assert is_list(body["ops"])
     assert is_integer(body["next_cursor"])
     assert is_boolean(body["has_more"])
+    assert Enum.all?(body["ops"], &is_binary(&1["public_key_hex"]))
+    assert Enum.all?(body["ops"], &(&1["public_key_hex"] == public_key))
   end
 
   test "delta with cursor filters older ops" do

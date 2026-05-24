@@ -12,7 +12,9 @@ Add a reusable `CredentialIssuanceWizard` widget. The wizard owns method
 selection and embeds method-specific panels:
 
 - `TwProviderCredentialPanel` for production-shaped TW provider issuance.
-- `EmailOtpCredentialPanel` for legacy Email OTP issuance.
+- `EmailOtpCredentialPanel` for legacy Email OTP issuance. Email OTP is a
+  contactability proof only; it must not be treated as verified-human or
+  personhood assurance.
 
 `TwProviderCredentialScreen` remains as a route wrapper around
 `TwProviderCredentialPanel`. `AddCredentialScreen` becomes a route wrapper around

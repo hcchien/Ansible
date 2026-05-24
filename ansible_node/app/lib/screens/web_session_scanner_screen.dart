@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../config/app_environment.dart';
+import '../services/web_session_approval_client.dart';
 import '../services/web_session_grant_service.dart';
 import 'web_session_approval_screen.dart';
 
@@ -35,7 +37,11 @@ class _WebSessionScannerScreenState extends State<WebSessionScannerScreen> {
     if (rawValue == null) return;
 
     try {
-      final link = WebSessionApprovalLink.parse(Uri.parse(rawValue));
+      final link = WebSessionApprovalLink.parse(
+        Uri.parse(rawValue),
+        allowedRelayOrigins: const {AppEnvironment.defaultRelayBaseUrl},
+        allowLocalHttp: !AppEnvironment.isProduction,
+      );
       _handled = true;
       widget.onLinkScanned?.call(link);
       Navigator.of(context).push(
@@ -43,6 +49,7 @@ class _WebSessionScannerScreenState extends State<WebSessionScannerScreen> {
           builder: (_) => WebSessionApprovalScreen(
             challengeId: link.challengeId,
             currentDid: widget.currentDid,
+            client: WebSessionApprovalClient(baseUrl: link.relayOrigin),
           ),
         ),
       );

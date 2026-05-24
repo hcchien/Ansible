@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/trisaura/ansible_issuer/internal/api"
+	"github.com/trisaura/ansible_issuer/internal/commitment"
 	"github.com/trisaura/ansible_issuer/internal/otp"
 	"github.com/trisaura/ansible_issuer/internal/provider"
 	"github.com/trisaura/ansible_issuer/internal/vc"
@@ -22,6 +23,28 @@ const (
 	testEmail  = "alice@example.com"
 	testPepper = "test-pepper"
 )
+
+type fakePassportVerifier struct {
+	err error
+}
+
+func (v fakePassportVerifier) VerifyPassportBinding(
+	proof api.PassportBindingProof,
+) (api.PassportBindingResult, error) {
+	if v.err != nil {
+		return api.PassportBindingResult{}, v.err
+	}
+	return api.PassportBindingResult{
+		NationalIDHash:     proof.NationalIDHash,
+		PassportNumberHash: proof.PassportNumberHash,
+		Nationality:        proof.Nationality,
+		VerifiedAt:         time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
+	}, nil
+}
+
+func configurePassportVerifier(h *api.Handler) {
+	h.ConfigurePassport(api.PassportConfig{Verifier: fakePassportVerifier{}})
+}
 
 func newTestHandler(t *testing.T) *api.Handler {
 	t.Helper()
@@ -182,7 +205,7 @@ func TestRequest_InvalidDID(t *testing.T) {
 	}
 }
 
-func TestIssue_ReturnsSignedHumanityCredential(t *testing.T) {
+func TestIssue_ReturnsSignedEmailCredential(t *testing.T) {
 	h := newTestHandler(t)
 	w := call(h, http.MethodPost, "/api/v1/vc/issue", map[string]any{
 		"did": testDID, "email": testEmail, "otp": getOTP(t, h),
@@ -195,14 +218,24 @@ func TestIssue_ReturnsSignedHumanityCredential(t *testing.T) {
 		t.Fatalf("expected vc key, got %v", bodyJSON(t, w))
 	}
 	types, _ := vcMap["type"].([]any)
-	found := false
+	foundEmail := false
 	for _, v := range types {
+		if v == "EmailCredential" {
+			foundEmail = true
+		}
 		if v == "TrisAuraHumanityCredential" {
-			found = true
+			t.Fatalf("Email OTP must not issue TrisAuraHumanityCredential, got %v", types)
 		}
 	}
-	if !found {
-		t.Fatalf("expected TrisAuraHumanityCredential type, got %v", types)
+	if !foundEmail {
+		t.Fatalf("expected EmailCredential type, got %v", types)
+	}
+	cs, _ := vcMap["credentialSubject"].(map[string]any)
+	if cs["humanVerified"] == true {
+		t.Fatalf("Email OTP must not set humanVerified=true, got %v", cs)
+	}
+	if cs["assuranceMethod"] != "email_otp" {
+		t.Fatalf("expected email_otp assurance method, got %v", cs)
 	}
 	if vcMap["proof"] == nil {
 		t.Fatal("expected proof in issued credential")
@@ -256,5 +289,138 @@ func TestIssue_DuplicateActiveCredential(t *testing.T) {
 	}
 	if bodyJSON(t, second)["error"] != "duplicate_active_credential" {
 		t.Fatalf("expected duplicate_active_credential, got %v", bodyJSON(t, second))
+	}
+}
+
+func TestPassportIssue_ReturnsPassportCredentialWithoutPassportIdentifiers(t *testing.T) {
+	h := newTestHandler(t)
+	configurePassportVerifier(h)
+	w := call(h, http.MethodPost, "/api/v1/vc/passport/issue", map[string]any{
+		"did":                   testDID,
+		"nationality":           "TWN",
+		"national_id_hash":      "national-id-hash-abc123",
+		"passport_number_hash":  "passport-number-hash-abc123",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
+	}
+	vcMap, ok := bodyJSON(t, w)["vc"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected vc key, got %v", bodyJSON(t, w))
+	}
+	cs, _ := vcMap["credentialSubject"].(map[string]any)
+	if cs["nationality"] != "TWN" {
+		t.Fatalf("expected nationality claim, got %v", cs)
+	}
+	if cs["assuranceMethod"] != "passport_nfc" {
+		t.Fatalf("expected passport_nfc method, got %v", cs)
+	}
+	for _, prohibited := range []string{"documentNumber", "passportNumber", "passportLocalUniqueId", "passportUid", "passport_uid", "nationalIdHash", "national_id_hash", "passportNumberHash", "passport_number_hash"} {
+		if _, ok := cs[prohibited]; ok {
+			t.Fatalf("credentialSubject must not contain %q", prohibited)
+		}
+	}
+}
+
+func TestPassportIssue_RejectsWhenVerifierIsUnconfigured(t *testing.T) {
+	h := newTestHandler(t)
+	w := call(h, http.MethodPost, "/api/v1/vc/passport/issue", map[string]any{
+		"did":                   testDID,
+		"nationality":           "TWN",
+		"national_id_hash":      "national-id-hash-abc123",
+		"passport_number_hash":  "passport-number-hash-abc123",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	})
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body)
+	}
+	if bodyJSON(t, w)["error"] != "passport_verifier_unconfigured" {
+		t.Fatalf("unexpected error: %v", bodyJSON(t, w))
+	}
+}
+
+func TestPassportIssue_RejectsDuplicatePassportBinding(t *testing.T) {
+	h := newTestHandler(t)
+	configurePassportVerifier(h)
+	body := map[string]any{
+		"did":                   testDID,
+		"nationality":           "TWN",
+		"national_id_hash":      "national-id-hash-abc123",
+		"passport_number_hash":  "passport-number-hash-abc123",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	}
+
+	first := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first issue failed: %d %s", first.Code, first.Body)
+	}
+
+	second := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
+	if second.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", second.Code, second.Body)
+	}
+	if bodyJSON(t, second)["error"] != "personhood_already_bound" {
+		t.Fatalf("unexpected error: %v", bodyJSON(t, second))
+	}
+}
+
+func TestPassportIssue_RejectsNationalIDAlreadyBoundByTWProvider(t *testing.T) {
+	now := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
+	h := newTWHandler(t, now)
+	configurePassportVerifier(h)
+	start := call(h, http.MethodPost, "/api/v1/vc/tw/start", map[string]any{
+		"did": testDID, "email": testEmail,
+	})
+	if start.Code != http.StatusOK {
+		t.Fatalf("tw start failed: %d %s", start.Code, start.Body)
+	}
+	startBody := bodyJSON(t, start)
+	offerID := startBody["offer_id"].(string)
+	state := startBody["state"].(string)
+	payload := state + "|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
+	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", map[string]any{
+		"state":            state,
+		"provider_subject": "subject-1",
+		"audience":         "trisaura-issuer",
+		"expires_at":       "2026-05-05T12:05:00Z",
+		"assertion":        payload,
+		"signature":        signProviderAssertion("provider-secret", payload),
+	})
+	if callback.Code != http.StatusOK {
+		t.Fatalf("tw callback failed: %d %s", callback.Code, callback.Body)
+	}
+	if first := call(h, http.MethodPost, "/api/v1/vc/tw/issue", map[string]any{
+		"did": testDID, "email": testEmail, "offer_id": offerID,
+	}); first.Code != http.StatusOK {
+		t.Fatalf("tw issue failed: %d %s", first.Code, first.Body)
+	}
+
+	body := map[string]any{
+		"did":         "did:plc:bcdefghijklmnopq",
+		"nationality": "TWN",
+		"national_id_hash": commitment.Compute(
+			testPepper,
+			"subject-1",
+			"tw_natural_person_certificate",
+		),
+		"passport_number_hash":  "passport-number-hash-abc123",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	}
+
+	response := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
+	if response.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", response.Code, response.Body)
+	}
+	if bodyJSON(t, response)["error"] != "personhood_already_bound" {
+		t.Fatalf("unexpected error: %v", bodyJSON(t, response))
 	}
 }

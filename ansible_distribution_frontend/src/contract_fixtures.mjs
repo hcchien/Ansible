@@ -9,7 +9,7 @@ export const CONTRACT_FIXTURES = Object.freeze({
       scopes: [],
     }),
     approvedDid: Object.freeze({
-      session_token: 'wst_fixture',
+      session_id: 'wsi_fixture',
       subject_did: 'did:plc:fixture',
       trust_tier: 'self_custody_did',
       scopes: Object.freeze([
@@ -22,7 +22,7 @@ export const CONTRACT_FIXTURES = Object.freeze({
       expires_at: '2026-05-12T01:00:00Z',
     }),
     expired: Object.freeze({
-      session_token: 'wst_expired',
+      session_id: 'wsi_expired',
       subject_did: 'did:plc:expired',
       trust_tier: 'self_custody_did',
       scopes: Object.freeze(['forum:read']),
@@ -40,7 +40,6 @@ export const CONTRACT_FIXTURES = Object.freeze({
     approved: Object.freeze({
       challenge_id: 'wsc_fixture',
       status: 'approved',
-      session_token: 'wst_fixture',
       trust_tier: 'self_custody_did',
     }),
     rejected: Object.freeze({
@@ -124,14 +123,24 @@ export function createFixtureWebSessionClient({
   sessionMode = 'approvedDid',
   challengeStatus = 'approved',
 } = {}) {
+  let approvedByChallenge = false;
+
   return {
     async createWebSessionChallenge() {
       return CONTRACT_FIXTURES.challenge.pending;
     },
     async fetchChallengeStatus() {
+      if (challengeStatus === 'approved') {
+        approvedByChallenge = true;
+      }
+
       return CONTRACT_FIXTURES.challenge[challengeStatus];
     },
     async fetchCurrentWebSession({ storage } = {}) {
+      if (sessionMode === 'invalid' && approvedByChallenge) {
+        return CONTRACT_FIXTURES.sessions.approvedDid;
+      }
+
       if (sessionMode === 'invalid') {
         storage?.removeItem(WEB_SESSION_TOKEN_KEY);
         throw new RelayApiError('invalid_web_session', {

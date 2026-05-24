@@ -1,3 +1,4 @@
+import '../../entities/passport_wallet_extension.dart';
 import '../../entities/wallet_credential.dart';
 import '../../entities/wallet_presentation.dart';
 import '../wallet_repository.dart';
@@ -5,6 +6,9 @@ import '../wallet_repository.dart';
 class InMemoryWalletRepository implements WalletRepository {
   final Map<String, WalletCredential> _credentials = {};
   final Map<String, String> _payloads = {};
+  final Map<String, PassportWalletExtension> _passportExtensionsByCredential =
+      {};
+  final Map<String, String> _passportCredentialIdsByLocalUniqueId = {};
   final List<WalletPresentation> _presentations = [];
 
   InMemoryWalletRepository();
@@ -60,6 +64,12 @@ class InMemoryWalletRepository implements WalletRepository {
   Future<void> deleteCredential(String credentialId) async {
     _credentials.remove(credentialId);
     _payloads.remove(credentialId);
+    final extension = _passportExtensionsByCredential.remove(credentialId);
+    if (extension != null) {
+      _passportCredentialIdsByLocalUniqueId.remove(
+        extension.passportLocalUniqueId,
+      );
+    }
     _presentations.removeWhere(
       (presentation) => presentation.credentialId == credentialId,
     );
@@ -77,5 +87,29 @@ class InMemoryWalletRepository implements WalletRepository {
     return _presentations
         .where((presentation) => presentation.credentialId == credentialId)
         .toList();
+  }
+
+  @override
+  Future<void> savePassportExtension(PassportWalletExtension extension) async {
+    _passportExtensionsByCredential[extension.credentialId] = extension;
+    _passportCredentialIdsByLocalUniqueId[extension.passportLocalUniqueId] =
+        extension.credentialId;
+  }
+
+  @override
+  Future<PassportWalletExtension?> getPassportExtensionByLocalUniqueId(
+    String passportLocalUniqueId,
+  ) async {
+    final credentialId =
+        _passportCredentialIdsByLocalUniqueId[passportLocalUniqueId];
+    if (credentialId == null) return null;
+    return _passportExtensionsByCredential[credentialId];
+  }
+
+  @override
+  Future<PassportWalletExtension?> getPassportExtensionForCredential(
+    String credentialId,
+  ) async {
+    return _passportExtensionsByCredential[credentialId];
   }
 }

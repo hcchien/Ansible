@@ -200,7 +200,9 @@ void main() {
     );
 
     final mailbox = await client.pullMailbox(
+      recipientDid: 'did:plc:bob',
       recipientDeviceId: 'msgdev_bob',
+      requestSignature: 'dev-signature',
       cursor: 'cursor-1',
     );
     await client.ackMessage(
@@ -211,9 +213,14 @@ void main() {
     );
 
     expect(requests[0].url.path, '/api/v1/messenger/messages');
+    expect(requests[0].url.queryParameters['recipient_did'], 'did:plc:bob');
     expect(
       requests[0].url.queryParameters['recipient_device_id'],
       'msgdev_bob',
+    );
+    expect(
+      requests[0].url.queryParameters['request_signature'],
+      'dev-signature',
     );
     expect(requests[0].url.queryParameters['cursor'], 'cursor-1');
     expect(mailbox.nextCursor, 'cursor-2');

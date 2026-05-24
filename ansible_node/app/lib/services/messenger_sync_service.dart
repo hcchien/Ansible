@@ -14,6 +14,7 @@ class MessengerSyncService {
   final MessengerDeviceService deviceService;
   final MessengerRelayClient relayClient;
   final MessengerCryptoBridge crypto;
+  final MessengerSecretStore secretStore;
   final DidSigner didSigner;
   final DateTime Function() now;
   final String Function() idGenerator;
@@ -25,9 +26,11 @@ class MessengerSyncService {
     required this.relayClient,
     required this.crypto,
     required this.didSigner,
+    MessengerSecretStore? secretStore,
     DateTime Function()? now,
     String Function()? idGenerator,
-  }) : now = now ?? (() => DateTime.now().toUtc()),
+  }) : secretStore = secretStore ?? _secretStoreFor(crypto),
+       now = now ?? (() => DateTime.now().toUtc()),
        idGenerator =
            idGenerator ??
            (() => 'msg_${DateTime.now().toUtc().microsecondsSinceEpoch}');
@@ -65,12 +68,17 @@ class MessengerSyncService {
     final createdAt = now().toUtc();
     final messageId = idGenerator();
     final ciphertext = base64Encode(encrypted.ciphertext);
+    final plaintextRef = await _secureSecret(
+      namespace: 'message.$messageId',
+      secretId: 'plaintext',
+      value: text,
+    );
     final pending = MessengerMessageRecord(
       messageId: messageId,
       conversationId: recipientDid,
       direction: MessengerMessageDirection.outbound,
       status: MessengerMessageStatus.pending,
-      plaintext: text,
+      plaintext: plaintextRef,
       ciphertextType: encrypted.ciphertextType,
       ciphertext: ciphertext,
       createdAt: createdAt,
@@ -83,7 +91,11 @@ class MessengerSyncService {
         localDeviceId: localDevice.deviceId,
         remoteDid: recipientDid,
         remoteDeviceId: remoteDevice.deviceId,
-        sessionState: encrypted.updatedSessionState,
+        sessionState: await _secureSecret(
+          namespace: 'session.${localDevice.deviceId}.${remoteDevice.deviceId}',
+          secretId: 'state',
+          value: encrypted.updatedSessionState,
+        ),
         updatedAt: createdAt,
       ),
     );
@@ -116,14 +128,14 @@ class MessengerSyncService {
       conversationId: pending.conversationId,
       direction: pending.direction,
       status: MessengerMessageStatus.sent,
-      plaintext: pending.plaintext,
+      plaintext: plaintextRef,
       ciphertextType: pending.ciphertextType,
       ciphertext: pending.ciphertext,
       createdAt: pending.createdAt,
       updatedAt: now().toUtc(),
     );
     await repository.saveMessage(sent);
-    return sent;
+    return _resolveMessage(sent);
   }
 
   Future<MessengerPullResult> pullAndDecrypt({
@@ -135,7 +147,12 @@ class MessengerSyncService {
     );
     final cursor = await repository.mailboxCursorFor(localDevice.deviceId);
     final mailbox = await relayClient.pullMailbox(
+      recipientDid: localDevice.subjectDid,
       recipientDeviceId: localDevice.deviceId,
+      requestSignature: await _signJson({
+        'recipient_did': localDevice.subjectDid,
+        'recipient_device_id': localDevice.deviceId,
+      }),
       cursor: cursor,
     );
 
@@ -159,8 +176,13 @@ class MessengerSyncService {
 
   Future<List<MessengerMessageRecord>> messagesForConversation(
     String conversationId,
-  ) {
-    return repository.messagesForConversation(conversationId);
+  ) async {
+    final messages = await repository.messagesForConversation(conversationId);
+    final resolved = <MessengerMessageRecord>[];
+    for (final message in messages) {
+      resolved.add(await _resolveMessage(message));
+    }
+    return resolved;
   }
 
   Future<_DecryptStoreResult> _decryptAndStore(
@@ -180,6 +202,7 @@ class MessengerSyncService {
           ),
         ),
       );
+      final plaintextBody = utf8.decode(plaintext.body);
       final updatedAt = now().toUtc();
       await repository.saveMessage(
         MessengerMessageRecord(
@@ -187,7 +210,11 @@ class MessengerSyncService {
           conversationId: message.senderDid,
           direction: MessengerMessageDirection.inbound,
           status: MessengerMessageStatus.received,
-          plaintext: utf8.decode(plaintext.body),
+          plaintext: await _secureSecret(
+            namespace: 'message.${message.messageId}',
+            secretId: 'plaintext',
+            value: plaintextBody,
+          ),
           ciphertextType: message.ciphertextType,
           ciphertext: message.ciphertext,
           createdAt: receivedAt,
@@ -203,7 +230,12 @@ class MessengerSyncService {
           localDeviceId: localDevice.deviceId,
           remoteDid: message.senderDid,
           remoteDeviceId: message.senderDeviceId,
-          sessionState: plaintext.updatedSessionState,
+          sessionState: await _secureSecret(
+            namespace:
+                'session.${localDevice.deviceId}.${message.senderDeviceId}',
+            secretId: 'state',
+            value: plaintext.updatedSessionState,
+          ),
           updatedAt: updatedAt,
         ),
       );
@@ -324,6 +356,43 @@ class MessengerSyncService {
       return '[${value.map(_canonicalJson).join(',')}]';
     }
     return jsonEncode(value);
+  }
+
+  Future<String> _secureSecret({
+    required String namespace,
+    required String secretId,
+    required String value,
+  }) async {
+    if (secretStore.isSecretReference(value)) return value;
+    return secretStore.putSecret(
+      namespace: namespace,
+      secretId: secretId,
+      secret: value,
+    );
+  }
+
+  Future<MessengerMessageRecord> _resolveMessage(
+    MessengerMessageRecord message,
+  ) async {
+    final plaintext = message.plaintext;
+    return MessengerMessageRecord(
+      messageId: message.messageId,
+      conversationId: message.conversationId,
+      direction: message.direction,
+      status: message.status,
+      plaintext: plaintext == null
+          ? null
+          : await secretStore.resolveSecret(plaintext),
+      ciphertextType: message.ciphertextType,
+      ciphertext: message.ciphertext,
+      createdAt: message.createdAt,
+      updatedAt: message.updatedAt,
+    );
+  }
+
+  static MessengerSecretStore _secretStoreFor(MessengerCryptoBridge crypto) {
+    if (crypto is RustMessengerCryptoBridge) return crypto.secretStore;
+    return const SecureStorageMessengerSecretStore();
   }
 }
 

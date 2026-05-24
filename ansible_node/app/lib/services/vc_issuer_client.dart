@@ -147,6 +147,27 @@ class VcIssuerClient {
     return body['vc'] as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> issuePassportCredential({
+    required String did,
+    required String nationality,
+    required String nationalIdHash,
+    required String passportNumberHash,
+    required String zkpProof,
+    required String zkpCircuitVersion,
+    required String verificationKeyHash,
+  }) async {
+    final body = await _postJson('/api/v1/vc/passport/issue', {
+      'did': did,
+      'nationality': nationality,
+      'national_id_hash': nationalIdHash,
+      'passport_number_hash': passportNumberHash,
+      'zkp_proof': zkpProof,
+      'zkp_circuit_version': zkpCircuitVersion,
+      'verification_key_hash': verificationKeyHash,
+    });
+    return body['vc'] as Map<String, dynamic>;
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _postJson(

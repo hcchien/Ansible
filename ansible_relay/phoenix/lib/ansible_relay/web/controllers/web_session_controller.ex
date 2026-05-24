@@ -8,9 +8,10 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   @allowed_scopes MapSet.new(["forum:read", "forum:post", "forum:reply", "identity:display"])
   @max_challenge_ttl_seconds 900
   @max_session_ttl_seconds 86_400
+  @session_cookie_name "trisaura_session"
 
   def create_challenge(conn, params) do
-    with {:ok, web_origin} <- validate_origin(params["web_origin"], :web_origin),
+    with {:ok, web_origin} <- validate_web_origin(params["web_origin"]),
          {:ok, relay_origin} <- validate_relay_origin(params["relay_origin"]),
          {:ok, scopes} <- validate_scopes(params["scopes"]),
          :ok <- check_challenge_rate_limit(conn),
@@ -41,14 +42,23 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
           expires_at: DateTime.to_iso8601(challenge.expires_at)
         }
 
-        body =
-          if challenge.status == "approved" do
-            Map.put(body, :session_token, challenge.approved_session_token)
-          else
-            body
-          end
+        if challenge.status == "approved" do
+          with {:ok, session} <- WebSessionStore.get_session(challenge.approved_session_token) do
+            body =
+              Map.merge(body, %{
+                trust_tier: session.trust_tier,
+                subject_did: session.subject_did
+              })
 
-        send_json(conn, 200, body)
+            conn
+            |> set_session_cookie(session)
+            |> send_json(200, body)
+          else
+            _ -> send_json(conn, 200, body)
+          end
+        else
+          send_json(conn, 200, body)
+        end
 
       {:error, :not_found} ->
         send_json(conn, 404, %{error: "challenge_not_found"})
@@ -73,7 +83,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
              scopes: grant["scopes"],
              expires_at: grant_expires_at
            }) do
-      send_json(conn, 200, session_response(session))
+      send_json(conn, 200, session_response(session, include_token: true))
     else
       {:error, :scope_not_allowed} ->
         send_json(conn, 422, %{error: "scope_not_allowed"})
@@ -109,11 +119,17 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   end
 
   def revoke(conn, params) do
-    with {:ok, token} <- bearer_token(conn),
+    with {:ok, token} <- session_token_from_conn(conn),
          {:ok, current_session} <- WebSessionStore.get_session(token),
-         target_token <- Map.get(params, "session_token", token),
-         :ok <- authorize_session_revoke(current_session, target_token),
+         {:ok, target_token} <- revoke_target_token(current_session, params, token),
          {:ok, _session} <- WebSessionStore.revoke_session(target_token) do
+      conn =
+        if target_token == current_session.session_token do
+          clear_session_cookie(conn)
+        else
+          conn
+        end
+
       send_json(conn, 200, %{revoked: true})
     else
       {:error, :forbidden} -> send_json(conn, 403, %{error: "session_revoke_forbidden"})
@@ -122,7 +138,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   end
 
   def me(conn, _headers) do
-    with {:ok, token} <- bearer_token(conn),
+    with {:ok, token} <- session_token_from_conn(conn),
          {:ok, session} <- WebSessionStore.get_session(token) do
       send_json(conn, 200, session_response(session))
     else
@@ -131,7 +147,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   end
 
   def list(conn, _params) do
-    with {:ok, token} <- bearer_token(conn),
+    with {:ok, token} <- session_token_from_conn(conn),
          {:ok, session} <- WebSessionStore.get_session(token),
          {:ok, sessions} <- WebSessionStore.list_sessions_for_subject(session.subject_did) do
       send_json(conn, 200, %{sessions: Enum.map(sessions, &session_response/1)})
@@ -156,9 +172,9 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
     }
   end
 
-  defp session_response(session) do
-    %{
-      session_token: session.session_token,
+  defp session_response(session, opts \\ []) do
+    response = %{
+      session_id: session_id(session.session_token),
       subject_did: session.subject_did,
       approving_device_id: session.approving_device_id,
       web_origin: session.web_origin,
@@ -168,6 +184,12 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
       created_at: DateTime.to_iso8601(session.created_at),
       expires_at: DateTime.to_iso8601(session.expires_at)
     }
+
+    if Keyword.get(opts, :include_token, false) do
+      Map.put(response, :session_token, session.session_token)
+    else
+      response
+    end
   end
 
   defp validate_grant(challenge, grant, subject_did) do
@@ -204,12 +226,23 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
     end
   end
 
+  defp validate_web_origin(origin) do
+    with {:ok, normalized_origin} <- validate_origin(origin, :web_origin),
+         true <- normalized_origin in allowed_web_origins() do
+      {:ok, normalized_origin}
+    else
+      {:error, error} -> {:error, error}
+      false -> {:error, :web_origin_not_allowed}
+    end
+  end
+
   defp validate_origin(origin, error) when is_binary(origin) do
     uri = URI.parse(origin)
 
-    if uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "",
-      do: {:ok, origin},
-      else: {:error, error}
+    if uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" &&
+         uri.path in [nil, ""] && is_nil(uri.query) && is_nil(uri.fragment),
+       do: {:ok, normalize_origin(uri)},
+       else: {:error, error}
   end
 
   defp validate_origin(_origin, error), do: {:error, error}
@@ -220,7 +253,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
     configured = Application.get_env(:ansible_relay, :relay_origin, "http://localhost:4001")
 
     with {:ok, origin} <- validate_origin(origin, :relay_origin),
-         true <- origin == configured do
+         true <- origin == normalize_origin_string(configured) do
       {:ok, origin}
     else
       {:error, error} -> {:error, error}
@@ -261,6 +294,60 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
         _ -> {:error, :forbidden}
       end
     end
+  end
+
+  defp revoke_target_token(current_session, %{"session_id" => target_session_id}, _current_token)
+       when is_binary(target_session_id) do
+    with {:ok, sessions} <- WebSessionStore.list_sessions_for_subject(current_session.subject_did),
+         %{session_token: token} <-
+           Enum.find(sessions, &(session_id(&1.session_token) == target_session_id)) do
+      {:ok, token}
+    else
+      _ -> {:error, :forbidden}
+    end
+  end
+
+  defp revoke_target_token(current_session, params, current_token) do
+    target_token = Map.get(params, "session_token", current_token)
+
+    with :ok <- authorize_session_revoke(current_session, target_token) do
+      {:ok, target_token}
+    end
+  end
+
+  defp allowed_web_origins do
+    :ansible_relay
+    |> Application.get_env(:web_allowed_origins, [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173"
+    ])
+    |> Enum.map(&normalize_origin_string/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp normalize_origin_string(origin) when is_binary(origin) do
+    case validate_origin(origin, :invalid_origin) do
+      {:ok, normalized} -> normalized
+      _ -> ""
+    end
+  end
+
+  defp normalize_origin_string(_origin), do: ""
+
+  defp normalize_origin(uri) do
+    scheme = String.downcase(uri.scheme)
+    host = String.downcase(uri.host)
+    port = if uri.port && uri.port != URI.default_port(scheme), do: ":#{uri.port}", else: ""
+    "#{scheme}://#{host}#{port}"
+  end
+
+  defp session_id(session_token) do
+    digest =
+      :crypto.hash(:sha256, session_token)
+      |> Base.url_encode64(padding: false)
+      |> binary_part(0, 22)
+
+    "wsi_" <> digest
   end
 
   defp challenge_ttl(value) when is_integer(value), do: min(value, @max_challenge_ttl_seconds)
@@ -314,6 +401,40 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   end
 
   defp parse_datetime(_value), do: {:error, :invalid_expiry}
+
+  defp set_session_cookie(conn, session) do
+    max_age = max(DateTime.diff(session.expires_at, DateTime.utc_now(), :second), 0)
+    secure = Application.get_env(:ansible_relay, :cookie_secure, true)
+
+    put_resp_cookie(conn, @session_cookie_name, session.session_token,
+      http_only: true,
+      same_site: "Strict",
+      secure: secure,
+      max_age: max_age,
+      path: "/"
+    )
+  end
+
+  defp clear_session_cookie(conn) do
+    secure = Application.get_env(:ansible_relay, :cookie_secure, true)
+
+    put_resp_cookie(conn, @session_cookie_name, "",
+      http_only: true,
+      same_site: "Strict",
+      secure: secure,
+      max_age: 0,
+      path: "/"
+    )
+  end
+
+  defp session_token_from_conn(conn) do
+    conn = fetch_cookies(conn)
+
+    case conn.cookies[@session_cookie_name] do
+      token when is_binary(token) and token != "" -> {:ok, token}
+      _ -> bearer_token(conn)
+    end
+  end
 
   defp bearer_token(conn) do
     case get_req_header(conn, "authorization") do

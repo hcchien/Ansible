@@ -26,15 +26,17 @@ void main() {
     await tester.tap(find.text('Revoke').first);
     await tester.pumpAndSettle();
 
-    expect(client.revokedToken, 'wst_other');
+    expect(client.revokedSessionId, 'wsi_other');
+    expect(find.textContaining('wsi_other'), findsNothing);
     expect(find.textContaining('wst_other'), findsNothing);
   });
 }
 
 class _FakeSessionClient implements WebSessionApprovalGateway {
-  String? revokedToken;
+  String? revokedSessionId;
   final List<WebSessionRecord> sessions = [
     WebSessionRecord(
+      sessionId: 'wsi_other',
       sessionToken: 'wst_other',
       subjectDid: 'did:plc:abc23456789',
       approvingDeviceId: 'app_device_abc',
@@ -72,9 +74,10 @@ class _FakeSessionClient implements WebSessionApprovalGateway {
   @override
   Future<void> revokeSession({
     required String bearerToken,
-    required String sessionToken,
+    String? sessionId,
+    String? sessionToken,
   }) async {
-    revokedToken = sessionToken;
-    sessions.removeWhere((session) => session.sessionToken == sessionToken);
+    revokedSessionId = sessionId;
+    sessions.removeWhere((session) => session.sessionId == sessionId);
   }
 }

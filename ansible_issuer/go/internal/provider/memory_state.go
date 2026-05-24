@@ -101,6 +101,10 @@ func (p *MemoryStateProvider) HandleCallback(callback map[string]string) Callbac
 	if assertion == "" {
 		return CallbackResult{OfferID: session.offerID, ReplayID: replayID, Error: ErrMissingProviderProof}
 	}
+	subject := callback["provider_subject"]
+	if subject == "" {
+		return CallbackResult{OfferID: session.offerID, ReplayID: replayID, Error: ErrMissingProviderProof}
+	}
 	if session.consumed {
 		return CallbackResult{OfferID: session.offerID, ReplayID: replayID, Error: ErrCallbackReplay}
 	}
@@ -114,10 +118,6 @@ func (p *MemoryStateProvider) HandleCallback(callback map[string]string) Callbac
 	p.sessions[state] = session
 	p.replayIDs[replayID] = struct{}{}
 
-	subject := callback["provider_subject"]
-	if subject == "" {
-		subject = "assertion:" + assertion
-	}
 	return CallbackResult{
 		Verified:        true,
 		OfferID:         session.offerID,

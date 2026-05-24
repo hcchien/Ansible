@@ -73,6 +73,15 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     }
   end
 
+  defp session_id(session_token) do
+    digest =
+      :crypto.hash(:sha256, session_token)
+      |> Base.url_encode64(padding: false)
+      |> binary_part(0, 22)
+
+    "wsi_" <> digest
+  end
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
@@ -94,7 +103,13 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     original_origin = Application.get_env(:ansible_relay, :relay_origin)
     original_abuse_policy = Application.get_env(:ansible_relay, :abuse_detector)
+    original_allowed_origins = Application.get_env(:ansible_relay, :web_allowed_origins)
     Application.put_env(:ansible_relay, :relay_origin, "https://relay.trisaura.io")
+
+    Application.put_env(:ansible_relay, :web_allowed_origins, [
+      "https://trisaura.io",
+      "http://127.0.0.1:5173"
+    ])
 
     on_exit(fn ->
       if original_origin do
@@ -107,6 +122,12 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
         Application.put_env(:ansible_relay, :abuse_detector, original_abuse_policy)
       else
         Application.delete_env(:ansible_relay, :abuse_detector)
+      end
+
+      if original_allowed_origins do
+        Application.put_env(:ansible_relay, :web_allowed_origins, original_allowed_origins)
+      else
+        Application.delete_env(:ansible_relay, :web_allowed_origins)
       end
     end)
 
@@ -180,6 +201,18 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert get_resp_header(response, "access-control-allow-origin") == [
              "http://127.0.0.1:5173"
            ]
+  end
+
+  test "POST /api/v1/web-sessions/challenges rejects unconfigured web origins" do
+    response =
+      post_json("/api/v1/web-sessions/challenges", %{
+        "web_origin" => "https://evil.example",
+        "relay_origin" => "https://relay.trisaura.io",
+        "scopes" => ["forum:read"]
+      })
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "web_origin_not_allowed"
   end
 
   test "store caps active web sessions per DID across app devices" do
@@ -308,7 +341,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert Jason.decode!(second.resp_body)["error"] == "rate_limited"
   end
 
-  test "poll challenge returns approved session token after valid app approval" do
+  test "poll challenge sets httpOnly session cookie and returns trust info after valid app approval" do
     did = "did:plc:abc23456789"
     {public_key, private_key} = ed25519_keypair()
     IdentityCache.put(did, public_key, "web_session_test_#{System.unique_integer()}")
@@ -340,7 +373,15 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     poll = get_json("/api/v1/web-sessions/challenges/#{challenge.challenge_id}")
     poll_body = Jason.decode!(poll.resp_body)
     assert poll_body["status"] == "approved"
-    assert poll_body["session_token"] == body["session_token"]
+    assert poll_body["trust_tier"] == "self_custody_did"
+    assert poll_body["subject_did"] == did
+    # session_token must NOT be exposed to browser JavaScript
+    refute Map.has_key?(poll_body, "session_token")
+
+    # The relay must set an httpOnly cookie on the poll response
+    set_cookie = get_resp_header(poll, "set-cookie")
+    assert Enum.any?(set_cookie, &String.contains?(&1, "trisaura_session="))
+    assert Enum.any?(set_cookie, &String.contains?(&1, "HttpOnly"))
   end
 
   test "approve rejects over-scoped grants" do
@@ -370,7 +411,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "scope_not_allowed"
   end
 
-  test "reject, revoke, and me endpoints expose web session state" do
+  test "reject, revoke, and me endpoints expose web session state via Bearer token (backward compat)" do
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
         "web_origin" => "https://trisaura.io",
@@ -403,7 +444,10 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
       get_json("/api/v1/web-sessions/me", [{"authorization", "Bearer #{session.session_token}"}])
 
     assert me.status == 200
-    assert Jason.decode!(me.resp_body)["subject_did"] == "did:plc:me23456789"
+    me_body = Jason.decode!(me.resp_body)
+    assert me_body["subject_did"] == "did:plc:me23456789"
+    assert me_body["session_id"] == session_id(session.session_token)
+    refute Map.has_key?(me_body, "session_token")
 
     revoke =
       post_json(
@@ -414,6 +458,47 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     assert revoke.status == 200
     assert Jason.decode!(revoke.resp_body)["revoked"] == true
+  end
+
+  test "me and revoke endpoints work via httpOnly session cookie" do
+    {:ok, challenge} =
+      WebSessionStore.issue_challenge(%{
+        "web_origin" => "https://trisaura.io",
+        "relay_origin" => "https://relay.trisaura.io",
+        "scopes" => ["forum:read"],
+        "ttl_seconds" => 300
+      })
+
+    {:ok, session} =
+      WebSessionStore.approve_challenge(challenge.challenge_id, %{
+        subject_did: "did:plc:cookie23456789",
+        approving_device_id: "app_device_cookie",
+        scopes: ["forum:read"],
+        expires_at: DateTime.add(DateTime.utc_now(), 300, :second)
+      })
+
+    me =
+      get_json("/api/v1/web-sessions/me", [
+        {"cookie", "trisaura_session=#{session.session_token}"}
+      ])
+
+    assert me.status == 200
+    assert Jason.decode!(me.resp_body)["subject_did"] == "did:plc:cookie23456789"
+
+    revoke =
+      post_json(
+        "/api/v1/web-sessions/revoke",
+        %{},
+        [{"cookie", "trisaura_session=#{session.session_token}"}]
+      )
+
+    assert revoke.status == 200
+    assert Jason.decode!(revoke.resp_body)["revoked"] == true
+
+    # Revocation of the current session must clear the cookie
+    set_cookie = get_resp_header(revoke, "set-cookie")
+    assert Enum.any?(set_cookie, &String.contains?(&1, "trisaura_session="))
+    assert Enum.any?(set_cookie, &String.contains?(&1, "max-age=0"))
   end
 
   test "me endpoint lists active sessions for the same DID" do
@@ -458,9 +543,11 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     body = Jason.decode!(response.resp_body)
     assert length(body["sessions"]) == 2
     assert Enum.all?(body["sessions"], &(&1["subject_did"] == "did:plc:list23456789"))
+    assert Enum.all?(body["sessions"], &Map.has_key?(&1, "session_id"))
+    refute Enum.any?(body["sessions"], &Map.has_key?(&1, "session_token"))
   end
 
-  test "session revoke endpoint can revoke another active session for the same DID" do
+  test "session revoke endpoint can revoke another active session for the same DID by session id" do
     {:ok, first_challenge} =
       WebSessionStore.issue_challenge(%{
         "web_origin" => "https://trisaura.io",
@@ -496,7 +583,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     response =
       post_json(
         "/api/v1/web-sessions/revoke",
-        %{"session_token" => second_session.session_token},
+        %{"session_id" => session_id(second_session.session_token)},
         [{"authorization", "Bearer #{first_session.session_token}"}]
       )
 

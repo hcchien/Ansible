@@ -14,8 +14,10 @@ export class RelayApiError extends Error {
 export function createRelayApiClient({
   relayBaseUrl,
   fetchImpl = globalThis.fetch,
-  storage = globalThis.localStorage,
-  sessionTokenKey = DEFAULT_SESSION_TOKEN_KEY,
+  // storage and sessionTokenKey are accepted for backward compatibility but no longer used for auth.
+  // Authentication is now handled via httpOnly session cookies set by the relay.
+  storage: _storage = globalThis.localStorage,
+  sessionTokenKey: _sessionTokenKey = DEFAULT_SESSION_TOKEN_KEY,
 }) {
   assertFetch(fetchImpl);
 
@@ -34,28 +36,18 @@ export function createRelayApiClient({
       headers['content-type'] = 'application/json';
     }
 
-    if (options.authenticated) {
-      const token = options.sessionToken ?? storage?.getItem(sessionTokenKey);
-
-      if (!token) {
-        throw new Error('web session token is required');
-      }
-
-      headers.authorization = `Bearer ${token}`;
-    }
+    // Authentication is via httpOnly session cookie — no Authorization header needed.
+    // credentials: 'same-origin' ensures the browser sends cookies automatically.
 
     const response = await fetchImpl(`${trimTrailingSlash(relayBaseUrl)}${path}`, {
       method,
+      credentials: 'same-origin',
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const responseBody = await parseResponseBody(response);
 
     if (!response.ok) {
-      if (response.status === 401 && options.authenticated) {
-        storage?.removeItem(sessionTokenKey);
-      }
-
       throw new RelayApiError(
         responseBody?.error ?? `request failed with HTTP ${response.status}`,
         {

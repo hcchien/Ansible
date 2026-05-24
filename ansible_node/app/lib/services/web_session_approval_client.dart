@@ -12,7 +12,8 @@ abstract class WebSessionApprovalGateway {
   Future<List<WebSessionRecord>> fetchSessions(String bearerToken);
   Future<void> revokeSession({
     required String bearerToken,
-    required String sessionToken,
+    String? sessionId,
+    String? sessionToken,
   });
 }
 
@@ -71,7 +72,8 @@ class WebSessionApprovalResult {
 }
 
 class WebSessionRecord {
-  final String sessionToken;
+  final String sessionId;
+  final String? sessionToken;
   final String subjectDid;
   final String approvingDeviceId;
   final String webOrigin;
@@ -82,7 +84,8 @@ class WebSessionRecord {
   final DateTime expiresAt;
 
   const WebSessionRecord({
-    required this.sessionToken,
+    String? sessionId,
+    this.sessionToken,
     required this.subjectDid,
     required this.approvingDeviceId,
     required this.webOrigin,
@@ -91,12 +94,14 @@ class WebSessionRecord {
     required this.scopes,
     required this.createdAt,
     required this.expiresAt,
-  });
+  }) : sessionId = sessionId ?? sessionToken ?? '';
 
   factory WebSessionRecord.fromJson(Map<String, dynamic> json) {
     final scopes = json['scopes'];
     return WebSessionRecord(
-      sessionToken: json['session_token'] as String,
+      sessionId:
+          json['session_id'] as String? ?? json['session_token'] as String?,
+      sessionToken: json['session_token'] as String?,
       subjectDid: json['subject_did'] as String,
       approvingDeviceId: json['approving_device_id'] as String,
       webOrigin: json['web_origin'] as String,
@@ -187,11 +192,19 @@ class WebSessionApprovalClient implements WebSessionApprovalGateway {
   @override
   Future<void> revokeSession({
     required String bearerToken,
-    required String sessionToken,
+    String? sessionId,
+    String? sessionToken,
   }) async {
+    if ((sessionId == null || sessionId.isEmpty) &&
+        (sessionToken == null || sessionToken.isEmpty)) {
+      throw ArgumentError('sessionId or sessionToken is required');
+    }
+
     await _postJson(
       '/api/v1/web-sessions/revoke',
-      {'session_token': sessionToken},
+      sessionId != null && sessionId.isNotEmpty
+          ? {'session_id': sessionId}
+          : {'session_token': sessionToken},
       headers: {'authorization': 'Bearer $bearerToken'},
     );
   }

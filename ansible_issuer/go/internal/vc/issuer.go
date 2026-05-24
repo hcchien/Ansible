@@ -10,11 +10,16 @@ import (
 )
 
 const (
-	credentialType  = "TrisAuraHumanityCredential"
-	assuranceLevel  = "tw_natural_person_certificate"
-	assuranceMethod = "tw_fido_or_moica"
-	jurisdiction    = "TW"
-	defaultTTLDays  = 90
+	credentialType          = "TrisAuraHumanityCredential"
+	emailCredentialType     = "EmailCredential"
+	assuranceLevel          = "tw_natural_person_certificate"
+	assuranceMethod         = "tw_fido_or_moica"
+	emailAssuranceLevel     = "email_contact"
+	emailAssuranceMethod    = "email_otp"
+	passportAssuranceLevel  = "passport_document"
+	passportAssuranceMethod = "passport_nfc"
+	jurisdiction            = "TW"
+	defaultTTLDays          = 90
 )
 
 // Config holds issuer configuration.
@@ -25,7 +30,7 @@ type Config struct {
 	TTLDays    int
 }
 
-// Issuer builds, signs, and tracks TrisAuraHumanityCredentials.
+// Issuer builds, signs, and tracks Tris-Aura credentials.
 type Issuer struct {
 	issuerDID string
 	issuerURL string
@@ -66,24 +71,81 @@ func (iss *Issuer) Issue(holderDID, subjectCommitment string) (map[string]any, e
 		return nil, err
 	}
 
-	now := time.Now().UTC()
-	cred := &Credential{
-		Context: []string{
-			"https://www.w3.org/ns/credentials/v2",
-			"https://trisaura.io/contexts/humanity/v1",
-		},
-		ID:         fmt.Sprintf("%s/vc/%s", iss.issuerURL, randomHex(16)),
-		Type:       []string{"VerifiableCredential", credentialType},
-		Issuer:     iss.issuerDID,
-		ValidFrom:  now.Format(time.RFC3339),
-		ValidUntil: now.AddDate(0, 0, iss.ttlDays).Format(time.RFC3339),
-		CredentialSubject: CredentialSubject{
+	return iss.issue(
+		credentialType,
+		CredentialSubject{
 			ID:              holderDID,
 			HumanVerified:   true,
 			AssuranceLevel:  assuranceLevel,
 			AssuranceMethod: assuranceMethod,
 			Jurisdiction:    jurisdiction,
 		},
+		subjectCommitment,
+		subjectCommitment,
+		"",
+	)
+}
+
+// IssueEmail builds and signs a contactability credential. Email OTP is not a
+// personhood proof and does not participate in high-assurance duplicate checks.
+func (iss *Issuer) IssueEmail(holderDID string) (map[string]any, error) {
+	return iss.issue(
+		emailCredentialType,
+		CredentialSubject{
+			ID:              holderDID,
+			EmailVerified:   true,
+			AssuranceLevel:  emailAssuranceLevel,
+			AssuranceMethod: emailAssuranceMethod,
+		},
+		"",
+		"",
+		"",
+	)
+}
+
+// IssuePassport builds and signs a passport NFC humanity credential. It does
+// not store passport source fields. Duplicate detection is enforced using the
+// verifier-produced national ID and passport number commitments.
+func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passportNumberHash string) (map[string]any, error) {
+	if err := iss.store.CheckDuplicatePersonhoodBinding(nationalIDHash, passportNumberHash); err != nil {
+		return nil, err
+	}
+
+	return iss.issue(
+		credentialType,
+		CredentialSubject{
+			ID:              holderDID,
+			HumanVerified:   true,
+			AssuranceLevel:  passportAssuranceLevel,
+			AssuranceMethod: passportAssuranceMethod,
+			Jurisdiction:    jurisdiction,
+			Nationality:     nationality,
+		},
+		"",
+		nationalIDHash,
+		passportNumberHash,
+	)
+}
+
+func (iss *Issuer) issue(
+	credentialType string,
+	subject CredentialSubject,
+	subjectCommitment string,
+	nationalIDHash string,
+	passportNumberHash string,
+) (map[string]any, error) {
+	now := time.Now().UTC()
+	cred := &Credential{
+		Context: []string{
+			"https://www.w3.org/ns/credentials/v2",
+			"https://trisaura.io/contexts/humanity/v1",
+		},
+		ID:                fmt.Sprintf("%s/vc/%s", iss.issuerURL, randomHex(16)),
+		Type:              []string{"VerifiableCredential", credentialType},
+		Issuer:            iss.issuerDID,
+		ValidFrom:         now.Format(time.RFC3339),
+		ValidUntil:        now.AddDate(0, 0, iss.ttlDays).Format(time.RFC3339),
+		CredentialSubject: subject,
 	}
 
 	canonical, err := json.Marshal(cred)
@@ -109,10 +171,12 @@ func (iss *Issuer) Issue(holderDID, subjectCommitment string) (map[string]any, e
 	}
 
 	iss.store.add(record{
-		credentialID: cred.ID,
-		holderDID:    holderDID,
-		commitment:   subjectCommitment,
-		status:       StatusActive,
+		credentialID:       cred.ID,
+		holderDID:          subject.ID,
+		commitment:         subjectCommitment,
+		nationalIDHash:     nationalIDHash,
+		passportNumberHash: passportNumberHash,
+		status:             StatusActive,
 	})
 
 	return out, nil

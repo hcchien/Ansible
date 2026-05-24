@@ -49,7 +49,7 @@ test('sends JSON requests against a trimmed relay base URL', async () => {
   assert.equal(requests[0].init.body, '{"name":"Ada"}');
 });
 
-test('adds bearer token from browser storage for authenticated requests', async () => {
+test('uses httpOnly cookie credentials for authenticated requests', async () => {
   const requests = [];
   const storage = new MemoryStorage([[WEB_SESSION_TOKEN_KEY, 'wst_test']]);
   const client = createRelayApiClient({
@@ -57,16 +57,17 @@ test('adds bearer token from browser storage for authenticated requests', async 
     storage,
     fetchImpl: async (url, init) => {
       requests.push({ url, init });
-      return jsonResponse(200, { session_token: 'wst_test' });
+      return jsonResponse(200, { session_id: 'wsi_test' });
     },
   });
 
   await client.getJson('/api/v1/web-sessions/me', { authenticated: true });
 
-  assert.equal(requests[0].init.headers.authorization, 'Bearer wst_test');
+  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(requests[0].init.credentials, 'same-origin');
 });
 
-test('clears stored token when authenticated request is rejected as unauthorized', async () => {
+test('does not read or clear legacy stored tokens when unauthorized', async () => {
   const storage = new MemoryStorage([[WEB_SESSION_TOKEN_KEY, 'wst_old']]);
   const client = createRelayApiClient({
     relayBaseUrl: 'http://localhost:4001',
@@ -83,22 +84,22 @@ test('clears stored token when authenticated request is rejected as unauthorized
       return true;
     },
   );
-  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
+  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), 'wst_old');
 });
 
-test('throws before network calls when an authenticated request has no token', async () => {
+test('authenticated requests still reach the relay when no legacy token exists', async () => {
+  let fetchCount = 0;
   const client = createRelayApiClient({
     relayBaseUrl: 'http://localhost:4001',
     storage: new MemoryStorage(),
     fetchImpl: async () => {
-      throw new Error('fetch should not run');
+      fetchCount += 1;
+      return jsonResponse(200, { ok: true });
     },
   });
 
-  await assert.rejects(
-    () => client.postJson('/api/v1/forum-host/web/threads', {}, { authenticated: true }),
-    /web session token is required/,
-  );
+  await client.postJson('/api/v1/forum-host/web/threads', {}, { authenticated: true });
+  assert.equal(fetchCount, 1);
 });
 
 function jsonResponse(status, body) {

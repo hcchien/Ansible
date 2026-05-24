@@ -68,6 +68,8 @@ class RustLib {
       proofHex: 'dev-proof-$prefix',
       nullifierHex: 'dev-nullifier-$prefix',
       vkHash: 'dev-vk-hash-placeholder',
+      nationalIdHash: 'dev-national-id-hash-$prefix',
+      passportNumberHash: 'dev-passport-number-hash-$prefix',
     );
   }
 
@@ -246,11 +248,15 @@ class ZkpResult {
   final String proofHex;
   final String nullifierHex;
   final String vkHash;
+  final String nationalIdHash;
+  final String passportNumberHash;
 
   const ZkpResult({
     required this.proofHex,
     required this.nullifierHex,
     required this.vkHash,
+    required this.nationalIdHash,
+    required this.passportNumberHash,
   });
 }
 

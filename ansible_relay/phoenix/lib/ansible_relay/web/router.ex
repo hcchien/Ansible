@@ -48,6 +48,10 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityController.anchor(conn, conn.body_params)
   end
 
+  get "/api/v1/identity/public-key/:did" do
+    AnsibleRelay.Web.Controllers.IdentityController.public_key(conn, %{"did" => did})
+  end
+
   # Phase 2 — Op ingestion
   post "/api/v1/ops" do
     AnsibleRelay.Web.Controllers.OpsController.ingest(conn, conn.body_params)

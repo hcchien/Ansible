@@ -15,11 +15,19 @@ class ZkpProof {
   /// The Relay uses this to confirm the circuit version.
   final String vkHash;
 
+  /// Server-verifiable commitment for the passport holder's national ID.
+  final String nationalIdHash;
+
+  /// Server-verifiable commitment for the passport document number.
+  final String passportNumberHash;
+
   const ZkpProof({
     required this.backend,
     required this.proofHex,
     required this.nullifierHex,
     required this.vkHash,
+    required this.nationalIdHash,
+    required this.passportNumberHash,
   });
 
   /// Circuit version string sent to the Relay as `zkp_circuit_version`.
@@ -56,6 +64,8 @@ class ZkpProverImpl implements ZkpProver {
         proofHex: result.proofHex,
         nullifierHex: result.nullifierHex,
         vkHash: result.vkHash,
+        nationalIdHash: result.nationalIdHash,
+        passportNumberHash: result.passportNumberHash,
       );
     } on UnimplementedError {
       // Codegen not yet run — return a dev stub proof so the UI flow can be
@@ -70,6 +80,10 @@ class ZkpProverImpl implements ZkpProver {
       proofHex: 'dev-proof-' + passportSecretHex.substring(0, 8),
       nullifierHex: 'dev-nullifier-' + passportSecretHex.substring(0, 16),
       vkHash: 'dev-vk-hash-placeholder',
+      nationalIdHash:
+          'dev-national-id-hash-' + passportSecretHex.substring(0, 16),
+      passportNumberHash:
+          'dev-passport-number-hash-' + passportSecretHex.substring(0, 16),
     );
   }
 }

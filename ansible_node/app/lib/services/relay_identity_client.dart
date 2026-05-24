@@ -130,6 +130,34 @@ class RelayIdentityClient {
     );
   }
 
+  /// Fetch the verified public key hex for a registered DID from the relay.
+  /// Returns null if the DID is not registered (404).
+  Future<String?> fetchPublicKey(String did) async {
+    try {
+      final response = await _client
+          .get(_endpoint('/api/v1/identity/public-key/${Uri.encodeComponent(did)}'))
+          .timeout(timeout);
+      if (response.statusCode == 404) return null;
+      if (response.statusCode != 200) {
+        throw RelayIdentityException(
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          error: 'public_key_fetch_failed',
+        );
+      }
+      final decoded = _decodeObject(response.body);
+      return decoded['public_key_hex'] as String?;
+    } on RelayIdentityException {
+      rethrow;
+    } catch (e) {
+      throw RelayIdentityException(
+        statusCode: 0,
+        responseBody: e.toString(),
+        error: 'network_error',
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> _postJson(
     String path,
     Map<String, Object?> body, {

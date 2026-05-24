@@ -5,6 +5,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'content_publication_service.dart';
 import 'nostr_publication_service.dart';
 import 'nostr_relay_settings_store.dart';
+import 'relay_identity_client.dart';
 import 'remote_sync_service.dart';
 
 class AppSyncResult {
@@ -71,6 +72,7 @@ class AppSyncService {
     DidSigner? didSigner,
     NostrRelayClient? relayClient,
     RelayPublicationClient? relayPublicationClient,
+    RelayIdentityClient? identityClient,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _boardSyncConfigRepo = boardSyncConfigRepo,
        _hostedBoardRepo = hostedBoardRepo,
@@ -84,7 +86,8 @@ class AppSyncService {
        _signingBridge = signingBridge,
        _didSigner = didSigner,
        _relayClient = relayClient,
-       _relayPublicationClient = relayPublicationClient;
+       _relayPublicationClient = relayPublicationClient,
+       _identityClient = identityClient;
 
   final RemoteNodeRepository _remoteNodeRepo;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
@@ -100,6 +103,7 @@ class AppSyncService {
   final DidSigner? _didSigner;
   final NostrRelayClient? _relayClient;
   final RelayPublicationClient? _relayPublicationClient;
+  final RelayIdentityClient? _identityClient;
 
   Future<AppSyncResult> syncAll({bool pullRemote = true}) async {
     final pullSummary = pullRemote
@@ -130,6 +134,7 @@ class AppSyncService {
         boardRepo: _boardRepo,
         threadRepo: _threadRepo,
         postRepo: _postRepo,
+        identityClient: _identityClient,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);
       if (result.success) {
         pulledActivities += result.activitiesProcessed;
@@ -145,7 +150,10 @@ class AppSyncService {
 
   Future<PublicPublishSummary> publishPublicContent() async {
     final publicItems = (await _contentItemRepo.list())
-        .where((item) => item.visibility != ContentVisibility.private)
+        .where(
+          (item) =>
+              item.visibility != ContentVisibility.private && !item.localOnly,
+        )
         .toList();
     if (publicItems.isEmpty) {
       return const PublicPublishSummary(publicItems: 0);

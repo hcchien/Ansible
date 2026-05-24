@@ -109,8 +109,10 @@ Storage rule:
 - Store `provider_assertion_id` only if needed for replay detection.
 - Store `subject_commitment`.
 - Do not store `provider_subject`.
-- Do not store raw assertion payloads unless a formal audit requirement says so;
-  if required, store encrypted with a retention limit and no application logs.
+- Do not store raw assertion payloads by default. Any legally required
+  retention path must be a documented break-glass exception with explicit
+  purpose, time limit, encrypted storage, no application logs, and user-visible
+  notice when safe.
 
 ## 4. Issue Credential
 
@@ -298,6 +300,7 @@ Status values:
 | Credential state | Labeler tier |
 |---|---|
 | No VC | `basic` |
+| Valid `EmailCredential` | `basic` contactability only |
 | Valid `TrisAuraHumanityCredential` | `verified_human` |
 | Expired VC | `basic` plus local renewal prompt |
 | Revoked/suspended VC | `basic` and security event |

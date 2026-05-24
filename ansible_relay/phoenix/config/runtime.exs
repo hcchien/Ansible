@@ -61,4 +61,28 @@ if config_env() == :prod do
     nil -> :ok
     value -> config :ansible_relay, :forum_host_base_url, value
   end
+
+  issuer_did =
+    System.get_env("ISSUER_DID") ||
+      raise """
+      environment variable ISSUER_DID is missing.
+      Set ISSUER_DID to the trusted production VC issuer DID.
+      """
+
+  issuer_public_key_hex =
+    System.get_env("ISSUER_PUBLIC_KEY_HEX") ||
+      raise """
+      environment variable ISSUER_PUBLIC_KEY_HEX is missing.
+      Set ISSUER_PUBLIC_KEY_HEX to the trusted production VC issuer Ed25519 public key.
+      """
+
+  unless Regex.match?(~r/\A[0-9a-fA-F]{64}\z/, issuer_public_key_hex) do
+    raise """
+    environment variable ISSUER_PUBLIC_KEY_HEX must be a 64-character Ed25519 hex public key.
+    """
+  end
+
+  config :ansible_relay, :trusted_vc_issuers, [
+    %{did: issuer_did, public_key_hex: String.downcase(issuer_public_key_hex)}
+  ]
 end

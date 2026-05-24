@@ -3,9 +3,26 @@ import 'package:ansible_node/services/messenger_crypto_bridge.dart';
 import 'package:ansible_node/services/messenger_device_service.dart';
 import 'package:ansible_node/services/messenger_relay_client.dart';
 import 'package:ansible_store/ansible_store.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
+  test('secure storage secret references support colon in namespace', () async {
+    const store = SecureStorageMessengerSecretStore();
+
+    final reference = await store.putSecret(
+      namespace: 'message.msg:remote',
+      secretId: 'plaintext',
+      secret: 'hello',
+    );
+
+    expect(await store.resolveSecret(reference), 'hello');
+  });
+
   test(
     'creates, stores, signs, and publishes a local messenger device',
     () async {
@@ -50,6 +67,43 @@ void main() {
       );
     },
   );
+
+  test('moves generated messenger private keys into secret storage', () async {
+    final repository = _FakeMessengerRepository();
+    final relay = _RecordingMessengerRelayClient();
+    final secretStore = _RecordingMessengerSecretStore();
+    final service = MessengerDeviceService(
+      repository: repository,
+      crypto: _RawKeyMessengerCryptoBridge(),
+      relayClient: relay,
+      secretStore: secretStore,
+    );
+
+    await service.ensurePublishedDevice(
+      subjectDid: 'did:plc:alice',
+      didSigner: _RecordingDidSigner(),
+    );
+
+    final device = repository.savedDevices.single;
+    expect(device.identityKeyPrivateRef, startsWith('secure-storage:v1:'));
+    expect(device.signedPreKeyPrivateRef, startsWith('secure-storage:v1:'));
+    expect(
+      device.identityKeyPrivateRef,
+      isNot(contains('raw_identity_private')),
+    );
+    expect(
+      repository.savedPreKeys.map((preKey) => preKey.privateKeyRef),
+      everyElement(startsWith('secure-storage:v1:')),
+    );
+    expect(
+      secretStore.values.values,
+      containsAll([
+        'raw_identity_private',
+        'raw_signed_pre_key_private',
+        'raw_pre_key_private_0',
+      ]),
+    );
+  });
 
   test(
     'reuses existing local device and only replenishes low pre-key stock',
@@ -98,6 +152,68 @@ void main() {
       expect(repository.savedPreKeys, hasLength(20));
     },
   );
+
+  test('migrates existing raw device and pre-key secrets', () async {
+    final existing = MessengerDeviceRecord(
+      subjectDid: 'did:plc:alice',
+      deviceId: 'msgdev_existing',
+      identityKeyPublic: 'existing_identity',
+      identityKeyPrivateRef: 'raw_existing_identity',
+      isLocal: true,
+      signedPreKeyId: 7,
+      signedPreKeyPublic: 'existing_signed_pre_key',
+      signedPreKeyPrivateRef: 'raw_existing_signed',
+      signedPreKeySignature: 'existing_signature',
+      createdAt: DateTime.utc(2026, 5, 14),
+    );
+    final repository = _FakeMessengerRepository(
+      existingDevice: existing,
+      unpublishedPreKeys: [
+        for (
+          var i = 0;
+          i < MessengerDeviceService.minUnpublishedPreKeys;
+          i += 1
+        )
+          MessengerPreKeyRecord(
+            deviceId: 'msgdev_existing',
+            preKeyId: i,
+            publicKey: 'existing_pre_$i',
+            privateKeyRef: 'raw_existing_pre_$i',
+            createdAt: DateTime.utc(2026, 5, 14),
+          ),
+      ],
+    );
+    final secretStore = _RecordingMessengerSecretStore();
+    final service = MessengerDeviceService(
+      repository: repository,
+      crypto: _FakeMessengerCryptoBridge(),
+      relayClient: _RecordingMessengerRelayClient(),
+      secretStore: secretStore,
+    );
+
+    final device = await service.ensurePublishedDevice(
+      subjectDid: 'did:plc:alice',
+      didSigner: _RecordingDidSigner(),
+    );
+
+    expect(device.identityKeyPrivateRef, startsWith('secure-storage:v1:'));
+    expect(device.signedPreKeyPrivateRef, startsWith('secure-storage:v1:'));
+    expect(
+      repository.savedDevices.single.identityKeyPrivateRef,
+      device.identityKeyPrivateRef,
+    );
+    expect(
+      repository.savedPreKeys,
+      hasLength(MessengerDeviceService.minUnpublishedPreKeys),
+    );
+    expect(
+      repository.savedPreKeys.map((preKey) => preKey.privateKeyRef),
+      everyElement(startsWith('secure-storage:v1:')),
+    );
+    expect(secretStore.values.values, contains('raw_existing_identity'));
+    expect(secretStore.values.values, contains('raw_existing_signed'));
+    expect(secretStore.values.values, contains('raw_existing_pre_0'));
+  });
 }
 
 class _FakeMessengerCryptoBridge implements MessengerCryptoBridge {
@@ -146,6 +262,73 @@ class _FakeMessengerCryptoBridge implements MessengerCryptoBridge {
   ) async {
     throw UnimplementedError();
   }
+}
+
+class _RawKeyMessengerCryptoBridge implements MessengerCryptoBridge {
+  @override
+  Future<MessengerDeviceBundle> createDevice(String subjectDid) async {
+    return MessengerDeviceBundle(
+      subjectDid: subjectDid,
+      deviceId: 'msgdev_alice',
+      identityKeyPublic: 'alice_identity_public',
+      identityKeyPrivateRef: 'raw_identity_private',
+      signedPreKeyId: 42,
+      signedPreKeyPublic: 'alice_signed_pre_key',
+      signedPreKeyPrivateRef: 'raw_signed_pre_key_private',
+      signedPreKeySignature: 'alice_signed_pre_key_signature',
+    );
+  }
+
+  @override
+  Future<List<MessengerCryptoPreKey>> generatePreKeys(
+    MessengerDeviceBundle device,
+    int count,
+  ) async {
+    return [
+      for (var i = 0; i < count; i += 1)
+        MessengerCryptoPreKey(
+          preKeyId: 1000 + i,
+          publicKey: 'pre_key_public_$i',
+          privateKeyRef: 'raw_pre_key_private_$i',
+        ),
+    ];
+  }
+
+  @override
+  Future<MessengerCiphertextEnvelope> encryptInitialMessage(
+    MessengerEncryptRequest request,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<MessengerPlaintextEnvelope> decryptInboundMessage(
+    MessengerDecryptRequest request,
+  ) async {
+    throw UnimplementedError();
+  }
+}
+
+class _RecordingMessengerSecretStore implements MessengerSecretStore {
+  final values = <String, String>{};
+
+  @override
+  bool isSecretReference(String value) =>
+      value.startsWith('secure-storage:v1:');
+
+  @override
+  Future<String> putSecret({
+    required String namespace,
+    required String secretId,
+    required String secret,
+  }) async {
+    final ref = 'secure-storage:v1:$namespace:$secretId';
+    values[ref] = secret;
+    return ref;
+  }
+
+  @override
+  Future<String> resolveSecret(String value) async => values[value] ?? value;
 }
 
 class _RecordingMessengerRelayClient extends MessengerRelayClient {

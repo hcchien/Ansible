@@ -5,6 +5,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:app_links/app_links.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -26,7 +27,10 @@ final ElixThemeController themeController = ElixThemeController();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  AppEnvironment.validateProductionReadiness();
+  AppEnvironment.validateRuntimeReadiness(
+    isReleaseBuild: kReleaseMode,
+    usesDevelopmentRustBridge: !AppEnvironment.hasRealRustBridge,
+  );
 
   // Initialise the Rust native library (Ed25519, did:key, signing).
   // Placeholder stub until ./setup_codegen.sh is run; after that it loads the
@@ -126,7 +130,11 @@ class _MyAppState extends State<MyApp> {
   void _handleWebSessionLink(Uri uri) {
     WebSessionApprovalLink link;
     try {
-      link = WebSessionApprovalLink.parse(uri);
+      link = WebSessionApprovalLink.parse(
+        uri,
+        allowedRelayOrigins: const {AppEnvironment.defaultRelayBaseUrl},
+        allowLocalHttp: !AppEnvironment.isProduction,
+      );
     } catch (_) {
       _showWebSessionMessage('Invalid web session request.');
       return;

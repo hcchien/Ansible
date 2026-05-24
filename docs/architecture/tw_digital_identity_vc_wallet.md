@@ -88,8 +88,10 @@ minimal claims such as:
 - optional age/residency predicates only when needed
 
 The VC must not contain raw national ID, birth date, legal name, address, phone,
-email, certificate serial, or full MOICA assertion unless a specific product and
-legal review says otherwise.
+email, certificate serial, or full MOICA assertion by default. Any product path
+that needs a raw legal-identity claim requires explicit user disclosure or a
+specific legal process; the default verified-human credential remains
+minimal-disclosure.
 
 ### Uniqueness
 

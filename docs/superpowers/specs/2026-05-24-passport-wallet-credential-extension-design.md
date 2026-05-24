@@ -12,8 +12,10 @@ account creation gate, and raw passport numbers never leave the device.
 Passport verification is a progressive trust upgrade. A user can keep using the
 app with the existing Passkeys identity and may later add a passport-backed
 credential from Wallet. Communities and relays can treat the resulting
-credential as a higher assurance signal, but the first implementation does not
-claim global uniqueness or one-passport-one-account Sybil resistance.
+credential as a higher assurance signal. High-assurance paths enforce one active
+binding per irreversible personhood commitment. TW provider contributes a
+`national_id_hash`; Passport NFC contributes both `national_id_hash` and
+`passport_number_hash`; any active collision blocks a new account binding.
 
 The first supported credential type remains a `TrisAuraHumanityCredential`.
 Passport NFC is represented as a new assurance method on that credential, not
@@ -48,7 +50,8 @@ the relay. A later interoperability hardening pass should migrate to
 
 The raw passport number is never persisted and never sent to Relay or Issuer.
 During a scan, the app holds it only in memory long enough to derive a
-device-local unique value:
+device-local unique value and to generate a verifier-backed passport binding
+proof:
 
 ```text
 passportLocalUniqueId =
@@ -61,9 +64,28 @@ and is not shared with the server. It lets the local Wallet detect that the same
 passport has already been added on that device without retaining a reversible
 passport number.
 
+The server-visible personhood hashes are verifier outputs, not client trust
+assertions:
+
+```text
+national_id_hash =
+  HMAC-SHA256(k_personhood, "national-id:v1|TW|" + normalizedNationalId)
+
+passport_number_hash =
+  HMAC-SHA256(k_personhood, "passport-no:v1|TWN|" + normalizedPassportNumber)
+```
+
+The Issuer stores these values only as opaque duplicate keys. They must not be
+plain hashes and must not be reversible to raw national ID, passport number, or
+MRZ fields. Passport NFC should produce both hashes. TW provider should produce
+`national_id_hash` only. Email OTP produces neither and is treated only as a
+verified contact path.
+
 The local Wallet may store:
 
 - `passportLocalUniqueId`
+- `nationalIdHash`
+- `passportNumberHash`
 - `nationality`
 - `verifiedAt`
 - `assuranceMethod: passport_nfc`
@@ -73,8 +95,14 @@ The Issuer receives only:
 
 - `holderDid`
 - `nationality`
-- `verified: true`
-- holder/app proof required by the endpoint
+- `national_id_hash`
+- `passport_number_hash`
+- passport proof fields such as `zkp_proof`, `zkp_circuit_version`, and
+  `verification_key_hash`
+
+The Issuer must not accept a client-supplied boolean such as `verified: true` as
+proof of passport verification. A configured passport verifier validates the
+proof and returns the personhood hashes the Issuer is allowed to store.
 
 The issued VC contains only:
 
@@ -83,8 +111,9 @@ The issued VC contains only:
 - `assuranceMethod: passport_nfc`
 - `nationality`
 
-It must not contain passport number, passport local unique id, legal name, birth
-date, raw MRZ, DG1 bytes, DG2 face image, SOD bytes, or provider assertions.
+It must not contain passport number, passport local unique id,
+`national_id_hash`, `passport_number_hash`, legal name, birth date, raw MRZ, DG1
+bytes, DG2 face image, SOD bytes, or provider assertions.
 
 ## Architecture
 
@@ -104,7 +133,9 @@ ephemeral data.
 
 Add a local Wallet extension record keyed by credential id or passport local
 unique id. This record is local-only metadata associated with the W3C VC payload
-and is not part of the VC presented to verifiers.
+and is not part of the VC presented to verifiers. It stores the server
+personhood hashes so the app can correlate issuer errors and local state without
+retaining raw passport fields.
 
 The extension should be separate from generic `wallet_credentials` metadata so
 ordinary credential listing and presentation logic remains simple. The generic
@@ -115,13 +146,13 @@ credential type, status, validity, and display name.
 
 Add a passport issuance endpoint or extend the existing issuer client with a
 passport-specific issue method. The payload must not include the passport number
-or passport local unique id. The server stores no passport number and no
-passport-derived local identifier.
+or passport local unique id. The server stores no raw ID values and stores only
+the verifier-produced `national_id_hash` and `passport_number_hash` as opaque
+duplicate keys.
 
 The Issuer may issue a `TrisAuraHumanityCredential` whose subject claims include
-`nationality` and `assuranceMethod: passport_nfc`. Duplicate prevention is out
-of scope for this phase because the server intentionally does not receive a
-cross-device identifier.
+`nationality` and `assuranceMethod: passport_nfc`. The Issuer rejects issuance
+when an active credential already exists for either supplied personhood hash.
 
 ### Wallet UI
 
@@ -134,8 +165,9 @@ flow is:
 4. App derives `passportLocalUniqueId` locally.
 5. App refuses to continue if the same `passportLocalUniqueId` is already
    associated with an active local passport credential.
-6. App requests a passport-backed VC from Issuer with holder DID and
-   nationality only.
+6. App generates the passport proof and requests a passport-backed VC from Issuer
+   with holder DID, nationality, `national_id_hash`, `passport_number_hash`, and
+   proof fields.
 7. App stores the encrypted VC payload and local passport extension metadata.
 8. Wallet shows the credential as Passport Verified Human.
 
@@ -147,7 +179,10 @@ Wallet UI
   -> PassportData(documentNumber, nationality, ...)
   -> PassportLocalIdService.derive(nationality, documentNumber)
   -> WalletRepository.findPassportExtension(passportLocalUniqueId)
-  -> VcIssuerClient.issuePassportCredential(holderDid, nationality)
+  -> ZkpProver.prove(passportSecretHex)
+  -> VcIssuerClient.issuePassportCredential(holderDid, nationality, personhood hashes, proof)
+  -> Issuer PassportBindingVerifier verifies proof and personhood hashes
+  -> Issuer Store enforces unique active national_id_hash or passport_number_hash
   -> TrisAuraCredential.fromJson(vcJson)
   -> SecureCredentialPayloadCodec.seal(vcJson)
   -> WalletRepository.saveCredential(...)
@@ -174,6 +209,14 @@ show a retryable scan error. Do not persist partial passport data.
 Duplicate local passport:
 show that this passport is already stored in this Wallet. Do not call Issuer.
 
+Duplicate server passport binding:
+show that this passport is already bound to another active account or credential.
+Do not create a local Wallet credential or extension.
+
+Passport verifier unavailable:
+the Issuer returns unavailable and does not issue a credential. Production must
+not silently fall back to a mock verifier.
+
 Issuer unavailable:
 retain no local passport extension unless the VC has been successfully issued
 and stored. The user can retry the issuance flow.
@@ -192,11 +235,17 @@ Use TDD for implementation. Required test coverage:
   or secrets.
 - The derived id test asserts the raw document number does not appear in the
   stored value.
-- Wallet repository can save and list passport extension metadata without
-  exposing a raw passport number field.
-- Passport issuance client sends only holder DID and nationality.
+- Wallet repository can save and list passport extension metadata with local UID,
+  `national_id_hash`, and `passport_number_hash`, without exposing a raw passport
+  number field.
+- Passport issuance client sends holder DID, nationality, personhood hashes, and
+  proof fields. It does not send `verified: true`, document number, or passport
+  local unique id.
 - Passport issuance panel blocks duplicate local passports before contacting the
   Issuer.
+- Issuer rejects passport issuance when no passport verifier is configured.
+- Issuer rejects duplicate active `national_id_hash` or `passport_number_hash`
+  bindings.
 - Passport issuance panel stores a W3C VC v2.0 payload via
   `TrisAuraCredential`, not the legacy `VerifiableCredential` parser.
 - Existing TW provider and presentation tests keep passing after the shared
@@ -208,7 +257,7 @@ Use TDD for implementation. Required test coverage:
 - Do not store raw passport number, MRZ, DG1, DG2, SOD, or face image.
 - Do not send passport number, passport local unique id, MRZ, DG bytes, or SOD
   bytes to Relay or Issuer.
-- Do not implement cross-device or server-side duplicate passport prevention in
-  this phase.
+- Do not include personhood hashes / nullifiers in issued VC claims.
+- Do not trust a client-supplied `verified: true` flag for passport issuance.
 - Do not make government-grade authenticity claims until chip authentication
   and document security verification are implemented and tested.

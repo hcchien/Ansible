@@ -1,6 +1,6 @@
 package vc
 
-// Credential is the W3C VC JSON structure for a TrisAuraHumanityCredential.
+// Credential is the W3C VC JSON structure issued by Tris-Aura.
 type Credential struct {
 	Context           []string          `json:"@context"`
 	ID                string            `json:"id"`
@@ -12,14 +12,16 @@ type Credential struct {
 	Proof             *Proof            `json:"proof,omitempty"`
 }
 
-// CredentialSubject contains the humanity attestation claims.
+// CredentialSubject contains privacy-preserving attestation claims.
 // Raw government identity (nationalId, legalName, birthDate) must never appear here.
 type CredentialSubject struct {
 	ID              string `json:"id"`
-	HumanVerified   bool   `json:"humanVerified"`
-	AssuranceLevel  string `json:"assuranceLevel"`
-	AssuranceMethod string `json:"assuranceMethod"`
-	Jurisdiction    string `json:"jurisdiction"`
+	HumanVerified   bool   `json:"humanVerified,omitempty"`
+	EmailVerified   bool   `json:"emailVerified,omitempty"`
+	AssuranceLevel  string `json:"assuranceLevel,omitempty"`
+	AssuranceMethod string `json:"assuranceMethod,omitempty"`
+	Jurisdiction    string `json:"jurisdiction,omitempty"`
+	Nationality     string `json:"nationality,omitempty"`
 }
 
 // Proof is the Ed25519Signature2020 proof block.
@@ -41,8 +43,10 @@ const (
 
 // record is the issuer's internal entry for a credential.
 type record struct {
-	credentialID string
-	holderDID    string
-	commitment   string // HMAC of provider subject — used for duplicate check
-	status       CredentialStatus
+	credentialID       string
+	holderDID          string
+	commitment         string // HMAC of provider subject — used for duplicate check
+	nationalIDHash     string // Server-keyed national ID commitment
+	passportNumberHash string // Server-keyed passport number commitment
+	status             CredentialStatus
 }

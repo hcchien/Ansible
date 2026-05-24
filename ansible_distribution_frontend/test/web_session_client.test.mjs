@@ -81,13 +81,13 @@ test('continues polling pending challenges without storing identity state', () =
   assert.equal(storage.length, 0);
 });
 
-test('stores only the relay-issued token for approved challenges', () => {
+test('returns approved state without storing anything in localStorage (cookie set by server)', () => {
   const storage = new MemoryStorage();
   const result = resolveChallengePollResult(
     {
       status: 'approved',
       challenge_id: 'wsc_123',
-      session_token: 'wst_abc',
+      // session_token is no longer returned by the server — cookie is set instead
       subject_did: 'did:plc:abc',
       trust_tier: 'self_custody_did',
     },
@@ -101,13 +101,12 @@ test('stores only the relay-issued token for approved challenges', () => {
     retryable: false,
     trustTier: 'self_custody_did',
   });
-  assert.deepEqual(storage.keys(), [WEB_SESSION_TOKEN_KEY]);
-  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), 'wst_abc');
+  // No token must be stored in localStorage — cookie is managed by the browser
+  assert.equal(storage.length, 0);
 });
 
-test('clears token state for rejected and expired challenges', () => {
+test('does not clear localStorage for rejected and expired challenges (no token was stored)', () => {
   const storage = new MemoryStorage();
-  storage.setItem(WEB_SESSION_TOKEN_KEY, 'old-token');
 
   assert.deepEqual(resolveChallengePollResult({ status: 'rejected' }, storage), {
     state: 'rejected',
@@ -115,35 +114,33 @@ test('clears token state for rejected and expired challenges', () => {
     authenticated: false,
     retryable: true,
   });
-  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
+  assert.equal(storage.length, 0);
 
-  storage.setItem(WEB_SESSION_TOKEN_KEY, 'old-token');
   assert.deepEqual(resolveChallengePollResult({ status: 'expired' }, storage), {
     state: 'expired',
     continuePolling: false,
     authenticated: false,
     retryable: true,
   });
-  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
+  assert.equal(storage.length, 0);
 });
 
-test('loads current and active web sessions through authenticated relay APIs', async () => {
+test('loads current and active web sessions via cookie-authenticated relay APIs', async () => {
   const storage = new MemoryStorage();
-  storage.setItem(WEB_SESSION_TOKEN_KEY, 'wst_current');
   const requests = [];
   const fetchImpl = async (url, init) => {
     requests.push({ url, init });
 
     if (url.endsWith('/api/v1/web-sessions/me')) {
       return jsonResponse(200, {
-        session_token: 'wst_current',
+        session_id: 'wsi_current',
         subject_did: 'did:plc:abc',
         trust_tier: 'self_custody_did',
       });
     }
 
     return jsonResponse(200, {
-      sessions: [{ session_token: 'wst_current', trust_tier: 'self_custody_did' }],
+      sessions: [{ session_id: 'wsi_current', trust_tier: 'self_custody_did' }],
     });
   };
 
@@ -160,7 +157,7 @@ test('loads current and active web sessions through authenticated relay APIs', a
 
   assert.equal(current.subject_did, 'did:plc:abc');
   assert.deepEqual(sessions.sessions, [
-    { session_token: 'wst_current', trust_tier: 'self_custody_did' },
+    { session_id: 'wsi_current', trust_tier: 'self_custody_did' },
   ]);
   assert.deepEqual(
     requests.map((request) => request.url),
@@ -169,12 +166,14 @@ test('loads current and active web sessions through authenticated relay APIs', a
       'http://localhost:4001/api/v1/web-sessions',
     ],
   );
-  assert.equal(requests[0].init.headers.authorization, 'Bearer wst_current');
+  // No Authorization header — authentication is via httpOnly session cookie
+  assert.equal(requests[0].init.headers.authorization, undefined);
+  // credentials: 'same-origin' ensures the browser sends the cookie automatically
+  assert.equal(requests[0].init.credentials, 'same-origin');
 });
 
-test('revokes web sessions and clears local token when revoking the current session', async () => {
+test('revokes web sessions without clearing localStorage (cookie cleared by server)', async () => {
   const storage = new MemoryStorage();
-  storage.setItem(WEB_SESSION_TOKEN_KEY, 'wst_current');
   const requests = [];
 
   const result = await revokeWebSession({
@@ -188,9 +187,12 @@ test('revokes web sessions and clears local token when revoking the current sess
 
   assert.deepEqual(result, { revoked: true });
   assert.equal(requests[0].url, 'http://localhost:4001/api/v1/web-sessions/revoke');
-  assert.equal(requests[0].init.headers.authorization, 'Bearer wst_current');
+  // No Authorization header — authentication is via httpOnly session cookie
+  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(requests[0].init.credentials, 'same-origin');
   assert.equal(requests[0].init.body, '{}');
-  assert.equal(storage.getItem(WEB_SESSION_TOKEN_KEY), null);
+  // localStorage is untouched — the relay clears the httpOnly cookie
+  assert.equal(storage.length, 0);
 });
 
 function jsonResponse(status, body) {

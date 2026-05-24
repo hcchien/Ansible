@@ -101,6 +101,47 @@ void main() {
   });
 
   test(
+    'local-only public content does not enqueue publication targets',
+    () async {
+      final now = DateTime.utc(2026, 5, 9);
+      final publications = InMemoryPublicationRepository();
+      final item = ContentItem(
+        id: 'note-local-public',
+        authorDid: 'did:plc:alice',
+        mode: ContentMode.note,
+        title: 'Local public',
+        body: 'visible locally but not federated',
+        status: ContentStatus.active,
+        visibility: ContentVisibility.public,
+        createdAt: now,
+        updatedAt: now,
+        localOnly: true,
+      );
+
+      final result =
+          await ContentPublicationService(
+            contentItems: InMemoryContentItemRepository(),
+            publications: publications,
+            relaySettings: _FakeRelaySettingsStore([
+              const NostrRelayPreference(
+                url: 'wss://relay.example',
+                write: true,
+              ),
+            ]),
+            keyStore: InMemoryNostrKeyStore(),
+            signingBridge: const SchnorrSigningBridge(auxRandHex: _zeroAuxRand),
+            relayClient: _RecordingRelayClient(),
+          ).publishContentItem(
+            item,
+            distributionPreference: DistributionPreference.nostr,
+          );
+
+      expect(result.skippedReason, 'private_or_local_only');
+      expect(await publications.listTargets(), isEmpty);
+    },
+  );
+
+  test(
     'nostr and activitypub preference publishes to Nostr and active relay node',
     () async {
       final now = DateTime.utc(2026, 5, 9);

@@ -17,8 +17,10 @@ import (
 )
 
 var (
-	reDID   = regexp.MustCompile(`^did:(plc:[a-z2-7]{10,}|web:.+)$`)
-	reEmail = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+	reDID            = regexp.MustCompile(`^did:(plc:[a-z2-7]{10,}|web:.+)$`)
+	reEmail          = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+	reNationality    = regexp.MustCompile(`^[A-Z]{3}$`)
+	rePersonhoodHash = regexp.MustCompile(`^[A-Za-z0-9:_-]{16,128}$`)
 )
 
 // Handler wires all VC HTTP endpoints.
@@ -35,6 +37,8 @@ type Handler struct {
 	twTTL      time.Duration
 	twCounters AuditCounters
 	now        func() time.Time
+
+	passportVerifier PassportBindingVerifier
 }
 
 type TWProviderConfig struct {
@@ -74,6 +78,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/vc/tw/callback", h.twCallback)
 	mux.HandleFunc("GET /api/v1/vc/tw/status/{offer_id}", h.twStatus)
 	mux.HandleFunc("POST /api/v1/vc/tw/issue", h.twIssue)
+	mux.HandleFunc("POST /api/v1/vc/passport/issue", h.passportIssue)
 }
 
 func (h *Handler) ConfigureTWProvider(config TWProviderConfig) {
@@ -88,6 +93,10 @@ func (h *Handler) ConfigureTWProvider(config TWProviderConfig) {
 	if h.now == nil {
 		h.now = time.Now
 	}
+}
+
+func (h *Handler) ConfigurePassport(config PassportConfig) {
+	h.passportVerifier = config.Verifier
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +147,7 @@ func (h *Handler) request(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// POST /api/v1/vc/issue — verify OTP and return a signed TrisAuraHumanityCredential.
+// POST /api/v1/vc/issue — verify OTP and return a signed EmailCredential.
 func (h *Handler) issue(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		DID   string `json:"did"`
@@ -165,19 +174,8 @@ func (h *Handler) issue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subject, err := h.provider.ProviderSubject(body.DID, body.Email)
+	credMap, err := h.issuer.IssueEmail(body.DID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "provider_error")
-		return
-	}
-	comm := commitment.Compute(h.pepper, subject, "tw_natural_person_certificate")
-
-	credMap, err := h.issuer.Issue(body.DID, comm)
-	if err != nil {
-		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
-			writeError(w, http.StatusConflict, "duplicate_active_credential")
-			return
-		}
 		writeError(w, http.StatusInternalServerError, "issuance_error")
 		return
 	}
@@ -360,6 +358,96 @@ func (h *Handler) twIssue(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) twConfigured(w http.ResponseWriter) bool {
 	if h.twStore == nil || h.twVerifier == nil {
 		writeError(w, http.StatusServiceUnavailable, "tw_provider_unconfigured")
+		return false
+	}
+	return true
+}
+
+func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
+	if h.passportVerifier == nil {
+		writeError(w, http.StatusServiceUnavailable, "passport_verifier_unconfigured")
+		return
+	}
+
+	var body struct {
+		DID                 string `json:"did"`
+		Nationality         string `json:"nationality"`
+		NationalIDHash      string `json:"national_id_hash"`
+		PassportNumberHash  string `json:"passport_number_hash"`
+		ZKPProof            string `json:"zkp_proof"`
+		ZKPCircuitVersion   string `json:"zkp_circuit_version"`
+		VerificationKeyHash string `json:"verification_key_hash"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	if !validateDID(w, body.DID) ||
+		!validateNationality(w, body.Nationality) ||
+		!validatePersonhoodHash(w, body.NationalIDHash, "invalid_national_id_hash") ||
+		!validatePersonhoodHash(w, body.PassportNumberHash, "invalid_passport_number_hash") ||
+		!validateRequired(w, body.ZKPProof) ||
+		!validateRequired(w, body.ZKPCircuitVersion) ||
+		!validateRequired(w, body.VerificationKeyHash) {
+		return
+	}
+
+	binding, err := h.passportVerifier.VerifyPassportBinding(PassportBindingProof{
+		DID:                 body.DID,
+		Nationality:         body.Nationality,
+		NationalIDHash:      body.NationalIDHash,
+		PassportNumberHash:  body.PassportNumberHash,
+		ZKPProof:            body.ZKPProof,
+		ZKPCircuitVersion:   body.ZKPCircuitVersion,
+		VerificationKeyHash: body.VerificationKeyHash,
+	})
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
+		return
+	}
+	if binding.NationalIDHash != body.NationalIDHash ||
+		binding.PassportNumberHash != body.PassportNumberHash ||
+		binding.Nationality != body.Nationality {
+		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
+		return
+	}
+
+	credMap, err := h.issuer.IssuePassport(
+		body.DID,
+		binding.Nationality,
+		binding.NationalIDHash,
+		binding.PassportNumberHash,
+	)
+	if err != nil {
+		if errors.Is(err, vc.ErrDuplicatePersonhoodBinding) {
+			writeError(w, http.StatusConflict, "personhood_already_bound")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "issuance_error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"vc": credMap})
+}
+
+func validateNationality(w http.ResponseWriter, nationality string) bool {
+	if !reNationality.MatchString(nationality) {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_nationality")
+		return false
+	}
+	return true
+}
+
+func validatePersonhoodHash(w http.ResponseWriter, value, errorCode string) bool {
+	if !rePersonhoodHash.MatchString(value) {
+		writeError(w, http.StatusUnprocessableEntity, errorCode)
+		return false
+	}
+	return true
+}
+
+func validateRequired(w http.ResponseWriter, value string) bool {
+	if value == "" {
+		writeError(w, http.StatusUnprocessableEntity, "missing_field")
 		return false
 	}
 	return true

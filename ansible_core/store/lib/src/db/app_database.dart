@@ -34,6 +34,7 @@ import '../schema/messenger_sessions.dart';
 import '../schema/ops_queue.dart';
 import '../schema/outbound_follow_activities.dart';
 import '../schema/ownership_policies.dart';
+import '../schema/passport_wallet_extensions.dart';
 import '../schema/posts.dart';
 import '../schema/publication_intents.dart';
 import '../schema/publication_targets.dart';
@@ -69,6 +70,7 @@ part 'app_database.g.dart';
     WalletCredentials,
     WalletCredentialPayloads,
     WalletPresentations,
+    PassportWalletExtensions,
     FollowTargets,
     FollowEdges,
     FollowActivityEvents,
@@ -105,7 +107,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -173,6 +175,21 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 17) {
         await _createTableIfMissing(m, murmurEmbeddings);
+      }
+      if (from < 18) {
+        await _createTableIfMissing(m, passportWalletExtensions);
+      }
+      if (from < 19) {
+        await _addColumnIfMissing(
+          m,
+          passportWalletExtensions,
+          passportWalletExtensions.nationalIdHash,
+        );
+        await _addColumnIfMissing(
+          m,
+          passportWalletExtensions,
+          passportWalletExtensions.passportNumberHash,
+        );
       }
       await _addColumnIfMissing(
         m,

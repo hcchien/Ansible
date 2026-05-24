@@ -10,14 +10,15 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     5. Return {did, reputation_tier}
 
   Tier mapping:
-    EmailCredential → "verified_human"
+    TrisAuraHumanityCredential → "verified_human"
+    EmailCredential → "basic"
   """
 
   alias AnsibleRelay.{DidAccountCache, VpVerifier}
 
   @tier_for_credential %{
     "TrisAuraHumanityCredential" => "verified_human",
-    "EmailCredential" => "verified_human"
+    "EmailCredential" => "basic"
   }
 
   def present(conn, params) do

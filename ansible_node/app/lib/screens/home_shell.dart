@@ -537,8 +537,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
     // Build provider from first configured provider (if any)
     AiProvider? aiProvider;
+    AiProviderType aiProviderType = AiProviderType.manual;
     if (providers.isNotEmpty) {
       final config = providers.first;
+      aiProviderType = config.providerType;
       final apiKey = await _aiProviderConfigStore.readApiKey(config);
       if (!mounted) return;
       if (config.providerType == AiProviderType.manual) {
@@ -573,8 +575,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
       if (!mounted) return;
       if (savedConfig.providerType == AiProviderType.manual) {
+        aiProviderType = savedConfig.providerType;
         aiProvider = ManualAiProvider();
       } else if (savedConfig.baseUrl != null && savedConfig.modelName != null) {
+        aiProviderType = savedConfig.providerType;
         aiProvider = OpenAiCompatibleProvider(
           baseUrl: Uri.parse(savedConfig.baseUrl!),
           model: savedConfig.modelName!,
@@ -597,6 +601,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         contentItemRepo: _contentItemRepo,
         contentRelationRepo: _contentRelationRepo,
         aiProvider: resolvedProvider,
+        aiProviderType: aiProviderType,
         noteId: noteId,
         noteTitle: noteTitle,
         noteBody: noteBody,

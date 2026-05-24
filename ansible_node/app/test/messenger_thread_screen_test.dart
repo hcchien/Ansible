@@ -158,10 +158,12 @@ MessengerSyncService _serviceWith({
       repository: repository,
       crypto: crypto,
       relayClient: relayClient,
+      secretStore: _RecordingMessengerSecretStore(),
     ),
     relayClient: relayClient,
     crypto: crypto,
     didSigner: _FakeDidSigner(),
+    secretStore: _RecordingMessengerSecretStore(),
     now: () => DateTime.utc(2026, 5, 14, 9, 3),
     idGenerator: () => 'msg_thread_1',
   );
@@ -272,6 +274,30 @@ class _FakeDidSigner implements DidSigner {
   Future<Ed25519Signature> sign(List<int> message) async {
     return const Ed25519Signature('dev-signature');
   }
+}
+
+class _RecordingMessengerSecretStore implements MessengerSecretStore {
+  final values = <String, String>{};
+
+  @override
+  bool isSecretReference(String value) {
+    return value.startsWith('secure-storage:v1:') ||
+        value.startsWith('secure:');
+  }
+
+  @override
+  Future<String> putSecret({
+    required String namespace,
+    required String secretId,
+    required String secret,
+  }) async {
+    final ref = 'secure-storage:v1:$namespace:$secretId';
+    values[ref] = secret;
+    return ref;
+  }
+
+  @override
+  Future<String> resolveSecret(String value) async => values[value] ?? value;
 }
 
 class _InMemoryMessengerRepository implements MessengerRepository {

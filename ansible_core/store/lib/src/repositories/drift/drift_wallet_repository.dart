@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../db/app_database.dart';
+import '../../entities/passport_wallet_extension.dart' as passport_entity;
 import '../../entities/wallet_credential.dart' as credential_entity;
 import '../../entities/wallet_presentation.dart' as presentation_entity;
 import '../wallet_repository.dart';
@@ -139,6 +140,50 @@ class DriftWalletRepository implements WalletRepository {
     return rows.map(_mapPresentation).toList();
   }
 
+  @override
+  Future<void> savePassportExtension(
+    passport_entity.PassportWalletExtension extension,
+  ) async {
+    await _db
+        .into(_db.passportWalletExtensions)
+        .insert(
+          PassportWalletExtensionsCompanion.insert(
+            credentialId: extension.credentialId,
+            passportLocalUniqueId: extension.passportLocalUniqueId,
+            nationalIdHash: Value(extension.nationalIdHash),
+            passportNumberHash: Value(extension.passportNumberHash),
+            nationality: extension.nationality,
+            assuranceMethod: extension.assuranceMethod,
+            verifiedAt: extension.verifiedAt,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+  }
+
+  @override
+  Future<passport_entity.PassportWalletExtension?>
+  getPassportExtensionByLocalUniqueId(String passportLocalUniqueId) async {
+    final row =
+        await (_db.select(_db.passportWalletExtensions)..where(
+              (table) =>
+                  table.passportLocalUniqueId.equals(passportLocalUniqueId),
+            ))
+            .getSingleOrNull();
+    if (row == null) return null;
+    return _mapPassportExtension(row);
+  }
+
+  @override
+  Future<passport_entity.PassportWalletExtension?>
+  getPassportExtensionForCredential(String credentialId) async {
+    final row =
+        await (_db.select(_db.passportWalletExtensions)
+              ..where((table) => table.credentialId.equals(credentialId)))
+            .getSingleOrNull();
+    if (row == null) return null;
+    return _mapPassportExtension(row);
+  }
+
   credential_entity.WalletCredential _mapCredential(WalletCredential row) {
     return credential_entity.WalletCredential(
       credentialId: row.credentialId,
@@ -164,6 +209,20 @@ class DriftWalletRepository implements WalletRepository {
       nonceHash: row.nonceHash,
       result: presentation_entity.WalletPresentationResult.parse(row.result),
       createdAt: row.createdAt,
+    );
+  }
+
+  passport_entity.PassportWalletExtension _mapPassportExtension(
+    PassportWalletExtensionRecord row,
+  ) {
+    return passport_entity.PassportWalletExtension(
+      credentialId: row.credentialId,
+      passportLocalUniqueId: row.passportLocalUniqueId,
+      nationalIdHash: row.nationalIdHash,
+      passportNumberHash: row.passportNumberHash,
+      nationality: row.nationality,
+      assuranceMethod: row.assuranceMethod,
+      verifiedAt: row.verifiedAt,
     );
   }
 }

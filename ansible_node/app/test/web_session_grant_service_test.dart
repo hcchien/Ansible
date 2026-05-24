@@ -62,6 +62,61 @@ void main() {
       throwsA(isA<FormatException>()),
     );
   });
+
+  test('rejects non-https relay origins by default', () {
+    expect(
+      () => WebSessionApprovalLink.parse(
+        Uri.parse(
+          'trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=http%3A%2F%2Fevil.example',
+        ),
+      ),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('rejects relay origins outside the configured allowlist', () {
+    expect(
+      () => WebSessionApprovalLink.parse(
+        Uri.parse(
+          'trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=https%3A%2F%2Fevil.example',
+        ),
+        allowedRelayOrigins: const {'https://relay.trisaura.io'},
+      ),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('rejects private or loopback https relay origins', () {
+    for (final origin in [
+      'https://127.0.0.1',
+      'https://192.168.1.20',
+      'https://[fd00::1]',
+    ]) {
+      expect(
+        () => WebSessionApprovalLink.parse(
+          Uri.parse(
+            'trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=${Uri.encodeComponent(origin)}',
+          ),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    }
+  });
+
+  test(
+    'allows loopback http relay origins only when local development is enabled',
+    () {
+      final link = WebSessionApprovalLink.parse(
+        Uri.parse(
+          'trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=http%3A%2F%2F127.0.0.1%3A4001',
+        ),
+        allowedRelayOrigins: const {'http://127.0.0.1:4001'},
+        allowLocalHttp: true,
+      );
+
+      expect(link.relayOrigin, 'http://127.0.0.1:4001');
+    },
+  );
 }
 
 class _RecordingDidSigner implements DidSigner {

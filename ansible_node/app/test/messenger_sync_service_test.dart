@@ -16,6 +16,8 @@ void main() {
     final aliceRepo = _InMemoryMessengerRepository();
     final bobRepo = _InMemoryMessengerRepository();
     final signer = _FakeDidSigner();
+    final aliceSecretStore = _RecordingMessengerSecretStore();
+    final bobSecretStore = _RecordingMessengerSecretStore();
 
     final aliceDevice = _deviceRecord(
       subjectDid: 'did:plc:alice',
@@ -34,10 +36,12 @@ void main() {
         repository: aliceRepo,
         crypto: crypto,
         relayClient: relay,
+        secretStore: aliceSecretStore,
       ),
       relayClient: relay,
       crypto: crypto,
       didSigner: signer,
+      secretStore: aliceSecretStore,
       now: () => DateTime.utc(2026, 5, 14),
       idGenerator: () => 'msg_alice_1',
     );
@@ -47,10 +51,12 @@ void main() {
         repository: bobRepo,
         crypto: crypto,
         relayClient: relay,
+        secretStore: bobSecretStore,
       ),
       relayClient: relay,
       crypto: crypto,
       didSigner: signer,
+      secretStore: bobSecretStore,
       now: () => DateTime.utc(2026, 5, 14),
       idGenerator: () => 'msg_bob_1',
     );
@@ -83,17 +89,30 @@ void main() {
       relay.acceptedCiphertexts.single.ciphertext,
       isNot(contains('hello bob')),
     );
-    expect(
-      (await aliceRepo.messagesForConversation('did:plc:bob')).single.status,
-      MessengerMessageStatus.sent,
-    );
+    final rawAliceMessage = (await aliceRepo.messagesForConversation(
+      'did:plc:bob',
+    )).single;
+    expect(rawAliceMessage.status, MessengerMessageStatus.sent);
+    expect(rawAliceMessage.plaintext, startsWith('secure-storage:v1:'));
+    expect(aliceSecretStore.values.values, contains('hello bob'));
 
     await bob.pullAndDecrypt(recipientDid: 'did:plc:bob');
+    final rawBobMessage = (await bobRepo.messagesForConversation(
+      'did:plc:alice',
+    )).single;
     final messages = await bob.messagesForConversation('did:plc:alice');
 
+    expect(rawBobMessage.plaintext, startsWith('secure-storage:v1:'));
     expect(messages.single.plaintext, 'hello bob');
     expect(messages.single.status, MessengerMessageStatus.received);
-    expect(bobRepo.savedSessions.single.sessionState, 'session:hello bob');
+    expect(
+      bobRepo.savedSessions.single.sessionState,
+      startsWith('secure-storage:v1:'),
+    );
+    expect(
+      bobSecretStore.values.values,
+      containsAll(['hello bob', 'session:hello bob']),
+    );
     expect(relay.ackedMessageIds, ['msg_alice_1']);
     expect(bobRepo.cursors['msgdev_bob'], 'cursor-2');
 
@@ -146,6 +165,7 @@ void main() {
     final crypto = _FakeMessengerCryptoBridge();
     final repository = _InMemoryMessengerRepository();
     final contacts = _FakeContactRepository();
+    final secretStore = _RecordingMessengerSecretStore();
     final device = _deviceRecord(
       subjectDid: 'did:plc:bob',
       deviceId: 'msgdev_bob',
@@ -170,10 +190,12 @@ void main() {
         repository: repository,
         crypto: crypto,
         relayClient: relay,
+        secretStore: secretStore,
       ),
       relayClient: relay,
       crypto: crypto,
       didSigner: _FakeDidSigner(),
+      secretStore: secretStore,
       now: () => DateTime.utc(2026, 5, 15),
     );
 
@@ -311,13 +333,19 @@ class _FakeMessengerRelayClient extends MessengerRelayClient {
 
   @override
   Future<MessengerMailboxResponse> pullMailbox({
+    required String recipientDid,
     required String recipientDeviceId,
+    required String requestSignature,
     String? cursor,
   }) async {
     observedCursors.add(cursor);
     return MessengerMailboxResponse(
       messages: queuedMessages
-          .where((message) => message.recipientDeviceId == recipientDeviceId)
+          .where(
+            (message) =>
+                message.recipientDid == recipientDid &&
+                message.recipientDeviceId == recipientDeviceId,
+          )
           .toList(growable: false),
       nextCursor: 'cursor-2',
     );
@@ -350,6 +378,30 @@ class _FakeDidSigner implements DidSigner {
   Future<Ed25519Signature> sign(List<int> message) async {
     return const Ed25519Signature('dev-signature');
   }
+}
+
+class _RecordingMessengerSecretStore implements MessengerSecretStore {
+  final values = <String, String>{};
+
+  @override
+  bool isSecretReference(String value) {
+    return value.startsWith('secure-storage:v1:') ||
+        value.startsWith('secure:');
+  }
+
+  @override
+  Future<String> putSecret({
+    required String namespace,
+    required String secretId,
+    required String secret,
+  }) async {
+    final ref = 'secure-storage:v1:$namespace:$secretId';
+    values[ref] = secret;
+    return ref;
+  }
+
+  @override
+  Future<String> resolveSecret(String value) async => values[value] ?? value;
 }
 
 class _InMemoryMessengerRepository implements MessengerRepository {

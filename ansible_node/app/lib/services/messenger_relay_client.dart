@@ -305,11 +305,15 @@ class MessengerRelayClient {
   }
 
   Future<MessengerMailboxResponse> pullMailbox({
+    required String recipientDid,
     required String recipientDeviceId,
+    required String requestSignature,
     String? cursor,
   }) async {
     final query = {
+      'recipient_did': recipientDid,
       'recipient_device_id': recipientDeviceId,
+      'request_signature': requestSignature,
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
     };
     final body = await _getJson('/api/v1/messenger/messages', query: query);

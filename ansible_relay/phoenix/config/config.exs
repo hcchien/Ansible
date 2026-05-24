@@ -40,16 +40,10 @@ config :ansible_relay, :abuse_detector, %{
 }
 
 # Trusted VC issuers for VP verification.
-# Each entry: %{did: string, public_key_hex: string}
-# Dev value: RFC 8032 test vector 1 public key — matches ansible_issuer dev config.
-# Production: set ISSUER_DID and ISSUER_PUBLIC_KEY_HEX env vars.
-config :ansible_relay, :trusted_vc_issuers, [
-  %{
-    did: System.get_env("ISSUER_DID") || "did:web:issuer.trisaura.io",
-    public_key_hex:
-      System.get_env("ISSUER_PUBLIC_KEY_HEX") ||
-        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
-  }
-]
+# Each entry: %{did: string, public_key_hex: string}.
+# Dev/test fixtures are configured in their environment files; production
+# issuers are required in runtime.exs so a release cannot silently trust a
+# public test-vector key.
+config :ansible_relay, :trusted_vc_issuers, []
 
 import_config "#{config_env()}.exs"

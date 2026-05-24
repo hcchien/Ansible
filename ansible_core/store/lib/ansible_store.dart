@@ -22,6 +22,7 @@ export 'src/entities/identity.dart'; // DID-based identity (replaces User+passwo
 export 'src/entities/ops_queue.dart'; // Local Op queue for offline-first / Comp B
 export 'src/entities/wallet_credential.dart';
 export 'src/entities/wallet_presentation.dart';
+export 'src/entities/passport_wallet_extension.dart';
 export 'src/entities/content_item.dart';
 export 'src/entities/content_relation.dart';
 export 'src/entities/publication_intent.dart';
@@ -137,6 +138,7 @@ export 'src/db/app_database.dart'
         Identity,
         WalletCredential,
         WalletPresentation,
+        PassportWalletExtensionRecord,
         ContentItem,
         ContentRelation,
         PublicationIntent,

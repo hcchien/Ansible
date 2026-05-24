@@ -233,7 +233,7 @@ defmodule AnsibleRelay.MessengerStore do
     end
   end
 
-  def mailbox(recipient_device_id) do
+  def mailbox(recipient_did, recipient_device_id) do
     acked_message_ids =
       Ack
       |> where([ack], ack.recipient_device_id == ^recipient_device_id)
@@ -243,7 +243,11 @@ defmodule AnsibleRelay.MessengerStore do
 
     messages =
       Message
-      |> where([message], message.recipient_device_id == ^recipient_device_id)
+      |> where(
+        [message],
+        message.recipient_did == ^recipient_did and
+          message.recipient_device_id == ^recipient_device_id
+      )
       |> order_by([message], asc: message.message_created_at, asc: message.inserted_at)
       |> Repo.all()
       |> Enum.reject(&MapSet.member?(acked_message_ids, &1.message_id))
@@ -252,12 +256,13 @@ defmodule AnsibleRelay.MessengerStore do
     {:ok, messages}
   end
 
-  def ack(message_id, recipient_device_id) do
+  def ack(message_id, recipient_did, recipient_device_id) do
     case Repo.get_by(Message, message_id: message_id) do
       nil ->
         {:error, :not_found}
 
-      %Message{recipient_device_id: ^recipient_device_id} = message ->
+      %Message{recipient_did: ^recipient_did, recipient_device_id: ^recipient_device_id} =
+          message ->
         now = now()
 
         %Ack{

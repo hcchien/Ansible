@@ -45,7 +45,7 @@ class _WebSessionManagementScreenState
     try {
       await _client.revokeSession(
         bearerToken: widget.bearerToken,
-        sessionToken: session.sessionToken,
+        sessionId: session.sessionId,
       );
       setState(() => _sessionsFuture = _loadSessions());
       if (!mounted) return;
@@ -117,7 +117,7 @@ class _WebSessionTile extends StatelessWidget {
           session.approvingDeviceId,
           session.trustTier,
           'Expires ${session.expiresAt.toLocal().toIso8601String()}',
-          session.sessionToken,
+          session.sessionId,
         ].join('\n'),
       ),
       isThreeLine: true,

@@ -125,7 +125,11 @@ class WebSessionApprovalLink {
     required this.relayOrigin,
   });
 
-  static WebSessionApprovalLink parse(Uri uri) {
+  static WebSessionApprovalLink parse(
+    Uri uri, {
+    Set<String>? allowedRelayOrigins,
+    bool allowLocalHttp = false,
+  }) {
     final isApprovalPath =
         uri.scheme == 'trisaura' &&
         uri.host == 'web-session' &&
@@ -146,18 +150,82 @@ class WebSessionApprovalLink {
     }
 
     final parsedRelayOrigin = Uri.tryParse(relayOrigin);
+    final normalizedRelayOrigin = _normalizeOrigin(parsedRelayOrigin);
+    final host = parsedRelayOrigin?.host.toLowerCase() ?? '';
+    // Reject RFC-1918 LAN addresses unconditionally — allowLocalHttp only
+    // permits genuine loopback addresses (localhost / 127.x / ::1).
+    final isLoopbackHttp =
+        parsedRelayOrigin != null &&
+        allowLocalHttp &&
+        _isLocalHttpOrigin(parsedRelayOrigin);
     final validRelayOrigin =
         parsedRelayOrigin != null &&
-        (parsedRelayOrigin.scheme == 'https' ||
-            parsedRelayOrigin.scheme == 'http') &&
-        parsedRelayOrigin.host.isNotEmpty;
+        host.isNotEmpty &&
+        (isLoopbackHttp || !_isPrivateOrLocalHost(host)) &&
+        (parsedRelayOrigin.scheme == 'https' || isLoopbackHttp);
     if (!validRelayOrigin) {
       throw const FormatException('Invalid relay origin');
+    }
+    if (allowedRelayOrigins != null &&
+        !allowedRelayOrigins
+            .map(_normalizeOriginString)
+            .contains(normalizedRelayOrigin)) {
+      throw const FormatException('Relay origin is not allowed');
     }
 
     return WebSessionApprovalLink(
       challengeId: challengeId,
-      relayOrigin: relayOrigin,
+      relayOrigin: normalizedRelayOrigin,
     );
+  }
+
+  static String _normalizeOrigin(Uri? uri) {
+    if (uri == null) return '';
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port';
+  }
+
+  static String _normalizeOriginString(String origin) {
+    return _normalizeOrigin(Uri.tryParse(origin));
+  }
+
+  static bool _isLocalHttpOrigin(Uri uri) {
+    if (uri.scheme != 'http') return false;
+    final host = uri.host.toLowerCase();
+    // Only permit known loopback addresses. RFC-1918 ranges and arbitrary
+    // hostnames are excluded to prevent a malicious deep link from directing
+    // the app at an attacker-controlled LAN host.
+    return host == 'localhost' || host == '::1' || host.startsWith('127.');
+  }
+
+  static bool _isPrivateOrLocalHost(String host) {
+    if (host == 'localhost' ||
+        host.endsWith('.localhost') ||
+        host == '0.0.0.0' ||
+        host == '::1') {
+      return true;
+    }
+    if (host.startsWith('127.')) return true;
+    if (host.startsWith('10.')) return true;
+    if (host.startsWith('192.168.')) return true;
+    if (host.startsWith('169.254.')) return true;
+
+    final parts = host.split('.');
+    if (parts.length == 4) {
+      final first = int.tryParse(parts[0]);
+      final second = int.tryParse(parts[1]);
+      if (first == 172 && second != null && second >= 16 && second <= 31) {
+        return true;
+      }
+      if (first == 100 && second != null && second >= 64 && second <= 127) {
+        return true;
+      }
+    }
+
+    final isIpv6 = host.contains(':');
+    return isIpv6 &&
+        (host.startsWith('fc') ||
+            host.startsWith('fd') ||
+            host.startsWith('fe80:'));
   }
 }
