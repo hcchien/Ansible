@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/trisaura/ansible_issuer/internal/vc"
@@ -49,6 +50,66 @@ func TestIssuer_IssueSigns(t *testing.T) {
 	}
 	if !iss.VerifyProof(raw) {
 		t.Fatal("expected proof to be valid")
+	}
+}
+
+func TestIssuer_IssueUsesDataIntegrityProof(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	proof, ok := raw["proof"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected proof object, got %v", raw["proof"])
+	}
+	if proof["type"] != "DataIntegrityProof" {
+		t.Fatalf("expected DataIntegrityProof, got %v", proof)
+	}
+	if proof["cryptosuite"] != "eddsa-jcs-2022" {
+		t.Fatalf("expected eddsa-jcs-2022 cryptosuite, got %v", proof)
+	}
+	if proof["proofPurpose"] != "assertionMethod" {
+		t.Fatalf("expected assertionMethod proof purpose, got %v", proof)
+	}
+	proofValue, _ := proof["proofValue"].(string)
+	if !strings.HasPrefix(proofValue, "z") {
+		t.Fatalf("expected multibase base58-btc proofValue, got %q", proofValue)
+	}
+	if _, err := hex.DecodeString(proofValue); err == nil {
+		t.Fatalf("proofValue must not be legacy hex encoding: %q", proofValue)
+	}
+	if proof["@context"] == nil {
+		t.Fatalf("Data Integrity proof must include document context")
+	}
+}
+
+func TestIssuer_VerifyProofRejectsTamperedCredential(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cs := raw["credentialSubject"].(map[string]any)
+	cs["jurisdiction"] = "US"
+	if iss.VerifyProof(raw) {
+		t.Fatal("expected proof verification to reject tampered credential")
+	}
+}
+
+func TestIssuer_VerifyProofRejectsTamperedProofValue(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	proof := raw["proof"].(map[string]any)
+	proof["proofValue"] = "z1111111111111111111111111111111111111111111111111111111111111111"
+	if iss.VerifyProof(raw) {
+		t.Fatal("expected proof verification to reject tampered proofValue")
 	}
 }
 

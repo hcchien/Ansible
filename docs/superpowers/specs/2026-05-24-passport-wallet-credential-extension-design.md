@@ -41,10 +41,22 @@ model still expects `issuanceDate` and `expirationDate`; implementation must
 move Wallet issuance/storage paths that consume issuer output to
 `TrisAuraCredential` before adding passport-specific storage.
 
-Proof encoding remains compatible with the current codebase in the first pass:
-issuer credentials may keep the existing Ed25519 proof representation used by
-the relay. A later interoperability hardening pass should migrate to
-`DataIntegrityProof` with `eddsa-jcs-2022` and multibase `proofValue`.
+Proof encoding now uses W3C Data Integrity:
+
+- `type`: `DataIntegrityProof`
+- `cryptosuite`: `eddsa-jcs-2022`
+- canonicalization: JSON Canonicalization Scheme
+- `proofValue`: base58-btc multibase value
+
+This keeps the existing Ed25519 issuer key boundary while replacing the legacy
+`Ed25519Signature2020` proof representation before production launch.
+
+### Constitution Review
+
+The proof-suite change does not add identity claims, storage paths, or verifier
+disclosures. Passport raw data, national ID commitments, passport commitments,
+and provider artifacts remain excluded from the VC subject, Wallet
+presentations, Relay payloads, federation payloads, and logs.
 
 ## Privacy Boundary
 

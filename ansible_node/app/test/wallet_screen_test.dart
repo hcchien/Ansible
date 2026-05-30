@@ -143,43 +143,51 @@ void main() {
     expect(find.text('TW 身份驗證'), findsOneWidget);
   });
 
-  testWidgets('successful inline TW issuance reloads wallet and hides wizard', (
-    tester,
-  ) async {
-    final repo = InMemoryWalletRepository();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: WalletScreen(
-          holderDid: 'did:plc:abcdefghijklmnop',
-          repository: repo,
-          vcIssuerClient: FakeTwIssuerClient(
-            offer: twOfferFixture(),
-            statuses: ['verified'],
+  testWidgets(
+    'successful inline MobileMoica issuance reloads wallet and hides wizard',
+    (tester) async {
+      final repo = InMemoryWalletRepository();
+      final launcher = FakeExternalUrlLauncher();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WalletScreen(
+            holderDid: 'did:plc:abcdefghijklmnop',
+            repository: repo,
+            vcIssuerClient: FakeMobileMoicaIssuerClient(statuses: ['verified']),
+            urlLauncher: launcher,
+            pollInterval: const Duration(milliseconds: 10),
+            pollTimeout: const Duration(seconds: 1),
           ),
-          urlLauncher: FakeExternalUrlLauncher(),
-          pollInterval: const Duration(milliseconds: 10),
-          pollTimeout: const Duration(seconds: 1),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await _scrollWallet(tester);
-    await tester.tap(find.text('新增憑證').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('TW 身份驗證'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'alice@example.com');
-    await tester.ensureVisible(find.text('開始驗證'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('開始驗證'));
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pumpAndSettle();
+      await _scrollWallet(tester);
+      await tester.tap(find.text('新增憑證').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('TW 身份驗證'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byType(CheckboxListTile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('mobilemoica-national-id-field')),
+        'Z123000000',
+      );
+      await tester.pump();
+      await tester.ensureVisible(find.text('開啟 TW FidO'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('開啟 TW FidO'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(CredentialIssuanceWizard), findsNothing);
-    await _scrollWallet(tester);
-    expect(find.text('Verified Human'), findsOneWidget);
-  });
+      expect(launcher.opened.single.scheme, 'mobilemoica');
+      expect(find.byType(CredentialIssuanceWizard), findsNothing);
+      await _scrollWallet(tester);
+      expect(find.text('MobileMoica Verified Human'), findsOneWidget);
+    },
+  );
 }
 
 Future<void> _scrollWallet(WidgetTester tester) async {
@@ -187,39 +195,54 @@ Future<void> _scrollWallet(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-class FakeTwIssuerClient extends VcIssuerClient {
-  FakeTwIssuerClient({required this.offer, this.statuses = const []})
+class FakeMobileMoicaIssuerClient extends VcIssuerClient {
+  FakeMobileMoicaIssuerClient({this.statuses = const []})
     : super(baseUrl: 'http://issuer.test');
 
-  final TwProviderOffer offer;
   final List<String> statuses;
   var _statusIndex = 0;
 
   @override
-  Future<TwProviderOffer> startTwProviderFlow({
-    required String did,
-    required String email,
+  Future<MobileMoicaRPOffer> startMobileMoicaRPFlow({
+    required String holderDid,
+    required String nationalId,
+    required String consentVersion,
+    required String consentCopyHash,
+    required String locale,
   }) async {
-    return offer;
+    expect(holderDid, 'did:plc:abcdefghijklmnop');
+    expect(nationalId, 'Z123000000');
+    expect(consentVersion, 'mobilemoica-rp-v1');
+    expect(consentCopyHash, startsWith('sha256:'));
+    expect(locale, isNotEmpty);
+    return MobileMoicaRPOffer(
+      offerId: 'offer-1',
+      deepLinkUrl: Uri.parse(
+        'mobilemoica://moica.moi.gov.tw/a2a/verifySign?sp_ticket=contract',
+      ),
+      expiresAt: DateTime.utc(2026, 5, 30, 12, 5),
+    );
   }
 
   @override
-  Future<TwProviderStatus> getTwProviderStatus(String offerId) async {
+  Future<MobileMoicaRPStatus> getMobileMoicaRPStatus(String offerId) async {
+    expect(offerId, 'offer-1');
     final index = _statusIndex;
     if (_statusIndex < statuses.length - 1) {
       _statusIndex += 1;
     }
-    return TwProviderStatus(
+    return MobileMoicaRPStatus(
       status: statuses.isEmpty ? 'pending' : statuses[index],
     );
   }
 
   @override
-  Future<Map<String, dynamic>> issueTwProviderCredential({
-    required String did,
-    required String email,
+  Future<Map<String, dynamic>> issueMobileMoicaRPCredential({
+    required String holderDid,
     required String offerId,
   }) async {
+    expect(holderDid, 'did:plc:abcdefghijklmnop');
+    expect(offerId, 'offer-1');
     return {
       '@context': ['https://www.w3.org/ns/credentials/v2'],
       'id': 'urn:uuid:inline-humanity',
@@ -229,11 +252,13 @@ class FakeTwIssuerClient extends VcIssuerClient {
       'validUntil': '2026-08-03T12:00:00Z',
       'credentialSubject': {'id': 'did:plc:abcdefghijklmnop', 'humanity': true},
       'proof': {
-        'type': 'Ed25519Signature2020',
+        '@context': ['https://www.w3.org/ns/credentials/v2'],
+        'type': 'DataIntegrityProof',
+        'cryptosuite': 'eddsa-jcs-2022',
         'created': '2026-05-05T12:00:00Z',
         'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
         'proofPurpose': 'assertionMethod',
-        'proofValue': 'abcd',
+        'proofValue': 'zabcd',
       },
     };
   }
@@ -247,15 +272,4 @@ class FakeExternalUrlLauncher implements ExternalUrlLauncher {
     opened.add(url);
     return true;
   }
-}
-
-TwProviderOffer twOfferFixture() {
-  return TwProviderOffer(
-    offerId: 'offer-1',
-    state: 'state-1',
-    authorizationUrl: Uri.parse(
-      'https://provider.example/authorize?state=state-1',
-    ),
-    expiresAt: DateTime.utc(2026, 5, 5, 12, 5),
-  );
 }

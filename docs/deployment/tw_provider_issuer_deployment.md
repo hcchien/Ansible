@@ -11,7 +11,9 @@ fixtures, and trust-anchor verification are implemented.
 
 - `ISSUER_DID`: issuer DID, for example `did:web:issuer.trisaura.io`.
 - `ISSUER_URL`: public issuer base URL used in VC IDs.
-- `ISSUER_PRIVATE_KEY_HEX`: issuer Ed25519 private key hex.
+- `ISSUER_PRIVATE_KEY_HEX`: issuer Ed25519 private key hex. The issuer uses
+  this key through W3C Data Integrity `eddsa-jcs-2022`; issued proof values are
+  base58-btc multibase, not legacy hex signatures.
 - `SUBJECT_COMMITMENT_PEPPER`: secret pepper for subject commitment HMACs.
 - `PERSONHOOD_BINDING_STORE_PATH`: durable JSON store path for issuer-only
   personhood duplicate-prevention commitments. Required outside mock mode.

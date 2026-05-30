@@ -318,11 +318,16 @@ Map<String, dynamic> humanityVcFixture() {
       'assuranceMethod': 'tw_fido_or_moica',
     },
     'proof': {
-      'type': 'Ed25519Signature2020',
+      '@context': [
+        'https://www.w3.org/ns/credentials/v2',
+        'https://trisaura.io/contexts/humanity/v1',
+      ],
+      'type': 'DataIntegrityProof',
+      'cryptosuite': 'eddsa-jcs-2022',
       'created': '2026-05-05T12:00:00Z',
       'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
       'proofPurpose': 'assertionMethod',
-      'proofValue': 'abcd',
+      'proofValue': 'zabcd',
     },
   };
 }

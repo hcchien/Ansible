@@ -321,11 +321,13 @@ class _FakeVpBuilder extends VpBuilder {
       holder: holderDid,
       verifiableCredential: credentials,
       proof: const CredentialProof(
-        type: 'Ed25519Signature2020',
+        context: ['https://www.w3.org/ns/credentials/v2'],
+        type: 'DataIntegrityProof',
+        cryptosuite: 'eddsa-jcs-2022',
         created: '2026-05-10T00:00:00Z',
         verificationMethod: 'did:plc:abcdefghijklmnop#key-1',
         proofPurpose: 'authentication',
-        proofValue: 'test-proof',
+        proofValue: 'ztestproof',
       ),
     );
   }
@@ -384,11 +386,13 @@ final _emailCredentialJson = <String, dynamic>{
   'expirationDate': '2026-08-08T00:00:00Z',
   'credentialSubject': {'id': 'did:plc:abcdefghijklmnop', 'emailHash': 'hash'},
   'proof': {
-    'type': 'Ed25519Signature2020',
+    '@context': ['https://www.w3.org/ns/credentials/v2'],
+    'type': 'DataIntegrityProof',
+    'cryptosuite': 'eddsa-jcs-2022',
     'created': '2026-05-10T00:00:00Z',
     'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
     'proofPurpose': 'assertionMethod',
-    'proofValue': 'issuer-proof',
+    'proofValue': 'zissuerproof',
   },
 };
 
@@ -410,10 +414,15 @@ final _passportCredentialJson = <String, dynamic>{
     'nationality': 'TWN',
   },
   'proof': {
-    'type': 'Ed25519Signature2020',
+    '@context': [
+      'https://www.w3.org/ns/credentials/v2',
+      'https://trisaura.io/contexts/humanity/v1',
+    ],
+    'type': 'DataIntegrityProof',
+    'cryptosuite': 'eddsa-jcs-2022',
     'created': '2026-05-24T00:00:00Z',
     'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
     'proofPurpose': 'assertionMethod',
-    'proofValue': 'issuer-proof',
+    'proofValue': 'zissuerproof',
   },
 };

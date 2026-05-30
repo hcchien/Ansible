@@ -2,8 +2,7 @@
 /// https://www.w3.org/TR/vc-data-model/
 ///
 /// Proof encoding:
-///   proofValue — hex-encoded Ed25519 signature (64 bytes)
-///   TODO(P2): use multibase base58btc per W3C Ed25519Signature2020 spec.
+///   DataIntegrityProof / eddsa-jcs-2022 with multibase base58-btc proofValue.
 
 import 'dart:convert';
 
@@ -12,20 +11,21 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 // ─── Proof ───────────────────────────────────────────────────────────────────
 
 class CredentialProof {
+  final List<String>? context;
   final String type;
+  final String? cryptosuite;
   final String created;
   final String verificationMethod;
   final String proofPurpose;
-
-  /// Hex-encoded Ed25519 signature (64 bytes / 128 hex chars).
-  /// TODO(P2): migrate to multibase base58btc per W3C spec.
   final String proofValue;
 
   /// Challenge nonce — required for VP authentication proofs (prevents replay).
   final String? challenge;
 
   const CredentialProof({
+    this.context,
     required this.type,
+    this.cryptosuite,
     required this.created,
     required this.verificationMethod,
     required this.proofPurpose,
@@ -33,8 +33,11 @@ class CredentialProof {
     this.challenge,
   });
 
-  factory CredentialProof.fromJson(Map<String, dynamic> json) => CredentialProof(
+  factory CredentialProof.fromJson(Map<String, dynamic> json) =>
+      CredentialProof(
+        context: _optionalContext(json['@context']),
         type: json['type'] as String,
+        cryptosuite: json['cryptosuite'] as String?,
         created: json['created'] as String,
         verificationMethod: json['verificationMethod'] as String,
         proofPurpose: json['proofPurpose'] as String,
@@ -43,13 +46,26 @@ class CredentialProof {
       );
 
   Map<String, dynamic> toJson() => {
-        'type': type,
-        'created': created,
-        'verificationMethod': verificationMethod,
-        'proofPurpose': proofPurpose,
-        'proofValue': proofValue,
-        if (challenge != null) 'challenge': challenge,
-      };
+    if (context != null) '@context': context,
+    'type': type,
+    if (cryptosuite != null) 'cryptosuite': cryptosuite,
+    'created': created,
+    'verificationMethod': verificationMethod,
+    'proofPurpose': proofPurpose,
+    'proofValue': proofValue,
+    if (challenge != null) 'challenge': challenge,
+  };
+
+  static List<String>? _optionalContext(Object? value) {
+    if (value == null) return null;
+    if (value is String) return [value];
+    if (value is List && value.every((item) => item is String)) {
+      return value.cast<String>();
+    }
+    throw const FormatException(
+      'Credential proof @context must be a string list.',
+    );
+  }
 }
 
 // ─── VerifiableCredential ────────────────────────────────────────────────────
@@ -83,22 +99,20 @@ class VerifiableCredential {
         issuer: json['issuer'] as String,
         issuanceDate: json['issuanceDate'] as String,
         expirationDate: json['expirationDate'] as String?,
-        credentialSubject:
-            json['credentialSubject'] as Map<String, dynamic>,
-        proof: CredentialProof.fromJson(
-            json['proof'] as Map<String, dynamic>),
+        credentialSubject: json['credentialSubject'] as Map<String, dynamic>,
+        proof: CredentialProof.fromJson(json['proof'] as Map<String, dynamic>),
       );
 
   Map<String, dynamic> toJson() => {
-        '@context': context,
-        'id': id,
-        'type': type,
-        'issuer': issuer,
-        'issuanceDate': issuanceDate,
-        if (expirationDate != null) 'expirationDate': expirationDate,
-        'credentialSubject': credentialSubject,
-        'proof': proof.toJson(),
-      };
+    '@context': context,
+    'id': id,
+    'type': type,
+    'issuer': issuer,
+    'issuanceDate': issuanceDate,
+    if (expirationDate != null) 'expirationDate': expirationDate,
+    'credentialSubject': credentialSubject,
+    'proof': proof.toJson(),
+  };
 
   /// True if the VC has passed its expirationDate.
   bool get isExpired {
@@ -132,23 +146,25 @@ class VerifiablePresentation {
   });
 
   Map<String, dynamic> toJson() => {
-        '@context': context,
-        'type': type,
-        'holder': holder,
-        'verifiableCredential':
-            verifiableCredential.map((vc) => vc.toJson()).toList(),
-        'proof': proof.toJson(),
-      };
+    '@context': context,
+    'type': type,
+    'holder': holder,
+    'verifiableCredential': verifiableCredential
+        .map((vc) => vc.toJson())
+        .toList(),
+    'proof': proof.toJson(),
+  };
 
   /// Serialise the VP *without* the proof field (canonical form for signing /
   /// verification).
   Map<String, dynamic> toJsonWithoutProof() => {
-        '@context': context,
-        'type': type,
-        'holder': holder,
-        'verifiableCredential':
-            verifiableCredential.map((vc) => vc.toJson()).toList(),
-      };
+    '@context': context,
+    'type': type,
+    'holder': holder,
+    'verifiableCredential': verifiableCredential
+        .map((vc) => vc.toJson())
+        .toList(),
+  };
 }
 
 // ─── CredentialWallet ────────────────────────────────────────────────────────
@@ -164,7 +180,7 @@ class CredentialWallet {
   final FlutterSecureStorage _storage;
 
   const CredentialWallet({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   /// Store a [VerifiableCredential]. Overwrites any existing entry with the
   /// same id.
@@ -188,8 +204,11 @@ class CredentialWallet {
       final raw = await _storage.read(key: _storageKey(id));
       if (raw != null) {
         try {
-          results.add(VerifiableCredential.fromJson(
-              jsonDecode(raw) as Map<String, dynamic>));
+          results.add(
+            VerifiableCredential.fromJson(
+              jsonDecode(raw) as Map<String, dynamic>,
+            ),
+          );
         } catch (_) {
           // Skip malformed entries
         }
@@ -201,7 +220,8 @@ class CredentialWallet {
   /// Delete a credential by its id.
   Future<void> delete(String vcId) async {
     await _storage.delete(key: _storageKey(vcId));
-    final index = await _readIndex()..remove(vcId);
+    final index = await _readIndex()
+      ..remove(vcId);
     await _storage.write(key: _kIndexKey, value: jsonEncode(index));
   }
 

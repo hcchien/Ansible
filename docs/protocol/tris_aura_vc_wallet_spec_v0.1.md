@@ -125,9 +125,10 @@ Storage rule:
   "offer_id": "vc-offer-01HX8QGJ5A2Y8V5J61D6GZ",
   "holder_did": "did:key:z6Mkholder",
   "holder_proof": {
-    "type": "Ed25519Signature2020",
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
     "challenge": "issuer-session-nonce",
-    "signature": "base64url-signature"
+    "proofValue": "zBase58BtcMultibaseSignature"
   }
 }
 ```
@@ -164,7 +165,7 @@ Storage rule:
       "verificationMethod": "did:web:issuer.trisaura.io#key-2026-05",
       "created": "2026-05-04T10:12:00Z",
       "proofPurpose": "assertionMethod",
-      "proofValue": "base58-or-base64url-proof"
+      "proofValue": "zBase58BtcMultibaseSignature"
     }
   }
 }
@@ -255,7 +256,7 @@ payloads.
       "proofPurpose": "authentication",
       "challenge": "base64url-random-32-bytes",
       "domain": "https://relay.trisaura.io",
-      "proofValue": "base58-or-base64url-proof"
+      "proofValue": "zBase58BtcMultibaseSignature"
     }
   }
 }
@@ -271,6 +272,16 @@ Verifier checks:
 6. Credential type is accepted.
 7. `validFrom <= now < validUntil`.
 8. Credential status is active.
+
+## Constitution Review
+
+- The proof-suite change does not add any new identity claim or storage path.
+- VC and VP subjects remain holder DIDs; raw legal identity and personhood
+  commitments remain excluded from proof values, credential subjects, relay
+  payloads, federation payloads, and logs.
+- The change improves credential verifiability by replacing the legacy proof
+  representation with W3C Data Integrity `eddsa-jcs-2022`, while preserving the
+  same Ed25519 key boundary.
 
 ## 8. Revocation Status
 

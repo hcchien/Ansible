@@ -263,7 +263,18 @@ final _humanityFixture = <String, Object?>{
     'assuranceMethod': 'tw_fido_or_moica',
     'jurisdiction': 'TW',
   },
-  'proof': {'proofValue': 'issuer-proof'},
+  'proof': {
+    '@context': [
+      'https://www.w3.org/ns/credentials/v2',
+      'https://trisaura.io/contexts/humanity/v1',
+    ],
+    'type': 'DataIntegrityProof',
+    'cryptosuite': 'eddsa-jcs-2022',
+    'created': '2026-05-04T10:12:00Z',
+    'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
+    'proofPurpose': 'assertionMethod',
+    'proofValue': 'zissuerproof',
+  },
 };
 
 bool _hasTag(List<List<String>> tags, String name, String value) {

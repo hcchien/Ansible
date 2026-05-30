@@ -25,13 +25,15 @@ type CredentialSubject struct {
 	DisclosureModel string `json:"disclosureModel,omitempty"`
 }
 
-// Proof is the Ed25519Signature2020 proof block.
+// Proof is the W3C Data Integrity proof block used by issued credentials.
 type Proof struct {
-	Type               string `json:"type"`
-	Created            string `json:"created"`
-	VerificationMethod string `json:"verificationMethod"`
-	ProofPurpose       string `json:"proofPurpose"`
-	ProofValue         string `json:"proofValue"`
+	Context            []string `json:"@context,omitempty"`
+	Type               string   `json:"type"`
+	Cryptosuite        string   `json:"cryptosuite,omitempty"`
+	Created            string   `json:"created"`
+	VerificationMethod string   `json:"verificationMethod"`
+	ProofPurpose       string   `json:"proofPurpose"`
+	ProofValue         string   `json:"proofValue"`
 }
 
 // CredentialStatus is the lifecycle state of an issued credential.

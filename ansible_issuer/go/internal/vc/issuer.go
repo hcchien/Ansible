@@ -174,18 +174,11 @@ func (iss *Issuer) issue(
 		CredentialSubject: subject,
 	}
 
-	canonical, err := json.Marshal(cred)
+	proof, err := iss.createDataIntegrityProof(cred, now)
 	if err != nil {
 		return nil, err
 	}
-	sig := ed25519.Sign(iss.privKey, canonical)
-	cred.Proof = &Proof{
-		Type:               "Ed25519Signature2020",
-		Created:            now.Format(time.RFC3339),
-		VerificationMethod: iss.issuerDID + "#key-1",
-		ProofPurpose:       "assertionMethod",
-		ProofValue:         hex.EncodeToString(sig),
-	}
+	cred.Proof = proof
 
 	b, err := json.Marshal(cred)
 	if err != nil {
@@ -210,7 +203,32 @@ func (iss *Issuer) issue(
 	return out, nil
 }
 
-// VerifyProof checks the Ed25519Signature2020 proof on a raw credential map.
+func (iss *Issuer) createDataIntegrityProof(cred *Credential, now time.Time) (*Proof, error) {
+	proof := &Proof{
+		Context:            cred.Context,
+		Type:               dataIntegrityProofType,
+		Cryptosuite:        eddsaJCS2022,
+		Created:            now.Format(time.RFC3339),
+		VerificationMethod: iss.issuerDID + "#key-1",
+		ProofPurpose:       "assertionMethod",
+	}
+	proofConfig, err := proofOptionsMap(proof)
+	if err != nil {
+		return nil, err
+	}
+	document, err := credentialDocumentMap(cred)
+	if err != nil {
+		return nil, err
+	}
+	hashData, err := dataIntegrityHashData(document, proofConfig)
+	if err != nil {
+		return nil, err
+	}
+	proof.ProofValue = multibaseBase58BTCEncode(ed25519.Sign(iss.privKey, hashData))
+	return proof, nil
+}
+
+// VerifyProof checks the DataIntegrityProof / eddsa-jcs-2022 proof on a raw credential map.
 func (iss *Issuer) VerifyProof(raw map[string]any) bool {
 	proofRaw, ok := raw["proof"]
 	if !ok {
@@ -220,28 +238,31 @@ func (iss *Issuer) VerifyProof(raw map[string]any) bool {
 	if !ok {
 		return false
 	}
-	proofValue, _ := proofMap["proofValue"].(string)
-	sigBytes, err := hex.DecodeString(proofValue)
+	if proofMap["type"] != dataIntegrityProofType || proofMap["cryptosuite"] != eddsaJCS2022 {
+		return false
+	}
+	proofValue, ok := proofMap["proofValue"].(string)
+	if !ok {
+		return false
+	}
+	proofBytes, err := multibaseBase58BTCDecode(proofValue)
 	if err != nil {
 		return false
 	}
 
-	// Round-trip through *Credential so field order matches what was signed.
-	b, err := json.Marshal(raw)
+	proofOptions := copyMapWithout(proofMap, "proofValue")
+	unsecuredDocument := copyMapWithout(raw, "proof")
+	if proofContext, ok := proofOptions["@context"]; ok {
+		if !proofContextIsDocumentPrefix(raw["@context"], proofContext) {
+			return false
+		}
+		unsecuredDocument["@context"] = proofContext
+	}
+	hashData, err := dataIntegrityHashData(unsecuredDocument, proofOptions)
 	if err != nil {
 		return false
 	}
-	var cred Credential
-	if err := json.Unmarshal(b, &cred); err != nil {
-		return false
-	}
-	cred.Proof = nil
-
-	canonical, err := json.Marshal(&cred)
-	if err != nil {
-		return false
-	}
-	return ed25519.Verify(iss.pubKey, canonical, sigBytes)
+	return verifyEd25519Signature(iss.pubKey, hashData, proofBytes)
 }
 
 func randomHex(n int) string {

@@ -96,7 +96,9 @@ class VpBuilder {
     final proofValue = await _signBytes(msgBytes);
 
     final proof = CredentialProof(
-      type: 'Ed25519Signature2020',
+      context: const ['https://www.w3.org/ns/credentials/v2'],
+      type: 'DataIntegrityProof',
+      cryptosuite: 'eddsa-jcs-2022',
       created: now,
       verificationMethod: '$holderDid#key-1',
       proofPurpose: 'authentication',
