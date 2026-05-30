@@ -13,12 +13,13 @@ var (
 )
 
 type AuthSession struct {
-	OfferID   string    `json:"offer_id"`
-	DID       string    `json:"did"`
-	Email     string    `json:"email"`
-	State     string    `json:"state"`
-	ExpiresAt time.Time `json:"expires_at"`
-	Consumed  bool      `json:"consumed"`
+	OfferID           string    `json:"offer_id"`
+	DID               string    `json:"did"`
+	Email             string    `json:"email"`
+	State             string    `json:"state"`
+	SubjectCommitment string    `json:"subject_commitment,omitempty"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	Consumed          bool      `json:"consumed"`
 }
 
 type VerifiedSession struct {

@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/trisaura/ansible_issuer/internal/api"
+	"github.com/trisaura/ansible_issuer/internal/commitment"
 	"github.com/trisaura/ansible_issuer/internal/provider"
+	"github.com/trisaura/ansible_issuer/internal/vc"
 )
 
 type fakeMobileMoicaBroker struct {
@@ -316,4 +318,126 @@ func TestMobileMoicaRPIssueRejectsDuplicateBinding(t *testing.T) {
 	if bodyJSON(t, second)["error"] != "duplicate_active_credential" {
 		t.Fatalf("unexpected duplicate error: %s", second.Body)
 	}
+}
+
+func TestMobileMoicaRPStatusFailsClosedWithoutUnifiedBinding(t *testing.T) {
+	now := time.Date(2026, 5, 30, 12, 0, 0, 0, time.UTC)
+	store := provider.NewMemorySessionStore(func() time.Time { return now })
+	h := newTestHandler(t)
+	h.ConfigureMobileMoicaRP(api.MobileMoicaRPConfig{
+		Enabled:   true,
+		Store:     store,
+		Broker:    &fakeMobileMoicaBroker{},
+		ReturnURL: "trisaura://mobilemoica/callback",
+		TTL:       5 * time.Minute,
+		Approval: provider.MobileMoicaApprovalConfig{
+			LegalApprovalID:        "legal-review",
+			PrivacyApprovalID:      "privacy-review",
+			SecurityApprovalID:     "security-review",
+			ConstitutionApprovalID: "constitution-exception",
+		},
+	})
+	if err := store.CreateAuthSession(provider.AuthSession{
+		OfferID:   "legacy-offer",
+		DID:       testDID,
+		State:     "legacy-state",
+		ExpiresAt: now.Add(5 * time.Minute),
+	}); err != nil {
+		t.Fatalf("create legacy auth session: %v", err)
+	}
+
+	response := call(h, http.MethodGet, "/api/v1/vc/mobilemoica/status/legacy-offer", nil)
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("expected fail-closed 500, got %d %s", response.Code, response.Body)
+	}
+	if bodyJSON(t, response)["error"] != "provider_session_error" {
+		t.Fatalf("unexpected error: %s", response.Body)
+	}
+}
+
+func TestMobileMoicaRPIssueBlocksPassportWithSameTWNationalIDBinding(t *testing.T) {
+	now := time.Date(2026, 5, 30, 12, 0, 0, 0, time.UTC)
+	h := newTestHandler(t)
+	configureMobileMoica(t, h, now, &fakeMobileMoicaBroker{})
+	configurePassportVerifier(h)
+
+	mobileMoicaIssue := issueMobileMoicaForNationalID(t, h, testDID, "Z123000000")
+	if mobileMoicaIssue.Code != http.StatusOK {
+		t.Fatalf("expected MobileMoica issue 200, got %d %s", mobileMoicaIssue.Code, mobileMoicaIssue.Body)
+	}
+
+	passport := call(h, http.MethodPost, "/api/v1/vc/passport/issue", map[string]any{
+		"did":         "did:plc:zzzzzzzzzzzzzzzz",
+		"nationality": "TWN",
+		"national_id_hash": commitment.Compute(
+			testPepper,
+			"Z123000000",
+			vc.PersonhoodBindingTWNationalIDContext,
+		),
+		"passport_number_hash":  "passport-number-hash-abc123",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	})
+	if passport.Code != http.StatusConflict {
+		t.Fatalf("expected passport duplicate conflict, got %d %s", passport.Code, passport.Body)
+	}
+	if bodyJSON(t, passport)["error"] != "personhood_already_bound" {
+		t.Fatalf("unexpected duplicate error: %s", passport.Body)
+	}
+}
+
+func TestMobileMoicaRPIssueRejectsPassportBoundTWNationalID(t *testing.T) {
+	now := time.Date(2026, 5, 30, 12, 0, 0, 0, time.UTC)
+	h := newTestHandler(t)
+	configureMobileMoica(t, h, now, &fakeMobileMoicaBroker{})
+	configurePassportVerifier(h)
+
+	passport := call(h, http.MethodPost, "/api/v1/vc/passport/issue", map[string]any{
+		"did":         testDID,
+		"nationality": "TWN",
+		"national_id_hash": commitment.Compute(
+			testPepper,
+			"Z123000000",
+			vc.PersonhoodBindingTWNationalIDContext,
+		),
+		"passport_number_hash":  "passport-number-hash-abc123",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	})
+	if passport.Code != http.StatusOK {
+		t.Fatalf("expected passport issue 200, got %d %s", passport.Code, passport.Body)
+	}
+
+	mobileMoicaIssue := issueMobileMoicaForNationalID(t, h, "did:plc:zzzzzzzzzzzzzzzz", "Z123000000")
+	if mobileMoicaIssue.Code != http.StatusConflict {
+		t.Fatalf("expected MobileMoica duplicate conflict, got %d %s", mobileMoicaIssue.Code, mobileMoicaIssue.Body)
+	}
+	if bodyJSON(t, mobileMoicaIssue)["error"] != "duplicate_active_credential" {
+		t.Fatalf("unexpected duplicate error: %s", mobileMoicaIssue.Body)
+	}
+}
+
+func issueMobileMoicaForNationalID(t *testing.T, h *api.Handler, holderDID, nationalID string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	start := call(h, http.MethodPost, "/api/v1/vc/mobilemoica/start", map[string]any{
+		"holder_did":        holderDID,
+		"national_id":       nationalID,
+		"consent_version":   "mobilemoica-rp-v1",
+		"consent_copy_hash": "sha256:copy-hash",
+	})
+	if start.Code != http.StatusOK {
+		t.Fatalf("expected MobileMoica start 200, got %d %s", start.Code, start.Body)
+	}
+	offerID := bodyJSON(t, start)["offer_id"].(string)
+	status := call(h, http.MethodGet, "/api/v1/vc/mobilemoica/status/"+offerID, nil)
+	if bodyJSON(t, status)["status"] != "verified" {
+		t.Fatalf("expected verified, got %s", status.Body)
+	}
+	return call(h, http.MethodPost, "/api/v1/vc/mobilemoica/issue", map[string]any{
+		"holder_did": holderDID,
+		"offer_id":   offerID,
+	})
 }

@@ -50,6 +50,11 @@ func (h *Handler) mobileMoicaStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	expiresAt := h.now().Add(h.mobileMoicaTTL)
+	subjectCommitment := commitment.Compute(
+		h.pepper,
+		body.NationalID,
+		vc.PersonhoodBindingTWNationalIDContext,
+	)
 	startResult, err := h.mobileMoicaBroker.Start(r.Context(), provider.MobileMoicaStartRequest{
 		OfferID:         offerID,
 		State:           state,
@@ -67,10 +72,11 @@ func (h *Handler) mobileMoicaStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.mobileMoicaStore.CreateAuthSession(provider.AuthSession{
-		OfferID:   offerID,
-		DID:       body.HolderDID,
-		State:     state,
-		ExpiresAt: startResult.ExpiresAt,
+		OfferID:           offerID,
+		DID:               body.HolderDID,
+		State:             state,
+		SubjectCommitment: subjectCommitment,
+		ExpiresAt:         startResult.ExpiresAt,
 	}); err != nil {
 		h.logMobileMoicaRP("mobilemoica_rp_start", "session_error", offerID, "error=session_store")
 		writeError(w, http.StatusInternalServerError, "provider_session_error")
@@ -149,15 +155,12 @@ func (h *Handler) mobileMoicaStatus(w http.ResponseWriter, r *http.Request) {
 	if !result.ExpiresAt.IsZero() && result.ExpiresAt.Before(expiresAt) {
 		expiresAt = result.ExpiresAt
 	}
-	assuranceContext := result.AssuranceContext
-	if assuranceContext == "" {
-		assuranceContext = mobileMoicaAssuranceContext
+	comm := consumed.SubjectCommitment
+	if comm == "" {
+		h.logMobileMoicaRP("mobilemoica_rp_status", "session_error", offerID, "error=missing_personhood_binding")
+		writeError(w, http.StatusInternalServerError, "provider_session_error")
+		return
 	}
-	comm := commitment.Compute(
-		h.pepper,
-		result.ProviderSubject,
-		"mobilemoica_rp_explicit_v1:"+assuranceContext,
-	)
 	if err := h.mobileMoicaStore.StoreVerifiedSession(provider.VerifiedSession{
 		OfferID:           consumed.OfferID,
 		DID:               consumed.DID,

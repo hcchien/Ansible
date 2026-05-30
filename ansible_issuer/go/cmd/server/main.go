@@ -32,7 +32,10 @@ func main() {
 		port = "4002"
 	}
 
-	store := vc.NewStore()
+	store, err := buildCredentialStoreFromEnv(mockMode)
+	if err != nil {
+		log.Fatal(err)
+	}
 	issuer, err := vc.NewIssuer(cfg, store)
 	if err != nil {
 		log.Fatalf("issuer init: %v", err)
@@ -83,6 +86,7 @@ func (disabledIdentityProvider) ProviderSubject(string, string) (string, error) 
 
 var errTWProviderConfigMissing = errors.New("TW provider config missing")
 var errMobileMoicaRPConfigMissing = errors.New("MobileMoica RP config missing")
+var errPersonhoodBindingStoreConfigMissing = errors.New("personhood binding store config missing")
 
 func configureTWProvider(handler *api.Handler, mockMode bool) {
 	config, err := buildTWProviderConfigFromEnv(mockMode, time.Now)
@@ -103,6 +107,21 @@ func configureMobileMoicaRP(handler *api.Handler, mockMode bool) {
 	}
 	handler.ConfigureMobileMoicaRP(config)
 	log.Printf("MobileMoica RP flow enabled in explicit-disclosure mode")
+}
+
+func buildCredentialStoreFromEnv(mockMode bool) (*vc.Store, error) {
+	storePath := os.Getenv("PERSONHOOD_BINDING_STORE_PATH")
+	if storePath == "" {
+		if mockMode {
+			return vc.NewStore(), nil
+		}
+		return nil, fmt.Errorf("%w: PERSONHOOD_BINDING_STORE_PATH", errPersonhoodBindingStoreConfigMissing)
+	}
+	store, err := vc.NewFileStore(storePath)
+	if err != nil {
+		return nil, fmt.Errorf("personhood binding store init: %w", err)
+	}
+	return store, nil
 }
 
 func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWProviderConfig, error) {

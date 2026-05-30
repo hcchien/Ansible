@@ -13,6 +13,8 @@ fixtures, and trust-anchor verification are implemented.
 - `ISSUER_URL`: public issuer base URL used in VC IDs.
 - `ISSUER_PRIVATE_KEY_HEX`: issuer Ed25519 private key hex.
 - `SUBJECT_COMMITMENT_PEPPER`: secret pepper for subject commitment HMACs.
+- `PERSONHOOD_BINDING_STORE_PATH`: durable JSON store path for issuer-only
+  personhood duplicate-prevention commitments. Required outside mock mode.
 - `PORT`: HTTP port. Defaults to `4002`.
 - `OTP_TTL_SECONDS`: Email OTP TTL. Defaults to `300`.
 - `VC_TTL_DAYS`: VC TTL. Defaults to `90`.
@@ -70,10 +72,15 @@ serials, provider subjects, or return URL query values.
 ## Startup Behavior
 
 In `MOCK_MODE=true`, the issuer defaults to the `contract` adapter with local
-dev values when TW provider env vars are absent.
+dev values when TW provider env vars are absent. If
+`PERSONHOOD_BINDING_STORE_PATH` is absent in mock mode, personhood duplicate
+checks are in-memory for that process only.
 
 Outside mock mode:
 
+- `PERSONHOOD_BINDING_STORE_PATH` must be set so MobileMoica, Passport NFC, and
+  other high-assurance methods share a durable duplicate-prevention binding
+  store across issuer restarts.
 - `TW_PROVIDER_ADAPTER_MODE` must be set explicitly.
 - `contract` mode requires `TW_PROVIDER_SHARED_SECRET` and
   `TW_PROVIDER_AUDIENCE`.

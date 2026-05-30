@@ -196,14 +196,16 @@ func (iss *Issuer) issue(
 		return nil, err
 	}
 
-	iss.store.add(record{
+	if err := iss.store.add(record{
 		credentialID:       cred.ID,
 		holderDID:          subject.ID,
 		commitment:         subjectCommitment,
 		nationalIDHash:     nationalIDHash,
 		passportNumberHash: passportNumberHash,
 		status:             StatusActive,
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	return out, nil
 }

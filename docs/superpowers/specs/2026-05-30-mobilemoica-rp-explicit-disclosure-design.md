@@ -151,8 +151,8 @@ tier after issuance. They never receive MobileMoica artifacts.
     seconds between result queries.
 13. Broker fetches the signing result, verifies it, derives normalized facts,
     and discards raw MobileMoica artifacts.
-14. Issuer derives a duplicate-prevention commitment and marks the offer
-    verified.
+14. Issuer stores only the issuer-keyed TW national-ID commitment created from
+    the explicit disclosure and marks the offer verified.
 15. Elix asks Issuer to issue the VC with a fresh holder proof.
 16. Issuer issues and returns a `TrisAuraHumanityCredential`.
 17. Wallet stores the VC and shows the credential as explicit-disclosure
@@ -331,33 +331,57 @@ approval parsing.
 | Return URL parameters | Elix memory, Issuer status state | Until offer expiry | Must not carry raw identity data |
 | Signed response / PKCS#7 | Broker memory | Verification lifetime only | Never store by default; legal retention requires separate approval |
 | Certificate subject fields | Broker memory | Verification lifetime only | Extract only for verification; never persist or issue |
-| Provider hashed subject | Broker memory | Verification lifetime only | Use only as input to commitment derivation |
-| Subject commitment | Issuer duplicate-prevention store | Active credential lifetime plus approved replay window | Keyed, domain-separated, non-reversible |
+| Provider hashed subject | Broker memory | Verification lifetime only | Use only to verify MobileMoica result integrity; do not use as the cross-method duplicate key |
+| TW national-ID commitment | Issuer duplicate-prevention store | Active credential lifetime plus approved replay window | Keyed, domain-separated, non-reversible; shared with Passport NFC `national_id_hash` namespace |
 | Consent receipt | Issuer audit store | Approved legal retention period | No national ID, legal name, signed response, or certificate subject |
 | Issued VC | Wallet and Issuer metadata stores | Existing VC retention rules | No raw identity, provider artifacts, or commitments |
 
 ## Duplicate Prevention
 
-The Issuer derives:
+The Issuer derives the MobileMoica duplicate-prevention key from the normalized
+national ID explicitly entered for this RP flow:
 
 ```text
-subject_commitment = HMAC-SHA256(
+tw_national_id_commitment = HMAC-SHA256(
   SUBJECT_COMMITMENT_PEPPER,
-  "mobilemoica_rp_explicit_v1:" ||
-  mobilemoica_context ||
-  ":" ||
-  normalized_provider_subject
+  "tw_national_id_v1:" ||
+  normalized_national_id
 )
 ```
 
-`normalized_provider_subject` may be a provider-returned hashed subject or a
-review-approved stable certificate-derived identifier. It must not be raw
-national ID, legal name, certificate serial, or certificate subject. The raw
-normalized value must be discarded after commitment derivation.
+This intentionally uses the same issuer-only namespace as Passport NFC
+`national_id_hash` for TW national-ID backed personhood, so the same person
+cannot obtain two active high-assurance credentials through MobileMoica and
+Passport NFC at the same time. The raw national ID must be discarded after
+commitment derivation.
+
+Provider returned subjects, certificate subjects, certificate serials, and
+signed responses are verification inputs only. They must not become the
+cross-method duplicate key and must not be persisted by default.
 
 If an active credential already uses the same commitment, Issuer rejects new
-issuance with `duplicate_personhood_binding`. The VC response must not reveal
-which prior account or credential owns the binding.
+issuance with a generic duplicate error (`duplicate_active_credential` for
+MobileMoica issue or `personhood_already_bound` for Passport issue). The VC
+response must not reveal which prior account or credential owns the binding.
+
+## Constitution Review
+
+- Identity and credential: the holder Wallet DID receives a
+  `TrisAuraHumanityCredential`; MobileMoica/TW FidO is only an optional
+  high-assurance path.
+- Data leaving device: national ID leaves Elix only after explicit disclosure
+  and only to request/verify the one-time MobileMoica ticket.
+- Minimum claim: the VC contains verified-human, TW jurisdiction, assurance
+  method, and disclosure model only.
+- Exclusions: raw national ID, legal name, certificate serial, certificate
+  subject, signed response, provider assertion, and duplicate commitment remain
+  out of VC subjects, Relay payloads, forum posts, federation payloads, and
+  normal logs.
+- Duplicate prevention: Issuer stores a keyed, domain-separated,
+  non-reversible TW national-ID commitment only where needed to enforce one
+  active high-assurance binding.
+- Exit/lower trust: users may refuse this flow and continue using lower
+  assurance paths.
 
 ## Verification Requirements
 

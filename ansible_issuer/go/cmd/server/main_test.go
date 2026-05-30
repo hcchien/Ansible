@@ -134,6 +134,28 @@ func TestBuildMobileMoicaRPConfigDisabledByDefault(t *testing.T) {
 	}
 }
 
+func TestBuildCredentialStoreRequiresDurablePathOutsideMockMode(t *testing.T) {
+	_, err := buildCredentialStoreFromEnv(false)
+	if !errors.Is(err, errPersonhoodBindingStoreConfigMissing) {
+		t.Fatalf("expected missing durable binding store path error, got %v", err)
+	}
+}
+
+func TestBuildCredentialStoreBuildsFileStoreWhenConfigured(t *testing.T) {
+	t.Setenv("PERSONHOOD_BINDING_STORE_PATH", filepath.Join(t.TempDir(), "personhood-bindings.json"))
+
+	store, err := buildCredentialStoreFromEnv(false)
+	if err != nil {
+		t.Fatalf("build credential store: %v", err)
+	}
+	if store == nil {
+		t.Fatal("expected credential store")
+	}
+	if err := store.CheckDuplicate("unbound-commitment"); err != nil {
+		t.Fatalf("unexpected duplicate from empty durable store: %v", err)
+	}
+}
+
 func TestBuildMobileMoicaRPConfigRequiresApprovalArtifacts(t *testing.T) {
 	t.Setenv("MOBILEMOICA_RP_ENABLED", "true")
 	t.Setenv("MOBILEMOICA_RP_ADAPTER_MODE", "contract")

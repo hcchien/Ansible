@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/trisaura/ansible_issuer/internal/vc"
@@ -18,11 +19,16 @@ func newTestIssuer(t *testing.T) *vc.Issuer {
 
 func newTestIssuerWithStore(t *testing.T) (*vc.Issuer, *vc.Store) {
 	t.Helper()
+	store := vc.NewStore()
+	return newTestIssuerUsingStore(t, store), store
+}
+
+func newTestIssuerUsingStore(t *testing.T, store *vc.Store) *vc.Issuer {
+	t.Helper()
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := vc.NewStore()
 	iss, err := vc.NewIssuer(vc.Config{
 		IssuerDID:  "did:web:issuer.trisaura.io",
 		IssuerURL:  "https://issuer.trisaura.io",
@@ -32,7 +38,7 @@ func newTestIssuerWithStore(t *testing.T) (*vc.Issuer, *vc.Store) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return iss, store
+	return iss
 }
 
 func TestIssuer_IssueSigns(t *testing.T) {
@@ -260,6 +266,36 @@ func TestIssuer_RefusesDuplicatePassportNumberBinding(t *testing.T) {
 	)
 	if !errors.Is(err, vc.ErrDuplicatePersonhoodBinding) {
 		t.Fatalf("expected ErrDuplicatePersonhoodBinding, got %v", err)
+	}
+}
+
+func TestIssuer_FileStorePersistsActivePersonhoodBinding(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "personhood-bindings.json")
+	store, err := vc.NewFileStore(path)
+	if err != nil {
+		t.Fatalf("new file store: %v", err)
+	}
+	iss := newTestIssuerUsingStore(t, store)
+	if _, err := iss.IssueMobileMoicaRP(
+		"did:plc:holder1abcdefghij",
+		"tw-national-id-commitment-abc123",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := vc.NewFileStore(path)
+	if err != nil {
+		t.Fatalf("reopen file store: %v", err)
+	}
+	restartedIssuer := newTestIssuerUsingStore(t, reopened)
+	_, err = restartedIssuer.IssuePassport(
+		"did:plc:holder2abcdefghij",
+		"TWN",
+		"tw-national-id-commitment-abc123",
+		"passport-number-hash-other",
+	)
+	if !errors.Is(err, vc.ErrDuplicatePersonhoodBinding) {
+		t.Fatalf("expected persisted duplicate personhood binding, got %v", err)
 	}
 }
 

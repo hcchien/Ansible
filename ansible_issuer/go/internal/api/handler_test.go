@@ -271,7 +271,7 @@ func TestIssue_WrongOTP(t *testing.T) {
 	}
 }
 
-func TestIssue_DuplicateActiveCredential(t *testing.T) {
+func TestIssue_EmailCredentialCanBeReissued(t *testing.T) {
 	h := newTestHandler(t)
 
 	first := call(h, http.MethodPost, "/api/v1/vc/issue", map[string]any{
@@ -284,11 +284,18 @@ func TestIssue_DuplicateActiveCredential(t *testing.T) {
 	second := call(h, http.MethodPost, "/api/v1/vc/issue", map[string]any{
 		"did": testDID, "email": testEmail, "otp": getOTP(t, h),
 	})
-	if second.Code != http.StatusConflict {
-		t.Fatalf("expected 409, got %d: %s", second.Code, second.Body)
+	if second.Code != http.StatusOK {
+		t.Fatalf("expected second contact credential 200, got %d: %s", second.Code, second.Body)
 	}
-	if bodyJSON(t, second)["error"] != "duplicate_active_credential" {
-		t.Fatalf("expected duplicate_active_credential, got %v", bodyJSON(t, second))
+	vcMap, ok := bodyJSON(t, second)["vc"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected vc key, got %v", bodyJSON(t, second))
+	}
+	types, _ := vcMap["type"].([]any)
+	for _, typ := range types {
+		if typ == "TrisAuraHumanityCredential" {
+			t.Fatalf("Email OTP must not issue TrisAuraHumanityCredential, got %v", types)
+		}
 	}
 }
 
