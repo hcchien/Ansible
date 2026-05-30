@@ -4,7 +4,9 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
 
   Flow:
     1. Validate request fields (holder_did, vp)
-    2. Verify VP via VpVerifier (holder proof + VC issuer proof + structural checks)
+    2. Verify VP via VpVerifier (holder proof + VC issuer proof + structural checks).
+       If `nostr_binding` is present, also verify the short-lived Nostr
+       binding event before assigning local Nostr pubkey trust.
     3. Map credential type → reputation tier
     4. Update DID entry in DidAccountCache (and write-through to PostgreSQL)
     5. Return {did, reputation_tier}
@@ -25,10 +27,10 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     with {:ok, holder_did} <- require_field(params, "holder_did"),
          {:ok, vp} <- require_map(params, "vp"),
          :ok <- validate_did(holder_did) do
-      case VpVerifier.verify(holder_did, vp) do
-        {:ok, credential_type} ->
+      case verify_presentation(holder_did, vp, Map.get(params, "nostr_binding")) do
+        {:ok, credential_type, nostr_pubkey} ->
           tier = Map.get(@tier_for_credential, credential_type, "basic")
-          upgrade_tier(conn, holder_did, tier)
+          upgrade_tier(conn, holder_did, tier, nostr_pubkey)
 
         {:error, :holder_not_found} ->
           send_json(conn, 404, %{error: "holder_not_found"})
@@ -50,6 +52,15 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
 
         {:error, :unknown_credential_type} ->
           send_json(conn, 422, %{error: "unsupported_credential_type"})
+
+        {:error, :invalid_nostr_binding} ->
+          send_json(conn, 401, %{error: "invalid_nostr_binding"})
+
+        {:error, :nostr_binding_mismatch} ->
+          send_json(conn, 422, %{error: "nostr_binding_mismatch"})
+
+        {:error, :nostr_binding_expired} ->
+          send_json(conn, 401, %{error: "nostr_binding_expired"})
       end
     else
       {:error, {:missing_field, field}} ->
@@ -65,7 +76,20 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
 
   # --- Helpers ---
 
-  defp upgrade_tier(conn, holder_did, tier) do
+  defp verify_presentation(holder_did, vp, nil) do
+    with {:ok, credential_type} <- VpVerifier.verify(holder_did, vp) do
+      {:ok, credential_type, nil}
+    end
+  end
+
+  defp verify_presentation(holder_did, vp, nostr_binding) when is_map(nostr_binding) do
+    VpVerifier.verify_nostr_binding(holder_did, vp, nostr_binding)
+  end
+
+  defp verify_presentation(_holder_did, _vp, _nostr_binding),
+    do: {:error, :invalid_nostr_binding}
+
+  defp upgrade_tier(conn, holder_did, tier, nostr_pubkey) do
     case DidAccountCache.get(holder_did) do
       {:ok, entry} ->
         if tier_rank(tier) > tier_rank(entry.reputation_tier) do
@@ -78,7 +102,17 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
             )
         end
 
-        send_json(conn, 200, %{did: holder_did, reputation_tier: tier})
+        body = %{did: holder_did, reputation_tier: tier}
+
+        body =
+          if nostr_pubkey do
+            :ok = DidAccountCache.put_nostr_binding(nostr_pubkey, holder_did, tier)
+            Map.put(body, :nostr_pubkey, nostr_pubkey)
+          else
+            body
+          end
+
+        send_json(conn, 200, body)
 
       :not_found ->
         send_json(conn, 404, %{error: "holder_not_found"})

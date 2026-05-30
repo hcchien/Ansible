@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:ansible_node/services/vc_presentation_service.dart';
+import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -67,6 +69,78 @@ void main() {
       expect(history.single.result, WalletPresentationResult.approved);
       expect(history.single.verifierAudience, 'https://relay.trisaura.io');
       expect(history.single.nonceHash, isNot('post-nonce'));
+    },
+  );
+
+  test(
+    'creates a Nostr binding event when a Nostr pubkey is supplied',
+    () async {
+      final repo = InMemoryWalletRepository();
+      await repo.saveCredential(
+        metadata: WalletCredential(
+          credentialId: 'urn:uuid:test-humanity',
+          issuerDid: 'did:web:issuer.trisaura.io',
+          holderDid: 'did:key:z6Mkholder',
+          credentialType: 'TrisAuraHumanityCredential',
+          status: WalletCredentialStatus.active,
+          validFrom: DateTime.utc(2026, 5, 4),
+          validUntil: DateTime.utc(2026, 8, 2),
+          displayName: 'Verified Human',
+          createdAt: DateTime.utc(2026, 5, 4),
+          updatedAt: DateTime.utc(2026, 5, 4),
+        ),
+        encryptedPayload: jsonEncode(_humanityFixture),
+        encryptionVersion: 'test-json',
+      );
+      final nostrSigner = _FakeNostrEventSigner('c' * 128);
+
+      final service = VcPresentationService(
+        walletRepository: repo,
+        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        proofVerifier: _FakeProofVerifier.valid(),
+        proofSigner: _FakeVpProofSigner('holder-proof'),
+        nostrBindingSigner: nostrSigner,
+        statusResolver: (_) async => CredentialStatus.active,
+        presentationIdFactory: () => 'vp-test',
+      );
+
+      final envelope = await service.createForPost(
+        holderDid: 'did:key:z6Mkholder',
+        audience: 'https://relay.trisaura.io',
+        nonce: 'post-nonce',
+        now: DateTime.utc(2026, 5, 5, 12),
+        nostrPubkey: 'b' * 64,
+      );
+
+      expect(envelope, isNotNull);
+      final binding = envelope!.nostrBinding!;
+      final event = binding['event']! as Map<String, Object?>;
+      final tags = (event['tags']! as List).cast<List<String>>();
+      final expectedVpHash = sha256
+          .convert(
+            utf8.encode(
+              VpBuilder.canonicalPayload(envelope.verifiablePresentation),
+            ),
+          )
+          .toString();
+
+      expect(event['kind'], VcPresentationService.nostrBindingKind);
+      expect(event['pubkey'], 'b' * 64);
+      expect(
+        event['created_at'],
+        DateTime.utc(2026, 5, 5, 12).millisecondsSinceEpoch ~/ 1000,
+      );
+      expect(event['content'], '');
+      expect(
+        _hasTag(tags, 'd', VcPresentationService.nostrBindingMarker),
+        isTrue,
+      );
+      expect(_hasTag(tags, 'holder', 'did:key:z6Mkholder'), isTrue);
+      expect(_hasTag(tags, 'challenge', 'post-nonce'), isTrue);
+      expect(_hasTag(tags, 'domain', 'https://relay.trisaura.io'), isTrue);
+      expect(_hasTag(tags, 'vp_sha256', expectedVpHash), isTrue);
+      expect(event['id'], nostrSigner.lastDraft!.computeId());
+      expect(event['sig'], 'c' * 128);
     },
   );
 
@@ -192,6 +266,12 @@ final _humanityFixture = <String, Object?>{
   'proof': {'proofValue': 'issuer-proof'},
 };
 
+bool _hasTag(List<List<String>> tags, String name, String value) {
+  return tags.any(
+    (tag) => tag.length >= 2 && tag[0] == name && tag[1] == value,
+  );
+}
+
 class _FakeProofVerifier implements ProofVerifier {
   final bool _valid;
 
@@ -215,5 +295,26 @@ class _FakeVpProofSigner implements VpProofSigner {
     lastCanonicalPayload = canonicalPayload;
     expect(unsignedPresentation['proof'], isA<Map<String, Object?>>());
     return proof;
+  }
+}
+
+class _FakeNostrEventSigner implements NostrEventSigner {
+  final String signatureHex;
+  NostrEventDraft? lastDraft;
+
+  _FakeNostrEventSigner(this.signatureHex);
+
+  @override
+  Future<NostrEvent> sign(NostrEventDraft draft) async {
+    lastDraft = draft;
+    return NostrEvent(
+      id: draft.computeId(),
+      pubkey: draft.pubkey,
+      createdAt: draft.createdAt,
+      kind: draft.kind,
+      tags: draft.tags,
+      content: draft.content,
+      sig: signatureHex,
+    );
   }
 }

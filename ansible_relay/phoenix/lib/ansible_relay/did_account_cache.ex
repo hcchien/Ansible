@@ -7,6 +7,7 @@ defmodule AnsibleRelay.DidAccountCache do
     :handle_index        — handle → DID (for handle-based lookups)
     :registration_nonces — public_key_hex → {nonce, expires_at} (TTL: 5 minutes)
     :pending_handles     — handle → public_key_hex while registration is pending
+    :nostr_binding_cache — Nostr pubkey → short-lived holder DID trust binding
   """
 
   use GenServer
@@ -18,6 +19,7 @@ defmodule AnsibleRelay.DidAccountCache do
   @handle_table :handle_index
   @nonce_table :registration_nonces
   @pending_handle_table :pending_handles
+  @nostr_binding_table :nostr_binding_cache
   @nonce_ttl_seconds 300
 
   # --- Public API ---
@@ -113,8 +115,56 @@ defmodule AnsibleRelay.DidAccountCache do
     :ets.delete_all_objects(@handle_table)
     :ets.delete_all_objects(@nonce_table)
     :ets.delete_all_objects(@pending_handle_table)
+    :ets.delete_all_objects(@nostr_binding_table)
     :ok
   end
+
+  @doc "Store a short-lived relay-local Nostr pubkey trust binding."
+  def put_nostr_binding(nostr_pubkey, holder_did, reputation_tier, opts \\ [])
+      when is_binary(nostr_pubkey) and is_binary(holder_did) and is_binary(reputation_tier) do
+    ttl_seconds =
+      Keyword.get(
+        opts,
+        :ttl_seconds,
+        Application.get_env(:ansible_relay, :nostr_binding_ttl_seconds, 300)
+      )
+
+    now = DateTime.utc_now()
+    expires_at = Keyword.get(opts, :expires_at) || DateTime.add(now, ttl_seconds, :second)
+
+    :ets.insert(
+      @nostr_binding_table,
+      {String.downcase(nostr_pubkey),
+       %{
+         holder_did: holder_did,
+         reputation_tier: reputation_tier,
+         bound_at: now,
+         expires_at: expires_at
+       }}
+    )
+
+    :ok
+  end
+
+  @doc "Look up an active relay-local Nostr pubkey trust binding."
+  def get_nostr_binding(nostr_pubkey) when is_binary(nostr_pubkey) do
+    key = String.downcase(nostr_pubkey)
+
+    case :ets.lookup(@nostr_binding_table, key) do
+      [{^key, %{expires_at: expires_at} = entry}] ->
+        if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
+          {:ok, entry}
+        else
+          :ets.delete(@nostr_binding_table, key)
+          :not_found
+        end
+
+      [] ->
+        :not_found
+    end
+  end
+
+  def get_nostr_binding(_nostr_pubkey), do: :not_found
 
   @doc "Issue a registration nonce for a public key (TTL: 5 minutes)."
   def issue_nonce(public_key_hex, handle) when is_binary(public_key_hex) and is_binary(handle) do
@@ -177,6 +227,7 @@ defmodule AnsibleRelay.DidAccountCache do
     :ets.new(@handle_table, [:set, :public, :named_table])
     :ets.new(@nonce_table, [:set, :public, :named_table])
     :ets.new(@pending_handle_table, [:set, :public, :named_table])
+    :ets.new(@nostr_binding_table, [:set, :public, :named_table, read_concurrency: true])
     Logger.info("DidAccountCache ETS tables created")
     {:ok, %{}}
   end

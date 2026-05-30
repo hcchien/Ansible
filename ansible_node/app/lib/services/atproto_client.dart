@@ -183,10 +183,12 @@ class AtProtoClient {
   Future<String> presentVp({
     required String holderDid,
     required Map<String, dynamic> vp,
+    Map<String, dynamic>? nostrBinding,
   }) async {
     final body = await _postJson('/api/v2/reputation/present', {
       'holder_did': holderDid,
       'vp': vp,
+      if (nostrBinding != null) 'nostr_binding': nostrBinding,
     });
     return body['reputation_tier'] as String? ?? 'basic';
   }

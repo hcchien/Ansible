@@ -9,7 +9,7 @@ config :ansible_relay, AnsibleRelay.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 5
 
-config :ansible_relay, :port, 4002
+config :ansible_relay, :port, String.to_integer(System.get_env("RELAY_TEST_PORT") || "4002")
 config :ansible_relay, :persist_did_accounts, false
 config :ansible_relay, :allow_dev_zkp_proofs, true
 

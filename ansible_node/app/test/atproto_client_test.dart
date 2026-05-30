@@ -132,4 +132,36 @@ void main() {
       expect(await client.resolveHandle('alice.trisaura.io'), 'did:plc:alice');
     },
   );
+
+  test('presentVp includes an optional Nostr binding payload', () async {
+    final client = AtProtoClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/v2/reputation/present');
+
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['holder_did'], 'did:plc:alice');
+        expect(body['vp'], {'holder': 'did:plc:alice'});
+        expect(body['nostr_binding'], {
+          'event': {'pubkey': 'b' * 64},
+        });
+
+        return http.Response(
+          jsonEncode({'reputation_tier': 'verified_human'}),
+          200,
+        );
+      }),
+    );
+
+    final tier = await client.presentVp(
+      holderDid: 'did:plc:alice',
+      vp: {'holder': 'did:plc:alice'},
+      nostrBinding: {
+        'event': {'pubkey': 'b' * 64},
+      },
+    );
+
+    expect(tier, 'verified_human');
+  });
 }

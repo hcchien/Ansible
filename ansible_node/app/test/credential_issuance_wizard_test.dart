@@ -29,7 +29,7 @@ void main() {
     expect(find.text('Email OTP / Legacy'), findsOneWidget);
   });
 
-  testWidgets('selecting TW provider shows provider flow panel', (
+  testWidgets('selecting TW provider shows MobileMoica disclosure panel', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -46,7 +46,8 @@ void main() {
     await tester.tap(find.text('TW 身份驗證'));
     await tester.pumpAndSettle();
 
-    expect(find.text('開始驗證'), findsOneWidget);
+    expect(find.textContaining('不是 zkID'), findsOneWidget);
+    expect(find.text('開啟 TW FidO'), findsOneWidget);
   });
 
   testWidgets('selecting email shows email OTP panel', (tester) async {
@@ -292,9 +293,11 @@ class _FakeRelayClient extends AtProtoClient {
   Future<String> presentVp({
     required String holderDid,
     required Map<String, dynamic> vp,
+    Map<String, dynamic>? nostrBinding,
   }) async {
     expect(holderDid, 'did:plc:abcdefghijklmnop');
     expect(vp['holder'], holderDid);
+    expect(nostrBinding, isNull);
     return 'basic';
   }
 }
