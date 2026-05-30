@@ -7,6 +7,7 @@ import '../services/oid4vp_presentation_service.dart';
 import '../services/vc_issuer_client.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import '../widgets/elix_focus_route.dart';
 import 'credential_issuance_wizard.dart';
 import 'wallet_verifier_scanner_screen.dart';
 
@@ -64,7 +65,8 @@ class _WalletScreenState extends State<WalletScreen> {
 
   void _openVerifierScanner() {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      elixFocusPageRoute<void>(
+        settings: const RouteSettings(name: '/wallet/verifier-scan'),
         builder:
             widget.verifierScannerBuilder ??
             (_) => WalletVerifierScannerScreen(
@@ -133,6 +135,8 @@ class _WalletScreenState extends State<WalletScreen> {
                 ),
               ),
               const SizedBox(height: 18),
+              _WalletVerifierRequestCard(onScan: _openVerifierScanner),
+              const SizedBox(height: 14),
               _IdentityCard(
                 primary: true,
                 name: text.t('rootName'),
@@ -151,23 +155,6 @@ class _WalletScreenState extends State<WalletScreen> {
                     onPressed: _openAddCredential,
                     icon: const Icon(Icons.add, size: 18),
                     label: Text(text.t('addCredential')),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: AnsibleDesign.rule,
-                        width: 0.5,
-                        style: BorderStyle.solid,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _openVerifierScanner,
-                    icon: const Icon(Icons.qr_code_scanner, size: 18),
-                    label: Text(text.t('scanVerifierRequest')),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(
                         color: AnsibleDesign.rule,
@@ -238,6 +225,98 @@ class _WalletScreenState extends State<WalletScreen> {
   static String _fragment(String value) {
     if (value.length <= 16) return 'pk · $value';
     return 'pk · ${value.substring(0, 6)} ... ${value.substring(value.length - 4)}';
+  }
+}
+
+class _WalletVerifierRequestCard extends StatelessWidget {
+  const _WalletVerifierRequestCard({required this.onScan});
+
+  final VoidCallback onScan;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = SubpageL10n.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const Key('wallet_verifier_scan_entry'),
+        onTap: onScan,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AnsibleDesign.paperElev,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AnsibleDesign.ochre, width: 0.5),
+            boxShadow: [
+              BoxShadow(
+                color: AnsibleDesign.ink.withValues(alpha: 0.06),
+                blurRadius: 14,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AnsibleDesign.ochre.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AnsibleDesign.ochre.withValues(alpha: 0.36),
+                    width: 0.5,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner,
+                  color: AnsibleDesign.ochre,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnsibleMonoLabel(text.t('scanVerifierRequestKicker')),
+                    const SizedBox(height: 5),
+                    Text(
+                      text.t('scanVerifierRequest'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w500,
+                        color: AnsibleDesign.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      text.t('scanVerifierRequestSub'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 10,
+                        letterSpacing: 0.8,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(
+                Icons.chevron_right,
+                color: AnsibleDesign.inkFaint,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

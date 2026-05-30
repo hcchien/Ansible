@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' show lerpDouble;
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_domain/ansible_domain.dart';
@@ -12,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../widgets/agent_sheet.dart';
+import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
@@ -59,10 +59,12 @@ enum _ElixTab { feed, circle, inbox, you }
 /// The two primary swipe boards.
 enum _Board { personal, forum }
 
+enum _PersonalFilter { all, murmur, note }
+
+enum _BoardMotion { light, book, cube }
+
 // Within the "圈內" room, a sub-selection between murmur and notes.
 enum _CircleTab { murmur, notes }
-
-// _PersonalFilter removed — personal board no longer uses filter tabs (A·01 design)
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -133,13 +135,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   DateTime? _lastAutoSyncAt;
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
+  _PersonalFilter _personalFilter = _PersonalFilter.all;
   _ElixTab _selectedTab = _ElixTab.feed;
   _Board _selectedBoard = _Board.personal;
+  _BoardMotion _boardMotion = _BoardMotion.book;
   bool _showCoachmark = false;
   _CircleTab _selectedCircleTab = _CircleTab.murmur;
   late final PageController _pageController;
   Map<_ElixTab, ElixScreenStyle> _screenStyles = {
-    for (final tab in _ElixTab.values) tab: ElixScreenStyle.paper,
+    for (final tab in _ElixTab.values)
+      tab: tab == _ElixTab.feed ? ElixScreenStyle.ink : ElixScreenStyle.paper,
   };
   final _uuid = const Uuid();
 
@@ -207,6 +212,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(_loadScreenStyles());
+      unawaited(_loadBoardMotion());
       unawaited(_loadData());
       unawaited(_runForegroundPullIfConfigured());
       unawaited(_murmurIndexingService.indexAllPending());
@@ -341,8 +347,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _loadData();
   }
 
+  void _selectPersonalFilter(_PersonalFilter filter) {
+    setState(() => _personalFilter = filter);
+  }
+
   static String _screenStyleKey(_ElixTab tab) =>
       'elix-screen-style.${tab.name}';
+  static const _boardMotionKey = 'elix-board-motion';
 
   Future<void> _loadScreenStyles() async {
     final prefs = await SharedPreferences.getInstance();
@@ -350,9 +361,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     setState(() {
       _screenStyles = {
         for (final tab in _ElixTab.values)
-          tab: ElixScreenStyleUi.fromStorage(
-            prefs.getString(_screenStyleKey(tab)),
-          ),
+          tab: prefs.containsKey(_screenStyleKey(tab))
+              ? ElixScreenStyleUi.fromStorage(
+                  prefs.getString(_screenStyleKey(tab)),
+                )
+              : tab == _ElixTab.feed
+              ? ElixScreenStyle.ink
+              : ElixScreenStyle.paper,
       };
     });
   }
@@ -366,6 +381,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_screenStyleKey(tab), screenStyle.storageValue);
+  }
+
+  Future<void> _loadBoardMotion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_boardMotionKey);
+    if (!mounted || saved == null) return;
+    setState(() {
+      _boardMotion = _BoardMotion.values.firstWhere(
+        (motion) => motion.name == saved,
+        orElse: () => _BoardMotion.book,
+      );
+    });
+  }
+
+  Future<void> _setBoardMotion(_BoardMotion motion) async {
+    setState(() => _boardMotion = motion);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_boardMotionKey, motion.name);
   }
 
   void _handlePageChanged(int page) {
@@ -386,7 +419,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       unawaited(
         _pageController.animateToPage(
           tab.index,
-          duration: const Duration(milliseconds: 320),
+          duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
         ),
       );
@@ -406,7 +439,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       unawaited(
         _pageController.animateToPage(
           board.index,
-          duration: const Duration(milliseconds: 320),
+          duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
         ),
       );
@@ -444,22 +477,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
   }
 
-  String _tabLabel(_ElixTab tab) {
-    switch (tab) {
-      case _ElixTab.feed:
-        return '動態';
-      case _ElixTab.circle:
-        return '圈內';
-      case _ElixTab.inbox:
-        return '通知';
-      case _ElixTab.you:
-        return '你';
-    }
-  }
-
   void _openScreenStyleSheet(BuildContext context) {
-    final tab = _selectedTab;
-    final currentStyle = _screenStyles[tab] ?? ElixScreenStyle.paper;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AnsibleDesign.paper,
@@ -467,12 +485,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) => _ScreenStyleSheet(
-        screenLabel: _tabLabel(tab),
-        selected: currentStyle,
-        onSelected: (style) {
-          Navigator.pop(context);
-          unawaited(_setScreenStyle(tab, style));
-        },
+        personalStyle: _screenStyles[_ElixTab.feed] ?? ElixScreenStyle.ink,
+        forumStyle: _screenStyles[_ElixTab.circle] ?? ElixScreenStyle.paper,
+        motion: _boardMotion,
+        onPersonalStyleSelected: (style) =>
+            unawaited(_setScreenStyle(_ElixTab.feed, style)),
+        onForumStyleSelected: (style) =>
+            unawaited(_setScreenStyle(_ElixTab.circle, style)),
+        onMotionSelected: (motion) => unawaited(_setBoardMotion(motion)),
       ),
     );
   }
@@ -1124,7 +1144,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final currentScreenStyle =
-        (_screenStyles[_selectedTab] ?? ElixScreenStyle.paper).data;
+        (_screenStyles[_selectedTab] ?? ElixScreenStyle.paper).dataFor(
+          Theme.of(context).brightness,
+        );
     return Scaffold(
       body: SafeArea(
         child: Container(
@@ -1157,6 +1179,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onOpenBoards: compact ? () => _openBoardsSheet(context) : null,
                 feedFilter: _feedFilter,
                 onFeedFilterChanged: _selectFeedFilter,
+                personalFilter: _personalFilter,
+                onPersonalFilterChanged: _selectPersonalFilter,
                 hasSelectedBoard: _selectedBoardId != null,
                 selectedBoardId: _selectedBoardId,
                 boards: _boards,
@@ -1175,6 +1199,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onComposeTap: () => _openCompose(context),
                 onScreenStyleTap: () => _openScreenStyleSheet(context),
                 screenStyles: _screenStyles,
+                boardMotion: _boardMotion,
                 selectedCircleTab: _selectedCircleTab,
                 onCircleTabChanged: _selectCircleTab,
                 contentItemRepository: _contentItemRepo,
@@ -1475,6 +1500,8 @@ class _MainPanel extends StatelessWidget {
     this.onOpenBoards,
     required this.feedFilter,
     required this.onFeedFilterChanged,
+    required this.personalFilter,
+    required this.onPersonalFilterChanged,
     required this.hasSelectedBoard,
     required this.selectedBoardId,
     required this.boards,
@@ -1491,6 +1518,7 @@ class _MainPanel extends StatelessWidget {
     required this.onComposeTap,
     required this.onScreenStyleTap,
     required this.screenStyles,
+    required this.boardMotion,
     required this.selectedCircleTab,
     required this.onCircleTabChanged,
     required this.contentItemRepository,
@@ -1525,6 +1553,8 @@ class _MainPanel extends StatelessWidget {
   final VoidCallback? onOpenBoards;
   final FeedFilter feedFilter;
   final ValueChanged<FeedFilter> onFeedFilterChanged;
+  final _PersonalFilter personalFilter;
+  final ValueChanged<_PersonalFilter> onPersonalFilterChanged;
   final bool hasSelectedBoard;
   final String? selectedBoardId;
   final List<Board> boards;
@@ -1541,6 +1571,7 @@ class _MainPanel extends StatelessWidget {
   final VoidCallback onComposeTap;
   final VoidCallback onScreenStyleTap;
   final Map<_ElixTab, ElixScreenStyle> screenStyles;
+  final _BoardMotion boardMotion;
   final _CircleTab selectedCircleTab;
   final ValueChanged<_CircleTab> onCircleTabChanged;
   final ContentItemRepository contentItemRepository;
@@ -1559,20 +1590,12 @@ class _MainPanel extends StatelessWidget {
 
   // ── Personal board (個人版) — A·01 spec ──────────────────────────────────
   Widget _buildPersonalBoard(BuildContext context, bool compact) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final fgColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final mutedColor = dark
-        ? AnsibleDesign.darkInkMuted
-        : AnsibleDesign.inkMuted;
-    final faintColor = dark
-        ? AnsibleDesign.darkInkFaint
-        : AnsibleDesign.inkFaint;
-    final bgSoftColor = dark
-        ? AnsibleDesign.darkPaperElev
-        : AnsibleDesign.paperElev;
-    final borderSoft = dark
-        ? AnsibleDesign.darkRuleSoft
-        : AnsibleDesign.ruleSoft;
+    final styleData = ElixScreenStyleScope.dataOf(context);
+    final fgColor = styleData.foreground;
+    final mutedColor = styleData.muted;
+    final faintColor = styleData.faint;
+    final bgSoftColor = styleData.surface;
+    final borderSoft = styleData.rule;
     final emberColor = AnsibleDesign.ember;
 
     // A·01 time-ago formatting — matches design's "昨 14:36 / 前天 / MM.DD" style
@@ -1595,7 +1618,14 @@ class _MainPanel extends StatelessWidget {
       return '${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
     }
 
-    final allSorted = [...contentItems]
+    final filteredItems = switch (personalFilter) {
+      _PersonalFilter.all => contentItems,
+      _PersonalFilter.murmur =>
+        contentItems.where((item) => item.mode == ContentMode.murmur).toList(),
+      _PersonalFilter.note =>
+        contentItems.where((item) => item.mode == ContentMode.note).toList(),
+    };
+    final allSorted = [...filteredItems]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     // Split into this-week and earlier
@@ -1618,9 +1648,7 @@ class _MainPanel extends StatelessWidget {
     Widget diaryCard(ContentItem item) {
       final isNote = item.mode == ContentMode.note;
       final pipColor = isNote ? fgColor : emberColor;
-      final typeLabel = isNote
-          ? 'NOTE${item.body.isNotEmpty ? "" : ""}'
-          : 'MURMUR';
+      final typeLabel = isNote ? 'NOTE' : 'MURMUR';
 
       return GestureDetector(
         onTap: () {
@@ -1630,7 +1658,7 @@ class _MainPanel extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper,
+            color: styleData.background,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: borderSoft, width: 0.5),
           ),
@@ -1804,9 +1832,7 @@ class _MainPanel extends StatelessWidget {
                               fontFamily: AnsibleDesign.serif,
                               fontSize: 13,
                             ),
-                            backgroundColor: dark
-                                ? AnsibleDesign.darkPaper
-                                : AnsibleDesign.paper,
+                            backgroundColor: styleData.background,
                             side: BorderSide(color: borderSoft, width: 0.5),
                           ),
                         ),
@@ -1875,80 +1901,83 @@ class _MainPanel extends StatelessWidget {
   // ignore: unused_element -- retained for the forum surface while the swipe shell exposes primary tabs first.
   Widget _buildForum(BuildContext context, bool compact) {
     final l10n = context.l10n;
+    final styleData = ElixScreenStyleScope.dataOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FeedFilterTabs(selected: feedFilter, onChanged: onFeedFilterChanged),
-        const SizedBox(height: 12),
-        // Board actions row
-        LayoutBuilder(
-          builder: (context, actionConstraints) {
-            final actionWidth = compact
-                ? (actionConstraints.maxWidth - 10) / 2
-                : null;
-            Widget action(Widget child) =>
-                compact ? SizedBox(width: actionWidth, child: child) : child;
+        if (!compact) ...[
+          FeedFilterTabs(selected: feedFilter, onChanged: onFeedFilterChanged),
+          const SizedBox(height: 12),
+          // Board actions row
+          LayoutBuilder(
+            builder: (context, actionConstraints) {
+              final actionWidth = compact
+                  ? (actionConstraints.maxWidth - 10) / 2
+                  : null;
+              Widget action(Widget child) =>
+                  compact ? SizedBox(width: actionWidth, child: child) : child;
 
-            return Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                action(
-                  OutlinedButton.icon(
-                    onPressed: onCreateBoard,
-                    icon: const Icon(Icons.add),
-                    label: _ActionLabel(l10n.addBoardTooltip),
-                  ),
-                ),
-                action(
-                  FilledButton.icon(
-                    onPressed: hasSelectedBoard ? onCreateThread : null,
-                    icon: const Icon(Icons.forum_outlined),
-                    label: _ActionLabel(
-                      compact ? l10n.newDiscussion : l10n.createNewDiscussion,
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  action(
+                    OutlinedButton.icon(
+                      onPressed: onCreateBoard,
+                      icon: const Icon(Icons.add),
+                      label: _ActionLabel(l10n.addBoardTooltip),
                     ),
                   ),
-                ),
-                action(
-                  OutlinedButton.icon(
-                    onPressed: onManageBoards,
-                    icon: const Icon(Icons.settings_outlined),
-                    label: _ActionLabel(
-                      compact ? l10n.boardsShort : l10n.manageBoardsShort,
+                  action(
+                    FilledButton.icon(
+                      onPressed: hasSelectedBoard ? onCreateThread : null,
+                      icon: const Icon(Icons.forum_outlined),
+                      label: _ActionLabel(
+                        compact ? l10n.newDiscussion : l10n.createNewDiscussion,
+                      ),
                     ),
                   ),
-                ),
-                action(
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      if (hasSelectedBoard && selectedBoardId != null) {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => NoteEditorScreen(
-                              authorDid: did,
-                              boardId: selectedBoardId!,
-                              threadId: '',
-                              threadTitle:
-                                  boards
-                                      .where((b) => b.id == selectedBoardId)
-                                      .map((b) => b.title)
-                                      .firstOrNull ??
-                                  l10n.newDiscussion,
-                              atProtoClient: atProtoClient,
+                  action(
+                    OutlinedButton.icon(
+                      onPressed: onManageBoards,
+                      icon: const Icon(Icons.settings_outlined),
+                      label: _ActionLabel(
+                        compact ? l10n.boardsShort : l10n.manageBoardsShort,
+                      ),
+                    ),
+                  ),
+                  action(
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        if (hasSelectedBoard && selectedBoardId != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => NoteEditorScreen(
+                                authorDid: did,
+                                boardId: selectedBoardId!,
+                                threadId: '',
+                                threadTitle:
+                                    boards
+                                        .where((b) => b.id == selectedBoardId)
+                                        .map((b) => b.title)
+                                        .firstOrNull ??
+                                    l10n.newDiscussion,
+                                atProtoClient: atProtoClient,
+                              ),
                             ),
-                          ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.edit_outlined),
-                    label: _ActionLabel(l10n.newPost),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.edit_outlined),
+                      label: _ActionLabel(l10n.newPost),
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 16),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
         Expanded(
           child: loading
               ? const Center(child: CircularProgressIndicator())
@@ -1976,11 +2005,9 @@ class _MainPanel extends StatelessWidget {
         // Bottom action bar
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-            ),
-            color: AnsibleDesign.paper,
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: styleData.rule, width: 0.5)),
+            color: styleData.background,
           ),
           child: Row(
             children: [
@@ -2020,7 +2047,7 @@ class _MainPanel extends StatelessWidget {
 
     Widget wrapPage(_ElixTab tab, Widget child) {
       final style = screenStyles[tab] ?? ElixScreenStyle.paper;
-      final data = style.data;
+      final data = style.dataFor(Theme.of(context).brightness);
       return ElixScreenStyleScope(
         style: style,
         child: AnimatedContainer(
@@ -2048,6 +2075,7 @@ class _MainPanel extends StatelessWidget {
               pageController: pageController,
               pageIndex: _Board.personal.index,
               selectedBoard: selectedBoard,
+              motion: boardMotion,
               child: wrapPage(
                 _ElixTab.feed,
                 Padding(
@@ -2061,6 +2089,7 @@ class _MainPanel extends StatelessWidget {
               pageController: pageController,
               pageIndex: _Board.forum.index,
               selectedBoard: selectedBoard,
+              motion: boardMotion,
               child: wrapPage(
                 _ElixTab.circle,
                 Padding(
@@ -2078,6 +2107,7 @@ class _MainPanel extends StatelessWidget {
         _BoardSwipeProgressPill(
           pageController: pageController,
           compact: compact,
+          motion: boardMotion,
         ),
       ],
     );
@@ -2092,29 +2122,53 @@ class _MainPanel extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _TopBar(
-              onClearIdentity: onClearIdentity,
-              db: db,
-              did: did,
-              localeController: localeController,
-              opsQueueRepo: opsQueueRepo,
-              onSync: onSync,
-              syncing: syncing,
-              networkStatusService: networkStatusService,
-              contentItems: contentItems,
-              messengerSyncService: messengerSyncService,
-              contactAvailabilityResolver: contactAvailabilityResolver,
-              contactInputResolver: contactInputResolver,
-              hasActiveRelay: hasActiveRelay,
-              screenStyle: screenStyles[selectedTab] ?? ElixScreenStyle.paper,
-              onScreenStyleTap: onScreenStyleTap,
-              screenStyleLabel:
-                  (screenStyles[selectedTab] ?? ElixScreenStyle.paper).label,
-            ),
+            if (!compact)
+              _TopBar(
+                onClearIdentity: onClearIdentity,
+                db: db,
+                did: did,
+                localeController: localeController,
+                opsQueueRepo: opsQueueRepo,
+                onSync: onSync,
+                syncing: syncing,
+                networkStatusService: networkStatusService,
+                contentItems: contentItems,
+                messengerSyncService: messengerSyncService,
+                contactAvailabilityResolver: contactAvailabilityResolver,
+                contactInputResolver: contactInputResolver,
+                hasActiveRelay: hasActiveRelay,
+                screenStyle: screenStyles[selectedTab] ?? ElixScreenStyle.paper,
+                onScreenStyleTap: onScreenStyleTap,
+                screenStyleLabel:
+                    (screenStyles[selectedTab] ?? ElixScreenStyle.paper).label,
+              ),
             _BoardSwipeHeader(
               pageController: pageController,
               selectedBoard: selectedBoard,
               onTapBoard: onBoardChanged,
+              personalStyle: screenStyles[_ElixTab.feed] ?? ElixScreenStyle.ink,
+              forumStyle:
+                  screenStyles[_ElixTab.circle] ?? ElixScreenStyle.paper,
+              personalFilter: personalFilter,
+              onPersonalFilterChanged: onPersonalFilterChanged,
+              feedFilter: feedFilter,
+              onFeedFilterChanged: onFeedFilterChanged,
+              forumPostCount: posts.length,
+              onOpenPreferences: compact ? onScreenStyleTap : null,
+              onOpenSettings: compact
+                  ? () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => SettingsHomeScreen(
+                            db: db,
+                            did: did,
+                            localeController: localeController,
+                            onClearIdentity: onClearIdentity,
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
             ),
             Expanded(
               child: Stack(
@@ -2213,14 +2267,20 @@ class _ComposeActionItem extends StatelessWidget {
 
 class _ScreenStyleSheet extends StatelessWidget {
   const _ScreenStyleSheet({
-    required this.screenLabel,
-    required this.selected,
-    required this.onSelected,
+    required this.personalStyle,
+    required this.forumStyle,
+    required this.motion,
+    required this.onPersonalStyleSelected,
+    required this.onForumStyleSelected,
+    required this.onMotionSelected,
   });
 
-  final String screenLabel;
-  final ElixScreenStyle selected;
-  final ValueChanged<ElixScreenStyle> onSelected;
+  final ElixScreenStyle personalStyle;
+  final ElixScreenStyle forumStyle;
+  final _BoardMotion motion;
+  final ValueChanged<ElixScreenStyle> onPersonalStyleSelected;
+  final ValueChanged<ElixScreenStyle> onForumStyleSelected;
+  final ValueChanged<_BoardMotion> onMotionSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -2243,32 +2303,102 @@ class _ScreenStyleSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              Text(
-                '$screenLabel Screen 風格',
-                style: const TextStyle(
+              const Text(
+                '介面與動態',
+                style: TextStyle(
                   fontFamily: AnsibleDesign.serif,
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
                   color: AnsibleDesign.ink,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 14),
+              const AnsibleMonoLabel('每個版的氣氛'),
+              const SizedBox(height: 8),
               const Text(
-                '只套用到目前 Screen，並保存在這台裝置上。',
+                '每個版可以有自己的光。Swipe 換版時，顏色也會跟著換。',
                 style: TextStyle(
                   fontFamily: AnsibleDesign.serif,
-                  fontSize: 12.5,
+                  fontSize: 13,
+                  height: 1.65,
                   color: AnsibleDesign.inkFaint,
                   fontStyle: FontStyle.italic,
                 ),
               ),
-              const SizedBox(height: 16),
-              for (final style in ElixScreenStyle.values)
-                _ScreenStyleOption(
-                  style: style,
-                  selected: selected == style,
-                  onTap: () => onSelected(style),
+              const SizedBox(height: 14),
+              _BoardAtmosphereCard(
+                boardLabel: '個人版',
+                boardMeta: '寫給自己',
+                selected: personalStyle,
+                keyPrefix: 'feed',
+                onSelected: onPersonalStyleSelected,
+              ),
+              const SizedBox(height: 10),
+              _BoardAtmosphereCard(
+                boardLabel: '討論區',
+                boardMeta: '白天的廣場',
+                selected: forumStyle,
+                keyPrefix: 'circle',
+                onSelected: onForumStyleSelected,
+              ),
+              const SizedBox(height: 18),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AnsibleDesign.paperElev,
+                  border: Border(
+                    left: BorderSide(color: AnsibleDesign.ochre, width: 2),
+                  ),
                 ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: Text(
+                    '不開放選別的顏色。寫過的東西仍是同一個品牌，只是換了一面光。',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 12,
+                      height: 1.65,
+                      color: AnsibleDesign.inkMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const AnsibleMonoLabel('換版的動態'),
+              const SizedBox(height: 8),
+              const Text(
+                '如果系統開了「減少動態」，Elix 會自動降回平移。',
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 13,
+                  height: 1.65,
+                  color: AnsibleDesign.inkFaint,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _MotionOption(
+                key: const Key('board_motion_light'),
+                title: '輕 · 平移',
+                subtitle: '兩張紙左右平移，沒有立體感。',
+                selected: motion == _BoardMotion.light,
+                onTap: () => onMotionSelected(_BoardMotion.light),
+              ),
+              _MotionOption(
+                key: const Key('board_motion_book'),
+                title: '中 · 翻書',
+                badge: '預設',
+                subtitle: '兩個版像書的左右頁，輕微 perspective。',
+                selected: motion == _BoardMotion.book,
+                onTap: () => onMotionSelected(_BoardMotion.book),
+              ),
+              _MotionOption(
+                key: const Key('board_motion_cube'),
+                title: '深 · 翻立方',
+                subtitle: '較完整的 rotateY，切換感更強。',
+                selected: motion == _BoardMotion.cube,
+                onTap: () => onMotionSelected(_BoardMotion.cube),
+              ),
             ],
           ),
         ),
@@ -2277,8 +2407,100 @@ class _ScreenStyleSheet extends StatelessWidget {
   }
 }
 
-class _ScreenStyleOption extends StatelessWidget {
-  const _ScreenStyleOption({
+class _BoardAtmosphereCard extends StatelessWidget {
+  const _BoardAtmosphereCard({
+    required this.boardLabel,
+    required this.boardMeta,
+    required this.selected,
+    required this.keyPrefix,
+    required this.onSelected,
+  });
+
+  final String boardLabel;
+  final String boardMeta;
+  final ElixScreenStyle selected;
+  final String keyPrefix;
+  final ValueChanged<ElixScreenStyle> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paper,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+      ),
+      child: Container(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                if (keyPrefix == 'feed') ...[
+                  const AnsibleMark(size: 13),
+                  const SizedBox(width: 8),
+                ] else ...[
+                  Container(
+                    width: 13,
+                    height: 13,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AnsibleDesign.ink, width: 1.2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  boardLabel,
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w500,
+                    color: AnsibleDesign.ink,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  boardMeta,
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    letterSpacing: 1.1,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                for (final style in ElixScreenStyle.values) ...[
+                  Expanded(
+                    child: _ScreenStyleSwatch(
+                      key: Key(
+                        'screen_style_choice_${keyPrefix}_${style.name}',
+                      ),
+                      style: style,
+                      selected: selected == style,
+                      onTap: () => onSelected(style),
+                    ),
+                  ),
+                  if (style != ElixScreenStyle.values.last)
+                    const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScreenStyleSwatch extends StatelessWidget {
+  const _ScreenStyleSwatch({
+    super.key,
     required this.style,
     required this.selected,
     required this.onTap,
@@ -2290,75 +2512,236 @@ class _ScreenStyleOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = style.data;
     return InkWell(
-      key: Key('screen_style_choice_${style.name}'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+        decoration: BoxDecoration(
+          color: selected ? AnsibleDesign.paperElev : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? AnsibleDesign.ochre : AnsibleDesign.rule,
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            _StylePreview(style: style),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  selected ? Icons.radio_button_checked : Icons.circle_outlined,
+                  size: 10,
+                  color: selected
+                      ? AnsibleDesign.ochre
+                      : AnsibleDesign.inkFaint,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    style.zhLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                      color: selected
+                          ? AnsibleDesign.ink
+                          : AnsibleDesign.inkMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StylePreview extends StatelessWidget {
+  const _StylePreview({required this.style});
+
+  final ElixScreenStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = style.dataFor(Theme.of(context).brightness);
+    final decoration = style == ElixScreenStyle.system
+        ? BoxDecoration(
+            borderRadius: BorderRadius.circular(5),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: [0.5, 0.5],
+              colors: [AnsibleDesign.paper, AnsibleDesign.darkPaper],
+            ),
+          )
+        : BoxDecoration(
+            color: data.background,
+            borderRadius: BorderRadius.circular(5),
+          );
+    final lineColor = style == ElixScreenStyle.ink
+        ? AnsibleDesign.darkInk
+        : AnsibleDesign.ink;
+    final mutedLine = style == ElixScreenStyle.ink
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
+    final dotColor = style == ElixScreenStyle.ink
+        ? AnsibleDesign.darkOchre
+        : AnsibleDesign.ochre;
+
+    return Container(
+      height: 48,
+      decoration: decoration,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 8,
+            left: 8,
+            child: Container(
+              width: 18,
+              height: 1.5,
+              decoration: BoxDecoration(
+                color: lineColor,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 14,
+            left: 8,
+            child: Container(
+              width: 28,
+              height: 1.5,
+              decoration: BoxDecoration(
+                color: mutedLine,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 7,
+            bottom: 7,
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MotionOption extends StatelessWidget {
+  const _MotionOption({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+    this.badge,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: selected ? AnsibleDesign.paperElev : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? data.accent : AnsibleDesign.ruleSoft,
+            color: selected ? AnsibleDesign.ochre : AnsibleDesign.rule,
             width: 0.5,
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: data.background,
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: data.rule, width: 0.5),
-              ),
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Container(
-                  width: 13,
-                  height: 13,
-                  margin: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: data.accent,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.circle_outlined,
+              size: 16,
+              color: selected ? AnsibleDesign.ochre : AnsibleDesign.inkFaint,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    style.zhLabel,
-                    style: const TextStyle(
-                      fontFamily: AnsibleDesign.serif,
-                      fontSize: 14.5,
-                      color: AnsibleDesign.ink,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontFamily: AnsibleDesign.serif,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                            color: AnsibleDesign.ink,
+                          ),
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: AnsibleDesign.ochre,
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            badge!,
+                            style: const TextStyle(
+                              fontFamily: AnsibleDesign.mono,
+                              fontSize: 9.5,
+                              letterSpacing: 1.1,
+                              color: AnsibleDesign.ochre,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${style.label.toUpperCase()} · ${style.description}',
+                    subtitle,
                     style: const TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 8.5,
-                      letterSpacing: 1.2,
-                      color: AnsibleDesign.inkFaint,
+                      fontFamily: AnsibleDesign.serif,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 12,
+                      color: AnsibleDesign.inkMuted,
                     ),
                   ),
                 ],
               ),
-            ),
-            Icon(
-              selected ? Icons.check_circle : Icons.circle_outlined,
-              size: 18,
-              color: selected ? data.accent : AnsibleDesign.inkFaint,
             ),
           ],
         ),
@@ -2412,7 +2795,7 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styleData = screenStyle.data;
+    final styleData = screenStyle.dataFor(Theme.of(context).brightness);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -2582,12 +2965,14 @@ class _BoardFlipPage extends StatelessWidget {
     required this.pageController,
     required this.pageIndex,
     required this.selectedBoard,
+    required this.motion,
     required this.child,
   });
 
   final PageController pageController;
   final int pageIndex;
   final _Board selectedBoard;
+  final _BoardMotion motion;
   final Widget child;
 
   @override
@@ -2606,13 +2991,18 @@ class _BoardFlipPage extends StatelessWidget {
         final delta = (currentPage - pageIndex).clamp(-1.0, 1.0).toDouble();
         final depth = delta.abs();
         final matrix = Matrix4.identity();
-        if (reduceMotion) {
+        if (reduceMotion || motion == _BoardMotion.light) {
           matrix.translateByDouble(-delta * 10.0, 0.0, 0.0, 1.0);
-        } else {
+        } else if (motion == _BoardMotion.book) {
           matrix
             ..setEntry(3, 2, 0.0012)
             ..translateByDouble(-delta * 28.0, 0.0, 0.0, 1.0)
             ..rotateY(-delta * 0.56);
+        } else {
+          matrix
+            ..setEntry(3, 2, 0.0018)
+            ..translateByDouble(-delta * 44.0, 0.0, 0.0, 1.0)
+            ..rotateY(-delta * 1.18);
         }
 
         final hinge = delta >= 0 ? Alignment.centerLeft : Alignment.centerRight;
@@ -2629,7 +3019,7 @@ class _BoardFlipPage extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               child!,
-              if (!reduceMotion && depth > 0.01)
+              if (!reduceMotion && motion != _BoardMotion.light && depth > 0.01)
                 IgnorePointer(
                   child: Opacity(
                     opacity: depth.clamp(0.0, 0.82).toDouble(),
@@ -2669,10 +3059,12 @@ class _BoardSwipeProgressPill extends StatelessWidget {
   const _BoardSwipeProgressPill({
     required this.pageController,
     required this.compact,
+    required this.motion,
   });
 
   final PageController pageController;
   final bool compact;
+  final _BoardMotion motion;
 
   @override
   Widget build(BuildContext context) {
@@ -2734,7 +3126,9 @@ class _BoardSwipeProgressPill extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '$targetLabel · $percent%',
+                        motion == _BoardMotion.book
+                            ? '$targetLabel · $percent%'
+                            : targetLabel,
                         style: TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 10,
@@ -2760,22 +3154,35 @@ class _BoardSwipeHeader extends StatelessWidget {
     required this.pageController,
     required this.selectedBoard,
     required this.onTapBoard,
+    required this.personalStyle,
+    required this.forumStyle,
+    required this.personalFilter,
+    required this.onPersonalFilterChanged,
+    required this.feedFilter,
+    required this.onFeedFilterChanged,
+    required this.forumPostCount,
+    this.onOpenPreferences,
+    this.onOpenSettings,
   });
 
   final PageController pageController;
   final _Board selectedBoard;
   final ValueChanged<_Board> onTapBoard;
+  final ElixScreenStyle personalStyle;
+  final ElixScreenStyle forumStyle;
+  final _PersonalFilter personalFilter;
+  final ValueChanged<_PersonalFilter> onPersonalFilterChanged;
+  final FeedFilter feedFilter;
+  final ValueChanged<FeedFilter> onFeedFilterChanged;
+  final int forumPostCount;
+  final VoidCallback? onOpenPreferences;
+  final VoidCallback? onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final faintColor = dark
-        ? AnsibleDesign.darkInkFaint
-        : AnsibleDesign.inkFaint;
-    final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
-    final ruleColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
-    final bgColor = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+    final brightness = Theme.of(context).brightness;
+    final personalData = personalStyle.dataFor(brightness);
+    final forumData = forumStyle.dataFor(brightness);
 
     return AnimatedBuilder(
       animation: pageController,
@@ -2784,6 +3191,37 @@ class _BoardSwipeHeader extends StatelessWidget {
           pageController,
           selectedBoard.index.toDouble(),
         ).clamp(0.0, 1.0).toDouble();
+        final bgColor = Color.lerp(
+          personalData.background,
+          forumData.background,
+          page,
+        )!;
+        final ruleColor = Color.lerp(personalData.rule, forumData.rule, page)!;
+        final fgColor = Color.lerp(
+          personalData.foreground,
+          forumData.foreground,
+          page,
+        )!;
+        final faintColor = Color.lerp(
+          personalData.faint,
+          forumData.faint,
+          page,
+        )!;
+        final mutedColor = Color.lerp(
+          personalData.muted,
+          forumData.muted,
+          page,
+        )!;
+        final surfaceColor = Color.lerp(
+          personalData.surface,
+          forumData.surface,
+          page,
+        )!;
+        final ochreColor = Color.lerp(
+          personalData.accent,
+          forumData.accent,
+          page,
+        )!;
 
         return Container(
           color: bgColor,
@@ -2791,74 +3229,99 @@ class _BoardSwipeHeader extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Stack(
+                alignment: Alignment.topCenter,
                 children: [
-                  _boardButton(
-                    board: _Board.personal,
-                    label: '個人版',
-                    tooltip: '個人版 · 你的 Note 和 Murmur',
-                    active: page < 0.5,
-                    textColor: Color.lerp(inkColor, faintColor, page)!,
-                    ochreColor: ochreColor,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _boardButton(
+                        board: _Board.personal,
+                        label: '個人版',
+                        tooltip: '個人版 · 你的 Note 和 Murmur',
+                        active: page < 0.5,
+                        showMark: page < 0.5,
+                        underlineOpacity: (1 - page).clamp(0.0, 1.0),
+                        textColor: Color.lerp(fgColor, faintColor, page)!,
+                        ochreColor: ochreColor,
+                      ),
+                      const SizedBox(width: 32),
+                      _boardButton(
+                        board: _Board.forum,
+                        label: '討論區',
+                        tooltip: '討論區 · 追蹤的人與板',
+                        active: page >= 0.5,
+                        showMark: false,
+                        underlineOpacity: page.clamp(0.0, 1.0),
+                        textColor: Color.lerp(faintColor, fgColor, page)!,
+                        ochreColor: ochreColor,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  _boardButton(
-                    board: _Board.forum,
-                    label: '討論區',
-                    tooltip: '討論區 · 追蹤的人與板',
-                    active: page >= 0.5,
-                    textColor: Color.lerp(faintColor, inkColor, page)!,
-                    ochreColor: ochreColor,
-                  ),
+                  if (onOpenPreferences != null || onOpenSettings != null)
+                    Positioned(
+                      right: 0,
+                      top: -4,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (onOpenPreferences != null)
+                            IconButton(
+                              key: const Key('screen_style_button'),
+                              onPressed: onOpenPreferences,
+                              icon: const Icon(
+                                Icons.palette_outlined,
+                                size: 18,
+                              ),
+                              color: faintColor,
+                              tooltip: '介面與動態',
+                              constraints: const BoxConstraints.tightFor(
+                                width: 30,
+                                height: 34,
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                          if (onOpenSettings != null)
+                            IconButton(
+                              key: const Key('settings_button'),
+                              onPressed: onOpenSettings,
+                              icon: const Icon(Icons.person_outline, size: 19),
+                              color: faintColor,
+                              tooltip: '設定',
+                              constraints: const BoxConstraints.tightFor(
+                                width: 30,
+                                height: 34,
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  const itemW = 80.0;
-                  final centerX = constraints.maxWidth / 2;
-                  const underlineW = 40.0;
-                  const personalCenter = -(itemW / 2 + 2);
-                  const forumCenter = (itemW / 2 + 2);
-                  final offsetX = lerpDouble(
-                    personalCenter,
-                    forumCenter,
-                    page,
-                  )!;
-
-                  return SizedBox(
-                    height: 2,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: ruleColor,
-                                  width: 0.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: centerX + offsetX - underlineW / 2,
-                          top: 0,
-                          width: underlineW,
-                          height: 2,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: ochreColor,
-                              borderRadius: BorderRadius.circular(1),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 6, bottom: 6),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: ruleColor, width: 0.5)),
+                ),
+                child: page < 0.5
+                    ? _personalMetaRow(
+                        fgColor: fgColor,
+                        mutedColor: mutedColor,
+                        faintColor: faintColor,
+                        surfaceColor: surfaceColor,
+                        ruleColor: ruleColor,
+                        ochreColor: ochreColor,
+                      )
+                    : _forumMetaRow(
+                        fgColor: fgColor,
+                        mutedColor: mutedColor,
+                        faintColor: faintColor,
+                        surfaceColor: surfaceColor,
+                        ruleColor: ruleColor,
+                        ochreColor: ochreColor,
+                      ),
               ),
             ],
           ),
@@ -2872,6 +3335,8 @@ class _BoardSwipeHeader extends StatelessWidget {
     required String label,
     required String tooltip,
     required bool active,
+    required bool showMark,
+    required double underlineOpacity,
     required Color textColor,
     required Color ochreColor,
   }) {
@@ -2884,32 +3349,231 @@ class _BoardSwipeHeader extends StatelessWidget {
         child: InkWell(
           key: Key('board_switch_${board.name}'),
           onTap: () => onTapBoard(board),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(8),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: active
-                  ? Colors.transparent
-                  : ochreColor.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: active
-                    ? Colors.transparent
-                    : ochreColor.withValues(alpha: 0.28),
-                width: 0.5,
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showMark) ...[
+                      AnsibleMark(size: 13, color: textColor),
+                      const SizedBox(width: 7),
+                    ],
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 15,
+                        fontWeight: active ? FontWeight.w500 : FontWeight.w400,
+                        color: textColor,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Opacity(
+                  opacity: underlineOpacity,
+                  child: Container(
+                    width: 24,
+                    height: 2,
+                    decoration: BoxDecoration(
+                      color: ochreColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: AnsibleDesign.serif,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: textColor,
-                height: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _personalMetaRow({
+    required Color fgColor,
+    required Color mutedColor,
+    required Color faintColor,
+    required Color surfaceColor,
+    required Color ruleColor,
+    required Color ochreColor,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            _todayLabel(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1,
+              color: faintColor,
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _FocusHeaderChip(
+                label: '全部',
+                selected: personalFilter == _PersonalFilter.all,
+                onTap: () => onPersonalFilterChanged(_PersonalFilter.all),
+                fgColor: fgColor,
+                mutedColor: mutedColor,
+                surfaceColor: surfaceColor,
+                ruleColor: ruleColor,
+                ochreColor: ochreColor,
               ),
+              _FocusHeaderChip(
+                label: 'murmur',
+                selected: personalFilter == _PersonalFilter.murmur,
+                onTap: () => onPersonalFilterChanged(_PersonalFilter.murmur),
+                fgColor: fgColor,
+                mutedColor: mutedColor,
+                surfaceColor: surfaceColor,
+                ruleColor: ruleColor,
+                ochreColor: ochreColor,
+              ),
+              _FocusHeaderChip(
+                label: 'note',
+                selected: personalFilter == _PersonalFilter.note,
+                onTap: () => onPersonalFilterChanged(_PersonalFilter.note),
+                fgColor: fgColor,
+                mutedColor: mutedColor,
+                surfaceColor: surfaceColor,
+                ruleColor: ruleColor,
+                ochreColor: ochreColor,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _forumMetaRow({
+    required Color fgColor,
+    required Color mutedColor,
+    required Color faintColor,
+    required Color surfaceColor,
+    required Color ruleColor,
+    required Color ochreColor,
+  }) {
+    final activeFilter = feedFilter == FeedFilter.boards
+        ? FeedFilter.boards
+        : FeedFilter.following;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$forumPostCount 新 · 今',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1,
+              color: faintColor,
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _FocusHeaderChip(
+                label: '追蹤',
+                selected: activeFilter == FeedFilter.following,
+                onTap: () => onFeedFilterChanged(FeedFilter.following),
+                fgColor: fgColor,
+                mutedColor: mutedColor,
+                surfaceColor: surfaceColor,
+                ruleColor: ruleColor,
+                ochreColor: ochreColor,
+              ),
+              _FocusHeaderChip(
+                label: '訂閱板',
+                selected: activeFilter == FeedFilter.boards,
+                onTap: () => onFeedFilterChanged(FeedFilter.boards),
+                fgColor: fgColor,
+                mutedColor: mutedColor,
+                surfaceColor: surfaceColor,
+                ruleColor: ruleColor,
+                ochreColor: ochreColor,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _todayLabel() {
+    final now = DateTime.now();
+    const weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    final weekday = weekdays[now.weekday - 1];
+    return '${now.year}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')} $weekday';
+  }
+}
+
+class _FocusHeaderChip extends StatelessWidget {
+  const _FocusHeaderChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.fgColor,
+    required this.mutedColor,
+    required this.surfaceColor,
+    required this.ruleColor,
+    required this.ochreColor,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color fgColor;
+  final Color mutedColor;
+  final Color surfaceColor;
+  final Color ruleColor;
+  final Color ochreColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: selected ? surfaceColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? ruleColor : Colors.transparent,
+              width: 0.5,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 11.5,
+              color: selected ? fgColor : mutedColor,
+              height: 1.2,
             ),
           ),
         ),
@@ -3161,9 +3825,35 @@ class _CircleFullScreenState extends State<_CircleFullScreen> {
                     color: dark ? AnsibleDesign.darkInk : AnsibleDesign.ink,
                   ),
                   Expanded(
-                    child: _CircleTabNav(
-                      selected: _tab,
-                      onChanged: (t) => setState(() => _tab = t),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _tab == _CircleTab.murmur ? 'Murmur' : 'Note',
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.serif,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: dark
+                                ? AnsibleDesign.darkInk
+                                : AnsibleDesign.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _tab == _CircleTab.murmur
+                              ? '說一段不用想太完整的話'
+                              : '個人版 · note',
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.mono,
+                            fontSize: 9.5,
+                            letterSpacing: 1.2,
+                            color: dark
+                                ? AnsibleDesign.darkInkFaint
+                                : AnsibleDesign.inkFaint,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -3208,51 +3898,6 @@ class _CircleFullScreenState extends State<_CircleFullScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Sub-navigation inside the 圈內 room: Murmur vs Notes.
-class _CircleTabNav extends StatelessWidget {
-  const _CircleTabNav({required this.selected, required this.onChanged});
-
-  final _CircleTab selected;
-  final ValueChanged<_CircleTab> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return SegmentedButton<_CircleTab>(
-      style: SegmentedButton.styleFrom(
-        backgroundColor: AnsibleDesign.paper,
-        selectedBackgroundColor: AnsibleDesign.paperDeep,
-        foregroundColor: AnsibleDesign.inkMuted,
-        selectedForegroundColor: AnsibleDesign.ink,
-        side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
-      ),
-      segments: [
-        ButtonSegment(
-          value: _CircleTab.murmur,
-          icon: const Icon(Icons.chat_bubble_outline, size: 18),
-          label: Text(
-            l10n.murmurTab,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        ButtonSegment(
-          value: _CircleTab.notes,
-          icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
-          label: Text(
-            l10n.notesTab,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-      selected: {selected},
-      showSelectedIcon: false,
-      onSelectionChanged: (selection) => onChanged(selection.single),
     );
   }
 }

@@ -57,6 +57,8 @@ void main() {
     expect(find.byKey(const Key('settings_button')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
+    expect(find.text('PAPER · LIGHT'), findsNothing);
+    expect(find.text('INK · DARK'), findsNothing);
     expect(find.text('還沒有任何記錄'), findsOneWidget);
     expect(find.text('Subscribe'), findsNothing);
 

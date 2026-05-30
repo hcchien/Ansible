@@ -34,11 +34,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Murmur'), findsOneWidget);
-    expect(find.text('Notes'), findsOneWidget);
+    expect(find.text('Notes'), findsNothing);
     expect(find.text('訂閱'), findsNothing);
-
-    await tester.tap(find.text('Murmur'));
-    await tester.pumpAndSettle();
 
     expect(find.text('MURMUR'), findsOneWidget);
     expect(find.text('Send'), findsOneWidget);
@@ -58,8 +55,11 @@ void main() {
     expect(find.text('Sent'), findsOneWidget);
     expect(find.text('測試碎念存檔'), findsOneWidget);
 
-    await tester.tap(find.text('Notes'));
+    await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('寫一段'));
+    await tester.pumpAndSettle();
+    expect(find.text('Note'), findsOneWidget);
     expect(find.text('Working Notes'), findsOneWidget);
     expect(find.text('Loose'), findsOneWidget);
     expect(find.text('測試碎念存檔'), findsOneWidget);

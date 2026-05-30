@@ -221,19 +221,7 @@ class _MyAppState extends State<MyApp> {
               data: mediaQuery.copyWith(
                 textScaler: TextScaler.linear(effectiveScale),
               ),
-              child: Stack(
-                children: [
-                  child ?? const SizedBox.shrink(),
-                  // Floating theme toggle pill — bottom-right corner
-                  Positioned(
-                    right: 16,
-                    bottom: mediaQuery.padding.bottom + 16,
-                    child: SafeArea(
-                      child: ElixThemePill(controller: themeController),
-                    ),
-                  ),
-                ],
-              ),
+              child: child ?? const SizedBox.shrink(),
             );
           },
           home: _loadingIdentity

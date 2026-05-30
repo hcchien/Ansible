@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'ansible_design.dart';
 
-enum ElixScreenStyle { paper, vellum, deep, canopy }
+enum ElixScreenStyle { paper, ink, system }
 
 extension ElixScreenStyleUi on ElixScreenStyle {
   String get storageValue => name;
@@ -11,42 +11,38 @@ extension ElixScreenStyleUi on ElixScreenStyle {
     switch (this) {
       case ElixScreenStyle.paper:
         return 'Paper';
-      case ElixScreenStyle.vellum:
-        return 'Vellum';
-      case ElixScreenStyle.deep:
-        return 'Deep';
-      case ElixScreenStyle.canopy:
-        return 'Canopy';
+      case ElixScreenStyle.ink:
+        return 'Ink';
+      case ElixScreenStyle.system:
+        return 'System';
     }
   }
 
   String get zhLabel {
     switch (this) {
       case ElixScreenStyle.paper:
-        return '紙面';
-      case ElixScreenStyle.vellum:
-        return '羊皮';
-      case ElixScreenStyle.deep:
-        return '深紙';
-      case ElixScreenStyle.canopy:
-        return '林下';
+        return 'Paper';
+      case ElixScreenStyle.ink:
+        return 'Ink';
+      case ElixScreenStyle.system:
+        return '跟隨系統';
     }
   }
 
   String get description {
     switch (this) {
       case ElixScreenStyle.paper:
-        return '標準閱讀背景';
-      case ElixScreenStyle.vellum:
-        return '較柔的工作面';
-      case ElixScreenStyle.deep:
-        return '較重的沉浸面';
-      case ElixScreenStyle.canopy:
-        return '偏綠的信任面';
+        return '白天的廣場';
+      case ElixScreenStyle.ink:
+        return '晚上一個人寫字';
+      case ElixScreenStyle.system:
+        return '跟著系統外觀';
     }
   }
 
-  ElixScreenStyleData get data {
+  ElixScreenStyleData get data => dataFor(Brightness.light);
+
+  ElixScreenStyleData dataFor(Brightness brightness) {
     switch (this) {
       case ElixScreenStyle.paper:
         return const ElixScreenStyleData(
@@ -58,36 +54,20 @@ extension ElixScreenStyleUi on ElixScreenStyle {
           rule: AnsibleDesign.rule,
           accent: AnsibleDesign.ochre,
         );
-      case ElixScreenStyle.vellum:
+      case ElixScreenStyle.ink:
         return const ElixScreenStyleData(
-          background: AnsibleDesign.paperElev,
-          surface: AnsibleDesign.paper,
-          foreground: AnsibleDesign.ink,
-          muted: AnsibleDesign.inkMuted,
-          faint: AnsibleDesign.inkFaint,
-          rule: AnsibleDesign.rule,
-          accent: AnsibleDesign.ochre,
+          background: AnsibleDesign.darkPaper,
+          surface: AnsibleDesign.darkPaperElev,
+          foreground: AnsibleDesign.darkInk,
+          muted: AnsibleDesign.darkInkMuted,
+          faint: AnsibleDesign.darkInkFaint,
+          rule: AnsibleDesign.darkRule,
+          accent: AnsibleDesign.darkOchre,
         );
-      case ElixScreenStyle.deep:
-        return const ElixScreenStyleData(
-          background: AnsibleDesign.paperDeep,
-          surface: AnsibleDesign.paperElev,
-          foreground: AnsibleDesign.ink,
-          muted: AnsibleDesign.inkMuted,
-          faint: AnsibleDesign.inkFaint,
-          rule: AnsibleDesign.rule,
-          accent: AnsibleDesign.ember,
-        );
-      case ElixScreenStyle.canopy:
-        return const ElixScreenStyleData(
-          background: Color(0xFFEAF0D8),
-          surface: Color(0xFFF4F7E8),
-          foreground: AnsibleDesign.ink,
-          muted: AnsibleDesign.inkMuted,
-          faint: AnsibleDesign.inkFaint,
-          rule: AnsibleDesign.rule,
-          accent: AnsibleDesign.moss,
-        );
+      case ElixScreenStyle.system:
+        return brightness == Brightness.dark
+            ? ElixScreenStyle.ink.dataFor(brightness)
+            : ElixScreenStyle.paper.dataFor(brightness);
     }
   }
 
@@ -136,7 +116,7 @@ class ElixScreenStyleScope extends InheritedWidget {
   }
 
   static ElixScreenStyleData dataOf(BuildContext context) {
-    return styleOf(context).data;
+    return styleOf(context).dataFor(Theme.of(context).brightness);
   }
 
   @override

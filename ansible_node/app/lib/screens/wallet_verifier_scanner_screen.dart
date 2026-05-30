@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../config/app_environment.dart';
 import '../services/oid4vp_presentation_service.dart';
 import '../services/oid4vp_request.dart';
+import '../widgets/elix_focus_route.dart';
 import 'wallet_verifier_consent_screen.dart';
 
 class WalletVerifierScannerScreen extends StatefulWidget {
@@ -50,7 +51,8 @@ class _WalletVerifierScannerScreenState
       widget.onRequestScanned?.call(request);
       Navigator.of(context)
           .push(
-            MaterialPageRoute<void>(
+            elixFocusPageRoute<void>(
+              settings: const RouteSettings(name: '/wallet/verifier-consent'),
               builder: (_) => WalletVerifierConsentScreen(
                 holderDid: widget.holderDid,
                 request: request,

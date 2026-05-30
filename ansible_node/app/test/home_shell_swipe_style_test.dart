@@ -19,7 +19,7 @@ void main() {
     await _pumpHomeShell(tester, coachmarkSeen: true);
 
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
-    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
+    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.darkPaper);
 
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
@@ -68,10 +68,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('screen_style_button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('screen_style_choice_vellum')));
+    await tester.tap(find.byKey(const Key('screen_style_choice_feed_paper')));
     await tester.pumpAndSettle();
 
-    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paperElev);
+    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
 
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
@@ -83,10 +85,16 @@ void main() {
 
     await tester.tap(find.byKey(const Key('screen_style_button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('screen_style_choice_deep')));
+    await tester.ensureVisible(
+      find.byKey(const Key('screen_style_choice_circle_ink')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('screen_style_choice_circle_ink')));
     await tester.pumpAndSettle();
 
-    expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paperDeep);
+    expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.darkPaper);
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
 
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
@@ -94,7 +102,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paperElev);
+    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
   });
 }
 

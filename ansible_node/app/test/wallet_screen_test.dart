@@ -108,20 +108,28 @@ void main() {
     expect(find.text('Email OTP / Legacy'), findsOneWidget);
   });
 
-  testWidgets('wallet exposes verifier request scanner entry', (tester) async {
+  testWidgets('wallet exposes prominent verifier QR scanner entry', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: WalletScreen(
           holderDid: 'did:plc:abcdefghijklmnop',
           repository: InMemoryWalletRepository(),
+          verifierScannerBuilder: (_) =>
+              const Scaffold(body: Text('scanner opened')),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await _scrollWallet(tester);
+    expect(find.byKey(const Key('wallet_verifier_scan_entry')), findsOneWidget);
+    expect(find.text('掃描 QRCode'), findsOneWidget);
 
-    expect(find.text('掃描驗證請求'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('wallet_verifier_scan_entry')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('scanner opened'), findsOneWidget);
   });
 
   testWidgets('wallet identity add credential expands inline wizard', (
