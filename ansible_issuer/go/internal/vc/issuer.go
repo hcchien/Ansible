@@ -10,16 +10,18 @@ import (
 )
 
 const (
-	credentialType          = "TrisAuraHumanityCredential"
-	emailCredentialType     = "EmailCredential"
-	assuranceLevel          = "tw_natural_person_certificate"
-	assuranceMethod         = "tw_fido_or_moica"
-	emailAssuranceLevel     = "email_contact"
-	emailAssuranceMethod    = "email_otp"
-	passportAssuranceLevel  = "passport_document"
-	passportAssuranceMethod = "passport_nfc"
-	jurisdiction            = "TW"
-	defaultTTLDays          = 90
+	credentialType             = "TrisAuraHumanityCredential"
+	emailCredentialType        = "EmailCredential"
+	assuranceLevel             = "tw_natural_person_certificate"
+	assuranceMethod            = "tw_fido_or_moica"
+	emailAssuranceLevel        = "email_contact"
+	emailAssuranceMethod       = "email_otp"
+	passportAssuranceLevel     = "passport_document"
+	passportAssuranceMethod    = "passport_nfc"
+	mobileMoicaAssuranceMethod = "mobilemoica_rp_explicit_disclosure"
+	mobileMoicaDisclosureModel = "explicit_rp"
+	jurisdiction               = "TW"
+	defaultTTLDays             = 90
 )
 
 // Config holds issuer configuration.
@@ -124,6 +126,30 @@ func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passpor
 		"",
 		nationalIDHash,
 		passportNumberHash,
+	)
+}
+
+// IssueMobileMoicaRP builds and signs a MobileMoica relying-party humanity
+// credential. Raw MobileMoica inputs are processed only before this method; the
+// issued VC contains only assurance metadata and the holder DID.
+func (iss *Issuer) IssueMobileMoicaRP(holderDID, subjectCommitment string) (map[string]any, error) {
+	if err := iss.store.CheckDuplicate(subjectCommitment); err != nil {
+		return nil, err
+	}
+
+	return iss.issue(
+		credentialType,
+		CredentialSubject{
+			ID:              holderDID,
+			HumanVerified:   true,
+			AssuranceLevel:  assuranceLevel,
+			AssuranceMethod: mobileMoicaAssuranceMethod,
+			Jurisdiction:    jurisdiction,
+			DisclosureModel: mobileMoicaDisclosureModel,
+		},
+		subjectCommitment,
+		subjectCommitment,
+		"",
 	)
 }
 

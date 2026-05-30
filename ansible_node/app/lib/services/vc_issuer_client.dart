@@ -61,6 +61,33 @@ class TwProviderStatus {
   bool get isVerified => status == 'verified';
 }
 
+class MobileMoicaRPOffer {
+  final String offerId;
+  final Uri deepLinkUrl;
+  final DateTime expiresAt;
+
+  const MobileMoicaRPOffer({
+    required this.offerId,
+    required this.deepLinkUrl,
+    required this.expiresAt,
+  });
+
+  factory MobileMoicaRPOffer.fromJson(Map<String, dynamic> json) =>
+      MobileMoicaRPOffer(
+        offerId: json['offer_id'] as String,
+        deepLinkUrl: Uri.parse(json['deep_link_url'] as String),
+        expiresAt: DateTime.parse(json['expires_at'] as String),
+      );
+}
+
+class MobileMoicaRPStatus {
+  final String status;
+
+  const MobileMoicaRPStatus({required this.status});
+
+  bool get isVerified => status == 'verified';
+}
+
 class VcIssuerException implements Exception {
   final int statusCode;
   final String error;
@@ -142,6 +169,39 @@ class VcIssuerClient {
     final body = await _postJson('/api/v1/vc/tw/issue', {
       'did': did,
       'email': email,
+      'offer_id': offerId,
+    });
+    return body['vc'] as Map<String, dynamic>;
+  }
+
+  Future<MobileMoicaRPOffer> startMobileMoicaRPFlow({
+    required String holderDid,
+    required String nationalId,
+    required String consentVersion,
+    required String consentCopyHash,
+    required String locale,
+  }) async {
+    final body = await _postJson('/api/v1/vc/mobilemoica/start', {
+      'holder_did': holderDid,
+      'national_id': nationalId,
+      'consent_version': consentVersion,
+      'consent_copy_hash': consentCopyHash,
+      'locale': locale,
+    });
+    return MobileMoicaRPOffer.fromJson(body);
+  }
+
+  Future<MobileMoicaRPStatus> getMobileMoicaRPStatus(String offerId) async {
+    final body = await _getJson('/api/v1/vc/mobilemoica/status/$offerId');
+    return MobileMoicaRPStatus(status: body['status'] as String? ?? 'unknown');
+  }
+
+  Future<Map<String, dynamic>> issueMobileMoicaRPCredential({
+    required String holderDid,
+    required String offerId,
+  }) async {
+    final body = await _postJson('/api/v1/vc/mobilemoica/issue', {
+      'holder_did': holderDid,
       'offer_id': offerId,
     });
     return body['vc'] as Map<String, dynamic>;

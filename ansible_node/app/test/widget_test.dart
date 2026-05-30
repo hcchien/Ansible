@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/home_shell.dart';
@@ -125,6 +127,36 @@ void main() {
 
     final context = tester.element(find.byType(HomeShell));
     expect(MediaQuery.textScalerOf(context).scale(10), closeTo(10.8, 0.01));
+  });
+
+  testWidgets('ignores MobileMoica callback links without web-session error', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final links = StreamController<Uri>.broadcast(sync: true);
+    addTearDown(() async {
+      await links.close();
+      await db.close();
+    });
+
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _ExistingDidPlcManager(),
+        webSessionLinks: links.stream,
+      ),
+    );
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    links.add(
+      Uri.parse('trisaura://mobilemoica/callback?error_code=ok&error_message='),
+    );
+    await tester.pump();
+
+    expect(find.text('Invalid web session request.'), findsNothing);
   });
 }
 

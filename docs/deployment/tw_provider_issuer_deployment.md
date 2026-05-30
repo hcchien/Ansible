@@ -35,6 +35,38 @@ fixtures, and trust-anchor verification are implemented.
 - `TW_PROVIDER_RETENTION_SECONDS`: expired session/replay retention window before
   cleanup. Defaults to `86400`.
 
+## MobileMoica RP Explicit-Disclosure Environment
+
+The MobileMoica RP path is separate from zkID and from the generic TW provider
+contract flow. It is disabled by default and must stay unavailable unless the
+deployment explicitly records the approval artifacts for this exception path.
+
+- `MOBILEMOICA_RP_ENABLED`: set to `true` to configure the explicit-disclosure
+  path. Any other value leaves the path disabled.
+- `MOBILEMOICA_RP_ADAPTER_MODE`: required when enabled.
+  - `contract`: local/dev contract broker. Builds a `mobilemoica://` deep link
+    with a synthetic ticket, Base64URL-encoded APP2APP return parameters, and
+    verifies a synthetic result.
+  - `production`: currently fails closed. The provided APP2APP notes identify
+    endpoints and scheme, and the Issuer provider includes MobileMoica checksum
+    and `sp_ticket` helpers. The production HTTP adapter, PKCS#7 validation,
+    and approved trust-anchor / revocation behavior are not implemented yet.
+- `MOBILEMOICA_SESSION_STORE_PATH`: durable JSON session store path.
+- `MOBILEMOICA_LEGAL_APPROVAL_ID`: legal approval artifact ID.
+- `MOBILEMOICA_PRIVACY_APPROVAL_ID`: privacy approval artifact ID.
+- `MOBILEMOICA_SECURITY_APPROVAL_ID`: security approval artifact ID.
+- `MOBILEMOICA_CONSTITUTION_APPROVAL_ID`: constitution exception or amendment
+  artifact ID.
+- `MOBILEMOICA_RETURN_URL`: Elix return URL. Defaults to
+  `trisaura://mobilemoica/callback`.
+- `MOBILEMOICA_SESSION_TTL_SECONDS`: offer/session TTL. Defaults to `300`.
+- `MOBILEMOICA_RETENTION_SECONDS`: expired session/replay retention window
+  before cleanup. Defaults to `86400`.
+
+The issuer must never log MobileMoica service credentials, national IDs,
+tickets, signed responses, certificate subjects, legal names, certificate
+serials, provider subjects, or return URL query values.
+
 ## Startup Behavior
 
 In `MOCK_MODE=true`, the issuer defaults to the `contract` adapter with local
@@ -48,6 +80,12 @@ Outside mock mode:
 - `production` mode fails startup until the production verifier is implemented.
 - Startup runs session store cleanup once to remove expired auth sessions,
   verified sessions, and replay IDs beyond the retention window.
+
+For MobileMoica RP, startup config only enables the path when
+`MOBILEMOICA_RP_ENABLED=true` and all legal/privacy/security/constitution
+approval artifact IDs are present. Production mode returns an explicit
+unavailable error until the real MobileMoica HTTP adapter, PKCS#7 validation,
+and certificate revocation verification are implemented.
 
 ## Health And Readiness
 
@@ -89,3 +127,9 @@ Do not log or persist:
 
 The issuer may persist only issuer auth state, replay IDs, verified subject
 commitments, and issued VC metadata needed for duplicate prevention.
+
+For MobileMoica RP, the raw national ID may exist only in Elix memory, Issuer
+handler memory, and Broker request memory for the ticket request lifetime. It
+must not be written to the session store. The issued VC may include only
+verified-human assurance metadata, jurisdiction, holder DID, status, issuer,
+expiry, proof, and `disclosureModel`.

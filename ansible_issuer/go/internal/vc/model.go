@@ -22,6 +22,7 @@ type CredentialSubject struct {
 	AssuranceMethod string `json:"assuranceMethod,omitempty"`
 	Jurisdiction    string `json:"jurisdiction,omitempty"`
 	Nationality     string `json:"nationality,omitempty"`
+	DisclosureModel string `json:"disclosureModel,omitempty"`
 }
 
 // Proof is the Ed25519Signature2020 proof block.

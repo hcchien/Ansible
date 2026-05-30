@@ -128,6 +128,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _handleWebSessionLink(Uri uri) {
+    if (_isMobileMoicaCallbackLink(uri)) {
+      return;
+    }
+
     WebSessionApprovalLink link;
     try {
       link = WebSessionApprovalLink.parse(
@@ -157,6 +161,12 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
     );
+  }
+
+  bool _isMobileMoicaCallbackLink(Uri uri) {
+    return uri.scheme == 'trisaura' &&
+        uri.host == 'mobilemoica' &&
+        (uri.path == '/callback' || uri.path.startsWith('/callback/'));
   }
 
   void _showWebSessionMessage(String message) {

@@ -9,7 +9,7 @@ import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/passport_local_id_service.dart';
 import '../services/vc_issuer_client.dart';
-import 'tw_provider_credential_screen.dart';
+import 'mobilemoica_rp_credential_screen.dart';
 
 enum CredentialIssuanceFlow { twProvider, passportNfc, emailOtp }
 
@@ -135,8 +135,8 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
   Widget _buildSelectedPanel() {
     switch (_selectedFlow) {
       case CredentialIssuanceFlow.twProvider:
-        return TwProviderCredentialPanel(
-          key: const ValueKey('tw-provider-panel'),
+        return MobileMoicaRPCredentialPanel(
+          key: const ValueKey('mobilemoica-rp-panel'),
           holderDid: widget.holderDid,
           vcIssuerClient: widget.vcIssuerClient,
           urlLauncher: widget.urlLauncher,

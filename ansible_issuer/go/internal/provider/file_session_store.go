@@ -42,7 +42,7 @@ func NewFileSessionStore(path string, now func() time.Time) (*FileSessionStore, 
 }
 
 func (s *FileSessionStore) CreateAuthSession(session AuthSession) error {
-	if session.OfferID == "" || session.State == "" || session.DID == "" || session.Email == "" {
+	if session.OfferID == "" || session.State == "" || session.DID == "" {
 		return errors.New("missing auth session field")
 	}
 
@@ -106,7 +106,7 @@ func (s *FileSessionStore) MarkReplayIDConsumed(replayID string, expiresAt time.
 }
 
 func (s *FileSessionStore) StoreVerifiedSession(session VerifiedSession) error {
-	if session.OfferID == "" || session.DID == "" || session.Email == "" || session.SubjectCommitment == "" {
+	if session.OfferID == "" || session.DID == "" || session.SubjectCommitment == "" {
 		return errors.New("missing verified session field")
 	}
 

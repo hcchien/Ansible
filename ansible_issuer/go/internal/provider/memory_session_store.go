@@ -27,7 +27,7 @@ func NewMemorySessionStore(now func() time.Time) *MemorySessionStore {
 }
 
 func (s *MemorySessionStore) CreateAuthSession(session AuthSession) error {
-	if session.OfferID == "" || session.State == "" || session.DID == "" || session.Email == "" {
+	if session.OfferID == "" || session.State == "" || session.DID == "" {
 		return errors.New("missing auth session field")
 	}
 	s.mu.Lock()
@@ -84,7 +84,7 @@ func (s *MemorySessionStore) MarkReplayIDConsumed(replayID string, expiresAt tim
 }
 
 func (s *MemorySessionStore) StoreVerifiedSession(session VerifiedSession) error {
-	if session.OfferID == "" || session.DID == "" || session.Email == "" || session.SubjectCommitment == "" {
+	if session.OfferID == "" || session.DID == "" || session.SubjectCommitment == "" {
 		return errors.New("missing verified session field")
 	}
 	s.mu.Lock()

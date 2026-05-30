@@ -237,6 +237,104 @@ void main() {
     );
   });
 
+  group('VcIssuerClient MobileMoica RP flow', () {
+    test(
+      'startMobileMoicaRPFlow posts disclosure fields without email',
+      () async {
+        final client = VcIssuerClient(
+          baseUrl: 'http://issuer.test',
+          client: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, '/api/v1/vc/mobilemoica/start');
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body['holder_did'], 'did:plc:abcdefghijklmnop');
+            expect(body['national_id'], 'Z123000000');
+            expect(body['consent_version'], 'mobilemoica-rp-v1');
+            expect(body['consent_copy_hash'], 'sha256:copy-hash');
+            expect(body['locale'], 'zh-Hant-TW');
+            expect(body.keys, isNot(contains('email')));
+            return http.Response(
+              jsonEncode({
+                'offer_id': 'offer-1',
+                'expires_at': '2026-05-30T12:05:00Z',
+                'deep_link_url':
+                    'mobilemoica://moica.moi.gov.tw/a2a/verifySign?sp_ticket=contract',
+              }),
+              200,
+            );
+          }),
+        );
+
+        final offer = await client.startMobileMoicaRPFlow(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          nationalId: 'Z123000000',
+          consentVersion: 'mobilemoica-rp-v1',
+          consentCopyHash: 'sha256:copy-hash',
+          locale: 'zh-Hant-TW',
+        );
+
+        expect(offer.offerId, 'offer-1');
+        expect(offer.deepLinkUrl.scheme, 'mobilemoica');
+      },
+    );
+
+    test('getMobileMoicaRPStatus gets status endpoint', () async {
+      final client = VcIssuerClient(
+        baseUrl: 'http://issuer.test',
+        client: MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(request.url.path, '/api/v1/vc/mobilemoica/status/offer-1');
+          return http.Response(
+            jsonEncode({
+              'status': 'verified',
+              'assurance_method': 'mobilemoica_rp_explicit_disclosure',
+              'jurisdiction': 'TW',
+            }),
+            200,
+          );
+        }),
+      );
+
+      final status = await client.getMobileMoicaRPStatus('offer-1');
+
+      expect(status.status, 'verified');
+      expect(status.isVerified, isTrue);
+    });
+
+    test(
+      'issueMobileMoicaRPCredential posts holder did and offer id only',
+      () async {
+        final client = VcIssuerClient(
+          baseUrl: 'http://issuer.test',
+          client: MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, '/api/v1/vc/mobilemoica/issue');
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body, {
+              'holder_did': 'did:plc:abcdefghijklmnop',
+              'offer_id': 'offer-1',
+            });
+            expect(body.keys, isNot(contains('email')));
+            expect(body.keys, isNot(contains('national_id')));
+            return http.Response(
+              jsonEncode({
+                'vc': {'id': 'mobilemoica-vc-1'},
+              }),
+              200,
+            );
+          }),
+        );
+
+        final vc = await client.issueMobileMoicaRPCredential(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          offerId: 'offer-1',
+        );
+
+        expect(vc['id'], 'mobilemoica-vc-1');
+      },
+    );
+  });
+
   group('VcIssuerClient passport flow', () {
     test(
       'issuePassportCredential posts personhood hashes and proof fields',

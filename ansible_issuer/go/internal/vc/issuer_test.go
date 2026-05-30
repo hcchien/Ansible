@@ -130,6 +130,70 @@ func TestIssuer_IssuePassportCredential(t *testing.T) {
 	}
 }
 
+func TestIssuer_IssueMobileMoicaRPCredential(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.IssueMobileMoicaRP(
+		"did:plc:holder1abcdefghij",
+		"mobilemoica-commitment-1",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !iss.VerifyProof(raw) {
+		t.Fatal("expected proof to be valid")
+	}
+
+	types, _ := raw["type"].([]any)
+	found := false
+	for _, v := range types {
+		if v == "TrisAuraHumanityCredential" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected TrisAuraHumanityCredential in type, got %v", types)
+	}
+
+	cs, _ := raw["credentialSubject"].(map[string]any)
+	if cs["humanVerified"] != true {
+		t.Fatalf("expected humanVerified=true, got %v", cs)
+	}
+	if cs["assuranceMethod"] != "mobilemoica_rp_explicit_disclosure" {
+		t.Fatalf("expected mobilemoica assurance method, got %v", cs)
+	}
+	if cs["disclosureModel"] != "explicit_rp" {
+		t.Fatalf("expected explicit_rp disclosure model, got %v", cs)
+	}
+	if cs["jurisdiction"] != "TW" {
+		t.Fatalf("expected TW jurisdiction, got %v", cs)
+	}
+	for _, prohibited := range []string{
+		"nationalId",
+		"legalName",
+		"certificateSerialNumber",
+		"rawProviderAssertion",
+		"nationalIdHash",
+		"national_id_hash",
+		"providerSubject",
+		"signedResponse",
+	} {
+		if _, ok := cs[prohibited]; ok {
+			t.Fatalf("credentialSubject must not contain %q", prohibited)
+		}
+	}
+}
+
+func TestIssuer_RefusesDuplicateMobileMoicaRPCommitment(t *testing.T) {
+	iss := newTestIssuer(t)
+	if _, err := iss.IssueMobileMoicaRP("did:plc:holder1abcdefghij", "mobilemoica-commitment-same"); err != nil {
+		t.Fatal(err)
+	}
+	_, err := iss.IssueMobileMoicaRP("did:plc:holder2abcdefghij", "mobilemoica-commitment-same")
+	if !errors.Is(err, vc.ErrDuplicateActiveCredential) {
+		t.Fatalf("expected ErrDuplicateActiveCredential, got %v", err)
+	}
+}
+
 func TestIssuer_IssueEmailCredential(t *testing.T) {
 	iss := newTestIssuer(t)
 	raw, err := iss.IssueEmail("did:plc:holder1abcdefghij")

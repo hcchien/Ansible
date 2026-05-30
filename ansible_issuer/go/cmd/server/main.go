@@ -49,6 +49,7 @@ func main() {
 	mux := http.NewServeMux()
 	handler := api.NewHandler(otp.NewStore(otpTTL), prov, issuer, pepper, mockMode)
 	configureTWProvider(handler, mockMode)
+	configureMobileMoicaRP(handler, mockMode)
 	handler.Register(mux)
 
 	log.Printf("ansible_issuer (go) listening on :%s", port)
@@ -81,6 +82,7 @@ func (disabledIdentityProvider) ProviderSubject(string, string) (string, error) 
 }
 
 var errTWProviderConfigMissing = errors.New("TW provider config missing")
+var errMobileMoicaRPConfigMissing = errors.New("MobileMoica RP config missing")
 
 func configureTWProvider(handler *api.Handler, mockMode bool) {
 	config, err := buildTWProviderConfigFromEnv(mockMode, time.Now)
@@ -89,6 +91,18 @@ func configureTWProvider(handler *api.Handler, mockMode bool) {
 	}
 	handler.ConfigureTWProvider(config)
 	log.Printf("TW provider flow enabled with auth URL %s", config.BaseAuthURL)
+}
+
+func configureMobileMoicaRP(handler *api.Handler, mockMode bool) {
+	config, enabled, err := buildMobileMoicaRPConfigFromEnv(mockMode, time.Now)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !enabled {
+		return
+	}
+	handler.ConfigureMobileMoicaRP(config)
+	log.Printf("MobileMoica RP flow enabled in explicit-disclosure mode")
 }
 
 func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWProviderConfig, error) {
@@ -161,6 +175,81 @@ func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWPr
 		TTL:          time.Duration(envInt("TW_PROVIDER_SESSION_TTL_SECONDS", 300)) * time.Second,
 		Retention:    retention,
 	}, nil
+}
+
+func buildMobileMoicaRPConfigFromEnv(mockMode bool, now func() time.Time) (api.MobileMoicaRPConfig, bool, error) {
+	if os.Getenv("MOBILEMOICA_RP_ENABLED") != "true" {
+		return api.MobileMoicaRPConfig{}, false, nil
+	}
+
+	required := []string{
+		"MOBILEMOICA_RP_ADAPTER_MODE",
+		"MOBILEMOICA_LEGAL_APPROVAL_ID",
+		"MOBILEMOICA_PRIVACY_APPROVAL_ID",
+		"MOBILEMOICA_SECURITY_APPROVAL_ID",
+		"MOBILEMOICA_CONSTITUTION_APPROVAL_ID",
+	}
+	if !mockMode {
+		required = append(required, "MOBILEMOICA_SESSION_STORE_PATH")
+	}
+	missing := missingEnv(required)
+	if len(missing) > 0 {
+		return api.MobileMoicaRPConfig{}, false, fmt.Errorf("%w: %s", errMobileMoicaRPConfigMissing, strings.Join(missing, ", "))
+	}
+
+	storePath := os.Getenv("MOBILEMOICA_SESSION_STORE_PATH")
+	if storePath == "" {
+		storePath = filepath.Join(os.TempDir(), "ansible_issuer_mobilemoica_rp_sessions.json")
+	}
+	store, err := provider.NewFileSessionStore(storePath, now)
+	if err != nil {
+		return api.MobileMoicaRPConfig{}, false, fmt.Errorf("MobileMoica RP session store init: %w", err)
+	}
+	retention := time.Duration(envInt("MOBILEMOICA_RETENTION_SECONDS", 86400)) * time.Second
+	if err := store.CleanupExpired(retention); err != nil {
+		return api.MobileMoicaRPConfig{}, false, fmt.Errorf("MobileMoica RP session cleanup: %w", err)
+	}
+
+	approval := provider.MobileMoicaApprovalConfig{
+		LegalApprovalID:        os.Getenv("MOBILEMOICA_LEGAL_APPROVAL_ID"),
+		PrivacyApprovalID:      os.Getenv("MOBILEMOICA_PRIVACY_APPROVAL_ID"),
+		SecurityApprovalID:     os.Getenv("MOBILEMOICA_SECURITY_APPROVAL_ID"),
+		ConstitutionApprovalID: os.Getenv("MOBILEMOICA_CONSTITUTION_APPROVAL_ID"),
+	}
+	if err := provider.ValidateMobileMoicaApprovalConfig(approval); err != nil {
+		return api.MobileMoicaRPConfig{}, false, fmt.Errorf("%w: approval artifacts", errMobileMoicaRPConfigMissing)
+	}
+
+	returnURL := os.Getenv("MOBILEMOICA_RETURN_URL")
+	if returnURL == "" {
+		returnURL = "trisaura://mobilemoica/callback"
+	}
+	var broker provider.MobileMoicaRPBroker
+	switch os.Getenv("MOBILEMOICA_RP_ADAPTER_MODE") {
+	case "contract":
+		contractAutoVerify := os.Getenv("MOBILEMOICA_RP_CONTRACT_AUTO_VERIFY") == "true"
+		if contractAutoVerify && !mockMode {
+			return api.MobileMoicaRPConfig{}, false, fmt.Errorf("%w: MOBILEMOICA_RP_CONTRACT_AUTO_VERIFY requires MOCK_MODE=true", errMobileMoicaRPConfigMissing)
+		}
+		broker = provider.NewContractMobileMoicaRPBroker(provider.ContractMobileMoicaRPConfig{
+			ReturnURL:  returnURL,
+			Now:        now,
+			AutoVerify: contractAutoVerify,
+		})
+	case "production":
+		return api.MobileMoicaRPConfig{}, false, provider.ErrMobileMoicaProductionUnavailable
+	default:
+		return api.MobileMoicaRPConfig{}, false, fmt.Errorf("%w: MOBILEMOICA_RP_ADAPTER_MODE", errMobileMoicaRPConfigMissing)
+	}
+
+	return api.MobileMoicaRPConfig{
+		Enabled:   true,
+		Store:     store,
+		Broker:    broker,
+		Approval:  approval,
+		ReturnURL: returnURL,
+		TTL:       time.Duration(envInt("MOBILEMOICA_SESSION_TTL_SECONDS", 300)) * time.Second,
+	}, true, nil
 }
 
 func missingEnv(keys []string) []string {

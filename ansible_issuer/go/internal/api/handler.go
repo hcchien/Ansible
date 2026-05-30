@@ -20,6 +20,7 @@ var (
 	reDID            = regexp.MustCompile(`^did:(plc:[a-z2-7]{10,}|web:.+)$`)
 	reEmail          = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 	reNationality    = regexp.MustCompile(`^[A-Z]{3}$`)
+	reNationalID     = regexp.MustCompile(`^[A-Z][0-9]{9}$`)
 	rePersonhoodHash = regexp.MustCompile(`^[A-Za-z0-9:_-]{16,128}$`)
 )
 
@@ -38,6 +39,13 @@ type Handler struct {
 	twCounters AuditCounters
 	now        func() time.Time
 
+	mobileMoicaStore     provider.SessionStore
+	mobileMoicaBroker    provider.MobileMoicaRPBroker
+	mobileMoicaEnabled   bool
+	mobileMoicaApproval  provider.MobileMoicaApprovalConfig
+	mobileMoicaReturnURL string
+	mobileMoicaTTL       time.Duration
+
 	passportVerifier PassportBindingVerifier
 }
 
@@ -48,6 +56,15 @@ type TWProviderConfig struct {
 	TTL          time.Duration
 	Retention    time.Duration
 	Counters     AuditCounters
+}
+
+type MobileMoicaRPConfig struct {
+	Enabled   bool
+	Store     provider.SessionStore
+	Broker    provider.MobileMoicaRPBroker
+	Approval  provider.MobileMoicaApprovalConfig
+	ReturnURL string
+	TTL       time.Duration
 }
 
 func NewHandler(
@@ -78,6 +95,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/vc/tw/callback", h.twCallback)
 	mux.HandleFunc("GET /api/v1/vc/tw/status/{offer_id}", h.twStatus)
 	mux.HandleFunc("POST /api/v1/vc/tw/issue", h.twIssue)
+	mux.HandleFunc("POST /api/v1/vc/mobilemoica/start", h.mobileMoicaStart)
+	mux.HandleFunc("GET /api/v1/vc/mobilemoica/status/{offer_id}", h.mobileMoicaStatus)
+	mux.HandleFunc("POST /api/v1/vc/mobilemoica/issue", h.mobileMoicaIssue)
 	mux.HandleFunc("POST /api/v1/vc/passport/issue", h.passportIssue)
 }
 
@@ -89,6 +109,24 @@ func (h *Handler) ConfigureTWProvider(config TWProviderConfig) {
 	h.twCounters = config.Counters
 	if h.twTTL <= 0 {
 		h.twTTL = 5 * time.Minute
+	}
+	if h.now == nil {
+		h.now = time.Now
+	}
+}
+
+func (h *Handler) ConfigureMobileMoicaRP(config MobileMoicaRPConfig) {
+	h.mobileMoicaEnabled = config.Enabled
+	h.mobileMoicaStore = config.Store
+	h.mobileMoicaBroker = config.Broker
+	h.mobileMoicaApproval = config.Approval
+	h.mobileMoicaReturnURL = config.ReturnURL
+	h.mobileMoicaTTL = config.TTL
+	if h.mobileMoicaReturnURL == "" {
+		h.mobileMoicaReturnURL = "trisaura://mobilemoica/callback"
+	}
+	if h.mobileMoicaTTL <= 0 {
+		h.mobileMoicaTTL = 5 * time.Minute
 	}
 	if h.now == nil {
 		h.now = time.Now
