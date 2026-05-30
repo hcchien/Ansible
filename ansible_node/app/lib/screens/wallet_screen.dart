@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 
 import '../l10n/subpage_l10n.dart';
 import '../services/external_url_launcher.dart';
+import '../services/oid4vp_presentation_service.dart';
 import '../services/vc_issuer_client.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import 'credential_issuance_wizard.dart';
+import 'wallet_verifier_scanner_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({
@@ -15,6 +17,8 @@ class WalletScreen extends StatefulWidget {
     required this.repository,
     this.vcIssuerClient,
     this.urlLauncher,
+    this.oid4vpPresentationService,
+    this.verifierScannerBuilder,
     this.pollInterval = const Duration(seconds: 2),
     this.pollTimeout = const Duration(minutes: 2),
   });
@@ -23,6 +27,8 @@ class WalletScreen extends StatefulWidget {
   final WalletRepository repository;
   final VcIssuerClient? vcIssuerClient;
   final ExternalUrlLauncher? urlLauncher;
+  final Oid4vpPresentationApprover? oid4vpPresentationService;
+  final WidgetBuilder? verifierScannerBuilder;
   final Duration pollInterval;
   final Duration pollTimeout;
 
@@ -54,6 +60,20 @@ class _WalletScreenState extends State<WalletScreen> {
 
   void _openAddCredential() {
     setState(() => _showWizard = true);
+  }
+
+  void _openVerifierScanner() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder:
+            widget.verifierScannerBuilder ??
+            (_) => WalletVerifierScannerScreen(
+              holderDid: widget.holderDid,
+              walletRepository: widget.repository,
+              presentationService: widget.oid4vpPresentationService,
+            ),
+      ),
+    );
   }
 
   Future<void> _handleCredentialStored() async {
@@ -124,21 +144,43 @@ class _WalletScreenState extends State<WalletScreen> {
                 keyFragment: _fragment(widget.holderDid),
               ),
               const SizedBox(height: 18),
-              OutlinedButton.icon(
-                onPressed: _openAddCredential,
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(text.t('addCredential')),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(
-                    color: AnsibleDesign.rule,
-                    width: 0.5,
-                    style: BorderStyle.solid,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _openAddCredential,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(text.t('addCredential')),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: AnsibleDesign.rule,
+                        width: 0.5,
+                        style: BorderStyle.solid,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _openVerifierScanner,
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: Text(text.t('scanVerifierRequest')),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: AnsibleDesign.rule,
+                        width: 0.5,
+                        style: BorderStyle.solid,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
+                ],
               ),
               const SizedBox(height: 16),
               if (_showWizard) ...[

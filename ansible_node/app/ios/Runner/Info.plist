@@ -41,6 +41,8 @@
 	<true/>
 	<key>NFCReaderUsageDescription</key>
 	<string>Elix uses NFC to read the ePassport chip for identity anchoring.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Elix uses the camera to scan verifier QR requests before presenting wallet credentials.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

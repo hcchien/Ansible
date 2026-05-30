@@ -83,6 +83,62 @@ class VcPresentationService {
     required DateTime now,
     String? nostrPubkey,
   }) async {
+    return _createPresentation(
+      holderDid: holderDid,
+      audience: audience,
+      nonce: nonce,
+      now: now,
+      nostrPubkey: nostrPubkey,
+      recordPresentation: true,
+      result: WalletPresentationResult.approved,
+    );
+  }
+
+  Future<VcPresentationEnvelope?> createForVerifierRequest({
+    required String holderDid,
+    required String audience,
+    required String nonce,
+    required DateTime now,
+    bool recordPresentation = true,
+  }) async {
+    return _createPresentation(
+      holderDid: holderDid,
+      audience: audience,
+      nonce: nonce,
+      now: now,
+      recordPresentation: recordPresentation,
+      result: WalletPresentationResult.approved,
+    );
+  }
+
+  Future<void> recordPresentationResult({
+    required String credentialId,
+    required String audience,
+    required String nonce,
+    required WalletPresentationResult result,
+    required DateTime now,
+  }) async {
+    await walletRepository.recordPresentation(
+      WalletPresentation(
+        presentationId: presentationIdFactory(),
+        credentialId: credentialId,
+        verifierAudience: audience,
+        nonceHash: _nonceHash(nonce),
+        result: result,
+        createdAt: now,
+      ),
+    );
+  }
+
+  Future<VcPresentationEnvelope?> _createPresentation({
+    required String holderDid,
+    required String audience,
+    required String nonce,
+    required DateTime now,
+    required bool recordPresentation,
+    required WalletPresentationResult result,
+    String? nostrPubkey,
+  }) async {
     final credentials = await walletRepository.listCredentials();
 
     for (final metadata in credentials) {
@@ -147,17 +203,15 @@ class VcPresentationService {
         nostrPubkey: nostrPubkey,
       );
 
-      final presentationId = presentationIdFactory();
-      await walletRepository.recordPresentation(
-        WalletPresentation(
-          presentationId: presentationId,
+      if (recordPresentation) {
+        await recordPresentationResult(
           credentialId: metadata.credentialId,
-          verifierAudience: audience,
-          nonceHash: _nonceHash(nonce),
-          result: WalletPresentationResult.approved,
-          createdAt: now,
-        ),
-      );
+          audience: audience,
+          nonce: nonce,
+          result: result,
+          now: now,
+        );
+      }
 
       return VcPresentationEnvelope(
         credentialId: metadata.credentialId,

@@ -108,6 +108,22 @@ void main() {
     expect(find.text('Email OTP / Legacy'), findsOneWidget);
   });
 
+  testWidgets('wallet exposes verifier request scanner entry', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WalletScreen(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          repository: InMemoryWalletRepository(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _scrollWallet(tester);
+
+    expect(find.text('掃描驗證請求'), findsOneWidget);
+  });
+
   testWidgets('wallet identity add credential expands inline wizard', (
     tester,
   ) async {

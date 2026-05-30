@@ -223,6 +223,9 @@ payloads.
 
 ## 6. Presentation Request
 
+First-party Relay presentation requests may use the compact JSON request below.
+External verifiers should use the OID4VP QR flow described in section 6.1.
+
 ```json
 {
   "request_id": "vp-request-01HX8QYJBT7KXW",
@@ -233,6 +236,39 @@ payloads.
   "expires_at": "2026-05-04T10:20:00Z"
 }
 ```
+
+### 6.1 External Verifier QR Request
+
+Wallet verifier QR scanning is a holder-side OID4VP MVP. The Wallet scans an
+embedded authorization request, shows a consent screen, creates a W3C VP, and
+posts it back to the verifier's `response_uri` using `direct_post`.
+
+Supported request URI forms:
+
+- `openid4vp://authorize?...`
+- `https://<verifier>/authorize?...`
+- `http://localhost` or `http://127.0.0.1` only in non-production builds
+
+Required parameters:
+
+- `client_id`: verifier audience, bound into the VP proof `domain`.
+- `response_type`: `vp_token`.
+- `response_mode`: `direct_post`.
+- `response_uri`: HTTPS direct-post endpoint, except local development.
+- `nonce`: verifier challenge, bound into the VP proof `challenge`.
+- `presentation_definition`: embedded Presentation Exchange JSON.
+
+MVP constraints:
+
+- `request_uri` / signed authorization request fetching is rejected until a
+  verifier trust and request-object validation pass is implemented.
+- Only `TrisAuraHumanityCredential` requests are accepted.
+- Wallet submits form-encoded `vp_token`, `presentation_submission`, and
+  optional `state`.
+- Wallet records only verifier audience, nonce hash, credential id, result, and
+  timestamp in `wallet_presentations`.
+- Camera scanning must lead to an explicit consent screen before any VP leaves
+  the device.
 
 ## 7. Presentation Response
 
@@ -275,13 +311,17 @@ Verifier checks:
 
 ## Constitution Review
 
-- The proof-suite change does not add any new identity claim or storage path.
+- The proof-suite and OID4VP holder-flow changes do not add any new identity
+  claim or raw identity storage path.
 - VC and VP subjects remain holder DIDs; raw legal identity and personhood
   commitments remain excluded from proof values, credential subjects, relay
   payloads, federation payloads, and logs.
 - The change improves credential verifiability by replacing the legacy proof
   representation with W3C Data Integrity `eddsa-jcs-2022`, while preserving the
   same Ed25519 key boundary.
+- Wallet QR scanning is explicit presentation, not sync or background
+  disclosure: the user scans, reviews verifier audience/requested claims, and
+  approves before direct-posting a VP.
 
 ## 8. Revocation Status
 
