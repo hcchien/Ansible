@@ -156,7 +156,7 @@ abstract class AppLocalizations {
   /// No description provided for @wallet.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'錢包'**
+  /// **'皮夾'**
   String get wallet;
 
   /// No description provided for @walletSubtitleEmpty.

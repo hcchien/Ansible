@@ -36,6 +36,7 @@ import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
+import '../services/reading_preferences_controller.dart';
 import '../services/relay_ops_client.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
@@ -76,6 +77,7 @@ class HomeShell extends StatefulWidget {
     this.pullRefreshRunner,
     this.networkStatusMonitor,
     this.localeController,
+    this.readingPreferencesController,
   });
 
   final AppDatabase db;
@@ -85,6 +87,7 @@ class HomeShell extends StatefulWidget {
   final Future<RelayPullSummary> Function()? pullRefreshRunner;
   final NetworkStatusMonitor? networkStatusMonitor;
   final AppLocaleController? localeController;
+  final ReadingPreferencesController? readingPreferencesController;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -1158,6 +1161,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 db: widget.db,
                 did: widget.did,
                 localeController: widget.localeController,
+                readingPreferencesController:
+                    widget.readingPreferencesController,
                 opsQueueRepo: _opsQueueRepo,
                 opsDispatchService: _opsDispatchService,
                 messengerSyncService: _messengerSyncService,
@@ -1481,6 +1486,7 @@ class _MainPanel extends StatelessWidget {
     required this.db,
     required this.did,
     this.localeController,
+    this.readingPreferencesController,
     required this.opsQueueRepo,
     required this.opsDispatchService,
     required this.messengerSyncService,
@@ -1534,6 +1540,7 @@ class _MainPanel extends StatelessWidget {
   final AppDatabase db;
   final String did;
   final AppLocaleController? localeController;
+  final ReadingPreferencesController? readingPreferencesController;
   final OpsQueueRepository opsQueueRepo;
   final OpsDispatchService opsDispatchService;
   final MessengerSyncService messengerSyncService;
@@ -2128,6 +2135,7 @@ class _MainPanel extends StatelessWidget {
                 db: db,
                 did: did,
                 localeController: localeController,
+                readingPreferencesController: readingPreferencesController,
                 opsQueueRepo: opsQueueRepo,
                 onSync: onSync,
                 syncing: syncing,
@@ -2163,6 +2171,8 @@ class _MainPanel extends StatelessWidget {
                             db: db,
                             did: did,
                             localeController: localeController,
+                            readingPreferencesController:
+                                readingPreferencesController,
                             onClearIdentity: onClearIdentity,
                           ),
                         ),
@@ -2756,6 +2766,7 @@ class _TopBar extends StatelessWidget {
     required this.db,
     required this.did,
     this.localeController,
+    this.readingPreferencesController,
     required this.opsQueueRepo,
     required this.onSync,
     required this.syncing,
@@ -2774,6 +2785,7 @@ class _TopBar extends StatelessWidget {
   final AppDatabase db;
   final String did;
   final AppLocaleController? localeController;
+  final ReadingPreferencesController? readingPreferencesController;
   final OpsQueueRepository opsQueueRepo;
   final Future<void> Function() onSync;
   final bool syncing;
@@ -2859,6 +2871,8 @@ class _TopBar extends StatelessWidget {
                         db: db,
                         did: did,
                         localeController: localeController,
+                        readingPreferencesController:
+                            readingPreferencesController,
                         onClearIdentity: onClearIdentity,
                       ),
                     ),

@@ -41,7 +41,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('WALLET'), findsOneWidget);
-    expect(find.text('錢包'), findsOneWidget);
+    expect(find.text('皮夾'), findsOneWidget);
     await _scrollWallet(tester);
     expect(find.text('Verified Human'), findsOneWidget);
     expect(find.text('有效'), findsOneWidget);

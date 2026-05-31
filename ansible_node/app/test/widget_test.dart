@@ -113,6 +113,9 @@ void main() {
   });
 
   testWidgets('applies the app text size step globally', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'elix-reading-text-scale': 'large',
+    });
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
@@ -128,7 +131,7 @@ void main() {
     }
 
     final context = tester.element(find.byType(HomeShell));
-    expect(MediaQuery.textScalerOf(context).scale(10), closeTo(10.8, 0.01));
+    expect(MediaQuery.textScalerOf(context).scale(10), closeTo(11.8, 0.01));
   });
 
   testWidgets('ignores MobileMoica callback links without web-session error', (

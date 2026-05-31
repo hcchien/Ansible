@@ -18,6 +18,7 @@ import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registrati
 import 'screens/web_session_approval_screen.dart';
 import 'services/app_locale_controller.dart';
 import 'services/backup_policy_service.dart';
+import 'services/reading_preferences_controller.dart';
 import 'services/relay_identity_client.dart';
 import 'services/web_session_approval_client.dart';
 import 'services/web_session_grant_service.dart';
@@ -73,6 +74,7 @@ class MyApp extends StatefulWidget {
   final DidPlcManager? didPlcManager;
   final DidSigner? didSigner;
   final AppLocaleController? localeController;
+  final ReadingPreferencesController? readingPreferencesController;
   final Stream<Uri>? webSessionLinks;
   // ignore: unused_field — kept for V1 test-injection compatibility; V2.0 uses AtProtoClient
   final RelayIdentityClient? relayIdentityClient;
@@ -84,6 +86,7 @@ class MyApp extends StatefulWidget {
     this.didPlcManager,
     this.didSigner,
     this.localeController,
+    this.readingPreferencesController,
     this.webSessionLinks,
     this.relayIdentityClient,
   });
@@ -100,6 +103,8 @@ class _MyAppState extends State<MyApp> {
   late final DidPlcManager _didPlcManager;
   late final AppLocaleController _localeController;
   late final bool _ownsLocaleController;
+  late final ReadingPreferencesController _readingPreferencesController;
+  late final bool _ownsReadingPreferencesController;
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<Uri>? _webSessionLinkSubscription;
@@ -111,7 +116,12 @@ class _MyAppState extends State<MyApp> {
     _didPlcManager = widget.didPlcManager ?? DidPlcManagerImpl();
     _localeController = widget.localeController ?? AppLocaleController();
     _ownsLocaleController = widget.localeController == null;
+    _readingPreferencesController =
+        widget.readingPreferencesController ?? ReadingPreferencesController();
+    _ownsReadingPreferencesController =
+        widget.readingPreferencesController == null;
     _localeController.load();
+    _readingPreferencesController.load();
     _loadPersistedIdentity();
     _webSessionLinkSubscription = widget.webSessionLinks?.listen(
       _handleWebSessionLink,
@@ -122,6 +132,9 @@ class _MyAppState extends State<MyApp> {
   void dispose() {
     if (_ownsLocaleController) {
       _localeController.dispose();
+    }
+    if (_ownsReadingPreferencesController) {
+      _readingPreferencesController.dispose();
     }
     _webSessionLinkSubscription?.cancel();
     super.dispose();
@@ -200,7 +213,11 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_localeController, themeController]),
+      animation: Listenable.merge([
+        _localeController,
+        themeController,
+        _readingPreferencesController,
+      ]),
       builder: (context, _) {
         return MaterialApp(
           navigatorKey: _navigatorKey,
@@ -215,7 +232,7 @@ class _MyAppState extends State<MyApp> {
           builder: (context, child) {
             final mediaQuery = MediaQuery.of(context);
             final effectiveScale = mediaQuery.textScaler.scale(
-              AnsibleDesign.appTextScale,
+              _readingPreferencesController.textScaleFactor,
             );
             return MediaQuery(
               data: mediaQuery.copyWith(
@@ -231,6 +248,7 @@ class _MyAppState extends State<MyApp> {
                   db: widget.db,
                   did: _anchoredDid!,
                   localeController: _localeController,
+                  readingPreferencesController: _readingPreferencesController,
                   onClearIdentity: () => setState(() => _anchoredDid = null),
                 )
               : PasskeysRegistrationScreen(onRegistered: _handleRegistered),

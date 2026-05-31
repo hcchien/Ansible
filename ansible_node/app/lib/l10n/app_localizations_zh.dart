@@ -30,7 +30,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get identityAndDevice => '身分與裝置 · IDENTITY';
 
   @override
-  String get wallet => '錢包';
+  String get wallet => '皮夾';
 
   @override
   String get walletSubtitleEmpty => '尚無憑證';
@@ -562,7 +562,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get identityAndDevice => '身分與裝置 · IDENTITY';
 
   @override
-  String get wallet => '錢包';
+  String get wallet => '皮夾';
 
   @override
   String get walletSubtitleEmpty => '尚無憑證';

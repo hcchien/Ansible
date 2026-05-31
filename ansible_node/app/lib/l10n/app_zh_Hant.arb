@@ -7,7 +7,7 @@
   "localDid": "本機 DID",
   "edit": "編輯",
   "identityAndDevice": "身分與裝置 · IDENTITY",
-  "wallet": "錢包",
+  "wallet": "皮夾",
   "walletSubtitleEmpty": "尚無憑證",
   "walletSubtitleCount": "{count} 個憑證",
   "@walletSubtitleCount": {"placeholders": {"count": {"type": "int"}}},

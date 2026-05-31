@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/subpage_l10n.dart';
 import '../services/app_locale_controller.dart';
+import '../services/reading_preferences_controller.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'inbox_screen.dart';
 import 'profile_screen.dart';
+import 'reading_preferences_screen.dart';
 import 'sync_settings_screen.dart';
 import 'wallet_screen.dart';
 
@@ -18,12 +21,14 @@ class SettingsHomeScreen extends StatelessWidget {
     required this.db,
     required this.did,
     this.localeController,
+    this.readingPreferencesController,
     this.onClearIdentity,
   });
 
   final AppDatabase db;
   final String did;
   final AppLocaleController? localeController;
+  final ReadingPreferencesController? readingPreferencesController;
   final VoidCallback? onClearIdentity;
 
   @override
@@ -199,8 +204,19 @@ class SettingsHomeScreen extends StatelessWidget {
                 label: text.readingPreferences,
                 en: 'READING',
                 sub: text.readingPreferencesSubtitle,
-                value: text.defaultValue,
+                value: text.readingPreferenceValue(
+                  readingPreferencesController?.textScale,
+                ),
                 last: true,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ReadingPreferencesScreen(
+                        controller: readingPreferencesController,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -208,27 +224,13 @@ class SettingsHomeScreen extends StatelessWidget {
             label: text.boundaries,
             children: [
               AnsibleSettingsRow(
-                glyph: '●',
-                label: text.lock,
-                en: 'LOCK',
-                sub: text.lockSubtitle,
-                value: text.off,
-              ),
-              AnsibleSettingsRow(
                 glyph: '⌷',
                 label: text.backupRestore,
                 en: 'RECOVERY',
                 sub: text.backupRestoreSubtitle,
                 value: text.notSet,
               ),
-              AnsibleSettingsRow(
-                glyph: '⊘',
-                label: text.blockedList,
-                en: 'BLOCKED',
-                sub: text.blockedListSubtitle,
-                value: '0',
-                last: true,
-              ),
+              _BlockedListSettingsRow(db: db, text: text, last: true),
             ],
           ),
           _SettingsSection(
@@ -463,6 +465,75 @@ class _LanguageOptionRow extends StatelessWidget {
   }
 }
 
+class _BlockedListSettingsRow extends StatefulWidget {
+  const _BlockedListSettingsRow({
+    required this.db,
+    required this.text,
+    this.last = false,
+  });
+
+  final AppDatabase db;
+  final _SettingsText text;
+  final bool last;
+
+  @override
+  State<_BlockedListSettingsRow> createState() =>
+      _BlockedListSettingsRowState();
+}
+
+class _BlockedListSettingsRowState extends State<_BlockedListSettingsRow> {
+  late Future<int> _blockedCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _blockedCount = _loadBlockedCount();
+  }
+
+  Future<int> _loadBlockedCount() async {
+    final contacts = await DriftContactRepository(widget.db).listContacts();
+    return contacts
+        .where(
+          (contact) =>
+              contact.relationship == ContactRelationship.blocked ||
+              contact.trustState == ContactTrustState.blocked ||
+              contact.messengerAvailability == MessengerAvailability.blocked,
+        )
+        .length;
+  }
+
+  Future<void> _openBlockedList() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            BlockedListScreen(repository: DriftContactRepository(widget.db)),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _blockedCount = _loadBlockedCount();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: _blockedCount,
+      builder: (context, snapshot) {
+        return AnsibleSettingsRow(
+          glyph: '⊘',
+          label: widget.text.blockedList,
+          en: 'BLOCKED',
+          sub: widget.text.blockedListSubtitle,
+          value: '${snapshot.data ?? 0}',
+          last: widget.last,
+          onTap: _openBlockedList,
+        );
+      },
+    );
+  }
+}
+
 class _SettingsText {
   const _SettingsText(this.l10n);
 
@@ -478,7 +549,7 @@ class _SettingsText {
   String get localDid => l10n?.localDid ?? '本機 DID';
   String get edit => l10n?.edit ?? '編輯';
   String get identityAndDevice => l10n?.identityAndDevice ?? '身分與裝置 · IDENTITY';
-  String get wallet => l10n?.wallet ?? '錢包';
+  String get wallet => l10n?.wallet ?? '皮夾';
   String walletSubtitle(int count) => count == 0
       ? (l10n?.walletSubtitleEmpty ?? '尚無憑證')
       : (l10n?.walletSubtitleCount(count) ?? '$count 個憑證');
@@ -503,11 +574,18 @@ class _SettingsText {
   String get readingPreferences => l10n?.readingPreferences ?? '閱讀偏好';
   String get readingPreferencesSubtitle =>
       l10n?.readingPreferencesSubtitle ?? '字級、行距、主題';
+  String readingPreferenceValue(ReadingTextScalePreference? preference) {
+    final zh = l10n == null || l10n?.wallet == '錢包' || l10n?.wallet == '皮夾';
+    return switch (preference ?? ReadingTextScalePreference.standard) {
+      ReadingTextScalePreference.small => zh ? '小' : 'Small',
+      ReadingTextScalePreference.standard => defaultValue,
+      ReadingTextScalePreference.large => zh ? '大' : 'Large',
+      ReadingTextScalePreference.extraLarge => zh ? '特大' : 'Extra large',
+    };
+  }
+
   String get defaultValue => l10n?.defaultValue ?? '預設';
   String get boundaries => l10n?.boundaries ?? '邊界 · BOUNDARIES';
-  String get lock => l10n?.lock ?? '鎖定';
-  String get lockSubtitle => l10n?.lockSubtitle ?? '把 app 變成空白封面';
-  String get off => l10n?.off ?? '關閉';
   String get backupRestore => l10n?.backupRestore ?? '備份與還原';
   String get backupRestoreSubtitle =>
       l10n?.backupRestoreSubtitle ?? 'passphrase、新裝置遷移';
