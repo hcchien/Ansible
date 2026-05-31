@@ -24,6 +24,8 @@ The primary map shows the target architecture, while node and edge labels show
 implementation maturity:
 
 - `implemented`: component or path has concrete repo implementation.
+- `partial`: an MVP or slice exists in the repo, but the component or path is
+  not complete enough to describe as production-ready.
 - `draft`: component or path is described in approved or active design docs but
   is not complete.
 - `planned`: future direction described by specs or roadmap docs.
@@ -93,6 +95,12 @@ The visual hierarchy should make boundaries more important than individual
 implementation packages. Package names may appear in details or source notes,
 but the main diagram should use product/system terms.
 
+ActivityPub must be labeled as `partial`, not `planned`: the relay has an
+implemented MVP for ActivityPub actor discovery, WebFinger, inbox/outbox
+endpoints, publication intent projection, Create/Update/Delete mapping, delivery
+attempt storage, and retry state. The label remains `partial` because full
+production federation behavior is still broader than this slice.
+
 ## Required Flows
 
 The map must show these flows:
@@ -111,7 +119,9 @@ The map must show these flows:
 - App-mediated web login grants scoped browser sessions without exporting root
   DID private keys to the browser.
 - App may publish selected public content directly to Nostr relays.
-- Relay distributes ActivityPub server-to-server activities.
+- Relay distributes ActivityPub server-to-server activities through the
+  implemented MVP ActivityPub adapter, while the diagram marks the adapter as
+  partial until production-grade federation behavior is complete.
 - AT Protocol / PLC remains a compatibility context, not the only long-term
   public federation identity path.
 - External Forum Hosts must expose or carry a visible constitution compliance
@@ -141,6 +151,7 @@ The page should include source links to the documents that define the diagram:
 - `docs/protocol/tris_aura_sync_spec_v2.0.md`
 - `docs/protocol/tris_aura_federation_strategy_v0.1.md`
 - `docs/protocol/tris_aura_vc_wallet_spec_v0.1.md`
+- `docs/superpowers/plans/2026-05-09-federation-implementation.md`
 - `docs/superpowers/specs/2026-05-10-forum-host-board-design.md`
 - `docs/superpowers/specs/2026-05-11-app-mediated-web-session-design.md`
 - `docs/superpowers/specs/2026-05-11-web-development-design.md`
