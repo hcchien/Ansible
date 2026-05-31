@@ -34,6 +34,11 @@ implementation maturity:
 - `gap`: known compliance or launch blocker.
 - `external`: provider or network outside first-party control.
 
+Nodes may carry more than one chip when implementation maturity and product
+role differ. For example, AT Protocol / PLC is both `partial` and `legacy`
+because a compatibility slice exists, but it is no longer the sole long-term
+federation direction.
+
 This hybrid model avoids two misleading extremes: a pure current-state diagram
 that omits important architectural direction, and a pure target-state diagram
 that makes draft systems look finished.
@@ -101,6 +106,20 @@ endpoints, publication intent projection, Create/Update/Delete mapping, delivery
 attempt storage, and retry state. The label remains `partial` because full
 production federation behavior is still broader than this slice.
 
+Nostr must be labeled as `partial`, not `planned`: the app has an implemented
+MVP for direct relay publication, Nostr relay settings, NIP-01 event envelopes,
+BIP-340/Schnorr signing, NIP-23 long-form note projection, NIP-09 deletes,
+NIP-02 follow projection, NIP-19 identifiers, and NIP-65 relay list metadata.
+The label remains `partial` because production key custody and broader relay
+operations are not complete.
+
+AT Protocol / PLC must be labeled as `partial` plus `legacy`: the repo has
+XRPC `createRecord` / `resolveHandle` endpoints, Lexicon record validation,
+Ed25519 signature verification, Rust AT Protocol primitives for DAG-CBOR, CID,
+commit signing, and `did:plc` genesis operation creation. It remains `legacy`
+in the diagram because the current federation direction treats AT Protocol as a
+compatibility context rather than the only public federation identity path.
+
 ## Required Flows
 
 The map must show these flows:
@@ -118,12 +137,14 @@ The map must show these flows:
   accounts or app-mediated self-custody DID sessions.
 - App-mediated web login grants scoped browser sessions without exporting root
   DID private keys to the browser.
-- App may publish selected public content directly to Nostr relays.
+- App may publish selected public content directly to Nostr relays through the
+  implemented MVP Nostr adapter, while the diagram marks the adapter as partial
+  until production key custody and broader relay operations are complete.
 - Relay distributes ActivityPub server-to-server activities through the
   implemented MVP ActivityPub adapter, while the diagram marks the adapter as
   partial until production-grade federation behavior is complete.
-- AT Protocol / PLC remains a compatibility context, not the only long-term
-  public federation identity path.
+- AT Protocol / PLC remains a partially implemented compatibility context, not
+  the only long-term public federation identity path.
 - External Forum Hosts must expose or carry a visible constitution compliance
   level before first-party ranking, recommendation, sync, or trust policy relies
   on their behavior.
@@ -133,7 +154,7 @@ The map must show these flows:
 Every node must have a status chip. Key edges must also communicate state:
 
 - solid edge: current or core expected path;
-- dashed edge: draft, planned, or legacy path;
+- dashed edge: partial, draft, planned, or legacy path;
 - red or warning treatment: legacy path or compliance gap;
 - neutral external treatment: external provider or network.
 
@@ -218,7 +239,7 @@ proves too dense.
   Relay, Forum Host, Web/AppView, federation networks, external providers, and
   external host compliance.
 - All major nodes have visible status labels.
-- Draft, planned, legacy, and gap paths are visually distinguishable.
+- Partial, draft, planned, legacy, and gap paths are visually distinguishable.
 - Constitution guardrails are visible on the page.
 - Source document links are included.
 - No remote assets, CDN scripts, or build step are required.
