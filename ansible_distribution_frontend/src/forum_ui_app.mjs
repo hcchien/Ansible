@@ -4,6 +4,22 @@ import { renderAppShell } from './forum_shell_renderer.mjs';
 import { buildAppViewModel } from './state_model.mjs';
 import { WEB_SESSION_TOKEN_KEY } from './web_session_client.mjs';
 
+const UI_STORAGE_KEYS = Object.freeze({
+  activeScene: 'elix.focus.active_scene',
+  personalTheme: 'elix.focus.personal_theme',
+  forumTheme: 'elix.focus.forum_theme',
+  motionMode: 'elix.focus.motion_mode',
+  coachmarkDismissed: 'elix.focus.coachmark_dismissed',
+});
+
+const DEFAULT_UI_PREFERENCES = Object.freeze({
+  activeScene: 'personal',
+  personalTheme: 'auto',
+  forumTheme: 'auto',
+  motionMode: 'book',
+  coachmarkDismissed: false,
+});
+
 export function createForumUiApp({
   root,
   pageController,
@@ -14,9 +30,11 @@ export function createForumUiApp({
   let state = null;
   let loginState = null;
   let uiError = null;
+  let uiPreferences = readUiPreferences(storage);
   let pollTimer = null;
   let bound = false;
   let pendingHashLoad = null;
+  let swipeStartX = null;
 
   const handleClick = async (event) => {
     const actionElement = findActionElement(event.target, root);
@@ -36,6 +54,14 @@ export function createForumUiApp({
         await revokeSession();
       } else if (action === 'sign-out') {
         await signOut();
+      } else if (action === 'select-scene') {
+        selectScene(actionElement.dataset.scene);
+      } else if (action === 'set-scene-theme') {
+        setSceneTheme(actionElement.dataset.scene, actionElement.dataset.theme);
+      } else if (action === 'set-motion-mode') {
+        setMotionMode(actionElement.dataset.motion);
+      } else if (action === 'dismiss-swipe-coachmark') {
+        dismissSwipeCoachmark();
       }
     } catch (error) {
       renderUiError(error);
@@ -52,6 +78,27 @@ export function createForumUiApp({
     }
 
     return loadPromise;
+  };
+
+  const handlePointerDown = (event) => {
+    if (!findFocusStageElement(event.target, root)) return;
+    swipeStartX = Number(event.clientX);
+  };
+
+  const handlePointerUp = (event) => {
+    if (swipeStartX === null || !findFocusStageElement(event.target, root)) {
+      swipeStartX = null;
+      return;
+    }
+
+    const deltaX = Number(event.clientX) - swipeStartX;
+    swipeStartX = null;
+
+    if (deltaX <= -48) {
+      selectScene('forum');
+    } else if (deltaX >= 48) {
+      selectScene('personal');
+    }
   };
 
   async function start() {
@@ -147,8 +194,8 @@ export function createForumUiApp({
 
     const viewModel = viewModelForRender();
     const login = loginStateForRender();
-    const bodyHtml = renderPageBody(viewModel, { login });
-    root.innerHTML = renderAppShell({ viewModel, bodyHtml });
+    const bodyHtml = renderPageBody(viewModel, { login, preferences: uiPreferences });
+    root.innerHTML = renderAppShell({ viewModel, bodyHtml, uiPreferences });
   }
 
   function stop() {
@@ -159,6 +206,8 @@ export function createForumUiApp({
 
     if (bound) {
       root?.removeEventListener?.('click', handleClick);
+      root?.removeEventListener?.('pointerdown', handlePointerDown);
+      root?.removeEventListener?.('pointerup', handlePointerUp);
       windowLike?.removeEventListener?.('hashchange', handleHashChange);
       bound = false;
     }
@@ -168,6 +217,8 @@ export function createForumUiApp({
     if (bound) return;
 
     root?.addEventListener?.('click', handleClick);
+    root?.addEventListener?.('pointerdown', handlePointerDown);
+    root?.addEventListener?.('pointerup', handlePointerUp);
     windowLike?.addEventListener?.('hashchange', handleHashChange);
     bound = true;
   }
@@ -207,6 +258,39 @@ export function createForumUiApp({
     render();
   }
 
+  function selectScene(scene) {
+    const nextScene = normalizeScene(scene);
+    uiPreferences = { ...uiPreferences, activeScene: nextScene, coachmarkDismissed: true };
+    writeUiPreference(storage, UI_STORAGE_KEYS.activeScene, nextScene);
+    writeUiPreference(storage, UI_STORAGE_KEYS.coachmarkDismissed, 'true');
+    render();
+  }
+
+  function setSceneTheme(scene, theme) {
+    const sceneKey = normalizeScene(scene);
+    const themeValue = normalizeTheme(theme);
+    const preferenceKey = sceneKey === 'forum' ? 'forumTheme' : 'personalTheme';
+    const storageKey =
+      sceneKey === 'forum' ? UI_STORAGE_KEYS.forumTheme : UI_STORAGE_KEYS.personalTheme;
+
+    uiPreferences = { ...uiPreferences, [preferenceKey]: themeValue };
+    writeUiPreference(storage, storageKey, themeValue);
+    render();
+  }
+
+  function setMotionMode(motion) {
+    const nextMotion = normalizeMotionMode(motion);
+    uiPreferences = { ...uiPreferences, motionMode: nextMotion };
+    writeUiPreference(storage, UI_STORAGE_KEYS.motionMode, nextMotion);
+    render();
+  }
+
+  function dismissSwipeCoachmark() {
+    uiPreferences = { ...uiPreferences, coachmarkDismissed: true };
+    writeUiPreference(storage, UI_STORAGE_KEYS.coachmarkDismissed, 'true');
+    render();
+  }
+
   return {
     start,
     navigate,
@@ -218,6 +302,32 @@ export function createForumUiApp({
     render,
     stop,
   };
+}
+
+function readUiPreferences(storage) {
+  return {
+    activeScene: normalizeScene(storage?.getItem?.(UI_STORAGE_KEYS.activeScene)),
+    personalTheme: normalizeTheme(storage?.getItem?.(UI_STORAGE_KEYS.personalTheme)),
+    forumTheme: normalizeTheme(storage?.getItem?.(UI_STORAGE_KEYS.forumTheme)),
+    motionMode: normalizeMotionMode(storage?.getItem?.(UI_STORAGE_KEYS.motionMode)),
+    coachmarkDismissed: storage?.getItem?.(UI_STORAGE_KEYS.coachmarkDismissed) === 'true',
+  };
+}
+
+function writeUiPreference(storage, key, value) {
+  storage?.setItem?.(key, value);
+}
+
+function normalizeScene(value) {
+  return value === 'forum' ? 'forum' : DEFAULT_UI_PREFERENCES.activeScene;
+}
+
+function normalizeTheme(value) {
+  return ['light', 'dark', 'auto'].includes(value) ? value : DEFAULT_UI_PREFERENCES.personalTheme;
+}
+
+function normalizeMotionMode(value) {
+  return ['slide', 'book', 'cube'].includes(value) ? value : DEFAULT_UI_PREFERENCES.motionMode;
 }
 
 function findActionElement(target, root) {
@@ -234,6 +344,17 @@ function findActionElement(target, root) {
       return isWithinRoot(node, root) ? node : null;
     }
     node = node.parentElement;
+  }
+
+  return null;
+}
+
+function findFocusStageElement(target, root) {
+  if (!target) return null;
+
+  if (typeof target.closest === 'function') {
+    const element = target.closest('.mobile-focus-stage');
+    return isWithinRoot(element, root) ? element : null;
   }
 
   return null;

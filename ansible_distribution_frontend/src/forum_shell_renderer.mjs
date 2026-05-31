@@ -1,9 +1,19 @@
 import { shortIdentity, trustTierLabel } from './forum_ui_text.mjs';
 import { t } from './web_i18n.mjs';
 
-export function renderAppShell({ viewModel, bodyHtml }) {
+const DEFAULT_UI_PREFERENCES = Object.freeze({
+  activeScene: 'personal',
+  personalTheme: 'auto',
+  forumTheme: 'auto',
+  motionMode: 'book',
+});
+
+export function renderAppShell({ viewModel, bodyHtml, uiPreferences = DEFAULT_UI_PREFERENCES }) {
+  const preferences = normalizeUiPreferences(uiPreferences);
+  const pageId = viewModel?.page?.id ?? 'unknown';
+
   return `
-    <div class="forum-shell">
+    <div class="forum-shell" data-page-id="${escapeAttribute(pageId)}" data-active-scene="${escapeAttribute(preferences.activeScene)}" data-personal-theme="${escapeAttribute(preferences.personalTheme)}" data-forum-theme="${escapeAttribute(preferences.forumTheme)}" data-motion-mode="${escapeAttribute(preferences.motionMode)}">
       ${renderCommandHeader(viewModel)}
       <main class="forum-main">
         ${bodyHtml}
@@ -12,6 +22,21 @@ export function renderAppShell({ viewModel, bodyHtml }) {
       ${renderMobileTabBar(viewModel)}
     </div>
   `;
+}
+
+function normalizeUiPreferences(preferences = {}) {
+  return {
+    activeScene: preferences.activeScene === 'forum' ? 'forum' : 'personal',
+    personalTheme: normalizeTheme(preferences.personalTheme),
+    forumTheme: normalizeTheme(preferences.forumTheme),
+    motionMode: ['slide', 'book', 'cube'].includes(preferences.motionMode)
+      ? preferences.motionMode
+      : 'book',
+  };
+}
+
+function normalizeTheme(value) {
+  return ['light', 'dark', 'auto'].includes(value) ? value : 'auto';
 }
 
 export function renderCommandHeader(viewModel) {

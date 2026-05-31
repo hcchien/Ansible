@@ -4,6 +4,8 @@ import 'ansible_design.dart';
 
 enum ElixScreenStyle { paper, ink, system }
 
+enum ElixBoardMotion { slide, book, cube }
+
 extension ElixScreenStyleUi on ElixScreenStyle {
   String get storageValue => name;
 
@@ -14,7 +16,7 @@ extension ElixScreenStyleUi on ElixScreenStyle {
       case ElixScreenStyle.ink:
         return 'Ink';
       case ElixScreenStyle.system:
-        return 'System';
+        return 'Auto';
     }
   }
 
@@ -25,7 +27,7 @@ extension ElixScreenStyleUi on ElixScreenStyle {
       case ElixScreenStyle.ink:
         return 'Ink';
       case ElixScreenStyle.system:
-        return '跟隨系統';
+        return 'Auto';
     }
   }
 
@@ -75,6 +77,62 @@ extension ElixScreenStyleUi on ElixScreenStyle {
     return ElixScreenStyle.values.firstWhere(
       (style) => style.storageValue == value,
       orElse: () => ElixScreenStyle.paper,
+    );
+  }
+}
+
+extension ElixBoardMotionUi on ElixBoardMotion {
+  String get storageValue => name;
+
+  String get label {
+    switch (this) {
+      case ElixBoardMotion.slide:
+        return 'Slide';
+      case ElixBoardMotion.book:
+        return 'Book';
+      case ElixBoardMotion.cube:
+        return 'Cube';
+    }
+  }
+
+  String get zhLabel {
+    switch (this) {
+      case ElixBoardMotion.slide:
+        return '平移';
+      case ElixBoardMotion.book:
+        return '翻書';
+      case ElixBoardMotion.cube:
+        return '翻立方';
+    }
+  }
+
+  String get title {
+    switch (this) {
+      case ElixBoardMotion.slide:
+        return 'Slide · 平移';
+      case ElixBoardMotion.book:
+        return 'Book · 翻書';
+      case ElixBoardMotion.cube:
+        return 'Cube · 翻立方';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case ElixBoardMotion.slide:
+        return '兩張紙左右平移，沒有立體感。';
+      case ElixBoardMotion.book:
+        return '兩個版像書的左右頁，輕微 perspective。';
+      case ElixBoardMotion.cube:
+        return '較完整的 rotateY，切換感更強。';
+    }
+  }
+
+  static ElixBoardMotion fromStorage(String? value) {
+    if (value == 'light') return ElixBoardMotion.slide;
+    return ElixBoardMotion.values.firstWhere(
+      (motion) => motion.storageValue == value,
+      orElse: () => ElixBoardMotion.book,
     );
   }
 }

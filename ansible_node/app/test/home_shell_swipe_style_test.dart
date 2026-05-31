@@ -37,8 +37,26 @@ void main() {
 
     expect(find.byTooltip('個人版 · 你的 Note 和 Murmur'), findsOneWidget);
     expect(find.byTooltip('討論區 · 追蹤的人與板'), findsOneWidget);
-    expect(find.text('也可以點上方名稱直接切換'), findsOneWidget);
+    expect(find.text('這裡是你的個人版。'), findsOneWidget);
+    expect(find.text('想看別人？往左滑，或是點上面的「討論區」。'), findsOneWidget);
   });
+
+  testWidgets(
+    'personal board uses plus compose and AI bridge, not prompt card',
+    (tester) async {
+      await _pumpHomeShell(tester, coachmarkSeen: true);
+
+      expect(find.text('今天有什麼想記下的？'), findsNothing);
+      expect(find.text('AI · 橫向橋'), findsOneWidget);
+      expect(find.byKey(const Key('home_compose_button')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('home_compose_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('碎念'), findsOneWidget);
+      expect(find.text('筆記'), findsOneWidget);
+    },
+  );
 
   testWidgets('board swiper renders the 3D book-flip stage', (tester) async {
     await _pumpHomeShell(tester, coachmarkSeen: true);
@@ -64,16 +82,26 @@ void main() {
   testWidgets('screen styles are configured independently per main screen', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await _pumpHomeShell(tester, coachmarkSeen: true);
 
-    await tester.tap(find.byKey(const Key('screen_style_button')));
+    await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('screen_style_choice_feed_paper')));
+    await tester.ensureVisible(
+      find.byKey(const Key('settings_style_choice_personal_paper')),
+    );
+    await tester.tap(
+      find.byKey(const Key('settings_style_choice_personal_paper')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings_done_button')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
-    await tester.tapAt(const Offset(20, 20));
-    await tester.pumpAndSettle();
 
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
@@ -83,18 +111,18 @@ void main() {
 
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
 
-    await tester.tap(find.byKey(const Key('screen_style_button')));
+    await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
     await tester.ensureVisible(
-      find.byKey(const Key('screen_style_choice_circle_ink')),
+      find.byKey(const Key('settings_style_choice_forum_ink')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('screen_style_choice_circle_ink')));
+    await tester.tap(find.byKey(const Key('settings_style_choice_forum_ink')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings_done_button')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.darkPaper);
-    await tester.tapAt(const Offset(20, 20));
-    await tester.pumpAndSettle();
 
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
@@ -103,6 +131,39 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
+  });
+
+  testWidgets('interface preferences live in settings on mobile', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpHomeShell(tester, coachmarkSeen: true);
+
+    expect(find.byKey(const Key('screen_style_button')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('settings_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('介面與語言'), findsOneWidget);
+    expect(find.text('每版的光'), findsOneWidget);
+    expect(find.text('換版的動態'), findsOneWidget);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('settings_style_choice_personal_paper')),
+    );
+    await tester.tap(
+      find.byKey(const Key('settings_style_choice_personal_paper')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings_motion_slide')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paper / Paper'), findsOneWidget);
+    expect(find.text('Slide'), findsWidgets);
   });
 }
 

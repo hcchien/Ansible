@@ -25,7 +25,11 @@ void main() {
 
     expect(find.text('鎖定'), findsNothing);
 
-    await tester.ensureVisible(find.text('閱讀偏好'));
+    await tester.dragUntilVisible(
+      find.text('閱讀偏好'),
+      find.byType(ListView),
+      const Offset(0, -280),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('閱讀偏好'));
     await tester.pumpAndSettle();
@@ -104,6 +108,8 @@ void main() {
     expect(find.text('語言'), findsOneWidget);
     expect(find.text('跟隨系統'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('語言'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('語言'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('English'));

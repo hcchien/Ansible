@@ -19,13 +19,20 @@ assert.match(homeHtml, /RELAY · BOARD · #general/);
 assert.match(homeHtml, /打開看板/);
 assert.match(homeHtml, /Note/);
 assert.match(homeHtml, /登入後可簽署發文/);
-assert.match(homeHtml, /class="cols social-home"/);
-assert.match(homeHtml, /class="compose"/);
+assert.match(homeHtml, /class="cols social-home mobile-focus-home"/);
+assert.match(homeHtml, /class="mobile-focus-stage"/);
+assert.match(homeHtml, /data-scene="personal"/);
+assert.match(homeHtml, /個人版/);
+assert.match(homeHtml, /討論區/);
+assert.match(homeHtml, /MURMUR · 0:38/);
+assert.match(homeHtml, /AI · 橫向橋/);
+assert.match(homeHtml, /往左滑/);
+assert.match(homeHtml, /class="mobile-compose-fab"/);
 assert.match(homeHtml, /已訂閱看板/);
 assert.doesNotMatch(homeHtml, /工作階段/);
 assert.doesNotMatch(homeHtml, /RELAY · 來源/);
 assert.doesNotMatch(homeHtml, /Relay 資料/);
-assert.doesNotMatch(homeHtml, /Miki Chen|Ting Wang|24 people follow you|FROM A FOLLOW/);
+assert.doesNotMatch(homeHtml, /傳給圈內/);
 assert.doesNotMatch(homeHtml, /App-approved web session login|Read only|Open board|Login required for signed posting/);
 
 const boardHarness = createFrontendFlowHarness({
@@ -108,8 +115,17 @@ const sessionsHtml = renderPageBody(sessionsVm);
 assert.match(sessionsHtml, /自持有 DID/);
 assert.match(sessionsHtml, /發布討論串/);
 assert.match(sessionsHtml, /撤銷目前工作階段/);
-assert.match(sessionsHtml, /class="card sessions-page"/);
-assert.match(sessionsHtml, /這個瀏覽器工作階段有權限範圍/);
+assert.match(sessionsHtml, /class="settings-home"/);
+assert.match(sessionsHtml, /本機身分/);
+assert.match(sessionsHtml, /身分與裝置/);
+assert.match(sessionsHtml, /日常/);
+assert.match(sessionsHtml, /邊界/);
+assert.match(sessionsHtml, /介面與語言/);
+assert.match(sessionsHtml, /每版的光/);
+assert.match(sessionsHtml, /換版的動態/);
+assert.match(sessionsHtml, /data-action="set-scene-theme"/);
+assert.match(sessionsHtml, /data-action="set-motion-mode"/);
+assert.match(sessionsHtml, /未設/);
 assert.doesNotMatch(sessionsHtml, /Revoke current session|This browser session is scoped and revocable|Trust tier|Expiry/);
 
 const notFoundVm = buildAppViewModel({

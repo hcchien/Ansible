@@ -10,6 +10,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('header sync button runs app-wide sync', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
@@ -43,9 +48,13 @@ void main() {
 
     expect(syncCalls, 1);
     expect(find.textContaining('public publish 1/1 targets'), findsOneWidget);
+
+    await _disposeWidgetTree(tester);
   });
 
-  testWidgets('compact header shows network status', (tester) async {
+  testWidgets('compact header keeps network chrome out of focus navigation', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -68,12 +77,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.byTooltip('已連線 · WiFi'), findsOneWidget);
+    expect(find.byTooltip('已連線 · WiFi'), findsNothing);
+    expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
+    expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
   });
 
   testWidgets('header sync prompts setup when no sync target is configured', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     FlutterSecureStorage.setMockInitialValues({});
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
@@ -97,6 +113,8 @@ void main() {
 
     expect(find.textContaining('請先在同步設定新增 Forum Host'), findsOneWidget);
     expect(find.textContaining('同步完成'), findsNothing);
+
+    await _disposeWidgetTree(tester);
   });
 
   testWidgets('startup pull refresh runs when online with active relay', (
@@ -302,4 +320,10 @@ class _FakeNetworkStatusMonitor extends ChangeNotifier
 
   @override
   Future<bool> isUrlReachable(String url) async => true;
+}
+
+Future<void> _disposeWidgetTree(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 1));
 }

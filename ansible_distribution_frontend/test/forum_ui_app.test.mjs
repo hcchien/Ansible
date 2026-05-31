@@ -25,11 +25,31 @@ await app.start();
 assert.match(root.innerHTML, /Local Forum Host/);
 assert.match(root.innerHTML, /匿名/);
 assert.match(root.innerHTML, /href="#\/login"/);
-assert.match(root.innerHTML, /class="cols social-home"/);
+assert.match(root.innerHTML, /class="cols social-home mobile-focus-home"/);
 assert.match(root.innerHTML, /RELAY · BOARD · #general/);
+assert.match(root.innerHTML, /class="mobile-focus-stage"/);
+assert.match(root.innerHTML, /data-active-scene="personal"/);
+assert.match(root.innerHTML, /AI · 橫向橋/);
 assert.match(root.innerHTML, /mobile-tabbar/);
 assert.doesNotMatch(root.innerHTML, /RELAY · 來源|Relay 資料/);
 assert.doesNotMatch(root.innerHTML, /Anonymous|Sign in|Read only|Open board/);
+
+await root.listeners.get('click')({
+  target: createContainedActionElement(root, 'select-scene', { scene: 'forum' }),
+  preventDefault() {},
+});
+assert.match(root.innerHTML, /data-active-scene="forum"/);
+assert.equal(harness.storage.getItem('elix.focus.active_scene'), 'forum');
+await root.listeners.get('pointerdown')({
+  target: createFocusStageElement(root),
+  clientX: 110,
+});
+await root.listeners.get('pointerup')({
+  target: createFocusStageElement(root),
+  clientX: 250,
+});
+assert.match(root.innerHTML, /data-active-scene="personal"/);
+assert.equal(harness.storage.getItem('elix.focus.active_scene'), 'personal');
 
 await app.navigate('#/boards/general');
 assert.match(root.innerHTML, /General/);
@@ -55,6 +75,24 @@ assert.doesNotMatch(root.innerHTML, /trisaura:\/\/web-session\/approve/);
 
 await app.pollLoginOnce();
 assert.match(root.innerHTML, /自持有 DID/);
+await app.navigate('#/sessions');
+assert.match(root.innerHTML, /class="settings-home"/);
+assert.match(root.innerHTML, /每版的光/);
+await root.listeners.get('click')({
+  target: createContainedActionElement(root, 'set-scene-theme', {
+    scene: 'personal',
+    theme: 'dark',
+  }),
+  preventDefault() {},
+});
+assert.match(root.innerHTML, /data-personal-theme="dark"/);
+assert.equal(harness.storage.getItem('elix.focus.personal_theme'), 'dark');
+await root.listeners.get('click')({
+  target: createContainedActionElement(root, 'set-motion-mode', { motion: 'book' }),
+  preventDefault() {},
+});
+assert.match(root.innerHTML, /data-motion-mode="book"/);
+assert.equal(harness.storage.getItem('elix.focus.motion_mode'), 'book');
 
 app.stop();
 
@@ -213,9 +251,9 @@ function createFakeWindow(hash, { dispatchesHashchange = false } = {}) {
   };
 }
 
-function createContainedActionElement(root, action) {
+function createContainedActionElement(root, action, dataset = {}) {
   return {
-    dataset: { action },
+    dataset: { ...dataset, action },
     parentElement: root,
   };
 }
@@ -224,5 +262,19 @@ function createOutsideActionElement(action) {
   return {
     dataset: { action },
     parentElement: null,
+  };
+}
+
+function createFocusStageElement(root) {
+  const stage = {
+    className: 'mobile-focus-stage',
+    parentElement: root,
+  };
+
+  return {
+    parentElement: stage,
+    closest(selector) {
+      return selector === '.mobile-focus-stage' ? stage : null;
+    },
   };
 }

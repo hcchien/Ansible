@@ -116,6 +116,7 @@ class AnsibleSettingsRow extends StatelessWidget {
     this.onTap,
     this.last = false,
     this.danger = false,
+    this.valueColor,
   });
 
   final String glyph;
@@ -126,6 +127,7 @@ class AnsibleSettingsRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool last;
   final bool danger;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -193,8 +195,7 @@ class AnsibleSettingsRow extends StatelessWidget {
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 9.5,
                   letterSpacing: 1.2,
-                  color: AnsibleDesign.inkMuted,
-                ),
+                ).copyWith(color: valueColor ?? AnsibleDesign.inkMuted),
               ),
             ],
             const SizedBox(width: 8),

@@ -13,57 +13,57 @@ assert.match(
 );
 assert.match(
   css,
-  /--background:\s*#faf6ec;/,
-  'Elix paper background token is required',
+  /--background:\s*#FBF7DC;/,
+  'Elix Bone Goose background token is required',
 );
 assert.match(
   css,
-  /--surface-raised:\s*#f0ebda;/,
-  'Elix raised paper token is required',
+  /--surface-raised:\s*#F4EEC6;/,
+  'Elix Vellum raised paper token is required',
 );
 assert.match(
   css,
-  /--surface-deep:\s*#e8e1cf;/,
+  /--surface-deep:\s*#E8DEAA;/,
   'Elix deep paper token is required',
 );
 assert.match(
   css,
-  /--border:\s*#d9d2be;/,
+  /--border:\s*#D6CB94;/,
   'Elix rule token is required',
 );
 assert.match(
   css,
-  /--muted-fill:\s*#e8e1cf;/,
+  /--muted-fill:\s*#E8DEAA;/,
   'Elix muted fill token is required',
 );
 assert.match(
   css,
-  /--accent:\s*#b97a3c;/,
-  'Elix amber accent token is required',
+  /--accent:\s*#B88C2E;/,
+  'Elix ochre accent token is required',
 );
 assert.match(
   css,
-  /--warning:\s*#7a3e1e;/,
+  /--warning:\s*#7E4A1E;/,
   'Elix ember warning token is required',
 );
 assert.match(
   css,
-  /--danger:\s*#7a3e1e;/,
+  /--danger:\s*#7E4A1E;/,
   'Elix danger token is required',
 );
 assert.match(
   css,
-  /--success:\s*#4a6b5e;/,
-  'Elix sage success token is required',
+  /--success:\s*#5A6E3A;/,
+  'Elix moss success token is required',
 );
 assert.match(
   css,
-  /--text:\s*#1a1815;/,
-  'Elix ink token is required',
+  /--text:\s*#1F2E20;/,
+  'Elix forest ink token is required',
 );
 assert.match(
   css,
-  /--muted:\s*#3a3530;/,
+  /--muted:\s*#3D4E3D;/,
   'Elix soft ink token is required',
 );
 assert.match(
@@ -103,6 +103,11 @@ assert.match(
 );
 assert.match(
   css,
+  /\.mobile-focus-stage\s*\{[^}]*display:\s*grid;/s,
+  'mobile focus scene switcher must be implemented as a real app surface',
+);
+assert.match(
+  css,
   /\.post\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s,
   'post cards must provide the shared feed item model',
 );
@@ -135,6 +140,11 @@ assert.match(
   css,
   /@media\s*\(max-width:\s*560px\)[\s\S]*\.mobile-tabbar\s*\{[^}]*display:\s*flex;/,
   'mobile breakpoint must reveal the Elix tab bar',
+);
+assert.match(
+  css,
+  /@media\s*\(max-width:\s*560px\)[\s\S]*\.forum-shell\[data-page-id="home"\]\s+\.mobile-tabbar\s*\{[^}]*display:\s*none;/,
+  'mobile focus home must not show the legacy tab bar over the swipe scene',
 );
 assert.match(
   css,

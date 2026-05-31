@@ -30,7 +30,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    await tester.tap(find.text('錄一段'));
+    expect(find.text('今天有什麼想記下的？'), findsNothing);
+    await tester.tap(find.byKey(const Key('home_compose_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('碎念'));
     await tester.pumpAndSettle();
 
     expect(find.text('Murmur'), findsOneWidget);
@@ -57,7 +60,9 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('寫一段'));
+    await tester.tap(find.byKey(const Key('home_compose_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('筆記'));
     await tester.pumpAndSettle();
     expect(find.text('Note'), findsOneWidget);
     expect(find.text('Working Notes'), findsOneWidget);

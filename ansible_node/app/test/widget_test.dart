@@ -53,7 +53,7 @@ void main() {
     }
 
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
-    expect(find.byKey(const Key('screen_style_button')), findsOneWidget);
+    expect(find.byKey(const Key('screen_style_button')), findsNothing);
     expect(find.byKey(const Key('settings_button')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
@@ -106,7 +106,7 @@ void main() {
     }
 
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
-    expect(find.byKey(const Key('screen_style_button')), findsOneWidget);
+    expect(find.byKey(const Key('screen_style_button')), findsNothing);
     expect(find.byKey(const Key('settings_button')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);

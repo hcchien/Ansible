@@ -45,9 +45,19 @@ const authenticatedVm = buildAppViewModel({
 const shell = renderAppShell({
   viewModel: authenticatedVm,
   bodyHtml: '<section class="page-panel">Body</section>',
+  uiPreferences: {
+    activeScene: 'forum',
+    personalTheme: 'dark',
+    forumTheme: 'light',
+    motionMode: 'book',
+  },
 });
 assert.match(shell, /自持有 DID/);
 assert.match(shell, /新討論串/);
+assert.match(shell, /data-active-scene="forum"/);
+assert.match(shell, /data-personal-theme="dark"/);
+assert.match(shell, /data-forum-theme="light"/);
+assert.match(shell, /data-motion-mode="book"/);
 assert.match(shell, /<section class="page-panel">Body<\/section>/);
 assert.match(shell, /mobile-tabbar/);
 assert.match(shell, /app-footer/);

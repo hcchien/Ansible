@@ -6,6 +6,7 @@ import '../l10n/subpage_l10n.dart';
 import '../services/app_locale_controller.dart';
 import '../services/reading_preferences_controller.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
@@ -23,6 +24,12 @@ class SettingsHomeScreen extends StatelessWidget {
     this.localeController,
     this.readingPreferencesController,
     this.onClearIdentity,
+    this.personalScreenStyle,
+    this.forumScreenStyle,
+    this.boardMotion,
+    this.onPersonalScreenStyleChanged,
+    this.onForumScreenStyleChanged,
+    this.onBoardMotionChanged,
   });
 
   final AppDatabase db;
@@ -30,6 +37,12 @@ class SettingsHomeScreen extends StatelessWidget {
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
   final VoidCallback? onClearIdentity;
+  final ElixScreenStyle? personalScreenStyle;
+  final ElixScreenStyle? forumScreenStyle;
+  final ElixBoardMotion? boardMotion;
+  final ValueChanged<ElixScreenStyle>? onPersonalScreenStyleChanged;
+  final ValueChanged<ElixScreenStyle>? onForumScreenStyleChanged;
+  final ValueChanged<ElixBoardMotion>? onBoardMotionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +51,7 @@ class SettingsHomeScreen extends StatelessWidget {
       title: text.settingsTitle,
       leadingLabel: '',
       trailing: TextButton(
+        key: const Key('settings_done_button'),
         onPressed: () => Navigator.of(context).maybePop(),
         child: Text(
           text.done,
@@ -74,12 +88,32 @@ class SettingsHomeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        text.localIdentity,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: AnsibleDesign.ink,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              text.localIdentity,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: AnsibleDesign.ink,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const ElixSignedPill(kind: 'PK'),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'SIGNED · PASSKEY',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 8.5,
+                          letterSpacing: 1.2,
+                          color: AnsibleDesign.ochre,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -162,6 +196,7 @@ class SettingsHomeScreen extends StatelessWidget {
                 en: 'ADMIN',
                 sub: text.accessAuditSubtitle,
                 value: text.noSuspiciousAccess,
+                last: true,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -169,6 +204,20 @@ class SettingsHomeScreen extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+            ],
+          ),
+          _SettingsSection(
+            label: text.interfaceAndLanguage,
+            children: [
+              _InterfaceSettingsPanel(
+                text: text,
+                personalStyle: personalScreenStyle ?? ElixScreenStyle.ink,
+                forumStyle: forumScreenStyle ?? ElixScreenStyle.paper,
+                motion: boardMotion ?? ElixBoardMotion.book,
+                onPersonalStyleChanged: onPersonalScreenStyleChanged,
+                onForumStyleChanged: onForumScreenStyleChanged,
+                onMotionChanged: onBoardMotionChanged,
               ),
               _LanguageSettingsRow(
                 localeController: localeController,
@@ -229,6 +278,7 @@ class SettingsHomeScreen extends StatelessWidget {
                 en: 'RECOVERY',
                 sub: text.backupRestoreSubtitle,
                 value: text.notSet,
+                valueColor: AnsibleDesign.ember,
               ),
               _BlockedListSettingsRow(db: db, text: text, last: true),
             ],
@@ -299,6 +349,354 @@ class SettingsHomeScreen extends StatelessWidget {
   static String _shortDid(String did) {
     if (did.length <= 20) return did;
     return '${did.substring(0, 14)}...${did.substring(did.length - 4)}';
+  }
+}
+
+class _InterfaceSettingsPanel extends StatefulWidget {
+  const _InterfaceSettingsPanel({
+    required this.text,
+    required this.personalStyle,
+    required this.forumStyle,
+    required this.motion,
+    this.onPersonalStyleChanged,
+    this.onForumStyleChanged,
+    this.onMotionChanged,
+  });
+
+  final _SettingsText text;
+  final ElixScreenStyle personalStyle;
+  final ElixScreenStyle forumStyle;
+  final ElixBoardMotion motion;
+  final ValueChanged<ElixScreenStyle>? onPersonalStyleChanged;
+  final ValueChanged<ElixScreenStyle>? onForumStyleChanged;
+  final ValueChanged<ElixBoardMotion>? onMotionChanged;
+
+  @override
+  State<_InterfaceSettingsPanel> createState() =>
+      _InterfaceSettingsPanelState();
+}
+
+class _InterfaceSettingsPanelState extends State<_InterfaceSettingsPanel> {
+  late ElixScreenStyle _personalStyle;
+  late ElixScreenStyle _forumStyle;
+  late ElixBoardMotion _motion;
+
+  @override
+  void initState() {
+    super.initState();
+    _personalStyle = widget.personalStyle;
+    _forumStyle = widget.forumStyle;
+    _motion = widget.motion;
+  }
+
+  @override
+  void didUpdateWidget(covariant _InterfaceSettingsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.personalStyle != widget.personalStyle) {
+      _personalStyle = widget.personalStyle;
+    }
+    if (oldWidget.forumStyle != widget.forumStyle) {
+      _forumStyle = widget.forumStyle;
+    }
+    if (oldWidget.motion != widget.motion) {
+      _motion = widget.motion;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canEditStyles =
+        widget.onPersonalStyleChanged != null ||
+        widget.onForumStyleChanged != null;
+    final canEditMotion = widget.onMotionChanged != null;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 15, 22, 16),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _InterfacePanelHeading(
+            title: widget.text.sceneLight,
+            en: 'LIGHT',
+            value: '${_personalStyle.label} / ${_forumStyle.label}',
+          ),
+          const SizedBox(height: 9),
+          Text(
+            widget.text.sceneLightSubtitle,
+            style: const TextStyle(
+              fontSize: 11.5,
+              height: 1.45,
+              color: AnsibleDesign.inkFaint,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SceneStylePicker(
+            keyPrefix: 'personal',
+            label: widget.text.personalBoard,
+            selected: _personalStyle,
+            enabled: canEditStyles,
+            onSelected: (style) {
+              setState(() => _personalStyle = style);
+              widget.onPersonalStyleChanged?.call(style);
+            },
+          ),
+          const SizedBox(height: 10),
+          _SceneStylePicker(
+            keyPrefix: 'forum',
+            label: widget.text.forumBoard,
+            selected: _forumStyle,
+            enabled: canEditStyles,
+            onSelected: (style) {
+              setState(() => _forumStyle = style);
+              widget.onForumStyleChanged?.call(style);
+            },
+          ),
+          const SizedBox(height: 18),
+          _InterfacePanelHeading(
+            title: widget.text.boardMotion,
+            en: 'MOTION',
+            value: _motion.label,
+          ),
+          const SizedBox(height: 9),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final motion in ElixBoardMotion.values)
+                _MotionChoice(
+                  key: Key('settings_motion_${motion.name}'),
+                  motion: motion,
+                  selected: _motion == motion,
+                  enabled: canEditMotion,
+                  onTap: () {
+                    setState(() => _motion = motion);
+                    widget.onMotionChanged?.call(motion);
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InterfacePanelHeading extends StatelessWidget {
+  const _InterfacePanelHeading({
+    required this.title,
+    required this.en,
+    required this.value,
+  });
+
+  final String title;
+  final String en;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14.5,
+            color: AnsibleDesign.ink,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          en,
+          style: const TextStyle(
+            fontFamily: AnsibleDesign.mono,
+            fontSize: 8.5,
+            letterSpacing: 1.4,
+            color: AnsibleDesign.inkFaint,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: AnsibleDesign.mono,
+            fontSize: 9.5,
+            letterSpacing: 1.1,
+            color: AnsibleDesign.inkMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SceneStylePicker extends StatelessWidget {
+  const _SceneStylePicker({
+    required this.keyPrefix,
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final String keyPrefix;
+  final String label;
+  final ElixScreenStyle selected;
+  final bool enabled;
+  final ValueChanged<ElixScreenStyle> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 54,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1.1,
+              color: AnsibleDesign.inkFaint,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Row(
+            children: [
+              for (final style in ElixScreenStyle.values) ...[
+                Expanded(
+                  child: _StyleChoice(
+                    key: Key(
+                      'settings_style_choice_${keyPrefix}_${style.name}',
+                    ),
+                    style: style,
+                    selected: selected == style,
+                    enabled: enabled,
+                    onTap: () => onSelected(style),
+                  ),
+                ),
+                if (style != ElixScreenStyle.values.last)
+                  const SizedBox(width: 7),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StyleChoice extends StatelessWidget {
+  const _StyleChoice({
+    super.key,
+    required this.style,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final ElixScreenStyle style;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = style.dataFor(Theme.of(context).brightness);
+    final previewColor = style == ElixScreenStyle.system
+        ? AnsibleDesign.paperDeep
+        : data.background;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AnsibleDesign.paperElev : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: selected ? AnsibleDesign.ochre : AnsibleDesign.rule,
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              height: 18,
+              decoration: BoxDecoration(
+                color: previewColor,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              style.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 9,
+                letterSpacing: 0.8,
+                color: selected ? AnsibleDesign.ink : AnsibleDesign.inkMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MotionChoice extends StatelessWidget {
+  const _MotionChoice({
+    super.key,
+    required this.motion,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final ElixBoardMotion motion;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AnsibleDesign.paperDeep : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AnsibleDesign.ochre : AnsibleDesign.rule,
+            width: 0.5,
+          ),
+        ),
+        child: Text(
+          motion.label,
+          style: TextStyle(
+            fontFamily: AnsibleDesign.mono,
+            fontSize: 10,
+            letterSpacing: 1.1,
+            color: selected ? AnsibleDesign.ink : AnsibleDesign.inkMuted,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -564,6 +962,12 @@ class _SettingsText {
   String get language => l10n?.language ?? '語言';
   String get languageSubtitle => l10n?.languageSubtitle ?? '選擇 app 介面語言';
   String get systemDefault => l10n?.systemDefault ?? '跟隨系統';
+  String get interfaceAndLanguage => '介面與語言';
+  String get sceneLight => '每版的光';
+  String get sceneLightSubtitle => '個人版與討論區可以各自使用 Paper、Ink 或 Auto。';
+  String get boardMotion => '換版的動態';
+  String get personalBoard => '個人版';
+  String get forumBoard => '討論區';
   String get daily => l10n?.daily ?? '日常 · DAILY';
   String get inbox => l10n?.inbox ?? '收信';
   String get inboxSubtitle => l10n?.inboxSubtitle ?? '圈內回覆、新成員、同步';

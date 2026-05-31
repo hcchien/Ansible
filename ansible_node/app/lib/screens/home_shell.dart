@@ -62,8 +62,6 @@ enum _Board { personal, forum }
 
 enum _PersonalFilter { all, murmur, note }
 
-enum _BoardMotion { light, book, cube }
-
 // Within the "圈內" room, a sub-selection between murmur and notes.
 enum _CircleTab { murmur, notes }
 
@@ -141,7 +139,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   _PersonalFilter _personalFilter = _PersonalFilter.all;
   _ElixTab _selectedTab = _ElixTab.feed;
   _Board _selectedBoard = _Board.personal;
-  _BoardMotion _boardMotion = _BoardMotion.book;
+  ElixBoardMotion _boardMotion = ElixBoardMotion.book;
   bool _showCoachmark = false;
   _CircleTab _selectedCircleTab = _CircleTab.murmur;
   late final PageController _pageController;
@@ -391,17 +389,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final saved = prefs.getString(_boardMotionKey);
     if (!mounted || saved == null) return;
     setState(() {
-      _boardMotion = _BoardMotion.values.firstWhere(
-        (motion) => motion.name == saved,
-        orElse: () => _BoardMotion.book,
-      );
+      _boardMotion = ElixBoardMotionUi.fromStorage(saved);
     });
   }
 
-  Future<void> _setBoardMotion(_BoardMotion motion) async {
+  Future<void> _setBoardMotion(ElixBoardMotion motion) async {
     setState(() => _boardMotion = motion);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_boardMotionKey, motion.name);
+    await prefs.setString(_boardMotionKey, motion.storageValue);
   }
 
   void _handlePageChanged(int page) {
@@ -1203,6 +1198,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onOpenCircle: (ctx, tab) => _openCircleScreen(ctx, tab),
                 onComposeTap: () => _openCompose(context),
                 onScreenStyleTap: () => _openScreenStyleSheet(context),
+                onPersonalScreenStyleChanged: (style) =>
+                    unawaited(_setScreenStyle(_ElixTab.feed, style)),
+                onForumScreenStyleChanged: (style) =>
+                    unawaited(_setScreenStyle(_ElixTab.circle, style)),
+                onBoardMotionChanged: (motion) =>
+                    unawaited(_setBoardMotion(motion)),
                 screenStyles: _screenStyles,
                 boardMotion: _boardMotion,
                 selectedCircleTab: _selectedCircleTab,
@@ -1523,6 +1524,9 @@ class _MainPanel extends StatelessWidget {
     required this.onOpenCircle,
     required this.onComposeTap,
     required this.onScreenStyleTap,
+    required this.onPersonalScreenStyleChanged,
+    required this.onForumScreenStyleChanged,
+    required this.onBoardMotionChanged,
     required this.screenStyles,
     required this.boardMotion,
     required this.selectedCircleTab,
@@ -1577,8 +1581,11 @@ class _MainPanel extends StatelessWidget {
   final void Function(BuildContext, _CircleTab) onOpenCircle;
   final VoidCallback onComposeTap;
   final VoidCallback onScreenStyleTap;
+  final ValueChanged<ElixScreenStyle> onPersonalScreenStyleChanged;
+  final ValueChanged<ElixScreenStyle> onForumScreenStyleChanged;
+  final ValueChanged<ElixBoardMotion> onBoardMotionChanged;
   final Map<_ElixTab, ElixScreenStyle> screenStyles;
-  final _BoardMotion boardMotion;
+  final ElixBoardMotion boardMotion;
   final _CircleTab selectedCircleTab;
   final ValueChanged<_CircleTab> onCircleTabChanged;
   final ContentItemRepository contentItemRepository;
@@ -1773,6 +1780,67 @@ class _MainPanel extends StatelessWidget {
       );
     }
 
+    Widget aiBridge() {
+      return InkWell(
+        key: const Key('home_ai_bridge'),
+        onTap: onStartAiAction,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(
+            color: bgSoftColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderSoft, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 2,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: styleData.accent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 11),
+              AnsibleMark(size: 18, color: fgColor),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI · 橫向橋',
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 9.5,
+                        letterSpacing: 1.3,
+                        color: styleData.accent,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '從本機 murmur 找材料，替筆記接出下一段。',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 13,
+                        height: 1.35,
+                        color: mutedColor,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: faintColor),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1782,73 +1850,8 @@ class _MainPanel extends StatelessWidget {
         ListView(
           padding: const EdgeInsets.only(bottom: 80),
           children: [
-            // ── Compose prompt (A·01) ────────────────────────────────────
-            Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-              decoration: BoxDecoration(
-                color: bgSoftColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: borderSoft, width: 0.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '今天有什麼想記下的？',
-                    style: TextStyle(
-                      fontFamily: AnsibleDesign.serif,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: fgColor,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () =>
-                              onOpenCircle(context, _CircleTab.notes),
-                          icon: const Icon(Icons.edit_outlined, size: 14),
-                          label: const Text('寫一段'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            textStyle: const TextStyle(
-                              fontFamily: AnsibleDesign.serif,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () =>
-                              onOpenCircle(context, _CircleTab.murmur),
-                          icon: Icon(
-                            Icons.mic_outlined,
-                            size: 14,
-                            color: fgColor,
-                          ),
-                          label: Text('錄一段', style: TextStyle(color: fgColor)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            textStyle: const TextStyle(
-                              fontFamily: AnsibleDesign.serif,
-                              fontSize: 13,
-                            ),
-                            backgroundColor: styleData.background,
-                            side: BorderSide(color: borderSoft, width: 0.5),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            aiBridge(),
+            const SizedBox(height: 14),
 
             // ── This week section ────────────────────────────────────────
             if (thisWeek.isNotEmpty) ...[
@@ -1892,6 +1895,21 @@ class _MainPanel extends StatelessWidget {
         ),
 
         // ── Floating AI dot (A·01 bottom-right, 56×56) ──
+        Positioned(
+          right: 0,
+          bottom: 92,
+          child: FloatingActionButton.small(
+            key: const Key('home_compose_button'),
+            heroTag: 'home_compose_button',
+            onPressed: onComposeTap,
+            backgroundColor: styleData.accent,
+            foregroundColor: styleData.background,
+            elevation: 0,
+            tooltip: '新增 Note 或 Murmur',
+            child: const Icon(Icons.add),
+          ),
+        ),
+
         Positioned(
           right: 0,
           bottom: 24,
@@ -2149,6 +2167,14 @@ class _MainPanel extends StatelessWidget {
                 onScreenStyleTap: onScreenStyleTap,
                 screenStyleLabel:
                     (screenStyles[selectedTab] ?? ElixScreenStyle.paper).label,
+                personalScreenStyle:
+                    screenStyles[_ElixTab.feed] ?? ElixScreenStyle.ink,
+                forumScreenStyle:
+                    screenStyles[_ElixTab.circle] ?? ElixScreenStyle.paper,
+                boardMotion: boardMotion,
+                onPersonalScreenStyleChanged: onPersonalScreenStyleChanged,
+                onForumScreenStyleChanged: onForumScreenStyleChanged,
+                onBoardMotionChanged: onBoardMotionChanged,
               ),
             _BoardSwipeHeader(
               pageController: pageController,
@@ -2162,7 +2188,7 @@ class _MainPanel extends StatelessWidget {
               feedFilter: feedFilter,
               onFeedFilterChanged: onFeedFilterChanged,
               forumPostCount: posts.length,
-              onOpenPreferences: compact ? onScreenStyleTap : null,
+              onOpenPreferences: null,
               onOpenSettings: compact
                   ? () {
                       Navigator.of(context).push(
@@ -2174,6 +2200,18 @@ class _MainPanel extends StatelessWidget {
                             readingPreferencesController:
                                 readingPreferencesController,
                             onClearIdentity: onClearIdentity,
+                            personalScreenStyle:
+                                screenStyles[_ElixTab.feed] ??
+                                ElixScreenStyle.ink,
+                            forumScreenStyle:
+                                screenStyles[_ElixTab.circle] ??
+                                ElixScreenStyle.paper,
+                            boardMotion: boardMotion,
+                            onPersonalScreenStyleChanged:
+                                onPersonalScreenStyleChanged,
+                            onForumScreenStyleChanged:
+                                onForumScreenStyleChanged,
+                            onBoardMotionChanged: onBoardMotionChanged,
                           ),
                         ),
                       );
@@ -2287,10 +2325,10 @@ class _ScreenStyleSheet extends StatelessWidget {
 
   final ElixScreenStyle personalStyle;
   final ElixScreenStyle forumStyle;
-  final _BoardMotion motion;
+  final ElixBoardMotion motion;
   final ValueChanged<ElixScreenStyle> onPersonalStyleSelected;
   final ValueChanged<ElixScreenStyle> onForumStyleSelected;
-  final ValueChanged<_BoardMotion> onMotionSelected;
+  final ValueChanged<ElixBoardMotion> onMotionSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -2314,7 +2352,7 @@ class _ScreenStyleSheet extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               const Text(
-                '介面與動態',
+                '介面與語言',
                 style: TextStyle(
                   fontFamily: AnsibleDesign.serif,
                   fontSize: 16,
@@ -2323,7 +2361,7 @@ class _ScreenStyleSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const AnsibleMonoLabel('每個版的氣氛'),
+              const AnsibleMonoLabel('每版的光'),
               const SizedBox(height: 8),
               const Text(
                 '每個版可以有自己的光。Swipe 換版時，顏色也會跟著換。',
@@ -2388,26 +2426,26 @@ class _ScreenStyleSheet extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _MotionOption(
-                key: const Key('board_motion_light'),
-                title: '輕 · 平移',
-                subtitle: '兩張紙左右平移，沒有立體感。',
-                selected: motion == _BoardMotion.light,
-                onTap: () => onMotionSelected(_BoardMotion.light),
+                key: const Key('board_motion_slide'),
+                title: ElixBoardMotion.slide.title,
+                subtitle: ElixBoardMotion.slide.description,
+                selected: motion == ElixBoardMotion.slide,
+                onTap: () => onMotionSelected(ElixBoardMotion.slide),
               ),
               _MotionOption(
                 key: const Key('board_motion_book'),
-                title: '中 · 翻書',
+                title: ElixBoardMotion.book.title,
                 badge: '預設',
-                subtitle: '兩個版像書的左右頁，輕微 perspective。',
-                selected: motion == _BoardMotion.book,
-                onTap: () => onMotionSelected(_BoardMotion.book),
+                subtitle: ElixBoardMotion.book.description,
+                selected: motion == ElixBoardMotion.book,
+                onTap: () => onMotionSelected(ElixBoardMotion.book),
               ),
               _MotionOption(
                 key: const Key('board_motion_cube'),
-                title: '深 · 翻立方',
-                subtitle: '較完整的 rotateY，切換感更強。',
-                selected: motion == _BoardMotion.cube,
-                onTap: () => onMotionSelected(_BoardMotion.cube),
+                title: ElixBoardMotion.cube.title,
+                subtitle: ElixBoardMotion.cube.description,
+                selected: motion == ElixBoardMotion.cube,
+                onTap: () => onMotionSelected(ElixBoardMotion.cube),
               ),
             ],
           ),
@@ -2779,6 +2817,12 @@ class _TopBar extends StatelessWidget {
     required this.screenStyle,
     required this.onScreenStyleTap,
     required this.screenStyleLabel,
+    required this.personalScreenStyle,
+    required this.forumScreenStyle,
+    required this.boardMotion,
+    required this.onPersonalScreenStyleChanged,
+    required this.onForumScreenStyleChanged,
+    required this.onBoardMotionChanged,
   });
 
   final VoidCallback? onClearIdentity;
@@ -2798,6 +2842,12 @@ class _TopBar extends StatelessWidget {
   final ElixScreenStyle screenStyle;
   final VoidCallback onScreenStyleTap;
   final String screenStyleLabel;
+  final ElixScreenStyle personalScreenStyle;
+  final ElixScreenStyle forumScreenStyle;
+  final ElixBoardMotion boardMotion;
+  final ValueChanged<ElixScreenStyle> onPersonalScreenStyleChanged;
+  final ValueChanged<ElixScreenStyle> onForumScreenStyleChanged;
+  final ValueChanged<ElixBoardMotion> onBoardMotionChanged;
 
   String get _truncatedDid {
     if (did.length <= 24) return did;
@@ -2874,6 +2924,13 @@ class _TopBar extends StatelessWidget {
                         readingPreferencesController:
                             readingPreferencesController,
                         onClearIdentity: onClearIdentity,
+                        personalScreenStyle: personalScreenStyle,
+                        forumScreenStyle: forumScreenStyle,
+                        boardMotion: boardMotion,
+                        onPersonalScreenStyleChanged:
+                            onPersonalScreenStyleChanged,
+                        onForumScreenStyleChanged: onForumScreenStyleChanged,
+                        onBoardMotionChanged: onBoardMotionChanged,
                       ),
                     ),
                   );
@@ -2926,12 +2983,8 @@ class _TopBar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.fingerprint,
-                        size: 16,
-                        color: AnsibleDesign.accent,
-                      ),
-                      const SizedBox(width: 6),
+                      const ElixSignedPill(kind: 'PK'),
+                      const SizedBox(width: 8),
                       Text(
                         _truncatedDid,
                         style: const TextStyle(
@@ -2986,7 +3039,7 @@ class _BoardFlipPage extends StatelessWidget {
   final PageController pageController;
   final int pageIndex;
   final _Board selectedBoard;
-  final _BoardMotion motion;
+  final ElixBoardMotion motion;
   final Widget child;
 
   @override
@@ -3005,9 +3058,9 @@ class _BoardFlipPage extends StatelessWidget {
         final delta = (currentPage - pageIndex).clamp(-1.0, 1.0).toDouble();
         final depth = delta.abs();
         final matrix = Matrix4.identity();
-        if (reduceMotion || motion == _BoardMotion.light) {
+        if (reduceMotion || motion == ElixBoardMotion.slide) {
           matrix.translateByDouble(-delta * 10.0, 0.0, 0.0, 1.0);
-        } else if (motion == _BoardMotion.book) {
+        } else if (motion == ElixBoardMotion.book) {
           matrix
             ..setEntry(3, 2, 0.0012)
             ..translateByDouble(-delta * 28.0, 0.0, 0.0, 1.0)
@@ -3033,7 +3086,9 @@ class _BoardFlipPage extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               child!,
-              if (!reduceMotion && motion != _BoardMotion.light && depth > 0.01)
+              if (!reduceMotion &&
+                  motion != ElixBoardMotion.slide &&
+                  depth > 0.01)
                 IgnorePointer(
                   child: Opacity(
                     opacity: depth.clamp(0.0, 0.82).toDouble(),
@@ -3078,7 +3133,7 @@ class _BoardSwipeProgressPill extends StatelessWidget {
 
   final PageController pageController;
   final bool compact;
-  final _BoardMotion motion;
+  final ElixBoardMotion motion;
 
   @override
   Widget build(BuildContext context) {
@@ -3140,7 +3195,7 @@ class _BoardSwipeProgressPill extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        motion == _BoardMotion.book
+                        motion == ElixBoardMotion.book
                             ? '$targetLabel · $percent%'
                             : targetLabel,
                         style: TextStyle(
@@ -3689,7 +3744,7 @@ class _SwipeCoachmarkState extends State<_SwipeCoachmark>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '左右滑動切換版面',
+                  '這裡是你的個人版。',
                   style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontSize: 18,
@@ -3699,17 +3754,7 @@ class _SwipeCoachmarkState extends State<_SwipeCoachmark>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '個人版 ← 滑動 → 討論區',
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.mono,
-                    fontSize: 11,
-                    letterSpacing: 0.8,
-                    color: faintColor,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '也可以點上方名稱直接切換',
+                  '想看別人？往左滑，或是點上面的「討論區」。',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
