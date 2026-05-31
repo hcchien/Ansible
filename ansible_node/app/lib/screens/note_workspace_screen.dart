@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -18,6 +20,7 @@ class NoteWorkspaceScreen extends StatefulWidget {
     this.onContentItemsChanged,
     this.onPublishContentItem,
     this.onSummonAI,
+    this.openCreateEditorOnStart = false,
   });
 
   final String? authorDid;
@@ -30,12 +33,15 @@ class NoteWorkspaceScreen extends StatefulWidget {
     DistributionPreference preference,
   )?
   onPublishContentItem;
+
   /// Called to open the AI agent search sheet, optionally anchored to a note.
   final Future<void> Function({
     String? noteId,
     String? noteTitle,
     String? noteBody,
-  })? onSummonAI;
+  })?
+  onSummonAI;
+  final bool openCreateEditorOnStart;
 
   @override
   State<NoteWorkspaceScreen> createState() => _NoteWorkspaceScreenState();
@@ -43,6 +49,28 @@ class NoteWorkspaceScreen extends StatefulWidget {
 
 class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
   bool _recentFirst = true;
+  bool _initialCreateEditorOpened = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleInitialCreateEditor();
+  }
+
+  @override
+  void didUpdateWidget(NoteWorkspaceScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleInitialCreateEditor();
+  }
+
+  void _scheduleInitialCreateEditor() {
+    if (!widget.openCreateEditorOnStart || _initialCreateEditorOpened) return;
+    _initialCreateEditorOpened = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_openCreateNoteEditor(context));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -339,38 +367,41 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
               padding: const EdgeInsets.fromLTRB(10, 8, 14, 6),
               child: Row(
                 children: [
-                  TextButton.icon(
+                  IconButton(
+                    key: const Key('note_editor_cancel_button'),
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, size: 17),
-                    label: Text(l10n.cancel),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AnsibleDesign.inkMuted,
-                      textStyle: const TextStyle(
-                        fontFamily: AnsibleDesign.mono,
-                        fontSize: 10,
-                        letterSpacing: 1.2,
+                    tooltip: l10n.cancel,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: AnsibleDesign.inkMuted,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const _EditorDot(color: AnsibleDesign.spore, size: 5),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              l10n.draftLocal,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: AnsibleDesign.mono,
+                                fontSize: 9.5,
+                                color: AnsibleDesign.inkFaint,
+                                letterSpacing: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _EditorDot(color: AnsibleDesign.spore, size: 5),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.draftLocal,
-                        style: const TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 9.5,
-                          color: AnsibleDesign.inkFaint,
-                          letterSpacing: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
                   FilledButton(
+                    key: const Key('note_editor_done_button'),
                     onPressed: _submit,
                     style: FilledButton.styleFrom(
                       backgroundColor: AnsibleDesign.paperElev,

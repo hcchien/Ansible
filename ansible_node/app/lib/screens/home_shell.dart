@@ -457,7 +457,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     await prefs.setBool('elix_board_swipe_shown', true);
   }
 
-  void _openCircleScreen(BuildContext context, _CircleTab initialTab) {
+  void _openCircleScreen(
+    BuildContext context,
+    _CircleTab initialTab, {
+    bool openNoteEditorOnStart = false,
+  }) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => _CircleFullScreen(
@@ -470,6 +474,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           onContentItemsChanged: _loadData,
           onPublishContentItem: _publishContentItem,
           onSummonAiForNote: _startAiTransformation,
+          openNoteEditorOnStart: openNoteEditorOnStart,
         ),
       ),
     );
@@ -531,7 +536,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               subtitle: 'NOTE · 長文或想法',
               onTap: () {
                 Navigator.pop(context);
-                _openCircleScreen(context, _CircleTab.notes);
+                _openCircleScreen(
+                  context,
+                  _CircleTab.notes,
+                  openNoteEditorOnStart: true,
+                );
               },
             ),
             const SizedBox(height: 8),
@@ -3821,6 +3830,7 @@ class _CircleFullScreen extends StatefulWidget {
     required this.onContentItemsChanged,
     required this.onPublishContentItem,
     required this.onSummonAiForNote,
+    required this.openNoteEditorOnStart,
   });
 
   final String did;
@@ -3838,6 +3848,7 @@ class _CircleFullScreen extends StatefulWidget {
     String? noteBody,
   })
   onSummonAiForNote;
+  final bool openNoteEditorOnStart;
 
   @override
   State<_CircleFullScreen> createState() => _CircleFullScreenState();
@@ -3950,6 +3961,7 @@ class _CircleFullScreenState extends State<_CircleFullScreen> {
                           noteTitle: noteTitle,
                           noteBody: noteBody,
                         ),
+                    openCreateEditorOnStart: widget.openNoteEditorOnStart,
                   ),
                 },
               ),

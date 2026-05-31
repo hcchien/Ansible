@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('phone navigation exposes content modes and murmur limit', (
+  testWidgets('phone navigation opens composers and enforces murmur limit', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 1000);
@@ -64,12 +64,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('筆記'));
     await tester.pumpAndSettle();
-    expect(find.text('Note'), findsOneWidget);
-    expect(find.text('Working Notes'), findsOneWidget);
-    expect(find.text('Loose'), findsOneWidget);
-    expect(find.text('測試碎念存檔'), findsOneWidget);
-    expect(find.text('Lineage'), findsOneWidget);
+    expect(find.byKey(const Key('note_title_field')), findsOneWidget);
+    expect(find.byKey(const Key('note_body_field')), findsOneWidget);
+    expect(find.text('新增筆記'), findsNothing);
 
+    await tester.tap(find.byKey(const Key('note_editor_cancel_button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();
     expect(find.text('還沒有任何記錄'), findsNothing);
