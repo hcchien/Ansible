@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -195,8 +197,7 @@ class AnsibleDesign {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
       ),
-      dividerTheme:
-          const DividerThemeData(color: darkRuleSoft, thickness: 0.5),
+      dividerTheme: const DividerThemeData(color: darkRuleSoft, thickness: 0.5),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: darkPaperElev,
@@ -256,8 +257,7 @@ class AnsibleDesign {
         backgroundColor: darkPaperElev,
         selectedColor: darkPaperDeep,
         side: const BorderSide(color: darkRule, width: 0.5),
-        labelStyle:
-            const TextStyle(color: darkInkMuted, fontFamily: mono),
+        labelStyle: const TextStyle(color: darkInkMuted, fontFamily: mono),
       ),
     );
   }
@@ -392,6 +392,9 @@ class AnsibleHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chipLabel = chip == '本地'
+        ? context.uiCopy(zh: '本地', en: 'Local')
+        : chip;
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 14),
       child: Row(
@@ -401,7 +404,10 @@ class AnsibleHeader extends StatelessWidget {
           const ElixWordmark(fontSize: 23),
           const Spacer(),
           actions ??
-              AnsibleStatusChip(label: chip, dot: dot ?? AnsibleDesign.spore),
+              AnsibleStatusChip(
+                label: chipLabel,
+                dot: dot ?? AnsibleDesign.spore,
+              ),
         ],
       ),
     );
@@ -527,13 +533,9 @@ class ElixSignedPill extends StatelessWidget {
       case 'DID':
         return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
       case 'WEB':
-        return dark
-            ? AnsibleDesign.darkPaperElev
-            : AnsibleDesign.paperElev;
+        return dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
       default: // BASIC
-        return dark
-            ? AnsibleDesign.darkPaperDeep
-            : AnsibleDesign.paperDeep;
+        return dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
     }
   }
 
@@ -561,11 +563,7 @@ class ElixSignedPill extends StatelessWidget {
         children: [
           Text(
             '✓',
-            style: TextStyle(
-              fontSize: 9,
-              color: _fg(dark),
-              height: 1.2,
-            ),
+            style: TextStyle(fontSize: 9, color: _fg(dark), height: 1.2),
           ),
           const SizedBox(width: 3),
           Text(
@@ -652,8 +650,9 @@ class AudienceChip extends StatelessWidget {
         return (dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre)
             .withValues(alpha: 0.15);
       case 'board':
-        return (dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss)
-            .withValues(alpha: 0.15);
+        return (dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss).withValues(
+          alpha: 0.15,
+        );
       case 'circle':
         return AnsibleDesign.ember.withValues(alpha: 0.15);
       default:
@@ -716,8 +715,10 @@ class ElixRoomItem {
   final String label;
   final int? badge;
   final bool active;
+
   /// Number of murmurs — shown as a sub-row under the active personal room.
   final int? murmurCount;
+
   /// Number of notes — shown as a sub-row under the active personal room.
   final int? noteCount;
 }
@@ -747,17 +748,25 @@ class _ElixRoomHeaderState extends State<ElixRoomHeader> {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
-    final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    final mutedColor = dark
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
+    final faintColor = dark
+        ? AnsibleDesign.darkInkFaint
+        : AnsibleDesign.inkFaint;
     final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
     // A·02: popup bg = base paper (bg), not elevated — matches design's white-ish card
     final popupBg = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
     final popupBorder = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
     // A·02: active row bg = bg-soft = paperElev (lighter tint)
-    final bgSoftColor = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    final bgSoftColor = dark
+        ? AnsibleDesign.darkPaperElev
+        : AnsibleDesign.paperElev;
     final ruleColor = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
     // Hairline separators between dropdown rows use rule-soft (lighter)
-    final ruleSoftColor = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+    final ruleSoftColor = dark
+        ? AnsibleDesign.darkRuleSoft
+        : AnsibleDesign.ruleSoft;
 
     return PopupMenuButton<String>(
       onOpened: () => setState(() => _isOpen = true),
@@ -864,7 +873,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Main row: dot · name · badge / "在這"
+          // Main row: dot · name · badge / active state
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
@@ -889,7 +898,9 @@ class _RoomMenuItemWidget extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 14,
-                      fontWeight: room.active ? FontWeight.w500 : FontWeight.w400,
+                      fontWeight: room.active
+                          ? FontWeight.w500
+                          : FontWeight.w400,
                       color: room.id == 'settings' ? mutedColor : inkColor,
                     ),
                   ),
@@ -897,7 +908,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
                 if (room.active) ...[
                   const SizedBox(width: 8),
                   Text(
-                    '在這',
+                    context.uiCopy(zh: '在這', en: 'Here'),
                     style: TextStyle(
                       fontFamily: AnsibleDesign.mono,
                       fontSize: 9,
@@ -908,7 +919,10 @@ class _RoomMenuItemWidget extends StatelessWidget {
                 ] else if (room.badge != null && room.badge! > 0) ...[
                   const SizedBox(width: 8),
                   Text(
-                    '${room.badge} 新',
+                    context.uiCopy(
+                      zh: '${room.badge} 新',
+                      en: '${room.badge} new',
+                    ),
                     style: TextStyle(
                       fontFamily: AnsibleDesign.mono,
                       fontSize: 9,
@@ -923,12 +937,18 @@ class _RoomMenuItemWidget extends StatelessWidget {
           // Sub-rows for active room (murmur count + note count)
           if (room.active && room.murmurCount != null)
             _SubCountRow(
-              label: 'murmur · 短話 · ${room.murmurCount}',
+              label: context.uiCopy(
+                zh: 'murmur · 短話 · ${room.murmurCount}',
+                en: 'murmur · short text · ${room.murmurCount}',
+              ),
               faintColor: faintColor,
             ),
           if (room.active && room.noteCount != null)
             _SubCountRow(
-              label: 'note · 整理過的長文 · ${room.noteCount}',
+              label: context.uiCopy(
+                zh: 'note · 整理過的長文 · ${room.noteCount}',
+                en: 'note · long-form · ${room.noteCount}',
+              ),
               faintColor: faintColor,
               isLast: true,
             ),
@@ -940,9 +960,7 @@ class _RoomMenuItemWidget extends StatelessWidget {
     // Non-first items: draw a hairline separator on top using rule-soft (A·02 design)
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: ruleSoftColor, width: 0.5),
-        ),
+        border: Border(top: BorderSide(color: ruleSoftColor, width: 0.5)),
       ),
       child: content,
     );
@@ -1014,8 +1032,12 @@ class DiaryEntryCard extends StatelessWidget {
     final bg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
     final border = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
     final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
-    final faintColor = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    final mutedColor = dark
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
+    final faintColor = dark
+        ? AnsibleDesign.darkInkFaint
+        : AnsibleDesign.inkFaint;
     final pipColor = kind == 'murmur'
         ? AnsibleDesign.ember
         : (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink);
@@ -1039,7 +1061,10 @@ class DiaryEntryCard extends StatelessWidget {
               child: Container(
                 width: 6,
                 height: 6,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: pipColor),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: pipColor,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -1152,16 +1177,27 @@ class ElixAgentSheet extends StatelessWidget {
     final bg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
     final ochreColor = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
     final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final mutedColor = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final mutedColor = dark
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
 
     return Container(
       decoration: BoxDecoration(
         color: bg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         border: Border(
-          top: BorderSide(color: ochreColor.withValues(alpha: 0.55), width: 1.5),
-          left: BorderSide(color: ochreColor.withValues(alpha: 0.18), width: 0.5),
-          right: BorderSide(color: ochreColor.withValues(alpha: 0.18), width: 0.5),
+          top: BorderSide(
+            color: ochreColor.withValues(alpha: 0.55),
+            width: 1.5,
+          ),
+          left: BorderSide(
+            color: ochreColor.withValues(alpha: 0.18),
+            width: 0.5,
+          ),
+          right: BorderSide(
+            color: ochreColor.withValues(alpha: 0.18),
+            width: 0.5,
+          ),
         ),
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
@@ -1211,7 +1247,12 @@ class ElixAgentSheet extends StatelessWidget {
               Icon(Icons.lock_outline, size: 12, color: mutedColor),
               const SizedBox(width: 5),
               Text(
-                privacyNote,
+                privacyNote == '僅處理本機內容，不離開裝置'
+                    ? context.uiCopy(
+                        zh: '僅處理本機內容，不離開裝置',
+                        en: 'Processes local content only; does not leave device',
+                      )
+                    : privacyNote,
                 style: TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 10,
@@ -1227,15 +1268,20 @@ class ElixAgentSheet extends StatelessWidget {
               onPressed: onAccept,
               style: FilledButton.styleFrom(
                 backgroundColor: ochreColor,
-                foregroundColor:
-                    dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper,
+                foregroundColor: dark
+                    ? AnsibleDesign.darkPaper
+                    : AnsibleDesign.paper,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 0,
               ),
-              child: Text(acceptLabel),
+              child: Text(
+                acceptLabel == '套用建議'
+                    ? context.uiCopy(zh: '套用建議', en: 'Apply Suggestion')
+                    : acceptLabel,
+              ),
             ),
           ],
         ],

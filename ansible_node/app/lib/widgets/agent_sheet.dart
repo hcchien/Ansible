@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/murmur_synthesis_service.dart';
 import '../services/ai/vector_search_service.dart';
@@ -132,10 +133,13 @@ class _AgentSheetState extends State<AgentSheet> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'AI · 從你的 murmur 找',
-                    style: TextStyle(
+                    context.uiCopy(
+                      zh: 'AI · 從你的 murmur 找',
+                      en: 'AI · Search your murmurs',
+                    ),
+                    style: const TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -156,9 +160,12 @@ class _AgentSheetState extends State<AgentSheet> {
             const SizedBox(height: 16),
 
             // Body text
-            const Text(
-              '我會先檢查隱私範圍；遠端 AI 不會自動接收私人內容。',
-              style: TextStyle(
+            Text(
+              context.uiCopy(
+                zh: '我會先檢查隱私範圍；遠端 AI 不會自動接收私人內容。',
+                en: 'I will check privacy boundaries first; remote AI will not automatically receive private content.',
+              ),
+              style: const TextStyle(
                 fontFamily: AnsibleDesign.serif,
                 fontSize: 13,
                 fontStyle: FontStyle.italic,
@@ -181,7 +188,10 @@ class _AgentSheetState extends State<AgentSheet> {
                 color: AnsibleDesign.ink,
               ),
               decoration: InputDecoration(
-                hintText: '想找什麼主題？',
+                hintText: context.uiCopy(
+                  zh: '想找什麼主題？',
+                  en: 'What topic are you looking for?',
+                ),
                 hintStyle: const TextStyle(
                   fontFamily: AnsibleDesign.serif,
                   fontSize: 15,
@@ -225,13 +235,13 @@ class _AgentSheetState extends State<AgentSheet> {
             Row(
               children: [
                 _FilterChip(
-                  label: '最近兩週',
+                  label: context.uiCopy(zh: '最近兩週', en: 'Last 2 weeks'),
                   active: _recentOnly,
                   onTap: () => setState(() => _recentOnly = true),
                 ),
                 const SizedBox(width: 8),
                 _FilterChip(
-                  label: '全部',
+                  label: context.uiCopy(zh: '全部', en: 'All'),
                   active: !_recentOnly,
                   onTap: () => setState(() => _recentOnly = false),
                 ),
@@ -243,10 +253,13 @@ class _AgentSheetState extends State<AgentSheet> {
             // Footer row: privacy note + 尋找 button
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '不會用來訓練。不會離開這台手機。',
-                    style: TextStyle(
+                    context.uiCopy(
+                      zh: '不會用來訓練。不會離開這台手機。',
+                      en: 'Not used for training. Does not leave this phone.',
+                    ),
+                    style: const TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 11,
                       fontStyle: FontStyle.italic,
@@ -276,9 +289,9 @@ class _AgentSheetState extends State<AgentSheet> {
                             color: AnsibleDesign.paper,
                           ),
                         )
-                      : const Text(
-                          '尋找 →',
-                          style: TextStyle(
+                      : Text(
+                          context.uiCopy(zh: '尋找 →', en: 'Search →'),
+                          style: const TextStyle(
                             fontFamily: AnsibleDesign.serif,
                             fontSize: 14,
                           ),

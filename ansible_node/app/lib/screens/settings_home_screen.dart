@@ -501,32 +501,45 @@ class _InterfacePanelHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14.5,
-            color: AnsibleDesign.ink,
-            fontWeight: FontWeight.w400,
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  color: AnsibleDesign.ink,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              Text(
+                en,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 8.5,
+                  letterSpacing: 1.4,
+                  color: AnsibleDesign.inkFaint,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          en,
-          style: const TextStyle(
-            fontFamily: AnsibleDesign.mono,
-            fontSize: 8.5,
-            letterSpacing: 1.4,
-            color: AnsibleDesign.inkFaint,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            fontFamily: AnsibleDesign.mono,
-            fontSize: 9.5,
-            letterSpacing: 1.1,
-            color: AnsibleDesign.inkMuted,
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1.1,
+              color: AnsibleDesign.inkMuted,
+            ),
           ),
         ),
       ],
@@ -716,7 +729,7 @@ class _LanguageSettingsRow extends StatelessWidget {
     final controller = localeController;
     if (controller == null) {
       return AnsibleSettingsRow(
-        glyph: '文',
+        glyph: text.languageGlyph,
         label: text.language,
         en: 'LANGUAGE',
         sub: text.languageSubtitle,
@@ -728,7 +741,7 @@ class _LanguageSettingsRow extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         return AnsibleSettingsRow(
-          glyph: '文',
+          glyph: text.languageGlyph,
           label: text.language,
           en: 'LANGUAGE',
           sub: text.languageSubtitle,
@@ -962,12 +975,19 @@ class _SettingsText {
   String get language => l10n?.language ?? '語言';
   String get languageSubtitle => l10n?.languageSubtitle ?? '選擇 app 介面語言';
   String get systemDefault => l10n?.systemDefault ?? '跟隨系統';
-  String get interfaceAndLanguage => '介面與語言';
-  String get sceneLight => '每版的光';
-  String get sceneLightSubtitle => '個人版與討論區可以各自使用 Paper、Ink 或 Auto。';
-  String get boardMotion => '換版的動態';
-  String get personalBoard => '個人版';
-  String get forumBoard => '討論區';
+  bool get _zh => l10n == null || l10n?.language == '語言';
+  String _copy({required String zh, required String en}) => _zh ? zh : en;
+  String get languageGlyph => _copy(zh: '文', en: 'A');
+  String get interfaceAndLanguage =>
+      _copy(zh: '介面與語言', en: 'Interface & Language');
+  String get sceneLight => _copy(zh: '每版的光', en: 'Board Theme');
+  String get sceneLightSubtitle => _copy(
+    zh: '個人版與討論區可以各自使用 Paper、Ink 或 Auto。',
+    en: 'Personal and Forum boards can each use Paper, Ink, or Auto.',
+  );
+  String get boardMotion => _copy(zh: '換版的動態', en: 'Board Motion');
+  String get personalBoard => _copy(zh: '個人版', en: 'Personal');
+  String get forumBoard => _copy(zh: '討論區', en: 'Forum');
   String get daily => l10n?.daily ?? '日常 · DAILY';
   String get inbox => l10n?.inbox ?? '收信';
   String get inboxSubtitle => l10n?.inboxSubtitle ?? '圈內回覆、新成員、同步';
@@ -979,12 +999,11 @@ class _SettingsText {
   String get readingPreferencesSubtitle =>
       l10n?.readingPreferencesSubtitle ?? '字級、行距、主題';
   String readingPreferenceValue(ReadingTextScalePreference? preference) {
-    final zh = l10n == null || l10n?.wallet == '錢包' || l10n?.wallet == '皮夾';
     return switch (preference ?? ReadingTextScalePreference.standard) {
-      ReadingTextScalePreference.small => zh ? '小' : 'Small',
+      ReadingTextScalePreference.small => _zh ? '小' : 'Small',
       ReadingTextScalePreference.standard => defaultValue,
-      ReadingTextScalePreference.large => zh ? '大' : 'Large',
-      ReadingTextScalePreference.extraLarge => zh ? '特大' : 'Extra large',
+      ReadingTextScalePreference.large => _zh ? '大' : 'Large',
+      ReadingTextScalePreference.extraLarge => _zh ? '特大' : 'Extra large',
     };
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 
@@ -23,7 +24,7 @@ class AnsibleScreenScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leading = leadingLabel ?? '← 草地';
+    final leading = leadingLabel ?? context.uiCopy(zh: '← 草地', en: '← Home');
     final screenStyle = ElixScreenStyleScope.dataOf(context);
     return Scaffold(
       backgroundColor: screenStyle.background,

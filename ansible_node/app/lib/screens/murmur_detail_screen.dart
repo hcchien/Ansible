@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
@@ -20,10 +21,10 @@ class MurmurDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnsibleScreenScaffold(
       title: 'MURMUR',
-      leadingLabel: '← 草地',
+      leadingLabel: context.uiCopy(zh: '← 草地', en: '← Home'),
       trailing: PopupMenuButton<String>(
         icon: const Icon(Icons.more_horiz),
-        tooltip: '更多',
+        tooltip: context.uiCopy(zh: '更多', en: 'More'),
         onSelected: (value) {
           if (value == 'delete') {
             _confirmDelete(context);
@@ -33,15 +34,18 @@ class MurmurDetailScreen extends StatelessWidget {
           PopupMenuItem<String>(
             value: 'delete',
             enabled: contentItemRepository != null,
-            child: const Row(
+            child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.delete_outline,
                   size: 18,
                   color: AnsibleDesign.danger,
                 ),
-                SizedBox(width: 10),
-                Text('刪除碎念', style: TextStyle(color: AnsibleDesign.danger)),
+                const SizedBox(width: 10),
+                Text(
+                  context.uiCopy(zh: '刪除碎念', en: 'Delete Murmur'),
+                  style: const TextStyle(color: AnsibleDesign.danger),
+                ),
               ],
             ),
           ),
@@ -100,7 +104,14 @@ class MurmurDetailScreen extends StatelessWidget {
                 Wrap(
                   spacing: 14,
                   runSpacing: 6,
-                  children: [_Meta('${murmur.body.characters.length} 字')],
+                  children: [
+                    _Meta(
+                      context.uiCopy(
+                        zh: '${murmur.body.characters.length} 字',
+                        en: '${murmur.body.characters.length} chars',
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -118,16 +129,21 @@ class MurmurDetailScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('刪除碎念？'),
-        content: const Text('這會把這則碎念從本機列表移除。'),
+        title: Text(context.uiCopy(zh: '刪除碎念？', en: 'Delete murmur?')),
+        content: Text(
+          context.uiCopy(
+            zh: '這會把這則碎念從本機列表移除。',
+            en: 'This removes the murmur from the local list.',
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('刪除'),
+            child: Text(context.uiCopy(zh: '刪除', en: 'Delete')),
           ),
         ],
       ),
@@ -140,7 +156,11 @@ class MurmurDetailScreen extends StatelessWidget {
     await onDeleted?.call();
     if (!context.mounted) return;
     navigator.pop();
-    messenger.showSnackBar(const SnackBar(content: Text('已刪除碎念')));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(context.uiCopy(zh: '已刪除碎念', en: 'Murmur deleted')),
+      ),
+    );
   }
 
   String _formatDateTime(DateTime value) {

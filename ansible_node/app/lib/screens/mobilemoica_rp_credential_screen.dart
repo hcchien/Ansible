@@ -6,6 +6,7 @@ import 'package:ansible_vc/ansible_vc.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
@@ -15,6 +16,10 @@ const kMobileMoicaRPDisclosureCopy =
     '這是 MobileMoica / TW FidO relying-party 驗證，不是 zkID，也不是 zero-knowledge proof。'
     'Tris-Aura Issuer 會在你同意後接收你輸入的身分證字號，只用於申請一次性 MobileMoica ticket。'
     'Issuer 可能暫時處理 TW FidO 回傳的簽章與憑證資料來驗證結果，但發出的 VC 不會包含身分證字號、姓名、憑證 subject、簽章回應或 duplicate commitment。';
+const kMobileMoicaRPDisclosureCopyEn =
+    'This is MobileMoica / TW FidO relying-party verification, not zkID and not a zero-knowledge proof. '
+    'After you consent, the Tris-Aura Issuer receives the national ID you enter only to request a one-time MobileMoica ticket. '
+    'The Issuer may temporarily process TW FidO signatures and certificate data to verify the result, but the issued VC will not include the national ID, legal name, certificate subject, signature response, or duplicate commitment.';
 
 enum _Phase { idle, starting, polling, issuing, done, error }
 
@@ -136,7 +141,12 @@ class _MobileMoicaRPCredentialPanelState
   Future<void> _startFlow() async {
     final nationalId = _normalizedNationalId;
     if (!_acceptedDisclosure || !_isValidNationalId(nationalId)) {
-      setState(() => _errorMessage = '請確認揭露說明並輸入有效的身分證字號。');
+      setState(
+        () => _errorMessage = _copy(
+          zh: '請確認揭露說明並輸入有效的身分證字號。',
+          en: 'Confirm the disclosure and enter a valid national ID number.',
+        ),
+      );
       return;
     }
 
@@ -159,7 +169,10 @@ class _MobileMoicaRPCredentialPanelState
         setState(() {
           _offer = offer;
           _phase = _Phase.error;
-          _errorMessage = '開啟 TW FidO 失敗';
+          _errorMessage = _copy(
+            zh: '開啟 TW FidO 失敗',
+            en: 'Could not open TW FidO',
+          );
         });
         return;
       }
@@ -188,7 +201,10 @@ class _MobileMoicaRPCredentialPanelState
       if (!mounted) return;
       setState(() {
         _phase = _Phase.error;
-        _errorMessage = '尚未收到 TW FidO 驗證結果';
+        _errorMessage = _copy(
+          zh: '尚未收到 TW FidO 驗證結果',
+          en: 'TW FidO verification has not completed yet',
+        );
       });
     });
   }
@@ -280,23 +296,41 @@ class _MobileMoicaRPCredentialPanelState
   String _formatError(Object error) {
     if (error is VcIssuerException) {
       if (error.error == 'invalid_national_id') {
-        return '身分證字號格式無效，請重新輸入。';
+        return _copy(
+          zh: '身分證字號格式無效，請重新輸入。',
+          en: 'The national ID format is invalid. Please re-enter it.',
+        );
       }
       if (error.error == 'provider_not_verified') {
-        return '等待 TW FidO 驗證完成';
+        return _copy(
+          zh: '等待 TW FidO 驗證完成',
+          en: 'Waiting for TW FidO verification to complete',
+        );
       }
       if (error.error == 'callback_replay' ||
           error.error == 'state_mismatch' ||
           error.error == 'invalid_provider_proof' ||
           error.error.startsWith('invalid_provider_proof')) {
-        return '驗證安全檢查失敗，請重新開始。';
+        return _copy(
+          zh: '驗證安全檢查失敗，請重新開始。',
+          en: 'The verification security check failed. Please restart.',
+        );
       }
       if (error.statusCode >= 500) {
-        return '發行伺服器暫時無法使用，請稍後再試。';
+        return _copy(
+          zh: '發行伺服器暫時無法使用，請稍後再試。',
+          en: 'The issuer is temporarily unavailable. Please try again later.',
+        );
       }
     }
-    return '發行流程暫時無法完成，請稍後再試。';
+    return _copy(
+      zh: '發行流程暫時無法完成，請稍後再試。',
+      en: 'The issuance flow cannot be completed right now. Please try again later.',
+    );
   }
+
+  String _copy({required String zh, required String en}) =>
+      context.uiCopy(zh: zh, en: en);
 
   String get _normalizedNationalId =>
       _nationalIdController.text.trim().toUpperCase();
@@ -313,9 +347,14 @@ class _MobileMoicaRPCredentialPanelState
   }
 
   String get _consentCopyHash {
-    final digest = sha256.convert(utf8.encode(kMobileMoicaRPDisclosureCopy));
+    final digest = sha256.convert(utf8.encode(_disclosureCopy));
     return 'sha256:$digest';
   }
+
+  String get _disclosureCopy => _copy(
+    zh: kMobileMoicaRPDisclosureCopy,
+    en: kMobileMoicaRPDisclosureCopyEn,
+  );
 
   String _localeTag(BuildContext context) {
     final locale = Localizations.localeOf(context);
@@ -387,7 +426,12 @@ class _MobileMoicaRPCredentialPanelState
                           },
                     contentPadding: EdgeInsets.zero,
                     controlAffinity: ListTileControlAffinity.leading,
-                    title: const Text('我了解並同意這次明確揭露'),
+                    title: Text(
+                      _copy(
+                        zh: '我了解並同意這次明確揭露',
+                        en: 'I understand and consent to this disclosure',
+                      ),
+                    ),
                   ),
                   if (_acceptedDisclosure) ...[
                     const SizedBox(height: 12),
@@ -397,9 +441,9 @@ class _MobileMoicaRPCredentialPanelState
                       enabled: !_isBusy,
                       textCapitalization: TextCapitalization.characters,
                       autocorrect: false,
-                      decoration: const InputDecoration(
-                        labelText: '身分證字號',
-                        prefixIcon: Icon(Icons.badge_outlined),
+                      decoration: InputDecoration(
+                        labelText: _copy(zh: '身分證字號', en: 'National ID number'),
+                        prefixIcon: const Icon(Icons.badge_outlined),
                         border: OutlineInputBorder(),
                       ),
                       onChanged: (_) => setState(() => _errorMessage = null),
@@ -416,7 +460,7 @@ class _MobileMoicaRPCredentialPanelState
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.open_in_new),
-                    label: const Text('開啟 TW FidO'),
+                    label: Text(_copy(zh: '開啟 TW FidO', en: 'Open TW FidO')),
                   ),
                 ],
                 if (_errorMessage != null) ...[
@@ -436,7 +480,7 @@ class _MobileMoicaRPCredentialPanelState
                   OutlinedButton.icon(
                     onPressed: _restart,
                     icon: const Icon(Icons.restart_alt),
-                    label: const Text('重新開始'),
+                    label: Text(_copy(zh: '重新開始', en: 'Restart')),
                   ),
                 ],
               ],
@@ -453,30 +497,48 @@ class _MobileMoicaRPCredentialPanelState
       case _Phase.starting:
         return 'MobileMoica Verified Human';
       case _Phase.polling:
-        return '等待 TW FidO 驗證完成';
+        return _copy(
+          zh: '等待 TW FidO 驗證完成',
+          en: 'Waiting for TW FidO verification',
+        );
       case _Phase.issuing:
-        return '正在發行憑證';
+        return _copy(zh: '正在發行憑證', en: 'Issuing credential');
       case _Phase.done:
-        return '憑證已加入 Wallet';
+        return _copy(zh: '憑證已加入 Wallet', en: 'Credential added to Wallet');
       case _Phase.error:
-        return '驗證流程暫停';
+        return _copy(zh: '驗證流程暫停', en: 'Verification paused');
     }
   }
 
   String get _body {
     switch (_phase) {
       case _Phase.idle:
-        return kMobileMoicaRPDisclosureCopy;
+        return _disclosureCopy;
       case _Phase.starting:
-        return '正在建立 MobileMoica 驗證工作階段。';
+        return _copy(
+          zh: '正在建立 MobileMoica 驗證工作階段。',
+          en: 'Creating a MobileMoica verification session.',
+        );
       case _Phase.polling:
-        return '完成 TW FidO 授權後，請回到 Elix 等候 Issuer 驗證結果。';
+        return _copy(
+          zh: '完成 TW FidO 授權後，請回到 Elix 等候 Issuer 驗證結果。',
+          en: 'After finishing TW FidO authorization, return to Elix and wait for the Issuer result.',
+        );
       case _Phase.issuing:
-        return 'Issuer 已確認驗證結果，正在建立你的 humanity credential。';
+        return _copy(
+          zh: 'Issuer 已確認驗證結果，正在建立你的 humanity credential。',
+          en: 'The Issuer confirmed the verification result and is creating your humanity credential.',
+        );
       case _Phase.done:
-        return '你可以回到 Wallet 查看憑證狀態。';
+        return _copy(
+          zh: '你可以回到 Wallet 查看憑證狀態。',
+          en: 'You can return to Wallet to view the credential status.',
+        );
       case _Phase.error:
-        return '你可以稍後重試，或重新開始驗證流程。';
+        return _copy(
+          zh: '你可以稍後重試，或重新開始驗證流程。',
+          en: 'You can retry later or restart the verification flow.',
+        );
     }
   }
 }

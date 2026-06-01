@@ -27,8 +27,14 @@ void main() {
     await tester.pump();
 
     expect(find.text('Elix'), findsOneWidget);
-    expect(find.text('先建立身分，\n再開始社群。'), findsOneWidget);
-    expect(find.text('重視身分的社群 App · 由 passkey 支撐'), findsOneWidget);
+    expect(
+      find.text('Create identity first,\nthen join the community.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Identity-centered social app · powered by passkeys'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('uses swipe shell navigation on phone width', (tester) async {
@@ -59,7 +65,7 @@ void main() {
     expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
     expect(find.text('PAPER · LIGHT'), findsNothing);
     expect(find.text('INK · DARK'), findsNothing);
-    expect(find.text('還沒有任何記錄'), findsOneWidget);
+    expect(find.text('No entries yet'), findsOneWidget);
     expect(find.text('Subscribe'), findsNothing);
 
     await tester.tap(find.byKey(const Key('settings_button')));

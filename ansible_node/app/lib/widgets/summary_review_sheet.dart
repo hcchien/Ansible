@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+
 typedef SummarySave = Future<void> Function(String summary);
 
 class SummaryReviewSheet extends StatefulWidget {
@@ -56,12 +58,15 @@ class _SummaryReviewSheetState extends State<SummaryReviewSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '摘要審閱',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            Text(
+              context.uiCopy(zh: '摘要審閱', en: 'Review Summary'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
-            const Text('來源邊界', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              context.uiCopy(zh: '來源邊界', en: 'Source Boundary'),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,

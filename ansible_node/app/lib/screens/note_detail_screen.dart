@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/note_markdown_text.dart';
 
@@ -28,7 +29,12 @@ class NoteDetailScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(22, 6, 22, 24),
                 children: [
-                  _MetaLabel('NOTE · 始於 ${_formatDate(note.createdAt)}'),
+                  _MetaLabel(
+                    context.uiCopy(
+                      zh: 'NOTE · 始於 ${_formatDate(note.createdAt)}',
+                      en: 'NOTE · since ${_formatDate(note.createdAt)}',
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     note.title ?? 'Untitled note',
@@ -104,11 +110,11 @@ class _TopBar extends StatelessWidget {
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => Navigator.of(context).maybePop(),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                '← 草地',
-                style: TextStyle(
+                context.uiCopy(zh: '← 草地', en: '← Home'),
+                style: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: AnsibleDesign.navTextSize,
                   color: AnsibleDesign.inkMuted,
@@ -124,7 +130,7 @@ class _TopBar extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           PopupMenuButton<String>(
-            tooltip: '更多',
+            tooltip: context.uiCopy(zh: '更多', en: 'More'),
             icon: const Text(
               '···',
               style: TextStyle(
@@ -144,12 +150,12 @@ class _TopBar extends StatelessWidget {
               PopupMenuItem(
                 value: 'edit',
                 enabled: onEdit != null,
-                child: const Text('編輯'),
+                child: Text(context.uiCopy(zh: '編輯', en: 'Edit')),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'share',
                 enabled: false,
-                child: Text('分享'),
+                child: Text(context.uiCopy(zh: '分享', en: 'Share')),
               ),
             ],
           ),
@@ -180,7 +186,10 @@ class _LineageRail extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Text(
-          '由 $count 個 murmur 編成',
+          context.uiCopy(
+            zh: '由 $count 個 murmur 編成',
+            en: 'Built from $count murmurs',
+          ),
           style: const TextStyle(fontSize: 11.5, color: AnsibleDesign.inkFaint),
         ),
         const Spacer(),
@@ -235,12 +244,15 @@ class _SourceLineageSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _MetaLabel('來源 · LINEAGE'),
+        _MetaLabel(context.uiCopy(zh: '來源 · LINEAGE', en: 'LINEAGE')),
         const SizedBox(height: 8),
         if (sourceMurmurs.isEmpty)
-          const Text(
-            '尚未連結 murmur 來源。',
-            style: TextStyle(
+          Text(
+            context.uiCopy(
+              zh: '尚未連結 murmur 來源。',
+              en: 'No murmur sources linked yet.',
+            ),
+            style: const TextStyle(
               fontSize: 12,
               height: 1.6,
               color: AnsibleDesign.inkMuted,
@@ -284,7 +296,10 @@ class _SourceLineageSection extends StatelessWidget {
             ),
         if (sourceMurmurs.length > 4)
           Text(
-            '+ 還有 ${sourceMurmurs.length - 4} 則',
+            context.uiCopy(
+              zh: '+ 還有 ${sourceMurmurs.length - 4} 則',
+              en: '+ ${sourceMurmurs.length - 4} more',
+            ),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 9,
@@ -320,7 +335,7 @@ class _BottomActionBar extends StatelessWidget {
       child: Row(
         children: [
           _TextAction(
-            label: '編輯',
+            label: context.uiCopy(zh: '編輯', en: 'Edit'),
             onTap: onEdit == null
                 ? () => _showPending(context)
                 : () {
@@ -329,7 +344,10 @@ class _BottomActionBar extends StatelessWidget {
                   },
           ),
           const SizedBox(width: 18),
-          _TextAction(label: '分享', onTap: () => _showPending(context)),
+          _TextAction(
+            label: context.uiCopy(zh: '分享', en: 'Share'),
+            onTap: () => _showPending(context),
+          ),
           const Spacer(),
           OutlinedButton(
             onPressed: () => _showPending(context),
@@ -337,14 +355,17 @@ class _BottomActionBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               visualDensity: VisualDensity.compact,
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _AccentDot(),
-                SizedBox(width: 8),
+                const _AccentDot(),
+                const SizedBox(width: 8),
                 Text(
-                  '請 AI 整理這篇 →',
-                  style: TextStyle(fontSize: 12, letterSpacing: 0.5),
+                  context.uiCopy(
+                    zh: '請 AI 整理這篇 →',
+                    en: 'Ask AI to organize this →',
+                  ),
+                  style: const TextStyle(fontSize: 12, letterSpacing: 0.5),
                 ),
               ],
             ),
@@ -355,9 +376,16 @@ class _BottomActionBar extends StatelessWidget {
   }
 
   void _showPending(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('這個動作還沒有開放')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.uiCopy(
+            zh: '這個動作還沒有開放',
+            en: 'This action is not available yet',
+          ),
+        ),
+      ),
+    );
   }
 }
 

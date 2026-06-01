@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../widgets/summary_review_sheet.dart';
 
 typedef SaveSummaryAsNote = Future<void> Function(String summary);
@@ -55,7 +56,7 @@ class DiscussionDetailScreen extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => _openSummaryReview(context),
                 icon: const Icon(Icons.auto_awesome),
-                label: const Text('AI 摘要'),
+                label: Text(context.uiCopy(zh: 'AI 摘要', en: 'AI Summary')),
               ),
             ],
           ),

@@ -5,6 +5,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
@@ -32,7 +33,11 @@ class TwProviderCredentialScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('TW 身份驗證')),
+      appBar: AppBar(
+        title: Text(
+          context.uiCopy(zh: 'TW 身份驗證', en: 'TW Identity Verification'),
+        ),
+      ),
       body: TwProviderCredentialPanel(
         holderDid: holderDid,
         vcIssuerClient: vcIssuerClient,
@@ -106,7 +111,12 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
   Future<void> _startFlow() async {
     final email = _emailController.text.trim();
     if (!_isValidEmail(email)) {
-      setState(() => _errorMessage = '請輸入有效的 Email 地址。');
+      setState(
+        () => _errorMessage = _copy(
+          zh: '請輸入有效的 Email 地址。',
+          en: 'Enter a valid email address.',
+        ),
+      );
       return;
     }
 
@@ -126,7 +136,7 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
         setState(() {
           _offer = offer;
           _phase = _Phase.error;
-          _errorMessage = '開啟驗證頁失敗';
+          _errorMessage = _openVerificationPageFailed;
         });
         return;
       }
@@ -155,7 +165,10 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
       if (!mounted) return;
       setState(() {
         _phase = _Phase.error;
-        _errorMessage = '尚未收到驗證結果';
+        _errorMessage = _copy(
+          zh: '尚未收到驗證結果',
+          en: 'Verification result has not arrived yet',
+        );
       });
     });
   }
@@ -237,22 +250,47 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
     if (error is VcIssuerException) {
       switch (error.error) {
         case 'invalid_email':
-          return 'Email 格式無效，請重新輸入。';
+          return _copy(
+            zh: 'Email 格式無效，請重新輸入。',
+            en: 'Invalid email format. Enter it again.',
+          );
         case 'invalid_did':
-          return 'DID 格式無效，請重新啟動。';
+          return _copy(
+            zh: 'DID 格式無效，請重新啟動。',
+            en: 'Invalid DID format. Restart the flow.',
+          );
         case 'callback_replay':
         case 'state_mismatch':
         case 'invalid_provider_proof':
-          return '驗證安全檢查失敗，請重新開始。';
+          return _copy(
+            zh: '驗證安全檢查失敗，請重新開始。',
+            en: 'Verification security check failed. Start again.',
+          );
         case 'provider_not_verified':
-          return '等待 provider 驗證完成';
+          return _copy(
+            zh: '等待 provider 驗證完成',
+            en: 'Waiting for provider verification',
+          );
       }
       if (error.statusCode >= 500) {
-        return '發行伺服器暫時無法使用，請稍後再試。';
+        return _copy(
+          zh: '發行伺服器暫時無法使用，請稍後再試。',
+          en: 'Issuer is temporarily unavailable. Try again later.',
+        );
       }
     }
-    return '發行流程暫時無法完成，請稍後再試。';
+    return _copy(
+      zh: '發行流程暫時無法完成，請稍後再試。',
+      en: 'Issuance cannot be completed right now. Try again later.',
+    );
   }
+
+  String _copy({required String zh, required String en}) {
+    return context.uiCopy(zh: zh, en: en);
+  }
+
+  String get _openVerificationPageFailed =>
+      _copy(zh: '開啟驗證頁失敗', en: 'Could not open verification page');
 
   bool _isValidEmail(String email) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
@@ -272,7 +310,7 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
       });
       _beginPolling();
     } else {
-      setState(() => _errorMessage = '開啟驗證頁失敗');
+      setState(() => _errorMessage = _openVerificationPageFailed);
     }
   }
 
@@ -292,7 +330,10 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
       if (!mounted) return;
       setState(() {
         _phase = _Phase.error;
-        _errorMessage = '尚未收到驗證結果';
+        _errorMessage = _copy(
+          zh: '尚未收到驗證結果',
+          en: 'Verification result has not arrived yet',
+        );
       });
     } catch (error) {
       if (!mounted) return;
@@ -351,9 +392,9 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
                     enabled: !_isBusy,
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Email 地址',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    decoration: InputDecoration(
+                      labelText: _copy(zh: 'Email 地址', en: 'Email address'),
+                      prefixIcon: const Icon(Icons.email_outlined),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -367,7 +408,7 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.open_in_new),
-                    label: const Text('開始驗證'),
+                    label: Text(_copy(zh: '開始驗證', en: 'Start verification')),
                   ),
                 ],
                 if (_errorMessage != null) ...[
@@ -389,22 +430,28 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
                     spacing: 10,
                     runSpacing: 10,
                     children: [
-                      if (_offer != null && _errorMessage == '開啟驗證頁失敗')
+                      if (_offer != null &&
+                          _errorMessage == _openVerificationPageFailed)
                         FilledButton.icon(
                           onPressed: _retryLaunch,
                           icon: const Icon(Icons.open_in_new),
-                          label: const Text('重新開啟驗證頁'),
+                          label: Text(
+                            _copy(
+                              zh: '重新開啟驗證頁',
+                              en: 'Reopen verification page',
+                            ),
+                          ),
                         ),
                       if (_offer != null)
                         OutlinedButton.icon(
                           onPressed: _checkAgain,
                           icon: const Icon(Icons.refresh),
-                          label: const Text('重新檢查'),
+                          label: Text(_copy(zh: '重新檢查', en: 'Check again')),
                         ),
                       OutlinedButton.icon(
                         onPressed: _restart,
                         icon: const Icon(Icons.restart_alt),
-                        label: const Text('重新開始'),
+                        label: Text(_copy(zh: '重新開始', en: 'Restart')),
                       ),
                     ],
                   ),
@@ -421,32 +468,50 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
     switch (_phase) {
       case _Phase.idle:
       case _Phase.starting:
-        return 'TW 身份驗證';
+        return _copy(zh: 'TW 身份驗證', en: 'TW Identity Verification');
       case _Phase.polling:
-        return '等待 provider 驗證完成';
+        return _copy(
+          zh: '等待 provider 驗證完成',
+          en: 'Waiting for provider verification',
+        );
       case _Phase.issuing:
-        return '正在發行憑證';
+        return _copy(zh: '正在發行憑證', en: 'Issuing credential');
       case _Phase.done:
-        return '憑證已加入 Wallet';
+        return _copy(zh: '憑證已加入 Wallet', en: 'Credential added to Wallet');
       case _Phase.error:
-        return '驗證流程暫停';
+        return _copy(zh: '驗證流程暫停', en: 'Verification paused');
     }
   }
 
   String get _body {
     switch (_phase) {
       case _Phase.idle:
-        return '輸入 Email 後，系統會開啟 TW provider 驗證頁。';
+        return _copy(
+          zh: '輸入 Email 後，系統會開啟 TW provider 驗證頁。',
+          en: 'Enter your email and the app will open the TW provider verification page.',
+        );
       case _Phase.starting:
-        return '正在建立驗證工作階段。';
+        return _copy(zh: '正在建立驗證工作階段。', en: 'Creating a verification session.');
       case _Phase.polling:
-        return '完成瀏覽器中的驗證後，請回到 App 等候憑證發行。';
+        return _copy(
+          zh: '完成瀏覽器中的驗證後，請回到 App 等候憑證發行。',
+          en: 'After completing browser verification, return to the app and wait for issuance.',
+        );
       case _Phase.issuing:
-        return 'Issuer 已確認驗證結果，正在建立你的 humanity credential。';
+        return _copy(
+          zh: 'Issuer 已確認驗證結果，正在建立你的 humanity credential。',
+          en: 'Issuer confirmed the verification result and is creating your humanity credential.',
+        );
       case _Phase.done:
-        return '你可以回到 Wallet 查看憑證狀態。';
+        return _copy(
+          zh: '你可以回到 Wallet 查看憑證狀態。',
+          en: 'You can return to Wallet to view credential status.',
+        );
       case _Phase.error:
-        return '你可以稍後重試，或重新開始驗證流程。';
+        return _copy(
+          zh: '你可以稍後重試，或重新開始驗證流程。',
+          en: 'Try again later or restart verification.',
+        );
     }
   }
 }

@@ -193,10 +193,13 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '想從之前的 murmur 找東西延伸這篇？',
-                    style: TextStyle(
+                    context.uiCopy(
+                      zh: '想從之前的 murmur 找東西延伸這篇？',
+                      en: 'Find earlier murmurs to extend this note?',
+                    ),
+                    style: const TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 13,
                       color: AnsibleDesign.inkMuted,

@@ -267,5 +267,5 @@ String appSyncSummaryMessage(AppSyncResult result) {
   if (result.pullErrors.isNotEmpty) {
     parts.add('pull errors: ${result.pullErrors.join('; ')}');
   }
-  return '同步完成：${parts.join('；')}';
+  return 'sync complete: ${parts.join('; ')}';
 }

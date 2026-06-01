@@ -35,10 +35,13 @@ void main() {
   ) async {
     await _pumpHomeShell(tester);
 
-    expect(find.byTooltip('個人版 · 你的 Note 和 Murmur'), findsOneWidget);
-    expect(find.byTooltip('討論區 · 追蹤的人與板'), findsOneWidget);
-    expect(find.text('這裡是你的個人版。'), findsOneWidget);
-    expect(find.text('想看別人？往左滑，或是點上面的「討論區」。'), findsOneWidget);
+    expect(find.byTooltip('Personal · your Notes and Murmurs'), findsOneWidget);
+    expect(find.byTooltip('Forum · follows and boards'), findsOneWidget);
+    expect(find.text('This is your personal board.'), findsOneWidget);
+    expect(
+      find.text('Want to see others? Swipe left or tap Forum above.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -47,14 +50,14 @@ void main() {
       await _pumpHomeShell(tester, coachmarkSeen: true);
 
       expect(find.text('今天有什麼想記下的？'), findsNothing);
-      expect(find.text('AI · 橫向橋'), findsOneWidget);
+      expect(find.text('AI · BRIDGE'), findsOneWidget);
       expect(find.byKey(const Key('home_compose_button')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('home_compose_button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('碎念'), findsOneWidget);
-      expect(find.text('筆記'), findsOneWidget);
+      expect(find.text('Murmur'), findsOneWidget);
+      expect(find.text('Note'), findsOneWidget);
     },
   );
 
@@ -148,9 +151,9 @@ void main() {
     await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('介面與語言'), findsOneWidget);
-    expect(find.text('每版的光'), findsOneWidget);
-    expect(find.text('換版的動態'), findsOneWidget);
+    expect(find.text('Interface & Language'), findsOneWidget);
+    expect(find.text('Board Theme'), findsOneWidget);
+    expect(find.text('Board Motion'), findsOneWidget);
 
     await tester.ensureVisible(
       find.byKey(const Key('settings_style_choice_personal_paper')),

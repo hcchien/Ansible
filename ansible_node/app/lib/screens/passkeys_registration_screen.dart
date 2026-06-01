@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/app_environment.dart';
+import '../l10n/app_l10n.dart';
 import '../services/atproto_client.dart';
 import '../theme/ansible_design.dart';
 
@@ -83,7 +84,10 @@ class _PasskeysRegistrationScreenState
     final handleSuffix = _normalizeHandleSuffix(_handleController.text);
     if (handleSuffix == null) {
       setState(() {
-        _errorMessage = '帳號名稱格式無效，請使用 1–63 個英數字或中間連字號。';
+        _errorMessage = _copy(
+          zh: '帳號名稱格式無效，請使用 1–63 個英數字或中間連字號。',
+          en: 'Account name format is invalid. Use 1-63 letters, numbers, or middle hyphens.',
+        );
       });
       return;
     }
@@ -228,43 +232,86 @@ class _PasskeysRegistrationScreenState
         case 'duplicate_did':
         case 'handle_taken':
         case 'handle_pending':
-          return '此帳號名稱已被使用，請嘗試不同的名稱。';
+          return _copy(
+            zh: '此帳號名稱已被使用，請嘗試不同的名稱。',
+            en: 'This account name is already in use. Try another name.',
+          );
         case 'handle_mismatch':
-          return '帳號名稱不一致，請重新開始。';
+          return _copy(
+            zh: '帳號名稱不一致，請重新開始。',
+            en: 'Account name mismatch. Start again.',
+          );
         case 'invalid_public_key':
-          return '金鑰格式無效，請重新嘗試。';
+          return _copy(
+            zh: '金鑰格式無效，請重新嘗試。',
+            en: 'Invalid key format. Try again.',
+          );
         case 'invalid_nonce':
         case 'expired_nonce':
-          return '驗證碼已失效，請重新開始。';
+          return _copy(
+            zh: '驗證碼已失效，請重新開始。',
+            en: 'Verification code expired. Start again.',
+          );
         case 'invalid_sig':
         case 'invalid_signature':
         case 'signature_mismatch':
-          return '簽章驗證失敗，請重新嘗試。';
+          return _copy(
+            zh: '簽章驗證失敗，請重新嘗試。',
+            en: 'Signature verification failed. Try again.',
+          );
         case 'rate_limited':
-          return '請求過於頻繁，請稍後再試。';
+          return _copy(
+            zh: '請求過於頻繁，請稍後再試。',
+            en: 'Too many requests. Try again later.',
+          );
         case 'server_error':
-          return '伺服器錯誤，請稍後再試。';
+          return _copy(
+            zh: '伺服器錯誤，請稍後再試。',
+            en: 'Server error. Try again later.',
+          );
       }
       if (error.statusCode >= 500) {
-        return '伺服器暫時無法使用，請稍後再試。';
+        return _copy(
+          zh: '伺服器暫時無法使用，請稍後再試。',
+          en: 'Server is temporarily unavailable. Try again later.',
+        );
       }
       if (error.statusCode == 401 || error.statusCode == 403) {
-        return '權限不足，請重新啟動應用程式。';
+        return _copy(
+          zh: '權限不足，請重新啟動應用程式。',
+          en: 'Permission denied. Restart the app.',
+        );
       }
     }
     if (error is PasskeysAuthException) {
-      return '裝置驗證未完成，請確認已啟用 Face ID、Touch ID 或裝置密碼。';
+      return _copy(
+        zh: '裝置驗證未完成，請確認已啟用 Face ID、Touch ID 或裝置密碼。',
+        en: 'Device authentication was not completed. Enable Face ID, Touch ID, or device passcode.',
+      );
     }
     if (error is DidPlcException) {
-      return 'DID 建立尚未完成 production 設定，請確認原生 Rust bridge 已正確打包。';
+      return _copy(
+        zh: 'DID 建立尚未完成 production 設定，請確認原生 Rust bridge 已正確打包。',
+        en: 'DID creation is not production-ready yet. Confirm that the native Rust bridge is bundled correctly.',
+      );
     }
     if (error is FormatException) {
-      return '簽章格式無效，請重新嘗試。';
+      return _copy(
+        zh: '簽章格式無效，請重新嘗試。',
+        en: 'Invalid signature format. Try again.',
+      );
     }
     if (error is StateError) {
-      return '註冊狀態不一致，請重新開始。';
+      return _copy(
+        zh: '註冊狀態不一致，請重新開始。',
+        en: 'Registration state is inconsistent. Start again.',
+      );
     }
     return error.toString();
+  }
+
+  String _copy({required String zh, required String en}) {
+    return context.uiCopy(zh: zh, en: en);
   }
 
   @override
@@ -314,18 +361,24 @@ class _PasskeysRegistrationScreenState
                         const SizedBox(height: 22),
                         const ElixWordmark(fontSize: 38),
                         const SizedBox(height: 22),
-                        const Text(
-                          '先建立身分，\n再開始社群。',
-                          style: TextStyle(
+                        Text(
+                          _copy(
+                            zh: '先建立身分，\n再開始社群。',
+                            en: 'Create identity first,\nthen join the community.',
+                          ),
+                          style: const TextStyle(
                             fontSize: 23,
                             height: 1.5,
                             color: AnsibleDesign.ink,
                           ),
                         ),
                         const SizedBox(height: 18),
-                        const Text(
-                          'Elix 是重視身分的社群 App。你追蹤的人、訂閱的板、以及你發出的 Note 與 Murmur，會一起形成動態。',
-                          style: TextStyle(
+                        Text(
+                          _copy(
+                            zh: 'Elix 是重視身分的社群 App。你追蹤的人、訂閱的板、以及你發出的 Note 與 Murmur，會一起形成動態。',
+                            en: 'Elix is an identity-centered social app. People you follow, boards you subscribe to, and your Notes and Murmurs form the feed together.',
+                          ),
+                          style: const TextStyle(
                             fontSize: 14,
                             height: 1.7,
                             color: AnsibleDesign.inkMuted,
@@ -344,19 +397,27 @@ class _PasskeysRegistrationScreenState
                           ),
                           child: Column(
                             children: [
-                              const _PromiseRow(
+                              _PromiseRow(
                                 dot: AnsibleDesign.spore,
-                                label: '身分在你這裡',
+                                label: _copy(
+                                  zh: '身分在你這裡',
+                                  en: 'Identity stays with you',
+                                ),
                                 meta: 'IDENTITY',
-                                body: 'Elix 不會替你保管你的身分。每一次公開發文都由你的裝置簽出。',
+                                body: _copy(
+                                  zh: 'Elix 不會替你保管你的身分。每一次公開發文都由你的裝置簽出。',
+                                  en: 'Elix does not custody your identity. Every public post is signed by your device.',
+                                ),
                               ),
                               const Divider(height: 1),
-                              const _PromiseRow(
+                              _PromiseRow(
                                 dot: AnsibleDesign.accent,
-                                label: '社群是首頁',
+                                label: _copy(zh: '社群是首頁', en: 'Feed is home'),
                                 meta: 'FEED',
-                                body:
-                                    'Murmur 與 Note 是個人版發文類型；追蹤你的人會在他們的 feed 上看到。',
+                                body: _copy(
+                                  zh: 'Murmur 與 Note 是個人版發文類型；追蹤你的人會在他們的 feed 上看到。',
+                                  en: 'Murmur and Note are personal-board post types; followers see them in their feed.',
+                                ),
                               ),
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
@@ -371,8 +432,11 @@ class _PasskeysRegistrationScreenState
                                   autocorrect: false,
                                   enableSuggestions: false,
                                   textInputAction: TextInputAction.done,
-                                  decoration: const InputDecoration(
-                                    labelText: '帳號名稱',
+                                  decoration: InputDecoration(
+                                    labelText: _copy(
+                                      zh: '帳號名稱',
+                                      en: 'Account name',
+                                    ),
                                     suffixText: '.trisaura.io',
                                   ),
                                 ),
@@ -431,13 +495,21 @@ class _PasskeysRegistrationScreenState
                               ? _startRegistration
                               : null,
                           icon: const Icon(Icons.key_outlined),
-                          label: const Text('建立帳號（Passkeys）'),
+                          label: Text(
+                            _copy(
+                              zh: '建立帳號（Passkeys）',
+                              en: 'Create Account (Passkeys)',
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        '重視身分的社群 App · 由 passkey 支撐',
-                        style: TextStyle(
+                      Text(
+                        _copy(
+                          zh: '重視身分的社群 App · 由 passkey 支撐',
+                          en: 'Identity-centered social app · powered by passkeys',
+                        ),
+                        style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 9,
                           color: AnsibleDesign.inkFaint,
@@ -459,10 +531,22 @@ class _PasskeysRegistrationScreenState
     if (_phase == _Phase.idle) return const SizedBox.shrink();
 
     final steps = [
-      (label: 'PASSKEY · 金鑰生成中', phase: _Phase.generatingKey),
-      (label: 'DID · 建立本地身份', phase: _Phase.creatingDid),
-      (label: 'RELAY · 錨定名稱', phase: _Phase.anchoring),
-      (label: 'DONE · 身份建立完成', phase: _Phase.done),
+      (
+        label: _copy(zh: 'PASSKEY · 金鑰生成中', en: 'PASSKEY · GENERATING KEY'),
+        phase: _Phase.generatingKey,
+      ),
+      (
+        label: _copy(zh: 'DID · 建立本地身份', en: 'DID · CREATING LOCAL IDENTITY'),
+        phase: _Phase.creatingDid,
+      ),
+      (
+        label: _copy(zh: 'RELAY · 錨定名稱', en: 'RELAY · ANCHORING HANDLE'),
+        phase: _Phase.anchoring,
+      ),
+      (
+        label: _copy(zh: 'DONE · 身份建立完成', en: 'DONE · IDENTITY CREATED'),
+        phase: _Phase.done,
+      ),
     ];
 
     return Container(
@@ -547,14 +631,18 @@ class _PromiseRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AnsibleDesign.ink,
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AnsibleDesign.ink,
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Text(
                       meta,
                       style: const TextStyle(

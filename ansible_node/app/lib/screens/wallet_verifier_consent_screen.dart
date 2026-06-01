@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/oid4vp_presentation_service.dart';
 import '../services/oid4vp_request.dart';
 
@@ -60,14 +61,26 @@ class _WalletVerifierConsentScreenState
     if (error is Oid4vpSubmissionException) {
       switch (error.code) {
         case 'no_matching_credential':
-          return 'Wallet 沒有可用的真人憑證。';
+          return context.uiCopy(
+            zh: 'Wallet 沒有可用的真人憑證。',
+            en: 'Wallet has no available human credential.',
+          );
         case 'missing_holder_key':
-          return 'Wallet 簽章金鑰尚未就緒。';
+          return context.uiCopy(
+            zh: 'Wallet 簽章金鑰尚未就緒。',
+            en: 'Wallet signing key is not ready.',
+          );
         case 'direct_post_failed':
-          return 'Verifier 未接受這次 VP。';
+          return context.uiCopy(
+            zh: 'Verifier 未接受這次 VP。',
+            en: 'The Verifier did not accept this VP.',
+          );
       }
     }
-    return 'VP 送出失敗，請重新掃描。';
+    return context.uiCopy(
+      zh: 'VP 送出失敗，請重新掃描。',
+      en: 'VP submission failed. Scan again.',
+    );
   }
 
   @override
@@ -81,7 +94,9 @@ class _WalletVerifierConsentScreenState
           const Icon(Icons.verified_user_outlined, size: 48),
           const SizedBox(height: 14),
           Text(
-            result == null ? 'Verifier Request' : 'VP 已送出',
+            result == null
+                ? 'Verifier Request'
+                : context.uiCopy(zh: 'VP 已送出', en: 'VP Submitted'),
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -103,9 +118,12 @@ class _WalletVerifierConsentScreenState
             body: widget.request.requestedClaimLabels.join(', '),
           ),
           const SizedBox(height: 12),
-          const _Section(
+          _Section(
             title: 'Not disclosed',
-            body: '身分證字號、姓名、憑證序號、MobileMoica response、duplicate commitment。',
+            body: context.uiCopy(
+              zh: '身分證字號、姓名、憑證序號、MobileMoica response、duplicate commitment。',
+              en: 'National ID number, legal name, credential serial number, MobileMoica response, duplicate commitment.',
+            ),
           ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 16),
@@ -125,19 +143,21 @@ class _WalletVerifierConsentScreenState
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.outbound),
-              label: const Text('同意並送出 VP'),
+              label: Text(
+                context.uiCopy(zh: '同意並送出 VP', en: 'Consent and Submit VP'),
+              ),
             )
           else
             FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.check_circle),
-              label: const Text('完成'),
+              label: Text(context.uiCopy(zh: '完成', en: 'Done')),
             ),
           const SizedBox(height: 8),
           if (result == null)
             TextButton(
               onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
             ),
         ],
       ),

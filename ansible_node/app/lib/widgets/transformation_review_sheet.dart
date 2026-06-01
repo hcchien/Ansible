@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 
 typedef TransformationAccept =
@@ -85,9 +86,12 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
               children: [
                 const AnsibleMark(size: 18),
                 const SizedBox(width: 10),
-                const Text(
-                  'SYSTEM MESSAGE · 系統訊息',
-                  style: TextStyle(
+                Text(
+                  context.uiCopy(
+                    zh: 'SYSTEM MESSAGE · 系統訊息',
+                    en: 'SYSTEM MESSAGE',
+                  ),
+                  style: const TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 10,
                     letterSpacing: 1.4,
@@ -97,18 +101,24 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
-              '下面這些內容會離開你的裝置，傳送給遠端 AI 做整理。',
-              style: TextStyle(
+            Text(
+              context.uiCopy(
+                zh: '下面這些內容會離開你的裝置，傳送給遠端 AI 做整理。',
+                en: 'The following content will leave your device and be sent to a remote AI for processing.',
+              ),
+              style: const TextStyle(
                 fontSize: 17,
                 height: 1.65,
                 color: AnsibleDesign.ink,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              '一旦傳出，就無法當作沒發生過。可以先把不想送的關掉。',
-              style: TextStyle(
+            Text(
+              context.uiCopy(
+                zh: '一旦傳出，就無法當作沒發生過。可以先把不想送的關掉。',
+                en: 'Once sent, it cannot be treated as if it never happened. Turn off anything you do not want to send.',
+              ),
+              style: const TextStyle(
                 fontSize: 13,
                 height: 1.65,
                 color: AnsibleDesign.inkMuted,
@@ -128,20 +138,26 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
               child: Column(
                 children: [
                   _ManifestRow(
-                    kind: '正文 · BODY',
-                    detail: '${widget.body.length} 字',
+                    kind: context.uiCopy(zh: '正文 · BODY', en: 'BODY'),
+                    detail: context.uiCopy(
+                      zh: '${widget.body.length} 字',
+                      en: '${widget.body.length} chars',
+                    ),
                     enabled: true,
                     locked: true,
                   ),
                   if (widget.containsPrivateSource)
-                    const _ManifestRow(
+                    _ManifestRow(
                       kind: 'PRIVATE · LOCAL SOURCE',
-                      detail: '來源內容預設留在本地；送出前需明確確認',
+                      detail: context.uiCopy(
+                        zh: '來源內容預設留在本地；送出前需明確確認',
+                        en: 'Source content stays local by default and needs explicit confirmation before sending.',
+                      ),
                       enabled: true,
                     ),
                   for (final label in widget.sourceLabels)
                     _ManifestRow(
-                      kind: '來源 · SOURCE',
+                      kind: context.uiCopy(zh: '來源 · SOURCE', en: 'SOURCE'),
                       detail: label,
                       enabled: true,
                     ),
@@ -151,7 +167,9 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: '標題 · TITLE'),
+              decoration: InputDecoration(
+                labelText: context.uiCopy(zh: '標題 · TITLE', en: 'Title'),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -160,7 +178,9 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
               minLines: 5,
               maxLines: 10,
               style: const TextStyle(height: 1.55),
-              decoration: const InputDecoration(labelText: '整理結果 · OUTPUT'),
+              decoration: InputDecoration(
+                labelText: context.uiCopy(zh: '整理結果 · OUTPUT', en: 'Output'),
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -168,7 +188,7 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).maybePop(),
-                    child: const Text('留在本地'),
+                    child: Text(context.uiCopy(zh: '留在本地', en: 'Keep Local')),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -176,7 +196,12 @@ class _TransformationReviewSheetState extends State<TransformationReviewSheet> {
                   flex: 2,
                   child: FilledButton(
                     onPressed: _saving ? null : _accept,
-                    child: Text('送出 · 約 ${widget.body.length} 字'),
+                    child: Text(
+                      context.uiCopy(
+                        zh: '送出 · 約 ${widget.body.length} 字',
+                        en: 'Send · about ${widget.body.length} chars',
+                      ),
+                    ),
                   ),
                 ),
               ],

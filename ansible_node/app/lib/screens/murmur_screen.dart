@@ -87,7 +87,7 @@ class _MurmurScreenState extends State<MurmurScreen> {
         visibility: _visibility,
         distributionPreference: _distributionPreference,
       ),
-      subjectLabel: '這條 murmur',
+      subjectLabel: context.uiCopy(zh: '這條 murmur', en: 'this murmur'),
     );
     if (choice == null || !mounted) return;
     setState(() {
@@ -406,18 +406,21 @@ class _DeleteBackground extends StatelessWidget {
             width: 84,
             color: AnsibleDesign.paperElev,
             alignment: Alignment.center,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.remove_rounded,
                   size: 14,
                   color: AnsibleDesign.inkMuted,
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
-                  '收起',
-                  style: TextStyle(fontSize: 12, color: AnsibleDesign.inkMuted),
+                  context.uiCopy(zh: '收起', en: 'Keep'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AnsibleDesign.inkMuted,
+                  ),
                 ),
               ],
             ),
@@ -426,18 +429,18 @@ class _DeleteBackground extends StatelessWidget {
             width: 84,
             color: AnsibleDesign.danger,
             alignment: Alignment.center,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.delete_outline_rounded,
                   size: 15,
                   color: AnsibleDesign.paper,
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
-                  '刪除',
-                  style: TextStyle(
+                  context.uiCopy(zh: '刪除', en: 'Delete'),
+                  style: const TextStyle(
                     fontSize: 13.5,
                     color: AnsibleDesign.paper,
                     letterSpacing: 0.5,
@@ -487,12 +490,17 @@ Future<bool?> showMurmurReferenceDeleteSheet({
       return SafeArea(
         top: false,
         child: _BottomActionSheet(
-          label: '引用 · REFERENCES',
-          title: '確定要讓引用斷開？',
-          body:
-              '這條 murmur 已經被 $referenceCount 篇 note 引用。刪除後，note 會保留文字，但來源會標記為已移除。',
-          cancelLabel: '返回',
-          actionLabel: '仍然刪除',
+          label: context.uiCopy(zh: '引用 · REFERENCES', en: 'REFERENCES'),
+          title: context.uiCopy(
+            zh: '確定要讓引用斷開？',
+            en: 'Disconnect these references?',
+          ),
+          body: context.uiCopy(
+            zh: '這條 murmur 已經被 $referenceCount 篇 note 引用。刪除後，note 會保留文字，但來源會標記為已移除。',
+            en: 'This murmur is referenced by $referenceCount notes. After deletion, notes keep the text but mark the source as removed.',
+          ),
+          cancelLabel: context.uiCopy(zh: '返回', en: 'Back'),
+          actionLabel: context.uiCopy(zh: '仍然刪除', en: 'Delete anyway'),
           actionColor: AnsibleDesign.danger,
           onCancel: () => Navigator.of(sheetContext).pop(false),
           onAction: () => Navigator.of(sheetContext).pop(true),
@@ -518,11 +526,17 @@ class _MurmurDeleteSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _BottomActionSheet(
-      label: '刪除 · DELETE',
-      title: '把這條 murmur 拔掉？',
+      label: context.uiCopy(zh: '刪除 · DELETE', en: 'DELETE'),
+      title: context.uiCopy(zh: '把這條 murmur 拔掉？', en: 'Delete this murmur?'),
       body: referenceCount == 0
-          ? '還沒被任何 note 用過。刪掉之後不留痕跡。'
-          : '這條 murmur 已經被 $referenceCount 篇 note 引用。',
+          ? context.uiCopy(
+              zh: '還沒被任何 note 用過。刪掉之後不留痕跡。',
+              en: 'No notes reference it yet. Deleting it leaves no trace.',
+            )
+          : context.uiCopy(
+              zh: '這條 murmur 已經被 $referenceCount 篇 note 引用。',
+              en: 'This murmur is referenced by $referenceCount notes.',
+            ),
       preview: Container(
         margin: const EdgeInsets.fromLTRB(0, 14, 0, 12),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -548,13 +562,16 @@ class _MurmurDeleteSheet extends StatelessWidget {
           ),
         ),
       ),
-      footer: const Padding(
-        padding: EdgeInsets.only(top: 12),
+      footer: Padding(
+        padding: const EdgeInsets.only(top: 12),
         child: Center(
           child: Text(
-            '被引用過的 murmur 會多問一次——不會直接消失。',
+            context.uiCopy(
+              zh: '被引用過的 murmur 會多問一次——不會直接消失。',
+              en: 'Referenced murmurs require one extra confirmation.',
+            ),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 11,
               color: AnsibleDesign.inkFaint,
               fontStyle: FontStyle.italic,
@@ -562,8 +579,8 @@ class _MurmurDeleteSheet extends StatelessWidget {
           ),
         ),
       ),
-      cancelLabel: '留著',
-      actionLabel: '刪除',
+      cancelLabel: context.uiCopy(zh: '留著', en: 'Keep'),
+      actionLabel: context.uiCopy(zh: '刪除', en: 'Delete'),
       actionColor: AnsibleDesign.danger,
       onCancel: onCancel,
       onAction: onDelete,

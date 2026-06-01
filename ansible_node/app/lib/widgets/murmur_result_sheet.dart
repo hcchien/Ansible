@@ -4,6 +4,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/ai/murmur_synthesis_service.dart';
 import '../services/ai/vector_search_service.dart';
 import '../theme/ansible_design.dart';
@@ -78,7 +79,11 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
       if (mounted) {
         setState(() => _draft = null);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('草擬失敗：$e')),
+          SnackBar(
+            content: Text(
+              context.uiCopy(zh: '草擬失敗：$e', en: 'Draft failed: $e'),
+            ),
+          ),
         );
       }
     } finally {
@@ -164,7 +169,11 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('編入失敗：$e')),
+          SnackBar(
+            content: Text(
+              context.uiCopy(zh: '編入失敗：$e', en: 'Insert failed: $e'),
+            ),
+          ),
         );
       }
     } finally {
@@ -178,7 +187,9 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
     if (diff.inDays == 0) {
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
-    if (diff.inDays < 7) return '${diff.inDays}天前';
+    if (diff.inDays < 7) {
+      return context.uiCopy(zh: '${diff.inDays}天前', en: '${diff.inDays}d ago');
+    }
     return '${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
   }
 
@@ -226,13 +237,19 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
                           color: AnsibleDesign.ochre,
                         ),
                         child: const Center(
-                          child: AnsibleMark(size: 18, color: AnsibleDesign.paper),
+                          child: AnsibleMark(
+                            size: 18,
+                            color: AnsibleDesign.paper,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'AI · 找到 $count 段',
+                          context.uiCopy(
+                            zh: 'AI · 找到 $count 段',
+                            en: 'AI · $count found',
+                          ),
                           style: const TextStyle(
                             fontFamily: AnsibleDesign.serif,
                             fontSize: 16,
@@ -253,9 +270,9 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
                           ),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text(
-                          '本地 · LOCAL',
-                          style: TextStyle(
+                        child: Text(
+                          context.uiCopy(zh: '本地 · LOCAL', en: 'LOCAL'),
+                          style: const TextStyle(
                             fontFamily: AnsibleDesign.mono,
                             fontSize: 9,
                             color: AnsibleDesign.inkFaint,
@@ -277,7 +294,10 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
                     children: [
                       // Intro
                       Text(
-                        '主題：${widget.query}。從你的 murmur 找到 $count 段。要編入哪些？',
+                        context.uiCopy(
+                          zh: '主題：${widget.query}。從你的 murmur 找到 $count 段。要編入哪些？',
+                          en: 'Topic: ${widget.query}. Found $count matching murmurs. Which ones should be inserted?',
+                        ),
                         style: const TextStyle(
                           fontFamily: AnsibleDesign.serif,
                           fontSize: 13,
@@ -290,11 +310,14 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
 
                       // Checklist
                       if (widget.results.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
                           child: Text(
-                            '沒有找到相關的 murmur。',
-                            style: TextStyle(
+                            context.uiCopy(
+                              zh: '沒有找到相關的 murmur。',
+                              en: 'No related murmurs found.',
+                            ),
+                            style: const TextStyle(
                               fontFamily: AnsibleDesign.serif,
                               fontSize: 13,
                               color: AnsibleDesign.inkFaint,
@@ -322,15 +345,12 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
                       const SizedBox(height: 16),
 
                       // Section kicker
-                      const _SectionKicker(zh: 'AI 草擬', en: 'DRAFT'),
+                      const _SectionKicker(zh: 'AI 草擬', en: 'AI DRAFT'),
 
                       const SizedBox(height: 10),
 
                       // Draft preview
-                      _DraftBox(
-                        draft: _draft,
-                        synthesising: _synthesising,
-                      ),
+                      _DraftBox(draft: _draft, synthesising: _synthesising),
 
                       const SizedBox(height: 16),
 
@@ -355,9 +375,9 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text(
-                              '重新草擬',
-                              style: TextStyle(
+                            child: Text(
+                              context.uiCopy(zh: '重新草擬', en: 'Redraft'),
+                              style: const TextStyle(
                                 fontFamily: AnsibleDesign.serif,
                                 fontSize: 13,
                               ),
@@ -390,9 +410,12 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
                                         color: AnsibleDesign.paper,
                                       ),
                                     )
-                                  : const Text(
-                                      '編入 note →',
-                                      style: TextStyle(
+                                  : Text(
+                                      context.uiCopy(
+                                        zh: '編入 note →',
+                                        en: 'Insert into note →',
+                                      ),
+                                      style: const TextStyle(
                                         fontFamily: AnsibleDesign.serif,
                                         fontSize: 13,
                                       ),
@@ -405,9 +428,12 @@ class _MurmurResultSheetState extends State<MurmurResultSheet> {
                       const SizedBox(height: 12),
 
                       // Footer note
-                      const Text(
-                        '原本的 murmur 不會被刪除。',
-                        style: TextStyle(
+                      Text(
+                        context.uiCopy(
+                          zh: '原本的 murmur 不會被刪除。',
+                          en: 'Original murmurs will not be deleted.',
+                        ),
+                        style: const TextStyle(
                           fontFamily: AnsibleDesign.serif,
                           fontSize: 11,
                           fontStyle: FontStyle.italic,
@@ -458,10 +484,7 @@ class _MurmurCheckRow extends StatelessWidget {
                 value: selected,
                 onChanged: (_) => onToggle(),
                 activeColor: AnsibleDesign.ink,
-                side: const BorderSide(
-                  color: AnsibleDesign.rule,
-                  width: 0.5,
-                ),
+                side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(3),
                 ),
@@ -514,7 +537,7 @@ class _SectionKicker extends StatelessWidget {
     return Row(
       children: [
         Text(
-          zh,
+          context.uiCopy(zh: zh, en: en),
           style: const TextStyle(
             fontFamily: AnsibleDesign.mono,
             fontSize: 9.5,
@@ -523,15 +546,18 @@ class _SectionKicker extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          '· $en',
-          style: const TextStyle(
-            fontFamily: AnsibleDesign.mono,
-            fontSize: 9.5,
-            letterSpacing: 1.4,
-            color: AnsibleDesign.inkFaint,
+        if (context.usesChineseUi) ...[
+          const SizedBox(width: 6),
+          Text(
+            '· $en',
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1.4,
+              color: AnsibleDesign.inkFaint,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -553,19 +579,19 @@ class _DraftBox extends StatelessWidget {
         border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
       ),
       child: synthesising
-          ? const Row(
+          ? Row(
               children: [
-                SizedBox.square(
+                const SizedBox.square(
                   dimension: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 1.5,
                     color: AnsibleDesign.inkMuted,
                   ),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
-                  '草擬中…',
-                  style: TextStyle(
+                  context.uiCopy(zh: '草擬中…', en: 'Drafting...'),
+                  style: const TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontSize: 13,
                     color: AnsibleDesign.inkMuted,
@@ -584,9 +610,12 @@ class _DraftBox extends StatelessWidget {
                 height: 1.6,
               ),
             )
-          : const Text(
-              '選擇 murmur 後自動草擬。',
-              style: TextStyle(
+          : Text(
+              context.uiCopy(
+                zh: '選擇 murmur 後自動草擬。',
+                en: 'Choose murmurs to draft automatically.',
+              ),
+              style: const TextStyle(
                 fontFamily: AnsibleDesign.serif,
                 fontSize: 13,
                 color: AnsibleDesign.inkFaint,

@@ -137,7 +137,7 @@ class _SearchScreenState extends State<SearchScreen> {
             rows: [
               for (final item in notes)
                 _ResultRow(
-                  data: _ResultData.fromContentItem(item),
+                  data: _ResultData.fromContentItem(context, item),
                   query: query,
                 ),
             ],
@@ -150,7 +150,7 @@ class _SearchScreenState extends State<SearchScreen> {
             rows: [
               for (final item in murmurs)
                 _ResultRow(
-                  data: _ResultData.fromContentItem(item),
+                  data: _ResultData.fromContentItem(context, item),
                   query: query,
                   onTap: () {
                     Navigator.of(context).push(
@@ -170,7 +170,7 @@ class _SearchScreenState extends State<SearchScreen> {
             rows: [
               for (final item in threads)
                 _ResultRow(
-                  data: _ResultData.fromContentItem(item),
+                  data: _ResultData.fromContentItem(context, item),
                   query: query,
                 ),
             ],
@@ -409,7 +409,7 @@ class _ResultData {
     required this.visibilityColor,
   });
 
-  factory _ResultData.fromContentItem(ContentItem item) {
+  factory _ResultData.fromContentItem(BuildContext context, ContentItem item) {
     final kind = switch (item.mode) {
       ContentMode.murmur => 'MURM',
       ContentMode.note => 'NOTE',
@@ -420,7 +420,7 @@ class _ResultData {
       kindLabel: kind,
       title: item.title ?? '',
       body: item.body,
-      when: _formatAge(item.updatedAt),
+      when: _formatAge(context, item.updatedAt),
       visibilityColor: _visibilityColor(item.visibility),
     );
   }
@@ -440,9 +440,14 @@ Color _visibilityColor(ContentVisibility visibility) {
   };
 }
 
-String _formatAge(DateTime value) {
+String _formatAge(BuildContext context, DateTime value) {
   final diff = DateTime.now().difference(value);
-  if (diff.inHours < 1) return '${diff.inMinutes.clamp(0, 59)}分';
-  if (diff.inDays < 1) return '${diff.inHours}小時';
-  return '${diff.inDays}天';
+  if (diff.inHours < 1) {
+    final minutes = diff.inMinutes.clamp(0, 59);
+    return context.uiCopy(zh: '$minutes分', en: '${minutes}m');
+  }
+  if (diff.inDays < 1) {
+    return context.uiCopy(zh: '${diff.inHours}小時', en: '${diff.inHours}h');
+  }
+  return context.uiCopy(zh: '${diff.inDays}天', en: '${diff.inDays}d');
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
@@ -21,20 +22,28 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = _blankToNull(displayName) ?? '尚未設定公開身分';
-    final handleLabel = _blankToNull(handle) ?? '尚未設定 handle';
+    final name =
+        _blankToNull(displayName) ??
+        context.uiCopy(zh: '尚未設定公開身分', en: 'Public identity not set');
+    final handleLabel =
+        _blankToNull(handle) ??
+        context.uiCopy(zh: '尚未設定 handle', en: 'Handle not set');
     final keyLabel =
         _blankToNull(publicKeyLabel) ??
-        (did == null ? 'pk · 未設定' : 'did · ${_shortDid(did!)}');
-    final bioText = _blankToNull(bio) ?? '尚未設定公開簡介。';
+        (did == null
+            ? context.uiCopy(zh: 'pk · 未設定', en: 'pk · not set')
+            : 'did · ${_shortDid(did!)}');
+    final bioText =
+        _blankToNull(bio) ??
+        context.uiCopy(zh: '尚未設定公開簡介。', en: 'Public bio is not set.');
 
     return AnsibleScreenScaffold(
       title: '',
-      leadingLabel: '← 討論串',
+      leadingLabel: context.uiCopy(zh: '← 討論串', en: '← Discussion'),
       trailing: IconButton(
         onPressed: () {},
         icon: const Icon(Icons.more_horiz),
-        tooltip: '更多',
+        tooltip: context.uiCopy(zh: '更多', en: 'More'),
       ),
       child: ListView(
         children: [
@@ -43,7 +52,12 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AnsibleMonoLabel('公開身分 · PUBLIC HANDLE'),
+                AnsibleMonoLabel(
+                  context.uiCopy(
+                    zh: '公開身分 · PUBLIC HANDLE',
+                    en: 'PUBLIC HANDLE',
+                  ),
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -114,10 +128,20 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Wrap(
+                Wrap(
                   spacing: 12,
                   runSpacing: 8,
-                  children: [_ProfileMeta('公開身分尚未發布'), _ProfileMeta('0 個共同的圈')],
+                  children: [
+                    _ProfileMeta(
+                      context.uiCopy(
+                        zh: '公開身分尚未發布',
+                        en: 'Public identity not published',
+                      ),
+                    ),
+                    _ProfileMeta(
+                      context.uiCopy(zh: '0 個共同的圈', en: '0 mutual circles'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -125,11 +149,19 @@ class ProfileScreen extends StatelessWidget {
                     Expanded(
                       child: FilledButton(
                         onPressed: null,
-                        child: const Text('追蹤公開發布'),
+                        child: Text(
+                          context.uiCopy(
+                            zh: '追蹤公開發布',
+                            en: 'Follow Public Posts',
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton(onPressed: null, child: const Text('邀請進圈')),
+                    OutlinedButton(
+                      onPressed: null,
+                      child: Text(context.uiCopy(zh: '邀請進圈', en: 'Invite')),
+                    ),
                   ],
                 ),
               ],
@@ -143,19 +175,22 @@ class ProfileScreen extends StatelessWidget {
                 color: AnsibleDesign.paperDeep.withValues(alpha: 0.55),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.info_outline,
                     size: 16,
                     color: AnsibleDesign.inkMuted,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '公開身分尚未設定，因此目前沒有可顯示的公開資料。',
-                      style: TextStyle(
+                      context.uiCopy(
+                        zh: '公開身分尚未設定，因此目前沒有可顯示的公開資料。',
+                        en: 'Public identity is not set, so there is no public profile data to show yet.',
+                      ),
+                      style: const TextStyle(
                         fontSize: 11.5,
                         height: 1.6,
                         color: AnsibleDesign.inkMuted,
@@ -166,11 +201,17 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           ),
-          const AnsibleMonoLabel(
-            '公開發布 · PUBLIC · 0',
-            padding: EdgeInsets.fromLTRB(22, 0, 22, 8),
+          AnsibleMonoLabel(
+            context.uiCopy(zh: '公開發布 · PUBLIC · 0', en: 'PUBLIC POSTS · 0'),
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
           ),
-          const AnsibleRuleGroup(children: [_EmptyProfileRow('目前沒有公開發布')]),
+          AnsibleRuleGroup(
+            children: [
+              _EmptyProfileRow(
+                context.uiCopy(zh: '目前沒有公開發布', en: 'No public posts yet'),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
         ],
       ),

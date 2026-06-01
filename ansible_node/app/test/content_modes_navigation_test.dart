@@ -33,7 +33,7 @@ void main() {
     expect(find.text('今天有什麼想記下的？'), findsNothing);
     await tester.tap(find.byKey(const Key('home_compose_button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('碎念'));
+    await tester.tap(find.text('Murmur'));
     await tester.pumpAndSettle();
 
     expect(find.text('Murmur'), findsOneWidget);
@@ -62,7 +62,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('home_compose_button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('筆記'));
+    await tester.tap(find.text('Note'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('note_title_field')), findsOneWidget);
     expect(find.byKey(const Key('note_body_field')), findsOneWidget);
@@ -72,7 +72,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pumpAndSettle();
-    expect(find.text('還沒有任何記錄'), findsNothing);
+    expect(find.text('No entries yet'), findsNothing);
   });
 }
 

@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 
 Future<ContentVisibility?> showContentVisibilitySheet({
@@ -112,7 +113,7 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => Navigator.of(sheetContext).pop(),
-                            child: const Text('取消'),
+                            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -125,7 +126,9 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
                                 distributionPreference: distributionPreference,
                               ),
                             ),
-                            child: const Text('確認'),
+                            child: Text(
+                              context.uiCopy(zh: '確認', en: 'Confirm'),
+                            ),
                           ),
                         ),
                       ],
@@ -228,9 +231,9 @@ class _DistributionSheetMainContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '誰能看見 · VISIBILITY',
-                style: TextStyle(
+              Text(
+                context.uiCopy(zh: '誰能看見 · VISIBILITY', en: 'VISIBILITY'),
+                style: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 9.5,
                   color: AnsibleDesign.inkFaint,
@@ -239,7 +242,10 @@ class _DistributionSheetMainContent extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '$subjectLabel 給誰看？',
+                context.uiCopy(
+                  zh: '$subjectLabel 給誰看？',
+                  en: 'Who can see $subjectLabel?',
+                ),
                 style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w500,
@@ -247,9 +253,12 @@ class _DistributionSheetMainContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                '之後也可以改。預設留在你這裡。',
-                style: TextStyle(
+              Text(
+                context.uiCopy(
+                  zh: '之後也可以改。預設留在你這裡。',
+                  en: 'You can change this later. The default stays local.',
+                ),
+                style: const TextStyle(
                   fontSize: 12,
                   color: AnsibleDesign.inkMuted,
                   fontStyle: FontStyle.italic,
@@ -422,7 +431,7 @@ class _VisibilityOptionRow extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        option.zh,
+                        context.uiCopy(zh: option.zh, en: option.enLabel),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
@@ -446,7 +455,10 @@ class _VisibilityOptionRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    option.description,
+                    context.uiCopy(
+                      zh: option.description,
+                      en: option.descriptionEn,
+                    ),
                     style: const TextStyle(
                       fontSize: 14,
                       height: 1.55,
@@ -494,14 +506,18 @@ class _VisibilityOption {
     required this.visibility,
     required this.zh,
     required this.en,
+    required this.enLabel,
     required this.description,
+    required this.descriptionEn,
     required this.dot,
   });
 
   final ContentVisibility visibility;
   final String zh;
   final String en;
+  final String enLabel;
   final String description;
+  final String descriptionEn;
   final Color dot;
 }
 
@@ -510,7 +526,9 @@ const _visibilityOptions = [
     visibility: ContentVisibility.private,
     zh: '留在本地',
     en: 'private',
+    enLabel: 'Private',
     description: '只有你看得見。連同步到別台也只有你的裝置。',
+    descriptionEn: 'Only you can see it. Even sync stays on your devices.',
     dot: AnsibleDesign.inkMuted,
   ),
   _VisibilityOption(
@@ -518,6 +536,9 @@ const _visibilityOptions = [
     zh: '不列出',
     en: 'unlisted',
     description: '可以同步與分享連結，但不主動放進公開列表或索引。',
+    enLabel: 'Unlisted',
+    descriptionEn:
+        'Can sync and be shared by link, but is not listed or indexed.',
     dot: AnsibleDesign.spore,
   ),
   _VisibilityOption(
@@ -525,6 +546,8 @@ const _visibilityOptions = [
     zh: '公開',
     en: 'public',
     description: '任何人都能讀。會出現在公開討論串裡。',
+    enLabel: 'Public',
+    descriptionEn: 'Anyone can read it. It can appear in public discussions.',
     dot: AnsibleDesign.accent,
   ),
 ];

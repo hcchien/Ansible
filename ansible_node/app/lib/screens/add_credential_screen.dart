@@ -2,6 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/atproto_client.dart';
 import '../services/vc_issuer_client.dart';
 import 'credential_issuance_wizard.dart';
@@ -36,7 +37,9 @@ class AddCredentialScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('加入憑證')),
+      appBar: AppBar(
+        title: Text(context.uiCopy(zh: '加入憑證', en: 'Add Credential')),
+      ),
       body: CredentialIssuanceWizard(
         holderDid: holderDid,
         vcIssuerClient: vcIssuerClient,

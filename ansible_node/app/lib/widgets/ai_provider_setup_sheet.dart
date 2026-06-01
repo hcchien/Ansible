@@ -1,6 +1,8 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+
 class AiProviderSetupResult {
   final String displayName;
   final AiProviderType providerType;
@@ -95,9 +97,9 @@ class _AiProviderSetupSheetState extends State<AiProviderSetupSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'AI 提供者設定',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            Text(
+              context.uiCopy(zh: 'AI 提供者設定', en: 'AI Provider Settings'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<AiProviderType>(
@@ -160,20 +162,24 @@ class _AiProviderSetupSheetState extends State<AiProviderSetupSheet> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.network_check),
-                  label: const Text('測試連線'),
+                  label: Text(
+                    context.uiCopy(zh: '測試連線', en: 'Test Connection'),
+                  ),
                 ),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).pop(_result()),
                   icon: const Icon(Icons.check),
-                  label: const Text('儲存並繼續'),
+                  label: Text(
+                    context.uiCopy(zh: '儲存並繼續', en: 'Save and Continue'),
+                  ),
                 ),
               ],
             ),
             if (_testPassed) ...[
               const SizedBox(height: 12),
-              const Text(
-                '連線測試通過',
-                style: TextStyle(
+              Text(
+                context.uiCopy(zh: '連線測試通過', en: 'Connection test passed'),
+                style: const TextStyle(
                   color: Color(0xFFFFB76B),
                   fontWeight: FontWeight.w700,
                 ),

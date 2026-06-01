@@ -522,8 +522,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ),
             _ComposeActionItem(
               icon: Icons.mic_outlined,
-              title: '碎念',
-              subtitle: 'MURMUR · 文字或語音',
+              title: context.uiCopy(zh: '碎念', en: 'Murmur'),
+              subtitle: context.uiCopy(
+                zh: 'MURMUR · 文字或語音',
+                en: 'MURMUR · text or voice',
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _openCircleScreen(context, _CircleTab.murmur);
@@ -532,8 +535,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             const Divider(height: 0.5, color: AnsibleDesign.ruleSoft),
             _ComposeActionItem(
               icon: Icons.edit_outlined,
-              title: '筆記',
-              subtitle: 'NOTE · 長文或想法',
+              title: context.uiCopy(zh: '筆記', en: 'Note'),
+              subtitle: context.uiCopy(
+                zh: 'NOTE · 長文或想法',
+                en: 'NOTE · long-form thought',
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _openCircleScreen(
@@ -1625,19 +1631,28 @@ class _MainPanel extends StatelessWidget {
     String timeAgo(DateTime dt) {
       final now = DateTime.now();
       final diff = now.difference(dt);
-      if (diff.inMinutes < 1) return '剛剛';
+      if (diff.inMinutes < 1) {
+        return context.uiCopy(zh: '剛剛', en: 'just now');
+      }
       if (diff.inDays < 1) {
         final hh = dt.hour.toString().padLeft(2, '0');
         final mm = dt.minute.toString().padLeft(2, '0');
-        return diff.inHours < 1 ? '${diff.inMinutes}m' : '今 $hh:$mm';
+        return diff.inHours < 1
+            ? '${diff.inMinutes}m'
+            : context.uiCopy(zh: '今 $hh:$mm', en: 'today $hh:$mm');
       }
       if (diff.inDays == 1) {
         final hh = dt.hour.toString().padLeft(2, '0');
         final mm = dt.minute.toString().padLeft(2, '0');
-        return '昨 $hh:$mm';
+        return context.uiCopy(zh: '昨 $hh:$mm', en: 'yesterday $hh:$mm');
       }
-      if (diff.inDays == 2) return '前天';
-      if (diff.inDays < 7) return '${diff.inDays} 天前';
+      if (diff.inDays == 2) return context.uiCopy(zh: '前天', en: '2d ago');
+      if (diff.inDays < 7) {
+        return context.uiCopy(
+          zh: '${diff.inDays} 天前',
+          en: '${diff.inDays}d ago',
+        );
+      }
       return '${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
     }
 
@@ -1819,7 +1834,7 @@ class _MainPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'AI · 橫向橋',
+                      context.uiCopy(zh: 'AI · 橫向橋', en: 'AI · BRIDGE'),
                       style: TextStyle(
                         fontFamily: AnsibleDesign.mono,
                         fontSize: 9.5,
@@ -1829,7 +1844,10 @@ class _MainPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '從本機 murmur 找材料，替筆記接出下一段。',
+                      context.uiCopy(
+                        zh: '從本機 murmur 找材料，替筆記接出下一段。',
+                        en: 'Find local murmurs and extend the next paragraph.',
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1864,7 +1882,10 @@ class _MainPanel extends StatelessWidget {
 
             // ── This week section ────────────────────────────────────────
             if (thisWeek.isNotEmpty) ...[
-              sectionKicker('本週', 'THIS WEEK'),
+              sectionKicker(
+                context.uiCopy(zh: '本週', en: 'This week'),
+                'THIS WEEK',
+              ),
               ...thisWeek.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -1875,7 +1896,10 @@ class _MainPanel extends StatelessWidget {
 
             // ── Earlier section ──────────────────────────────────────────
             if (earlier.isNotEmpty) ...[
-              sectionKicker('上週', '更早'),
+              sectionKicker(
+                context.uiCopy(zh: '上週', en: 'Earlier'),
+                context.uiCopy(zh: '更早', en: 'OLDER'),
+              ),
               ...earlier.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -1890,7 +1914,7 @@ class _MainPanel extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 48),
                 child: Center(
                   child: Text(
-                    '還沒有任何記錄',
+                    context.uiCopy(zh: '還沒有任何記錄', en: 'No entries yet'),
                     style: TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 15,
@@ -1914,7 +1938,10 @@ class _MainPanel extends StatelessWidget {
             backgroundColor: styleData.accent,
             foregroundColor: styleData.background,
             elevation: 0,
-            tooltip: '新增 Note 或 Murmur',
+            tooltip: context.uiCopy(
+              zh: '新增 Note 或 Murmur',
+              en: 'New Note or Murmur',
+            ),
             child: const Icon(Icons.add),
           ),
         ),
@@ -2045,8 +2072,8 @@ class _MainPanel extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Text(
-                '在討論區',
+              Text(
+                context.uiCopy(zh: '在討論區', en: 'In forum'),
                 style: TextStyle(
                   fontFamily: AnsibleDesign.mono,
                   fontSize: 9.5,
@@ -2058,7 +2085,7 @@ class _MainPanel extends StatelessWidget {
               FilledButton.icon(
                 onPressed: hasSelectedBoard ? onCreateThread : onCreateBoard,
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('發文'),
+                label: Text(l10n.newPost),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -2360,9 +2387,9 @@ class _ScreenStyleSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                '介面與語言',
-                style: TextStyle(
+              Text(
+                context.uiCopy(zh: '介面與語言', en: 'Interface & Language'),
+                style: const TextStyle(
                   fontFamily: AnsibleDesign.serif,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -2370,11 +2397,14 @@ class _ScreenStyleSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const AnsibleMonoLabel('每版的光'),
+              AnsibleMonoLabel(context.uiCopy(zh: '每版的光', en: 'BOARD THEME')),
               const SizedBox(height: 8),
-              const Text(
-                '每個版可以有自己的光。Swipe 換版時，顏色也會跟著換。',
-                style: TextStyle(
+              Text(
+                context.uiCopy(
+                  zh: '每個版可以有自己的光。Swipe 換版時，顏色也會跟著換。',
+                  en: 'Each board can have its own theme. Colors follow when you swipe between boards.',
+                ),
+                style: const TextStyle(
                   fontFamily: AnsibleDesign.serif,
                   fontSize: 13,
                   height: 1.65,
@@ -2384,33 +2414,36 @@ class _ScreenStyleSheet extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               _BoardAtmosphereCard(
-                boardLabel: '個人版',
-                boardMeta: '寫給自己',
+                boardLabel: context.uiCopy(zh: '個人版', en: 'Personal'),
+                boardMeta: context.uiCopy(zh: '寫給自己', en: 'For yourself'),
                 selected: personalStyle,
                 keyPrefix: 'feed',
                 onSelected: onPersonalStyleSelected,
               ),
               const SizedBox(height: 10),
               _BoardAtmosphereCard(
-                boardLabel: '討論區',
-                boardMeta: '白天的廣場',
+                boardLabel: context.uiCopy(zh: '討論區', en: 'Forum'),
+                boardMeta: context.uiCopy(zh: '白天的廣場', en: 'Daylight square'),
                 selected: forumStyle,
                 keyPrefix: 'circle',
                 onSelected: onForumStyleSelected,
               ),
               const SizedBox(height: 18),
-              const DecoratedBox(
-                decoration: BoxDecoration(
+              DecoratedBox(
+                decoration: const BoxDecoration(
                   color: AnsibleDesign.paperElev,
                   border: Border(
                     left: BorderSide(color: AnsibleDesign.ochre, width: 2),
                   ),
                 ),
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   child: Text(
-                    '不開放選別的顏色。寫過的東西仍是同一個品牌，只是換了一面光。',
-                    style: TextStyle(
+                    context.uiCopy(
+                      zh: '不開放選別的顏色。寫過的東西仍是同一個品牌，只是換了一面光。',
+                      en: 'Custom colors are not available. Your writing stays in the same brand, with a different light.',
+                    ),
+                    style: const TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 12,
                       height: 1.65,
@@ -2421,11 +2454,14 @@ class _ScreenStyleSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const AnsibleMonoLabel('換版的動態'),
+              AnsibleMonoLabel(context.uiCopy(zh: '換版的動態', en: 'BOARD MOTION')),
               const SizedBox(height: 8),
-              const Text(
-                '如果系統開了「減少動態」，Elix 會自動降回平移。',
-                style: TextStyle(
+              Text(
+                context.uiCopy(
+                  zh: '如果系統開了「減少動態」，Elix 會自動降回平移。',
+                  en: 'When Reduce Motion is enabled, Elix automatically falls back to slide.',
+                ),
+                style: const TextStyle(
                   fontFamily: AnsibleDesign.serif,
                   fontSize: 13,
                   height: 1.65,
@@ -2436,23 +2472,32 @@ class _ScreenStyleSheet extends StatelessWidget {
               const SizedBox(height: 12),
               _MotionOption(
                 key: const Key('board_motion_slide'),
-                title: ElixBoardMotion.slide.title,
-                subtitle: ElixBoardMotion.slide.description,
+                title: context.uiCopy(zh: 'Slide · 平移', en: 'Slide'),
+                subtitle: context.uiCopy(
+                  zh: '兩張紙左右平移，沒有立體感。',
+                  en: 'Two pages slide side to side with no 3D effect.',
+                ),
                 selected: motion == ElixBoardMotion.slide,
                 onTap: () => onMotionSelected(ElixBoardMotion.slide),
               ),
               _MotionOption(
                 key: const Key('board_motion_book'),
-                title: ElixBoardMotion.book.title,
-                badge: '預設',
-                subtitle: ElixBoardMotion.book.description,
+                title: context.uiCopy(zh: 'Book · 翻書', en: 'Book'),
+                badge: context.uiCopy(zh: '預設', en: 'Default'),
+                subtitle: context.uiCopy(
+                  zh: '兩個版像書的左右頁，輕微 perspective。',
+                  en: 'Boards turn like left and right pages with light perspective.',
+                ),
                 selected: motion == ElixBoardMotion.book,
                 onTap: () => onMotionSelected(ElixBoardMotion.book),
               ),
               _MotionOption(
                 key: const Key('board_motion_cube'),
-                title: ElixBoardMotion.cube.title,
-                subtitle: ElixBoardMotion.cube.description,
+                title: context.uiCopy(zh: 'Cube · 翻立方', en: 'Cube'),
+                subtitle: context.uiCopy(
+                  zh: '較完整的 rotateY，切換感更強。',
+                  en: 'Fuller rotateY motion with a stronger switch feel.',
+                ),
                 selected: motion == ElixBoardMotion.cube,
                 onTap: () => onMotionSelected(ElixBoardMotion.cube),
               ),
@@ -2600,7 +2645,7 @@ class _ScreenStyleSwatch extends StatelessWidget {
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
-                    style.zhLabel,
+                    context.uiCopy(zh: style.zhLabel, en: style.label),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -3159,7 +3204,9 @@ class _BoardSwipeProgressPill extends StatelessWidget {
             : 1.0 - fractional;
         if (distanceFromEdge < 0.035) return const SizedBox.shrink();
 
-        final targetLabel = page < 0.5 ? '換到討論區' : '換到個人版';
+        final targetLabel = page < 0.5
+            ? context.uiCopy(zh: '換到討論區', en: 'Switch to Forum')
+            : context.uiCopy(zh: '換到個人版', en: 'Switch to Personal');
         final progress = page < 0.5 ? page : 1.0 - page;
         final percent = (progress.clamp(0.0, 1.0) * 100).round();
         final dark = Theme.of(context).brightness == Brightness.dark;
@@ -3258,6 +3305,7 @@ class _BoardSwipeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final brightness = Theme.of(context).brightness;
     final personalData = personalStyle.dataFor(brightness);
     final forumData = forumStyle.dataFor(brightness);
@@ -3315,8 +3363,11 @@ class _BoardSwipeHeader extends StatelessWidget {
                     children: [
                       _boardButton(
                         board: _Board.personal,
-                        label: '個人版',
-                        tooltip: '個人版 · 你的 Note 和 Murmur',
+                        label: context.uiCopy(zh: '個人版', en: 'Personal'),
+                        tooltip: context.uiCopy(
+                          zh: '個人版 · 你的 Note 和 Murmur',
+                          en: 'Personal · your Notes and Murmurs',
+                        ),
                         active: page < 0.5,
                         showMark: page < 0.5,
                         underlineOpacity: (1 - page).clamp(0.0, 1.0),
@@ -3326,8 +3377,11 @@ class _BoardSwipeHeader extends StatelessWidget {
                       const SizedBox(width: 32),
                       _boardButton(
                         board: _Board.forum,
-                        label: '討論區',
-                        tooltip: '討論區 · 追蹤的人與板',
+                        label: context.uiCopy(zh: '討論區', en: 'Forum'),
+                        tooltip: context.uiCopy(
+                          zh: '討論區 · 追蹤的人與板',
+                          en: 'Forum · follows and boards',
+                        ),
                         active: page >= 0.5,
                         showMark: false,
                         underlineOpacity: page.clamp(0.0, 1.0),
@@ -3352,7 +3406,10 @@ class _BoardSwipeHeader extends StatelessWidget {
                                 size: 18,
                               ),
                               color: faintColor,
-                              tooltip: '介面與動態',
+                              tooltip: context.uiCopy(
+                                zh: '介面與動態',
+                                en: 'Interface and motion',
+                              ),
                               constraints: const BoxConstraints.tightFor(
                                 width: 30,
                                 height: 34,
@@ -3365,7 +3422,7 @@ class _BoardSwipeHeader extends StatelessWidget {
                               onPressed: onOpenSettings,
                               icon: const Icon(Icons.person_outline, size: 19),
                               color: faintColor,
-                              tooltip: '設定',
+                              tooltip: l10n.settingsNav,
                               constraints: const BoxConstraints.tightFor(
                                 width: 30,
                                 height: 34,
@@ -3385,6 +3442,7 @@ class _BoardSwipeHeader extends StatelessWidget {
                 ),
                 child: page < 0.5
                     ? _personalMetaRow(
+                        context: context,
                         fgColor: fgColor,
                         mutedColor: mutedColor,
                         faintColor: faintColor,
@@ -3393,6 +3451,7 @@ class _BoardSwipeHeader extends StatelessWidget {
                         ochreColor: ochreColor,
                       )
                     : _forumMetaRow(
+                        context: context,
                         fgColor: fgColor,
                         mutedColor: mutedColor,
                         faintColor: faintColor,
@@ -3475,6 +3534,7 @@ class _BoardSwipeHeader extends StatelessWidget {
   }
 
   Widget _personalMetaRow({
+    required BuildContext context,
     required Color fgColor,
     required Color mutedColor,
     required Color faintColor,
@@ -3482,6 +3542,7 @@ class _BoardSwipeHeader extends StatelessWidget {
     required Color ruleColor,
     required Color ochreColor,
   }) {
+    final l10n = context.l10n;
     return Row(
       children: [
         Expanded(
@@ -3503,7 +3564,7 @@ class _BoardSwipeHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _FocusHeaderChip(
-                label: '全部',
+                label: l10n.searchScopeAll,
                 selected: personalFilter == _PersonalFilter.all,
                 onTap: () => onPersonalFilterChanged(_PersonalFilter.all),
                 fgColor: fgColor,
@@ -3540,6 +3601,7 @@ class _BoardSwipeHeader extends StatelessWidget {
   }
 
   Widget _forumMetaRow({
+    required BuildContext context,
     required Color fgColor,
     required Color mutedColor,
     required Color faintColor,
@@ -3547,6 +3609,7 @@ class _BoardSwipeHeader extends StatelessWidget {
     required Color ruleColor,
     required Color ochreColor,
   }) {
+    final l10n = context.l10n;
     final activeFilter = feedFilter == FeedFilter.boards
         ? FeedFilter.boards
         : FeedFilter.following;
@@ -3554,7 +3617,10 @@ class _BoardSwipeHeader extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            '$forumPostCount 新 · 今',
+            context.uiCopy(
+              zh: '$forumPostCount 新 · 今',
+              en: '$forumPostCount new · today',
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -3571,7 +3637,7 @@ class _BoardSwipeHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _FocusHeaderChip(
-                label: '追蹤',
+                label: l10n.feedFollowing,
                 selected: activeFilter == FeedFilter.following,
                 onTap: () => onFeedFilterChanged(FeedFilter.following),
                 fgColor: fgColor,
@@ -3581,7 +3647,7 @@ class _BoardSwipeHeader extends StatelessWidget {
                 ochreColor: ochreColor,
               ),
               _FocusHeaderChip(
-                label: '訂閱板',
+                label: l10n.feedBoards,
                 selected: activeFilter == FeedFilter.boards,
                 onTap: () => onFeedFilterChanged(FeedFilter.boards),
                 fgColor: fgColor,
@@ -3753,7 +3819,10 @@ class _SwipeCoachmarkState extends State<_SwipeCoachmark>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '這裡是你的個人版。',
+                  context.uiCopy(
+                    zh: '這裡是你的個人版。',
+                    en: 'This is your personal board.',
+                  ),
                   style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontSize: 18,
@@ -3763,7 +3832,10 @@ class _SwipeCoachmarkState extends State<_SwipeCoachmark>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '想看別人？往左滑，或是點上面的「討論區」。',
+                  context.uiCopy(
+                    zh: '想看別人？往左滑，或是點上面的「討論區」。',
+                    en: 'Want to see others? Swipe left or tap Forum above.',
+                  ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
@@ -3788,7 +3860,7 @@ class _SwipeCoachmarkState extends State<_SwipeCoachmark>
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: const Text('知道了'),
+                        child: Text(context.uiCopy(zh: '知道了', en: 'Got it')),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -3804,7 +3876,9 @@ class _SwipeCoachmarkState extends State<_SwipeCoachmark>
                           ),
                           elevation: 0,
                         ),
-                        child: const Text('試試看·滑一下'),
+                        child: Text(
+                          context.uiCopy(zh: '試試看·滑一下', en: 'Try swiping'),
+                        ),
                       ),
                     ),
                   ],
@@ -3912,8 +3986,14 @@ class _CircleFullScreenState extends State<_CircleFullScreen> {
                         const SizedBox(height: 2),
                         Text(
                           _tab == _CircleTab.murmur
-                              ? '說一段不用想太完整的話'
-                              : '個人版 · note',
+                              ? context.uiCopy(
+                                  zh: '說一段不用想太完整的話',
+                                  en: 'Say something unfinished',
+                                )
+                              : context.uiCopy(
+                                  zh: '個人版 · note',
+                                  en: 'Personal · note',
+                                ),
                           style: TextStyle(
                             fontFamily: AnsibleDesign.mono,
                             fontSize: 9.5,

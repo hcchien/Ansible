@@ -1,6 +1,7 @@
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
+import '../l10n/app_l10n.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/follow_button.dart';
 import 'threads_list_screen.dart';
@@ -75,8 +76,13 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
 
   Future<void> _createBoard() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('請從主畫面新增 Forum Host hosted board；不再建立 local-only board。'),
+      SnackBar(
+        content: Text(
+          context.uiCopy(
+            zh: '請從主畫面新增 Forum Host hosted board；不再建立 local-only board。',
+            en: 'Add Forum Host hosted boards from the home screen. Local-only boards are no longer created.',
+          ),
+        ),
       ),
     );
   }

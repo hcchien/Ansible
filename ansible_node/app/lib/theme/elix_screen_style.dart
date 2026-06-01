@@ -34,11 +34,11 @@ extension ElixScreenStyleUi on ElixScreenStyle {
   String get description {
     switch (this) {
       case ElixScreenStyle.paper:
-        return '白天的廣場';
+        return 'Daylight square';
       case ElixScreenStyle.ink:
-        return '晚上一個人寫字';
+        return 'Writing alone at night';
       case ElixScreenStyle.system:
-        return '跟著系統外觀';
+        return 'Follows system appearance';
     }
   }
 
@@ -109,22 +109,22 @@ extension ElixBoardMotionUi on ElixBoardMotion {
   String get title {
     switch (this) {
       case ElixBoardMotion.slide:
-        return 'Slide · 平移';
+        return 'Slide';
       case ElixBoardMotion.book:
-        return 'Book · 翻書';
+        return 'Book';
       case ElixBoardMotion.cube:
-        return 'Cube · 翻立方';
+        return 'Cube';
     }
   }
 
   String get description {
     switch (this) {
       case ElixBoardMotion.slide:
-        return '兩張紙左右平移，沒有立體感。';
+        return 'Two pages slide side to side with no 3D effect.';
       case ElixBoardMotion.book:
-        return '兩個版像書的左右頁，輕微 perspective。';
+        return 'Boards turn like left and right pages with light perspective.';
       case ElixBoardMotion.cube:
-        return '較完整的 rotateY，切換感更強。';
+        return 'Fuller rotateY motion with a stronger switch feel.';
     }
   }
 

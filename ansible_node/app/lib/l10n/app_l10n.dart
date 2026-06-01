@@ -8,4 +8,17 @@ extension AppL10nContext on BuildContext {
       lookupAppLocalizations(
         const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
       );
+
+  bool get usesChineseUi {
+    final appLocalizations = Localizations.of<AppLocalizations>(
+      this,
+      AppLocalizations,
+    );
+    if (appLocalizations == null) return true;
+    return Localizations.localeOf(this).languageCode == 'zh';
+  }
+
+  String uiCopy({required String zh, required String en}) {
+    return usesChineseUi ? zh : en;
+  }
 }

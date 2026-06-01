@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../config/app_environment.dart';
+import '../l10n/app_l10n.dart';
 import '../services/oid4vp_presentation_service.dart';
 import '../services/oid4vp_request.dart';
 import '../widgets/elix_focus_route.dart';
@@ -78,20 +79,36 @@ class _WalletVerifierScannerScreenState
       switch (error.code) {
         case 'unsupported_request_scheme':
         case 'insecure_response_uri':
-          return 'QR request 來源不被接受。';
+          return context.uiCopy(
+            zh: 'QR request 來源不被接受。',
+            en: 'This QR request source is not accepted.',
+          );
         case 'unsupported_credential_type':
-          return '這個 Verifier 要求 Wallet 不支援的憑證。';
+          return context.uiCopy(
+            zh: '這個 Verifier 要求 Wallet 不支援的憑證。',
+            en: 'This verifier requested a credential Wallet does not support.',
+          );
         case 'request_uri_not_supported':
-          return '這個 QR request 格式目前尚未支援。';
+          return context.uiCopy(
+            zh: '這個 QR request 格式目前尚未支援。',
+            en: 'This QR request format is not supported yet.',
+          );
       }
     }
-    return '無法解析這個 QR request。';
+    return context.uiCopy(
+      zh: '無法解析這個 QR request。',
+      en: 'Could not parse this QR request.',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('掃描驗證請求')),
+      appBar: AppBar(
+        title: Text(
+          context.uiCopy(zh: '掃描驗證請求', en: 'Scan Verification Request'),
+        ),
+      ),
       body: Stack(
         children: [
           MobileScanner(onDetect: _handleCapture),
@@ -102,7 +119,10 @@ class _WalletVerifierScannerScreenState
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Text(
-                  '掃描 Verifier 顯示的 OID4VP QR',
+                  context.uiCopy(
+                    zh: '掃描 Verifier 顯示的 OID4VP QR',
+                    en: 'Scan the OID4VP QR shown by the Verifier',
+                  ),
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.white),

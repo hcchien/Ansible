@@ -5,6 +5,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/relay_identity_client.dart';
 import '../theme/ansible_design.dart';
 
@@ -188,20 +189,39 @@ class _IdentityAnchorScreenState extends State<IdentityAnchorScreen> {
     if (error is RelayIdentityException) {
       switch (error.error) {
         case 'duplicate_nullifier':
-          return '這本護照已完成身份錨定。';
+          return _copy(
+            zh: '這本護照已完成身份錨定。',
+            en: 'This passport has already completed identity anchoring.',
+          );
         case 'invalid_challenge_signature':
-          return 'Challenge 簽章無效，請重新掃描。';
+          return _copy(
+            zh: 'Challenge 簽章無效，請重新掃描。',
+            en: 'Challenge signature is invalid. Scan again.',
+          );
         case 'invalid_challenge':
         case 'expired_challenge':
-          return 'Challenge 已失效，請重新掃描。';
+          return _copy(
+            zh: 'Challenge 已失效，請重新掃描。',
+            en: 'Challenge expired. Scan again.',
+          );
         case 'unsupported_zkp_circuit':
         case 'verification_key_hash_mismatch':
-          return 'Relay 不接受目前的 ZKP 版本。';
+          return _copy(
+            zh: 'Relay 不接受目前的 ZKP 版本。',
+            en: 'Relay does not accept the current ZKP version.',
+          );
         case 'missing_required_fields':
-          return '身份錨定資料不完整：${error.fields.join(', ')}';
+          return _copy(
+            zh: '身份錨定資料不完整：${error.fields.join(', ')}',
+            en: 'Identity anchoring data is incomplete: ${error.fields.join(', ')}',
+          );
       }
     }
     return error.toString();
+  }
+
+  String _copy({required String zh, required String en}) {
+    return context.uiCopy(zh: zh, en: en);
   }
 
   @override
@@ -224,7 +244,7 @@ class _IdentityAnchorScreenState extends State<IdentityAnchorScreen> {
                 const ElixWordmark(fontSize: 34),
                 const SizedBox(height: 8),
                 Text(
-                  '護照身份驗證',
+                  _copy(zh: '護照身份驗證', en: 'Passport Identity Verification'),
                   style: Theme.of(
                     context,
                   ).textTheme.titleMedium?.copyWith(color: Colors.grey),
@@ -250,12 +270,17 @@ class _IdentityAnchorScreenState extends State<IdentityAnchorScreen> {
                   child: FilledButton.icon(
                     onPressed: _phase == _Phase.idle ? _startAnchoring : null,
                     icon: const Icon(Icons.nfc),
-                    label: const Text('掃描護照 NFC 晶片'),
+                    label: Text(
+                      _copy(zh: '掃描護照 NFC 晶片', en: 'Scan passport NFC chip'),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '系統僅驗證「你是真實人類」\n護照號碼與姓名不會被上傳',
+                  _copy(
+                    zh: '系統僅驗證「你是真實人類」\n護照號碼與姓名不會被上傳',
+                    en: 'The system only verifies that you are a real human.\nPassport number and name are not uploaded.',
+                  ),
                   textAlign: TextAlign.center,
                   style: Theme.of(
                     context,
@@ -273,14 +298,26 @@ class _IdentityAnchorScreenState extends State<IdentityAnchorScreen> {
     if (_phase == _Phase.idle) return const SizedBox.shrink();
 
     final steps = [
-      (icon: Icons.nfc, label: 'NFC 讀取中', phase: _Phase.nfcScan),
-      (icon: Icons.lock_outline, label: 'ZKP 生成中', phase: _Phase.generating),
+      (
+        icon: Icons.nfc,
+        label: _copy(zh: 'NFC 讀取中', en: 'Reading NFC'),
+        phase: _Phase.nfcScan,
+      ),
+      (
+        icon: Icons.lock_outline,
+        label: _copy(zh: 'ZKP 生成中', en: 'Generating ZKP'),
+        phase: _Phase.generating,
+      ),
       (
         icon: Icons.cloud_upload_outlined,
-        label: '上傳 Relay',
+        label: _copy(zh: '上傳 Relay', en: 'Uploading to Relay'),
         phase: _Phase.uploading,
       ),
-      (icon: Icons.check_circle_outline, label: '身份錨定完成', phase: _Phase.done),
+      (
+        icon: Icons.check_circle_outline,
+        label: _copy(zh: '身份錨定完成', en: 'Identity anchoring complete'),
+        phase: _Phase.done,
+      ),
     ];
 
     return Column(

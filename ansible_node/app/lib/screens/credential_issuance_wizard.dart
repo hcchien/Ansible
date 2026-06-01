@@ -4,6 +4,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/atproto_client.dart';
 import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
@@ -72,7 +73,7 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    '加入憑證',
+                    context.uiCopy(zh: '加入憑證', en: 'Add Credential'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
@@ -80,7 +81,10 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '選擇你要使用的身份驗證方式',
+                    context.uiCopy(
+                      zh: '選擇你要使用的身份驗證方式',
+                      en: 'Choose the verification method to use',
+                    ),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
@@ -92,7 +96,10 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                     children: [
                       _FlowOptionButton(
                         icon: Icons.badge_outlined,
-                        label: 'TW 身份驗證',
+                        label: context.uiCopy(
+                          zh: 'TW 身份驗證',
+                          en: 'TW Identity Verification',
+                        ),
                         selected:
                             _selectedFlow == CredentialIssuanceFlow.twProvider,
                         onTap: () => _select(CredentialIssuanceFlow.twProvider),
@@ -227,6 +234,9 @@ class _PassportNfcCredentialPanelState
     _passportZkpProver = widget.passportZkpProver ?? const ZkpProverImpl();
   }
 
+  String _copy({required String zh, required String en}) =>
+      context.uiCopy(zh: zh, en: en);
+
   Future<void> _startScan() async {
     setState(() {
       _phase = _PassportNfcPhase.scanning;
@@ -246,7 +256,12 @@ class _PassportNfcCredentialPanelState
       }
       final data = scanned;
       if (data == null) {
-        throw StateError('護照 NFC 讀取失敗，請重新嘗試。');
+        throw StateError(
+          _copy(
+            zh: '護照 NFC 讀取失敗，請重新嘗試。',
+            en: 'Passport NFC read failed. Please try again.',
+          ),
+        );
       }
 
       final passportLocalUniqueId = await _passportLocalIdService
@@ -260,7 +275,10 @@ class _PassportNfcCredentialPanelState
         if (!mounted) return;
         setState(() {
           _phase = _PassportNfcPhase.idle;
-          _errorMessage = '這本護照已在此 Wallet 驗證過。';
+          _errorMessage = _copy(
+            zh: '這本護照已在此 Wallet 驗證過。',
+            en: 'This passport has already been verified in this Wallet.',
+          );
         });
         return;
       }
@@ -341,21 +359,41 @@ class _PassportNfcCredentialPanelState
   String _formatError(Object error) {
     if (error is VcIssuerException) {
       if (error.error == 'personhood_already_bound') {
-        return '這本護照已綁定到另一個有效帳號。';
+        return _copy(
+          zh: '這本護照已綁定到另一個有效帳號。',
+          en: 'This passport is already bound to another active account.',
+        );
       }
       if (error.error == 'passport_verifier_unconfigured') {
-        return '護照驗證服務尚未啟用。';
+        return _copy(
+          zh: '護照驗證服務尚未啟用。',
+          en: 'The passport verification service is not enabled.',
+        );
       }
       if (error.error == 'invalid_passport_proof') {
-        return '護照驗證結果無法通過伺服器驗證。';
+        return _copy(
+          zh: '護照驗證結果無法通過伺服器驗證。',
+          en: 'The passport proof could not be verified by the server.',
+        );
       }
-      if (error.statusCode >= 500) return '發行伺服器暫時無法使用，請稍後再試。';
-      return '護照憑證發行失敗，請重新嘗試。';
+      if (error.statusCode >= 500) {
+        return _copy(
+          zh: '發行伺服器暫時無法使用，請稍後再試。',
+          en: 'The issuer is temporarily unavailable. Please try again later.',
+        );
+      }
+      return _copy(
+        zh: '護照憑證發行失敗，請重新嘗試。',
+        en: 'Passport credential issuance failed. Please try again.',
+      );
     }
     if (error is StateError) {
       return error.message;
     }
-    return '護照 NFC 驗證暫時無法完成，請稍後再試。';
+    return _copy(
+      zh: '護照 NFC 驗證暫時無法完成，請稍後再試。',
+      en: 'Passport NFC verification cannot be completed right now. Please try again later.',
+    );
   }
 
   @override
@@ -378,7 +416,10 @@ class _PassportNfcCredentialPanelState
         ),
         const SizedBox(height: 8),
         Text(
-          '護照號碼不會送出或保存原文，只會產生本機識別值與伺服器去重用的不可逆 UID。',
+          _copy(
+            zh: '護照號碼不會送出或保存原文，只會產生本機識別值與伺服器去重用的不可逆 UID。',
+            en: 'The passport number is never sent or stored as raw text. Only a local identifier and an irreversible server deduplication UID are derived.',
+          ),
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -403,7 +444,7 @@ class _PassportNfcCredentialPanelState
           FilledButton.icon(
             onPressed: null,
             icon: const Icon(Icons.check_circle),
-            label: const Text('護照憑證已加入'),
+            label: Text(_copy(zh: '護照憑證已加入', en: 'Passport credential added')),
           )
         else
           FilledButton.icon(
@@ -417,10 +458,10 @@ class _PassportNfcCredentialPanelState
                 : const Icon(Icons.nfc),
             label: Text(
               _phase == _PassportNfcPhase.issuing
-                  ? '發行憑證中'
+                  ? _copy(zh: '發行憑證中', en: 'Issuing credential')
                   : _phase == _PassportNfcPhase.scanning
-                  ? '讀取護照中'
-                  : '掃描護照 NFC',
+                  ? _copy(zh: '讀取護照中', en: 'Reading passport')
+                  : _copy(zh: '掃描護照 NFC', en: 'Scan passport NFC'),
             ),
           ),
       ],
@@ -476,6 +517,9 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
     _vpBuilder = widget.vpBuilder ?? VpBuilder();
   }
 
+  String _copy({required String zh, required String en}) =>
+      context.uiCopy(zh: zh, en: en);
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -486,7 +530,12 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
   Future<void> _requestOtp() async {
     final email = _emailController.text.trim();
     if (!_isValidEmail(email)) {
-      setState(() => _errorMessage = '請輸入有效的 Email 地址。');
+      setState(
+        () => _errorMessage = _copy(
+          zh: '請輸入有效的 Email 地址。',
+          en: 'Enter a valid email address.',
+        ),
+      );
       return;
     }
 
@@ -521,7 +570,12 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
     final otp = _otpController.text.trim();
 
     if (otp.isEmpty) {
-      setState(() => _errorMessage = '請輸入驗證碼。');
+      setState(
+        () => _errorMessage = _copy(
+          zh: '請輸入驗證碼。',
+          en: 'Enter the verification code.',
+        ),
+      );
       return;
     }
 
@@ -612,27 +666,58 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
     if (error is VcIssuerException) {
       switch (error.error) {
         case 'invalid_otp':
-          return '驗證碼不正確，請重新輸入。';
+          return _copy(
+            zh: '驗證碼不正確，請重新輸入。',
+            en: 'The verification code is incorrect. Please try again.',
+          );
         case 'expired_otp':
-          return '驗證碼已逾期，請重新申請。';
+          return _copy(
+            zh: '驗證碼已逾期，請重新申請。',
+            en: 'The verification code has expired. Request a new one.',
+          );
         case 'invalid_email':
-          return 'Email 格式無效，請重新輸入。';
+          return _copy(
+            zh: 'Email 格式無效，請重新輸入。',
+            en: 'The email format is invalid. Please re-enter it.',
+          );
         case 'invalid_did':
-          return 'DID 格式無效，請重新啟動。';
+          return _copy(
+            zh: 'DID 格式無效，請重新啟動。',
+            en: 'The DID format is invalid. Please restart.',
+          );
       }
-      if (error.statusCode >= 500) return '發行伺服器暫時無法使用，請稍後再試。';
+      if (error.statusCode >= 500) {
+        return _copy(
+          zh: '發行伺服器暫時無法使用，請稍後再試。',
+          en: 'The issuer is temporarily unavailable. Please try again later.',
+        );
+      }
     }
     if (error is AtProtoException) {
       switch (error.error) {
         case 'invalid_vp':
         case 'invalid_vc':
-          return '憑證驗證失敗，請重新嘗試。';
+          return _copy(
+            zh: '憑證驗證失敗，請重新嘗試。',
+            en: 'Credential verification failed. Please try again.',
+          );
         case 'vc_expired':
-          return '憑證已逾期，請重新取得。';
+          return _copy(
+            zh: '憑證已逾期，請重新取得。',
+            en: 'The credential has expired. Please get a new one.',
+          );
         case 'already_verified':
-          return '此帳號已完成驗證。';
+          return _copy(
+            zh: '此帳號已完成驗證。',
+            en: 'This account is already verified.',
+          );
       }
-      if (error.statusCode >= 500) return 'Relay 暫時無法使用，請稍後再試。';
+      if (error.statusCode >= 500) {
+        return _copy(
+          zh: 'Relay 暫時無法使用，請稍後再試。',
+          en: 'The Relay is temporarily unavailable. Please try again later.',
+        );
+      }
     }
     return error.toString();
   }
@@ -654,7 +739,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         ),
         const SizedBox(height: 16),
         Text(
-          'Email 聯絡方式驗證',
+          _copy(zh: 'Email 聯絡方式驗證', en: 'Email Contact Verification'),
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -662,7 +747,10 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         ),
         const SizedBox(height: 8),
         Text(
-          '驗證 Email 後可取得聯絡方式驗證狀態',
+          _copy(
+            zh: '驗證 Email 後可取得聯絡方式驗證狀態',
+            en: 'Verify email to receive contact verification status.',
+          ),
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -678,9 +766,9 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
           onSubmitted: (_) {
             if (_phase == _EmailOtpPhase.idle) _requestOtp();
           },
-          decoration: const InputDecoration(
-            labelText: 'Email 地址',
-            prefixIcon: Icon(Icons.email_outlined),
+          decoration: InputDecoration(
+            labelText: _copy(zh: 'Email 地址', en: 'Email address'),
+            prefixIcon: const Icon(Icons.email_outlined),
             border: OutlineInputBorder(),
           ),
         ),
@@ -697,9 +785,9 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
             onSubmitted: (_) {
               if (_phase == _EmailOtpPhase.waitingOtp) _submitOtp();
             },
-            decoration: const InputDecoration(
-              labelText: '6 位數驗證碼',
-              prefixIcon: Icon(Icons.pin_outlined),
+            decoration: InputDecoration(
+              labelText: _copy(zh: '6 位數驗證碼', en: '6-digit verification code'),
+              prefixIcon: const Icon(Icons.pin_outlined),
               border: OutlineInputBorder(),
               counterText: '',
             ),
@@ -725,7 +813,10 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         _buildActionButton(),
         const SizedBox(height: 16),
         Text(
-          'Email 地址不會上傳至伺服器記錄\n憑證加密存於裝置本地',
+          _copy(
+            zh: 'Email 地址不會上傳至伺服器記錄\n憑證加密存於裝置本地',
+            en: 'The email address is not stored in server records.\nCredentials are encrypted on this device.',
+          ),
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -743,7 +834,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
       return FilledButton.icon(
         onPressed: _requestOtp,
         icon: const Icon(Icons.send),
-        label: const Text('發送驗證碼'),
+        label: Text(_copy(zh: '發送驗證碼', en: 'Send verification code')),
       );
     }
 
@@ -754,7 +845,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
           FilledButton.icon(
             onPressed: _submitOtp,
             icon: const Icon(Icons.check),
-            label: const Text('驗證並取得憑證'),
+            label: Text(_copy(zh: '驗證並取得憑證', en: 'Verify and get credential')),
           ),
           const SizedBox(height: 8),
           TextButton(
@@ -763,7 +854,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
               _otpController.clear();
               _errorMessage = null;
             }),
-            child: const Text('重新發送驗證碼'),
+            child: Text(_copy(zh: '重新發送驗證碼', en: 'Resend verification code')),
           ),
         ],
       );
@@ -773,7 +864,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
       return FilledButton.icon(
         onPressed: null,
         icon: const Icon(Icons.check_circle),
-        label: const Text('憑證已加入'),
+        label: Text(_copy(zh: '憑證已加入', en: 'Credential added')),
       );
     }
 
@@ -785,7 +876,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
               width: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Text('請稍候…'),
+          : Text(_copy(zh: '請稍候…', en: 'Please wait...')),
     );
   }
 
@@ -793,11 +884,26 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
     if (_phase == _EmailOtpPhase.idle) return const SizedBox.shrink();
 
     final steps = [
-      (label: '📧 發送驗證碼', phase: _EmailOtpPhase.requesting),
-      (label: '🔢 輸入驗證碼', phase: _EmailOtpPhase.waitingOtp),
-      (label: '📜 取得憑證', phase: _EmailOtpPhase.issuing),
-      (label: '☁️ 提交 Relay', phase: _EmailOtpPhase.presenting),
-      (label: '✅ 信任等級升級', phase: _EmailOtpPhase.done),
+      (
+        label: _copy(zh: '📧 發送驗證碼', en: '📧 Send code'),
+        phase: _EmailOtpPhase.requesting,
+      ),
+      (
+        label: _copy(zh: '🔢 輸入驗證碼', en: '🔢 Enter code'),
+        phase: _EmailOtpPhase.waitingOtp,
+      ),
+      (
+        label: _copy(zh: '📜 取得憑證', en: '📜 Get credential'),
+        phase: _EmailOtpPhase.issuing,
+      ),
+      (
+        label: _copy(zh: '☁️ 提交 Relay', en: '☁️ Submit to Relay'),
+        phase: _EmailOtpPhase.presenting,
+      ),
+      (
+        label: _copy(zh: '✅ 信任等級升級', en: '✅ Trust tier updated'),
+        phase: _EmailOtpPhase.done,
+      ),
     ];
 
     return Column(

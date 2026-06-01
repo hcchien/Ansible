@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/atproto_client.dart';
 import '../theme/ansible_design.dart';
 
@@ -58,7 +59,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   Future<void> _send() async {
     final content = _composedContent;
     if (content.isEmpty) {
-      setState(() => _errorMessage = '內容不得為空');
+      setState(
+        () =>
+            _errorMessage = _copy(zh: '內容不得為空', en: 'Content cannot be empty'),
+      );
       return;
     }
 
@@ -90,9 +94,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('已發佈'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(_copy(zh: '已發佈', en: 'Published')),
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -107,7 +111,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       if (!mounted) return;
       setState(() {
         _isSending = false;
-        _errorMessage = '發送失敗：$e';
+        _errorMessage = _copy(zh: '發送失敗：$e', en: 'Send failed: $e');
       });
     }
   }
@@ -123,16 +127,32 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   String _formatAtProtoError(AtProtoException e) {
     switch (e.error) {
       case 'unregistered_did':
-        return '身份驗證失敗，請重新登入。';
+        return _copy(
+          zh: '身份驗證失敗，請重新登入。',
+          en: 'Identity verification failed. Sign in again.',
+        );
       case 'invalid_sig':
-        return '簽名驗證失敗，請重新嘗試。';
+        return _copy(
+          zh: '簽名驗證失敗，請重新嘗試。',
+          en: 'Signature verification failed. Try again.',
+        );
       case 'rate_limited':
-        return '發送速率過快，請稍後再試。';
+        return _copy(
+          zh: '發送速率過快，請稍後再試。',
+          en: 'Sending too quickly. Try again later.',
+        );
       case 'missing_fields':
-        return '資料格式錯誤，請重新嘗試。';
+        return _copy(
+          zh: '資料格式錯誤，請重新嘗試。',
+          en: 'Data format is invalid. Try again.',
+        );
       default:
-        return '發送失敗 (${e.error})';
+        return _copy(zh: '發送失敗 (${e.error})', en: 'Send failed (${e.error})');
     }
+  }
+
+  String _copy({required String zh, required String en}) {
+    return context.uiCopy(zh: zh, en: en);
   }
 
   @override
@@ -158,9 +178,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 padding: const EdgeInsets.fromLTRB(22, 4, 22, 0),
                 child: Row(
                   children: [
-                    const Text(
-                      '編輯中 · EDITING',
-                      style: TextStyle(
+                    Text(
+                      context.uiCopy(zh: '編輯中 · EDITING', en: 'EDITING'),
+                      style: const TextStyle(
                         fontFamily: AnsibleDesign.mono,
                         fontSize: 9.5,
                         color: AnsibleDesign.inkFaint,
@@ -240,7 +260,7 @@ class _EditorTopBar extends StatelessWidget {
           TextButton.icon(
             onPressed: isSending ? null : onCancel,
             icon: const Icon(Icons.close_rounded, size: 17),
-            label: const Text('取消'),
+            label: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
             style: TextButton.styleFrom(
               foregroundColor: AnsibleDesign.inkMuted,
               textStyle: const TextStyle(
@@ -273,9 +293,12 @@ class _EditorTopBar extends StatelessWidget {
                       color: AnsibleDesign.accent,
                     ),
                   )
-                : const Text(
-                    '完成',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                : Text(
+                    context.uiCopy(zh: '完成', en: 'Done'),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
           ),
         ],
@@ -289,14 +312,14 @@ class _AutoSaveStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Dot(color: AnsibleDesign.spore, size: 5),
-        SizedBox(width: 8),
+        const _Dot(color: AnsibleDesign.spore, size: 5),
+        const SizedBox(width: 8),
         Text(
-          '草稿保留 · 本機',
-          style: TextStyle(
+          context.uiCopy(zh: '草稿保留 · 本機', en: 'Draft saved · Local'),
+          style: const TextStyle(
             fontFamily: AnsibleDesign.mono,
             fontSize: 9.5,
             color: AnsibleDesign.inkFaint,
@@ -335,26 +358,26 @@ class _TitleField extends StatelessWidget {
         fontWeight: FontWeight.w500,
         letterSpacing: 0,
       ),
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         isDense: true,
         filled: false,
-        hintText: '筆記標題',
-        hintStyle: TextStyle(
+        hintText: context.uiCopy(zh: '筆記標題', en: 'Note title'),
+        hintStyle: const TextStyle(
           color: AnsibleDesign.inkFaint,
           fontSize: 28,
           fontStyle: FontStyle.normal,
           fontWeight: FontWeight.w500,
         ),
-        border: UnderlineInputBorder(
+        border: const UnderlineInputBorder(
           borderSide: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
         ),
-        enabledBorder: UnderlineInputBorder(
+        enabledBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
         ),
-        focusedBorder: UnderlineInputBorder(
+        focusedBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: AnsibleDesign.accent, width: 1),
         ),
-        contentPadding: EdgeInsets.fromLTRB(0, 4, 0, 8),
+        contentPadding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
       ),
     );
   }
@@ -365,14 +388,14 @@ class _VisibilityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        _VisibilityChip(),
-        SizedBox(width: 8),
+        const _VisibilityChip(),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
-            '還沒讓任何人看見',
-            style: TextStyle(
+            context.uiCopy(zh: '還沒讓任何人看見', en: 'Not visible to anyone yet'),
+            style: const TextStyle(
               fontSize: 11.5,
               height: 1.4,
               color: AnsibleDesign.inkFaint,
@@ -443,10 +466,10 @@ class _BodyField extends StatelessWidget {
         height: 1.8,
         color: AnsibleDesign.ink,
       ),
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         filled: false,
-        hintText: '寫下筆記內容',
-        hintStyle: TextStyle(
+        hintText: context.uiCopy(zh: '寫下筆記內容', en: 'Write note content'),
+        hintStyle: const TextStyle(
           color: AnsibleDesign.inkFaint,
           fontSize: AnsibleDesign.readingTextSize,
           height: 1.8,
@@ -466,11 +489,11 @@ class _ContinuationHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: Text(
-        '繼續寫下去……',
-        style: TextStyle(
+        context.uiCopy(zh: '繼續寫下去……', en: 'Keep writing...'),
+        style: const TextStyle(
           fontSize: AnsibleDesign.readingTextSize,
           height: 1.8,
           color: AnsibleDesign.inkFaint,
@@ -601,7 +624,10 @@ class _EditorFooter extends StatelessWidget {
             ),
           ),
           Text(
-            '$characterCount 字',
+            context.uiCopy(
+              zh: '$characterCount 字',
+              en: '$characterCount chars',
+            ),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 10,
