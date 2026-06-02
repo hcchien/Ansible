@@ -325,12 +325,12 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "invalid_created_at"
   end
 
-  test "POST /api/v1/forum-host/boards rejects created_at beyond clock skew" do
+  test "POST /api/v1/forum-host/boards rejects future created_at by default" do
     {public_key_hex, private_key} = ed25519_keypair()
     did = "did:plc:futurecreated#{System.unique_integer([:positive])}"
     :ok = cache_identity(did, public_key_hex)
 
-    created_at = DateTime.add(DateTime.utc_now(), 360, :second)
+    created_at = DateTime.add(DateTime.utc_now(), 60, :second)
 
     response =
       post_json(

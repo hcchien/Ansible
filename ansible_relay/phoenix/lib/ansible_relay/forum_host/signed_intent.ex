@@ -7,7 +7,7 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @create_board_type "io.trisaura.forum.createBoard"
   @create_board_action "create_board"
   @create_board_version 1
-  @default_clock_skew_seconds 300
+  @default_clock_skew_seconds 0
   @default_max_age_seconds 600
 
   def verify_create_board(params) when is_map(params) do
