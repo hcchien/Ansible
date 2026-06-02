@@ -72,10 +72,9 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
   defp normalize_origin(value) when is_binary(value) do
     uri = URI.parse(value)
 
-    if uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" &&
-         uri.path in [nil, ""] && is_nil(uri.query) && is_nil(uri.fragment) do
+    if valid_origin_uri?(uri) do
       scheme = String.downcase(uri.scheme)
-      host = String.downcase(uri.host)
+      host = authority_host(uri.host)
       port = if uri.port && uri.port != URI.default_port(scheme), do: ":#{uri.port}", else: ""
       {:ok, "#{scheme}://#{host}#{port}"}
     else
@@ -84,6 +83,44 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
   end
 
   defp normalize_origin(_value), do: {:error, :invalid_origin}
+
+  defp valid_origin_uri?(uri) do
+    uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" &&
+      is_nil(uri.userinfo) && uri.path in [nil, ""] && is_nil(uri.query) &&
+      is_nil(uri.fragment) && valid_authority?(uri)
+  end
+
+  defp valid_authority?(%URI{authority: authority, scheme: scheme, host: host, port: port})
+       when is_binary(authority) and is_integer(port) do
+    authority = String.downcase(authority)
+
+    scheme
+    |> valid_authorities(host, port)
+    |> Enum.any?(&(String.downcase(&1) == authority))
+  end
+
+  defp valid_authority?(_uri), do: false
+
+  defp valid_authorities(scheme, host, port) do
+    host = authority_host(host)
+    default_port = URI.default_port(scheme)
+
+    if port == default_port do
+      [host, "#{host}:#{port}"]
+    else
+      ["#{host}:#{port}"]
+    end
+  end
+
+  defp authority_host(host) do
+    host = String.downcase(host)
+
+    if String.contains?(host, ":") do
+      "[#{host}]"
+    else
+      host
+    end
+  end
 
   defp send_error(conn, status, error) do
     conn

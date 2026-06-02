@@ -247,13 +247,50 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   defp validate_origin(origin, error) when is_binary(origin) do
     uri = URI.parse(origin)
 
-    if uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" &&
-         uri.path in [nil, ""] && is_nil(uri.query) && is_nil(uri.fragment),
-       do: {:ok, normalize_origin(uri)},
-       else: {:error, error}
+    if valid_origin_uri?(uri),
+      do: {:ok, normalize_origin(uri)},
+      else: {:error, error}
   end
 
   defp validate_origin(_origin, error), do: {:error, error}
+
+  defp valid_origin_uri?(uri) do
+    uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" &&
+      is_nil(uri.userinfo) && uri.path in [nil, ""] && is_nil(uri.query) &&
+      is_nil(uri.fragment) && valid_authority?(uri)
+  end
+
+  defp valid_authority?(%URI{authority: authority, scheme: scheme, host: host, port: port})
+       when is_binary(authority) and is_integer(port) do
+    authority = String.downcase(authority)
+
+    scheme
+    |> valid_authorities(host, port)
+    |> Enum.any?(&(String.downcase(&1) == authority))
+  end
+
+  defp valid_authority?(_uri), do: false
+
+  defp valid_authorities(scheme, host, port) do
+    host = authority_host(host)
+    default_port = URI.default_port(scheme)
+
+    if port == default_port do
+      [host, "#{host}:#{port}"]
+    else
+      ["#{host}:#{port}"]
+    end
+  end
+
+  defp authority_host(host) do
+    host = String.downcase(host)
+
+    if String.contains?(host, ":") do
+      "[#{host}]"
+    else
+      host
+    end
+  end
 
   defp valid_string?(value), do: is_binary(value) && String.trim(value) != ""
 
@@ -346,7 +383,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
 
   defp normalize_origin(uri) do
     scheme = String.downcase(uri.scheme)
-    host = String.downcase(uri.host)
+    host = authority_host(uri.host)
     port = if uri.port && uri.port != URI.default_port(scheme), do: ":#{uri.port}", else: ""
     "#{scheme}://#{host}#{port}"
   end

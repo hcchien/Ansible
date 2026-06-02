@@ -176,11 +176,49 @@ defmodule AnsibleRelay.Web.VerifyWebSessionTest do
     end
   end
 
+  test "required audience with userinfo or malformed authority returns 403" do
+    session = approved_session(["forum:post"], nil, %{audience: "http://localhost:4001"})
+
+    for audience <- [
+          "http://user@localhost:4001",
+          "http://localhost:4001.evil",
+          "http://localhost:4001abc"
+        ] do
+      conn =
+        conn(:post, "/")
+        |> put_req_header("authorization", "Bearer #{session.session_token}")
+        |> VerifyWebSession.call(["forum:post"], audience: audience)
+
+      assert conn.status == 403
+      assert conn.halted
+      assert Jason.decode!(conn.resp_body)["error"] == "audience_mismatch"
+    end
+  end
+
   test "stored audience with path query or fragment returns 403" do
     for audience <- [
           "http://localhost:4001/path",
           "http://localhost:4001?debug=true",
           "http://localhost:4001#fragment"
+        ] do
+      session = approved_session(["forum:post"], nil, %{audience: audience})
+
+      conn =
+        conn(:post, "/")
+        |> put_req_header("authorization", "Bearer #{session.session_token}")
+        |> VerifyWebSession.call(["forum:post"], audience: "http://localhost:4001")
+
+      assert conn.status == 403
+      assert conn.halted
+      assert Jason.decode!(conn.resp_body)["error"] == "audience_mismatch"
+    end
+  end
+
+  test "stored audience with userinfo or malformed authority returns 403" do
+    for audience <- [
+          "http://user@localhost:4001",
+          "http://localhost:4001.evil",
+          "http://localhost:4001abc"
         ] do
       session = approved_session(["forum:post"], nil, %{audience: audience})
 

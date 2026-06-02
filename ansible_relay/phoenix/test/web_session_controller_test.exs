@@ -239,16 +239,23 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   end
 
   test "POST /api/v1/web-sessions/challenges rejects invalid audiences" do
-    response =
-      post_json("/api/v1/web-sessions/challenges", %{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
-        "audience" => "did:plc:not-an-origin",
-        "scopes" => ["forum:read"]
-      })
+    for audience <- [
+          "did:plc:not-an-origin",
+          "http://user@localhost:4001",
+          "http://localhost:4001.evil",
+          "http://localhost:4001abc"
+        ] do
+      response =
+        post_json("/api/v1/web-sessions/challenges", %{
+          "web_origin" => "https://trisaura.io",
+          "relay_origin" => "https://relay.trisaura.io",
+          "audience" => audience,
+          "scopes" => ["forum:read"]
+        })
 
-    assert response.status == 422
-    assert Jason.decode!(response.resp_body)["error"] == "invalid_audience"
+      assert response.status == 422
+      assert Jason.decode!(response.resp_body)["error"] == "invalid_audience"
+    end
   end
 
   test "store caps active web sessions per DID across app devices" do
