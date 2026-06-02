@@ -138,9 +138,13 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   defp require_not_expired(_expires_at), do: {:error, :invalid_expiry}
 
   defp public_key(did) do
-    case IdentityCache.public_key_hex(did) do
-      public_key_hex when is_binary(public_key_hex) -> {:ok, public_key_hex}
-      _missing -> {:error, :unknown_did}
+    if IdentityCache.verified?(did) do
+      case IdentityCache.public_key_hex(did) do
+        public_key_hex when is_binary(public_key_hex) -> {:ok, public_key_hex}
+        _missing -> {:error, :unknown_did}
+      end
+    else
+      {:error, :unknown_did}
     end
   end
 

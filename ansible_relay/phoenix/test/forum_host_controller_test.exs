@@ -71,11 +71,12 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     Map.put(payload, "signature", sign(private_key, SignedIntent.canonical_json(payload)))
   end
 
-  defp cache_identity(did, public_key_hex) do
+  defp cache_identity(did, public_key_hex, expires_at \\ nil) do
     IdentityCache.put(
       did,
       public_key_hex,
-      "forum_host_controller_test_#{System.unique_integer([:positive])}"
+      "forum_host_controller_test_#{System.unique_integer([:positive])}",
+      expires_at
     )
   end
 
@@ -232,9 +233,52 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
   end
 
+  test "POST /api/v1/forum-host/boards treats missing author DID as validation error" do
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        %{
+          "type" => "io.trisaura.forum.createBoard",
+          "version" => 1,
+          "intent_id" => "intent-missing-author-#{System.unique_integer([:positive])}",
+          "target_forum_host" => "http://localhost:4001",
+          "action" => "create_board",
+          "expires_at" => DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), 300, :second)),
+          "board" => %{"title" => "Missing Author"},
+          "signature" => "00"
+        },
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "missing_author_did"
+  end
+
   test "POST /api/v1/forum-host/boards rejects unknown DID with valid signature" do
     {_public_key_hex, private_key} = ed25519_keypair()
     did = "did:plc:unknownboard#{System.unique_integer([:positive])}"
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key),
+        []
+      )
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects expired cached DID with valid signature" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:expiredboard#{System.unique_integer([:positive])}"
+
+    :ok =
+      cache_identity(
+        did,
+        public_key_hex,
+        DateTime.add(DateTime.utc_now(), -60, :second)
+      )
 
     response =
       post_json(

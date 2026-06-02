@@ -36,10 +36,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
       {:error, :audience_mismatch} ->
         send_json(conn, 403, %{error: "audience_mismatch"})
 
-      {:error, error} when error in [:missing_signature, :missing_author_did, :unknown_did] ->
-        send_json(conn, 401, %{error: "invalid_signature"})
-
-      {:error, :invalid_signature} ->
+      {:error, error} when error in [:invalid_signature, :missing_signature, :unknown_did] ->
         send_json(conn, 401, %{error: "invalid_signature"})
 
       {:error, error} ->
