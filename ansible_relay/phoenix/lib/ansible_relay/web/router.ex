@@ -205,6 +205,7 @@ defmodule AnsibleRelay.Web.Router do
           "access-control-allow-headers",
           "authorization, content-type"
         )
+        |> Plug.Conn.put_resp_header("access-control-allow-credentials", "true")
         |> Plug.Conn.put_resp_header("access-control-max-age", "600")
         |> Plug.Conn.put_resp_header("vary", "origin")
     end

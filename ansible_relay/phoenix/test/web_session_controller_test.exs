@@ -208,6 +208,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
              "http://127.0.0.1:5173"
            ]
 
+    assert get_resp_header(preflight, "access-control-allow-credentials") == ["true"]
+
     response =
       post_json(
         "/api/v1/web-sessions/challenges",
@@ -224,6 +226,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert get_resp_header(response, "access-control-allow-origin") == [
              "http://127.0.0.1:5173"
            ]
+
+    assert get_resp_header(response, "access-control-allow-credentials") == ["true"]
   end
 
   test "POST /api/v1/web-sessions/challenges rejects unconfigured web origins" do
@@ -448,7 +452,11 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert body["trust_tier"] == "self_custody_did"
     assert body["approving_device_id"] == "app_device_test"
 
-    poll = get_json("/api/v1/web-sessions/challenges/#{challenge.challenge_id}")
+    poll =
+      get_json("/api/v1/web-sessions/challenges/#{challenge.challenge_id}", [
+        {"origin", "https://trisaura.io"}
+      ])
+
     poll_body = Jason.decode!(poll.resp_body)
     assert poll_body["status"] == "approved"
     assert poll_body["trust_tier"] == "self_custody_did"
@@ -460,6 +468,9 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     set_cookie = get_resp_header(poll, "set-cookie")
     assert Enum.any?(set_cookie, &String.contains?(&1, "trisaura_session="))
     assert Enum.any?(set_cookie, &String.contains?(&1, "HttpOnly"))
+
+    assert get_resp_header(poll, "access-control-allow-origin") == ["https://trisaura.io"]
+    assert get_resp_header(poll, "access-control-allow-credentials") == ["true"]
   end
 
   test "approve rejects over-scoped grants" do
