@@ -59,16 +59,27 @@ defmodule AnsibleRelay.ForumHost.Store do
 
   def create_board(attrs) do
     payload_hash = payload_hash(attrs)
+    slug = unique_slug(slugify(attrs.title))
+    hosted_board_id = slug
+    board_attrs = board_attrs(attrs, hosted_board_id, slug)
+    accepted_intent_attrs = accepted_intent_attrs(attrs, payload_hash, hosted_board_id)
 
-    case Repo.get(ForumHostAcceptedIntent, attrs.intent_id) do
-      %ForumHostAcceptedIntent{payload_hash: ^payload_hash, result_id: result_id} ->
-        {:ok, Repo.get!(ForumHostBoard, result_id)}
+    Repo.transaction(fn ->
+      case insert_accepted_intent(accepted_intent_attrs) do
+        :inserted ->
+          insert_board_or_rollback(board_attrs)
 
-      %ForumHostAcceptedIntent{} ->
-        {:error, :duplicate_intent}
+        :conflict ->
+          resolve_accepted_intent(attrs.intent_id, payload_hash)
 
-      nil ->
-        insert_board(attrs, payload_hash)
+        {:error, changeset} ->
+          Repo.rollback({:error, changeset})
+      end
+    end)
+    |> case do
+      {:ok, result} -> result
+      {:error, {:error, reason}} -> {:error, reason}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -78,39 +89,6 @@ defmodule AnsibleRelay.ForumHost.Store do
 
   def base_url do
     Application.get_env(:ansible_relay, :forum_host_base_url, @default_base_url)
-  end
-
-  defp insert_board(attrs, payload_hash) do
-    slug = unique_slug(slugify(attrs.title))
-    hosted_board_id = slug
-    board_payload = board_payload(attrs)
-
-    Repo.transaction(fn ->
-      board =
-        %ForumHostBoard{}
-        |> ForumHostBoard.changeset(
-          Map.merge(board_payload, %{
-            hosted_board_id: hosted_board_id,
-            slug: slug,
-            canonical_board_uri: "#{base_url()}/boards/#{slug}"
-          })
-        )
-        |> Repo.insert!()
-
-      %ForumHostAcceptedIntent{}
-      |> ForumHostAcceptedIntent.changeset(%{
-        intent_id: attrs.intent_id,
-        author_did: attrs.author_did,
-        action: "create_board",
-        payload_hash: payload_hash,
-        result_kind: "forum_host_board",
-        result_id: board.hosted_board_id,
-        accepted_at: DateTime.utc_now()
-      })
-      |> Repo.insert!()
-
-      board
-    end)
   end
 
   defp upsert_seed_board(attrs) do
@@ -127,7 +105,7 @@ defmodule AnsibleRelay.ForumHost.Store do
 
     %ForumHostBoard{}
     |> ForumHostBoard.changeset(changes)
-    |> Repo.insert(
+    |> Repo.insert!(
       on_conflict:
         {:replace,
          [
@@ -149,7 +127,7 @@ defmodule AnsibleRelay.ForumHost.Store do
   defp upsert_seed_announcement(attrs) do
     %ForumHostAnnouncement{}
     |> ForumHostAnnouncement.changeset(attrs)
-    |> Repo.insert(
+    |> Repo.insert!(
       on_conflict:
         {:replace,
          [
@@ -250,6 +228,61 @@ defmodule AnsibleRelay.ForumHost.Store do
     end
   end
 
+  defp insert_accepted_intent(attrs) do
+    now = DateTime.utc_now()
+    attrs = Map.put(attrs, :accepted_at, now)
+    changeset = ForumHostAcceptedIntent.changeset(%ForumHostAcceptedIntent{}, attrs)
+
+    case Ecto.Changeset.apply_action(changeset, :insert) do
+      {:ok, intent} ->
+        row = %{
+          intent_id: intent.intent_id,
+          author_did: intent.author_did,
+          action: intent.action,
+          payload_hash: intent.payload_hash,
+          result_kind: intent.result_kind,
+          result_id: intent.result_id,
+          accepted_at: intent.accepted_at,
+          inserted_at: now,
+          updated_at: now
+        }
+
+        case Repo.insert_all(ForumHostAcceptedIntent, [row],
+               on_conflict: :nothing,
+               conflict_target: [:intent_id]
+             ) do
+          {1, _rows} -> :inserted
+          {0, _rows} -> :conflict
+        end
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  defp insert_board_or_rollback(attrs) do
+    %ForumHostBoard{}
+    |> ForumHostBoard.changeset(attrs)
+    |> Repo.insert()
+    |> case do
+      {:ok, board} -> {:ok, board}
+      {:error, changeset} -> Repo.rollback({:error, changeset})
+    end
+  end
+
+  defp resolve_accepted_intent(intent_id, payload_hash) do
+    case Repo.get(ForumHostAcceptedIntent, intent_id) do
+      %ForumHostAcceptedIntent{payload_hash: ^payload_hash, result_id: result_id} ->
+        {:ok, Repo.get!(ForumHostBoard, result_id)}
+
+      %ForumHostAcceptedIntent{} ->
+        {:error, :duplicate_intent}
+
+      nil ->
+        {:error, :duplicate_intent}
+    end
+  end
+
   defp payload_hash(attrs) do
     %{
       action: "create_board",
@@ -261,6 +294,25 @@ defmodule AnsibleRelay.ForumHost.Store do
     |> Jason.encode!()
     |> then(&:crypto.hash(:sha256, &1))
     |> Base.encode16(case: :lower)
+  end
+
+  defp accepted_intent_attrs(attrs, payload_hash, hosted_board_id) do
+    %{
+      intent_id: attrs.intent_id,
+      author_did: attrs.author_did,
+      action: "create_board",
+      payload_hash: payload_hash,
+      result_kind: "forum_host_board",
+      result_id: hosted_board_id
+    }
+  end
+
+  defp board_attrs(attrs, hosted_board_id, slug) do
+    Map.merge(board_payload(attrs), %{
+      hosted_board_id: hosted_board_id,
+      slug: slug,
+      canonical_board_uri: "#{base_url()}/boards/#{slug}"
+    })
   end
 
   defp board_payload(attrs) do

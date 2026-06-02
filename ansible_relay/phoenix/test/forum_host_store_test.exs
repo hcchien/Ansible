@@ -2,7 +2,7 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
   use ExUnit.Case, async: false
 
   alias AnsibleRelay.{ForumHost.Store, Repo}
-  alias AnsibleRelay.Db.{ForumHostAnnouncement, ForumHostBoard}
+  alias AnsibleRelay.Db.{ForumHostAcceptedIntent, ForumHostAnnouncement, ForumHostBoard}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -81,6 +81,16 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
     assert board.hosted_board_id == "reading-group"
     assert board.canonical_board_uri == "https://forum.trisaura.test/boards/reading-group"
 
+    assert %ForumHostAcceptedIntent{
+             author_did: "did:plc:author123",
+             action: "create_board",
+             result_kind: "forum_host_board",
+             result_id: "reading-group",
+             payload_hash: payload_hash
+           } = Repo.get(ForumHostAcceptedIntent, "intent-123")
+
+    assert String.length(payload_hash) == 64
+
     assert {:error, :duplicate_intent} =
              Store.create_board(%{
                intent_id: "intent-123",
@@ -115,6 +125,37 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
                | tags: ["policy", "changed"],
                  posting_policy: %{"min_trust_tier" => "self_custody_did"}
              })
+  end
+
+  test "ensure_seeded! raises on invalid configured board" do
+    Application.put_env(:ansible_relay, :forum_host_seed_boards, [
+      %{
+        "hosted_board_id" => "invalid",
+        "slug" => "invalid",
+        "description" => "Missing required title"
+      }
+    ])
+
+    assert_raise Ecto.InvalidChangesetError, fn ->
+      Store.ensure_seeded!()
+    end
+  end
+
+  test "ensure_seeded! raises on invalid configured announcement" do
+    Application.put_env(:ansible_relay, :forum_host_seed_boards, [])
+
+    Application.put_env(:ansible_relay, :forum_host_announcements, [
+      %{
+        "announcement_id" => "invalid-announcement",
+        "owner_kind" => "forum_host",
+        "body" => "Missing required title",
+        "severity" => "info"
+      }
+    ])
+
+    assert_raise Ecto.InvalidChangesetError, fn ->
+      Store.ensure_seeded!()
+    end
   end
 
   defp restore_env(key, nil), do: Application.delete_env(:ansible_relay, key)
