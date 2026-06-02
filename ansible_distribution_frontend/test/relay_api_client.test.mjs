@@ -67,6 +67,23 @@ test('uses httpOnly cookie credentials for authenticated requests', async () => 
   assert.equal(requests[0].init.credentials, 'same-origin');
 });
 
+test('postJson uses same-origin credentials and no legacy bearer storage', async () => {
+  const requests = [];
+  const client = createRelayApiClient({
+    relayBaseUrl: 'http://localhost:4001',
+    storage: { getItem: () => 'legacy-token' },
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(200, { ok: true });
+    },
+  });
+
+  await client.postJson('/api/v1/forum-host/web/threads', { title: 'Hello' });
+
+  assert.equal(requests[0].init.credentials, 'same-origin');
+  assert.equal(requests[0].init.headers.authorization, undefined);
+});
+
 test('does not read or clear legacy stored tokens when unauthorized', async () => {
   const storage = new MemoryStorage([[WEB_SESSION_TOKEN_KEY, 'wst_old']]);
   const client = createRelayApiClient({
