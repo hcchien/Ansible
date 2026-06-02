@@ -46,6 +46,7 @@ export async function fetchChallengeStatus({
 }) {
   return createRelayApiClient({ relayBaseUrl, fetchImpl }).getJson(
     `/api/v1/web-sessions/challenges/${encodeURIComponent(challengeId)}`,
+    { authenticated: true },
   );
 }
 

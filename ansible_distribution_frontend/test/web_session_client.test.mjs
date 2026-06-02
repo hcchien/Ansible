@@ -127,7 +127,7 @@ test('does not clear localStorage for rejected and expired challenges (no token 
   assert.equal(storage.length, 0);
 });
 
-test('creates and polls web-session challenges without sending cookies', async () => {
+test('creates web-session challenges without cookies but polls with same-origin cookies', async () => {
   const requests = [];
   const fetchImpl = async (url, init) => {
     requests.push({ url, init });
@@ -159,10 +159,11 @@ test('creates and polls web-session challenges without sending cookies', async (
       'https://web.elix.example/api/v1/web-sessions/challenges/wsc_123',
     ],
   );
-  for (const request of requests) {
-    assert.equal(request.init.headers.authorization, undefined);
-    assert.equal(request.init.credentials, 'omit');
-  }
+  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(requests[0].init.credentials, 'omit');
+
+  assert.equal(requests[1].init.headers.authorization, undefined);
+  assert.equal(requests[1].init.credentials, 'same-origin');
 });
 
 test('loads current and active web sessions via cookie-authenticated relay APIs', async () => {
