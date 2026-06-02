@@ -63,7 +63,7 @@ test('uses httpOnly cookie credentials for authenticated requests', async () => 
 
   await client.getJson('/api/v1/web-sessions/me', { authenticated: true });
 
-  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(headerValue(requests[0].init.headers, 'authorization'), undefined);
   assert.equal(requests[0].init.credentials, 'same-origin');
 });
 

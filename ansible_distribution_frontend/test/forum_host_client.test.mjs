@@ -62,7 +62,10 @@ test('loads Forum Host metadata and hosted boards through public read APIs', asy
       'http://localhost:4001/api/v1/forum-host/boards',
     ],
   );
-  assert.equal(requests[0].init.headers.authorization, undefined);
+  for (const request of requests) {
+    assert.equal(headerValue(request.init.headers, 'authorization'), undefined);
+    assert.equal(request.init.credentials, 'same-origin');
+  }
 });
 
 test('creates hosted web threads with the httpOnly session cookie', async () => {
