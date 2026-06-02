@@ -38,12 +38,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   def poll_challenge(conn, %{"challenge_id" => challenge_id}) do
     case WebSessionStore.poll_challenge(challenge_id) do
       {:ok, challenge} ->
-        body = %{
-          challenge_id: challenge.challenge_id,
-          status: challenge.status,
-          audience: challenge.audience,
-          expires_at: DateTime.to_iso8601(challenge.expires_at)
-        }
+        body = poll_challenge_response(challenge)
 
         if challenge.status == "approved" do
           with {:ok, session} <- WebSessionStore.get_session(challenge.approved_session_token) do
@@ -173,6 +168,18 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
       expires_at: DateTime.to_iso8601(challenge.expires_at),
       deep_link: deep_link,
       qr_payload: deep_link
+    }
+  end
+
+  defp poll_challenge_response(challenge) do
+    %{
+      challenge_id: challenge.challenge_id,
+      web_origin: challenge.web_origin,
+      relay_origin: challenge.relay_origin,
+      audience: challenge.audience,
+      scopes: challenge.scopes,
+      expires_at: DateTime.to_iso8601(challenge.expires_at),
+      status: challenge.status
     }
   end
 

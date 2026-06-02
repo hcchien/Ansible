@@ -370,6 +370,31 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert {:ok, _} = WebSessionStore.get_challenge(body["challenge_id"])
   end
 
+  test "GET /api/v1/web-sessions/challenges/:id exposes app approval metadata" do
+    create_response =
+      post_json("/api/v1/web-sessions/challenges", %{
+        "web_origin" => "https://trisaura.io",
+        "relay_origin" => "https://relay.trisaura.io",
+        "audience" => "http://localhost:4001",
+        "scopes" => ["forum:read", "forum:post"]
+      })
+
+    assert create_response.status == 201
+    challenge_id = Jason.decode!(create_response.resp_body)["challenge_id"]
+
+    response = get_json("/api/v1/web-sessions/challenges/#{challenge_id}")
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["challenge_id"] == challenge_id
+    assert body["relay_origin"] == "https://relay.trisaura.io"
+    assert body["web_origin"] == "https://trisaura.io"
+    assert body["audience"] == "http://localhost:4001"
+    assert body["scopes"] == ["forum:read", "forum:post"]
+    assert body["status"] == "pending"
+    assert is_binary(body["expires_at"])
+  end
+
   test "approved challenge persists audience into session response" do
     {public_key_hex, private_key} = ed25519_keypair()
     did = "did:plc:audience23456789"
@@ -459,6 +484,11 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     poll_body = Jason.decode!(poll.resp_body)
     assert poll_body["status"] == "approved"
+    assert poll_body["relay_origin"] == "https://relay.trisaura.io"
+    assert poll_body["web_origin"] == "https://trisaura.io"
+    assert poll_body["audience"] == "https://relay.trisaura.io"
+    assert poll_body["scopes"] == ["forum:read", "forum:post"]
+    assert is_binary(poll_body["expires_at"])
     assert poll_body["trust_tier"] == "self_custody_did"
     assert poll_body["subject_did"] == did
     # session_token must NOT be exposed to browser JavaScript
