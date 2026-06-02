@@ -22,6 +22,10 @@ defmodule AnsibleRelay.Web.Router do
     send_json(conn, 200, %{status: "ok", relay: "ansible_relay", version: "0.1.0"})
   end
 
+  get "/api/v1/discovery" do
+    AnsibleRelay.Web.Controllers.RelayDiscoveryController.show(conn, conn.query_params)
+  end
+
   # ActivityPub discovery and relay-owned actor endpoints
   get "/.well-known/webfinger" do
     AnsibleRelay.Web.Controllers.ActivityPubController.webfinger(conn, conn.query_params)
