@@ -80,6 +80,10 @@ void main() {
         ),
       );
 
+      expect(find.byKey(const Key('nostr_relay_url_field')), findsNothing);
+      await tester.tap(find.text('Nostr Relay'));
+      await tester.pumpAndSettle();
+
       await tester.enterText(
         find.byKey(const Key('nostr_relay_url_field')),
         'wss://relay.example',

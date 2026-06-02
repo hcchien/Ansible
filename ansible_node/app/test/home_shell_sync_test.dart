@@ -111,7 +111,7 @@ void main() {
     await tester.tap(find.byTooltip('同步'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('請先在同步設定新增 Forum Host'), findsOneWidget);
+    expect(find.textContaining('請先設定 Elix Relay'), findsOneWidget);
     expect(find.textContaining('同步完成'), findsNothing);
 
     await _disposeWidgetTree(tester);

@@ -7,6 +7,7 @@ import {
   runPublicHomeFlow,
 } from '../src/integration_flow_harness.mjs';
 import { PAGE_IDS, buildAppViewModel } from '../src/state_model.mjs';
+import { setCurrentLocale } from '../src/web_i18n.mjs';
 
 const homeHarness = createFrontendFlowHarness({ routeHash: '#/', sessionMode: 'anonymous' });
 const homeState = await runPublicHomeFlow(homeHarness);
@@ -127,6 +128,27 @@ assert.match(sessionsHtml, /data-action="set-scene-theme"/);
 assert.match(sessionsHtml, /data-action="set-motion-mode"/);
 assert.match(sessionsHtml, /未設/);
 assert.doesNotMatch(sessionsHtml, /Revoke current session|This browser session is scoped and revocable|Trust tier|Expiry/);
+
+setCurrentLocale('en');
+
+const englishHomeHtml = renderPageBody(homeState.viewModel);
+assert.match(englishHomeHtml, /Your Notes and Murmurs/);
+assert.match(englishHomeHtml, /Swipe left/);
+assert.match(englishHomeHtml, /Forum/);
+assert.match(englishHomeHtml, /From past murmurs/);
+assert.match(englishHomeHtml, /Resonate/);
+assert.doesNotMatch(englishHomeHtml, /個人版|討論區|往左滑|橫向橋|共鳴/);
+
+const englishSessionsHtml = renderPageBody(sessionsVm);
+assert.match(englishSessionsHtml, /Done/);
+assert.match(englishSessionsHtml, /Local identity/);
+assert.match(englishSessionsHtml, /Identity and devices/);
+assert.match(englishSessionsHtml, /Interface and language/);
+assert.match(englishSessionsHtml, /Local-first/);
+assert.match(englishSessionsHtml, /Not set/);
+assert.doesNotMatch(englishSessionsHtml, /完成|本機身分|身分與裝置|介面與語言|本地優先|未設/);
+
+setCurrentLocale('zh-Hant');
 
 const notFoundVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.notFound, params: { path: '/missing' } },

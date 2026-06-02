@@ -47,7 +47,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get sync => '동기화';
 
   @override
-  String get syncSubtitle => 'Forum Host / Nostr relay 설정';
+  String get syncSubtitle => 'Elix Relay 설정';
 
   @override
   String get configured => '설정';
@@ -386,7 +386,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get chooseHostedBoard => 'Hosted board 선택';
 
   @override
-  String get hostedBoardMissing => '먼저 Forum Host의 hosted board에 참여하거나 만드세요';
+  String get hostedBoardMissing => '먼저 Elix Relay의 hosted board에 참여하거나 만드세요';
 
   @override
   String get hostedBoardRequired => 'Hosted board를 선택하세요';
@@ -417,7 +417,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get addForumHostFirst =>
-      '먼저 동기화 설정에서 Forum Host를 추가하세요. 토론 보드는 Forum Host가 만듭니다.';
+      '먼저 동기화 설정에서 Elix Relay를 추가하세요. 토론 보드는 Elix Relay가 만듭니다.';
 
   @override
   String syncedPublicCount(int count) {

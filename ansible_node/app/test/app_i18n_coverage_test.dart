@@ -117,7 +117,7 @@ void main() {
     expect(find.text('Create'), findsOneWidget);
 
     expect(find.text('建立討論'), findsNothing);
-    expect(find.text('選擇 hosted board'), findsNothing);
+    expect(find.text('選擇託管看板'), findsNothing);
   });
 
   testWidgets('settings subpages use selected English locale', (tester) async {

@@ -47,7 +47,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sync => '同步';
 
   @override
-  String get syncSubtitle => 'Forum Host / Nostr relay 設定';
+  String get syncSubtitle => 'Elix Relay 設定';
 
   @override
   String get configured => '設定';
@@ -366,13 +366,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notePrivateSummary => '還沒讓任何人看見';
 
   @override
-  String get noteNostrSummary => '公開後會送到 Nostr relays';
+  String get noteNostrSummary => '公開後會送到 Nostr Relay';
 
   @override
   String get noteActivityPubSummary => '公開後會送到 ActivityPub relay';
 
   @override
-  String get noteBothSummary => '公開後會送到 Nostr relays 與 ActivityPub relay';
+  String get noteBothSummary => '公開後會送到 Nostr Relay 與 ActivityPub Relay';
 
   @override
   String get noteLocalPublicSummary => '公開狀態，但暫不送出';
@@ -381,13 +381,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get createDiscussion => '建立討論';
 
   @override
-  String get chooseHostedBoard => '選擇 hosted board';
+  String get chooseHostedBoard => '選擇託管看板';
 
   @override
-  String get hostedBoardMissing => '請先加入或建立 Forum Host 的 hosted board';
+  String get hostedBoardMissing => '請先加入或建立 Elix Relay 的託管看板';
 
   @override
-  String get hostedBoardRequired => '請選擇 hosted board';
+  String get hostedBoardRequired => '請選擇託管看板';
 
   @override
   String get titleLabel => '標題';
@@ -414,7 +414,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uncategorized => '未分類';
 
   @override
-  String get addForumHostFirst => '請先在同步設定新增 Forum Host。討論看板由 Forum Host 建立。';
+  String get addForumHostFirst => '請先在同步設定新增 Elix Relay。討論看板由 Elix Relay 建立。';
 
   @override
   String syncedPublicCount(int count) {
@@ -422,10 +422,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get publicQueuedRelayFailed => '公開內容已排入同步，但 relay 發佈失敗';
+  String get publicQueuedRelayFailed => '公開內容已排入同步，但 Relay 發佈失敗';
 
   @override
-  String get noWritableNostrRelay => '尚未設定可寫入的 Nostr relay';
+  String get noWritableNostrRelay => '尚未設定可寫入的 Nostr Relay';
 
   @override
   String syncFailedMessage(String error) {
@@ -579,7 +579,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sync => '同步';
 
   @override
-  String get syncSubtitle => 'Forum Host / Nostr relay 設定';
+  String get syncSubtitle => 'Elix Relay 設定';
 
   @override
   String get configured => '設定';
@@ -898,13 +898,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get notePrivateSummary => '還沒讓任何人看見';
 
   @override
-  String get noteNostrSummary => '公開後會送到 Nostr relays';
+  String get noteNostrSummary => '公開後會送到 Nostr Relay';
 
   @override
   String get noteActivityPubSummary => '公開後會送到 ActivityPub relay';
 
   @override
-  String get noteBothSummary => '公開後會送到 Nostr relays 與 ActivityPub relay';
+  String get noteBothSummary => '公開後會送到 Nostr Relay 與 ActivityPub Relay';
 
   @override
   String get noteLocalPublicSummary => '公開狀態，但暫不送出';
@@ -913,13 +913,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get createDiscussion => '建立討論';
 
   @override
-  String get chooseHostedBoard => '選擇 hosted board';
+  String get chooseHostedBoard => '選擇託管看板';
 
   @override
-  String get hostedBoardMissing => '請先加入或建立 Forum Host 的 hosted board';
+  String get hostedBoardMissing => '請先加入或建立 Elix Relay 的託管看板';
 
   @override
-  String get hostedBoardRequired => '請選擇 hosted board';
+  String get hostedBoardRequired => '請選擇託管看板';
 
   @override
   String get titleLabel => '標題';
@@ -946,7 +946,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get uncategorized => '未分類';
 
   @override
-  String get addForumHostFirst => '請先在同步設定新增 Forum Host。討論看板由 Forum Host 建立。';
+  String get addForumHostFirst => '請先在同步設定新增 Elix Relay。討論看板由 Elix Relay 建立。';
 
   @override
   String syncedPublicCount(int count) {
@@ -954,10 +954,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get publicQueuedRelayFailed => '公開內容已排入同步，但 relay 發佈失敗';
+  String get publicQueuedRelayFailed => '公開內容已排入同步，但 Relay 發佈失敗';
 
   @override
-  String get noWritableNostrRelay => '尚未設定可寫入的 Nostr relay';
+  String get noWritableNostrRelay => '尚未設定可寫入的 Nostr Relay';
 
   @override
   String syncFailedMessage(String error) {

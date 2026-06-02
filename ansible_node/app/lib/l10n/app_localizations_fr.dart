@@ -47,7 +47,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sync => 'Synchroniser';
 
   @override
-  String get syncSubtitle => 'Réglages Forum Host / Nostr relay';
+  String get syncSubtitle => 'Réglages Elix Relay';
 
   @override
   String get configured => 'Réglages';
@@ -395,7 +395,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get hostedBoardMissing =>
-      'Rejoignez ou créez d’abord un hosted board Forum Host';
+      'Rejoignez ou créez d’abord un hosted board Elix Relay';
 
   @override
   String get hostedBoardRequired => 'Choisir un hosted board';
@@ -426,7 +426,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addForumHostFirst =>
-      'Ajoutez d’abord un Forum Host dans les réglages de synchronisation. Les forums de discussion sont créés par les Forum Hosts.';
+      'Ajoutez d’abord un Elix Relay dans les réglages de synchronisation. Les forums de discussion sont créés par les Elix Relays.';
 
   @override
   String syncedPublicCount(int count) {

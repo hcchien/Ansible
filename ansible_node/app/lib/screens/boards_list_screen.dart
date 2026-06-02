@@ -79,8 +79,8 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
       SnackBar(
         content: Text(
           context.uiCopy(
-            zh: '請從主畫面新增 Forum Host hosted board；不再建立 local-only board。',
-            en: 'Add Forum Host hosted boards from the home screen. Local-only boards are no longer created.',
+            zh: '請從主畫面新增 Elix Relay 託管看板；不再建立本機限定看板。',
+            en: 'Add Elix Relay hosted boards from the home screen. Local-only boards are no longer created.',
           ),
         ),
       ),
@@ -143,7 +143,7 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hosted boards'),
+        title: Text(context.uiCopy(zh: '託管看板', en: 'Hosted boards')),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: _isLoading
@@ -160,14 +160,17 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No hosted boards yet',
+                    context.uiCopy(zh: '還沒有託管看板', en: 'No hosted boards yet'),
                     style: Theme.of(
                       context,
                     ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Add a Forum Host before creating discussion boards',
+                    context.uiCopy(
+                      zh: '請先新增 Elix Relay，再建立討論看板',
+                      en: 'Add an Elix Relay before creating discussion boards',
+                    ),
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
@@ -251,7 +254,7 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createBoard,
-        tooltip: 'Create hosted board',
+        tooltip: context.uiCopy(zh: '建立託管看板', en: 'Create hosted board'),
         child: const Icon(Icons.add),
       ),
     );

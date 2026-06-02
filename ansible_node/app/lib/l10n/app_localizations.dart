@@ -186,7 +186,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncSubtitle.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'Forum Host / Nostr relay 設定'**
+  /// **'Elix Relay 設定'**
   String get syncSubtitle;
 
   /// No description provided for @configured.
@@ -804,7 +804,7 @@ abstract class AppLocalizations {
   /// No description provided for @noteNostrSummary.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'公開後會送到 Nostr relays'**
+  /// **'公開後會送到 Nostr Relay'**
   String get noteNostrSummary;
 
   /// No description provided for @noteActivityPubSummary.
@@ -816,7 +816,7 @@ abstract class AppLocalizations {
   /// No description provided for @noteBothSummary.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'公開後會送到 Nostr relays 與 ActivityPub relay'**
+  /// **'公開後會送到 Nostr Relay 與 ActivityPub Relay'**
   String get noteBothSummary;
 
   /// No description provided for @noteLocalPublicSummary.
@@ -834,19 +834,19 @@ abstract class AppLocalizations {
   /// No description provided for @chooseHostedBoard.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'選擇 hosted board'**
+  /// **'選擇託管看板'**
   String get chooseHostedBoard;
 
   /// No description provided for @hostedBoardMissing.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'請先加入或建立 Forum Host 的 hosted board'**
+  /// **'請先加入或建立 Elix Relay 的託管看板'**
   String get hostedBoardMissing;
 
   /// No description provided for @hostedBoardRequired.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'請選擇 hosted board'**
+  /// **'請選擇託管看板'**
   String get hostedBoardRequired;
 
   /// No description provided for @titleLabel.
@@ -900,7 +900,7 @@ abstract class AppLocalizations {
   /// No description provided for @addForumHostFirst.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'請先在同步設定新增 Forum Host。討論看板由 Forum Host 建立。'**
+  /// **'請先在同步設定新增 Elix Relay。討論看板由 Elix Relay 建立。'**
   String get addForumHostFirst;
 
   /// No description provided for @syncedPublicCount.
@@ -912,13 +912,13 @@ abstract class AppLocalizations {
   /// No description provided for @publicQueuedRelayFailed.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'公開內容已排入同步，但 relay 發佈失敗'**
+  /// **'公開內容已排入同步，但 Relay 發佈失敗'**
   String get publicQueuedRelayFailed;
 
   /// No description provided for @noWritableNostrRelay.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'尚未設定可寫入的 Nostr relay'**
+  /// **'尚未設定可寫入的 Nostr Relay'**
   String get noWritableNostrRelay;
 
   /// No description provided for @syncFailedMessage.

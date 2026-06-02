@@ -47,7 +47,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get sync => '同期';
 
   @override
-  String get syncSubtitle => 'Forum Host / Nostr relay 設定';
+  String get syncSubtitle => 'Elix Relay 設定';
 
   @override
   String get configured => '設定';
@@ -386,7 +386,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get hostedBoardMissing =>
-      'まず Forum Host の hosted board に参加または作成してください';
+      'まず Elix Relay の hosted board に参加または作成してください';
 
   @override
   String get hostedBoardRequired => 'Hosted board を選択してください';
@@ -417,7 +417,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get addForumHostFirst =>
-      'まず同期設定で Forum Host を追加してください。議論ボードは Forum Host が作成します。';
+      'まず同期設定で Elix Relay を追加してください。議論ボードは Elix Relay が作成します。';
 
   @override
   String syncedPublicCount(int count) {

@@ -73,12 +73,12 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                 onChanged: (value) {
                   setState(() => _selectedForumHostId = value);
                 },
-                decoration: const InputDecoration(labelText: 'Forum Host'),
+                decoration: const InputDecoration(labelText: 'Elix Relay'),
                 validator: (_) {
                   if (!widget.requireForumHost) return null;
                   if (_selectedForumHostId == null ||
                       _selectedForumHostId!.isEmpty) {
-                    return 'Select a Forum Host';
+                    return 'Select an Elix Relay';
                   }
                   return null;
                 },

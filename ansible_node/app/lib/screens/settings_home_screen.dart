@@ -966,8 +966,7 @@ class _SettingsText {
       : (l10n?.walletSubtitleCount(count) ?? '$count 個憑證');
   String get empty => l10n?.empty ?? '空';
   String get sync => l10n?.sync ?? '同步';
-  String get syncSubtitle =>
-      l10n?.syncSubtitle ?? 'Forum Host / Nostr relay 設定';
+  String get syncSubtitle => l10n?.syncSubtitle ?? 'Elix Relay 設定';
   String get configured => l10n?.configured ?? '設定';
   String get accessAudit => l10n?.accessAudit ?? '存取與審計';
   String get accessAuditSubtitle => l10n?.accessAuditSubtitle ?? '誰看見了哪一個我';

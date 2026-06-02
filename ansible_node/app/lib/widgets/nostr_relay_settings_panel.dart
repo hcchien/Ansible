@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import '../l10n/subpage_l10n.dart';
 import '../theme/ansible_design.dart';
-import 'ansible_screen_chrome.dart';
 
 class NostrRelaySettingsPanel extends StatefulWidget {
   final List<NostrRelayPreference> relays;
@@ -26,6 +25,7 @@ class _NostrRelaySettingsPanelState extends State<NostrRelaySettingsPanel> {
   final TextEditingController _urlController = TextEditingController();
   bool _newRelayRead = true;
   bool _newRelayWrite = true;
+  bool _expanded = false;
 
   @override
   void dispose() {
@@ -36,21 +36,63 @@ class _NostrRelaySettingsPanelState extends State<NostrRelaySettingsPanel> {
   @override
   Widget build(BuildContext context) {
     final text = SubpageL10n.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnsibleMonoLabel(
-          text.t('nostrRelays'),
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-        ),
-        Container(
-          decoration: const BoxDecoration(
-            border: Border.symmetric(
-              horizontal: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-            ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border.symmetric(
+            horizontal: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
           ),
-          child: Column(
-            children: [
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.hub_outlined,
+                      size: 18,
+                      color: AnsibleDesign.inkFaint,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            text.t('nostrRelays'),
+                            style: const TextStyle(
+                              fontFamily: AnsibleDesign.mono,
+                              fontSize: 10,
+                              letterSpacing: 1.2,
+                              color: AnsibleDesign.inkMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            text.t('nostrRelayAdvancedSub'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 1.45,
+                              color: AnsibleDesign.inkFaint,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      color: AnsibleDesign.inkFaint,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_expanded) ...[
+              const Divider(height: 0.5, color: AnsibleDesign.ruleSoft),
               _buildAddRelayRow(),
               const Divider(height: 0.5, color: AnsibleDesign.ruleSoft),
               if (widget.relays.isEmpty)
@@ -74,9 +116,9 @@ class _NostrRelaySettingsPanelState extends State<NostrRelaySettingsPanel> {
                     onRemove: () => _removeRelay(i),
                   ),
             ],
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

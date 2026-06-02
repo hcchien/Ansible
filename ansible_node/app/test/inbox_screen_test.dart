@@ -169,7 +169,7 @@ void main() {
     await tester.tap(find.byTooltip('新增訊息'));
     await tester.pump();
 
-    expect(find.text('請先設定 Relay Server'), findsOneWidget);
+    expect(find.text('請先設定 Elix Relay'), findsOneWidget);
     expect(find.text('Bob'), findsNothing);
     expect(openedThread, isFalse);
   });

@@ -191,68 +191,69 @@ function renderSessions(viewModel, uiState = {}) {
   const scopes = session.scopes ?? [];
   const preferences = normalizeUiPreferences(uiState.preferences);
   const identity = shortIdentity(session.subjectDid || session.subject) || t('sessions.titleFallback');
+  const trustTier = trustTierLabel(session.trustTier);
 
   return `
     ${renderError(viewModel.error)}
     <section class="settings-home" aria-labelledby="settings-title">
       <div class="settings-topbar">
         <span></span>
-        <p id="settings-title" class="settings-title">Settings</p>
-        <a href="#/" class="settings-done">完成</a>
+        <p id="settings-title" class="settings-title">${escapeHtml(t('settings.title'))}</p>
+        <a href="#/" class="settings-done">${escapeHtml(t('settings.done'))}</a>
       </div>
 
-      <section class="settings-identity-hero" aria-label="本機身分">
+      <section class="settings-identity-hero" aria-label="${escapeAttribute(t('settings.localIdentity'))}">
         <span class="settings-avatar" aria-hidden="true">${renderUserGlyph()}</span>
         <div>
-          <h2>本機身分</h2>
-          <p>本機 DID · ${escapeHtml(identity)} · ${escapeHtml(trustTierLabel(session.trustTier))}</p>
+          <h2>${escapeHtml(t('settings.localIdentity'))}</h2>
+          <p>${escapeHtml(t('settings.localDidLine', { identity, trustTier }))}</p>
         </div>
-        <span class="settings-edit">編輯</span>
+        <span class="settings-edit">${escapeHtml(t('settings.edit'))}</span>
       </section>
 
-      ${renderSettingsGroup('身分與裝置 · IDENTITY', [
-        renderSettingsRow({ icon: renderWalletGlyph(), title: '皮夾', code: 'WALLET', detail: '尚無憑證', value: '空' }),
-        renderSettingsRow({ icon: renderSyncGlyph(), title: '同步', code: 'SYNC', detail: 'Forum Host / Nostr relay 設定', value: '設定' }),
-        renderSettingsRow({ icon: renderShieldGlyph(), title: '存取與審計', code: 'ADMIN', detail: '誰看見了哪一個我', value: '0 可疑' }),
-        renderSettingsRow({ icon: '文', title: '語言', code: 'LANGUAGE', detail: '選擇 app 介面語言', value: '繁體中文' }),
+      ${renderSettingsGroup(t('settings.identityGroup'), [
+        renderSettingsRow({ icon: renderWalletGlyph(), title: t('settings.wallet.title'), code: 'WALLET', detail: t('settings.wallet.detail'), value: t('settings.wallet.value') }),
+        renderSettingsRow({ icon: renderSyncGlyph(), title: t('settings.sync.title'), code: 'SYNC', detail: t('settings.sync.detail'), value: t('settings.sync.value') }),
+        renderSettingsRow({ icon: renderShieldGlyph(), title: t('settings.audit.title'), code: 'ADMIN', detail: t('settings.audit.detail'), value: t('settings.audit.value') }),
+        renderSettingsRow({ icon: t('settings.language.icon'), title: t('settings.language.title'), code: 'LANGUAGE', detail: t('settings.language.detail'), value: t('settings.language.value') }),
       ])}
 
-      ${renderSettingsGroup('日常 · DAILY', [
-        renderSettingsRow({ icon: renderBellGlyph(), title: '收信', code: 'INBOX', detail: '圈內回覆、新成員、同步', value: '0' }),
-        renderSettingsRow({ icon: renderNoticeGlyph(), title: '通知', code: 'NOTIFICATIONS', detail: '決定哪些事會打擾你', value: '輕' }),
-        renderSettingsRow({ icon: 'A', title: '閱讀偏好', code: 'READING', detail: '字級、行距、每版的光', value: '預設' }),
+      ${renderSettingsGroup(t('settings.dailyGroup'), [
+        renderSettingsRow({ icon: renderBellGlyph(), title: t('settings.inbox.title'), code: 'INBOX', detail: t('settings.inbox.detail'), value: t('settings.inbox.value') }),
+        renderSettingsRow({ icon: renderNoticeGlyph(), title: t('settings.notifications.title'), code: 'NOTIFICATIONS', detail: t('settings.notifications.detail'), value: t('settings.notifications.value') }),
+        renderSettingsRow({ icon: 'A', title: t('settings.reading.title'), code: 'READING', detail: t('settings.reading.detail'), value: t('settings.reading.value') }),
       ])}
 
-      <section class="settings-preferences" aria-label="介面與語言">
-        <p class="settings-group-label">介面與語言 · INTERFACE</p>
+      <section class="settings-preferences" aria-label="${escapeAttribute(t('settings.interfaceAria'))}">
+        <p class="settings-group-label">${escapeHtml(t('settings.interfaceGroup'))}</p>
         <div class="settings-preference-block">
           <div class="settings-copy">
-            <p class="section-label">每版的光</p>
-            <h3>個人版可以是 Ink，討論區可以是 Paper。</h3>
-            <p>只能在 Paper / Ink / Auto 之間調整，避免品牌散掉；圈內跟著個人版。</p>
+            <p class="section-label">${escapeHtml(t('settings.theme.label'))}</p>
+            <h3>${escapeHtml(t('settings.theme.title'))}</h3>
+            <p>${escapeHtml(t('settings.theme.body'))}</p>
           </div>
           <div class="theme-settings-grid">
-            ${renderSceneThemePicker('personal', '個人版', preferences.personalTheme)}
-            ${renderSceneThemePicker('forum', '討論區', preferences.forumTheme)}
+            ${renderSceneThemePicker('personal', t('focus.personalScene'), preferences.personalTheme)}
+            ${renderSceneThemePicker('forum', t('focus.forumScene'), preferences.forumTheme)}
           </div>
         </div>
         <div class="settings-preference-block">
           <div class="settings-copy">
-            <p class="section-label">換版的動態</p>
-            <h3>翻書，而不是滑窗。</h3>
-            <p>尊重 reduced-motion；系統減少動態時會降回平移。</p>
+            <p class="section-label">${escapeHtml(t('settings.motion.label'))}</p>
+            <h3>${escapeHtml(t('settings.motion.title'))}</h3>
+            <p>${escapeHtml(t('settings.motion.body'))}</p>
           </div>
           <div class="motion-options">
-            ${renderMotionOption('slide', '輕 · 平移', '兩張紙左右平移，沒有立體感。', preferences.motionMode)}
-            ${renderMotionOption('book', '中 · 翻書', '兩個版像書的左右頁，輕微 perspective。', preferences.motionMode)}
-            ${renderMotionOption('cube', '深 · 翻立方', '較強烈，給喜歡明顯空間感的人。', preferences.motionMode)}
+            ${renderMotionOption('slide', t('settings.motion.slide.title'), t('settings.motion.slide.body'), preferences.motionMode)}
+            ${renderMotionOption('book', t('settings.motion.book.title'), t('settings.motion.book.body'), preferences.motionMode)}
+            ${renderMotionOption('cube', t('settings.motion.cube.title'), t('settings.motion.cube.body'), preferences.motionMode)}
           </div>
         </div>
       </section>
 
-      ${renderSettingsGroup('邊界 · BOUNDARIES', [
-        renderSettingsRow({ icon: renderKeyGlyph(), title: '備份與還原', code: 'RECOVERY', detail: 'passphrase、新裝置遷移', value: '未設', tone: 'danger' }),
-        renderSettingsRow({ icon: renderBlockedGlyph(), title: '封鎖名單', code: 'BLOCKED', detail: '你選擇不再看見的人', value: '0' }),
+      ${renderSettingsGroup(t('settings.boundariesGroup'), [
+        renderSettingsRow({ icon: renderKeyGlyph(), title: t('settings.recovery.title'), code: 'RECOVERY', detail: t('settings.recovery.detail'), value: t('settings.recovery.value'), tone: 'danger' }),
+        renderSettingsRow({ icon: renderBlockedGlyph(), title: t('settings.blocked.title'), code: 'BLOCKED', detail: t('settings.blocked.detail'), value: t('settings.blocked.value') }),
       ])}
 
       <section class="settings-session-card" aria-label="${escapeAttribute(t('sessions.kicker'))}">
@@ -265,7 +266,7 @@ function renderSessions(viewModel, uiState = {}) {
         }
       </section>
 
-      <p class="settings-version">Elix · 0.4.1 · 本地優先</p>
+      <p class="settings-version">${escapeHtml(t('settings.version'))}</p>
     </section>
   `;
 }
@@ -275,21 +276,21 @@ function renderMobileFocusStage(viewModel, boards, preferences) {
   const showCoachmark = !preferences.coachmarkDismissed;
 
   return `
-    <section class="mobile-focus-stage" data-active-scene="${escapeAttribute(activeScene)}" data-motion-mode="${escapeAttribute(preferences.motionMode)}" aria-label="Elix Mobile Focus">
-      <div class="scene-switcher" role="tablist" aria-label="場景切換">
-        ${renderSceneButton('personal', '個人版', activeScene)}
-        ${renderSceneButton('forum', '討論區', activeScene)}
+    <section class="mobile-focus-stage" data-active-scene="${escapeAttribute(activeScene)}" data-motion-mode="${escapeAttribute(preferences.motionMode)}" aria-label="${escapeAttribute(t('focus.mobileAria'))}">
+      <div class="scene-switcher" role="tablist" aria-label="${escapeAttribute(t('focus.sceneSwitchAria'))}">
+        ${renderSceneButton('personal', t('focus.personalScene'), activeScene)}
+        ${renderSceneButton('forum', t('focus.forumScene'), activeScene)}
       </div>
-      <p class="scene-help">往左滑，或點「討論區」切到公開場景；點「個人版」回到自己的版。</p>
+      <p class="scene-help">${escapeHtml(t('focus.sceneHelp'))}</p>
       ${
         showCoachmark
           ? `<aside class="swipe-coachmark">
               <div>
-                <p class="section-label">一個小技巧</p>
-                <h3>這裡是你的個人版。</h3>
-                <p>想看別人？往左滑，或是點上面的「討論區」。</p>
+                <p class="section-label">${escapeHtml(t('focus.coachmarkLabel'))}</p>
+                <h3>${escapeHtml(t('focus.coachmarkTitle'))}</h3>
+                <p>${escapeHtml(t('focus.coachmarkBody'))}</p>
               </div>
-              <button type="button" data-action="dismiss-swipe-coachmark">知道了</button>
+              <button type="button" data-action="dismiss-swipe-coachmark">${escapeHtml(t('focus.coachmarkDismiss'))}</button>
             </aside>`
           : ''
       }
@@ -320,30 +321,30 @@ function renderPersonalScene(viewModel, preferences) {
   return `
     <section class="scene-panel personal-scene" data-scene="personal" data-scene-theme="${escapeAttribute(preferences.personalTheme)}" aria-labelledby="personal-board-title">
       <div class="scene-meta-row">
-        <span>2026.05.23 SAT</span>
-        <span>本週 · THIS WEEK</span>
+        <span>${escapeHtml(t('focus.personal.date'))}</span>
+        <span>${escapeHtml(t('focus.personal.week'))}</span>
       </div>
       <div class="personal-board-head">
         <div>
-          <p class="section-label">個人版</p>
-          <h2 id="personal-board-title">你寫下的 Note 與 Murmur</h2>
+          <p class="section-label">${escapeHtml(t('focus.personalScene'))}</p>
+          <h2 id="personal-board-title">${escapeHtml(t('focus.personal.title'))}</h2>
         </div>
         <span class="signed-pill">${escapeHtml(audience)}</span>
       </div>
       <div class="diary-list">
-        ${renderDiaryEntry({ type: 'NOTE · 4 段', when: '昨 14:36', title: '關於信任的地形', body: '信任不是 default-on，也不是一個開關。它更像是一種地形，有山谷、有稜線、有路徑要慢慢被踩出來。', kind: 'note' })}
-        ${renderDiaryEntry({ type: 'MURMUR · 0:38', when: '昨 22:08', body: '「default-on 是誰的預設？我們是不是都默許了什麼自己其實沒同意 …」', kind: 'murmur', player: true })}
-        ${renderDiaryEntry({ type: 'MURMUR · 1:14', when: '前天', body: '「鑰匙這個詞比帳號好，因為鑰匙是會被傳下去的 …」', kind: 'murmur' })}
+        ${renderDiaryEntry({ type: t('focus.diary.noteType'), when: t('focus.diary.noteWhen'), title: t('focus.diary.noteTitle'), body: t('focus.diary.noteBody'), kind: 'note' })}
+        ${renderDiaryEntry({ type: t('focus.diary.murmurOneType'), when: t('focus.diary.murmurOneWhen'), body: t('focus.diary.murmurOneBody'), kind: 'murmur', player: true })}
+        ${renderDiaryEntry({ type: t('focus.diary.murmurTwoType'), when: t('focus.diary.murmurTwoWhen'), body: t('focus.diary.murmurTwoBody'), kind: 'murmur' })}
       </div>
-      <section class="ai-bridge-card" aria-label="AI bridge">
+      <section class="ai-bridge-card" aria-label="${escapeAttribute(t('focus.aiBridgeAria'))}">
         <span class="ai-dot-inline">${renderAiGlyph()}</span>
         <div>
-          <p class="section-label">AI · 橫向橋</p>
-          <h3>從過去的 murmur 找材料，編入現在的 note。</h3>
-          <p>只在本機整理。不會用來訓練，不會離開這台裝置。</p>
+          <p class="section-label">${escapeHtml(t('focus.aiBridgeLabel'))}</p>
+          <h3>${escapeHtml(t('focus.aiBridgeTitle'))}</h3>
+          <p>${escapeHtml(t('focus.aiBridgeBody'))}</p>
         </div>
       </section>
-      <button class="mobile-compose-fab" type="button" aria-label="新增 Note 或 Murmur">+</button>
+      <button class="mobile-compose-fab" type="button" aria-label="${escapeAttribute(t('focus.composeAria'))}">+</button>
     </section>
   `;
 }
@@ -352,15 +353,15 @@ function renderForumScene(viewModel, boards, preferences) {
   return `
     <section class="scene-panel forum-scene" data-scene="forum" data-scene-theme="${escapeAttribute(preferences.forumTheme)}" aria-labelledby="forum-board-title">
       <div class="scene-meta-row">
-        <span>42 新 · 今</span>
-        <span>追蹤 / 訂閱的板</span>
+        <span>${escapeHtml(t('focus.forum.newToday'))}</span>
+        <span>${escapeHtml(t('focus.forum.sources'))}</span>
       </div>
       <div class="personal-board-head">
         <div>
-          <p class="section-label">討論區</p>
-          <h2 id="forum-board-title">追蹤的人與訂閱的板</h2>
+          <p class="section-label">${escapeHtml(t('focus.forumScene'))}</p>
+          <h2 id="forum-board-title">${escapeHtml(t('focus.forum.title'))}</h2>
         </div>
-        <a class="scene-inline-action" href="#/boards">訂閱板</a>
+        <a class="scene-inline-action" href="#/boards">${escapeHtml(t('focus.forum.subscribeBoards'))}</a>
       </div>
       <div class="forum-list">
         ${renderFollowFeedPost()}
@@ -387,7 +388,7 @@ function renderDiaryEntry({ type, when, title, body, kind, player = false }) {
 
 function renderMurmurMiniPlayer() {
   return `
-    <div class="murmur-mini-player" aria-label="Murmur audio preview">
+    <div class="murmur-mini-player" aria-label="${escapeAttribute(t('focus.murmurAudioAria'))}">
       <span class="play-dot">▶</span>
       <span class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
       <span>0:38</span>
@@ -398,19 +399,19 @@ function renderMurmurMiniPlayer() {
 function renderFollowFeedPost() {
   return `
     <article class="post social-post">
-      <div class="post-source">FROM A FOLLOW — 你在三月關注了 Mira</div>
+      <div class="post-source">${escapeHtml(t('focus.follow.source'))}</div>
       <div class="post-author">
         <span class="avatar">M</span>
         <div>
-          <strong>Mira Lin ${renderSignedPill('✓ PK')}</strong>
-          <span>@mira · 2h</span>
+          <strong>Mira Lin ${renderSignedPill(t('focus.passkeyCompact'))}</strong>
+          <span>${escapeHtml(t('focus.follow.timestamp'))}</span>
         </div>
       </div>
-      <p class="post-body">翻到 2017 年的舊筆記：「當演算法決定你看見什麼，沈默就會變成默許。」八年後重新打字。</p>
+      <p class="post-body">${escapeHtml(t('focus.follow.body'))}</p>
       <div class="post-actions">
-        <button type="button">共鳴</button>
+        <button type="button">${escapeHtml(t('focus.follow.resonate'))}</button>
         <button type="button">${escapeHtml(t('common.reply'))}</button>
-        ${renderSignedPill('SIGNED · PASSKEY')}
+        ${renderSignedPill(t('focus.signedPasskey'))}
       </div>
     </article>
   `;
@@ -445,16 +446,16 @@ function renderSettingsRow({ icon, title, code, detail, value, tone = 'neutral' 
 
 function renderSceneThemePicker(scene, label, selectedTheme) {
   const options = [
-    ['light', 'Paper'],
-    ['dark', 'Ink'],
-    ['auto', '跟隨系統'],
+    ['light', t('settings.theme.light')],
+    ['dark', t('settings.theme.dark')],
+    ['auto', t('settings.theme.auto')],
   ];
 
   return `
     <div class="scene-theme-picker" data-scene="${escapeAttribute(scene)}">
       <div class="scene-theme-head">
         <strong>${escapeHtml(label)}</strong>
-        <span>${scene === 'personal' ? '寫給自己' : '白天的廣場'}</span>
+        <span>${escapeHtml(scene === 'personal' ? t('settings.theme.personalTag') : t('settings.theme.forumTag'))}</span>
       </div>
       <div class="theme-option-row">
         ${options
@@ -675,7 +676,7 @@ function renderThreadItem(thread) {
       <div class="av">${escapeHtml(initial)}</div>
       <div>
         <h4 class="ttl">${escapeHtml(title)}</h4>
-        <p class="author">${escapeHtml(shortIdentity(author))}${signed ? ` ${renderSignedPill('✓ PK')}` : ''}</p>
+        <p class="author">${escapeHtml(shortIdentity(author))}${signed ? ` ${renderSignedPill(t('focus.passkeyCompact'))}` : ''}</p>
       </div>
       <div class="meta">
         <span class="replies">${escapeHtml(t('board.replyCount', { count: thread.replyCount ?? thread.replies ?? 0 }))}</span>
@@ -708,7 +709,7 @@ function renderScopeChips(scopes) {
   if (!scopes.length) return `<p class="scope-empty">${escapeHtml(t('scope.empty'))}</p>`;
 
   return `
-    <ul class="scope-list" aria-label="Scopes">
+    <ul class="scope-list" aria-label="${escapeAttribute(t('common.scopes'))}">
       ${scopes.map((scope) => `<li>${escapeHtml(formatScope(scope))}</li>`).join('')}
     </ul>
   `;

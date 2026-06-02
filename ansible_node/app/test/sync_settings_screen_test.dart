@@ -33,4 +33,25 @@ void main() {
     expect(find.text('週四讀書會'), findsNothing);
     expect(find.textContaining('讀書會'), findsNothing);
   });
+
+  testWidgets('sync settings presents Elix Relay and hides Nostr by default', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(MaterialApp(home: SyncSettingsScreen(db: db)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('Elix Relay'), findsOneWidget);
+    expect(find.text('新增 Elix Relay'), findsOneWidget);
+    expect(find.byKey(const Key('nostr_relay_url_field')), findsNothing);
+
+    await tester.tap(find.text('Nostr Relay'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('nostr_relay_url_field')), findsOneWidget);
+  });
 }

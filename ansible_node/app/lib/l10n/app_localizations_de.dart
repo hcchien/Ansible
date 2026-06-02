@@ -47,7 +47,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sync => 'Synchronisieren';
 
   @override
-  String get syncSubtitle => 'Forum Host / Nostr relay Einstellungen';
+  String get syncSubtitle => 'Elix Relay Einstellungen';
 
   @override
   String get configured => 'Einstellungen';
@@ -429,7 +429,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get addForumHostFirst =>
-      'Füge zuerst in den Sync-Einstellungen einen Forum Host hinzu. Diskussionsboards werden von Forum Hosts erstellt.';
+      'Füge zuerst in den Sync-Einstellungen ein Elix Relay hinzu. Diskussionsboards werden von Elix Relays erstellt.';
 
   @override
   String syncedPublicCount(int count) {
