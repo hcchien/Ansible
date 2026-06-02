@@ -291,6 +291,81 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
   end
 
+  test "POST /api/v1/forum-host/boards rejects missing created_at" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:missingcreated#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    body =
+      did
+      |> signed_create_board_intent(private_key)
+      |> Map.delete("created_at")
+
+    response = post_json("/api/v1/forum-host/boards", body, [])
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "missing_created_at"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects malformed created_at" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:badcreated#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "created_at" => "not-a-timestamp"
+        }),
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_created_at"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects created_at beyond clock skew" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:futurecreated#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    created_at = DateTime.add(DateTime.utc_now(), 360, :second)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "created_at" => DateTime.to_iso8601(created_at),
+          "expires_at" => created_at |> DateTime.add(60, :second) |> DateTime.to_iso8601()
+        }),
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "created_at_in_future"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects overly long intent lifetime" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:longexpiry#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    created_at = DateTime.utc_now()
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "created_at" => DateTime.to_iso8601(created_at),
+          "expires_at" => created_at |> DateTime.add(1_200, :second) |> DateTime.to_iso8601()
+        }),
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "intent_lifetime_too_long"
+  end
+
   test "POST /api/v1/forum-host/boards rejects mismatched audience" do
     {public_key_hex, private_key} = ed25519_keypair()
     did = "did:plc:audienceboard#{System.unique_integer([:positive])}"

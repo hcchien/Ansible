@@ -7,6 +7,8 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @create_board_type "io.trisaura.forum.createBoard"
   @create_board_action "create_board"
   @create_board_version 1
+  @default_clock_skew_seconds 300
+  @default_max_age_seconds 600
 
   def verify_create_board(params) when is_map(params) do
     with :ok <- require_string(params, "signature", :missing_signature),
@@ -14,12 +16,13 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
          :ok <- require_string(params, "intent_id", :missing_intent_id),
          :ok <- require_string(params, "target_forum_host", :missing_target_forum_host),
          :ok <- require_string(params, "action", :missing_action),
+         :ok <- require_string(params, "created_at", :missing_created_at),
          :ok <- require_board_title(params),
          :ok <- require_type(params, @create_board_type),
          :ok <- require_version(params, @create_board_version),
          :ok <- require_action(params, @create_board_action),
          :ok <- require_target_host(params["target_forum_host"]),
-         :ok <- require_not_expired(params["expires_at"]),
+         :ok <- require_timestamp_window(params),
          {:ok, public_key_hex} <- public_key(params["author_did"]),
          true <-
            SigVerifier.verify_ed25519(
@@ -121,21 +124,71 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
     end
   end
 
-  defp require_not_expired(expires_at) when is_binary(expires_at) do
-    case DateTime.from_iso8601(expires_at) do
-      {:ok, parsed, _offset} ->
-        if DateTime.compare(DateTime.utc_now(), parsed) == :lt do
-          :ok
-        else
-          {:error, :expired_intent}
-        end
-
-      _error ->
-        {:error, :invalid_expiry}
+  defp require_timestamp_window(params) do
+    with {:ok, created_at} <- parse_timestamp(params["created_at"], :invalid_created_at),
+         {:ok, expires_at} <- parse_timestamp(params["expires_at"], :invalid_expiry),
+         :ok <- require_created_at_not_future(created_at),
+         :ok <- require_expires_at_future(expires_at),
+         :ok <- require_max_intent_age(created_at, expires_at) do
+      :ok
     end
   end
 
-  defp require_not_expired(_expires_at), do: {:error, :invalid_expiry}
+  defp parse_timestamp(value, error) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, parsed, _offset} -> {:ok, parsed}
+      _error -> {:error, error}
+    end
+  end
+
+  defp parse_timestamp(_value, error), do: {:error, error}
+
+  defp require_created_at_not_future(created_at) do
+    latest_allowed_created_at = DateTime.add(DateTime.utc_now(), clock_skew_seconds(), :second)
+
+    if DateTime.compare(created_at, latest_allowed_created_at) in [:lt, :eq] do
+      :ok
+    else
+      {:error, :created_at_in_future}
+    end
+  end
+
+  defp require_expires_at_future(expires_at) do
+    if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
+      :ok
+    else
+      {:error, :expired_intent}
+    end
+  end
+
+  defp require_max_intent_age(created_at, expires_at) do
+    cond do
+      DateTime.compare(expires_at, created_at) != :gt ->
+        {:error, :invalid_expiry}
+
+      DateTime.diff(expires_at, created_at, :second) <= max_age_seconds() ->
+        :ok
+
+      true ->
+        {:error, :intent_lifetime_too_long}
+    end
+  end
+
+  defp clock_skew_seconds do
+    Application.get_env(
+      :ansible_relay,
+      :forum_host_signed_intent_clock_skew_seconds,
+      @default_clock_skew_seconds
+    )
+  end
+
+  defp max_age_seconds do
+    Application.get_env(
+      :ansible_relay,
+      :forum_host_signed_intent_max_age_seconds,
+      @default_max_age_seconds
+    )
+  end
 
   defp public_key(did) do
     if IdentityCache.verified?(did) do
