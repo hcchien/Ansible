@@ -11,6 +11,7 @@ class WebSessionGrant {
   final String challengeId;
   final String relayOrigin;
   final String webOrigin;
+  final String? audience;
   final String subjectDid;
   final String approvingDeviceId;
   final List<String> scopes;
@@ -21,6 +22,7 @@ class WebSessionGrant {
     required this.challengeId,
     required this.relayOrigin,
     required this.webOrigin,
+    this.audience,
     required this.subjectDid,
     required this.approvingDeviceId,
     required this.scopes,
@@ -35,6 +37,7 @@ class WebSessionGrant {
       'challenge_id': challengeId,
       'relay_origin': relayOrigin,
       'web_origin': webOrigin,
+      if (audience != null && audience!.isNotEmpty) 'audience': audience,
       'subject_did': subjectDid,
       'approving_device_id': approvingDeviceId,
       'scopes': scopes,
@@ -46,6 +49,7 @@ class WebSessionGrant {
   String canonicalJson() {
     return jsonEncode({
       'approving_device_id': approvingDeviceId,
+      if (audience != null && audience!.isNotEmpty) 'audience': audience,
       'challenge_id': challengeId,
       'created_at': createdAt.toUtc().toIso8601String(),
       'expires_at': expiresAt.toUtc().toIso8601String(),

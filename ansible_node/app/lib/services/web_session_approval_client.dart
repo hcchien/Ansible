@@ -21,6 +21,7 @@ class WebSessionChallenge {
   final String challengeId;
   final String relayOrigin;
   final String webOrigin;
+  final String? audience;
   final List<String> scopes;
   final DateTime expiresAt;
   final String status;
@@ -29,6 +30,7 @@ class WebSessionChallenge {
     required this.challengeId,
     required this.relayOrigin,
     required this.webOrigin,
+    this.audience,
     required this.scopes,
     required this.expiresAt,
     required this.status,
@@ -40,6 +42,7 @@ class WebSessionChallenge {
       challengeId: json['challenge_id'] as String,
       relayOrigin: json['relay_origin'] as String,
       webOrigin: json['web_origin'] as String,
+      audience: json['audience'] as String?,
       scopes: scopes is List ? scopes.whereType<String>().toList() : const [],
       expiresAt: DateTime.parse(json['expires_at'] as String).toUtc(),
       status: json['status'] as String? ?? 'pending',
@@ -78,6 +81,7 @@ class WebSessionRecord {
   final String approvingDeviceId;
   final String webOrigin;
   final String relayOrigin;
+  final String? audience;
   final String trustTier;
   final List<String> scopes;
   final DateTime createdAt;
@@ -90,6 +94,7 @@ class WebSessionRecord {
     required this.approvingDeviceId,
     required this.webOrigin,
     required this.relayOrigin,
+    this.audience,
     required this.trustTier,
     required this.scopes,
     required this.createdAt,
@@ -106,6 +111,7 @@ class WebSessionRecord {
       approvingDeviceId: json['approving_device_id'] as String,
       webOrigin: json['web_origin'] as String,
       relayOrigin: json['relay_origin'] as String,
+      audience: json['audience'] as String?,
       trustTier: json['trust_tier'] as String,
       scopes: scopes is List ? scopes.whereType<String>().toList() : const [],
       createdAt: DateTime.parse(json['created_at'] as String).toUtc(),

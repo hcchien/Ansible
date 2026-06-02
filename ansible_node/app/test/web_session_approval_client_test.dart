@@ -21,6 +21,7 @@ void main() {
             'challenge_id': 'wsc_abc',
             'relay_origin': 'https://relay.trisaura.io',
             'web_origin': 'https://trisaura.io',
+            'audience': 'https://forum.trisaura.io',
             'scopes': ['forum:read', 'forum:post'],
             'expires_at': '2026-05-11T13:00:00.000Z',
             'status': 'pending',
@@ -33,6 +34,7 @@ void main() {
     final challenge = await client.fetchChallenge('wsc_abc');
 
     expect(challenge.challengeId, 'wsc_abc');
+    expect(challenge.audience, 'https://forum.trisaura.io');
     expect(challenge.scopes, ['forum:read', 'forum:post']);
     expect(challenge.isExpired(DateTime.utc(2026, 5, 11, 12, 59)), isFalse);
   });
@@ -42,6 +44,7 @@ void main() {
       challengeId: 'wsc_abc',
       relayOrigin: 'https://relay.trisaura.io',
       webOrigin: 'https://trisaura.io',
+      audience: 'https://forum.trisaura.io',
       subjectDid: 'did:plc:abc23456789',
       approvingDeviceId: 'app_device_abc',
       scopes: const ['forum:post'],
@@ -58,6 +61,7 @@ void main() {
         expect(body['subject_did'], 'did:plc:abc23456789');
         expect(body['signature'], 'sig-hex');
         expect(body['grant']['web_origin'], 'https://trisaura.io');
+        expect(body['grant']['audience'], 'https://forum.trisaura.io');
         expect(body['grant']['approving_device_id'], 'app_device_abc');
         return http.Response(
           jsonEncode({
@@ -109,6 +113,7 @@ void main() {
                 'approving_device_id': 'app_device_abc',
                 'web_origin': 'https://trisaura.io',
                 'relay_origin': 'https://relay.trisaura.io',
+                'audience': 'https://forum.trisaura.io',
                 'trust_tier': 'self_custody_did',
                 'scopes': ['forum:read'],
                 'created_at': '2026-05-11T12:00:00.000Z',
@@ -125,6 +130,7 @@ void main() {
 
     expect(sessions.single.sessionId, 'wsi_current');
     expect(sessions.single.sessionToken, isNull);
+    expect(sessions.single.audience, 'https://forum.trisaura.io');
     expect(sessions.single.trustTier, 'self_custody_did');
   });
 

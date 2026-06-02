@@ -23,6 +23,30 @@ void main() {
     );
   });
 
+  test('canonical web session grant includes audience when present', () {
+    final grant = WebSessionGrant(
+      challengeId: 'wsc_test',
+      relayOrigin: 'https://relay.trisaura.io',
+      webOrigin: 'https://trisaura.io',
+      audience: 'https://forum.trisaura.io',
+      subjectDid: 'did:plc:abc23456789',
+      approvingDeviceId: 'app_device_abc',
+      scopes: const ['forum:post'],
+      expiresAt: DateTime.utc(2026, 6, 2, 12),
+      createdAt: DateTime.utc(2026, 6, 2, 11, 45),
+    );
+
+    expect(
+      grant.canonicalJson(),
+      '{"approving_device_id":"app_device_abc","audience":"https://forum.trisaura.io","challenge_id":"wsc_test","created_at":"2026-06-02T11:45:00.000Z","expires_at":"2026-06-02T12:00:00.000Z","relay_origin":"https://relay.trisaura.io","scopes":["forum:post"],"subject_did":"did:plc:abc23456789","type":"io.trisaura.webSessionGrant","version":1,"web_origin":"https://trisaura.io"}',
+    );
+    expect(
+      jsonDecode(grant.canonicalJson())['audience'],
+      'https://forum.trisaura.io',
+    );
+    expect(grant.toJson()['audience'], 'https://forum.trisaura.io');
+  });
+
   test('signs canonical grant bytes with the injected DID signer', () async {
     final signer = _RecordingDidSigner();
     final service = WebSessionGrantService(signer: signer);

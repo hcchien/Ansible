@@ -13,7 +13,7 @@ void main() {
         home: WebSessionApprovalScreen(
           challengeId: 'wsc_abc',
           currentDid: 'did:plc:abc23456789',
-          client: _FakeApprovalClient(),
+          client: _FakeApprovalClient(audience: 'https://forum.trisaura.io'),
           grantService: _FakeGrantService(),
           deviceIdProvider: const _FakeDeviceIdProvider(),
           now: () => DateTime.utc(2026, 5, 11, 12, 50),
@@ -25,6 +25,8 @@ void main() {
     expect(find.text('Approve web session'), findsOneWidget);
     expect(find.text('https://trisaura.io'), findsOneWidget);
     expect(find.text('https://relay.trisaura.io'), findsOneWidget);
+    expect(find.text('Forum Host'), findsOneWidget);
+    expect(find.text('https://forum.trisaura.io'), findsOneWidget);
     expect(find.text('forum:read'), findsOneWidget);
     expect(find.text('forum:post'), findsOneWidget);
     expect(find.text('did:plc:abc23456789'), findsOneWidget);
@@ -37,7 +39,7 @@ void main() {
   });
 
   testWidgets('approves only after user taps approve', (tester) async {
-    final client = _FakeApprovalClient();
+    final client = _FakeApprovalClient(audience: 'https://forum.trisaura.io');
     final grantService = _FakeGrantService();
     WebSessionApprovalResult? approved;
 
@@ -58,12 +60,15 @@ void main() {
 
     expect(client.approveCalled, isFalse);
 
+    await tester.ensureVisible(find.text('Approve'));
+    await tester.pump();
     await tester.tap(find.text('Approve'));
     await tester.pumpAndSettle();
 
     expect(client.approveCalled, isTrue);
     expect(grantService.signedGrant?.subjectDid, 'did:plc:abc23456789');
     expect(grantService.signedGrant?.approvingDeviceId, 'app_device_test');
+    expect(grantService.signedGrant?.audience, 'https://forum.trisaura.io');
     expect(
       grantService.signedGrant?.expiresAt,
       DateTime.utc(2026, 5, 12, 0, 50),
@@ -128,8 +133,9 @@ class _FakeApprovalClient implements WebSessionApprovalGateway {
   bool approveCalled = false;
   String? rejectedChallengeId;
   final DateTime expiresAt;
+  final String? audience;
 
-  _FakeApprovalClient({DateTime? expiresAt})
+  _FakeApprovalClient({DateTime? expiresAt, this.audience})
     : expiresAt = expiresAt ?? DateTime.utc(2026, 5, 11, 13);
 
   @override
@@ -138,6 +144,7 @@ class _FakeApprovalClient implements WebSessionApprovalGateway {
       challengeId: challengeId,
       relayOrigin: 'https://relay.trisaura.io',
       webOrigin: 'https://trisaura.io',
+      audience: audience,
       scopes: const ['forum:read', 'forum:post'],
       expiresAt: expiresAt,
       status: 'pending',

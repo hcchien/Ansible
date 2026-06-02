@@ -67,6 +67,7 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
         challengeId: challenge.challengeId,
         relayOrigin: challenge.relayOrigin,
         webOrigin: challenge.webOrigin,
+        audience: challenge.audience,
         subjectDid: widget.currentDid,
         approvingDeviceId: approvingDeviceId,
         scopes: challenge.scopes,
@@ -174,6 +175,8 @@ class _ApprovalContent extends StatelessWidget {
         const SizedBox(height: 20),
         _DetailRow(label: 'Website', value: challenge.webOrigin),
         _DetailRow(label: 'Relay', value: challenge.relayOrigin),
+        if (challenge.audience != null && challenge.audience!.isNotEmpty)
+          _DetailRow(label: 'Forum Host', value: challenge.audience!),
         _DetailRow(label: 'DID', value: currentDid),
         _DetailRow(
           label: 'Request expires',
