@@ -11,6 +11,10 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
     original_base_url = Application.get_env(:ansible_relay, :forum_host_base_url)
     original_seed_boards = Application.get_env(:ansible_relay, :forum_host_seed_boards)
     original_announcements = Application.get_env(:ansible_relay, :forum_host_announcements)
+    original_posting_policy = Application.get_env(:ansible_relay, :forum_host_posting_policy)
+
+    original_moderation_policy =
+      Application.get_env(:ansible_relay, :forum_host_moderation_policy)
 
     Application.put_env(:ansible_relay, :forum_host_base_url, "https://forum.trisaura.test")
 
@@ -43,6 +47,8 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
       restore_env(:forum_host_base_url, original_base_url)
       restore_env(:forum_host_seed_boards, original_seed_boards)
       restore_env(:forum_host_announcements, original_announcements)
+      restore_env(:forum_host_posting_policy, original_posting_policy)
+      restore_env(:forum_host_moderation_policy, original_moderation_policy)
     end)
 
     :ok
@@ -124,6 +130,63 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
                payload
                | tags: ["policy", "changed"],
                  posting_policy: %{"min_trust_tier" => "self_custody_did"}
+             })
+  end
+
+  test "create_board replays omitted-policy payload after host defaults change" do
+    :ok = Store.ensure_seeded!()
+
+    payload = %{
+      intent_id: "intent-default-independent",
+      author_did: "did:plc:author789",
+      title: "Defaults Replay",
+      description: "Uses host defaults"
+    }
+
+    assert {:ok, board} = Store.create_board(payload)
+    assert board.posting_policy == %{"min_trust_tier" => "self_custody_did"}
+
+    Application.put_env(:ansible_relay, :forum_host_posting_policy, %{
+      "min_trust_tier" => "verified_human"
+    })
+
+    Application.put_env(:ansible_relay, :forum_host_moderation_policy, %{
+      "appeals" => false,
+      "reason_codes" => ["spam"]
+    })
+
+    assert {:ok, replayed_board} = Store.create_board(payload)
+    assert replayed_board.hosted_board_id == board.hosted_board_id
+    assert replayed_board.posting_policy == %{"min_trust_tier" => "self_custody_did"}
+  end
+
+  test "create_board assigns deterministic slug suffixes for duplicate titles" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:ok, first} =
+             Store.create_board(%{
+               intent_id: "intent-duplicate-title-1",
+               author_did: "did:plc:author-title-1",
+               title: "Shared Title"
+             })
+
+    assert {:ok, second} =
+             Store.create_board(%{
+               intent_id: "intent-duplicate-title-2",
+               author_did: "did:plc:author-title-2",
+               title: "Shared Title"
+             })
+
+    assert first.hosted_board_id == "shared-title"
+    assert second.hosted_board_id == "shared-title-2"
+    assert second.canonical_board_uri == "https://forum.trisaura.test/boards/shared-title-2"
+  end
+
+  test "create_board returns structured error for missing title" do
+    assert {:error, {:invalid_board, [:title]}} =
+             Store.create_board(%{
+               intent_id: "intent-missing-title",
+               author_did: "did:plc:author-missing-title"
              })
   end
 

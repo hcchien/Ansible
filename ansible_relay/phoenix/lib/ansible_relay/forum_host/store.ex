@@ -7,6 +7,7 @@ defmodule AnsibleRelay.ForumHost.Store do
   alias AnsibleRelay.Db.{ForumHostAcceptedIntent, ForumHostAnnouncement, ForumHostBoard}
 
   @default_base_url "http://localhost:4001"
+  @max_slug_attempts 20
 
   def ensure_seeded! do
     Enum.each(seed_boards(), &upsert_seed_board/1)
@@ -58,28 +59,9 @@ defmodule AnsibleRelay.ForumHost.Store do
   end
 
   def create_board(attrs) do
-    payload_hash = payload_hash(attrs)
-    slug = unique_slug(slugify(attrs.title))
-    hosted_board_id = slug
-    board_attrs = board_attrs(attrs, hosted_board_id, slug)
-    accepted_intent_attrs = accepted_intent_attrs(attrs, payload_hash, hosted_board_id)
-
-    Repo.transaction(fn ->
-      case insert_accepted_intent(accepted_intent_attrs) do
-        :inserted ->
-          insert_board_or_rollback(board_attrs)
-
-        :conflict ->
-          resolve_accepted_intent(attrs.intent_id, payload_hash)
-
-        {:error, changeset} ->
-          Repo.rollback({:error, changeset})
-      end
-    end)
-    |> case do
-      {:ok, result} -> result
-      {:error, {:error, reason}} -> {:error, reason}
-      {:error, reason} -> {:error, reason}
+    with {:ok, request} <- normalize_create_board_attrs(attrs) do
+      payload_hash = payload_hash(request)
+      create_board_with_slug(request, payload_hash, 1)
     end
   end
 
@@ -220,13 +202,45 @@ defmodule AnsibleRelay.ForumHost.Store do
     end
   end
 
-  defp unique_slug(slug) do
-    if Repo.get_by(ForumHostBoard, slug: slug) do
-      "#{slug}-#{System.unique_integer([:positive])}"
-    else
-      slug
+  defp create_board_with_slug(request, payload_hash, attempt)
+       when attempt <= @max_slug_attempts do
+    slug = slug_candidate(request.base_slug, attempt)
+    board_attrs = board_attrs(request.stored_board_payload, slug)
+    accepted_intent_attrs = accepted_intent_attrs(request, payload_hash, slug)
+
+    Repo.transaction(fn ->
+      case insert_accepted_intent(accepted_intent_attrs) do
+        :inserted ->
+          insert_board_or_rollback(board_attrs)
+
+        :conflict ->
+          resolve_accepted_intent(request.intent_id, payload_hash)
+
+        {:error, changeset} ->
+          Repo.rollback({:error, changeset})
+      end
+    end)
+    |> case do
+      {:ok, result} ->
+        result
+
+      {:error, {:slug_conflict, _changeset}} ->
+        create_board_with_slug(request, payload_hash, attempt + 1)
+
+      {:error, {:error, reason}} ->
+        {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
+
+  defp create_board_with_slug(%{base_slug: base_slug}, _payload_hash, _attempt) do
+    {:error, {:slug_unavailable, base_slug}}
+  end
+
+  defp slug_candidate(base_slug, 1), do: base_slug
+  defp slug_candidate(base_slug, attempt), do: "#{base_slug}-#{attempt}"
 
   defp insert_accepted_intent(attrs) do
     now = DateTime.utc_now()
@@ -265,9 +279,25 @@ defmodule AnsibleRelay.ForumHost.Store do
     |> ForumHostBoard.changeset(attrs)
     |> Repo.insert()
     |> case do
-      {:ok, board} -> {:ok, board}
-      {:error, changeset} -> Repo.rollback({:error, changeset})
+      {:ok, board} ->
+        {:ok, board}
+
+      {:error, changeset} ->
+        if slug_conflict?(changeset) do
+          Repo.rollback({:slug_conflict, changeset})
+        else
+          Repo.rollback({:error, changeset})
+        end
     end
+  end
+
+  defp slug_conflict?(changeset) do
+    Enum.any?(changeset.errors, fn
+      {:hosted_board_id, {_message, opts}} -> opts[:constraint] == :unique
+      {:slug, {_message, opts}} -> opts[:constraint] == :unique
+      {:canonical_board_uri, {_message, opts}} -> opts[:constraint] == :unique
+      _error -> false
+    end)
   end
 
   defp resolve_accepted_intent(intent_id, payload_hash) do
@@ -283,12 +313,12 @@ defmodule AnsibleRelay.ForumHost.Store do
     end
   end
 
-  defp payload_hash(attrs) do
+  defp payload_hash(request) do
     %{
       action: "create_board",
-      intent_id: attrs.intent_id,
-      author_did: attrs.author_did,
-      board: board_payload(attrs)
+      intent_id: request.intent_id,
+      author_did: request.author_did,
+      board: request.submitted_board_payload
     }
     |> canonical_payload()
     |> Jason.encode!()
@@ -296,10 +326,10 @@ defmodule AnsibleRelay.ForumHost.Store do
     |> Base.encode16(case: :lower)
   end
 
-  defp accepted_intent_attrs(attrs, payload_hash, hosted_board_id) do
+  defp accepted_intent_attrs(request, payload_hash, hosted_board_id) do
     %{
-      intent_id: attrs.intent_id,
-      author_did: attrs.author_did,
+      intent_id: request.intent_id,
+      author_did: request.author_did,
       action: "create_board",
       payload_hash: payload_hash,
       result_kind: "forum_host_board",
@@ -307,24 +337,79 @@ defmodule AnsibleRelay.ForumHost.Store do
     }
   end
 
-  defp board_attrs(attrs, hosted_board_id, slug) do
-    Map.merge(board_payload(attrs), %{
-      hosted_board_id: hosted_board_id,
+  defp board_attrs(stored_board_payload, slug) do
+    Map.merge(stored_board_payload, %{
+      hosted_board_id: slug,
       slug: slug,
       canonical_board_uri: "#{base_url()}/boards/#{slug}"
     })
   end
 
-  defp board_payload(attrs) do
+  defp normalize_create_board_attrs(attrs) do
+    missing = missing_create_board_fields(attrs)
+
+    if missing == [] do
+      title = get_attr(attrs, :title)
+
+      {:ok,
+       %{
+         intent_id: get_attr(attrs, :intent_id),
+         author_did: get_attr(attrs, :author_did),
+         base_slug: slugify(title),
+         submitted_board_payload: submitted_board_payload(attrs),
+         stored_board_payload: stored_board_payload(attrs)
+       }}
+    else
+      {:error, {:invalid_board, missing}}
+    end
+  end
+
+  defp missing_create_board_fields(attrs) do
+    [:intent_id, :author_did, :title]
+    |> Enum.reject(fn field ->
+      case get_attr(attrs, field, :missing) do
+        value when is_binary(value) -> String.trim(value) != ""
+        _value -> false
+      end
+    end)
+  end
+
+  defp submitted_board_payload(attrs) do
+    Enum.reduce(
+      [:description, :language, :tags, :permissions, :posting_policy, :moderation_policy],
+      %{title: get_attr(attrs, :title)},
+      fn field, payload ->
+        if has_attr?(attrs, field) do
+          Map.put(payload, field, get_attr(attrs, field))
+        else
+          payload
+        end
+      end
+    )
+  end
+
+  defp stored_board_payload(attrs) do
     %{
-      title: attrs.title,
-      description: Map.get(attrs, :description),
-      language: Map.get(attrs, :language),
-      tags: Map.get(attrs, :tags, []),
-      permissions: Map.get(attrs, :permissions, %{"read" => true, "write" => true}),
-      posting_policy: Map.get(attrs, :posting_policy, posting_policy()),
-      moderation_policy: Map.get(attrs, :moderation_policy, moderation_policy())
+      title: get_attr(attrs, :title),
+      description: get_attr(attrs, :description),
+      language: get_attr(attrs, :language),
+      tags: get_attr(attrs, :tags, []),
+      permissions: get_attr(attrs, :permissions, %{"read" => true, "write" => true}),
+      posting_policy: get_attr(attrs, :posting_policy, posting_policy()),
+      moderation_policy: get_attr(attrs, :moderation_policy, moderation_policy())
     }
+  end
+
+  defp has_attr?(attrs, field) do
+    Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field))
+  end
+
+  defp get_attr(attrs, field, default \\ nil) do
+    cond do
+      Map.has_key?(attrs, field) -> Map.get(attrs, field)
+      Map.has_key?(attrs, Atom.to_string(field)) -> Map.get(attrs, Atom.to_string(field))
+      true -> default
+    end
   end
 
   defp canonical_payload(value) when is_map(value) do

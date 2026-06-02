@@ -45,6 +45,7 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
       :moderation_policy
     ])
     |> validate_required([:hosted_board_id, :slug, :canonical_board_uri, :title])
+    |> unique_constraint(:hosted_board_id, name: :forum_host_boards_pkey)
     |> unique_constraint(:slug)
     |> unique_constraint(:canonical_board_uri)
   end
