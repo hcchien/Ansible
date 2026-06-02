@@ -20,13 +20,13 @@ class RelayDiscoveryClient {
     final response = await _client
         .get(_endpoint('/api/v1/discovery'))
         .timeout(timeout);
-    final decoded = _decodeJson(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw RelayDiscoveryException(
         response.statusCode,
-        decoded is Map<String, dynamic> ? decoded : const {},
+        _decodeObjectOrEmpty(response.body),
       );
     }
+    final decoded = _decodeJson(response.body);
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('Expected discovery JSON object');
     }
@@ -42,7 +42,13 @@ class RelayDiscoveryClient {
     final basePath = baseUri.path.endsWith('/')
         ? baseUri.path.substring(0, baseUri.path.length - 1)
         : baseUri.path;
-    return baseUri.replace(path: '$basePath$path');
+    return Uri(
+      scheme: baseUri.scheme,
+      userInfo: baseUri.userInfo,
+      host: baseUri.host,
+      port: baseUri.hasPort ? baseUri.port : null,
+      path: '$basePath$path',
+    );
   }
 
   void close() {
@@ -55,6 +61,15 @@ class RelayDiscoveryException implements Exception {
   final Map<String, dynamic> body;
 
   const RelayDiscoveryException(this.statusCode, this.body);
+}
+
+Map<String, dynamic> _decodeObjectOrEmpty(String responseBody) {
+  try {
+    final decoded = jsonDecode(responseBody);
+    return decoded is Map<String, dynamic> ? decoded : const {};
+  } on FormatException {
+    return const {};
+  }
 }
 
 class RelayDiscovery {

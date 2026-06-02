@@ -81,6 +81,35 @@ void main() {
     expect(discovery.cache?.maxAgeSeconds, 300);
   });
 
+  test(
+    'fetchDiscovery ignores base URL query and fragment for endpoint',
+    () async {
+      final client = RelayDiscoveryClient(
+        baseUrl: 'http://relay.local/root?token=x#section',
+        client: MockClient((request) async {
+          expect(
+            request.url.toString(),
+            'http://relay.local/root/api/v1/discovery',
+          );
+          return http.Response(
+            jsonEncode({
+              'version': 1,
+              'relay': {
+                'server_kind': 'elixRelay',
+                'origin': 'http://relay.local',
+              },
+            }),
+            200,
+          );
+        }),
+      );
+
+      final discovery = await client.fetchDiscovery();
+
+      expect(discovery.version, 1);
+    },
+  );
+
   test('fetchDiscovery defaults and preserves compliance metadata', () async {
     final client = RelayDiscoveryClient(
       baseUrl: 'http://relay.local',
@@ -145,5 +174,45 @@ void main() {
       'constitution_compliant',
     );
     expect(discovery.cache, isNull);
+  });
+
+  test('fetchDiscovery throws status exception for malformed non-2xx body', () {
+    final client = RelayDiscoveryClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        return http.Response('<html>not found</html>', 404);
+      }),
+    );
+
+    expect(
+      client.fetchDiscovery(),
+      throwsA(
+        isA<RelayDiscoveryException>()
+            .having((error) => error.statusCode, 'statusCode', 404)
+            .having((error) => error.body, 'body', isEmpty),
+      ),
+    );
+  });
+
+  test('fetchDiscovery preserves parsed non-2xx JSON body', () {
+    final client = RelayDiscoveryClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        return http.Response(jsonEncode({'error': 'discovery_disabled'}), 503);
+      }),
+    );
+
+    expect(
+      client.fetchDiscovery(),
+      throwsA(
+        isA<RelayDiscoveryException>()
+            .having((error) => error.statusCode, 'statusCode', 503)
+            .having(
+              (error) => error.body,
+              'body',
+              containsPair('error', 'discovery_disabled'),
+            ),
+      ),
+    );
   });
 }
