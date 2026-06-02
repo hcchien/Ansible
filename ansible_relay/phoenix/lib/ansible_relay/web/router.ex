@@ -76,6 +76,10 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ForumHostController.boards(conn, conn.query_params)
   end
 
+  get "/api/v1/forum-host/announcements" do
+    AnsibleRelay.Web.Controllers.ForumHostController.announcements(conn, conn.query_params)
+  end
+
   post "/api/v1/forum-host/boards" do
     AnsibleRelay.Web.Controllers.ForumHostController.create_board(conn, conn.body_params)
   end

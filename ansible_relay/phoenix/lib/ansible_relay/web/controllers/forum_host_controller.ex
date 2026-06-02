@@ -9,16 +9,21 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
   import Plug.Conn
   alias AnsibleRelay.AbuseDetector
+  alias AnsibleRelay.ForumHost.Store
   alias AnsibleRelay.Web.Plugs.VerifyWebSession
 
   @default_base_url "http://localhost:4001"
 
   def info(conn, _params) do
-    send_json(conn, 200, host_info())
+    send_json(conn, 200, Store.host_info())
   end
 
   def boards(conn, _params) do
-    send_json(conn, 200, %{boards: default_boards()})
+    send_json(conn, 200, %{boards: Store.list_boards()})
+  end
+
+  def announcements(conn, _params) do
+    send_json(conn, 200, %{announcements: Store.list_announcements("forum_host")})
   end
 
   def create_board(conn, params) do
@@ -77,34 +82,6 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
         send_json(conn, 422, %{error: "invalid_thread"})
       end
     end
-  end
-
-  defp host_info do
-    %{
-      forum_host_id: "host-local-dev",
-      display_name: "Local Forum Host",
-      base_url: base_url(),
-      canonical_host_uri: base_url(),
-      server_kind: "ansibleForumHost",
-      capabilities: %{
-        create_boards: true,
-        create_threads: true,
-        cross_post: true
-      }
-    }
-  end
-
-  defp default_boards do
-    [
-      %{
-        hosted_board_id: "general",
-        canonical_board_uri: "#{base_url()}/boards/general",
-        slug: "general",
-        title: "General",
-        description: "General discussion",
-        permissions: %{"read" => true, "write" => true}
-      }
-    ]
   end
 
   defp check_author_matches_session(session_did, author_did) do

@@ -3,12 +3,14 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
   use Plug.Test
 
   alias AnsibleRelay.Web.Router
-  alias AnsibleRelay.AbuseDetector
-  alias AnsibleRelay.WebSessionStore
+  alias AnsibleRelay.{AbuseDetector, Repo, WebSessionStore}
 
   @router_opts Router.init([])
 
   setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+
     case AbuseDetector.start_link([]) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> AbuseDetector.reset()
@@ -58,14 +60,21 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     session.session_token
   end
 
-  test "GET /api/v1/forum-host returns Forum Host metadata" do
+  test "GET /api/v1/forum-host exposes compliance, policy, host identity, and issuers" do
     response = get_json("/api/v1/forum-host")
     assert response.status == 200
 
     body = Jason.decode!(response.resp_body)
     assert body["forum_host_id"] == "host-local-dev"
     assert body["server_kind"] == "ansibleForumHost"
+    assert body["constitution_compliance"] in ["unknown", "compatible", "constitution_compliant"]
+    assert is_map(body["rules"])
+    assert is_map(body["posting_policy"])
+    assert is_map(body["moderation_policy"])
+    assert is_list(body["host_public_keys"])
+    assert is_list(body["accepted_session_issuers"])
     assert body["capabilities"]["create_boards"] == true
+    assert body["capabilities"]["announcements"] == true
   end
 
   test "GET /api/v1/forum-host/boards returns hosted boards" do
@@ -75,9 +84,48 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     body = Jason.decode!(response.resp_body)
     assert is_list(body["boards"])
 
-    board = List.first(body["boards"])
+    board = Enum.find(body["boards"], &(&1["hosted_board_id"] == "general"))
     assert board["hosted_board_id"] == "general"
     assert board["canonical_board_uri"] == "http://localhost:4001/boards/general"
+  end
+
+  test "GET /api/v1/forum-host/announcements returns host-owned announcements" do
+    original_announcements = Application.get_env(:ansible_relay, :forum_host_announcements)
+
+    Application.put_env(:ansible_relay, :forum_host_announcements, [
+      %{
+        "announcement_id" => "host-rules",
+        "owner_kind" => "forum_host",
+        "title" => "Rules updated",
+        "body" => "Posting policy was refreshed.",
+        "severity" => "info",
+        "locale" => "en"
+      },
+      %{
+        "announcement_id" => "relay-maintenance",
+        "owner_kind" => "relay",
+        "title" => "Relay maintenance",
+        "body" => "Relay work is scheduled.",
+        "severity" => "info",
+        "locale" => "en"
+      }
+    ])
+
+    on_exit(fn ->
+      if original_announcements do
+        Application.put_env(:ansible_relay, :forum_host_announcements, original_announcements)
+      else
+        Application.delete_env(:ansible_relay, :forum_host_announcements)
+      end
+    end)
+
+    response = get_json("/api/v1/forum-host/announcements")
+    assert response.status == 200
+
+    body = Jason.decode!(response.resp_body)
+
+    assert [%{"announcement_id" => "host-rules", "owner_kind" => "forum_host"}] =
+             body["announcements"]
   end
 
   test "POST /api/v1/forum-host/boards accepts signed create-board intent" do
