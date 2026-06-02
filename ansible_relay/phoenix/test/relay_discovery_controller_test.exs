@@ -19,7 +19,6 @@ defmodule AnsibleRelay.Web.RelayDiscoveryControllerTest do
       Application.get_env(:ansible_relay, :relay_discovery_max_age_seconds)
 
     Application.put_env(:ansible_relay, :relay_origin, "https://relay.trisaura.test")
-    Application.delete_env(:ansible_relay, :relay_featured_forum_hosts)
     Application.delete_env(:ansible_relay, :relay_discovery_max_age_seconds)
 
     Application.put_env(:ansible_relay, :relay_announcements, [
@@ -33,6 +32,20 @@ defmodule AnsibleRelay.Web.RelayDiscoveryControllerTest do
       }
     ])
 
+    Application.put_env(:ansible_relay, :relay_featured_forum_hosts, [
+      %{
+        "forum_host_id" => "external-host",
+        "display_name" => "External Forum Host",
+        "forum_host_url" => "https://forum.trisaura.test"
+      },
+      %{
+        "forum_host_id" => "compatible-host",
+        "display_name" => "Compatible Forum Host",
+        "forum_host_url" => "https://compatible-forum.trisaura.test",
+        "constitution_compliance" => "compatible"
+      }
+    ])
+
     Application.put_env(:ansible_relay, :relay_featured_boards, [
       %{
         "forum_host_url" => "https://forum.trisaura.test",
@@ -40,6 +53,14 @@ defmodule AnsibleRelay.Web.RelayDiscoveryControllerTest do
         "hosted_board_id" => "general",
         "title" => "General",
         "description" => "Start here"
+      },
+      %{
+        "forum_host_url" => "https://compatible-forum.trisaura.test",
+        "canonical_board_uri" => "https://compatible-forum.trisaura.test/boards/local-news",
+        "hosted_board_id" => "local-news",
+        "title" => "Local News",
+        "description" => "Compatible host board",
+        "constitution_compliance" => "compatible"
       }
     ])
 
@@ -72,10 +93,28 @@ defmodule AnsibleRelay.Web.RelayDiscoveryControllerTest do
     assert [%{"announcement_id" => "relay-status", "owner_kind" => "relay"}] =
              body["announcements"]
 
-    assert [%{"hosted_board_id" => "general"}] = body["featured_boards"]
+    assert [general_board, local_news_board] = body["featured_boards"]
+    assert general_board["hosted_board_id"] == "general"
+    assert general_board["forum_host_url"] == "https://forum.trisaura.test"
+    assert general_board["title"] == "General"
+    assert general_board["description"] == "Start here"
+    assert general_board["constitution_compliance"] == "unknown"
 
-    assert [%{"forum_host_id" => "host-local-dev", "constitution_compliance" => _}] =
-             body["featured_forum_hosts"]
+    assert local_news_board["hosted_board_id"] == "local-news"
+    assert local_news_board["forum_host_url"] == "https://compatible-forum.trisaura.test"
+    assert local_news_board["title"] == "Local News"
+    assert local_news_board["constitution_compliance"] == "compatible"
+
+    assert [external_host, compatible_host] = body["featured_forum_hosts"]
+    assert external_host["forum_host_id"] == "external-host"
+    assert external_host["display_name"] == "External Forum Host"
+    assert external_host["forum_host_url"] == "https://forum.trisaura.test"
+    assert external_host["constitution_compliance"] == "unknown"
+
+    assert compatible_host["forum_host_id"] == "compatible-host"
+    assert compatible_host["display_name"] == "Compatible Forum Host"
+    assert compatible_host["forum_host_url"] == "https://compatible-forum.trisaura.test"
+    assert compatible_host["constitution_compliance"] == "compatible"
 
     assert body["cache"]["max_age_seconds"] == 300
   end

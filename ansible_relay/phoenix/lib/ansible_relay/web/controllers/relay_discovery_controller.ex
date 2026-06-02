@@ -44,13 +44,14 @@ defmodule AnsibleRelay.Web.Controllers.RelayDiscoveryController do
         "constitution_compliance" => Store.host_info().constitution_compliance
       }
     ])
+    |> normalize_compliance_metadata()
   end
 
   defp featured_boards do
     configured = Application.get_env(:ansible_relay, :relay_featured_boards)
 
     if configured do
-      configured
+      normalize_compliance_metadata(configured)
     else
       Store.list_boards()
       |> Enum.map(fn board ->
@@ -65,6 +66,19 @@ defmodule AnsibleRelay.Web.Controllers.RelayDiscoveryController do
           language: board.language
         }
       end)
+    end
+  end
+
+  defp normalize_compliance_metadata(items) do
+    Enum.map(items, &put_default_compliance/1)
+  end
+
+  defp put_default_compliance(%{} = item) do
+    if Map.has_key?(item, "constitution_compliance") or
+         Map.has_key?(item, :constitution_compliance) do
+      item
+    else
+      Map.put(item, "constitution_compliance", "unknown")
     end
   end
 
