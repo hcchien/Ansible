@@ -81,6 +81,44 @@ void main() {
     await _disposeWidgetTree(tester);
   });
 
+  testWidgets('first run discovery is hidden when hosted board is configured', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    await _seedHostedBoard(db);
+    var discoveryCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
+          relayDiscoveryLoader: () async {
+            discoveryCalls += 1;
+            return _starterDiscovery();
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(discoveryCalls, 0);
+    expect(find.text('Relay online'), findsNothing);
+    expect(find.text('General'), findsNothing);
+    expect(find.text('Start here'), findsNothing);
+
+    await _disposeWidgetTree(tester);
+  });
+
   testWidgets('header sync button runs app-wide sync', (tester) async {
     tester.view.physicalSize = const Size(1600, 1000);
     tester.view.devicePixelRatio = 1;
@@ -413,6 +451,38 @@ Future<void> _seedActiveRelay(AppDatabase db) async {
       isActive: true,
       createdAt: DateTime.utc(2026, 5, 10),
       updatedAt: DateTime.utc(2026, 5, 10),
+    ),
+  );
+}
+
+Future<void> _seedHostedBoard(AppDatabase db) async {
+  final now = DateTime.utc(2026, 5, 10);
+  final hostedBoards = DriftHostedBoardRepository(db);
+  await hostedBoards.upsertProjection(
+    HostedBoardProjection(
+      localBoardId: 'local-hosted-board',
+      forumHostId: 'host-1',
+      hostedBoardId: 'hosted-board-1',
+      canonicalBoardUri: 'https://forum.example/boards/hosted-board-1',
+      remoteSlug: 'hosted',
+      localSlug: 'hosted',
+      title: 'Hosted Board',
+      description: 'Already configured hosted board',
+      permissions: const {'read': true, 'write': true},
+      createdAt: now,
+      updatedAt: now,
+    ),
+  );
+  await hostedBoards.upsertSubscription(
+    BoardSubscription(
+      subscriptionId: 'host-1_hosted-board-1',
+      forumHostId: 'host-1',
+      hostedBoardId: 'hosted-board-1',
+      localBoardId: 'local-hosted-board',
+      readEnabled: true,
+      writeEnabled: true,
+      createdAt: now,
+      updatedAt: now,
     ),
   );
 }
