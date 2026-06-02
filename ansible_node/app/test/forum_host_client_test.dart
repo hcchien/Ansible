@@ -67,6 +67,8 @@ void main() {
   });
 
   test('createHostedBoard posts signed create-board intent', () async {
+    final createdAt = DateTime.utc(2026, 6, 2, 10);
+    final expiresAt = createdAt.add(const Duration(minutes: 5));
     final client = ForumHostClient(
       baseUrl: 'http://relay.local',
       client: MockClient((request) async {
@@ -75,9 +77,20 @@ void main() {
         expect(request.headers['content-type'], 'application/json');
 
         final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['type'], 'io.trisaura.forum.createBoard');
+        expect(body['version'], 1);
         expect(body['intent_id'], 'intent-1');
         expect(body['author_did'], 'did:key:z6MkUser');
+        expect(body['target_forum_host'], 'http://relay.local');
+        expect(body['action'], 'create_board');
+        expect(body['created_at'], '2026-06-02T10:00:00.000Z');
+        expect(body['expires_at'], '2026-06-02T10:05:00.000Z');
         expect(body['signature'], 'sig-hex');
+        expect((body['board'] as Map<String, dynamic>).keys.toList(), [
+          'description',
+          'title',
+        ]);
+        expect(body['board']['description'], 'Open discussion');
         expect(body['board']['title'], 'General');
 
         return http.Response(
@@ -93,16 +106,54 @@ void main() {
     );
 
     final board = await client.createHostedBoard(
-      const CreateHostedBoardIntent(
+      CreateHostedBoardIntent(
         intentId: 'intent-1',
         authorDid: 'did:key:z6MkUser',
+        targetForumHost: 'http://relay.local',
         signature: 'sig-hex',
         title: 'General',
         description: 'Open discussion',
+        createdAt: createdAt,
+        expiresAt: expiresAt,
       ),
     );
 
     expect(board['hosted_board_id'], 'general');
     expect(board['canonical_board_uri'], 'http://relay.local/boards/general');
+  });
+
+  test('CreateHostedBoardIntent canonicalPayload uses signed-intent order', () {
+    final createdAt = DateTime.utc(2026, 6, 2, 10);
+    final expiresAt = createdAt.add(const Duration(minutes: 5));
+
+    final payload = CreateHostedBoardIntent.canonicalPayload(
+      intentId: 'intent-1',
+      authorDid: 'did:key:z6MkUser',
+      targetForumHost: 'http://relay.local',
+      title: 'General',
+      description: 'Open discussion',
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+    );
+
+    expect(payload.keys.toList(), [
+      'action',
+      'author_did',
+      'board',
+      'created_at',
+      'expires_at',
+      'intent_id',
+      'target_forum_host',
+      'type',
+      'version',
+    ]);
+    expect((payload['board'] as Map<String, Object?>).keys.toList(), [
+      'description',
+      'title',
+    ]);
+    expect(
+      jsonEncode(payload),
+      '{"action":"create_board","author_did":"did:key:z6MkUser","board":{"description":"Open discussion","title":"General"},"created_at":"2026-06-02T10:00:00.000Z","expires_at":"2026-06-02T10:05:00.000Z","intent_id":"intent-1","target_forum_host":"http://relay.local","type":"io.trisaura.forum.createBoard","version":1}',
+    );
   });
 }

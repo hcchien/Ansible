@@ -710,17 +710,31 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
     final title = result['title']!;
     final intentId = _uuid.v4();
+    final createdAt = now.toUtc();
+    final expiresAt = createdAt.add(const Duration(minutes: 5));
+    final canonicalPayload = CreateHostedBoardIntent.canonicalPayload(
+      intentId: intentId,
+      authorDid: widget.did,
+      targetForumHost: forumHost.url,
+      title: title,
+      description: result['description'],
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+    );
     final signature = await DidSignerImpl()
-        .sign(utf8.encode('$intentId:${widget.did}:$title'))
+        .sign(utf8.encode(jsonEncode(canonicalPayload)))
         .then((signature) => signature.hex);
     final remoteBoard = await ForumHostClient(baseUrl: forumHost.url)
         .createHostedBoard(
           CreateHostedBoardIntent(
             intentId: intentId,
             authorDid: widget.did,
+            targetForumHost: forumHost.url,
             signature: signature,
             title: title,
             description: result['description'],
+            createdAt: createdAt,
+            expiresAt: expiresAt,
           ),
         );
     final hostedBoardId = remoteBoard['hosted_board_id'] as String;

@@ -5,30 +5,67 @@ import 'package:http/http.dart' as http;
 import 'relay_identity_client.dart';
 
 class CreateHostedBoardIntent {
+  static const type = 'io.trisaura.forum.createBoard';
+  static const version = 1;
+
   final String intentId;
   final String authorDid;
+  final String targetForumHost;
   final String signature;
   final String title;
   final String? description;
+  final DateTime createdAt;
+  final DateTime expiresAt;
 
   const CreateHostedBoardIntent({
     required this.intentId,
     required this.authorDid,
+    required this.targetForumHost,
     required this.signature,
     required this.title,
+    required this.createdAt,
+    required this.expiresAt,
     this.description,
   });
 
+  static Map<String, Object?> canonicalPayload({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String title,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+    String? description,
+  }) {
+    return {
+      'action': 'create_board',
+      'author_did': authorDid,
+      'board': {
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        'title': title,
+      },
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'expires_at': expiresAt.toUtc().toIso8601String(),
+      'intent_id': intentId,
+      'target_forum_host': targetForumHost,
+      'type': type,
+      'version': version,
+    };
+  }
+
   Map<String, Object?> toJson() {
     return {
-      'intent_id': intentId,
-      'author_did': authorDid,
+      ...canonicalPayload(
+        intentId: intentId,
+        authorDid: authorDid,
+        targetForumHost: targetForumHost,
+        title: title,
+        description: description,
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+      ),
       'signature': signature,
-      'board': {
-        'title': title,
-        if (description != null && description!.isNotEmpty)
-          'description': description,
-      },
     };
   }
 }
