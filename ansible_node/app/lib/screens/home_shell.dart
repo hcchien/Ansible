@@ -797,19 +797,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final signature = await DidSignerImpl()
         .sign(utf8.encode(jsonEncode(canonicalPayload)))
         .then((signature) => signature.hex);
-    final remoteBoard = await ForumHostClient(baseUrl: forumHost.url)
-        .createHostedBoard(
-          CreateHostedBoardIntent(
-            intentId: intentId,
-            authorDid: widget.did,
-            targetForumHost: forumHost.url,
-            signature: signature,
-            title: title,
-            description: result['description'],
-            createdAt: createdAt,
-            expiresAt: expiresAt,
-          ),
-        );
+    final forumHostClient = ForumHostClient(baseUrl: forumHost.url);
+    final Map<String, dynamic> remoteBoard;
+    try {
+      remoteBoard = await forumHostClient.createHostedBoard(
+        CreateHostedBoardIntent(
+          intentId: intentId,
+          authorDid: widget.did,
+          targetForumHost: forumHost.url,
+          signature: signature,
+          title: title,
+          description: result['description'],
+          createdAt: createdAt,
+          expiresAt: expiresAt,
+        ),
+      );
+    } finally {
+      forumHostClient.close();
+    }
     final hostedBoardId = remoteBoard['hosted_board_id'] as String;
     final localBoardId = '${forumHost.id}_$hostedBoardId';
     final remoteSlug = remoteBoard['slug'] as String? ?? _slugify(title);
