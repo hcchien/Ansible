@@ -1726,6 +1726,11 @@ class _MainPanel extends StatelessWidget {
         discovery?.announcements ?? const <RelayAnnouncement>[];
     final starterBoards =
         discovery?.featuredBoards ?? const <DiscoveredBoard>[];
+    final hostComplianceByUrl = {
+      for (final host
+          in discovery?.featuredForumHosts ?? const <DiscoveredForumHost>[])
+        host.forumHostUrl: host.constitutionCompliance,
+    };
     if (discovery != null && announcements.isEmpty && starterBoards.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -1768,6 +1773,7 @@ class _MainPanel extends StatelessWidget {
                 title: board.title,
                 subtitle: board.description ?? board.forumHostUrl,
                 ruleColor: styleData.rule,
+                compliance: _starterBoardCompliance(board, hostComplianceByUrl),
                 action: OutlinedButton.icon(
                   onPressed: () =>
                       onOpenDiscoveredForumHost(board.forumHostUrl),
@@ -1791,6 +1797,19 @@ class _MainPanel extends StatelessWidget {
         children: children,
       ),
     );
+  }
+
+  String _starterBoardCompliance(
+    DiscoveredBoard board,
+    Map<String, String> hostComplianceByUrl,
+  ) {
+    final boardCompliance = board.constitutionCompliance.trim();
+    if (boardCompliance.isNotEmpty) return boardCompliance;
+    final hostCompliance = hostComplianceByUrl[board.forumHostUrl]?.trim();
+    if (hostCompliance != null && hostCompliance.isNotEmpty) {
+      return hostCompliance;
+    }
+    return 'unknown';
   }
 
   // ── Personal board (個人版) — A·01 spec ──────────────────────────────────
@@ -2464,6 +2483,7 @@ class _FirstRunDiscoveryRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.ruleColor,
+    this.compliance,
     this.action,
   });
 
@@ -2471,6 +2491,7 @@ class _FirstRunDiscoveryRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final Color ruleColor;
+  final String? compliance;
   final Widget? action;
 
   @override
@@ -2518,6 +2539,30 @@ class _FirstRunDiscoveryRow extends StatelessWidget {
               ],
             ),
           ),
+          if (compliance != null) ...[
+            const SizedBox(width: 10),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: styleData.surface.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: ruleColor, width: 0.5),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  compliance!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    letterSpacing: 0.6,
+                    color: styleData.faint,
+                  ),
+                ),
+              ),
+            ),
+          ],
           if (action != null) ...[
             const SizedBox(width: 10),
             ConstrainedBox(

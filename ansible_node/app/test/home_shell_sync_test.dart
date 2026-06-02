@@ -26,6 +26,7 @@ void main() {
         home: HomeShell(
           db: db,
           did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
           relayDiscoveryLoader: () async => _starterDiscovery(),
         ),
       ),
@@ -37,6 +38,7 @@ void main() {
     expect(find.text('Relay online'), findsOneWidget);
     expect(find.text('General'), findsOneWidget);
     expect(find.text('Start here'), findsOneWidget);
+    expect(find.text('compatible'), findsOneWidget);
 
     await _disposeWidgetTree(tester);
   });
@@ -59,6 +61,7 @@ void main() {
         home: HomeShell(
           db: db,
           did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
           relayDiscoveryLoader: () async {
             discoveryCalls += 1;
             return _starterDiscovery();
@@ -94,6 +97,8 @@ void main() {
         home: HomeShell(
           db: db,
           did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
           syncRunner: () async {
             syncCalls += 1;
             return const AppSyncResult(
@@ -139,6 +144,7 @@ void main() {
           db: db,
           did: 'did:plc:alice',
           networkStatusMonitor: network,
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
         ),
       ),
     );
@@ -170,6 +176,7 @@ void main() {
           db: db,
           did: 'did:plc:alice',
           networkStatusMonitor: network,
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
         ),
       ),
     );
@@ -251,7 +258,12 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: HomeShell(db: db, did: 'did:plc:alice'),
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
+        ),
       ),
     );
     for (var i = 0; i < 8; i += 1) {
@@ -359,7 +371,7 @@ RelayDiscovery _starterDiscovery() {
         forumHostId: 'host-general',
         displayName: 'Starter Forum Host',
         forumHostUrl: 'https://relay.example',
-        constitutionCompliance: 'unknown',
+        constitutionCompliance: 'constitution_compliant',
       ),
     ],
     featuredBoards: [
@@ -369,9 +381,23 @@ RelayDiscovery _starterDiscovery() {
         description: 'Start here',
         forumHostUrl: 'https://relay.example',
         canonicalBoardUri: 'https://relay.example/boards/general',
-        constitutionCompliance: 'unknown',
+        constitutionCompliance: 'compatible',
       ),
     ],
+  );
+}
+
+RelayDiscovery _emptyDiscovery() {
+  return const RelayDiscovery(
+    version: 1,
+    relay: RelayDiscoveryRelay(
+      serverKind: 'elixRelay',
+      origin: 'https://relay.example',
+      capabilities: {'forum_host_discovery': true},
+    ),
+    announcements: [],
+    featuredForumHosts: [],
+    featuredBoards: [],
   );
 }
 
