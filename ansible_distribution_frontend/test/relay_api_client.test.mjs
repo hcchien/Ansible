@@ -81,7 +81,7 @@ test('postJson uses same-origin credentials and no legacy bearer storage', async
   await client.postJson('/api/v1/forum-host/web/threads', { title: 'Hello' });
 
   assert.equal(requests[0].init.credentials, 'same-origin');
-  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(headerValue(requests[0].init.headers, 'authorization'), undefined);
 });
 
 test('does not read or clear legacy stored tokens when unauthorized', async () => {
@@ -127,6 +127,18 @@ function jsonResponse(status, body) {
       return body;
     },
   };
+}
+
+function headerValue(headers, name) {
+  const normalizedName = name.toLowerCase();
+
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    if (key.toLowerCase() === normalizedName) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 for (const { name, body } of tests) {

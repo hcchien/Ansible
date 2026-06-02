@@ -91,7 +91,7 @@ test('creates hosted web threads with the httpOnly session cookie', async () => 
     requests[0].url,
     'http://localhost:4001/api/v1/forum-host/web/threads',
   );
-  assert.equal(requests[0].init.headers.authorization, undefined);
+  assert.equal(headerValue(requests[0].init.headers, 'authorization'), undefined);
   assert.equal(requests[0].init.credentials, 'same-origin');
   assert.equal(requests[0].init.body, '{"title":"Hello Forum"}');
 });
@@ -104,6 +104,18 @@ function jsonResponse(status, body) {
       return body;
     },
   };
+}
+
+function headerValue(headers, name) {
+  const normalizedName = name.toLowerCase();
+
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    if (key.toLowerCase() === normalizedName) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 for (const { name, body } of tests) {
