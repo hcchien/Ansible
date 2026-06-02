@@ -3,7 +3,8 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
   use Plug.Test
 
   alias AnsibleRelay.Web.Router
-  alias AnsibleRelay.{AbuseDetector, Repo, WebSessionStore}
+  alias AnsibleRelay.ForumHost.SignedIntent
+  alias AnsibleRelay.{AbuseDetector, IdentityCache, Repo, WebSessionStore}
 
   @router_opts Router.init([])
 
@@ -11,10 +12,15 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
 
+    original_base_url = Application.get_env(:ansible_relay, :forum_host_base_url)
+    Application.put_env(:ansible_relay, :forum_host_base_url, "http://localhost:4001")
+
     case AbuseDetector.start_link([]) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> AbuseDetector.reset()
     end
+
+    on_exit(fn -> restore_env(:forum_host_base_url, original_base_url) end)
 
     :ok
   end
@@ -30,6 +36,47 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     end)
     |> put_req_header("content-type", "application/json")
     |> Router.call(@router_opts)
+  end
+
+  defp ed25519_keypair do
+    {public_key, private_key} = :crypto.generate_key(:eddsa, :ed25519)
+    {Base.encode16(public_key, case: :lower), private_key}
+  end
+
+  defp sign(private_key, message) do
+    :crypto.sign(:eddsa, :none, message, [private_key, :ed25519])
+    |> Base.encode16(case: :lower)
+  end
+
+  defp signed_create_board_intent(did, private_key, attrs \\ %{}) do
+    payload =
+      Map.merge(
+        %{
+          "type" => "io.trisaura.forum.createBoard",
+          "version" => 1,
+          "intent_id" => "intent-#{System.unique_integer([:positive])}",
+          "author_did" => did,
+          "target_forum_host" => "http://localhost:4001",
+          "action" => "create_board",
+          "created_at" => DateTime.to_iso8601(DateTime.utc_now()),
+          "expires_at" => DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), 300, :second)),
+          "board" => %{
+            "title" => "Signed Reading",
+            "description" => "Signed board"
+          }
+        },
+        attrs
+      )
+
+    Map.put(payload, "signature", sign(private_key, SignedIntent.canonical_json(payload)))
+  end
+
+  defp cache_identity(did, public_key_hex) do
+    IdentityCache.put(
+      did,
+      public_key_hex,
+      "forum_host_controller_test_#{System.unique_integer([:positive])}"
+    )
   end
 
   defp approved_session_token(scopes, did \\ nil) do
@@ -128,31 +175,125 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
              body["announcements"]
   end
 
-  test "POST /api/v1/forum-host/boards accepts signed create-board intent" do
-    did = "did:plc:board23456789"
-    token = approved_session_token(["forum:post"], did)
+  test "POST /api/v1/forum-host/boards accepts app DID signed intent without web session" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:signedboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
 
     response =
       post_json(
         "/api/v1/forum-host/boards",
-        %{
-          "intent_id" => "intent-1",
-          "author_did" => did,
-          "signature" => "sig-hex",
-          "board" => %{
-            "title" => "Reading Group",
-            "description" => "Open discussion"
-          }
-        },
-        [{"authorization", "Bearer #{token}"}]
+        signed_create_board_intent(did, private_key),
+        []
       )
 
     assert response.status == 201
 
     body = Jason.decode!(response.resp_body)
-    assert body["hosted_board_id"] == "reading-group"
-    assert body["slug"] == "reading-group"
-    assert body["title"] == "Reading Group"
+    assert body["hosted_board_id"] == "signed-reading"
+    assert body["slug"] == "signed-reading"
+    assert body["title"] == "Signed Reading"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects tampered signed intent" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:tamperboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    body =
+      did
+      |> signed_create_board_intent(private_key)
+      |> put_in(["board", "title"], "Tampered Title")
+
+    response = post_json("/api/v1/forum-host/boards", body, [])
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects unsigned author DID" do
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        %{
+          "type" => "io.trisaura.forum.createBoard",
+          "version" => 1,
+          "intent_id" => "intent-unsigned-#{System.unique_integer([:positive])}",
+          "author_did" => "did:plc:unsigned#{System.unique_integer([:positive])}",
+          "target_forum_host" => "http://localhost:4001",
+          "action" => "create_board",
+          "expires_at" => DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), 300, :second)),
+          "board" => %{"title" => "Unsigned"}
+        },
+        []
+      )
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects unknown DID with valid signature" do
+    {_public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:unknownboard#{System.unique_integer([:positive])}"
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key),
+        []
+      )
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects mismatched audience" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:audienceboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "target_forum_host" => "https://other-forum.trisaura.test"
+        }),
+        []
+      )
+
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "audience_mismatch"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects changed duplicate intent" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:duplicateboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    intent_id = "intent-duplicate-#{System.unique_integer([:positive])}"
+
+    first =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "intent_id" => intent_id,
+          "board" => %{"title" => "Duplicate One"}
+        }),
+        []
+      )
+
+    second =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "intent_id" => intent_id,
+          "board" => %{"title" => "Duplicate Two"}
+        }),
+        []
+      )
+
+    assert first.status == 201
+    assert second.status == 409
+    assert Jason.decode!(second.resp_body)["error"] == "duplicate_intent"
   end
 
   test "web session must include forum:post to create a hosted web thread" do
@@ -226,4 +367,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert second.status == 429
     assert Jason.decode!(second.resp_body)["error"] == "rate_limited"
   end
+
+  defp restore_env(key, nil), do: Application.delete_env(:ansible_relay, key)
+  defp restore_env(key, value), do: Application.put_env(:ansible_relay, key, value)
 end
