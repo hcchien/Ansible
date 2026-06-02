@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tris-Aura Full System Architecture</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --border: #d8dee4;
+      --panel: #ffffff;
+      --soft: #f8fafc;
+      --impl: #16a34a;
+      --partial: #0ea5e9;
+      --draft: #f59e0b;
+      --external: #64748b;
+      --gap: #7c3aed;
+      --legacy: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f8fafc;
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1240px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 32px 0 12px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.94em;
+    }
+
+    .subtitle {
+      max-width: 980px;
+      font-size: 15px;
+    }
+
+    .arch-shell {
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .arch-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid #e5e7eb;
+      background: var(--soft);
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .status-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .status-legend span {
+      white-space: nowrap;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 99px;
+      margin-right: 5px;
+    }
+
+    .arch-svg-wrap {
+      overflow-x: auto;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .note-box,
+    .section-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .note-box h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 54px;
+      min-height: 18px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .status.impl { background: var(--impl); }
+    .status.partial { background: var(--partial); }
+    .status.draft { background: var(--draft); }
+    .status.external { background: var(--external); }
+    .status.gap { background: var(--gap); }
+    .status.legacy { background: var(--legacy); }
+
+    .status-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .source-list {
+      columns: 2;
+      column-gap: 28px;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        width: min(100vw - 20px, 1240px);
+        padding-top: 24px;
+      }
+
+      .arch-toolbar,
+      .notes-grid {
+        display: block;
+      }
+
+      .status-legend {
+        margin-top: 8px;
+      }
+
+      .note-box {
+        margin-top: 12px;
+      }
+
+      .source-list {
+        columns: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Tris-Aura Full System Architecture</h1>
+    <p class="subtitle">Repo-audited architecture map for the App, local store, Wallet, Issuer, Relay, Forum Host, Web Frontend, AppView direction, federation adapters, external providers, and current compliance gaps. Status chips intentionally distinguish implemented surfaces from partial MVPs, draft systems, external networks, legacy compatibility, and launch blockers.</p>
+
+    <div class="arch-shell">
+      <div class="arch-toolbar">
+        <strong>Layered SVG Map</strong>
+        <div class="status-legend">
+          <span><span class="dot" style="background:#16a34a"></span>implemented</span>
+          <span><span class="dot" style="background:#0ea5e9"></span>partial MVP</span>
+          <span><span class="dot" style="background:#f59e0b"></span>draft / design</span>
+          <span><span class="dot" style="background:#64748b"></span>external system</span>
+          <span><span class="dot" style="background:#7c3aed"></span>gap</span>
+          <span><span class="dot" style="background:#dc2626"></span>legacy / compatibility</span>
+        </div>
+      </div>
+      <div class="arch-svg-wrap">
+        <svg viewBox="0 0 1180 680" width="1180" height="680" role="img" aria-label="Tris-Aura full architecture map">
+          <defs>
+            <marker id="arrowMain" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#64748b"></path>
+            </marker>
+            <marker id="arrowPrivate" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"></path>
+            </marker>
+            <marker id="arrowCred" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#16a34a"></path>
+            </marker>
+            <marker id="arrowFed" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#9333ea"></path>
+            </marker>
+            <style>
+              .zone-label { font: 700 15px system-ui, -apple-system, Segoe UI, sans-serif; fill: #0f172a; }
+              .zone-note { font: 12px system-ui, -apple-system, Segoe UI, sans-serif; fill: #64748b; }
+              .node-title { font: 700 14px system-ui, -apple-system, Segoe UI, sans-serif; fill: #0f172a; }
+              .node-sub { font: 11px system-ui, -apple-system, Segoe UI, sans-serif; fill: #475569; }
+              .edge-label { font: 11px system-ui, -apple-system, Segoe UI, sans-serif; fill: #475569; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+              .chip-text { font: 700 9px system-ui, -apple-system, Segoe UI, sans-serif; fill: #fff; letter-spacing: .2px; }
+              .edge { stroke-width: 2; fill: none; }
+              .edge-draft { stroke-dasharray: 6 4; }
+              .edge-legacy { stroke-dasharray: 4 4; }
+            </style>
+          </defs>
+
+          <rect x="18" y="24" width="266" height="612" rx="12" fill="#eff6ff" stroke="#bfdbfe"></rect>
+          <text x="38" y="52" class="zone-label">User-Controlled Boundary</text>
+          <text x="38" y="72" class="zone-note">Local-first data, keys, Wallet, explicit publication</text>
+
+          <rect x="314" y="24" width="284" height="612" rx="12" fill="#f8fafc" stroke="#cbd5e1"></rect>
+          <text x="334" y="52" class="zone-label">First-Party Service Boundary</text>
+          <text x="334" y="72" class="zone-note">Issuer, Relay, Forum Host, labels, sessions</text>
+
+          <rect x="628" y="24" width="238" height="612" rx="12" fill="#fefce8" stroke="#fde68a"></rect>
+          <text x="648" y="52" class="zone-label">Public Web / AppView</text>
+          <text x="648" y="72" class="zone-note">Read, participate, inspect provenance</text>
+
+          <rect x="896" y="24" width="266" height="612" rx="12" fill="#fafafa" stroke="#d4d4d8"></rect>
+          <text x="916" y="52" class="zone-label">External / Federation Systems</text>
+          <text x="916" y="72" class="zone-note">Hosts, providers, relays, protocol bridges</text>
+
+          <rect x="44" y="108" width="204" height="78" rx="8" fill="#dbeafe" stroke="#3b82f6"></rect>
+          <text x="62" y="134" class="node-title">Elix / Ansible App</text>
+          <text x="62" y="153" class="node-sub">Flutter UI, drafts, local account</text>
+          <text x="62" y="169" class="node-sub">publication intent orchestration</text>
+          <rect x="181" y="118" width="54" height="17" rx="8" fill="#16a34a"></rect>
+          <text x="208" y="130" class="chip-text" text-anchor="middle">IMPL</text>
+
+          <rect x="44" y="212" width="204" height="72" rx="8" fill="#e0f2fe" stroke="#0284c7"></rect>
+          <text x="62" y="238" class="node-title">Local Store / Repo</text>
+          <text x="62" y="257" class="node-sub">Drift SQLite, private content,</text>
+          <text x="62" y="273" class="node-sub">projections, queues, MST context</text>
+          <rect x="181" y="222" width="54" height="17" rx="8" fill="#16a34a"></rect>
+          <text x="208" y="234" class="chip-text" text-anchor="middle">IMPL</text>
+
+          <rect x="44" y="312" width="204" height="76" rx="8" fill="#dcfce7" stroke="#22c55e"></rect>
+          <text x="62" y="338" class="node-title">Wallet</text>
+          <text x="62" y="357" class="node-sub">VC storage, OID4VP/VP consent,</text>
+          <text x="62" y="373" class="node-sub">presentation history</text>
+          <rect x="173" y="322" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="204" y="334" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="44" y="416" width="204" height="78" rx="8" fill="#f1f5f9" stroke="#94a3b8"></rect>
+          <text x="62" y="442" class="node-title">Rust Core / Signing</text>
+          <text x="62" y="461" class="node-sub">DID signing, AT/PLC, ZKP,</text>
+          <text x="62" y="477" class="node-sub">messenger crypto MVP; key gap</text>
+          <rect x="141" y="426" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="172" y="438" class="chip-text" text-anchor="middle">PARTIAL</text>
+          <rect x="207" y="426" width="35" height="17" rx="8" fill="#7c3aed"></rect>
+          <text x="224" y="438" class="chip-text" text-anchor="middle">GAP</text>
+
+          <rect x="44" y="526" width="204" height="70" rx="8" fill="#fff7ed" stroke="#fb923c"></rect>
+          <text x="62" y="552" class="node-title">App Approval</text>
+          <text x="62" y="571" class="node-sub">QR/deep-link grants for web</text>
+          <text x="62" y="587" class="node-sub">without browser DID keys</text>
+          <rect x="173" y="536" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="204" y="548" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="342" y="108" width="220" height="78" rx="8" fill="#dcfce7" stroke="#22c55e"></rect>
+          <text x="360" y="134" class="node-title">Issuer</text>
+          <text x="360" y="153" class="node-sub">email, TW, MobileMoica, passport</text>
+          <text x="360" y="169" class="node-sub">flows, commitments, VC signing</text>
+          <rect x="487" y="118" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="518" y="130" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="342" y="212" width="220" height="78" rx="8" fill="#ffedd5" stroke="#fb923c"></rect>
+          <text x="360" y="238" class="node-title">Relay / Distribution Server</text>
+          <text x="360" y="257" class="node-sub">DID, ops, web sessions, intents,</text>
+          <text x="360" y="273" class="node-sub">federation and abuse-control MVPs</text>
+          <rect x="487" y="222" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="518" y="234" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="342" y="318" width="220" height="84" rx="8" fill="#fef3c7" stroke="#f59e0b"></rect>
+          <text x="360" y="344" class="node-title">Forum Host</text>
+          <text x="360" y="363" class="node-sub">minimal hosted-board discovery</text>
+          <text x="360" y="379" class="node-sub">and scoped web-thread writes</text>
+          <rect x="487" y="328" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="518" y="340" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="342" y="432" width="220" height="72" rx="8" fill="#ede9fe" stroke="#8b5cf6"></rect>
+          <text x="360" y="458" class="node-title">Reputation Labeler</text>
+          <text x="360" y="477" class="node-sub">VP-to-tier upgrade and Nostr</text>
+          <text x="360" y="493" class="node-sub">binding; AppView labeler missing</text>
+          <rect x="487" y="442" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="518" y="454" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="342" y="532" width="220" height="72" rx="8" fill="#f1f5f9" stroke="#94a3b8"></rect>
+          <text x="360" y="558" class="node-title">Messenger Relay</text>
+          <text x="360" y="577" class="node-sub">device registry, pre-keys, opaque</text>
+          <text x="360" y="593" class="node-sub">mailbox; no plaintext accepted</text>
+          <rect x="487" y="542" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="518" y="554" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="656" y="112" width="182" height="76" rx="8" fill="#fef9c3" stroke="#eab308"></rect>
+          <text x="674" y="138" class="node-title">Web Frontend</text>
+          <text x="674" y="157" class="node-sub">static forum client, session</text>
+          <text x="674" y="173" class="node-sub">login, Forum Host API reads</text>
+          <rect x="764" y="122" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="795" y="134" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="656" y="222" width="182" height="76" rx="8" fill="#fefce8" stroke="#fde047"></rect>
+          <text x="674" y="248" class="node-title">AppView</text>
+          <text x="674" y="267" class="node-sub">no Phoenix AppView server yet;</text>
+          <text x="674" y="283" class="node-sub">web view models only</text>
+          <rect x="775" y="232" width="50" height="17" rx="8" fill="#f59e0b"></rect>
+          <text x="800" y="244" class="chip-text" text-anchor="middle">DRAFT</text>
+
+          <rect x="656" y="330" width="182" height="76" rx="8" fill="#fff7ed" stroke="#fb923c"></rect>
+          <text x="674" y="356" class="node-title">Web Session Token</text>
+          <text x="674" y="375" class="node-sub">httpOnly scoped web session;</text>
+          <text x="674" y="391" class="node-sub">never DID private key storage</text>
+          <rect x="764" y="340" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="795" y="352" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="924" y="98" width="204" height="76" rx="8" fill="#fafafa" stroke="#a1a1aa"></rect>
+          <text x="942" y="124" class="node-title">TW Provider / MOICA</text>
+          <text x="942" y="143" class="node-sub">external proofing provider;</text>
+          <text x="942" y="159" class="node-sub">prod broker gated/fails closed</text>
+          <rect x="991" y="108" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="1022" y="120" class="chip-text" text-anchor="middle">PARTIAL</text>
+          <rect x="1061" y="108" width="54" height="17" rx="8" fill="#64748b"></rect>
+          <text x="1088" y="120" class="chip-text" text-anchor="middle">EXT</text>
+
+          <rect x="924" y="204" width="204" height="76" rx="8" fill="#fafafa" stroke="#a1a1aa"></rect>
+          <text x="942" y="230" class="node-title">Nostr Relays</text>
+          <text x="942" y="249" class="node-sub">direct publish/read MVP;</text>
+          <text x="942" y="265" class="node-sub">delete/key custody still partial</text>
+          <rect x="999" y="214" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="1030" y="226" class="chip-text" text-anchor="middle">PARTIAL</text>
+          <rect x="1067" y="214" width="50" height="17" rx="8" fill="#64748b"></rect>
+          <text x="1092" y="226" class="chip-text" text-anchor="middle">EXT</text>
+
+          <rect x="924" y="310" width="204" height="76" rx="8" fill="#fafafa" stroke="#a1a1aa"></rect>
+          <text x="942" y="336" class="node-title">ActivityPub Network</text>
+          <text x="942" y="355" class="node-sub">actor/WebFinger/outbox MVP;</text>
+          <text x="942" y="371" class="node-sub">sig/follow mapping incomplete</text>
+          <rect x="999" y="320" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="1030" y="332" class="chip-text" text-anchor="middle">PARTIAL</text>
+          <rect x="1067" y="320" width="50" height="17" rx="8" fill="#64748b"></rect>
+          <text x="1092" y="332" class="chip-text" text-anchor="middle">EXT</text>
+
+          <rect x="924" y="416" width="204" height="76" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-dasharray="5 4"></rect>
+          <text x="942" y="442" class="node-title">AT Protocol / PLC Bridge</text>
+          <text x="942" y="461" class="node-sub">XRPC + Lexicon path exists;</text>
+          <text x="942" y="477" class="node-sub">stub CID/local PLC caveats</text>
+          <rect x="999" y="426" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="1030" y="438" class="chip-text" text-anchor="middle">PARTIAL</text>
+          <rect x="1065" y="426" width="56" height="17" rx="8" fill="#dc2626"></rect>
+          <text x="1093" y="438" class="chip-text" text-anchor="middle">LEGACY</text>
+
+          <rect x="924" y="522" width="204" height="76" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="5 4"></rect>
+          <text x="942" y="548" class="node-title">External Forum Hosts</text>
+          <text x="942" y="567" class="node-sub">external host discovery target;</text>
+          <text x="942" y="583" class="node-sub">compliance level missing</text>
+          <rect x="999" y="532" width="50" height="17" rx="8" fill="#64748b"></rect>
+          <text x="1024" y="544" class="chip-text" text-anchor="middle">EXT</text>
+          <rect x="1057" y="532" width="54" height="17" rx="8" fill="#7c3aed"></rect>
+          <text x="1084" y="544" class="chip-text" text-anchor="middle">GAP</text>
+
+          <path d="M146 186 L146 212" class="edge" stroke="#2563eb" marker-end="url(#arrowPrivate)"></path>
+          <text x="158" y="204" class="edge-label">local write</text>
+
+          <path d="M248 147 C286 147 304 147 342 147" class="edge" stroke="#16a34a" marker-end="url(#arrowCred)"></path>
+          <text x="267" y="136" class="edge-label">offer / issue VC</text>
+
+          <path d="M562 128 C690 88 790 88 924 128" class="edge edge-draft" stroke="#16a34a" marker-end="url(#arrowCred)"></path>
+          <text x="652" y="101" class="edge-label">issuer proofing only</text>
+
+          <path d="M248 350 C290 350 304 464 342 464" class="edge" stroke="#16a34a" marker-end="url(#arrowCred)"></path>
+          <text x="258" y="413" class="edge-label">present VP / trust input</text>
+
+          <path d="M248 251 C286 251 304 251 342 251" class="edge edge-draft" stroke="#64748b" marker-end="url(#arrowMain)"></path>
+          <text x="258" y="240" class="edge-label">signed intents / sessions</text>
+
+          <path d="M248 455 C292 455 300 352 342 352" class="edge edge-draft" stroke="#64748b" marker-end="url(#arrowMain)"></path>
+          <text x="256" y="388" class="edge-label">sign publish intent</text>
+
+          <path d="M248 455 C292 485 300 558 342 568" class="edge edge-draft" stroke="#2563eb" marker-end="url(#arrowPrivate)"></path>
+          <text x="258" y="524" class="edge-label">encrypted messenger envelopes</text>
+
+          <path d="M562 360 C596 360 622 260 656 260" class="edge" stroke="#64748b" marker-end="url(#arrowMain)"></path>
+          <text x="579" y="301" class="edge-label">public projections</text>
+
+          <path d="M562 360 C612 360 610 152 656 152" class="edge" stroke="#64748b" marker-end="url(#arrowMain)"></path>
+          <text x="578" y="201" class="edge-label">host APIs</text>
+
+          <path d="M562 251 C650 315 800 315 924 348" class="edge edge-draft" stroke="#0ea5e9" marker-end="url(#arrowFed)"></path>
+          <text x="675" y="320" class="edge-label">ActivityPub adapter (partial)</text>
+
+          <path d="M248 147 C430 28 760 42 924 242" class="edge edge-draft" stroke="#0ea5e9" marker-end="url(#arrowFed)"></path>
+          <text x="430" y="92" class="edge-label">app-side Nostr publish (partial)</text>
+
+          <path d="M562 290 C660 500 800 500 924 454" class="edge edge-legacy" stroke="#dc2626" marker-end="url(#arrowMain)"></path>
+          <text x="694" y="502" class="edge-label">AT/PLC compatibility path</text>
+
+          <path d="M248 561 C374 626 566 412 656 368" class="edge edge-draft" stroke="#f59e0b" marker-end="url(#arrowMain)"></path>
+          <text x="380" y="611" class="edge-label">app approves browser session; browser stores token only</text>
+
+          <path d="M838 368 C892 408 896 510 924 560" class="edge edge-draft" stroke="#64748b" marker-end="url(#arrowMain)"></path>
+          <text x="845" y="482" class="edge-label">compliance level gap</text>
+
+          <rect x="56" y="628" width="1060" height="42" rx="6" fill="#f8fafc" stroke="#e2e8f0"></rect>
+          <text x="74" y="644" class="edge-label">Constitution guardrails: private content stays local; VP requires consent; raw legal identity/private keys stay out of Relay, Forum Host, AppView, logs, and federation.</text>
+          <text x="74" y="661" class="edge-label">Current gaps: hardware-backed key custody/reduced-trust mode, and external host compliance level.</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="notes-grid">
+      <div class="note-box">
+        <h3>Included Flows</h3>
+        <ul>
+          <li>Local-first app storage and publication intent.</li>
+          <li>Wallet and Issuer credential issuance/presentation boundary.</li>
+          <li>Forum Host discovery and scoped web-thread MVP, with broader board/moderation scope marked partial.</li>
+          <li>Web sessions approved by the app without exporting DID keys.</li>
+          <li>Nostr direct publish, ActivityPub relay distribution, and AT/PLC compatibility.</li>
+        </ul>
+      </div>
+      <div class="note-box">
+        <h3>Status Treatment</h3>
+        <ul>
+          <li>Node chips show implementation state.</li>
+          <li>Dashed edges show partial, draft, legacy, external, or gap routes.</li>
+          <li>Nostr, ActivityPub, AT/PLC, web sessions, messenger, reputation, Web Frontend, and Forum Host are partial MVP slices, not pure plans.</li>
+          <li>AppView server remains draft because there is no Phoenix AppView package in the repo.</li>
+        </ul>
+      </div>
+      <div class="note-box">
+        <h3>Boundary Rules</h3>
+        <ul>
+          <li>Private content stays in the user-controlled boundary.</li>
+          <li>Raw legal identity and private keys do not flow to Relay, Forum Host, AppView, logs, or federation.</li>
+          <li>External host compliance level remains an explicit current gap.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Repo Audit Matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Node</th>
+          <th>Status</th>
+          <th>Evidence</th>
+          <th>Caveat</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Elix / Ansible App</td>
+          <td><span class="status impl">implemented</span></td>
+          <td><code>ansible_node/app/lib/main.dart</code>, <code>home_shell.dart</code>, app tests</td>
+          <td>Specific product paths below still carry partial or gap labels.</td>
+        </tr>
+        <tr>
+          <td>Local Store / Repo</td>
+          <td><span class="status impl">implemented</span></td>
+          <td><code>ansible_core/store/lib/src/db/app_database.dart</code>, Drift schema v19, repository tests</td>
+          <td>Do not describe this as a complete AT Protocol MST repo.</td>
+        </tr>
+        <tr>
+          <td>Wallet</td>
+          <td><span class="status partial">partial</span></td>
+          <td>Wallet credential tables, <code>VcPresentationService</code>, <code>Oid4vpPresentationService</code>, wallet tests</td>
+          <td>Issuer status and revocation coverage are not production complete.</td>
+        </tr>
+        <tr>
+          <td>Rust Core / Signing</td>
+          <td><span class="status-list"><span class="status partial">partial</span><span class="status gap">gap</span></span></td>
+          <td><code>ansible_rust_core/src/api*.rs</code>, AT, ZKP, messenger APIs, Rust tests</td>
+          <td>Hardware-held signing keys and reduced-trust mode remain incomplete.</td>
+        </tr>
+        <tr>
+          <td>Issuer</td>
+          <td><span class="status partial">partial</span></td>
+          <td>Go issuer handlers, MobileMoica and passport flows, VC signing, tests</td>
+          <td>Production TW provider and MobileMoica brokers intentionally fail closed.</td>
+        </tr>
+        <tr>
+          <td>Relay / Distribution Server</td>
+          <td><span class="status partial">partial</span></td>
+          <td>Phoenix controllers for identity, ops, publication intents, ActivityPub, XRPC, reputation, web sessions, messenger</td>
+          <td>Not a full clustered Firehose relay; AppView Pub/Sub forwarding is not implemented.</td>
+        </tr>
+        <tr>
+          <td>Forum Host</td>
+          <td><span class="status partial">partial</span></td>
+          <td><code>ForumHostController</code>, app and web clients, Forum Host tests</td>
+          <td>Current slice is minimal discovery and scoped web-thread acceptance.</td>
+        </tr>
+        <tr>
+          <td>Reputation Labeler</td>
+          <td><span class="status partial">partial</span></td>
+          <td><code>ReputationController</code>, <code>VpVerifier</code>, DID account cache reputation tier, tests</td>
+          <td>com.atproto.label-compatible AppView labeler and DNS verification are missing.</td>
+        </tr>
+        <tr>
+          <td>Opaque Messenger Transport</td>
+          <td><span class="status partial">partial</span></td>
+          <td><code>MessengerController</code>, <code>MessengerStore</code>, app messenger services, Rust messenger MVP, tests</td>
+          <td>MVP E2EE transport exists; it is not a complete Signal/libsignal-grade multi-device messenger.</td>
+        </tr>
+        <tr>
+          <td>Web Frontend / Web Session Token</td>
+          <td><span class="status partial">partial</span></td>
+          <td><code>ansible_distribution_frontend/src</code>, web session client, relay web-session controller/store, tests</td>
+          <td>Hosted web accounts, replies, profiles, notifications, moderation, and durable session infrastructure are incomplete.</td>
+        </tr>
+        <tr>
+          <td>AppView / Public Views</td>
+          <td><span class="status-list"><span class="status draft">draft</span><span class="status partial">limited web</span></span></td>
+          <td>No <code>ansible_appview/phoenix</code> package; web frontend has view-model rendering only</td>
+          <td>Do not draw a complete Phoenix AppView aggregator or PostgreSQL index as implemented.</td>
+        </tr>
+        <tr>
+          <td>Nostr Relays</td>
+          <td><span class="status-list"><span class="status partial">partial</span><span class="status external">external</span></span></td>
+          <td><code>ansible_core/nostr</code>, <code>NostrPublicationService</code>, relay settings/key store, Nostr tests</td>
+          <td>Direct publish/read and projections exist; delete publish path and key custody are incomplete.</td>
+        </tr>
+        <tr>
+          <td>ActivityPub Network</td>
+          <td><span class="status-list"><span class="status partial">partial</span><span class="status external">external</span></span></td>
+          <td><code>ActivityPubController</code>, <code>ActivityBuilder</code>, <code>DeliveryQueue</code>, ActivityPub tests</td>
+          <td>Actor/WebFinger/outbox/projection/retry state exist; signatures and remote follow/reply mapping are incomplete.</td>
+        </tr>
+        <tr>
+          <td>AT Protocol / PLC Bridge</td>
+          <td><span class="status-list"><span class="status partial">partial</span><span class="status legacy">legacy</span></span></td>
+          <td><code>XrpcController</code>, Rust AT Protocol primitives, <code>DidPlcManager</code>, ATProto client/tests</td>
+          <td>PLC genesis is local-shaped and XRPC CID is a stub; AT is compatibility context, not the sole future path.</td>
+        </tr>
+        <tr>
+          <td>TW Provider / MOICA</td>
+          <td><span class="status-list"><span class="status partial">partial</span><span class="status external">external</span></span></td>
+          <td>Go TW provider flow, MobileMoica RP contract broker, tests</td>
+          <td>Production broker path is gated and fails closed pending legal/privacy/security approval.</td>
+        </tr>
+        <tr>
+          <td>External Forum Hosts</td>
+          <td><span class="status-list"><span class="status external">external</span><span class="status gap">gap</span></span></td>
+          <td>Compliance review plus absence of <code>constitution_compliance</code> in Forum Host discovery/entity shape</td>
+          <td>Compliance level must exist before ranking, sync, recommendation, or trust policy relies on external host behavior.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Constitution Review</h2>
+    <div class="section-box">
+      <p>This documentation touches identity, storage, sync, verification, federation, moderation, ranking, community governance, Wallet, Issuer, Relay, Forum Host, and AppView behavior. The engineering constitution applies.</p>
+      <ul>
+        <li>Local-first private content remains inside the user-controlled app boundary.</li>
+        <li>Wallet credential presentation requires explicit user consent.</li>
+        <li>Issuer proofing may process provider results only inside the Issuer boundary.</li>
+        <li>Raw legal identity, provider assertions, private keys, biometric material, and private content are not shown flowing to Relay, Forum Host, AppView, public credentials, logs, federation, or external hosts.</li>
+        <li>Web sessions are scoped browser sessions and do not imply browser storage of root DID private keys.</li>
+        <li>Forum Host moderation is host-level governance, not global truth.</li>
+        <li>Current gaps are explicitly labeled: hardware-backed key storage/reduced-trust mode, and external host constitution compliance level.</li>
+      </ul>
+    </div>
+
+    <h2>Sources</h2>
+    <div class="section-box">
+      <ul class="source-list">
+        <li><code>README.md</code></li>
+        <li><code>docs/architecture/genesis_hosting.md</code></li>
+        <li><code>docs/architecture/tw_digital_identity_vc_wallet.md</code></li>
+        <li><code>docs/architecture/tw_provider_production_integration.md</code></li>
+        <li><code>docs/protocol/tris_aura_sync_spec_v2.0.md</code></li>
+        <li><code>docs/protocol/tris_aura_federation_strategy_v0.1.md</code></li>
+        <li><code>docs/protocol/tris_aura_vc_wallet_spec_v0.1.md</code></li>
+        <li><code>docs/superpowers/plans/2026-05-09-federation-implementation.md</code></li>
+        <li><code>docs/superpowers/specs/2026-05-10-forum-host-board-design.md</code></li>
+        <li><code>docs/superpowers/specs/2026-05-11-app-mediated-web-session-design.md</code></li>
+        <li><code>docs/superpowers/specs/2026-05-11-web-development-design.md</code></li>
+        <li><code>docs/superpowers/specs/2026-05-14-encrypted-messenger-protocol-design.md</code></li>
+        <li><code>docs/superpowers/specs/2026-05-24-tris-aura-engineering-constitution-design.md</code></li>
+        <li><code>docs/superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md</code></li>
+        <li><code>docs/superpowers/specs/2026-05-31-full-architecture-diagram-design.md</code></li>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>

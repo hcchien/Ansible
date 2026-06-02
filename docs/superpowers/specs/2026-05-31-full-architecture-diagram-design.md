@@ -1,6 +1,6 @@
 # Full Architecture Diagram Design
 
-> Status: Approved for implementation planning  
+> Status: Implemented in `docs/architecture/full_system_architecture.html`
 > Date: 2026-05-31  
 > Scope: Tris-Aura architecture documentation for App, Wallet, Issuer, Relay,
 > Forum Host, Web/AppView, federation adapters, external providers, and current
@@ -100,6 +100,32 @@ The visual hierarchy should make boundaries more important than individual
 implementation packages. Package names may appear in details or source notes,
 but the main diagram should use product/system terms.
 
+## Repo Audit Status Matrix
+
+The diagram must use source and test evidence as the primary status source.
+Current repo audit corrections:
+
+| Diagram node | Status | Repo evidence | Caveat |
+|---|---|---|---|
+| Elix / Ansible App | `implemented` | `ansible_node/app/lib/main.dart`, `ansible_node/app/lib/screens/home_shell.dart`, app tests | Individual product paths still carry partial/gap labels below. |
+| Local Store / Repo | `implemented` | `ansible_core/store/lib/src/db/app_database.dart`, schema version 19, Drift repository tests | Do not describe current local store as a complete AT Protocol MST repo. |
+| Wallet | `partial` | `wallet_credentials`, `wallet_presentations`, `VcPresentationService`, `Oid4vpPresentationService`, Wallet tests | OID4VP and VC presentation exist, but production issuer/status/revocation coverage is not complete. |
+| Rust Core / Signing | `partial` plus key-custody `gap` | `ansible_rust_core/src/api*.rs`, `atproto`, `zkp`, `messenger`, Rust tests | DID, PLC, and Nostr paths still persist raw private key hex via secure-storage style storage; hardware-held signing keys and reduced-trust mode remain a compliance gap. |
+| App-mediated approval | `partial` | relay `WebSessionController`, app `WebSessionApprovalClient` / `WebSessionGrantService`, web `web_session_client.mjs`, tests | Challenge/session APIs exist, but durable production session infrastructure and hosted web account tiers are incomplete. |
+| Issuer | `partial` | Go issuer `internal/api/handler.go`, `mobilemoica.go`, `passport.go`, `internal/vc`, Go tests | Production TW provider adapter and MobileMoica production broker intentionally fail closed; Phoenix issuer is legacy EmailCredential-only. |
+| Relay / Distribution Server | `partial` | Phoenix router/controllers for identity, ops, publication intents, ActivityPub, XRPC, reputation, web sessions, messenger | Not a full clustered Firehose relay; AppView Pub/Sub forwarding is not implemented. |
+| Forum Host | `partial` | `ForumHostController`, `forum_host_client` in app/web, Forum Host tests | Current controller is minimal discovery and web-thread acceptance, not a full durable board/thread/post/moderation host. |
+| Reputation Labeler | `partial` | `ReputationController`, `VpVerifier`, `DidAccountCache.reputation_tier`, reputation tests | VP-to-tier upgrade exists; com.atproto.label-compatible AppView labeler and DNS verification are not implemented. |
+| Opaque Messenger Transport | `partial` | `MessengerController`, `MessengerStore`, app messenger services, Rust messenger MVP, tests | E2EE transport exists as an MVP; not a complete Signal/libsignal-grade multi-device messenger. |
+| Web Frontend | `partial` | `ansible_distribution_frontend/src/main.mjs`, forum data/session clients, renderer and integration tests | Static frontend reads Forum Host APIs and web sessions; hosted web accounts, replies, profiles, notifications, and moderation are not complete. |
+| AppView / Public Views | `draft` plus limited web `partial` | No `ansible_appview/phoenix` directory; docs describe AppView as future; web frontend has a view-model renderer | Do not draw a complete Phoenix AppView aggregator or PostgreSQL index as implemented. |
+| Web Session Token | `partial` | relay web-session store/controller, app approval client, frontend cookie-based session lifecycle | Implemented for app-approved sessions; hosted web/passkey account sessions are still design scope. |
+| TW Provider / MOICA | `external` plus integration `partial` | Go TW provider flow, MobileMoica RP contract broker, tests | MobileMoica production adapter returns unavailable; legal/privacy/security approvals are required. |
+| Nostr Relays | `external` plus adapter `partial` | `ansible_core/nostr`, `NostrPublicationService`, relay settings/key store, Nostr tests | Direct relay publish/read and projections exist; delete publish path and production key custody are incomplete. |
+| ActivityPub Network | `external` plus adapter `partial` | `ActivityPubController`, `ActivityBuilder`, `DeliveryQueue`, ActivityPub tests | Actor/WebFinger/outbox/projection/retry state exist; inbox handling, HTTP signatures, remote follow/reply mapping are incomplete. |
+| AT Protocol / PLC Bridge | `partial` plus `legacy` | `XrpcController`, Rust AT Protocol primitives, `DidPlcManager`, ATProto client/tests | Current PLC genesis uses JSON hashing/local-only shape; XRPC CID is a stub; federation strategy treats AT Protocol as compatibility context. |
+| External Forum Hosts | `external` plus `gap` | Compliance review and absence of `constitution_compliance` in `ForumHost` / discovery response | Compliance level must be added before first-party ranking/sync/trust relies on external host behavior. |
+
 ActivityPub must be labeled as `partial`, not `planned`: the relay has an
 implemented MVP for ActivityPub actor discovery, WebFinger, inbox/outbox
 endpoints, publication intent projection, Create/Update/Delete mapping, delivery
@@ -131,8 +157,9 @@ The map must show these flows:
   legal identity inside the Issuer boundary.
 - Wallet presents VPs only after explicit user consent.
 - App creates signed publication intents for public or unlisted distribution.
-- Forum Host owns hosted boards, threads, posts, permissions, moderation, and
-  distribution-facing forum state.
+- Forum Host is the target owner of hosted boards, threads, posts,
+  permissions, moderation, and distribution-facing forum state; the current
+  repo slice must still be labeled `partial`.
 - Web Frontend reads public views and can participate through hosted web
   accounts or app-mediated self-custody DID sessions.
 - App-mediated web login grants scoped browser sessions without exporting root
