@@ -89,6 +89,34 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
              })
   end
 
+  test "create_board permits exact intent replay but rejects changed payload details" do
+    :ok = Store.ensure_seeded!()
+
+    payload = %{
+      intent_id: "intent-full-payload",
+      author_did: "did:plc:author456",
+      title: "Policy Board",
+      description: "Board with explicit policy",
+      language: "en",
+      tags: ["policy", "starter"],
+      permissions: %{"read" => true, "write" => true},
+      posting_policy: %{"min_trust_tier" => "verified_human"},
+      moderation_policy: %{"appeals" => true, "reason_codes" => ["spam"]}
+    }
+
+    assert {:ok, board} = Store.create_board(payload)
+
+    assert {:ok, replayed_board} = Store.create_board(payload)
+    assert replayed_board.hosted_board_id == board.hosted_board_id
+
+    assert {:error, :duplicate_intent} =
+             Store.create_board(%{
+               payload
+               | tags: ["policy", "changed"],
+                 posting_policy: %{"min_trust_tier" => "self_custody_did"}
+             })
+  end
+
   defp restore_env(key, nil), do: Application.delete_env(:ansible_relay, key)
   defp restore_env(key, value), do: Application.put_env(:ansible_relay, key, value)
 end

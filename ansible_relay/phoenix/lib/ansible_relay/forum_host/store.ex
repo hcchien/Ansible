@@ -83,22 +83,18 @@ defmodule AnsibleRelay.ForumHost.Store do
   defp insert_board(attrs, payload_hash) do
     slug = unique_slug(slugify(attrs.title))
     hosted_board_id = slug
+    board_payload = board_payload(attrs)
 
     Repo.transaction(fn ->
       board =
         %ForumHostBoard{}
-        |> ForumHostBoard.changeset(%{
-          hosted_board_id: hosted_board_id,
-          slug: slug,
-          canonical_board_uri: "#{base_url()}/boards/#{slug}",
-          title: attrs.title,
-          description: Map.get(attrs, :description),
-          language: Map.get(attrs, :language),
-          tags: Map.get(attrs, :tags, []),
-          permissions: Map.get(attrs, :permissions, %{"read" => true, "write" => true}),
-          posting_policy: Map.get(attrs, :posting_policy, posting_policy()),
-          moderation_policy: Map.get(attrs, :moderation_policy, moderation_policy())
-        })
+        |> ForumHostBoard.changeset(
+          Map.merge(board_payload, %{
+            hosted_board_id: hosted_board_id,
+            slug: slug,
+            canonical_board_uri: "#{base_url()}/boards/#{slug}"
+          })
+        )
         |> Repo.insert!()
 
       %ForumHostAcceptedIntent{}
@@ -255,10 +251,42 @@ defmodule AnsibleRelay.ForumHost.Store do
   end
 
   defp payload_hash(attrs) do
-    attrs
-    |> Map.take([:intent_id, :author_did, :title, :description])
+    %{
+      action: "create_board",
+      intent_id: attrs.intent_id,
+      author_did: attrs.author_did,
+      board: board_payload(attrs)
+    }
+    |> canonical_payload()
     |> Jason.encode!()
     |> then(&:crypto.hash(:sha256, &1))
     |> Base.encode16(case: :lower)
   end
+
+  defp board_payload(attrs) do
+    %{
+      title: attrs.title,
+      description: Map.get(attrs, :description),
+      language: Map.get(attrs, :language),
+      tags: Map.get(attrs, :tags, []),
+      permissions: Map.get(attrs, :permissions, %{"read" => true, "write" => true}),
+      posting_policy: Map.get(attrs, :posting_policy, posting_policy()),
+      moderation_policy: Map.get(attrs, :moderation_policy, moderation_policy())
+    }
+  end
+
+  defp canonical_payload(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, nested_value} ->
+      {to_string(key), canonical_payload(nested_value)}
+    end)
+    |> Enum.sort_by(fn {key, _nested_value} -> key end)
+    |> Enum.map(fn {key, nested_value} -> [key, nested_value] end)
+  end
+
+  defp canonical_payload(value) when is_list(value) do
+    Enum.map(value, &canonical_payload/1)
+  end
+
+  defp canonical_payload(value), do: value
 end
