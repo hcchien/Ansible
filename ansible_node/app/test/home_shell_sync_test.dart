@@ -208,6 +208,7 @@ void main() {
           db: db,
           did: 'did:plc:alice',
           networkStatusMonitor: network,
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
           pullRefreshRunner: () async {
             pullCalls += 1;
             return const RelayPullSummary(pulledActivities: 1);
@@ -292,6 +293,7 @@ void main() {
           db: db,
           did: 'did:plc:alice',
           networkStatusMonitor: network,
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
           pullRefreshRunner: () async {
             pullCalls += 1;
             return const RelayPullSummary(pulledActivities: 1);
@@ -328,6 +330,7 @@ void main() {
           db: db,
           did: 'did:plc:alice',
           networkStatusMonitor: network,
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
           pullRefreshRunner: () async {
             pullCalls += 1;
             return const RelayPullSummary(pulledActivities: 1);
