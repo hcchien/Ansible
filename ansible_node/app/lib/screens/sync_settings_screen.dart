@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
@@ -17,8 +19,13 @@ import '../widgets/nostr_relay_settings_panel.dart';
 
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
+  final String? initialForumHostUrl;
 
-  const SyncSettingsScreen({super.key, required this.db});
+  const SyncSettingsScreen({
+    super.key,
+    required this.db,
+    this.initialForumHostUrl,
+  });
 
   @override
   State<SyncSettingsScreen> createState() => _SyncSettingsScreenState();
@@ -55,6 +62,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   Map<String, Map<String, int?>> _boardRetentionByNode =
       {}; // nodeId -> {boardId -> days, null -> forever}
   bool _isLoading = true;
+  bool _shownInitialForumHostDialog = false;
   final Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
   String? _expandedNodeId;
 
@@ -106,6 +114,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         _boardRetentionByNode = retentionByNode;
         _isLoading = false;
       });
+      _showInitialForumHostDialogIfNeeded();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -119,10 +128,24 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     }
   }
 
-  Future<void> _showAddRemoteNodeDialog() async {
+  void _showInitialForumHostDialogIfNeeded() {
+    final initialUrl = widget.initialForumHostUrl?.trim();
+    if (_shownInitialForumHostDialog ||
+        initialUrl == null ||
+        initialUrl.isEmpty) {
+      return;
+    }
+    _shownInitialForumHostDialog = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_showAddRemoteNodeDialog(initialUrl: initialUrl));
+    });
+  }
+
+  Future<void> _showAddRemoteNodeDialog({String? initialUrl}) async {
     final result = await showDialog<Map<String, String?>>(
       context: context,
-      builder: (context) => const RemoteNodeFormDialog(),
+      builder: (context) => RemoteNodeFormDialog(initialUrl: initialUrl),
     );
 
     if (result != null) {

@@ -1,6 +1,7 @@
 import 'package:ansible_node/screens/home_shell.dart';
 import 'package:ansible_node/services/app_sync_service.dart';
 import 'package:ansible_node/services/network_status_service.dart';
+import 'package:ansible_node/services/relay_discovery_client.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/native.dart';
@@ -9,6 +10,74 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('first run shows injected relay discovery starter board', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          relayDiscoveryLoader: () async => _starterDiscovery(),
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(find.text('Relay online'), findsOneWidget);
+    expect(find.text('General'), findsOneWidget);
+    expect(find.text('Start here'), findsOneWidget);
+
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('first run discovery is hidden when relay is configured', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    await _seedActiveRelay(db);
+    var discoveryCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          relayDiscoveryLoader: () async {
+            discoveryCalls += 1;
+            return _starterDiscovery();
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(discoveryCalls, 0);
+    expect(find.text('Relay online'), findsNothing);
+    expect(find.text('General'), findsNothing);
+    expect(find.text('Start here'), findsNothing);
+
+    await _disposeWidgetTree(tester);
+  });
+
   testWidgets('header sync button runs app-wide sync', (tester) async {
     tester.view.physicalSize = const Size(1600, 1000);
     tester.view.devicePixelRatio = 1;
@@ -266,6 +335,44 @@ void main() {
 
     expect(pullCalls, 1);
   });
+}
+
+RelayDiscovery _starterDiscovery() {
+  return const RelayDiscovery(
+    version: 1,
+    relay: RelayDiscoveryRelay(
+      serverKind: 'elixRelay',
+      origin: 'https://relay.example',
+      capabilities: {'forum_host_discovery': true},
+    ),
+    announcements: [
+      RelayAnnouncement(
+        announcementId: 'relay-online',
+        ownerKind: 'relay',
+        title: 'Relay online',
+        body: 'Discovery ready',
+        severity: 'info',
+      ),
+    ],
+    featuredForumHosts: [
+      DiscoveredForumHost(
+        forumHostId: 'host-general',
+        displayName: 'Starter Forum Host',
+        forumHostUrl: 'https://relay.example',
+        constitutionCompliance: 'unknown',
+      ),
+    ],
+    featuredBoards: [
+      DiscoveredBoard(
+        hostedBoardId: 'general',
+        title: 'General',
+        description: 'Start here',
+        forumHostUrl: 'https://relay.example',
+        canonicalBoardUri: 'https://relay.example/boards/general',
+        constitutionCompliance: 'unknown',
+      ),
+    ],
+  );
 }
 
 Future<void> _seedActiveRelay(AppDatabase db) async {

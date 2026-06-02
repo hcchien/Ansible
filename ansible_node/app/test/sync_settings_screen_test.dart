@@ -54,4 +54,34 @@ void main() {
 
     expect(find.byKey(const Key('nostr_relay_url_field')), findsOneWidget);
   });
+
+  testWidgets('sync settings can prefill discovered Elix Relay URL', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SyncSettingsScreen(
+          db: db,
+          initialForumHostUrl: 'https://relay.example',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is EditableText &&
+            widget.controller.text == 'https://relay.example',
+      ),
+      findsOneWidget,
+    );
+  });
 }

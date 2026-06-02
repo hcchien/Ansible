@@ -8,6 +8,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../widgets/agent_sheet.dart';
@@ -36,6 +37,7 @@ import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
+import '../services/relay_discovery_client.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/relay_ops_client.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
@@ -49,6 +51,7 @@ import 'contact_picker_screen.dart' show ContactInputResolver;
 import 'inbox_screen.dart' show ContactAvailabilityResolver;
 import 'search_screen.dart';
 import 'settings_home_screen.dart';
+import 'sync_settings_screen.dart';
 import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
@@ -73,6 +76,7 @@ class HomeShell extends StatefulWidget {
     this.onClearIdentity,
     this.syncRunner,
     this.pullRefreshRunner,
+    this.relayDiscoveryLoader,
     this.networkStatusMonitor,
     this.localeController,
     this.readingPreferencesController,
@@ -83,6 +87,7 @@ class HomeShell extends StatefulWidget {
   final VoidCallback? onClearIdentity;
   final Future<AppSyncResult> Function()? syncRunner;
   final Future<RelayPullSummary> Function()? pullRefreshRunner;
+  final Future<RelayDiscovery> Function()? relayDiscoveryLoader;
   final NetworkStatusMonitor? networkStatusMonitor;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
@@ -132,6 +137,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   bool _syncing = false;
   bool _pullRefreshing = false;
   bool _hasActiveMessengerRelay = false;
+  bool _showFirstRunDiscovery = false;
+  bool _relayDiscoveryLoading = false;
+  bool _relayDiscoveryLoaded = false;
+  RelayDiscovery? _relayDiscovery;
   NetworkStatus? _lastNetworkStatus;
   DateTime? _lastAutoSyncAt;
   String? _selectedBoardId;
@@ -248,7 +257,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       contactRepository: _contactRepo,
       messengerRepository: _messengerRepo,
     ).syncForIdentity(widget.did);
-    final hasActiveRelay = (await _forumHostRepo.listActive()).isNotEmpty;
+    final remoteNodes = await _remoteNodeRepo.list();
+    final hasActiveRemoteNode = remoteNodes.any((node) => node.isActive);
+    final hasActiveForumHost = (await _forumHostRepo.listActive()).isNotEmpty;
+    final hostedBoardProjections = await _hostedBoardRepo.listProjections();
+    final hostedBoardSubscriptions = await _hostedBoardRepo.listSubscriptions();
+    final hasHostedBoards =
+        hostedBoardProjections.any((projection) => !projection.isDeleted) ||
+        hostedBoardSubscriptions.isNotEmpty;
+    final hasActiveRelay = hasActiveRemoteNode || hasActiveForumHost;
+    final showFirstRunDiscovery = !hasActiveRelay && !hasHostedBoards;
     final boards = await _boardRepo.list();
     final contentItems = await _contentItemRepo.list(authorDid: widget.did);
     final murmurReferenceCounts = <String, int>{};
@@ -326,8 +344,63 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _contentItems = contentItems;
       _murmurReferenceCounts = murmurReferenceCounts;
       _hasActiveMessengerRelay = hasActiveRelay;
+      _showFirstRunDiscovery = showFirstRunDiscovery;
+      if (!showFirstRunDiscovery) {
+        _relayDiscovery = null;
+        _relayDiscoveryLoading = false;
+        _relayDiscoveryLoaded = false;
+      }
       _loading = false;
     });
+    if (showFirstRunDiscovery) {
+      unawaited(_loadRelayDiscoveryIfNeeded());
+    }
+  }
+
+  Future<void> _loadRelayDiscoveryIfNeeded() async {
+    if (_relayDiscoveryLoading || _relayDiscoveryLoaded) return;
+    setState(() => _relayDiscoveryLoading = true);
+    try {
+      final discovery =
+          await (widget.relayDiscoveryLoader ?? _fetchDefaultRelayDiscovery)();
+      if (!mounted) return;
+      setState(() {
+        _relayDiscovery = discovery;
+        _relayDiscoveryLoaded = true;
+        _relayDiscoveryLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _relayDiscovery = null;
+        _relayDiscoveryLoaded = true;
+        _relayDiscoveryLoading = false;
+      });
+    }
+  }
+
+  Future<RelayDiscovery> _fetchDefaultRelayDiscovery() async {
+    final client = RelayDiscoveryClient(
+      baseUrl: AppEnvironment.defaultRelayBaseUrl,
+    );
+    try {
+      return await client.fetchDiscovery();
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<void> _openDiscoveredForumHost(String forumHostUrl) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SyncSettingsScreen(
+          db: widget.db,
+          initialForumHostUrl: forumHostUrl,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadData();
   }
 
   void _selectBoard(String? boardId) {
@@ -1194,6 +1267,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     _messengerContactResolver.resolveAvailability,
                 contactInputResolver: _contactResolver.resolveInput,
                 hasActiveRelay: _hasActiveMessengerRelay,
+                showFirstRunDiscovery: _showFirstRunDiscovery,
+                firstRunDiscovery: _relayDiscovery,
+                firstRunDiscoveryLoading: _relayDiscoveryLoading,
+                onOpenDiscoveredForumHost: _openDiscoveredForumHost,
                 onFlushPendingOps: _flushPendingOps,
                 onSync: () => _runHeaderSync(),
                 syncing: _syncing,
@@ -1523,6 +1600,10 @@ class _MainPanel extends StatelessWidget {
     required this.contactAvailabilityResolver,
     required this.contactInputResolver,
     required this.hasActiveRelay,
+    required this.showFirstRunDiscovery,
+    required this.firstRunDiscovery,
+    required this.firstRunDiscoveryLoading,
+    required this.onOpenDiscoveredForumHost,
     required this.onFlushPendingOps,
     required this.onSync,
     required this.syncing,
@@ -1580,6 +1661,10 @@ class _MainPanel extends StatelessWidget {
   final ContactAvailabilityResolver contactAvailabilityResolver;
   final ContactInputResolver contactInputResolver;
   final bool hasActiveRelay;
+  final bool showFirstRunDiscovery;
+  final RelayDiscovery? firstRunDiscovery;
+  final bool firstRunDiscoveryLoading;
+  final ValueChanged<String> onOpenDiscoveredForumHost;
   final Future<void> Function() onFlushPendingOps;
   final Future<void> Function() onSync;
   final bool syncing;
@@ -1630,6 +1715,83 @@ class _MainPanel extends StatelessWidget {
     String? noteBody,
   })
   onSummonAiForNote;
+
+  Widget _buildFirstRunDiscoverySection(BuildContext context) {
+    if (!showFirstRunDiscovery) return const SizedBox.shrink();
+    final discovery = firstRunDiscovery;
+    if (discovery == null && !firstRunDiscoveryLoading) {
+      return const SizedBox.shrink();
+    }
+    final announcements =
+        discovery?.announcements ?? const <RelayAnnouncement>[];
+    final starterBoards =
+        discovery?.featuredBoards ?? const <DiscoveredBoard>[];
+    if (discovery != null && announcements.isEmpty && starterBoards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final styleData = ElixScreenStyleScope.dataOf(context);
+    final text = SubpageL10n.of(context);
+    final children = <Widget>[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+        child: AnsibleMonoLabel(text.t('forumHosts')),
+      ),
+      DecoratedBox(
+        decoration: BoxDecoration(
+          color: styleData.surface.withValues(alpha: 0.55),
+          border: Border(
+            top: BorderSide(color: styleData.rule, width: 0.5),
+            bottom: BorderSide(color: styleData.rule, width: 0.5),
+          ),
+        ),
+        child: Column(
+          children: [
+            if (firstRunDiscoveryLoading && discovery == null)
+              const Padding(
+                padding: EdgeInsets.all(14),
+                child: SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            for (final announcement in announcements)
+              _FirstRunDiscoveryRow(
+                icon: Icons.campaign_outlined,
+                title: announcement.title,
+                subtitle: announcement.body,
+                ruleColor: styleData.rule,
+              ),
+            for (final board in starterBoards)
+              _FirstRunDiscoveryRow(
+                icon: Icons.forum_outlined,
+                title: board.title,
+                subtitle: board.description ?? board.forumHostUrl,
+                ruleColor: styleData.rule,
+                action: OutlinedButton.icon(
+                  onPressed: () =>
+                      onOpenDiscoveredForumHost(board.forumHostUrl),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: Text(
+                    text.t('addForumHost'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
 
   // ── Personal board (個人版) — A·01 spec ──────────────────────────────────
   Widget _buildPersonalBoard(BuildContext context, bool compact) {
@@ -1893,6 +2055,7 @@ class _MainPanel extends StatelessWidget {
           children: [
             aiBridge(),
             const SizedBox(height: 14),
+            _buildFirstRunDiscoverySection(context),
 
             // ── This week section ────────────────────────────────────────
             if (thisWeek.isNotEmpty) ...[
@@ -2292,6 +2455,79 @@ class _ActionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+  }
+}
+
+class _FirstRunDiscoveryRow extends StatelessWidget {
+  const _FirstRunDiscoveryRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.ruleColor,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color ruleColor;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final styleData = ElixScreenStyleScope.dataOf(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: ruleColor, width: 0.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: styleData.faint),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: styleData.foreground,
+                  ),
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: styleData.muted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (action != null) ...[
+            const SizedBox(width: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 170),
+              child: action!,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
