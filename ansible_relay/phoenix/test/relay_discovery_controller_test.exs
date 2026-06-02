@@ -9,9 +9,18 @@ defmodule AnsibleRelay.Web.RelayDiscoveryControllerTest do
   setup do
     original_relay_origin = Application.get_env(:ansible_relay, :relay_origin)
     original_announcements = Application.get_env(:ansible_relay, :relay_announcements)
+
+    original_featured_forum_hosts =
+      Application.get_env(:ansible_relay, :relay_featured_forum_hosts)
+
     original_featured_boards = Application.get_env(:ansible_relay, :relay_featured_boards)
 
+    original_max_age_seconds =
+      Application.get_env(:ansible_relay, :relay_discovery_max_age_seconds)
+
     Application.put_env(:ansible_relay, :relay_origin, "https://relay.trisaura.test")
+    Application.delete_env(:ansible_relay, :relay_featured_forum_hosts)
+    Application.delete_env(:ansible_relay, :relay_discovery_max_age_seconds)
 
     Application.put_env(:ansible_relay, :relay_announcements, [
       %{
@@ -37,7 +46,9 @@ defmodule AnsibleRelay.Web.RelayDiscoveryControllerTest do
     on_exit(fn ->
       restore_env(:relay_origin, original_relay_origin)
       restore_env(:relay_announcements, original_announcements)
+      restore_env(:relay_featured_forum_hosts, original_featured_forum_hosts)
       restore_env(:relay_featured_boards, original_featured_boards)
+      restore_env(:relay_discovery_max_age_seconds, original_max_age_seconds)
     end)
 
     :ok
