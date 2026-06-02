@@ -1,16 +1,54 @@
-# ansible_relay/phoenix — Elixir/Phoenix Relay (V1.1)
+# ansible_relay/phoenix — Elixir/Phoenix Relay And Forum Host MVP
 
-> **狀態：Q2 起始** — Dart shelf server 已移除，此目錄放置未來的 Elixir/Phoenix 實作。
+> **Status: current MVP implementation.** This service is no longer a future
+> placeholder. It currently hosts co-located Elix Relay and Forum Host API
+> surfaces for development and first deployment, while keeping the route,
+> storage, and authorization contracts separate so a later Cloud Run/service
+> split does not require an API redesign.
+
+## Current API Surface
+
+Implemented route groups include:
+
+- Relay identity and DID anchoring APIs.
+- Relay discovery: `GET /api/v1/discovery`.
+- Forum Host metadata and hosted-board APIs:
+  - `GET /api/v1/forum-host`
+  - `GET /api/v1/forum-host/boards`
+  - `POST /api/v1/forum-host/boards`
+  - `POST /api/v1/forum-host/web/threads`
+- Web sessions:
+  - `POST /api/v1/web-sessions/challenges`
+  - `GET /api/v1/web-sessions/challenges/:id`
+  - `POST /api/v1/web-sessions/approve`
+  - `POST /api/v1/web-sessions/reject`
+  - `GET /api/v1/web-sessions/me`
+  - `GET /api/v1/web-sessions`
+  - `POST /api/v1/web-sessions/revoke`
+- Publication intent, ActivityPub MVP, XRPC compatibility, reputation, and
+  messenger APIs.
+
+Browser web-session auth is httpOnly-cookie first. The relay sets
+`trisaura_session` on approved challenge polling and accepts that cookie for
+scoped Forum Host web writes; bearer tokens remain a compatibility path for
+server/API callers. App-originated create-board writes use DID signed intents
+instead of web-session auth.
 
 ## 對應 V1.1 組件
 
 - **Comp C**: Carrier-Grade Relay / Genesis Relay
-- **Comp D**: The First Forum / Aggregator & Forum Engine（可獨立部署）
+- **Forum Host MVP**: co-located hosted-board discovery, board creation, and
+  scoped web thread creation.
+- **Comp D / AppView**: future work. There is no complete Phoenix AppView
+  aggregator in this repo.
 
 Genesis Hosting reference: [`../../docs/architecture/genesis_hosting.md`](../../docs/architecture/genesis_hosting.md).
 Security launch checklist: [`../../docs/security/sosp.md`](../../docs/security/sosp.md).
 
-## 預計結構
+## Historical Target Structure
+
+The umbrella-style structure below is a target direction, not the current file
+layout. The current code is a single Phoenix app under this directory.
 
 ```
 ansible_relay/phoenix/
@@ -47,17 +85,27 @@ ansible_relay/phoenix/
 
 ## 關鍵技術依賴
 
+目前 Phoenix MVP 的 `mix.exs` 只包含已落地的 HTTP、JSON、資料庫、和簽章驗證依賴。叢集、GCS、Pub/Sub、Presence、以及背景任務仍屬於目標部署能力，不能視為目前已啟用。
+
+### Current MVP
+
 | 功能 | 套件 |
 |------|------|
-| HTTP/WebSocket 伺服器 | `phoenix` + `bandit` |
+| HTTP 伺服器 | `plug` + `bandit` |
+| JSON | `jason` |
 | 身分狀態快取 | `:ets` (built-in) |
-| 非同步任務（GCS 上傳）| `oban` |
 | Rust 簽章驗證 | `rustler` (NIF) |
 | 資料庫 | `ecto` + `postgrex` (Cloud SQL) |
+
+### Target / Not Yet Implemented
+
+| 功能 | 目標依賴 |
+|------|----------|
+| 非同步任務（GCS 上傳）| `oban` |
 | 物件儲存 | `goth` + `google_api_storage` (GCS) |
 | 叢集拓撲 | `libcluster` |
 | 使用者連線狀態 | `phoenix_presence` |
-| Relay → Forum 串流 | GCP Pub/Sub |
+| Relay → Forum / AppView 串流 | GCP Pub/Sub |
 
 ## ETS Identity Cache / Challenge 設計
 
@@ -136,14 +184,17 @@ Production public Ops use:
 /ansible/ops/v1/mainnet/global
 ```
 
-## GCP 部署
+## Deployment Direction
 
-- Relay: GKE Autopilot（Regional Phoenix cluster, ETS 透過 Phoenix.PubSub 跨節點同步）
-- Aggregator: GKE C2 compute-optimized（Rustler 簽章驗證 CPU 密集）
-- Database: Cloud SQL PostgreSQL（read replica for forum queries）
-- Blob: Google Cloud Storage（encrypted Ops, multi-region）
-- Edge: Cloud CDN + Cloud Armor for the First Forum
-- Regions: Taiwan, Netherlands, United States as the Genesis benchmark
+Current local/dev deployment runs the Phoenix service as one process. The
+planned production boundary is separate Cloud Run services and databases for:
+
+- Elix Relay API + Relay DB.
+- Forum Host API + Forum Host DB.
+- Distribution frontend.
+
+Until that split exists, docs and diagrams should describe the service as
+co-located MVP, not as a completed GKE/AppView deployment.
 
 ## Genesis Hosting TODO
 

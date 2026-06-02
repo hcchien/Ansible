@@ -2,9 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> Current alignment note, 2026-06-02: this May 11 plan originally implemented a
+> bearer-token-shaped web-session path. The current browser path was hardened by
+> the Relay / Forum Host boundary work: the relay sets an httpOnly
+> `trisaura_session` cookie on approved challenge polling, browser APIs use
+> same-origin credentials, public reads omit credentials, and the frontend no
+> longer stores or sends bearer session tokens. `VerifyWebSession` accepts the
+> cookie and still supports bearer tokens as a compatibility path for
+> non-browser/API callers.
+
 **Goal:** Add an app-mediated login and authorization path that lets the distribution web UI act as a scoped self-custody DID session without exporting the app user's DID private key to the browser.
 
-**Architecture:** The relay issues web-session challenges and stores pending approvals. The app receives a QR/deep-link payload, displays the requested origin/scopes/expiry, signs a canonical session grant with `DidSigner`, and submits it to the relay. The relay verifies the signature against the active DID cache, issues a short-lived web session token, and enforces session scopes on web-facing Forum Host APIs.
+**Architecture:** The relay issues web-session challenges and stores pending approvals. The app receives a QR/deep-link payload, displays the requested origin/scopes/expiry, signs a canonical session grant with `DidSigner`, and submits it to the relay. The relay verifies the signature against the active DID cache, issues a short-lived session, installs it in the browser through an httpOnly cookie, and enforces session scopes on web-facing Forum Host APIs.
 
 **Tech Stack:** Dart, Flutter, `ansible_did`, `flutter_secure_storage`, `app_links`, `mobile_scanner`, Elixir/Phoenix Plug router, Jason, Ecto-ready GenServer state, `flutter test`, `dart test`, `mix test`.
 
@@ -256,7 +265,9 @@ get "/api/v1/web-sessions/me" do
 end
 ```
 
-`me` reads `Authorization: Bearer <session_token>` and returns:
+Current implementation note: `me` accepts the browser httpOnly
+`trisaura_session` cookie and may also accept `Authorization: Bearer
+<session_token>` for compatibility. It returns:
 
 ```json
 {
@@ -314,7 +325,8 @@ def call(conn, required_scopes)
 
 Behavior:
 
-- Parse `Authorization` header.
+- Parse the `trisaura_session` cookie or compatible `Authorization` bearer
+  header.
 - Load session from `WebSessionStore.get_session/1`.
 - Reject expired or revoked session.
 - Require all `required_scopes`.
@@ -663,6 +675,7 @@ the app-mediated session policy and revocation updates.
 - [x] Forum Host web writes consume DID-level rate-limit tokens.
 - [x] App can parse deep-link and QR web-session approval payloads.
 - [x] App approval UI shows origin, scopes, expiry, and DID before signing.
-- [x] Browser receives only relay-issued session tokens, never DID private keys.
+- [x] Browser receives only relay-issued session state, currently through an
+  httpOnly cookie; it never receives DID private keys.
 - [x] A scoped Forum Host smoke endpoint enforces `forum:post`.
 - [x] Tests cover relay controller, relay auth plug, app grant service, approval client, and approval UI.

@@ -1,6 +1,6 @@
 # Tris-Aura Sync Protocol Spec v2.0
 
-> Status: Active  
+> Status: Active compatibility/target spec; implementation is partial
 > Supersedes: [`tris_aura_sync_spec_v1.1.md`](./tris_aura_sync_spec_v1.1.md)  
 > Owners: core, identity, sync
 
@@ -18,6 +18,14 @@ Ansible keeps a local-first canonical model, projects public content directly
 to Nostr relays from the app, and delegates ActivityPub federation to the relay
 layer. Existing `did:plc` references remain implementation context until they
 are replaced or bridged.
+
+Current code does not implement the full live PLC directory, global atproto
+Firehose subscription, GCP Pub/Sub handoff, or Phoenix AppView aggregator
+described later in this document. The implemented AT/PLC slice is a
+compatibility path: local-shaped PLC context, XRPC `createRecord`,
+`resolveHandle`, signature validation, OpStore append, and stub CID behavior.
+Treat Firehose/AppView sections as target architecture unless a later document
+or test explicitly marks them implemented.
 
 Forum board ownership is also moving out of the local-canonical model. Forum
 Hosts own discussion boards, threads, posts, permissions, moderation, and the
@@ -57,7 +65,7 @@ content and may be projected to selected Forum Hosts.
 App                           Relay (Elixir/Phoenix)          PLC Directory
  |                                 |                               |
  |  [WebAuthn: generate keypair]   |                               |
- |  [Secure Enclave / StrongBox]   |                               |
+ |  [platform key storage target; hardware custody gap remains]      |
  |                                 |                               |
  |-- POST /api/v2/identity/register                                |
  |   body: { public_key_hex, handle_suffix }                       |

@@ -1,6 +1,6 @@
 # AT Protocol Lexicon & Firehose Topic Conventions
 
-> Status: Active (V2.0 — AT Protocol 整合版)  
+> Status: Active compatibility/target spec; implementation is partial
 > Supersedes: Gossipsub `/ansible/ops/v1` topic naming (V1.x)  
 > Scope: Tris-Aura Lexicon namespace, Firehose filter, XRPC routing
 
@@ -12,6 +12,12 @@ define the required public federation identity. New federation work treats
 AT-URI / `did:plc` records as optional compatibility or discovery context;
 Nostr uses `did:nostr` public keys, and ActivityPub uses relay-domain Actor
 URLs.
+
+Current implementation status: the relay currently exposes XRPC
+`com.atproto.repo.createRecord` and `com.atproto.identity.resolveHandle` as a
+compatibility slice. It does not expose `subscribeRepos`, `deleteRecord`, or
+`getRepo`, does not subscribe to the global atproto Firehose, and does not
+forward filtered events to GCP Pub/Sub/AppView.
 
 ---
 
@@ -74,24 +80,25 @@ at://did:web:example.com/io.trisaura.reaction/3jxtbz7abc00
 
 ## 4. Firehose 訂閱與過濾
 
-### 訂閱端點
+### 訂閱端點（Target）
 
 ```text
 wss://{relay_host}/xrpc/com.atproto.sync.subscribeRepos
 ```
 
-Relay 透過此端點訂閱全球 atproto Firehose，接收所有 Repo commit 事件。
+Target Relay behavior subscribes to the global atproto Firehose through this
+endpoint. This is not implemented in the current Phoenix MVP.
 
 ### 過濾規則
 
-Elixir Relay 使用 Pattern Matching 過濾事件：
+Target Elixir Relay behavior uses pattern matching to filter events:
 
 ```
 事件 $type 前綴 = "io.trisaura." → 保留，轉發至 AppView (GCP Pub/Sub)
 其他 $type                       → 忽略，不記錄內容
 ```
 
-過濾後事件的 GCP Pub/Sub topic 命名：
+Target filtered events use this GCP Pub/Sub topic naming:
 
 ```text
 trisaura-ops-{network}
@@ -117,12 +124,12 @@ trisaura-ops-{network}
 
 App → Relay 的直接發文路徑：
 
-| XRPC Method | 說明 |
+| XRPC Method | Current status |
 |---|---|
-| `com.atproto.repo.createRecord` | 發布新 Lexicon 記錄 |
-| `com.atproto.repo.deleteRecord` | 發布 Tombstone（不直接刪除） |
-| `com.atproto.sync.getRepo` | 取得完整 Repo MST（同步用） |
-| `com.atproto.identity.resolveHandle` | Handle → DID 解析 |
+| `com.atproto.repo.createRecord` | Implemented compatibility path; validates signed record and appends to OpStore with stub CID |
+| `com.atproto.repo.deleteRecord` | Target only; not routed in current Phoenix MVP |
+| `com.atproto.sync.getRepo` | Target only; not routed in current Phoenix MVP |
+| `com.atproto.identity.resolveHandle` | Implemented compatibility path |
 
 ---
 
@@ -142,7 +149,7 @@ App → Relay 的直接發文路徑：
 |---|---|
 | `InvalidLexicon` | `$type` 不在 `io.trisaura.*` 命名空間內 |
 | `InvalidSignature` | Ed25519 簽章驗證失敗 |
-| `DuplicateCid` | CID 已存在，重複提交 |
+| `DuplicateCid` | Target Firehose/AppView behavior; current XRPC path returns a stub CID |
 | `UnknownDid` | DID 未在 Active cache 中 |
 | `RateLimitExceeded` | DID 發文頻率超過 Token Bucket 限制 |
 

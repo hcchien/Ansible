@@ -5,6 +5,18 @@
 > Scope: Distribution frontend, Ansible app, Forum Host / relay, DID signing,
 > browser sessions, and trust-tier display
 
+## Constitution Review
+
+This spec touches identity, verification, Relay, Forum Host, AppView, and
+authorization behavior, so the engineering constitution applies.
+
+- The browser never receives the app user's root DID private key.
+- App-mediated grants disclose only relay origin, web origin, target audience,
+  scopes, subject DID, approving device id, and expiry.
+- Browser sessions are short-lived, scoped, revocable, and audience-bound.
+- Raw legal identity, provider assertions, biometrics, private keys, and
+  personhood commitments must not appear in web-session payloads or logs.
+
 ## Goal
 
 Let a user operate the distribution web UI with their app-held self-custody DID
@@ -23,13 +35,15 @@ The app already has the primitives needed to sign with a local DID:
 - The relay already verifies Ed25519 signatures for identity anchoring and
   publication intents.
 
-What does not exist yet:
+Current implementation status:
 
-- Browser-to-app login challenge protocol.
-- QR/deep-link intake in the app.
-- App approval UI for web session scopes.
-- Relay web session challenge, approval, expiry, and revocation state.
-- Web-session authorization checks on Forum Host write APIs.
+- Browser-to-app login challenge protocol exists as an MVP.
+- QR/deep-link intake and app approval UI exist for web-session scopes.
+- Relay challenge, approval, expiry, revocation, current-session, and
+  session-list APIs exist.
+- Forum Host web write APIs can require scoped web sessions with host audience.
+- Hosted web/passkey account sessions and durable production session
+  infrastructure remain future/partial.
 
 ## Design Decision
 
@@ -53,8 +67,8 @@ App approval:
 
 Browser session:
   web UI polls challenge status
-  relay returns short-lived session token after approval
-  web UI calls scoped Forum Host APIs with that session token
+  relay sets an httpOnly trisaura_session cookie after approval
+  web UI calls scoped Forum Host APIs with same-origin credentials
 ```
 
 ## Trust Tiers
@@ -82,6 +96,7 @@ The app signs a canonical JSON grant:
   "challenge_id": "wsc_01J...",
   "relay_origin": "https://relay.trisaura.io",
   "web_origin": "https://trisaura.io",
+  "audience": "https://forum.trisaura.io",
   "subject_did": "did:plc:...",
   "approving_device_id": "app_device_...",
   "scopes": ["forum:read", "forum:post", "forum:reply"],
@@ -94,6 +109,7 @@ Signing rules:
 
 - Canonicalize the grant before signing.
 - Bind the grant to both relay origin and web origin.
+- Bind the grant to the intended Forum Host audience when present.
 - Bind the grant to one relay-issued challenge id.
 - Bind the grant to the app device that approved the browser session.
 - Require expiry.
@@ -120,8 +136,10 @@ Policy:
 - A single browser session can still be revoked independently.
 - Web session list APIs must expose active sessions for user-visible review and
   revocation.
-- Session revocation accepts the current bearer token and may revoke either the
-  current token or another active token for the same DID.
+- Session revocation uses the current httpOnly cookie in the browser path and
+  may revoke either the current session or another active session for the same
+  DID. Bearer tokens may be accepted for server/API compatibility, but the web
+  frontend must not store bearer tokens.
 - Operational logs must record rate-limit decisions with `subject_type` and a
   one-way `subject_hash`; they must not join raw DID strings and raw IP
   addresses in the same log event.
@@ -154,14 +172,17 @@ The relay owns:
 
 - Challenge creation and expiry.
 - Session grant verification.
-- Session token issuance and revocation.
+- Session issuance, cookie installation, and revocation.
 - Scope enforcement on web-facing write APIs.
 - Trust tier labels and rate limits.
 - Audit records that do not join raw IP metadata with raw DID values in logs.
 
-The relay should use short-lived bearer sessions for the web frontend. The first
-implementation may use an in-memory session store for dev, but the API contract
-must allow durable storage before production.
+The browser path should use a short-lived httpOnly `trisaura_session` cookie.
+Challenge creation stays unauthenticated; challenge polling must use
+same-origin credentials so the approved `Set-Cookie` response is accepted by
+the browser. Bearer tokens remain a compatibility path for non-browser callers.
+The first implementation may use an in-memory session store for dev, but the API
+contract must allow durable storage before production.
 
 ## App Responsibilities
 
@@ -182,11 +203,13 @@ The distribution frontend owns:
 
 - Starting the login challenge.
 - Rendering QR/deep-link login.
-- Polling challenge status: keep polling while `pending`, store the relay token
-  and stop when `approved`, clear token state and offer retry when `rejected` or
-  `expired`.
-- Storing only the relay-issued web session token, never the DID private key.
-- Calling Forum Host APIs with the session token.
+- Polling challenge status: keep polling while `pending`, accept the relay-set
+  httpOnly cookie and stop when `approved`, clear challenge state and offer
+  retry when `rejected` or `expired`.
+- Storing no bearer session token in browser storage. Legacy token helpers are
+  no-ops kept only for compatibility.
+- Calling Forum Host APIs with same-origin credentials so the browser sends the
+  httpOnly cookie.
 - Showing identity tier and provenance.
 
 ## Failure Behavior

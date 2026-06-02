@@ -1,10 +1,12 @@
 # Ansible — Tris-Aura Hybrid Network V2.0
 
-A decentralised, AT Protocol-native P2P forum. Participants are pseudonymous but
-Sybil-resistant through a layered reputation system: base-level accounts are
-created with Passkeys (no password, no passport required), while higher trust
-tiers are earned through DNS Handle ownership or optional out-of-band identity
-verification.
+A local-first, multi-protocol forum and identity stack. Participants are
+pseudonymous but Sybil-resistant through layered trust: base-level accounts use
+app-held DID keys, while higher trust tiers come from accepted credentials or
+other explicit verification paths. AT Protocol / PLC is currently a
+compatibility path, not the only public federation identity. Nostr publication,
+Relay-side ActivityPub projection, Forum Host APIs, and app-mediated web
+sessions exist as partial MVP slices.
 
 ## Architecture
 
@@ -16,49 +18,55 @@ ansible_core/
   did/                    DID key management: did:plc / did:web (flutter_rust_bridge FFI)
   vc/                     Lexicon record models, MST engine (Rust FFI)
 ansible_rust_core/        Rust crate — Ed25519, MST, Lexicon signing, atproto repo
-ansible_relay/phoenix/    Elixir/Phoenix — Firehose relay, Lexicon filter, Op ingestion
-ansible_appview/phoenix/  Elixir/Phoenix — AppView aggregator, PostgreSQL index, LiveView
+ansible_relay/phoenix/    Elixir/Phoenix — co-located Relay, Forum Host, web sessions,
+                          ActivityPub/XRPC compatibility, discovery APIs
+ansible_distribution_frontend/
+                          Node/static web frontend — Forum Host public views and
+                          app-approved web-session flow
 docs/
   protocol/               Sync spec v2.0, AT Protocol Lexicon conventions
   architecture/           Genesis hosting, deployment notes
   security/               SOSP pre-launch security policy
 ```
 
-## Identity Flow (Passkeys + AT Protocol)
+## Identity Flow (Current MVP)
 
 ```
 User taps "建立帳號"
-  → Passkeys (WebAuthn) generates Ed25519 keypair via Secure Enclave / StrongBox
-  → did:plc registration through PLC directory server
-  → App receives a default Handle: @user.trisaura.io
-  → Optional: user points DNS TXT / HTTPS /.well-known/atproto-did to upgrade Handle
+  → app creates/loads a local DID signing key
+  → optional compatibility paths can create local-shaped did:plc / did:web context
   → Relay marks DID as "Active"; Reputation Labeler tier = Basic
 ```
 
-## Post Flow (MST Sync)
+Hardware-held signing keys and explicit reduced-trust mode are still compliance
+gaps; do not treat current secure-storage-backed key paths as complete Secure
+Enclave / StrongBox custody.
+
+## Public Distribution Flow (Current MVP)
 
 ```
-User composes a post
-  → App creates a Lexicon record (io.trisaura.post) signed by DID
-  → Record written into local MST Repo (SQLite)
-  → Incremental Repo commit pushed to Firehose Relay (Comp C)
-  → AppView (Comp D) picks up Firehose stream, indexes into PostgreSQL
-  → Web forum and other App subscribers receive the update
+User creates public/unlisted content or a forum intent
+  → private content remains local and fail-closed
+  → app can publish selected public content to user-selected Nostr relays
+  → app can submit signed Forum Host intents for hosted boards
+  → relay can project accepted publication intents to ActivityPub MVP surfaces
+  → distribution frontend reads public Forum Host APIs and uses httpOnly
+     app-approved web sessions for scoped writes
 ```
 
 ## Component Status
 
 | Component | Status | Notes |
 |---|---|---|
-| Ed25519 DID — did:key stub | 🔄 Migrating | Rust via flutter_rust_bridge → replacing with did:plc in P1 |
-| Passkeys (WebAuthn) login | 🔜 P1 | Replace ZKP anchor flow |
-| did:plc registration | 🔜 P1 | Via PLC directory; did:web for custom domains |
-| MST Repo engine (Rust) | 🔜 P1 | Replaces raw Yrs CRDT; atproto-compatible |
-| Lexicon record signing | 🔜 P1 | io.trisaura.* namespace |
-| Elixir Firehose Relay | 🔜 P2 | WebSocket Firehose; replaces raw Gossipsub Op relay |
-| AppView Aggregator | 🔜 P2 | PostgreSQL index + Phoenix LiveView |
-| DNS Handle verification | 🔜 P3 | DNS TXT + HTTPS /.well-known lookup |
-| Reputation Labeler | 🔜 P3 | Basic / DNS-verified / Verified Human tiers |
+| Local app and store | ✅ MVP | Flutter app, Drift store, local content, hosted-board projections |
+| Relay / Forum Host Phoenix service | ✅ MVP / partial | Discovery, Forum Host metadata/boards, signed intents, web sessions, ActivityPub/XRPC compatibility |
+| Distribution frontend | ✅ MVP / partial | Public Forum Host views and app-approved DID web-session flow |
+| Nostr adapter | ✅ partial | App-side publication/settings/retry surfaces; production key custody remains incomplete |
+| ActivityPub adapter | ✅ partial | Relay-side actor/WebFinger/outbox/projection/retry; full federation behavior remains incomplete |
+| AT Protocol / PLC bridge | ✅ partial / legacy | XRPC `createRecord` and `resolveHandle`; PLC genesis/local CID paths are compatibility stubs |
+| AppView Aggregator | 🔜 draft | No `ansible_appview/phoenix` package currently exists |
+| DNS Handle verification | 🔜 future | DNS TXT + HTTPS /.well-known lookup |
+| Reputation Labeler | ✅ partial | VP-to-tier paths exist; complete AppView labeler is missing |
 | AI Agent Comp F | 🔜 P4 | Summarisation and filtering over Firehose stream |
 
 ## Social Graph Direction
@@ -100,7 +108,7 @@ cd /path/to/Ansible
 # 1. Build Rust crate + generate Dart FFI bindings + Drift
 ./setup_codegen.sh
 
-# 2. Start Elixir Firehose Relay
+# 2. Start co-located Elix Relay / Forum Host Phoenix service
 cd ansible_relay/phoenix
 mix deps.get && mix ecto.create && mix ecto.migrate
 mix run --no-halt          # listens on :4001 in dev
@@ -125,25 +133,24 @@ flutter run
 
 ## Key Design Decisions
 
-**Passkeys replace ZKP anchoring.** V1.x used a Groth16 ZKP over ePassport NFC
-data to prove "real human, unique identity". V2.0 replaces this with Passkeys
-(WebAuthn) stored in Secure Enclave / StrongBox. Sybil resistance is now handled
-by a layered Reputation Labeler: DNS Handle verification and optional out-of-band
-"Verified Human" attestation provide progressive trust, rather than a binary
-passport gate.
+**Progressive trust replaces passport-gated onboarding.** V1.x used a Groth16
+ZKP over ePassport NFC data to prove "real human, unique identity". V2.0 moves
+ordinary onboarding to app-held DID keys and progressive trust. Hardware-held
+signing keys are still a known gap until platform-backed custody and explicit
+reduced-trust mode are implemented.
 
-**AT Protocol DID (did:plc / did:web) replaces did:key.** did:plc allows key
-rotation and delegation through the PLC directory. did:web allows organisations
-and power users to self-host their DID document via DNS.
+**AT Protocol / PLC is a compatibility context.** The repo has XRPC and PLC
+primitives, but current federation direction keeps local data canonical and
+treats AT/PLC as one bridge beside Nostr, ActivityPub, and Forum Host.
 
-**MST (Merkle Search Tree) replaces raw Yrs CRDT Ops.** Each user's content is
-organised in an atproto-compatible Repo. Incremental commits are pushed as signed
-MST deltas, enabling efficient P2P sync and independent verification.
+**Forum Hosts own forum state.** Hosted boards, rules, moderation policy, and
+distribution-facing forum state belong to a Forum Host. The current Phoenix
+service co-locates Relay and Forum Host roles for MVP deployment, but the API
+contract keeps the roles separate.
 
-**Firehose Relay replaces custom Gossipsub Op relay.** The Elixir relay subscribes
-to the global atproto Firehose and filters records tagged with the
-`io.trisaura.*` Lexicon namespace, then forwards them to the AppView aggregator.
+**Web sessions are app-mediated and cookie-backed.** The browser never receives
+the root DID private key. App-approved web sessions use Relay-issued httpOnly
+cookies, scoped grants, host audience checks, and explicit revocation.
 
-**Relay is centralised for V2.0 Alpha.** Full P2P Firehose federation arrives in
-P3. Until then the Genesis Firehose Relay is the single trust anchor for Op
-ingestion.
+**AppView remains future work.** Do not treat the current repository as having a
+complete Phoenix AppView aggregator, Firehose pipeline, or PostgreSQL index.

@@ -129,15 +129,20 @@ Constitution rules affected:
 
 ### External Host Compliance Level
 
-Status: Not implemented yet.
+Status: Partially implemented.
 
-Forum Host discovery exposes capabilities but does not yet expose a
-constitution compliance level. The app also does not persist or display
-external host compliance level.
+Forum Host and Relay discovery now expose constitution compliance level, and
+Relay discovery defaults unknown/missing external values to `unknown`. The app
+first-run discovery surface parses and displays compliance labels before a user
+relies on starter host/board results.
+
+The remaining gap is local persistence and policy use: local `ForumHost` /
+`RemoteNode` storage does not yet persist compliance level, and ranking, sync,
+recommendation, and trust policy do not yet consume it.
 
 Required follow-up:
 
-- Add `constitution_compliance` to Forum Host discovery and local host records.
+- Add `constitution_compliance` to local host records.
 - Default unknown external hosts to `unknown`.
 - Let first-party ranking, trust, recommendation, or sync policy read the
   compliance level before relying on external host behavior.

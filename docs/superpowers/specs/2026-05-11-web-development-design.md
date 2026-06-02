@@ -5,6 +5,19 @@
 > Scope: Distribution frontend, web sessions, Forum Host web APIs, trust tiers,
 > browser storage, and scoped web feature set
 
+## Constitution Review
+
+This spec touches identity, verification, Relay, Forum Host, AppView, and
+authorization behavior, so the engineering constitution applies.
+
+- Web self-custody participation must be app-approved and scoped.
+- Browser code must not receive DID private keys or store bearer session tokens
+  for the current app-approved DID path.
+- Public reads should avoid ambient credentials; authenticated writes/session
+  APIs should use the httpOnly Relay session cookie.
+- Raw legal identity, provider assertions, biometrics, private keys, and
+  personhood commitments must not appear in web payloads or logs.
+
 ## Goal
 
 Define the full web feature surface for the distribution frontend without
@@ -32,11 +45,15 @@ app. It does not mean the browser owns or stores the DID private key.
 
 ## Web Session Security Baseline
 
-All logged-in web features must use relay-issued session tokens.
+All logged-in web features must use relay-issued, short-lived sessions. In the
+current browser implementation, app-approved DID sessions are carried by an
+httpOnly `trisaura_session` cookie and same-origin credentials, not by a bearer
+token stored in JavaScript-visible storage.
 
 Rules:
 
-- Store only relay-issued web session tokens in the browser.
+- Store no app-approved DID session bearer token in browser storage. Legacy
+  token helper functions are no-ops kept only for compatibility.
 - Never store DID private keys, app seed material, passkey private material, or
   delegated signing keys in browser storage for the first implementation.
 - Bind `self_custody_did` sessions to app-signed grants containing
@@ -44,7 +61,8 @@ Rules:
   `approving_device_id`, scopes, `created_at`, and `expires_at`.
 - Treat `basic_web` and `web_passkey` accounts as separate trust tiers even if
   they can use the same posting UI.
-- Expire web sessions and require re-approval when the token expires.
+- Expire web sessions and require re-approval when the cookie-backed session
+  expires.
 - Provide user-visible revocation for current and other active web sessions.
 - Fail closed when scope, origin, expiry, or DID cache validation fails.
 
@@ -68,7 +86,9 @@ Implementation note:
 
 - `ansible_distribution_frontend/src/web_session_client.mjs` owns the initial
   web-session client behavior: trust-tier classification, challenge status
-  handling, and browser token storage.
+  handling, and cookie-backed session lifecycle. Challenge creation omits
+  credentials; challenge polling uses same-origin credentials so the approved
+  `Set-Cookie` response is accepted.
 
 ## Web Scoped Features
 
@@ -99,8 +119,8 @@ Available through web UI:
 - Start app-mediated login by creating a relay web-session challenge.
 - Show QR code and deep link for app approval.
 - Poll challenge status: `pending`, `approved`, `rejected`, and `expired`.
-- On approval, store the relay-issued session token and mark the session as
-  `self_custody_did`.
+- On approval, accept the relay-issued httpOnly cookie and mark the session as
+  `self_custody_did` after `/api/v1/web-sessions/me` reports that tier.
 - Explain trust tier differences in account/session settings without implying
   that browser passkey equals app-held DID custody.
 - Upgrade from `basic_web` or `web_passkey` to an app-approved DID session.
@@ -239,7 +259,7 @@ The web UI should support three visible modes:
 
 ### Public Mode
 
-No session token. The user can browse public content and start sign-in.
+No active web session. The user can browse public content and start sign-in.
 
 ### Hosted Web Mode
 
@@ -248,9 +268,9 @@ according to host policy, but displays a lower trust tier.
 
 ### App-Approved DID Mode
 
-The user has a relay-issued session token backed by an app-signed DID grant. The
-UI enables scoped self-custody DID participation and shows expiry/revocation
-controls.
+The user has a relay-issued httpOnly session cookie backed by an app-signed DID
+grant. The UI enables scoped self-custody DID participation and shows
+expiry/revocation controls.
 
 ## API Expectations
 
@@ -262,7 +282,7 @@ The web frontend should rely on relay and Forum Host APIs:
 - `GET /api/v1/web-sessions/me`
 - `GET /api/v1/web-sessions`
 - Forum Host read APIs for boards, threads, posts, profiles, and metadata.
-- Forum Host write APIs protected by scoped bearer session checks.
+- Forum Host write APIs protected by scoped cookie-backed web-session checks.
 
 Future implementation plans should add any missing web account, passkey,
 profile, notification, reaction, report, and session-list endpoints explicitly
@@ -271,14 +291,14 @@ instead of overloading the app-mediated DID session API.
 ## Failure Behavior
 
 - Challenge pending: keep polling until expiry and show QR/deep link.
-- Challenge approved: store only the relay-issued `session_token`, stop
-  polling, and enter `self_custody_did` mode when the relay reports that tier.
-- Challenge rejected: clear token state, show retry, and keep browser
+- Challenge approved: accept the relay-set httpOnly cookie, stop polling, and
+  enter `self_custody_did` mode when the relay reports that tier.
+- Challenge rejected: clear challenge state, show retry, and keep browser
   unauthenticated.
 - Challenge expired: clear token state, discard challenge, and create a new one.
-- Session expired: clear token and ask user to sign in again.
+- Session expired: return to public mode and ask user to sign in again.
 - Missing scope: disable action in UI and handle relay `403`.
-- Unknown token: clear token and return to public mode.
+- Unknown or missing cookie session: return to public mode.
 - App-approved DID no longer active: clear session and require a new approval.
 - Network failure: preserve drafts locally when safe, but do not submit without
   a valid session.
@@ -288,7 +308,7 @@ instead of overloading the app-mediated DID session API.
 - Web feature list clearly distinguishes public, hosted web, passkey web, and
   app-approved DID capabilities.
 - Web self-custody features require app-mediated session approval and scoped
-  relay bearer tokens.
+  relay httpOnly cookie sessions.
 - The browser never receives or stores DID private keys.
 - Forum write features are available on web through scoped Forum Host APIs.
 - High-risk app-only identity and local-private features are excluded from web

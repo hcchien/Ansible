@@ -54,24 +54,27 @@ relay-domain actor URLs owned by the distribution relay.
 - Relay handoff: reconnecting through another region should preserve active
   status if the DID cache entry is still valid.
 
-### C-3 Firehose Subscription and Filtering
+### C-3 Firehose Subscription and Filtering Target
 
-- The Relay subscribes to the global atproto Firehose via WebSocket:
+- Target Relay behavior subscribes to the global atproto Firehose via WebSocket:
   `wss://{upstream}/xrpc/com.atproto.sync.subscribeRepos`
 - Elixir pattern matching filters events whose Lexicon `$type` starts with
   `io.trisaura.*`.
 - Accepted events are forwarded to Component D through GCP Pub/Sub.
 - Rejected / irrelevant events are dropped without logging content.
 
+Current code does not implement this Firehose/Pub/Sub/AppView path.
+
 ### C-4 XRPC Ingestion Handler
 
 - Input: App sends `com.atproto.repo.createRecord` XRPC requests.
-- Relay path:
+- Current MVP path:
   1. Parse and validate the Lexicon record structure.
   2. Verify `repo` DID against the active DID cache.
   3. Verify the Ed25519 `commit_sig` over the CBOR-serialised record.
-  4. Reject duplicate CIDs with `409 Conflict`.
-  5. Emit Firehose event and forward to GCP Pub/Sub for Component D.
+  4. Append the accepted record to OpStore and return a stub CID.
+- Target path still needs duplicate-CID enforcement, Firehose emission, and GCP
+  Pub/Sub forwarding for Component D.
 - Benchmark: record parse, verification, dedup, and publish latency.
 
 ### C-5 SLA and Operations
@@ -183,7 +186,7 @@ source of truth.
 - [ ] Implement Phoenix.PubSub propagation for active DID cache updates.
 - [ ] Add Phoenix Presence tracking for connected users and DID status.
 - [ ] Define regional GCP Ingress layout for Taiwan, Netherlands, and United States.
-- [ ] Implement XRPC `com.atproto.repo.createRecord` handler.
+- [x] Implement partial XRPC `com.atproto.repo.createRecord` handler.
 - [ ] Add WebSocket Firehose subscription with `io.trisaura.*` filter.
 - [ ] Forward accepted records to GCP Pub/Sub for Component D.
 - [ ] Add relay metrics: parse latency, signature verification latency, ingest p95,

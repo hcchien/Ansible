@@ -341,7 +341,7 @@
 
           <rect x="342" y="318" width="220" height="84" rx="8" fill="#fef3c7" stroke="#f59e0b"></rect>
           <text x="360" y="344" class="node-title">Forum Host</text>
-          <text x="360" y="363" class="node-sub">minimal hosted-board discovery</text>
+          <text x="360" y="363" class="node-sub">durable hosted-board discovery</text>
           <text x="360" y="379" class="node-sub">and scoped web-thread writes</text>
           <rect x="487" y="328" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
           <text x="518" y="340" class="chip-text" text-anchor="middle">PARTIAL</text>
@@ -375,7 +375,7 @@
           <text x="800" y="244" class="chip-text" text-anchor="middle">DRAFT</text>
 
           <rect x="656" y="330" width="182" height="76" rx="8" fill="#fff7ed" stroke="#fb923c"></rect>
-          <text x="674" y="356" class="node-title">Web Session Token</text>
+          <text x="674" y="356" class="node-title">Web Session Auth</text>
           <text x="674" y="375" class="node-sub">httpOnly scoped web session;</text>
           <text x="674" y="391" class="node-sub">never DID private key storage</text>
           <rect x="764" y="340" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
@@ -419,8 +419,8 @@
 
           <rect x="924" y="522" width="204" height="76" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="5 4"></rect>
           <text x="942" y="548" class="node-title">External Forum Hosts</text>
-          <text x="942" y="567" class="node-sub">external host discovery target;</text>
-          <text x="942" y="583" class="node-sub">compliance level missing</text>
+          <text x="942" y="567" class="node-sub">discovery/display implemented;</text>
+          <text x="942" y="583" class="node-sub">persistence/policy missing</text>
           <rect x="999" y="532" width="50" height="17" rx="8" fill="#64748b"></rect>
           <text x="1024" y="544" class="chip-text" text-anchor="middle">EXT</text>
           <rect x="1057" y="532" width="54" height="17" rx="8" fill="#7c3aed"></rect>
@@ -463,14 +463,14 @@
           <text x="694" y="502" class="edge-label">AT/PLC compatibility path</text>
 
           <path d="M248 561 C374 626 566 412 656 368" class="edge edge-draft" stroke="#f59e0b" marker-end="url(#arrowMain)"></path>
-          <text x="380" y="611" class="edge-label">app approves browser session; browser stores token only</text>
+          <text x="380" y="611" class="edge-label">app approves browser session; browser sends httpOnly cookie</text>
 
           <path d="M838 368 C892 408 896 510 924 560" class="edge edge-draft" stroke="#64748b" marker-end="url(#arrowMain)"></path>
-          <text x="845" y="482" class="edge-label">compliance level gap</text>
+          <text x="845" y="482" class="edge-label">compliance persistence/policy gap</text>
 
           <rect x="56" y="628" width="1060" height="42" rx="6" fill="#f8fafc" stroke="#e2e8f0"></rect>
           <text x="74" y="644" class="edge-label">Constitution guardrails: private content stays local; VP requires consent; raw legal identity/private keys stay out of Relay, Forum Host, AppView, logs, and federation.</text>
-          <text x="74" y="661" class="edge-label">Current gaps: hardware-backed key custody/reduced-trust mode, and external host compliance level.</text>
+          <text x="74" y="661" class="edge-label">Current gaps: hardware-backed key custody/reduced-trust mode, and external compliance persistence/policy use.</text>
         </svg>
       </div>
     </div>
@@ -481,7 +481,7 @@
         <ul>
           <li>Local-first app storage and publication intent.</li>
           <li>Wallet and Issuer credential issuance/presentation boundary.</li>
-          <li>Forum Host discovery and scoped web-thread MVP, with broader board/moderation scope marked partial.</li>
+          <li>Forum Host durable discovery, signed create-board intents, and scoped web-thread MVP, with broader board/moderation scope marked partial.</li>
           <li>Web sessions approved by the app without exporting DID keys.</li>
           <li>Nostr direct publish, ActivityPub relay distribution, and AT/PLC compatibility.</li>
         </ul>
@@ -500,7 +500,7 @@
         <ul>
           <li>Private content stays in the user-controlled boundary.</li>
           <li>Raw legal identity and private keys do not flow to Relay, Forum Host, AppView, logs, or federation.</li>
-          <li>External host compliance level remains an explicit current gap.</li>
+          <li>External host compliance discovery and display exist; local persistence and ranking/sync/trust-policy use remain explicit current gaps.</li>
         </ul>
       </div>
     </div>
@@ -555,8 +555,8 @@
         <tr>
           <td>Forum Host</td>
           <td><span class="status partial">partial</span></td>
-          <td><code>ForumHostController</code>, app and web clients, Forum Host tests</td>
-          <td>Current slice is minimal discovery and scoped web-thread acceptance.</td>
+          <td><code>ForumHostController</code>, Forum Host store, app and web clients, Forum Host tests</td>
+          <td>Current slice has durable discovery metadata, seeded hosted boards, signed create-board intents, and scoped web-thread acceptance; full thread/post/moderation hosting remains incomplete.</td>
         </tr>
         <tr>
           <td>Reputation Labeler</td>
@@ -571,7 +571,7 @@
           <td>MVP E2EE transport exists; it is not a complete Signal/libsignal-grade multi-device messenger.</td>
         </tr>
         <tr>
-          <td>Web Frontend / Web Session Token</td>
+          <td>Web Frontend / Web Session Auth</td>
           <td><span class="status partial">partial</span></td>
           <td><code>ansible_distribution_frontend/src</code>, web session client, relay web-session controller/store, tests</td>
           <td>Hosted web accounts, replies, profiles, notifications, moderation, and durable session infrastructure are incomplete.</td>
@@ -608,9 +608,9 @@
         </tr>
         <tr>
           <td>External Forum Hosts</td>
-          <td><span class="status-list"><span class="status external">external</span><span class="status gap">gap</span></span></td>
-          <td>Compliance review plus absence of <code>constitution_compliance</code> in Forum Host discovery/entity shape</td>
-          <td>Compliance level must exist before ranking, sync, recommendation, or trust policy relies on external host behavior.</td>
+          <td><span class="status-list"><span class="status external">external</span><span class="status partial">partial</span><span class="status gap">gap</span></span></td>
+          <td>Relay/Forum Host discovery exposes <code>constitution_compliance</code>; app first-run discovery parses/displays it; local host records and policy use still lag</td>
+          <td>Discovery/display exists, but local persistence and ranking/sync/recommendation/trust policy integration remain gaps.</td>
         </tr>
       </tbody>
     </table>
@@ -625,7 +625,7 @@
         <li>Raw legal identity, provider assertions, private keys, biometric material, and private content are not shown flowing to Relay, Forum Host, AppView, public credentials, logs, federation, or external hosts.</li>
         <li>Web sessions are scoped browser sessions and do not imply browser storage of root DID private keys.</li>
         <li>Forum Host moderation is host-level governance, not global truth.</li>
-        <li>Current gaps are explicitly labeled: hardware-backed key storage/reduced-trust mode, and external host constitution compliance level.</li>
+        <li>Current gaps are explicitly labeled: hardware-backed key storage/reduced-trust mode, and external host compliance persistence/policy use.</li>
       </ul>
     </div>
 

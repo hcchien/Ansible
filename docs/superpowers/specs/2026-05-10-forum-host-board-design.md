@@ -295,9 +295,16 @@ returns accepted remote identity.
 
 ### Forum Host Settings
 
-Sync settings should become Forum Host settings:
+Terminology update, 2026-06-02: app Sync settings now present the primary
+bootstrap/sync endpoint as **Elix Relay** and keep Nostr Relay settings hidden
+behind the optional advanced section by default. Forum Host remains the
+ownership model for hosted boards, rules, permissions, moderation, and forum
+state, but the top-level app setting should not confuse ordinary users by
+mixing Forum Host and Relay endpoints.
 
-- Add/edit/remove Forum Host.
+For hosted boards, the settings surface should still support:
+
+- Add/edit/remove Elix Relay / Forum Host endpoint records.
 - Show host capabilities.
 - Browse or import hosted boards.
 - Subscribe/unsubscribe per hosted board.

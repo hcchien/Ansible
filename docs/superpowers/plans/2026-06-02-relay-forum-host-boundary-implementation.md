@@ -42,6 +42,29 @@ co-located contract slice:
 This plan does not split Cloud Run services. The code must be structured so that
 the later service split is a deployment change, not an API redesign.
 
+## Current Implementation Status
+
+As of 2026-06-02, Tasks 1-9 in this plan have been implemented and reviewed in
+the current branch. The historical task bodies below still preserve their
+test-first expected-failure wording, but the current code now includes:
+
+- durable Forum Host discovery fields and seeded hosted boards;
+- `GET /api/v1/discovery` for Relay bootstrap announcements, featured Forum
+  Hosts, starter boards, cache/version metadata, and compliance labels;
+- app DID signed create-board intents with `target_forum_host`;
+- scoped web sessions with host audience and httpOnly cookie transport;
+- CORS credential headers for allowed web origins;
+- app clients for Relay discovery and signed Forum Host writes;
+- distribution frontend public reads with `credentials: "omit"`;
+- distribution frontend authenticated web-session/write calls with
+  `credentials: "same-origin"`;
+- app first-run discovery UI that displays announcements/starter boards and
+  compliance without auto-subscribing, auto-posting, or creating local boards.
+
+The final web transport fix is important: challenge creation remains
+unauthenticated, but challenge polling uses same-origin credentials so the
+browser accepts the relay's approved `Set-Cookie` response.
+
 ## File Structure
 
 Create:
@@ -858,7 +881,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 ```
 
 Keep the existing `create_board/2`, `create_web_thread/2`, `send_json/3`, and
-helper functions until Task 4 removes the old hard-coded board behavior.
+helper functions until Task 4 replaces the legacy starter-board placeholder path.
 
 - [ ] **Step 5: Run controller tests**
 
@@ -2165,7 +2188,11 @@ test('postJson uses same-origin credentials and no legacy bearer storage', async
     },
   });
 
-  await client.postJson('/api/v1/forum-host/web/threads', { title: 'Hello' });
+  await client.postJson(
+    '/api/v1/forum-host/web/threads',
+    { title: 'Hello' },
+    { authenticated: true },
+  );
 
   assert.equal(requests[0].init.credentials, 'same-origin');
   assert.equal(requests[0].init.headers.authorization, undefined);

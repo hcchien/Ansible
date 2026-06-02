@@ -22,7 +22,7 @@ The immediate implementation may keep `/api/v1/forum-host/*` inside
 `ansible_relay/phoenix`, but the API contract must stop depending on that
 co-location. Forum Host writes must be accepted only after either direct app DID
 signature verification or verification of a short-lived Relay-issued web
-session token scoped to the target Forum Host.
+session scoped to the target Forum Host.
 
 ## Constitution Review
 
@@ -59,34 +59,38 @@ where a Relay route can appear to be the sole authority for forum identity.
 
 ## Current State
 
-The repo currently has a minimal Forum Host surface under
-`ansible_relay/phoenix`:
+As of the 2026-06-02 implementation pass, the repo has a co-located Elix Relay
+and Forum Host MVP under `ansible_relay/phoenix`:
 
+- `GET /api/v1/discovery`
 - `GET /api/v1/forum-host`
 - `GET /api/v1/forum-host/boards`
 - `POST /api/v1/forum-host/boards`
 - `POST /api/v1/forum-host/web/threads`
 
-The controller documents itself as a minimal discovery surface. Hosted board
-discovery currently returns a hard-coded `general` board, not a durable Forum
-Host catalog. Write routes currently call `VerifyWebSession` with `forum:post`.
+Relay discovery returns Relay metadata, announcements, featured Forum Hosts,
+featured boards, cache/version fields, and visible `constitution_compliance`.
+Forum Host metadata now exposes compliance, capabilities, host identity,
+accepted session issuers, rules, posting policy, and moderation policy. Hosted
+board discovery reads the Forum Host store seed/catalog instead of only a
+controller-local hard-coded fixture.
 
 The app has `ForumHostClient.getHostInfo()`,
 `ForumHostClient.listHostedBoards()`, and `ForumHostClient.createHostedBoard()`.
-The app create-board path sends a signed intent body but does not currently
-provide the web-session authorization that the Phoenix route requires. This is
-an implementation mismatch: app-originated signed intents and web-originated
-session writes should be separate authorization modes.
+The app create-board path sends a DID signed intent with `target_forum_host`;
+it is not web-session gated. Web-originated Forum Host writes use scoped Relay
+web sessions with the target Forum Host audience.
 
-The distribution frontend client currently comments that authentication is via
-httpOnly cookie, while the Phoenix `VerifyWebSession` plug reads only
-`Authorization: Bearer ...`. That is another implementation mismatch. Cookie
-transport can be valid for browsers, but the server-side verifier must normalize
-the cookie into the same session-token verification path or the frontend must
-send the expected bearer token.
+The browser transport mismatch has been resolved. Challenge creation is
+unauthenticated, approved challenge polling runs with same-origin credentials so
+the browser accepts the relay's httpOnly `trisaura_session` cookie, and scoped
+web APIs use that cookie. Bearer session tokens remain a compatibility path for
+non-browser callers, but the frontend does not store or send bearer tokens.
 
-There is no full app-facing discovery endpoint for first-run onboarding, starter
-boards, or Relay announcements. There is also no app announcement feature yet.
+The app first-run surface now loads Relay discovery only when no active Elix
+Relay/Forum Host and no hosted-board projection/subscription exists. It displays
+Relay announcements, starter boards, and compliance labels, but it does not
+auto-subscribe, auto-post, or create local boards.
 
 ## Approaches Considered
 
@@ -311,12 +315,15 @@ The preferred model is:
 1. Web requests a Relay web-session challenge with requested scopes.
 2. App displays web origin, Relay origin, target scopes, expiry, and DID.
 3. App signs the grant.
-4. Relay verifies the grant and issues a short-lived session token.
-5. Web calls Forum Host write APIs with that token.
-6. Forum Host verifies the token and required scope before accepting the write.
+4. Relay verifies the grant and issues a short-lived session.
+5. In the current co-located MVP, Relay installs an httpOnly
+   `trisaura_session` cookie and Forum Host web APIs verify that session through
+   the Relay web-session store with required scope and audience checks.
+6. For a later split-service deployment, Forum Host can replace same-process
+   lookup with Relay introspection or an offline-verifiable signed session
+   artifact.
 
-The token should be offline-verifiable by Forum Host, such as a signed JWT or
-PASETO-like token. It should include:
+The split-service session artifact or introspection result should include:
 
 - issuer `iss`
 - audience `aud`, bound to the target Forum Host
@@ -434,14 +441,16 @@ No app behavior should require those services to remain co-located.
 
 ## First-Run App Flow
 
-1. App reads `default_elix_relay_url` from Remote Config.
+1. App reads the default Elix Relay URL from `AppEnvironment.defaultRelayBaseUrl`
+   in the current MVP. Remote Config can feed the same value later.
 2. App calls `GET /api/v1/discovery` on the Elix Relay.
 3. App displays Relay announcements and starter Forum Host or board options.
-4. When the user chooses a starter board, app resolves the owning Forum Host
-   metadata and board metadata.
-5. App shows host compliance level and relevant rules before subscribing or
-   posting.
-6. App stores local hosted-board projection and board subscription.
+4. When the user chooses a starter board action, the app opens Sync settings or
+   the Add Elix Relay flow with the discovered `forumHostUrl`.
+5. The current first-run action does not auto-subscribe, auto-post, or create a
+   local board. Explicit hosted-board creation/subscription flows create local
+   projections only after the user chooses that action.
+6. App displays host/board compliance level before relying on discovery output.
 7. Forum writes remain explicit signed intents to the selected Forum Host.
 
 If Remote Config or Relay discovery is unavailable, the app should preserve
@@ -481,7 +490,7 @@ Relay tests:
 - `GET /api/v1/discovery` returns Relay metadata, announcements, featured
   Forum Hosts, featured boards, and cache/version fields.
 - Relay discovery entries do not become canonical Forum Host rules.
-- Relay web-session tokens include host audience, scopes, expiry, trust tier,
+- Relay web sessions include host audience, scopes, expiry, trust tier,
   and subject DID.
 
 Forum Host tests:
@@ -502,7 +511,9 @@ Forum Host tests:
 
 App tests:
 
-- First-run discovery uses Remote Config default Relay URL.
+- First-run discovery uses the configured default Elix Relay URL. Current MVP
+  code reads `AppEnvironment.defaultRelayBaseUrl`; Remote Config remains a
+  future provider for that value.
 - Starter board selection resolves Forum Host metadata before subscription.
 - Host compliance level is stored or displayed before relying on host behavior.
 - App create-board and thread creation use signed-intent auth, not web-session
@@ -512,8 +523,8 @@ App tests:
 
 Distribution frontend tests:
 
-- Browser-auth transport matches server verification, either by cookie
-  normalization or bearer header.
+- Browser-auth transport matches server verification through the httpOnly
+  cookie path; bearer remains only a compatibility path for non-browser callers.
 - Missing scope disables or rejects post/reply actions.
 - Web client never stores DID private keys.
 
@@ -533,7 +544,7 @@ Security and constitution tests:
    catalog.
 4. Split Forum Host write auth into app signed-intent verification and web
    session verification.
-5. Resolve the web cookie versus bearer mismatch.
+5. Keep browser cookie transport and server verification aligned.
 6. Replace hard-coded hosted board discovery with durable seeded Forum Host
    boards.
 7. Add app first-run discovery and announcement UI.
@@ -547,10 +558,12 @@ Security and constitution tests:
   `constitution_compliance`.
 - Forum Host writes are never accepted from an unsigned `author_did`.
 - App-originated writes use DID signed intents.
-- Web-originated writes use scoped Relay-issued session tokens audienced to the
-  Forum Host.
-- App can onboard a first-time user from Remote Config default Relay to starter
-  boards without requiring manual Forum Host setup.
+- Web-originated writes use scoped Relay-issued sessions audienced to the Forum
+  Host.
+- App can onboard a first-time user from the configured default Elix Relay to
+  starter boards without requiring manual Forum Host setup. The current MVP uses
+  `AppEnvironment.defaultRelayBaseUrl`; Remote Config can supply that value
+  later.
 - Relay announcements and Forum Host announcements are separately represented.
 - Current co-located Phoenix deployment remains possible, but APIs no longer
   require Relay and Forum Host to be the same authority.

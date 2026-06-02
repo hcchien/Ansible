@@ -40,7 +40,9 @@ This plan touches identity, credentials, verification, Relay trust, and Forum Ho
 - Duplicate prevention: the Issuer stores `commitment.Compute(pepper, nullifier, "zkid_moica_openac_v1:"+appID)` and never stores or issues the raw nullifier after verification.
 - Forum behavior: Forum Host and distribution frontend see only Relay web-session `trust_tier: "verified_human"` or a normal verified-human VP result. They never see the zkID nullifier or MOICA certificate fields.
 - First-version limitation: zkID v0.1 allows one verification per certificate/key/app nullifier. Renewal, physical card versus TW FidO, or changed key material may create a different nullifier. Do not market this as strict one-human-one-account.
-- Existing gaps remain: hardware-backed DID key storage and external host compliance level are still known gaps from the compliance review and are not solved by this plan.
+- Existing gaps remain: hardware-backed DID key storage and external host
+  compliance persistence/policy integration are still known gaps and are not
+  solved by this plan.
 
 ## MobileMoica APP2APP Document Review
 

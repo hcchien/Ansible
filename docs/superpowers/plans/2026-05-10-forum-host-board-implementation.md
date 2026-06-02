@@ -2,6 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> Current alignment note, 2026-06-02: this plan predates the Relay / Forum Host
+> boundary implementation. Its Forum Host ownership model remains valid, but UI
+> copy that expected top-level Sync settings to say "Forum Host" is superseded.
+> Current app settings present "Elix Relay" as the primary bootstrap/sync
+> endpoint and keep Nostr Relay behind the optional advanced section; hosted
+> boards remain Forum Host-owned projections.
+
 **Goal:** Replace local-canonical discussion boards with Forum Host-owned hosted boards projected into the app, while keeping murmurs and notes local-owned and projectable to external targets.
 
 **Architecture:** Forum Hosts own hosted boards, threads, posts, permissions, moderation, and distribution FE state. The app stores local projections, subscriptions, drafts, write intents, and personal content. Multi-host forum publishing uses primary hosted-board targets plus optional cross-post targets, not shared multi-primary board identity.
@@ -383,7 +390,7 @@ Expected: all tests pass.
 
 Test expected user flows:
 
-- Sync settings labels say "Forum Host".
+- Sync settings labels say "Elix Relay" for the primary bootstrap/sync endpoint.
 - Hosted board subscriptions are listed under each Forum Host.
 - Create board requires selecting a Forum Host.
 - If no Forum Host exists, create discussion board is disabled and explains

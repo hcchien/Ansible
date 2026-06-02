@@ -16,7 +16,8 @@
 - [x] Add approval/reject/revoke/me endpoints.
 - [x] Verify app-signed grants against `IdentityCache` public keys.
 - [x] Reject replayed, expired, malformed, or over-scoped grants.
-- [x] Add `VerifyWebSession` plug for bearer token and scope checks.
+- [x] Add `VerifyWebSession` plug for httpOnly cookie or compatible bearer
+  token checks, with scope and audience enforcement.
 
 ## Phase 2: App Approval Foundation
 
@@ -36,7 +37,8 @@
   sessions.
 - [x] Define distribution frontend polling behavior for pending, approved,
   rejected, and expired challenges.
-- [x] Store only relay-issued web session tokens in the browser.
+- [x] Use relay-issued httpOnly cookies for browser sessions. The frontend does
+  not store app-approved DID session bearer tokens in localStorage.
 
 ## Phase 4: Security And Abuse Controls
 
