@@ -45,7 +45,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   end
 
   def create_web_thread(conn, params) do
-    conn = VerifyWebSession.call(conn, ["forum:post"])
+    conn = VerifyWebSession.call(conn, ["forum:post"], audience: Store.base_url())
 
     if conn.halted do
       conn

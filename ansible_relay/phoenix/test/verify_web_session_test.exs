@@ -14,11 +14,12 @@ defmodule AnsibleRelay.Web.VerifyWebSessionTest do
     :ok
   end
 
-  defp approved_session(scopes, expires_at \\ nil) do
+  defp approved_session(scopes, expires_at \\ nil, attrs \\ %{}) do
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
         "web_origin" => "https://trisaura.io",
         "relay_origin" => "https://relay.trisaura.io",
+        "audience" => Map.get(attrs, :audience),
         "scopes" => scopes,
         "ttl_seconds" => 300
       })
@@ -75,6 +76,19 @@ defmodule AnsibleRelay.Web.VerifyWebSessionTest do
     assert conn.halted
   end
 
+  test "missing required scope returns 403 before audience checks" do
+    session = approved_session(["forum:read"], nil, %{audience: "http://localhost:4001"})
+
+    conn =
+      conn(:post, "/")
+      |> put_req_header("authorization", "Bearer #{session.session_token}")
+      |> VerifyWebSession.call(["forum:post"], audience: "https://other-host.test")
+
+    assert conn.status == 403
+    assert conn.halted
+    assert Jason.decode!(conn.resp_body)["error"] == "missing_required_scope"
+  end
+
   test "valid token assigns web session and verified DID" do
     session = approved_session(["forum:read", "forum:post"])
 
@@ -86,5 +100,42 @@ defmodule AnsibleRelay.Web.VerifyWebSessionTest do
     refute conn.halted
     assert conn.assigns.verified_did == "did:plc:plug23456789"
     assert conn.assigns.web_session.session_token == session.session_token
+  end
+
+  test "valid cookie token assigns web session" do
+    session = approved_session(["forum:post"])
+
+    conn =
+      conn(:post, "/")
+      |> put_req_cookie("trisaura_session", session.session_token)
+      |> VerifyWebSession.call(["forum:post"])
+
+    refute conn.halted
+    assert conn.assigns.web_session.session_token == session.session_token
+  end
+
+  test "valid token with matching normalized audience assigns web session" do
+    session = approved_session(["forum:post"], nil, %{audience: "http://localhost:4001"})
+
+    conn =
+      conn(:post, "/")
+      |> put_req_header("authorization", "Bearer #{session.session_token}")
+      |> VerifyWebSession.call(["forum:post"], audience: "http://LOCALHOST:4001/")
+
+    refute conn.halted
+    assert conn.assigns.web_session.session_token == session.session_token
+  end
+
+  test "wrong required audience returns 403" do
+    session = approved_session(["forum:post"], nil, %{audience: "http://localhost:4001"})
+
+    conn =
+      conn(:post, "/")
+      |> put_req_header("authorization", "Bearer #{session.session_token}")
+      |> VerifyWebSession.call(["forum:post"], audience: "https://other-host.test")
+
+    assert conn.status == 403
+    assert conn.halted
+    assert Jason.decode!(conn.resp_body)["error"] == "audience_mismatch"
   end
 end

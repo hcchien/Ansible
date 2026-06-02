@@ -5,10 +5,13 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
 
   alias AnsibleRelay.WebSessionStore
 
-  def call(conn, required_scopes) when is_list(required_scopes) do
-    with {:ok, token} <- bearer_token(conn),
+  @session_cookie_name "trisaura_session"
+
+  def call(conn, required_scopes, opts \\ []) when is_list(required_scopes) do
+    with {:ok, token} <- session_token(conn),
          {:ok, session} <- WebSessionStore.get_session(token),
-         :ok <- require_scopes(session.scopes, required_scopes) do
+         :ok <- require_scopes(session.scopes, required_scopes),
+         :ok <- require_audience(session, Keyword.get(opts, :audience)) do
       conn
       |> assign(:web_session, session)
       |> assign(:verified_did, session.subject_did)
@@ -16,14 +19,26 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
       {:error, :missing_scope} ->
         send_error(conn, 403, "missing_required_scope")
 
+      {:error, :audience_mismatch} ->
+        send_error(conn, 403, "audience_mismatch")
+
       _ ->
         send_error(conn, 401, "invalid_web_session")
     end
   end
 
-  defp bearer_token(conn) do
+  defp session_token(conn) do
     case get_req_header(conn, "authorization") do
       ["Bearer " <> token] when token != "" -> {:ok, token}
+      _ -> cookie_token(conn)
+    end
+  end
+
+  defp cookie_token(conn) do
+    conn = fetch_cookies(conn)
+
+    case conn.req_cookies[@session_cookie_name] || conn.cookies[@session_cookie_name] do
+      token when is_binary(token) and token != "" -> {:ok, token}
       _ -> {:error, :missing_token}
     end
   end
@@ -33,6 +48,34 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
       do: :ok,
       else: {:error, :missing_scope}
   end
+
+  defp require_audience(_session, nil), do: :ok
+
+  defp require_audience(%{audience: audience}, required_audience) do
+    session_audience = normalize_origin(audience)
+    required_audience = normalize_origin(required_audience)
+
+    if session_audience != "" && session_audience == required_audience,
+      do: :ok,
+      else: {:error, :audience_mismatch}
+  end
+
+  defp require_audience(_session, _required_audience), do: {:error, :audience_mismatch}
+
+  defp normalize_origin(value) when is_binary(value) do
+    uri = URI.parse(value)
+
+    if uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" do
+      scheme = String.downcase(uri.scheme)
+      host = String.downcase(uri.host)
+      port = if uri.port && uri.port != URI.default_port(scheme), do: ":#{uri.port}", else: ""
+      "#{scheme}://#{host}#{port}"
+    else
+      ""
+    end
+  end
+
+  defp normalize_origin(_value), do: ""
 
   defp send_error(conn, status, error) do
     conn

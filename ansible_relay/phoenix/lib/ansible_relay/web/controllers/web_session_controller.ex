@@ -13,6 +13,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   def create_challenge(conn, params) do
     with {:ok, web_origin} <- validate_web_origin(params["web_origin"]),
          {:ok, relay_origin} <- validate_relay_origin(params["relay_origin"]),
+         {:ok, audience} <- validate_audience(params["audience"] || relay_origin),
          {:ok, scopes} <- validate_scopes(params["scopes"]),
          :ok <- check_challenge_rate_limit(conn),
          ttl_seconds <- challenge_ttl(params["ttl_seconds"]),
@@ -20,6 +21,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
            WebSessionStore.issue_challenge(%{
              "web_origin" => web_origin,
              "relay_origin" => relay_origin,
+             "audience" => audience,
              "scopes" => scopes,
              "ttl_seconds" => ttl_seconds
            }) do
@@ -39,6 +41,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
         body = %{
           challenge_id: challenge.challenge_id,
           status: challenge.status,
+          audience: challenge.audience,
           expires_at: DateTime.to_iso8601(challenge.expires_at)
         }
 
@@ -166,6 +169,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
 
     %{
       challenge_id: challenge.challenge_id,
+      audience: challenge.audience,
       expires_at: DateTime.to_iso8601(challenge.expires_at),
       deep_link: deep_link,
       qr_payload: deep_link
@@ -179,6 +183,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
       approving_device_id: session.approving_device_id,
       web_origin: session.web_origin,
       relay_origin: session.relay_origin,
+      audience: session.audience,
       trust_tier: session.trust_tier,
       scopes: session.scopes,
       created_at: DateTime.to_iso8601(session.created_at),
@@ -208,6 +213,9 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
 
       grant["web_origin"] != challenge.web_origin ->
         {:error, :web_origin_mismatch}
+
+      grant["audience"] != challenge.audience ->
+        {:error, :audience_mismatch}
 
       grant["subject_did"] != subject_did ->
         {:error, :subject_mismatch}
@@ -260,6 +268,8 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
       false -> {:error, :relay_origin_mismatch}
     end
   end
+
+  defp validate_audience(audience), do: validate_origin(audience, :invalid_audience)
 
   defp validate_scopes(scopes) when is_list(scopes) and scopes != [] do
     if MapSet.subset?(MapSet.new(scopes), @allowed_scopes),

@@ -80,7 +80,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     )
   end
 
-  defp approved_session_token(scopes, did \\ nil) do
+  defp approved_session_token(scopes, did \\ nil, audience \\ "http://localhost:4001") do
     case WebSessionStore.start_link([]) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
@@ -93,6 +93,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
       WebSessionStore.issue_challenge(%{
         "web_origin" => "https://trisaura.io",
         "relay_origin" => "https://relay.trisaura.io",
+        "audience" => audience,
         "scopes" => scopes,
         "ttl_seconds" => 300
       })
@@ -444,6 +445,25 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert body["accepted"] == true
     assert body["subject_did"] == did
     assert body["trust_tier"] == "self_custody_did"
+  end
+
+  test "web thread creation rejects web session for a different audience" do
+    token =
+      approved_session_token(
+        ["forum:read", "forum:post"],
+        "did:plc:forumaudience23456789",
+        "https://other-forum.trisaura.test"
+      )
+
+    response =
+      post_json(
+        "/api/v1/forum-host/web/threads",
+        %{"title" => "Hello"},
+        [{"authorization", "Bearer #{token}"}]
+      )
+
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "audience_mismatch"
   end
 
   test "web thread creation is rate limited across sessions for the same DID" do

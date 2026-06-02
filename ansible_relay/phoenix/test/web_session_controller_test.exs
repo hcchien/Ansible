@@ -64,6 +64,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
       "challenge_id" => challenge.challenge_id,
       "relay_origin" => challenge.relay_origin,
       "web_origin" => challenge.web_origin,
+      "audience" => Map.get(challenge, :audience, challenge.relay_origin),
       "subject_did" => did,
       "approving_device_id" => "app_device_test",
       "scopes" => challenge.scopes,
@@ -145,6 +146,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     assert {:ok, pending} = WebSessionStore.get_challenge(challenge.challenge_id)
     assert pending.status == "pending"
+    assert pending.audience == "https://relay.trisaura.io"
 
     assert {:ok, session} =
              WebSessionStore.approve_challenge(challenge.challenge_id, %{
@@ -157,6 +159,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert {:ok, found} = WebSessionStore.get_session(session.session_token)
     assert found.subject_did == "did:plc:abc23456789"
     assert found.approving_device_id == "app_device_store"
+    assert found.audience == "https://relay.trisaura.io"
     assert found.scopes == ["forum:read", "forum:post"]
     assert {:error, :consumed} = WebSessionStore.get_challenge(challenge.challenge_id)
   end
@@ -213,6 +216,19 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     assert response.status == 422
     assert Jason.decode!(response.resp_body)["error"] == "web_origin_not_allowed"
+  end
+
+  test "POST /api/v1/web-sessions/challenges rejects invalid audiences" do
+    response =
+      post_json("/api/v1/web-sessions/challenges", %{
+        "web_origin" => "https://trisaura.io",
+        "relay_origin" => "https://relay.trisaura.io",
+        "audience" => "did:plc:not-an-origin",
+        "scopes" => ["forum:read"]
+      })
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_audience"
   end
 
   test "store caps active web sessions per DID across app devices" do
@@ -317,9 +333,44 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert response.status == 201
     body = Jason.decode!(response.resp_body)
     assert String.starts_with?(body["challenge_id"], "wsc_")
+    assert body["audience"] == "https://relay.trisaura.io"
     assert String.contains?(body["deep_link"], "trisaura://web-session/approve")
     assert body["qr_payload"] == body["deep_link"]
     assert {:ok, _} = WebSessionStore.get_challenge(body["challenge_id"])
+  end
+
+  test "approved challenge persists audience into session response" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:audience23456789"
+    :ok = IdentityCache.put(did, public_key_hex, "web_session_test_#{System.unique_integer()}")
+
+    challenge_response =
+      post_json("/api/v1/web-sessions/challenges", %{
+        "web_origin" => "https://trisaura.io",
+        "relay_origin" => "https://relay.trisaura.io",
+        "audience" => "http://localhost:4001",
+        "scopes" => ["forum:post"]
+      })
+
+    assert challenge_response.status == 201
+    challenge_body = Jason.decode!(challenge_response.resp_body)
+    assert challenge_body["audience"] == "http://localhost:4001"
+    assert {:ok, stored_challenge} = WebSessionStore.get_challenge(challenge_body["challenge_id"])
+
+    grant = grant(stored_challenge, did)
+    signature = sign(private_key, canonical_json(grant))
+
+    response =
+      post_json("/api/v1/web-sessions/approve", %{
+        "challenge_id" => challenge_body["challenge_id"],
+        "subject_did" => did,
+        "grant" => grant,
+        "signature" => signature
+      })
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["audience"] == "http://localhost:4001"
   end
 
   test "POST /api/v1/web-sessions/challenges is rate limited by peer metadata" do
@@ -409,6 +460,34 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     assert response.status == 422
     assert Jason.decode!(response.resp_body)["error"] == "scope_not_allowed"
+  end
+
+  test "approve rejects grant audience mismatch" do
+    did = "did:plc:audiencemismatch23456789"
+    {public_key, private_key} = ed25519_keypair()
+    IdentityCache.put(did, public_key, "web_session_test_#{System.unique_integer()}")
+
+    {:ok, challenge} =
+      WebSessionStore.issue_challenge(%{
+        "web_origin" => "https://trisaura.io",
+        "relay_origin" => "https://relay.trisaura.io",
+        "audience" => "http://localhost:4001",
+        "scopes" => ["forum:post"],
+        "ttl_seconds" => 300
+      })
+
+    grant = Map.put(grant(challenge, did), "audience", "https://other-host.test")
+
+    response =
+      post_json("/api/v1/web-sessions/approve", %{
+        "challenge_id" => challenge.challenge_id,
+        "subject_did" => did,
+        "grant" => grant,
+        "signature" => sign(private_key, canonical_json(grant))
+      })
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "audience_mismatch"
   end
 
   test "reject, revoke, and me endpoints expose web session state via Bearer token (backward compat)" do
