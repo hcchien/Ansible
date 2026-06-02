@@ -40,8 +40,8 @@ export function normalizeLocalRelayBaseUrl(value, fallbackValue = 'http://localh
       return fallbackValue;
     }
     // Only allow loopback addresses via plain HTTP (development) or any host
-    // via HTTPS (production).  Plain HTTP to a non-loopback host would send
-    // bearer tokens in cleartext and is therefore rejected.
+    // via HTTPS (production). Plain HTTP to a non-loopback host would route
+    // browser API traffic over an untrusted cleartext channel and is rejected.
     if (url.protocol === 'http:' && !isLoopbackHost(url.hostname)) {
       return fallbackValue;
     }
@@ -55,6 +55,7 @@ export function normalizeLocalRelayBaseUrl(value, fallbackValue = 'http://localh
 }
 
 function shouldUseSameOriginRelayProxy(locationUrl, relayOrigin) {
+  if (locationUrl.protocol === 'https:') return true;
   if (!isLocalFrontendServer(locationUrl)) return false;
 
   try {

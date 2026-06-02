@@ -32,8 +32,10 @@ function test(name, body) {
 
 test('sends JSON requests against a trimmed relay base URL', async () => {
   const requests = [];
+  const storage = failOnLegacyStorageAccess();
   const client = createRelayApiClient({
     relayBaseUrl: 'http://localhost:4001/',
+    storage,
     fetchImpl: async (url, init) => {
       requests.push({ url, init });
       return jsonResponse(201, { ok: true });
@@ -46,6 +48,8 @@ test('sends JSON requests against a trimmed relay base URL', async () => {
   assert.equal(requests[0].url, 'http://localhost:4001/api/v1/example');
   assert.equal(requests[0].init.method, 'POST');
   assert.equal(requests[0].init.headers['content-type'], 'application/json');
+  assert.equal(headerValue(requests[0].init.headers, 'authorization'), undefined);
+  assert.equal(requests[0].init.credentials, 'omit');
   assert.equal(requests[0].init.body, '{"name":"Ada"}');
 });
 
@@ -71,14 +75,14 @@ test('postJson uses same-origin credentials and no legacy bearer storage', async
   const requests = [];
   const client = createRelayApiClient({
     relayBaseUrl: 'http://localhost:4001',
-    storage: { getItem: () => 'legacy-token' },
+    storage: failOnLegacyStorageAccess(),
     fetchImpl: async (url, init) => {
       requests.push({ url, init });
       return jsonResponse(200, { ok: true });
     },
   });
 
-  await client.postJson('/api/v1/forum-host/web/threads', { title: 'Hello' });
+  await client.postJson('/api/v1/forum-host/web/threads', { title: 'Hello' }, { authenticated: true });
 
   assert.equal(requests[0].init.credentials, 'same-origin');
   assert.equal(headerValue(requests[0].init.headers, 'authorization'), undefined);
@@ -139,6 +143,17 @@ function headerValue(headers, name) {
   }
 
   return undefined;
+}
+
+function failOnLegacyStorageAccess() {
+  return {
+    getItem() {
+      throw new Error('legacy storage must not be read');
+    },
+    removeItem() {
+      throw new Error('legacy storage must not be cleared');
+    },
+  };
 }
 
 for (const { name, body } of tests) {

@@ -36,11 +36,11 @@ const customRelayConfig = resolveFrontendRuntimeConfig({
 });
 assert.equal(customRelayConfig.webOrigin, 'https://web.elix.example');
 assert.equal(customRelayConfig.relayOrigin, 'https://relay.elix.example');
-assert.equal(customRelayConfig.relayBaseUrl, 'https://relay.elix.example');
+assert.equal(customRelayConfig.relayBaseUrl, 'https://web.elix.example');
 assert.equal(customRelayConfig.locale, 'zh-Hant');
 
-// Security: plain HTTP to a non-loopback host must be rejected — it would
-// send bearer tokens in cleartext to an attacker-controlled server.
+// Security: plain HTTP to a non-loopback host must be rejected because browser
+// API traffic would cross an untrusted cleartext channel.
 assert.equal(
   normalizeLocalRelayBaseUrl('http://attacker.example/evil'),
   'http://localhost:4001',

@@ -36,12 +36,11 @@ export function createRelayApiClient({
       headers['content-type'] = 'application/json';
     }
 
-    // Authentication is via httpOnly session cookie — no Authorization header needed.
-    // credentials: 'same-origin' ensures the browser sends cookies automatically.
+    const credentials = options.authenticated === true ? 'same-origin' : 'omit';
 
     const response = await fetchImpl(`${trimTrailingSlash(relayBaseUrl)}${path}`, {
       method,
-      credentials: 'same-origin',
+      credentials,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });

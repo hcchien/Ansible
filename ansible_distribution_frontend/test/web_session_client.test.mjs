@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   TRUST_TIERS,
   classifyTrustTier,
+  createWebSessionChallenge,
+  fetchChallengeStatus,
   fetchCurrentWebSession,
   listWebSessions,
   revokeWebSession,
@@ -125,6 +127,44 @@ test('does not clear localStorage for rejected and expired challenges (no token 
   assert.equal(storage.length, 0);
 });
 
+test('creates and polls web-session challenges without sending cookies', async () => {
+  const requests = [];
+  const fetchImpl = async (url, init) => {
+    requests.push({ url, init });
+
+    if (url.endsWith('/api/v1/web-sessions/challenges')) {
+      return jsonResponse(201, { challenge_id: 'wsc_123', status: 'pending' });
+    }
+
+    return jsonResponse(200, { challenge_id: 'wsc_123', status: 'pending' });
+  };
+
+  await createWebSessionChallenge({
+    relayBaseUrl: 'https://web.elix.example',
+    webOrigin: 'https://web.elix.example',
+    relayOrigin: 'https://relay.elix.example',
+    scopes: ['forum_host:web_thread:create'],
+    fetchImpl,
+  });
+  await fetchChallengeStatus({
+    relayBaseUrl: 'https://web.elix.example',
+    challengeId: 'wsc_123',
+    fetchImpl,
+  });
+
+  assert.deepEqual(
+    requests.map((request) => request.url),
+    [
+      'https://web.elix.example/api/v1/web-sessions/challenges',
+      'https://web.elix.example/api/v1/web-sessions/challenges/wsc_123',
+    ],
+  );
+  for (const request of requests) {
+    assert.equal(request.init.headers.authorization, undefined);
+    assert.equal(request.init.credentials, 'omit');
+  }
+});
+
 test('loads current and active web sessions via cookie-authenticated relay APIs', async () => {
   const storage = new MemoryStorage();
   const requests = [];
@@ -166,10 +206,12 @@ test('loads current and active web sessions via cookie-authenticated relay APIs'
       'http://localhost:4001/api/v1/web-sessions',
     ],
   );
-  // No Authorization header — authentication is via httpOnly session cookie
-  assert.equal(requests[0].init.headers.authorization, undefined);
-  // credentials: 'same-origin' ensures the browser sends the cookie automatically
-  assert.equal(requests[0].init.credentials, 'same-origin');
+  for (const request of requests) {
+    // No Authorization header — authentication is via httpOnly session cookie
+    assert.equal(request.init.headers.authorization, undefined);
+    // credentials: 'same-origin' ensures the browser sends the cookie automatically
+    assert.equal(request.init.credentials, 'same-origin');
+  }
 });
 
 test('revokes web sessions without clearing localStorage (cookie cleared by server)', async () => {

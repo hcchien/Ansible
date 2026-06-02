@@ -64,7 +64,7 @@ test('loads Forum Host metadata and hosted boards through public read APIs', asy
   );
   for (const request of requests) {
     assert.equal(headerValue(request.init.headers, 'authorization'), undefined);
-    assert.equal(request.init.credentials, 'same-origin');
+    assert.equal(request.init.credentials, 'omit');
   }
 });
 
