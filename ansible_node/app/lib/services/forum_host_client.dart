@@ -131,10 +131,13 @@ class ForumHostClient {
 
   Future<Map<String, dynamic>> _getJson(String path) async {
     final response = await _client.get(_endpoint(path)).timeout(timeout);
-    final body = _decodeObject(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw _toException(response.statusCode, body);
+      throw _toException(
+        response.statusCode,
+        _decodeObjectOrEmpty(response.body),
+      );
     }
+    final body = _decodeObject(response.body);
     return body;
   }
 
@@ -150,10 +153,13 @@ class ForumHostClient {
           body: jsonEncode(body),
         )
         .timeout(timeout);
-    final decoded = _decodeObject(response.body);
     if (response.statusCode != expectedStatus) {
-      throw _toException(response.statusCode, decoded);
+      throw _toException(
+        response.statusCode,
+        _decodeObjectOrEmpty(response.body),
+      );
     }
+    final decoded = _decodeObject(response.body);
     return decoded;
   }
 
@@ -178,10 +184,25 @@ class ForumHostClient {
     final basePath = baseUri.path.endsWith('/')
         ? baseUri.path.substring(0, baseUri.path.length - 1)
         : baseUri.path;
-    return baseUri.replace(path: '$basePath$path');
+    return Uri(
+      scheme: baseUri.scheme,
+      userInfo: baseUri.userInfo,
+      host: baseUri.host,
+      port: baseUri.hasPort ? baseUri.port : null,
+      path: '$basePath$path',
+    );
   }
 
   void close() {
     _client.close();
+  }
+}
+
+Map<String, dynamic> _decodeObjectOrEmpty(String responseBody) {
+  try {
+    final decoded = jsonDecode(responseBody);
+    return decoded is Map<String, dynamic> ? decoded : const {};
+  } on FormatException {
+    return const {};
   }
 }

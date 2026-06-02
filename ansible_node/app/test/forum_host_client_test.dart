@@ -34,6 +34,34 @@ void main() {
     expect(host['server_kind'], 'ansibleForumHost');
   });
 
+  test(
+    'getHostInfo ignores base URL query and fragment for endpoint',
+    () async {
+      final client = ForumHostClient(
+        baseUrl: 'http://relay.local/root?token=x#section',
+        client: MockClient((request) async {
+          expect(
+            request.url.toString(),
+            'http://relay.local/root/api/v1/forum-host',
+          );
+
+          return http.Response(
+            jsonEncode({
+              'forum_host_id': 'host-local-dev',
+              'display_name': 'Local Forum Host',
+              'server_kind': 'ansibleForumHost',
+            }),
+            200,
+          );
+        }),
+      );
+
+      final host = await client.getHostInfo();
+
+      expect(host['forum_host_id'], 'host-local-dev');
+    },
+  );
+
   test('listHostedBoards reads host-owned boards', () async {
     final client = ForumHostClient(
       baseUrl: 'http://relay.local',
@@ -63,6 +91,47 @@ void main() {
     expect(
       boards.single['canonical_board_uri'],
       'https://forum.example/boards/general',
+    );
+  });
+
+  test('getHostInfo throws status exception for malformed non-2xx body', () {
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        return http.Response('<html>unavailable</html>', 503);
+      }),
+    );
+
+    expect(
+      client.getHostInfo(),
+      throwsA(
+        isA<ForumHostException>()
+            .having((error) => error.statusCode, 'statusCode', 503)
+            .having((error) => error.body, 'body', isEmpty),
+      ),
+    );
+  });
+
+  test('getHostInfo preserves parsed non-2xx JSON body', () {
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        return http.Response(jsonEncode({'error': 'host_offline'}), 503);
+      }),
+    );
+
+    expect(
+      client.getHostInfo(),
+      throwsA(
+        isA<ForumHostException>()
+            .having((error) => error.statusCode, 'statusCode', 503)
+            .having((error) => error.error, 'error', 'host_offline')
+            .having(
+              (error) => error.body,
+              'body',
+              containsPair('error', 'host_offline'),
+            ),
+      ),
     );
   });
 
@@ -122,6 +191,27 @@ void main() {
     expect(board['canonical_board_uri'], 'http://relay.local/boards/general');
   });
 
+  test(
+    'createHostedBoard throws status exception for malformed non-2xx body',
+    () {
+      final client = ForumHostClient(
+        baseUrl: 'http://relay.local',
+        client: MockClient((request) async {
+          return http.Response('<html>invalid board</html>', 400);
+        }),
+      );
+
+      expect(
+        client.createHostedBoard(_testCreateBoardIntent()),
+        throwsA(
+          isA<ForumHostException>()
+              .having((error) => error.statusCode, 'statusCode', 400)
+              .having((error) => error.body, 'body', isEmpty),
+        ),
+      );
+    },
+  );
+
   test('CreateHostedBoardIntent canonicalPayload uses signed-intent order', () {
     final createdAt = DateTime.utc(2026, 6, 2, 10);
     final expiresAt = createdAt.add(const Duration(minutes: 5));
@@ -156,4 +246,17 @@ void main() {
       '{"action":"create_board","author_did":"did:key:z6MkUser","board":{"description":"Open discussion","title":"General"},"created_at":"2026-06-02T10:00:00.000Z","expires_at":"2026-06-02T10:05:00.000Z","intent_id":"intent-1","target_forum_host":"http://relay.local","type":"io.trisaura.forum.createBoard","version":1}',
     );
   });
+}
+
+CreateHostedBoardIntent _testCreateBoardIntent() {
+  final createdAt = DateTime.utc(2026, 6, 2, 10);
+  return CreateHostedBoardIntent(
+    intentId: 'intent-1',
+    authorDid: 'did:key:z6MkUser',
+    targetForumHost: 'http://relay.local',
+    signature: 'sig-hex',
+    title: 'General',
+    createdAt: createdAt,
+    expiresAt: createdAt.add(const Duration(minutes: 5)),
+  );
 }
