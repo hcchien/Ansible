@@ -83,6 +83,26 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     "wsi_" <> digest
   end
 
+  defp approved_store_session(did, scopes \\ ["forum:read"]) do
+    {:ok, challenge} =
+      WebSessionStore.issue_challenge(%{
+        "web_origin" => "https://trisaura.io",
+        "relay_origin" => "https://relay.trisaura.io",
+        "scopes" => scopes,
+        "ttl_seconds" => 300
+      })
+
+    {:ok, session} =
+      WebSessionStore.approve_challenge(challenge.challenge_id, %{
+        subject_did: did,
+        approving_device_id: "app_device_#{System.unique_integer([:positive])}",
+        scopes: scopes,
+        expires_at: DateTime.add(DateTime.utc_now(), 300, :second)
+      })
+
+    session
+  end
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
@@ -578,6 +598,43 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     set_cookie = get_resp_header(revoke, "set-cookie")
     assert Enum.any?(set_cookie, &String.contains?(&1, "trisaura_session="))
     assert Enum.any?(set_cookie, &String.contains?(&1, "max-age=0"))
+  end
+
+  test "me and revoke endpoints prefer bearer over cookie when both are present" do
+    cookie_session = approved_store_session("did:plc:cookieprecedence23456789")
+    bearer_session = approved_store_session("did:plc:bearerprecedence23456789")
+
+    headers = [
+      {"authorization", "Bearer #{bearer_session.session_token}"},
+      {"cookie", "trisaura_session=#{cookie_session.session_token}"}
+    ]
+
+    me = get_json("/api/v1/web-sessions/me", headers)
+
+    assert me.status == 200
+    assert Jason.decode!(me.resp_body)["subject_did"] == "did:plc:bearerprecedence23456789"
+
+    revoke = post_json("/api/v1/web-sessions/revoke", %{}, headers)
+
+    assert revoke.status == 200
+    assert Jason.decode!(revoke.resp_body)["revoked"] == true
+    assert {:error, :revoked} = WebSessionStore.get_session(bearer_session.session_token)
+    assert {:ok, _session} = WebSessionStore.get_session(cookie_session.session_token)
+  end
+
+  test "malformed authorization header does not fall back to cookie on session endpoints" do
+    cookie_session = approved_store_session("did:plc:malformedauth23456789")
+
+    for authorization <- ["Basic #{cookie_session.session_token}", "Bearer "] do
+      me =
+        get_json("/api/v1/web-sessions/me", [
+          {"authorization", authorization},
+          {"cookie", "trisaura_session=#{cookie_session.session_token}"}
+        ])
+
+      assert me.status == 401
+      assert Jason.decode!(me.resp_body)["error"] == "invalid_web_session"
+    end
   end
 
   test "me endpoint lists active sessions for the same DID" do

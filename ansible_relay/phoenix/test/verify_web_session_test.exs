@@ -52,6 +52,37 @@ defmodule AnsibleRelay.Web.VerifyWebSessionTest do
     assert conn.halted
   end
 
+  test "bearer token takes precedence over cookie token" do
+    cookie_session = approved_session(["forum:post"])
+    bearer_session = approved_session(["forum:read"])
+
+    conn =
+      conn(:post, "/")
+      |> put_req_header("authorization", "Bearer #{bearer_session.session_token}")
+      |> put_req_cookie("trisaura_session", cookie_session.session_token)
+      |> VerifyWebSession.call(["forum:post"])
+
+    assert conn.status == 403
+    assert conn.halted
+    assert Jason.decode!(conn.resp_body)["error"] == "missing_required_scope"
+  end
+
+  test "malformed authorization header does not fall back to cookie token" do
+    cookie_session = approved_session(["forum:post"])
+
+    for authorization <- ["Basic #{cookie_session.session_token}", "Bearer "] do
+      conn =
+        conn(:post, "/")
+        |> put_req_header("authorization", authorization)
+        |> put_req_cookie("trisaura_session", cookie_session.session_token)
+        |> VerifyWebSession.call(["forum:post"])
+
+      assert conn.status == 401
+      assert conn.halted
+      assert Jason.decode!(conn.resp_body)["error"] == "invalid_web_session"
+    end
+  end
+
   test "expired token returns 401" do
     session = approved_session(["forum:post"], DateTime.add(DateTime.utc_now(), -1, :second))
 
@@ -120,10 +151,48 @@ defmodule AnsibleRelay.Web.VerifyWebSessionTest do
     conn =
       conn(:post, "/")
       |> put_req_header("authorization", "Bearer #{session.session_token}")
-      |> VerifyWebSession.call(["forum:post"], audience: "http://LOCALHOST:4001/")
+      |> VerifyWebSession.call(["forum:post"], audience: "http://LOCALHOST:4001")
 
     refute conn.halted
     assert conn.assigns.web_session.session_token == session.session_token
+  end
+
+  test "required audience with path query or fragment returns 403" do
+    session = approved_session(["forum:post"], nil, %{audience: "http://localhost:4001"})
+
+    for audience <- [
+          "http://localhost:4001/path",
+          "http://localhost:4001?debug=true",
+          "http://localhost:4001#fragment"
+        ] do
+      conn =
+        conn(:post, "/")
+        |> put_req_header("authorization", "Bearer #{session.session_token}")
+        |> VerifyWebSession.call(["forum:post"], audience: audience)
+
+      assert conn.status == 403
+      assert conn.halted
+      assert Jason.decode!(conn.resp_body)["error"] == "audience_mismatch"
+    end
+  end
+
+  test "stored audience with path query or fragment returns 403" do
+    for audience <- [
+          "http://localhost:4001/path",
+          "http://localhost:4001?debug=true",
+          "http://localhost:4001#fragment"
+        ] do
+      session = approved_session(["forum:post"], nil, %{audience: audience})
+
+      conn =
+        conn(:post, "/")
+        |> put_req_header("authorization", "Bearer #{session.session_token}")
+        |> VerifyWebSession.call(["forum:post"], audience: "http://localhost:4001")
+
+      assert conn.status == 403
+      assert conn.halted
+      assert Jason.decode!(conn.resp_body)["error"] == "audience_mismatch"
+    end
   end
 
   test "wrong required audience returns 403" do

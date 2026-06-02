@@ -438,17 +438,26 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   end
 
   defp session_token_from_conn(conn) do
-    conn = fetch_cookies(conn)
-
-    case conn.cookies[@session_cookie_name] do
-      token when is_binary(token) and token != "" -> {:ok, token}
-      _ -> bearer_token(conn)
+    case bearer_token(conn) do
+      {:ok, token} -> {:ok, token}
+      {:error, :missing_token} -> cookie_token(conn)
+      {:error, _error} = error -> error
     end
   end
 
   defp bearer_token(conn) do
     case get_req_header(conn, "authorization") do
+      [] -> {:error, :missing_token}
       ["Bearer " <> token] when token != "" -> {:ok, token}
+      _ -> {:error, :invalid_token}
+    end
+  end
+
+  defp cookie_token(conn) do
+    conn = fetch_cookies(conn)
+
+    case conn.cookies[@session_cookie_name] do
+      token when is_binary(token) and token != "" -> {:ok, token}
       _ -> {:error, :missing_token}
     end
   end

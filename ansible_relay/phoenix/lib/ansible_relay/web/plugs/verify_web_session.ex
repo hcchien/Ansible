@@ -29,8 +29,14 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
 
   defp session_token(conn) do
     case get_req_header(conn, "authorization") do
-      ["Bearer " <> token] when token != "" -> {:ok, token}
-      _ -> cookie_token(conn)
+      [] ->
+        cookie_token(conn)
+
+      ["Bearer " <> token] when token != "" ->
+        {:ok, token}
+
+      _ ->
+        {:error, :invalid_token}
     end
   end
 
@@ -52,12 +58,13 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
   defp require_audience(_session, nil), do: :ok
 
   defp require_audience(%{audience: audience}, required_audience) do
-    session_audience = normalize_origin(audience)
-    required_audience = normalize_origin(required_audience)
-
-    if session_audience != "" && session_audience == required_audience,
-      do: :ok,
-      else: {:error, :audience_mismatch}
+    with {:ok, session_audience} <- normalize_origin(audience),
+         {:ok, required_audience} <- normalize_origin(required_audience),
+         true <- session_audience == required_audience do
+      :ok
+    else
+      _ -> {:error, :audience_mismatch}
+    end
   end
 
   defp require_audience(_session, _required_audience), do: {:error, :audience_mismatch}
@@ -65,17 +72,18 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
   defp normalize_origin(value) when is_binary(value) do
     uri = URI.parse(value)
 
-    if uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" do
+    if uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" &&
+         uri.path in [nil, ""] && is_nil(uri.query) && is_nil(uri.fragment) do
       scheme = String.downcase(uri.scheme)
       host = String.downcase(uri.host)
       port = if uri.port && uri.port != URI.default_port(scheme), do: ":#{uri.port}", else: ""
-      "#{scheme}://#{host}#{port}"
+      {:ok, "#{scheme}://#{host}#{port}"}
     else
-      ""
+      {:error, :invalid_origin}
     end
   end
 
-  defp normalize_origin(_value), do: ""
+  defp normalize_origin(_value), do: {:error, :invalid_origin}
 
   defp send_error(conn, status, error) do
     conn
