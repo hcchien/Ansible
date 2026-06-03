@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
+
+	"github.com/trisaura/ansible_issuer/internal/atomicfile"
 )
 
 var (
@@ -204,19 +205,12 @@ func (s *Store) saveLocked() error {
 		})
 	}
 
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
-		return fmt.Errorf("create personhood binding store directory: %w", err)
-	}
 	b, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode personhood binding store: %w", err)
 	}
-	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o600); err != nil {
-		return fmt.Errorf("write personhood binding store: %w", err)
-	}
-	if err := os.Rename(tmp, s.path); err != nil {
-		return fmt.Errorf("replace personhood binding store: %w", err)
+	if err := atomicfile.Write(s.path, b, 0o600); err != nil {
+		return fmt.Errorf("persist personhood binding store: %w", err)
 	}
 	return nil
 }

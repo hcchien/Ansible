@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/trisaura/ansible_issuer/internal/atomicfile"
 )
 
 type fileSessionData struct {
@@ -206,19 +207,12 @@ func (s *FileSessionStore) load() error {
 
 func (s *FileSessionStore) saveLocked() error {
 	s.ensureMaps()
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
-		return fmt.Errorf("create session store directory: %w", err)
-	}
 	b, err := json.MarshalIndent(s.data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode session store: %w", err)
 	}
-	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o600); err != nil {
-		return fmt.Errorf("write session store: %w", err)
-	}
-	if err := os.Rename(tmp, s.path); err != nil {
-		return fmt.Errorf("replace session store: %w", err)
+	if err := atomicfile.Write(s.path, b, 0o600); err != nil {
+		return fmt.Errorf("persist session store: %w", err)
 	}
 	return nil
 }

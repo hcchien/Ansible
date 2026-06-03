@@ -96,6 +96,45 @@ approval artifact IDs are present. Production mode returns an explicit
 unavailable error until the real MobileMoica HTTP adapter, PKCS#7 validation,
 and certificate revocation verification are implemented.
 
+## Durable Storage And Cloud Run
+
+The issuer keeps its security-critical state in JSON files written through an
+atomic, fsync'd write path (`internal/atomicfile`):
+
+- `PERSONHOOD_BINDING_STORE_PATH` — personhood duplicate-prevention bindings.
+- `TW_PROVIDER_SESSION_STORE_PATH` — TW provider auth/verified sessions.
+- `MOBILEMOICA_SESSION_STORE_PATH` — MobileMoica RP sessions (only when enabled).
+
+Two design facts drive how the issuer must be deployed:
+
+1. **Single instance only.** Each store loads its file once at startup into an
+   in-memory map and never re-reads it. A second concurrent instance would not
+   see credentials issued by the first, so the personhood duplicate-prevention
+   guarantee (Sybil resistance) would silently regress. The issuer must run as
+   exactly one instance: on Cloud Run set `--min-instances=1 --max-instances=1`.
+   Multiple concurrent requests within that single instance are safe (writes are
+   serialized by a mutex).
+2. **Durable, atomic writes need a persistent, POSIX-rename-capable volume.**
+   The write path is write-temp → fsync → rename → fsync-dir, so a successful
+   issuance survives an abrupt instance kill. The store paths must point at a
+   mounted persistent volume, not the container's ephemeral filesystem.
+
+Storage backend options, in order of correctness:
+
+- **Compute Engine VM or GKE with a Persistent Disk** — matches the
+  single-process + local-disk design most directly. Use this if you are not tied
+  to Cloud Run.
+- **Cloud Run + NFS (Filestore) volume** — real POSIX semantics including atomic
+  rename. Correct, but Filestore has a standing cost.
+- **Cloud Run + Cloud Storage (GCS FUSE) volume** — cheapest and simplest for a
+  low-volume single-writer MVP. GCS object replacement is atomic at the object
+  level, which is adequate here, but rename is emulated and POSIX semantics are
+  weaker, so prefer NFS/disk as write volume grows.
+
+The Genesis MVP runbook in
+[`cloud_run_deploy.md`](cloud_run_deploy.md) uses the GCS FUSE option with a
+single instance.
+
 ## Health And Readiness
 
 - `GET /healthz` returns `200` with `{"status":"ok"}` when the process is alive.

@@ -196,6 +196,20 @@ planned production boundary is separate Cloud Run services and databases for:
 Until that split exists, docs and diagrams should describe the service as
 co-located MVP, not as a completed GKE/AppView deployment.
 
+### Database Migrations In Production
+
+The production image is built with `mix release`, so `mix ecto.migrate` is not
+available at runtime. Run migrations against a deployed release (or as a one-off
+Cloud Run Job using the same image) with:
+
+```bash
+bin/ansible_relay eval "AnsibleRelay.Release.migrate()"
+```
+
+See `AnsibleRelay.Release` (`lib/ansible_relay/release.ex`) for migrate and
+rollback tasks. Run `migrate` after deploying a new image before serving
+traffic from it.
+
 ## Genesis Hosting TODO
 
 - [ ] Add `libcluster` and regional GKE topology config.

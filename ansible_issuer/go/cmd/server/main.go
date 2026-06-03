@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/trisaura/ansible_issuer/internal/api"
@@ -55,10 +58,30 @@ func main() {
 	configureMobileMoicaRP(handler, mockMode)
 	handler.Register(mux)
 
+	srv := &http.Server{Addr: ":" + port, Handler: mux}
+
+	// On Cloud Run the platform sends SIGTERM before stopping the instance.
+	// Drain in-flight requests so an issuance whose durable store write is in
+	// progress completes before exit, rather than being cut off by SIGKILL.
+	idleClosed := make(chan struct{})
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+		<-sigCh
+		log.Println("shutdown signal received, draining connections")
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("graceful shutdown error: %v", err)
+		}
+		close(idleClosed)
+	}()
+
 	log.Printf("ansible_issuer (go) listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+	<-idleClosed
 }
 
 func mustEnv(key string) string {

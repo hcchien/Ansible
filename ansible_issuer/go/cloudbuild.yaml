@@ -1,0 +1,34 @@
+# Cloud Build trigger:
+#   Build config: ansible_issuer/go/cloudbuild.yaml
+#   Included files: ansible_issuer/go/**
+
+substitutions:
+  _REGION: asia-east1
+  _REPOSITORY: ansible
+  _IMAGE_NAME: ansible-issuer
+  _GO_IMAGE: golang:1.22-bookworm
+
+steps:
+  - id: test
+    name: ${_GO_IMAGE}
+    dir: ansible_issuer/go
+    entrypoint: go
+    args: ["test", "./..."]
+
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+      - ansible_issuer/go
+    waitFor: ["test"]
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
