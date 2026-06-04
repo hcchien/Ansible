@@ -79,7 +79,8 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     Map.put(op, "signature", sign(private_key, signing_payload(op)))
   end
 
-  # Build a murmur/note op whose payload is a JSON-encoded distributable map.
+  # Build a murmur/note op whose payload is base64(JSON), matching the app's
+  # CrdtOpBuilder encoding convention.
   defp content_op(did, private_key, entity_type, payload_map) do
     op = %{
       "op_id" => "op-#{System.unique_integer()}",
@@ -87,7 +88,7 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
       "entity_type" => entity_type,
       "entity_id" => "entity-#{System.unique_integer()}",
       "op_type" => "insert",
-      "payload" => Jason.encode!(payload_map)
+      "payload" => Base.encode64(Jason.encode!(payload_map))
     }
 
     Map.put(op, "signature", sign(private_key, signing_payload(op)))

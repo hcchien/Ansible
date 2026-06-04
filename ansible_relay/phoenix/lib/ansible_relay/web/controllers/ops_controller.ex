@@ -131,10 +131,24 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   defp decode_payload(payload) when is_map(payload), do: {:ok, payload}
 
+  # Payloads may arrive as raw JSON or, per the app's CrdtOpBuilder convention,
+  # as base64-encoded JSON. Try both before giving up.
   defp decode_payload(payload) when is_binary(payload) do
     case Jason.decode(payload) do
-      {:ok, decoded} -> {:ok, decoded}
-      _ -> :error
+      {:ok, decoded} ->
+        {:ok, decoded}
+
+      _ ->
+        case Base.decode64(payload) do
+          {:ok, raw} ->
+            case Jason.decode(raw) do
+              {:ok, decoded} -> {:ok, decoded}
+              _ -> :error
+            end
+
+          :error ->
+            :error
+        end
     end
   end
 
