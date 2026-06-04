@@ -97,6 +97,77 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Build an Op for publishing a standalone murmur (short-form content).
+  ///
+  /// The payload carries only the public/unlisted distributable subset — never
+  /// private metadata such as private tags. Callers MUST only build ops for
+  /// public/unlisted content (fail-closed at the publish boundary).
+  static OpsQueueEntry createMurmur({
+    required String authorDid,
+    required String entityId,
+    required String text,
+    String visibility = 'public',
+    String? tone,
+    String? sourceType,
+    DateTime? publishedAt,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'mode': 'murmur',
+      'body': text,
+      'visibility': visibility,
+      'tone': tone,
+      'sourceType': sourceType,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+      'publishedAt': (publishedAt ?? createdAt).toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'murmur',
+      entityId: entityId,
+      opType: 'insert',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      createdAt: createdAt,
+    );
+  }
+
+  /// Build an Op for publishing a standalone note (long-form content).
+  ///
+  /// Notes carry an explicit [visibility] (public/unlisted). Private notes must
+  /// not be published as ops.
+  static OpsQueueEntry createNote({
+    required String authorDid,
+    required String entityId,
+    required String body,
+    required String visibility,
+    String? title,
+    DateTime? publishedAt,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'mode': 'note',
+      'body': body,
+      'title': title,
+      'visibility': visibility,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+      'publishedAt': (publishedAt ?? createdAt).toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'note',
+      entityId: entityId,
+      opType: 'insert',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      createdAt: createdAt,
+    );
+  }
+
   /// Build an Op for editing a post (CRDT update delta).
   static OpsQueueEntry updatePost({
     required String authorDid,
