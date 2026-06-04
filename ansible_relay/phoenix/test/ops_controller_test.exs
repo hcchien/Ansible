@@ -79,6 +79,20 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     Map.put(op, "signature", sign(private_key, signing_payload(op)))
   end
 
+  # Build a murmur/note op whose payload is a JSON-encoded distributable map.
+  defp content_op(did, private_key, entity_type, payload_map) do
+    op = %{
+      "op_id" => "op-#{System.unique_integer()}",
+      "author_did" => did,
+      "entity_type" => entity_type,
+      "entity_id" => "entity-#{System.unique_integer()}",
+      "op_type" => "insert",
+      "payload" => Jason.encode!(payload_map)
+    }
+
+    Map.put(op, "signature", sign(private_key, signing_payload(op)))
+  end
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(AnsibleRelay.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(AnsibleRelay.Repo, {:shared, self()})
@@ -211,6 +225,59 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
         Application.put_env(:ansible_relay, :abuse_detector, previous)
       end
     end
+  end
+
+  test "verified DID can ingest a public murmur op and gets 202" do
+    did = "did:key:z6MkMurmur#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op = content_op(did, private_key, "murmur", %{"text" => "hello", "visibility" => "public"})
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 202
+    assert Jason.decode!(response.resp_body)["accepted"] == true
+  end
+
+  test "murmur op without a visibility field is accepted (murmur has no visibility)" do
+    did = "did:key:z6MkMurmurNoVis#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op = content_op(did, private_key, "murmur", %{"text" => "hello"})
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 202
+  end
+
+  test "verified DID can ingest a public note op and gets 202" do
+    did = "did:key:z6MkNote#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op = content_op(did, private_key, "note", %{"body" => "essay", "visibility" => "unlisted"})
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 202
+  end
+
+  test "private note op is rejected with 422 private_content_not_relayable" do
+    did = "did:key:z6MkNotePriv#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op = content_op(did, private_key, "note", %{"body" => "secret", "visibility" => "private"})
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "private_content_not_relayable"
+  end
+
+  test "note op missing visibility is rejected" do
+    did = "did:key:z6MkNoteNoVis#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op = content_op(did, private_key, "note", %{"body" => "essay"})
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "private_content_not_relayable"
   end
 
   # ---- GET /api/v1/ops/delta ----

@@ -5,14 +5,19 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SigVerifier}
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
-  @valid_entity_types ~w(board thread post reaction)
+  @valid_entity_types ~w(board thread post reaction murmur note)
   @valid_op_types ~w(insert update delete crdt_merge)
+  # Standalone content kinds (no board/thread) whose public/unlisted visibility is
+  # checked as defense-in-depth before relaying. Primary enforcement is app-side.
+  @content_entity_types ~w(murmur note)
+  @relayable_visibilities ~w(public unlisted)
 
   # POST /api/v1/ops
   def ingest(conn, params) do
     with :ok <- validate_fields(params, @required_fields),
          :ok <- validate_enum(params["entity_type"], @valid_entity_types, "entity_type"),
          :ok <- validate_enum(params["op_type"], @valid_op_types, "op_type"),
+         :ok <- check_content_visibility(params["entity_type"], params["payload"]),
          author_did = params["author_did"],
          :ok <- check_did_verified(author_did),
          :ok <- check_abuse_limit(author_did),
@@ -44,6 +49,9 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       {:error, :invalid_enum, {field, value, valid}} ->
         send_json(conn, 422, %{error: "invalid_value", field: field, value: value, valid: valid})
+
+      {:error, :private_content} ->
+        send_json(conn, 422, %{error: "private_content_not_relayable"})
 
       {:error, :unverified_did} ->
         send_json(conn, 401, %{
@@ -98,6 +106,39 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       do: :ok,
       else: {:error, :invalid_enum, {field, value, valid_values}}
   end
+
+  # Defense-in-depth: standalone content (murmur/note) may only be relayed when
+  # public/unlisted. Notes must carry an explicit relayable visibility; murmurs
+  # have no visibility field and are accepted unless an explicit private marker is
+  # present. Primary enforcement is at the author's app publish boundary.
+  defp check_content_visibility(entity_type, payload) when entity_type in @content_entity_types do
+    case decode_payload(payload) do
+      {:ok, %{} = map} ->
+        case Map.get(map, "visibility") do
+          vis when is_binary(vis) ->
+            if vis in @relayable_visibilities, do: :ok, else: {:error, :private_content}
+
+          nil ->
+            if entity_type == "note", do: {:error, :private_content}, else: :ok
+        end
+
+      _ ->
+        if entity_type == "note", do: {:error, :private_content}, else: :ok
+    end
+  end
+
+  defp check_content_visibility(_entity_type, _payload), do: :ok
+
+  defp decode_payload(payload) when is_map(payload), do: {:ok, payload}
+
+  defp decode_payload(payload) when is_binary(payload) do
+    case Jason.decode(payload) do
+      {:ok, decoded} -> {:ok, decoded}
+      _ -> :error
+    end
+  end
+
+  defp decode_payload(_payload), do: :error
 
   defp check_did_verified(did) do
     if IdentityCache.verified?(did), do: :ok, else: {:error, :unverified_did}
