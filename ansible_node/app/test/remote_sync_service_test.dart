@@ -358,6 +358,66 @@ void main() {
     expect(await threadRepo.getById('thread-x'), isNotNull);
   });
 
+  test('captures author reputation tier from delta into the repo', () async {
+    final boardRepo = InMemoryBoardRepository();
+    final threadRepo = InMemoryThreadRepository();
+    final postRepo = InMemoryPostRepository();
+    final reputationRepo = InMemoryDidReputationRepository();
+    final remoteNodeRepo = _FakeRemoteNodeRepository();
+    final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(configs: const []);
+    final now = DateTime.utc(2026, 6, 5);
+
+    final client = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 1,
+          'signedOp': {
+            'opId': 'op-1',
+            'authorDid': 'did:key:alice',
+            'entityType': 'post',
+            'entityId': 'post-1',
+            'opType': 'insert',
+            'payload': 'x',
+            'signature': 'a' * 128,
+            'publicKeyHex': 'b' * 64,
+            'reputationTier': 'verified_human',
+          },
+          'activity': {
+            'activityId': 'op-1',
+            'type': 'create',
+            'entityType': 'post',
+            'entityId': 'post-1',
+            'boardId': 'board-1',
+            'threadId': 'thread-1',
+            'authorId': 'did:key:alice',
+            'createdAt': '2026-06-05T00:00:00Z',
+            'payload': {'content': 'hi'},
+          },
+        },
+      ],
+    );
+    final remoteNode = RemoteNode(
+      id: 'remote-1',
+      name: 'Remote',
+      url: 'https://relay.example',
+      syncCursor: 0,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    await RemoteSyncService(
+      remoteNodeRepo: remoteNodeRepo,
+      boardSyncConfigRepo: boardSyncConfigRepo,
+      boardRepo: boardRepo,
+      threadRepo: threadRepo,
+      postRepo: postRepo,
+      didReputationRepo: reputationRepo,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+    ).syncFromNode(client, remoteNode, requireBoardSyncConfig: false);
+
+    expect(await reputationRepo.tierFor('did:key:alice'), 'verified_human');
+  });
+
   test('skips unsigned relay delta entries before applying them', () async {
     final boardRepo = InMemoryBoardRepository();
     final threadRepo = InMemoryThreadRepository();

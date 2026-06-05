@@ -70,6 +70,7 @@ class AppSyncService {
     required NostrRelaySettingsStore relaySettings,
     required NostrKeyStore keyStore,
     FollowRepository? followRepository,
+    DidReputationRepository? didReputationRepo,
     String? followerDid,
     OpsQueueRepository? opsQueueRepo,
     OpsDispatchService? opsDispatchService,
@@ -80,6 +81,7 @@ class AppSyncService {
     RelayIdentityClient? identityClient,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
+       _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
        _opsQueueRepo = opsQueueRepo,
        _opsDispatchService = opsDispatchService,
@@ -100,6 +102,7 @@ class AppSyncService {
 
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
+  final DidReputationRepository? _didReputationRepo;
   final String? _followerDid;
   final OpsQueueRepository? _opsQueueRepo;
   final OpsDispatchService? _opsDispatchService;
@@ -205,6 +208,7 @@ class AppSyncService {
         postRepo: _postRepo,
         followRepository: _followRepository,
         contentItemRepo: _contentItemRepo,
+        didReputationRepo: _didReputationRepo,
         followerDid: _followerDid,
         identityClient: _identityClient,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);

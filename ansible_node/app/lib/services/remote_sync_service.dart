@@ -108,6 +108,9 @@ class RelayApiClient {
         'publicKeyHex':
             (op['public_key_hex'] as String?) ??
             (op['publicKeyHex'] as String?),
+        'reputationTier':
+            (op['reputation_tier'] as String?) ??
+            (op['reputationTier'] as String?),
       },
       'activity': {
         'activityId': opId,
@@ -294,6 +297,7 @@ class RemoteSyncService {
   // into the content item store. Null preserves the legacy board-only behavior.
   final FollowRepository? _followRepo;
   final ContentItemRepository? _contentItemRepo;
+  final DidReputationRepository? _didReputationRepo;
   final String? _followerDid;
   final RemoteOpSignatureVerifier _opSignatureVerifier;
   final DateTime Function() _now;
@@ -307,6 +311,7 @@ class RemoteSyncService {
     required PostRepository postRepo,
     FollowRepository? followRepository,
     ContentItemRepository? contentItemRepo,
+    DidReputationRepository? didReputationRepo,
     String? followerDid,
     RemoteOpSignatureVerifier? opSignatureVerifier,
     RelayIdentityClient? identityClient,
@@ -319,6 +324,7 @@ class RemoteSyncService {
        _postRepo = postRepo,
        _followRepo = followRepository,
        _contentItemRepo = contentItemRepo,
+       _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
        _opSignatureVerifier =
            opSignatureVerifier ??
@@ -382,9 +388,11 @@ class RemoteSyncService {
           cursor: currentCursor > 0 ? currentCursor : null,
           limit: 100,
         );
+        final trusted = await _trustedActivities(deltaJson);
+        await _captureAuthorTiers(trusted);
         final delta = DeltaResponse.fromJson({
           ...deltaJson,
-          'activities': await _trustedActivities(deltaJson),
+          'activities': trusted,
         });
 
         for (final entry in delta.activities) {
@@ -580,6 +588,23 @@ class RemoteSyncService {
       case 'note':
         await _applyContentItemActivity(activity);
         break;
+    }
+  }
+
+  /// Caches each op author's relay-reported reputation tier so the UI can badge
+  /// verified authors. Reads from the trusted (signature-verified) entries.
+  Future<void> _captureAuthorTiers(List<dynamic> trusted) async {
+    final repo = _didReputationRepo;
+    if (repo == null) return;
+    for (final raw in trusted) {
+      if (raw is! Map) continue;
+      final signed = raw['signedOp'];
+      if (signed is! Map) continue;
+      final did = signed['authorDid'];
+      final tier = signed['reputationTier'];
+      if (did is String && did.isNotEmpty && tier is String && tier.isNotEmpty) {
+        await repo.put(did, tier);
+      }
     }
   }
 

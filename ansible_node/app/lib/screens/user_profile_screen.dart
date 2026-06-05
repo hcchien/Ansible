@@ -28,15 +28,18 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
   late final FollowRepository _followRepo;
+  late final DidReputationRepository _reputationRepo;
   late final FollowService _followService;
   FollowButtonStatus _status = FollowButtonStatus.notFollowing;
   String? _targetId;
+  String _tier = 'basic';
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
     _followRepo = DriftFollowRepository(widget.db);
+    _reputationRepo = DriftDidReputationRepository(widget.db);
     _followService = FollowService(
       followRepository: _followRepo,
       outboxRepository: DriftFollowActivityOutboxRepository(widget.db),
@@ -59,10 +62,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       );
       status = _mapStatus(edge?.status);
     }
+    final tier = await _reputationRepo.tierFor(widget.did);
     if (!mounted) return;
     setState(() {
       _status = status;
       _targetId = targetId;
+      _tier = tier;
     });
   }
 
@@ -127,6 +132,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               widget.did,
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            if (_tier == 'verified_human') ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.verified, size: 16, color: Colors.blue),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Verified Human',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
             FollowButton(
               status: _status,

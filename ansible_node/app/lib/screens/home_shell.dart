@@ -113,6 +113,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final DriftRemoteNodeRepository _remoteNodeRepo;
   late final DriftOpsQueueRepository _opsQueueRepo;
   late final DriftContentItemRepository _contentItemRepo;
+  late final DriftDidReputationRepository _didReputationRepo;
   late final DriftContentRelationRepository _contentRelationRepo;
   late final DriftPublicationRepository _publicationRepo;
   late final DriftForumHostRepository _forumHostRepo;
@@ -190,6 +191,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _remoteNodeRepo = DriftRemoteNodeRepository(widget.db);
     _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _contentItemRepo = DriftContentItemRepository(widget.db);
+    _didReputationRepo = DriftDidReputationRepository(widget.db);
     _contentRelationRepo = DriftContentRelationRepository(widget.db);
     _publicationRepo = DriftPublicationRepository(widget.db);
     _forumHostRepo = DriftForumHostRepository(widget.db);
@@ -345,9 +347,20 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           }).toList()
         : await _buildFollowingPostCards(followingEntries, boardMap);
 
+    // Annotate each card with its author's reputation tier (verified badge).
+    final authorTiers = await _didReputationRepo.tiersFor(
+      postCards.map((card) => card.author).toSet(),
+    );
+    final tieredCards = postCards
+        .map(
+          (card) =>
+              card.copyWith(authorTier: authorTiers[card.author] ?? 'basic'),
+        )
+        .toList();
+
     setState(() {
       _boards = boards;
-      _posts = postCards;
+      _posts = tieredCards;
       _contentItems = contentItems;
       _murmurReferenceCounts = murmurReferenceCounts;
       _hasActiveMessengerRelay = hasActiveRelay;
@@ -1022,6 +1035,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       relaySettings: _nostrRelaySettingsStore,
       keyStore: _nostrKeyStore,
       followRepository: _followRepo,
+      didReputationRepo: _didReputationRepo,
       followerDid: widget.did,
       opsQueueRepo: _opsQueueRepo,
       opsDispatchService: _opsDispatchService,
@@ -4512,6 +4526,7 @@ class PostCardData {
     required this.reactions,
     required this.comments,
     required this.reacted,
+    this.authorTier = 'basic',
   });
 
   final Thread thread;
@@ -4524,6 +4539,21 @@ class PostCardData {
   final Map<String, int> reactions;
   final int comments;
   final bool reacted;
+  final String authorTier;
+
+  PostCardData copyWith({String? authorTier}) => PostCardData(
+    thread: thread,
+    category: category,
+    title: title,
+    content: content,
+    author: author,
+    board: board,
+    timeAgo: timeAgo,
+    reactions: reactions,
+    comments: comments,
+    reacted: reacted,
+    authorTier: authorTier ?? this.authorTier,
+  );
 }
 
 class PostCard extends StatefulWidget {
@@ -4712,6 +4742,10 @@ class _PostCardState extends State<PostCard> {
                       style: const TextStyle(color: AnsibleDesign.inkMuted),
                     ),
                   ),
+                  if (data.authorTier == 'verified_human') ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.verified, size: 14, color: _accent),
+                  ],
                   const SizedBox(width: 12),
                   const Icon(
                     Icons.forum_outlined,
