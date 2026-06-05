@@ -4,12 +4,20 @@ defmodule AnsibleRelay.AbuseDetector do
 
   The detector tracks rate limits by subject type (`:did` or `:peer`) and
   returns reason-coded decisions without logging raw DID/IP pairings.
+
+  State lives in a public ETS table owned by this GenServer; `check/2` and
+  `suspended?/2` run directly in the caller process (no `GenServer.call`), so
+  rate-limit checks for different subjects run fully in parallel rather than
+  serializing through one mailbox. Concurrent checks for the *same* subject may
+  race slightly (admit a token or two extra at the boundary); that is acceptable
+  for a best-effort, time-bound abuse limiter and never blocks distinct subjects.
   """
 
   use GenServer
   require Logger
 
   @app :ansible_relay
+  @table :ansible_relay_abuse_detector
 
   @type subject_type :: :did | :peer
   @type decision :: :ok | {:error, :rate_limited, map()}
@@ -31,87 +39,88 @@ defmodule AnsibleRelay.AbuseDetector do
   @doc "Check and consume one token for a subject."
   @spec check(subject_type(), String.t()) :: decision()
   def check(type, subject) when type in [:did, :peer] and is_binary(subject) do
-    GenServer.call(__MODULE__, {:check, type, subject})
+    now = now_ms()
+    key = {type, subject}
+    policy = policy(type)
+
+    decision =
+      case :ets.lookup(@table, key) do
+        [{^key, _tokens, _updated, until}] when is_integer(until) and until > now ->
+          limited(type, until - now)
+
+        found ->
+          {tokens, updated_at} =
+            case found do
+              [{^key, t, u, _until}] -> {t, u}
+              [] -> {policy.capacity * 1.0, now}
+            end
+
+          available = refill(tokens, updated_at, policy, now)
+
+          if available >= 1.0 do
+            :ets.insert(@table, {key, available - 1.0, now, nil})
+            :ok
+          else
+            until = now + policy.suspension_ms
+            :ets.insert(@table, {key, 0.0, now, until})
+            limited(type, policy.suspension_ms)
+          end
+      end
+
+    maybe_log_limit(decision, type, subject)
+    decision
   end
 
   @doc "Return whether a subject is currently suspended."
   @spec suspended?(subject_type(), String.t()) :: boolean()
   def suspended?(type, subject) when type in [:did, :peer] and is_binary(subject) do
-    GenServer.call(__MODULE__, {:suspended?, type, subject})
+    now = now_ms()
+
+    case :ets.lookup(@table, {type, subject}) do
+      [{_key, _tokens, _updated, until}] when is_integer(until) -> until > now
+      _ -> false
+    end
   end
 
   @doc "Clear detector state. Intended for tests and local dev resets."
   def reset do
-    GenServer.call(__MODULE__, :reset)
+    ensure_table()
+    :ets.delete_all_objects(@table)
+    :ok
   end
 
-  # --- GenServer callbacks ---
+  # --- GenServer: owns the ETS table; not on the hot path ---
 
   @impl true
   def init(_opts) do
-    {:ok, %{buckets: %{}, suspended_until: %{}}}
+    ensure_table()
+    {:ok, %{}}
   end
 
-  @impl true
-  def handle_call({:check, type, subject}, _from, state) do
-    now = now_ms()
-    key = {type, subject}
-    policy = policy(type)
+  defp ensure_table do
+    case :ets.whereis(@table) do
+      :undefined ->
+        :ets.new(@table, [
+          :named_table,
+          :public,
+          :set,
+          read_concurrency: true,
+          write_concurrency: true
+        ])
 
-    case Map.get(state.suspended_until, key) do
-      until_ms when is_integer(until_ms) and until_ms > now ->
-        {:reply, limited(type, until_ms - now), state}
-
-      _ ->
-        state = %{state | suspended_until: Map.delete(state.suspended_until, key)}
-        {decision, state} = consume_token(state, key, policy, now)
-        maybe_log_limit(decision, type, subject)
-        {:reply, decision, state}
+      _tid ->
+        @table
     end
+  rescue
+    ArgumentError -> @table
   end
 
-  @impl true
-  def handle_call({:suspended?, type, subject}, _from, state) do
-    now = now_ms()
+  # --- Token bucket math ---
 
-    suspended =
-      case Map.get(state.suspended_until, {type, subject}) do
-        until_ms when is_integer(until_ms) -> until_ms > now
-        _ -> false
-      end
-
-    {:reply, suspended, state}
-  end
-
-  @impl true
-  def handle_call(:reset, _from, _state) do
-    {:reply, :ok, %{buckets: %{}, suspended_until: %{}}}
-  end
-
-  defp consume_token(state, key, policy, now) do
-    bucket = Map.get(state.buckets, key, %{tokens: policy.capacity, updated_at: now})
-    tokens = refill(bucket, policy, now)
-
-    if tokens >= 1.0 do
-      buckets = Map.put(state.buckets, key, %{tokens: tokens - 1.0, updated_at: now})
-      {:ok, %{state | buckets: buckets}}
-    else
-      until_ms = now + policy.suspension_ms
-
-      state = %{
-        state
-        | suspended_until: Map.put(state.suspended_until, key, until_ms),
-          buckets: Map.put(state.buckets, key, %{tokens: 0.0, updated_at: now})
-      }
-
-      {limited(elem(key, 0), policy.suspension_ms), state}
-    end
-  end
-
-  defp refill(bucket, policy, now) do
-    elapsed_ms = max(now - bucket.updated_at, 0)
+  defp refill(tokens, updated_at, policy, now) do
+    elapsed_ms = max(now - updated_at, 0)
     refill = elapsed_ms / 1_000 * policy.refill_per_second
-    min(policy.capacity * 1.0, bucket.tokens + refill)
+    min(policy.capacity * 1.0, tokens + refill)
   end
 
   defp policy(type) do
