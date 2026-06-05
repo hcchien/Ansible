@@ -26,19 +26,36 @@ defmodule AnsibleAppview.Ingest.Folder do
       )
       |> Enum.map(fn {:ok, result} -> result end)
 
-    Enum.reduce(prepared, {0, nil}, fn {op, payload, verified?}, {count, max_log} ->
-      new_max = max_int(max_log, op["log_id"])
+    max_log =
+      Enum.reduce(prepared, nil, fn {op, _payload, _ok?}, acc ->
+        max_int(acc, op["log_id"])
+      end)
 
-      cond do
-        not verified? -> {count, new_max}
-        not visibility_ok?(op["entity_type"], payload) -> {count, new_max}
-        true ->
-          case do_upsert(op, payload) do
-            :ok -> {count + 1, new_max}
-            :skip -> {count, new_max}
-          end
+    rows =
+      prepared
+      |> Enum.filter(fn {op, payload, verified?} ->
+        verified? and visibility_ok?(op["entity_type"], payload)
+      end)
+      |> Enum.map(fn {op, payload, _} -> row(op, payload) end)
+      # Same log_id can appear once per page; keep the last occurrence.
+      |> Enum.uniq_by(& &1.log_id)
+
+    indexed =
+      case rows do
+        [] ->
+          0
+
+        _ ->
+          {count, _} =
+            Repo.insert_all(FeedItem, rows,
+              on_conflict: {:replace_all_except, [:inserted_at]},
+              conflict_target: :log_id
+            )
+
+          count
       end
-    end)
+
+    {indexed, max_log}
   end
 
   defp verify(op) do
@@ -59,8 +76,10 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   defp visibility_ok?(_entity_type, _payload), do: true
 
-  defp do_upsert(op, payload) do
-    attrs = %{
+  defp row(op, payload) do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    %{
       log_id: op["log_id"],
       op_id: op["op_id"],
       author_did: op["author_did"],
@@ -76,18 +95,10 @@ defmodule AnsibleAppview.Ingest.Folder do
       public_key_hex: op["public_key_hex"],
       author_tier: op["reputation_tier"] || "basic",
       deleted: op["op_type"] == "delete",
-      sig_verified: true
+      sig_verified: true,
+      inserted_at: now,
+      updated_at: now
     }
-
-    case %FeedItem{}
-         |> FeedItem.changeset(attrs)
-         |> Repo.insert(
-           on_conflict: {:replace_all_except, [:inserted_at]},
-           conflict_target: :log_id
-         ) do
-      {:ok, _} -> :ok
-      {:error, _} -> :skip
-    end
   end
 
   defp decode_payload(payload) when is_map(payload), do: payload
@@ -115,7 +126,9 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   defp parse_dt(value) when is_binary(value) do
     case DateTime.from_iso8601(value) do
-      {:ok, dt, _} -> dt
+      # insert_all requires usec precision for :utc_datetime_usec columns, so
+      # force the microsecond precision to 6 (from_iso8601 may yield precision 0).
+      {:ok, dt, _} -> %{dt | microsecond: {elem(dt.microsecond, 0), 6}}
       _ -> nil
     end
   end
