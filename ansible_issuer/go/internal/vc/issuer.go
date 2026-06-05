@@ -39,10 +39,10 @@ type Issuer struct {
 	privKey   ed25519.PrivateKey
 	pubKey    ed25519.PublicKey
 	ttlDays   int
-	store     *Store
+	store     CredentialStore
 }
 
-func NewIssuer(cfg Config, store *Store) (*Issuer, error) {
+func NewIssuer(cfg Config, store CredentialStore) (*Issuer, error) {
 	seed, err := hex.DecodeString(cfg.PrivKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key hex: %w", err)

@@ -105,7 +105,21 @@ atomic, fsync'd write path (`internal/atomicfile`):
 - `TW_PROVIDER_SESSION_STORE_PATH` — TW provider auth/verified sessions.
 - `MOBILEMOICA_SESSION_STORE_PATH` — MobileMoica RP sessions (only when enabled).
 
-Two design facts drive how the issuer must be deployed:
+### PostgreSQL personhood store (horizontal scaling)
+
+Setting **`DATABASE_URL`** (outside mock mode) switches the personhood-binding
+store to PostgreSQL: duplicate-prevention is enforced by partial unique indexes
+(one active binding per commitment / national-id / passport hash), so it is
+correct across **multiple concurrent issuer instances** — removing the
+single-instance constraint below for that store. `PERSONHOOD_BINDING_STORE_PATH`
+is then unnecessary. The TW provider / MobileMoica **session** stores remain
+file-based for now, so full multi-instance also needs sticky sessions (or a
+later Postgres session store); the Sybil-critical store, however, is no longer a
+single-instance bottleneck.
+
+The single-instance notes below apply to the **file-backed** stores.
+
+Two design facts drive how the file-backed issuer stores must be deployed:
 
 1. **Single instance only.** Each store loads its file once at startup into an
    in-memory map and never re-reads it. A second concurrent instance would not

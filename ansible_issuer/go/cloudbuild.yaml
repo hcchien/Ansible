@@ -6,7 +6,7 @@ substitutions:
   _REGION: asia-east1
   _REPOSITORY: ansible
   _IMAGE_NAME: ansible-issuer
-  _GO_IMAGE: golang:1.22-bookworm
+  _GO_IMAGE: golang:1.25-bookworm
 
 steps:
   - id: test

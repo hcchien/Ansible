@@ -16,6 +16,7 @@ import (
 
 	"github.com/trisaura/ansible_issuer/internal/api"
 	"github.com/trisaura/ansible_issuer/internal/otp"
+	"github.com/trisaura/ansible_issuer/internal/pgstore"
 	"github.com/trisaura/ansible_issuer/internal/provider"
 	"github.com/trisaura/ansible_issuer/internal/vc"
 )
@@ -132,7 +133,22 @@ func configureMobileMoicaRP(handler *api.Handler, mockMode bool) {
 	log.Printf("MobileMoica RP flow enabled in explicit-disclosure mode")
 }
 
-func buildCredentialStoreFromEnv(mockMode bool) (*vc.Store, error) {
+func buildCredentialStoreFromEnv(mockMode bool) (vc.CredentialStore, error) {
+	// Prefer PostgreSQL outside mock mode so the issuer can scale horizontally;
+	// duplicate-prevention is enforced by DB unique constraints across instances.
+	databaseURL := os.Getenv("DATABASE_URL")
+	if !mockMode && databaseURL != "" {
+		pool, err := pgstore.Connect(context.Background(), databaseURL)
+		if err != nil {
+			return nil, err
+		}
+		if err := pgstore.EnsureSchema(context.Background(), pool); err != nil {
+			return nil, err
+		}
+		log.Println("personhood binding store: PostgreSQL")
+		return vc.NewPostgresStore(pool), nil
+	}
+
 	storePath := os.Getenv("PERSONHOOD_BINDING_STORE_PATH")
 	if storePath == "" {
 		if mockMode {

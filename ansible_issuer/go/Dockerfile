@@ -1,4 +1,4 @@
-ARG GO_IMAGE=golang:1.22-bookworm
+ARG GO_IMAGE=golang:1.25-bookworm
 ARG RUNNER_IMAGE=gcr.io/distroless/static-debian12:nonroot
 
 FROM ${GO_IMAGE} AS build
