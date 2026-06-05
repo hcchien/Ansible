@@ -39,6 +39,21 @@ defmodule AnsibleRelay.IdentityCacheTest do
     refute AnsibleRelay.IdentityCache.verified?(did)
   end
 
+  test "get reads through to PostgreSQL on an ETS miss (cross-instance)" do
+    did = "did:key:z6MkReadThrough#{System.unique_integer()}"
+    AnsibleRelay.IdentityCache.put(did, "deadbeef", "null_#{System.unique_integer()}")
+
+    # Simulate another relay instance: the DID is durable in PostgreSQL but absent
+    # from THIS instance's ETS cache.
+    :ets.delete(:verified_did_cache, did)
+    assert :ets.lookup(:verified_did_cache, did) == []
+
+    assert {:ok, entry} = AnsibleRelay.IdentityCache.get(did)
+    assert entry.public_key_hex == "deadbeef"
+    assert AnsibleRelay.IdentityCache.verified?(did)
+    assert [{^did, _}] = :ets.lookup(:verified_did_cache, did)
+  end
+
   test "remove deletes DID" do
     did = "did:key:z6MkRemove#{System.unique_integer()}"
     AnsibleRelay.IdentityCache.put(did, "pubkey", "null_#{System.unique_integer()}")

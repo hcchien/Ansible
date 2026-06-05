@@ -28,6 +28,8 @@ defmodule AnsibleRelay.MixProject do
       {:postgrex, "~> 0.17"},
       # Rustler NIF for Ed25519
       {:rustler, "~> 0.31"},
+      # Erlang clustering for multi-node deployments (off until a topology is set)
+      {:libcluster, "~> 3.3"},
     ]
   end
 end

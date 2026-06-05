@@ -85,4 +85,26 @@ if config_env() == :prod do
   config :ansible_relay, :trusted_vc_issuers, [
     %{did: issuer_did, public_key_hex: String.downcase(issuer_public_key_hex)}
   ]
+
+  # Multi-node Erlang clustering (e.g. GKE). Set LIBCLUSTER_HOSTS to a
+  # comma-separated list of full node names to connect via epmd. Unset = single
+  # node (Cloud Run scales statelessly over shared PostgreSQL).
+  case System.get_env("LIBCLUSTER_HOSTS") do
+    nil ->
+      :ok
+
+    hosts ->
+      nodes =
+        hosts
+        |> String.split(",", trim: true)
+        |> Enum.map(&(&1 |> String.trim() |> String.to_atom()))
+
+      config :libcluster,
+        topologies: [
+          relay: [
+            strategy: Cluster.Strategy.Epmd,
+            config: [hosts: nodes]
+          ]
+        ]
+  end
 end

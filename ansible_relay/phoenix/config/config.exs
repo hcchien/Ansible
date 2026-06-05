@@ -2,6 +2,11 @@ import Config
 
 config :ansible_relay, ecto_repos: [AnsibleRelay.Repo]
 
+# Erlang clustering topologies. Empty = single node (default). runtime.exs builds
+# a topology from env for multi-node (GKE) deployments; Cloud Run scales
+# statelessly over shared PostgreSQL and does not require this.
+config :libcluster, topologies: []
+
 config :ansible_relay, AnsibleRelay.Repo,
   adapter: Ecto.Adapters.Postgres,
   pool_size: 10

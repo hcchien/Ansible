@@ -61,13 +61,52 @@ defmodule AnsibleRelay.IdentityCache do
     :ok
   end
 
-  @doc "Look up a DID. Returns {:ok, entry} or :not_found."
+  @doc """
+  Look up a DID. Returns {:ok, entry} or :not_found.
+
+  On an ETS miss, reads through to PostgreSQL and repopulates the local cache, so
+  any relay instance can serve a DID anchored on another instance (shared-DB
+  horizontal scaling). DB errors degrade to :not_found rather than crashing the
+  ingest path.
+  """
   def get(did) do
     case :ets.lookup(@table, did) do
       [{^did, entry}] -> {:ok, entry}
-      [] -> :not_found
+      [] -> read_through(did)
     end
   end
+
+  defp read_through(did) do
+    case Repo.get_by(VerifiedDid, did: did) do
+      nil ->
+        :not_found
+
+      %VerifiedDid{} = row ->
+        if DateTime.compare(DateTime.utc_now(), row.expires_at) == :lt do
+          entry = %{
+            public_key_hex: row.public_key_hex,
+            nullifier: blank_to_nil(row.nullifier),
+            verified_at: row.verified_at,
+            expires_at: row.expires_at
+          }
+
+          :ets.insert(@table, {did, entry})
+
+          if entry.nullifier do
+            :ets.insert(@nullifier_table, {entry.nullifier, did})
+          end
+
+          {:ok, entry}
+        else
+          :not_found
+        end
+    end
+  rescue
+    _ -> :not_found
+  end
+
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(value), do: value
 
   @doc "Returns true if the DID is verified and not expired."
   def verified?(did) do
@@ -99,6 +138,9 @@ defmodule AnsibleRelay.IdentityCache do
     end
 
     :ets.delete(@table, did)
+    # Also remove the durable row so read-through cannot resurrect a revoked DID
+    # on this or any other instance.
+    Repo.delete_all(from(v in VerifiedDid, where: v.did == ^did))
     :ok
   end
 

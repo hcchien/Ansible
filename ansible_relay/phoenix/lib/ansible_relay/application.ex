@@ -7,18 +7,33 @@ defmodule AnsibleRelay.Application do
     port = Application.get_env(:ansible_relay, :port, 4000)
     Logger.info("Starting Ansible Relay on port #{port}")
 
-    children = [
-      AnsibleRelay.Repo,
-      AnsibleRelay.IdentityCache,
-      AnsibleRelay.DidAccountCache,
-      AnsibleRelay.WebSessionStore,
-      AnsibleRelay.MessengerStore,
-      AnsibleRelay.AbuseDetector,
-      AnsibleRelay.OpStore,
-      {Bandit, plug: AnsibleRelay.Web.Router, port: port}
-    ]
+    children =
+      cluster_children() ++
+        [
+          AnsibleRelay.Repo,
+          AnsibleRelay.IdentityCache,
+          AnsibleRelay.DidAccountCache,
+          AnsibleRelay.WebSessionStore,
+          AnsibleRelay.MessengerStore,
+          AnsibleRelay.AbuseDetector,
+          AnsibleRelay.OpStore,
+          {Bandit, plug: AnsibleRelay.Web.Router, port: port}
+        ]
 
     opts = [strategy: :one_for_one, name: AnsibleRelay.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Starts Erlang clustering only when a topology is configured (multi-node /
+  # GKE). Single-node (Cloud Run, dev, tests) has an empty topology and runs no
+  # cluster supervisor; horizontal scaling there is via shared PostgreSQL.
+  defp cluster_children do
+    case Application.get_env(:libcluster, :topologies, []) do
+      [] ->
+        []
+
+      topologies ->
+        [{Cluster.Supervisor, [topologies, [name: AnsibleRelay.ClusterSupervisor]]}]
+    end
   end
 end
