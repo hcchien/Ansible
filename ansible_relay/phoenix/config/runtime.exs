@@ -86,6 +86,17 @@ if config_env() == :prod do
     %{did: issuer_did, public_key_hex: String.downcase(issuer_public_key_hex)}
   ]
 
+  # Shared cross-instance abuse limiter (Redis). Without it, rate limits are
+  # per-instance (looser behind a load balancer).
+  case System.get_env("REDIS_URL") do
+    nil ->
+      :ok
+
+    redis_url ->
+      config :ansible_relay, :abuse_limiter_redis_url, redis_url
+      config :ansible_relay, :abuse_limiter_adapter, AnsibleRelay.AbuseDetector.Redis
+  end
+
   # Multi-node Erlang clustering (e.g. GKE). Set LIBCLUSTER_HOSTS to a
   # comma-separated list of full node names to connect via epmd. Unset = single
   # node (Cloud Run scales statelessly over shared PostgreSQL).

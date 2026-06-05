@@ -9,6 +9,7 @@ defmodule AnsibleRelay.Application do
 
     children =
       cluster_children() ++
+        abuse_limiter_children() ++
         [
           AnsibleRelay.Repo,
           AnsibleRelay.IdentityCache,
@@ -34,6 +35,14 @@ defmodule AnsibleRelay.Application do
 
       topologies ->
         [{Cluster.Supervisor, [topologies, [name: AnsibleRelay.ClusterSupervisor]]}]
+    end
+  end
+
+  # Starts the Redis connection only when a shared abuse limiter is configured.
+  defp abuse_limiter_children do
+    case Application.get_env(:ansible_relay, :abuse_limiter_redis_url) do
+      nil -> []
+      url -> [{Redix, {url, [name: :relay_redis]}}]
     end
   end
 end

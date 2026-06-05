@@ -39,6 +39,18 @@ defmodule AnsibleRelay.AbuseDetector do
   @doc "Check and consume one token for a subject."
   @spec check(subject_type(), String.t()) :: decision()
   def check(type, subject) when type in [:did, :peer] and is_binary(subject) do
+    case Application.get_env(:ansible_relay, :abuse_limiter_adapter) do
+      nil ->
+        ets_check(type, subject)
+
+      adapter ->
+        decision = adapter.check(type, subject, policy(type))
+        maybe_log_limit(decision, type, subject)
+        decision
+    end
+  end
+
+  defp ets_check(type, subject) do
     now = now_ms()
     key = {type, subject}
     policy = policy(type)

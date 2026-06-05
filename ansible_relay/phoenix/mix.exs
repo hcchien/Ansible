@@ -30,6 +30,8 @@ defmodule AnsibleRelay.MixProject do
       {:rustler, "~> 0.31"},
       # Erlang clustering for multi-node deployments (off until a topology is set)
       {:libcluster, "~> 3.3"},
+      # Optional shared (cross-instance) abuse limiter backend
+      {:redix, "~> 1.2"},
     ]
   end
 end
