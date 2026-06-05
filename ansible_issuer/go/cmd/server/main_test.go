@@ -15,7 +15,7 @@ func TestBuildTWProviderConfigDefaultsMockModeToContractAdapter(t *testing.T) {
 
 	config, err := buildTWProviderConfigFromEnv(true, func() time.Time {
 		return time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("build mock config: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestBuildTWProviderConfigRequiresAdapterModeOutsideMockMode(t *testing.T) {
 	t.Setenv("TW_PROVIDER_SHARED_SECRET", "provider-secret")
 	t.Setenv("TW_PROVIDER_AUDIENCE", "trisaura-issuer")
 
-	_, err := buildTWProviderConfigFromEnv(false, time.Now)
+	_, err := buildTWProviderConfigFromEnv(false, time.Now, nil)
 	if !errors.Is(err, errTWProviderConfigMissing) {
 		t.Fatalf("expected missing config error, got %v", err)
 	}
@@ -48,7 +48,7 @@ func TestBuildTWProviderConfigBuildsExplicitContractAdapter(t *testing.T) {
 
 	config, err := buildTWProviderConfigFromEnv(false, func() time.Time {
 		return time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("build contract config: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestBuildTWProviderConfigUsesRetentionOverride(t *testing.T) {
 	t.Setenv("TW_PROVIDER_AUDIENCE", "trisaura-issuer")
 	t.Setenv("TW_PROVIDER_RETENTION_SECONDS", "3600")
 
-	config, err := buildTWProviderConfigFromEnv(false, time.Now)
+	config, err := buildTWProviderConfigFromEnv(false, time.Now, nil)
 	if err != nil {
 		t.Fatalf("build contract config: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestBuildTWProviderConfigCleansExpiredSessionsAtStartup(t *testing.T) {
 	t.Setenv("TW_PROVIDER_AUDIENCE", "trisaura-issuer")
 	t.Setenv("TW_PROVIDER_RETENTION_SECONDS", "3600")
 
-	if _, err := buildTWProviderConfigFromEnv(false, func() time.Time { return now }); err != nil {
+	if _, err := buildTWProviderConfigFromEnv(false, func() time.Time { return now }, nil); err != nil {
 		t.Fatalf("build config: %v", err)
 	}
 
@@ -115,14 +115,14 @@ func TestBuildTWProviderConfigProductionModeFailsClosed(t *testing.T) {
 	t.Setenv("TW_PROVIDER_PRODUCTION_TRUST_ANCHORS", "tw-provider-root-ca")
 	t.Setenv("TW_PROVIDER_PRODUCTION_AUDIENCE", "trisaura-issuer")
 
-	_, err := buildTWProviderConfigFromEnv(false, time.Now)
+	_, err := buildTWProviderConfigFromEnv(false, time.Now, nil)
 	if !errors.Is(err, provider.ErrProductionAdapterUnavailable) {
 		t.Fatalf("expected production unavailable error, got %v", err)
 	}
 }
 
 func TestBuildMobileMoicaRPConfigDisabledByDefault(t *testing.T) {
-	config, enabled, err := buildMobileMoicaRPConfigFromEnv(false, time.Now)
+	config, enabled, err := buildMobileMoicaRPConfigFromEnv(false, time.Now, nil)
 	if err != nil {
 		t.Fatalf("disabled config should not fail: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestBuildMobileMoicaRPConfigDisabledByDefault(t *testing.T) {
 }
 
 func TestBuildCredentialStoreRequiresDurablePathOutsideMockMode(t *testing.T) {
-	_, err := buildCredentialStoreFromEnv(false)
+	_, err := buildCredentialStoreFromEnv(false, nil)
 	if !errors.Is(err, errPersonhoodBindingStoreConfigMissing) {
 		t.Fatalf("expected missing durable binding store path error, got %v", err)
 	}
@@ -144,7 +144,7 @@ func TestBuildCredentialStoreRequiresDurablePathOutsideMockMode(t *testing.T) {
 func TestBuildCredentialStoreBuildsFileStoreWhenConfigured(t *testing.T) {
 	t.Setenv("PERSONHOOD_BINDING_STORE_PATH", filepath.Join(t.TempDir(), "personhood-bindings.json"))
 
-	store, err := buildCredentialStoreFromEnv(false)
+	store, err := buildCredentialStoreFromEnv(false, nil)
 	if err != nil {
 		t.Fatalf("build credential store: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestBuildMobileMoicaRPConfigRequiresApprovalArtifacts(t *testing.T) {
 	t.Setenv("MOBILEMOICA_RP_ADAPTER_MODE", "contract")
 	t.Setenv("MOBILEMOICA_SESSION_STORE_PATH", filepath.Join(t.TempDir(), "mobilemoica.json"))
 
-	_, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now)
+	_, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now, nil)
 	if !errors.Is(err, errMobileMoicaRPConfigMissing) {
 		t.Fatalf("expected missing approval config error, got %v", err)
 	}
@@ -179,7 +179,7 @@ func TestBuildMobileMoicaRPConfigBuildsContractModeWhenGated(t *testing.T) {
 
 	config, enabled, err := buildMobileMoicaRPConfigFromEnv(false, func() time.Time {
 		return time.Date(2026, 5, 30, 12, 0, 0, 0, time.UTC)
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("build MobileMoica contract config: %v", err)
 	}
@@ -219,11 +219,11 @@ func TestBuildMobileMoicaRPConfigAllowsSyntheticSuccessOnlyInMockMode(t *testing
 	t.Setenv("MOBILEMOICA_SECURITY_APPROVAL_ID", "security-review")
 	t.Setenv("MOBILEMOICA_CONSTITUTION_APPROVAL_ID", "constitution-exception")
 
-	if _, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now); !errors.Is(err, errMobileMoicaRPConfigMissing) {
+	if _, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now, nil); !errors.Is(err, errMobileMoicaRPConfigMissing) {
 		t.Fatalf("expected non-mock synthetic success config error, got %v", err)
 	}
 
-	config, enabled, err := buildMobileMoicaRPConfigFromEnv(true, time.Now)
+	config, enabled, err := buildMobileMoicaRPConfigFromEnv(true, time.Now, nil)
 	if err != nil {
 		t.Fatalf("expected mock synthetic success config: %v", err)
 	}
@@ -241,7 +241,7 @@ func TestBuildMobileMoicaRPConfigProductionModeFailsClosed(t *testing.T) {
 	t.Setenv("MOBILEMOICA_SECURITY_APPROVAL_ID", "security-review")
 	t.Setenv("MOBILEMOICA_CONSTITUTION_APPROVAL_ID", "constitution-exception")
 
-	_, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now)
+	_, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now, nil)
 	if !errors.Is(err, provider.ErrMobileMoicaProductionUnavailable) {
 		t.Fatalf("expected production unavailable error, got %v", err)
 	}

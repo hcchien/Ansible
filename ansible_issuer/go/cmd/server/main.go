@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/trisaura/ansible_issuer/internal/api"
 	"github.com/trisaura/ansible_issuer/internal/otp"
 	"github.com/trisaura/ansible_issuer/internal/pgstore"
@@ -36,7 +37,23 @@ func main() {
 		port = "4002"
 	}
 
-	store, err := buildCredentialStoreFromEnv(mockMode)
+	// One shared connection pool for all durable issuer stores (personhood +
+	// provider sessions) when a database is configured outside mock mode.
+	var pgPool *pgxpool.Pool
+	if databaseURL := os.Getenv("DATABASE_URL"); !mockMode && databaseURL != "" {
+		pool, err := pgstore.Connect(context.Background(), databaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := pgstore.EnsureSchema(context.Background(), pool); err != nil {
+			log.Fatal(err)
+		}
+		defer pool.Close()
+		pgPool = pool
+		log.Println("issuer durable stores: PostgreSQL")
+	}
+
+	store, err := buildCredentialStoreFromEnv(mockMode, pgPool)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,8 +72,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	handler := api.NewHandler(otp.NewStore(otpTTL), prov, issuer, pepper, mockMode)
-	configureTWProvider(handler, mockMode)
-	configureMobileMoicaRP(handler, mockMode)
+	configureTWProvider(handler, mockMode, pgPool)
+	configureMobileMoicaRP(handler, mockMode, pgPool)
 	handler.Register(mux)
 
 	srv := &http.Server{Addr: ":" + port, Handler: mux}
@@ -112,8 +129,8 @@ var errTWProviderConfigMissing = errors.New("TW provider config missing")
 var errMobileMoicaRPConfigMissing = errors.New("MobileMoica RP config missing")
 var errPersonhoodBindingStoreConfigMissing = errors.New("personhood binding store config missing")
 
-func configureTWProvider(handler *api.Handler, mockMode bool) {
-	config, err := buildTWProviderConfigFromEnv(mockMode, time.Now)
+func configureTWProvider(handler *api.Handler, mockMode bool, pool *pgxpool.Pool) {
+	config, err := buildTWProviderConfigFromEnv(mockMode, time.Now, pool)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -121,8 +138,8 @@ func configureTWProvider(handler *api.Handler, mockMode bool) {
 	log.Printf("TW provider flow enabled with auth URL %s", config.BaseAuthURL)
 }
 
-func configureMobileMoicaRP(handler *api.Handler, mockMode bool) {
-	config, enabled, err := buildMobileMoicaRPConfigFromEnv(mockMode, time.Now)
+func configureMobileMoicaRP(handler *api.Handler, mockMode bool, pool *pgxpool.Pool) {
+	config, enabled, err := buildMobileMoicaRPConfigFromEnv(mockMode, time.Now, pool)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -133,18 +150,19 @@ func configureMobileMoicaRP(handler *api.Handler, mockMode bool) {
 	log.Printf("MobileMoica RP flow enabled in explicit-disclosure mode")
 }
 
-func buildCredentialStoreFromEnv(mockMode bool) (vc.CredentialStore, error) {
-	// Prefer PostgreSQL outside mock mode so the issuer can scale horizontally;
+// providerSessionStore returns a Postgres-backed session store when a pool is
+// configured (horizontal scaling), else a file-backed one.
+func providerSessionStore(pool *pgxpool.Pool, namespace, storePath string, now func() time.Time) (provider.SessionStore, error) {
+	if pool != nil {
+		return provider.NewPostgresSessionStore(pool, namespace, now), nil
+	}
+	return provider.NewFileSessionStore(storePath, now)
+}
+
+func buildCredentialStoreFromEnv(mockMode bool, pool *pgxpool.Pool) (vc.CredentialStore, error) {
+	// PostgreSQL when configured so the issuer can scale horizontally;
 	// duplicate-prevention is enforced by DB unique constraints across instances.
-	databaseURL := os.Getenv("DATABASE_URL")
-	if !mockMode && databaseURL != "" {
-		pool, err := pgstore.Connect(context.Background(), databaseURL)
-		if err != nil {
-			return nil, err
-		}
-		if err := pgstore.EnsureSchema(context.Background(), pool); err != nil {
-			return nil, err
-		}
+	if pool != nil {
 		log.Println("personhood binding store: PostgreSQL")
 		return vc.NewPostgresStore(pool), nil
 	}
@@ -163,10 +181,11 @@ func buildCredentialStoreFromEnv(mockMode bool) (vc.CredentialStore, error) {
 	return store, nil
 }
 
-func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWProviderConfig, error) {
-	required := []string{
-		"TW_PROVIDER_SESSION_STORE_PATH",
-		"TW_PROVIDER_AUTH_URL",
+func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time, pool *pgxpool.Pool) (api.TWProviderConfig, error) {
+	required := []string{"TW_PROVIDER_AUTH_URL"}
+	// The session store path is only needed for the file-backed store.
+	if pool == nil {
+		required = append(required, "TW_PROVIDER_SESSION_STORE_PATH")
 	}
 	if !mockMode {
 		required = append(required, "TW_PROVIDER_ADAPTER_MODE")
@@ -206,7 +225,7 @@ func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWPr
 		}
 	}
 
-	store, err := provider.NewFileSessionStore(storePath, now)
+	store, err := providerSessionStore(pool, "tw", storePath, now)
 	if err != nil {
 		return api.TWProviderConfig{}, fmt.Errorf("TW provider session store init: %w", err)
 	}
@@ -235,7 +254,7 @@ func buildTWProviderConfigFromEnv(mockMode bool, now func() time.Time) (api.TWPr
 	}, nil
 }
 
-func buildMobileMoicaRPConfigFromEnv(mockMode bool, now func() time.Time) (api.MobileMoicaRPConfig, bool, error) {
+func buildMobileMoicaRPConfigFromEnv(mockMode bool, now func() time.Time, pool *pgxpool.Pool) (api.MobileMoicaRPConfig, bool, error) {
 	if os.Getenv("MOBILEMOICA_RP_ENABLED") != "true" {
 		return api.MobileMoicaRPConfig{}, false, nil
 	}
@@ -247,7 +266,7 @@ func buildMobileMoicaRPConfigFromEnv(mockMode bool, now func() time.Time) (api.M
 		"MOBILEMOICA_SECURITY_APPROVAL_ID",
 		"MOBILEMOICA_CONSTITUTION_APPROVAL_ID",
 	}
-	if !mockMode {
+	if !mockMode && pool == nil {
 		required = append(required, "MOBILEMOICA_SESSION_STORE_PATH")
 	}
 	missing := missingEnv(required)
@@ -259,7 +278,7 @@ func buildMobileMoicaRPConfigFromEnv(mockMode bool, now func() time.Time) (api.M
 	if storePath == "" {
 		storePath = filepath.Join(os.TempDir(), "ansible_issuer_mobilemoica_rp_sessions.json")
 	}
-	store, err := provider.NewFileSessionStore(storePath, now)
+	store, err := providerSessionStore(pool, "mobilemoica", storePath, now)
 	if err != nil {
 		return api.MobileMoicaRPConfig{}, false, fmt.Errorf("MobileMoica RP session store init: %w", err)
 	}

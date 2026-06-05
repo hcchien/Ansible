@@ -46,6 +46,36 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS personhood_active_passport
 			ON personhood_bindings (passport_number_hash)
 			WHERE status = 0 AND passport_number_hash IS NOT NULL AND passport_number_hash <> ''`,
+		`CREATE TABLE IF NOT EXISTS provider_auth_sessions (
+			namespace          text NOT NULL,
+			state              text NOT NULL,
+			offer_id           text NOT NULL,
+			did                text NOT NULL,
+			email              text,
+			subject_commitment text,
+			expires_at         timestamptz NOT NULL,
+			consumed           boolean NOT NULL DEFAULT false,
+			PRIMARY KEY (namespace, state)
+		)`,
+		`CREATE INDEX IF NOT EXISTS provider_auth_sessions_offer
+			ON provider_auth_sessions (namespace, offer_id)`,
+		`CREATE TABLE IF NOT EXISTS provider_verified_sessions (
+			namespace          text NOT NULL,
+			offer_id           text NOT NULL,
+			did                text NOT NULL,
+			email              text,
+			subject_commitment text NOT NULL,
+			verified_at        timestamptz NOT NULL,
+			expires_at         timestamptz NOT NULL,
+			consumed           boolean NOT NULL DEFAULT false,
+			PRIMARY KEY (namespace, offer_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS provider_replay_ids (
+			namespace  text NOT NULL,
+			replay_id  text NOT NULL,
+			expires_at timestamptz NOT NULL,
+			PRIMARY KEY (namespace, replay_id)
+		)`,
 	}
 
 	for _, stmt := range stmts {
