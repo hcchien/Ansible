@@ -1,0 +1,176 @@
+import 'package:ansible_store/ansible_store.dart';
+
+import 'content_item_feed_projector.dart';
+import 'follow_feed_projector.dart';
+import 'follow_feed_source.dart';
+
+/// A verified timeline item returned by the AppView (already signature-checked by
+/// the transport). Field names mirror the AppView `/api/v1/timeline` response.
+class AppViewTimelineItem {
+  final String entityType;
+  final String entityId;
+  final String authorDid;
+  final String? boardId;
+  final String? threadId;
+  final String? visibility;
+  final DateTime? createdAt;
+  final Map<String, dynamic> payload;
+
+  const AppViewTimelineItem({
+    required this.entityType,
+    required this.entityId,
+    required this.authorDid,
+    required this.payload,
+    this.boardId,
+    this.threadId,
+    this.visibility,
+    this.createdAt,
+  });
+}
+
+class AppViewTimelinePage {
+  final List<AppViewTimelineItem> items;
+  final int? nextCursor;
+  final bool hasMore;
+
+  const AppViewTimelinePage({
+    required this.items,
+    this.nextCursor,
+    this.hasMore = false,
+  });
+}
+
+/// Transport supplied by the app: performs the AppView HTTP call AND re-verifies
+/// each item's Ed25519 signature + DID-key binding, returning only trusted items.
+/// Keeping it injected lets the domain layer stay free of HTTP and crypto deps.
+typedef AppViewTimelineFetcher =
+    Future<AppViewTimelinePage> Function({
+      required List<String> dids,
+      int? cursor,
+      int limit,
+    });
+
+/// [FollowFeedSource] backed by the AppView timeline API (the scalable read
+/// path). Queries only **federated** user-follow DIDs; `localOnly` follows are
+/// resolved separately by [LocalDeltaFilterSource]. Drop-in replacement for the
+/// local source behind the same interface.
+class AppViewTimelineSource implements FollowFeedSource {
+  final FollowRepository followRepository;
+  final AppViewTimelineFetcher fetcher;
+
+  const AppViewTimelineSource({
+    required this.followRepository,
+    required this.fetcher,
+  });
+
+  @override
+  Future<FollowFeedPage> fetch({
+    required String followerDid,
+    int? cursor,
+    int limit = 50,
+  }) async {
+    final dids = await _federatedFollowDids(followerDid);
+    if (dids.isEmpty) {
+      return const FollowFeedPage(items: [], hasMore: false);
+    }
+
+    final page = await fetcher(dids: dids, cursor: cursor, limit: limit);
+    final items = <FollowTimelineItem>[];
+    for (final raw in page.items) {
+      final mapped = _toTimelineItem(raw);
+      if (mapped != null) items.add(mapped);
+    }
+
+    return FollowFeedPage(
+      items: items,
+      nextCursor: page.nextCursor,
+      hasMore: page.hasMore,
+    );
+  }
+
+  Future<List<String>> _federatedFollowDids(String followerDid) async {
+    final edges = await followRepository.listFollowing(
+      followerDid,
+      targetType: FollowTargetType.user,
+    );
+    final dids = <String>[];
+    for (final edge in edges.where(
+      (edge) =>
+          edge.status == FollowStatus.accepted &&
+          edge.visibility == FollowVisibility.federated,
+    )) {
+      final target = await followRepository.getTarget(edge.targetId);
+      final did = target?.did ?? target?.canonicalUri;
+      if (did != null && did.isNotEmpty) dids.add(did);
+    }
+    return dids;
+  }
+
+  FollowTimelineItem? _toTimelineItem(AppViewTimelineItem raw) {
+    final created = raw.createdAt ?? DateTime.now().toUtc();
+    switch (raw.entityType) {
+      case 'post':
+        if (raw.boardId == null || raw.threadId == null) return null;
+        final post = Post(
+          id: raw.entityId,
+          threadId: raw.threadId!,
+          boardId: raw.boardId!,
+          authorId: raw.authorDid,
+          content: raw.payload['content'] as String? ?? '',
+          createdAt: created,
+          updatedAt: created,
+          lastEditAt: created,
+        );
+        final thread = Thread(
+          id: raw.threadId!,
+          boardId: raw.boardId!,
+          title: 'Untitled',
+          authorId: raw.authorDid,
+          createdAt: created,
+          updatedAt: created,
+        );
+        return PostTimelineItem(
+          FollowFeedEntry(
+            post: post,
+            thread: thread,
+            board: null,
+            reasons: const {FollowFeedReason.followedUser},
+          ),
+        );
+      case 'murmur':
+      case 'note':
+        final mode =
+            raw.entityType == 'note' ? ContentMode.note : ContentMode.murmur;
+        final item = ContentItem(
+          id: raw.entityId,
+          authorDid: raw.authorDid,
+          mode: mode,
+          body: raw.payload['body'] as String? ?? '',
+          status: ContentStatus.active,
+          visibility: _visibility(raw.visibility),
+          createdAt: created,
+          updatedAt: created,
+          title: raw.payload['title'] as String?,
+          publishedAt: created,
+          localOnly: false,
+        );
+        return ContentTimelineItem(
+          ContentFeedEntry(
+            item: item,
+            reasons: const {FollowFeedReason.followedUser},
+          ),
+        );
+      default:
+        return null;
+    }
+  }
+
+  ContentVisibility _visibility(String? value) {
+    if (value == null) return ContentVisibility.public;
+    try {
+      return ContentVisibility.parse(value);
+    } catch (_) {
+      return ContentVisibility.public;
+    }
+  }
+}

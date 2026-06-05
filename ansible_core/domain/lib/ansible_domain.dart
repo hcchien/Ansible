@@ -4,6 +4,7 @@ export 'src/content/content_transformation_service.dart';
 export 'src/follow/follow_feed_projector.dart';
 export 'src/follow/content_item_feed_projector.dart';
 export 'src/follow/follow_feed_source.dart';
+export 'src/follow/appview_timeline_source.dart';
 export 'src/follow/follow_result.dart';
 export 'src/follow/follow_service.dart';
 export 'src/sync/delta_response.dart';
