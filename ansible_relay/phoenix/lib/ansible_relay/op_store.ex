@@ -1,85 +1,110 @@
 defmodule AnsibleRelay.OpStore do
   @moduledoc """
-  ETS-backed Op log with PostgreSQL write-through for durability.
+  PostgreSQL-backed Op log (Comp C).
 
-  V1.1 Comp C — stores CRDT ops with auto-incrementing log_id.
-  ETS is the L1 read cache for hot-path dedup and cursor queries.
-  PostgreSQL is the durable backing store written on every accepted op.
+  Ops are appended with concurrent `INSERT`s (no single-writer process), deltas
+  are served by indexed cursor scans on the primary key, and duplicate op_ids
+  are rejected atomically by the `ops_op_id_index` unique constraint. There is no
+  in-memory copy of the op history, so memory is bounded and read/write
+  throughput scales with the database rather than a single GenServer mailbox.
+
+  The trivial GenServer is retained only so the module remains a supervised child
+  with a stable `start_link/1`; it holds no state and is never on the hot path.
   """
 
   use GenServer
   require Logger
 
+  import Ecto.Query
   alias AnsibleRelay.{Repo, Db.Op}
 
   # --- Public API ---
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, %{ops: [], next_id: 1, op_ids: MapSet.new()}, name: __MODULE__)
+  def start_link(_opts \\ []) do
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  @doc "Append an Op. Returns {:ok, log_id} or {:error, :duplicate}."
+  @doc """
+  Append an Op. Returns `{:ok, log_id}` or `{:error, :duplicate}`.
+
+  Concurrent and lock-free: duplicate op_ids are caught by the unique index, so
+  this is safe under parallel ingest without a serializing process.
+  """
   def append(op) do
-    GenServer.call(__MODULE__, {:append, op})
+    attrs = %{
+      op_id: op.op_id,
+      author_did: op.author_did,
+      entity_type: op.entity_type,
+      entity_id: op.entity_id,
+      op_type: op.op_type,
+      payload: op.payload,
+      signature: op.signature,
+      received_at: received_at(op)
+    }
+
+    case %Op{} |> Op.changeset(attrs) |> Repo.insert() do
+      {:ok, row} ->
+        {:ok, row.id}
+
+      {:error, %Ecto.Changeset{errors: errors}} ->
+        if Keyword.has_key?(errors, :op_id) do
+          {:error, :duplicate}
+        else
+          Logger.warning("OpStore: insert failed for op_id=#{op.op_id}: #{inspect(errors)}")
+          {:error, :insert_failed}
+        end
+    end
   end
 
-  @doc "List ops after a given log_id cursor."
+  @doc "List ops after a given log_id cursor (indexed primary-key range scan)."
   def list(after_log_id: cursor, limit: limit) do
-    GenServer.call(__MODULE__, {:list, cursor, limit})
+    Repo.all(
+      from o in Op,
+        where: o.id > ^cursor,
+        order_by: [asc: o.id],
+        limit: ^limit
+    )
+    |> Enum.map(&to_op_map/1)
   end
 
-  @doc "Check if an op_id has already been processed (dedup)."
+  @doc "Check if an op_id has already been processed (indexed unique lookup)."
   def exists?(op_id) do
-    GenServer.call(__MODULE__, {:exists, op_id})
+    Repo.exists?(from o in Op, where: o.op_id == ^op_id)
   end
 
-  # --- GenServer callbacks ---
+  # --- GenServer (vestigial: supervision compatibility only) ---
 
   @impl true
   def init(state), do: {:ok, state}
 
-  @impl true
-  def handle_call({:append, op}, _from, %{ops: ops, next_id: id, op_ids: ids} = state) do
-    if MapSet.member?(ids, op.op_id) do
-      {:reply, {:error, :duplicate}, state}
-    else
-      logged_op = Map.put(op, :log_id, id)
-      new_state = %{state | ops: ops ++ [logged_op], next_id: id + 1, op_ids: MapSet.put(ids, op.op_id)}
+  # --- Helpers ---
 
-      # Write-through to PostgreSQL for durability
-      case Repo.insert(%Op{
-        op_id:       op.op_id,
-        author_did:  op.author_did,
-        entity_type: op.entity_type,
-        entity_id:   op.entity_id,
-        op_type:     op.op_type,
-        payload:     op.payload,
-        signature:   op.signature,
-        received_at: DateTime.utc_now(),
-      }) do
-        {:ok, _} ->
-          :ok
+  defp to_op_map(%Op{} = o) do
+    %{
+      log_id: o.id,
+      op_id: o.op_id,
+      author_did: o.author_did,
+      entity_type: o.entity_type,
+      entity_id: o.entity_id,
+      op_type: o.op_type,
+      payload: o.payload,
+      signature: o.signature,
+      received_at: o.received_at && DateTime.to_iso8601(o.received_at)
+    }
+  end
 
-        {:error, %Ecto.Changeset{} = cs} ->
-          # Duplicate op_id in DB (race condition or replay) — log and continue
-          Logger.warning("OpStore: DB insert conflict for op_id=#{op.op_id}: #{inspect(cs.errors)}")
-
-        {:error, reason} ->
-          Logger.warning("OpStore: DB insert failed for op_id=#{op.op_id}: #{inspect(reason)}")
-      end
-
-      {:reply, {:ok, id}, new_state}
+  defp received_at(op) do
+    case Map.get(op, :received_at) do
+      %DateTime{} = dt -> dt
+      value when is_binary(value) -> parse_received_at(value)
+      _ -> DateTime.utc_now()
     end
   end
 
-  @impl true
-  def handle_call({:list, cursor, limit}, _from, %{ops: ops} = state) do
-    result = ops |> Enum.filter(&(&1.log_id > cursor)) |> Enum.take(limit)
-    {:reply, result, state}
-  end
-
-  @impl true
-  def handle_call({:exists, op_id}, _from, %{op_ids: ids} = state) do
-    {:reply, MapSet.member?(ids, op_id), state}
+  defp parse_received_at(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, dt, _} -> dt
+      _ -> DateTime.utc_now()
+    end
   end
 end
