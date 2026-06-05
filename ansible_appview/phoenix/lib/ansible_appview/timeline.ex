@@ -69,7 +69,8 @@ defmodule AnsibleAppview.Timeline do
       visibility: f.visibility,
       created_at: f.item_created_at && DateTime.to_iso8601(f.item_created_at),
       payload: f.payload,
-      public_key_hex: f.public_key_hex
+      public_key_hex: f.public_key_hex,
+      reputation_tier: f.author_tier
     }
   end
 end

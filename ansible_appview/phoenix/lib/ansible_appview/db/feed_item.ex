@@ -15,6 +15,7 @@ defmodule AnsibleAppview.Db.FeedItem do
     field :item_created_at, :utc_datetime_usec
     field :payload, :map
     field :public_key_hex, :string
+    field :author_tier, :string, default: "basic"
     field :deleted, :boolean, default: false
     field :sig_verified, :boolean, default: false
 
@@ -22,7 +23,7 @@ defmodule AnsibleAppview.Db.FeedItem do
   end
 
   @fields ~w(log_id op_id author_did entity_type entity_id op_type board_id thread_id
-             visibility item_created_at payload public_key_hex deleted sig_verified)a
+             visibility item_created_at payload public_key_hex author_tier deleted sig_verified)a
   @required ~w(log_id op_id author_did entity_type entity_id op_type)a
 
   def changeset(struct, attrs) do

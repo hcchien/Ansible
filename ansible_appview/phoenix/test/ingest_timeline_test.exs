@@ -27,6 +27,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
       "op_type" => Keyword.get(opts, :op_type, "insert"),
       "payload" => Base.encode64(Jason.encode!(Keyword.get(opts, :payload, %{}))),
       "public_key_hex" => Keyword.fetch!(opts, :pub),
+      "reputation_tier" => Keyword.get(opts, :reputation_tier, "basic"),
       "received_at" => "2026-06-05T00:00:00Z"
     }
 
@@ -48,6 +49,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
         entity_type: "murmur",
         pub: pub,
         priv: priv,
+        reputation_tier: "verified_human",
         payload: %{"mode" => "murmur", "body" => "hello", "visibility" => "public"}
       ),
       # private note -> skipped
@@ -88,6 +90,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert length(alice.items) == 1
     assert hd(alice.items).author_did == "did:key:alice"
     assert hd(alice.items).public_key_hex == pub
+    assert hd(alice.items).reputation_tier == "verified_human"
 
     # Board feed returns bob's post.
     board = Timeline.for_board("board-1", nil, 50)

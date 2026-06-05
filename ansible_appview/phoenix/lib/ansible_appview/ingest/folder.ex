@@ -67,6 +67,7 @@ defmodule AnsibleAppview.Ingest.Folder do
         parse_dt(payload["publishedAt"] || payload["createdAt"] || op["received_at"]),
       payload: payload,
       public_key_hex: op["public_key_hex"],
+      author_tier: op["reputation_tier"] || "basic",
       deleted: op["op_type"] == "delete",
       sig_verified: true
     }
