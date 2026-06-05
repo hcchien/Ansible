@@ -24,6 +24,7 @@ import '../services/ai/murmur_indexing_service.dart';
 import '../services/ai/openai_compatible_provider.dart';
 import '../services/ai/vector_search_service.dart';
 import '../services/app_locale_controller.dart';
+import '../services/app_view_timeline_client.dart';
 import '../services/app_sync_service.dart';
 import '../services/contact_resolver.dart';
 import '../services/contact_source_sync_service.dart';
@@ -281,18 +282,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     final boardMap = {for (final b in boards) b.id: b};
     final followingEntries = _feedFilter == FeedFilter.following
-        ? (await LocalDeltaFilterSource(
-            postProjector: FollowFeedProjector(
-              followRepository: _followRepo,
-              boardRepository: _boardRepo,
-              threadRepository: _threadRepo,
-              postRepository: _postRepo,
-            ),
-            contentProjector: ContentItemFeedProjector(
-              followRepository: _followRepo,
-              contentItemRepository: _contentItemRepo,
-            ),
-          ).fetch(followerDid: widget.did, limit: 100)).items
+        ? (await _followFeedSource().fetch(
+            followerDid: widget.did,
+            limit: 100,
+          )).items
         : null;
     final threads = followingEntries == null
         ? await _threadRepo.list(boardId: _selectedBoardId)
@@ -732,6 +725,34 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         noteTitle: noteTitle,
         noteBody: noteBody,
         onNoteUpdated: _loadData,
+      ),
+    );
+  }
+
+  // Following-feed source: the scalable AppView timeline when enabled+configured,
+  // otherwise the local Design-1 filter over synced ops. (AppView mode currently
+  // serves federated follows; localOnly follows via the local path is a planned
+  // hybrid refinement.)
+  FollowFeedSource _followFeedSource() {
+    if (AppEnvironment.useAppViewFeed && AppEnvironment.appViewBaseUrl.isNotEmpty) {
+      return AppViewTimelineSource(
+        followRepository: _followRepo,
+        fetcher: AppViewTimelineClient(
+          baseUrl: AppEnvironment.appViewBaseUrl,
+        ).fetch,
+      );
+    }
+
+    return LocalDeltaFilterSource(
+      postProjector: FollowFeedProjector(
+        followRepository: _followRepo,
+        boardRepository: _boardRepo,
+        threadRepository: _threadRepo,
+        postRepository: _postRepo,
+      ),
+      contentProjector: ContentItemFeedProjector(
+        followRepository: _followRepo,
+        contentItemRepository: _contentItemRepo,
       ),
     );
   }

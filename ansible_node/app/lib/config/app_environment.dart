@@ -47,6 +47,19 @@ class AppEnvironment {
     defaultValue: defaultRelayBaseUrl,
   );
 
+  /// Base URL of the AppView timeline service (scalable following feed). When
+  /// [useAppViewFeed] is true, the Following feed is served from here instead of
+  /// filtering the relay global delta locally.
+  static const appViewBaseUrl = String.fromEnvironment(
+    'ANSIBLE_APPVIEW_BASE_URL',
+    defaultValue: '',
+  );
+
+  static const useAppViewFeed = bool.fromEnvironment(
+    'ANSIBLE_USE_APPVIEW_FEED',
+    defaultValue: false,
+  );
+
   static const resetLocalIdentityOnStart = bool.fromEnvironment(
     'ANSIBLE_RESET_LOCAL_IDENTITY_ON_START',
     defaultValue: false,
