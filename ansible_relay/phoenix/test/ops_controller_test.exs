@@ -99,7 +99,7 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     Ecto.Adapters.SQL.Sandbox.mode(AnsibleRelay.Repo, {:shared, self()})
 
     # Ensure GenServers are running
-    for mod <- [IdentityCache, AbuseDetector, OpStore] do
+    for mod <- [IdentityCache, AbuseDetector, OpStore, AnsibleRelay.DidAccountCache] do
       case mod.start_link([]) do
         {:ok, _} -> :ok
         {:error, {:already_started, _}} -> :ok
@@ -304,6 +304,9 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert is_boolean(body["has_more"])
     assert Enum.all?(body["ops"], &is_binary(&1["public_key_hex"]))
     assert Enum.all?(body["ops"], &(&1["public_key_hex"] == public_key))
+    # Each op carries the author's reputation tier (default "basic").
+    assert Enum.all?(body["ops"], &is_binary(&1["reputation_tier"]))
+    assert Enum.all?(body["ops"], &(&1["reputation_tier"] == "basic"))
   end
 
   test "delta with cursor filters older ops" do

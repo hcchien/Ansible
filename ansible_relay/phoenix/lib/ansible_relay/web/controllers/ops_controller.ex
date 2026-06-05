@@ -176,7 +176,9 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   end
 
   defp attach_public_key(%{author_did: author_did} = op) do
-    Map.put(op, :public_key_hex, IdentityCache.public_key_hex(author_did))
+    op
+    |> Map.put(:public_key_hex, IdentityCache.public_key_hex(author_did))
+    |> Map.put(:reputation_tier, AnsibleRelay.DidAccountCache.reputation_tier(author_did))
   end
 
   defp signing_payload(params) do

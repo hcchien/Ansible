@@ -109,6 +109,14 @@ defmodule AnsibleRelay.DidAccountCache do
     end
   end
 
+  @doc "Return the reputation tier for a DID, defaulting to \"basic\"."
+  def reputation_tier(did) do
+    case get(did) do
+      {:ok, %{reputation_tier: tier}} when is_binary(tier) -> tier
+      _ -> "basic"
+    end
+  end
+
   @doc "Clear all in-memory DID account state. Intended for tests."
   def reset do
     :ets.delete_all_objects(@table)
