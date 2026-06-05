@@ -34,6 +34,8 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
       followRepository: _followRepo,
       outboxRepository: DriftFollowActivityOutboxRepository(widget.db),
       boardSyncConfigRepository: DriftBoardSyncConfigRepository(widget.db),
+      postRepository: DriftPostRepository(widget.db),
+      contentItemRepository: DriftContentItemRepository(widget.db),
     );
     _loadBoards();
   }

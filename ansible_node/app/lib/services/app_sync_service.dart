@@ -68,12 +68,16 @@ class AppSyncService {
     required PublicationRepository publicationRepo,
     required NostrRelaySettingsStore relaySettings,
     required NostrKeyStore keyStore,
+    FollowRepository? followRepository,
+    String? followerDid,
     NostrSigningBridge signingBridge = const SchnorrSigningBridge(),
     DidSigner? didSigner,
     NostrRelayClient? relayClient,
     RelayPublicationClient? relayPublicationClient,
     RelayIdentityClient? identityClient,
   }) : _remoteNodeRepo = remoteNodeRepo,
+       _followRepository = followRepository,
+       _followerDid = followerDid,
        _boardSyncConfigRepo = boardSyncConfigRepo,
        _hostedBoardRepo = hostedBoardRepo,
        _boardRepo = boardRepo,
@@ -90,6 +94,8 @@ class AppSyncService {
        _identityClient = identityClient;
 
   final RemoteNodeRepository _remoteNodeRepo;
+  final FollowRepository? _followRepository;
+  final String? _followerDid;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
   final HostedBoardRepository? _hostedBoardRepo;
   final BoardRepository _boardRepo;
@@ -134,6 +140,9 @@ class AppSyncService {
         boardRepo: _boardRepo,
         threadRepo: _threadRepo,
         postRepo: _postRepo,
+        followRepository: _followRepository,
+        contentItemRepo: _contentItemRepo,
+        followerDid: _followerDid,
         identityClient: _identityClient,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);
       if (result.success) {

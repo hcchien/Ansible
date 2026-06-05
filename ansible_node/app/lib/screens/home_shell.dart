@@ -278,12 +278,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     final boardMap = {for (final b in boards) b.id: b};
     final followingEntries = _feedFilter == FeedFilter.following
-        ? await FollowFeedProjector(
-            followRepository: _followRepo,
-            boardRepository: _boardRepo,
-            threadRepository: _threadRepo,
-            postRepository: _postRepo,
-          ).project(followerDid: widget.did)
+        ? (await LocalDeltaFilterSource(
+            postProjector: FollowFeedProjector(
+              followRepository: _followRepo,
+              boardRepository: _boardRepo,
+              threadRepository: _threadRepo,
+              postRepository: _postRepo,
+            ),
+            contentProjector: ContentItemFeedProjector(
+              followRepository: _followRepo,
+              contentItemRepository: _contentItemRepo,
+            ),
+          ).fetch(followerDid: widget.did, limit: 100)).items
         : null;
     final threads = followingEntries == null
         ? await _threadRepo.list(boardId: _selectedBoardId)
@@ -717,12 +723,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<List<PostCardData>> _buildFollowingPostCards(
-    List<FollowFeedEntry> entries,
+    List<FollowTimelineItem> items,
     Map<String, Board> boardMap,
   ) async {
     final cards = <PostCardData>[];
     final l10n = context.l10n;
-    for (final entry in entries) {
+    for (final item in items) {
+      if (item is ContentTimelineItem) {
+        cards.add(_contentFollowCard(item.entry.item));
+        continue;
+      }
+      if (item is! PostTimelineItem) continue;
+      final entry = item.entry;
       final posts = await _postRepo.list(threadId: entry.thread.id);
       final reactions = await _reactionRepo.listByTarget(
         store.TargetType.thread.name,
@@ -755,6 +767,35 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
     }
     return cards;
+  }
+
+  /// Render a followed user's standalone murmur/note as a feed card. These have
+  /// no board/thread, so a lightweight synthetic thread carries the card.
+  PostCardData _contentFollowCard(ContentItem item) {
+    final isNote = item.mode == ContentMode.note;
+    final label = isNote ? 'NOTE' : 'MURMUR';
+    final title = (item.title != null && item.title!.trim().isNotEmpty)
+        ? item.title!
+        : (isNote ? 'Note' : 'Murmur');
+    return PostCardData(
+      thread: Thread(
+        id: item.id,
+        boardId: '',
+        title: title,
+        authorId: item.authorDid,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      ),
+      category: 'FOLLOWING · $label',
+      title: title,
+      author: item.authorDid,
+      board: 'FOLLOWING · $label',
+      timeAgo: _formatTimeAgo(item.publishedAt ?? item.createdAt),
+      content: item.body,
+      reactions: const {'👍': 0},
+      comments: 0,
+      reacted: false,
+    );
   }
 
   Future<void> _createBoard() async {
@@ -979,6 +1020,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       publicationRepo: _publicationRepo,
       relaySettings: _nostrRelaySettingsStore,
       keyStore: _nostrKeyStore,
+      followRepository: _followRepo,
+      followerDid: widget.did,
       signingBridge: const SchnorrSigningBridge(),
     );
   }
