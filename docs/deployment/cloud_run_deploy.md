@@ -266,6 +266,57 @@ The browser only talks to the frontend origin; the frontend proxies `/api/*` to
 
 ---
 
+## 8a. (Optional) AppView Component D — scalable following feed
+
+Deploy this only when the following-feed load triggers in
+`docs/superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md`
+are hit. Until then the app uses the local Design-1 path and the AppView is not
+required. The AppView ingests the relay op stream into a Postgres projection and
+serves `/api/v1/timeline`.
+
+```bash
+# Own database for the AppView projection (rebuildable from relay ops).
+gcloud sql databases create ansible_appview --instance=ansible-relay-db
+printf 'ecto://relay:%s@%s/ansible_appview' "$DB_PASS" "$DB_PRIVATE_IP" \
+  | gcloud secrets create appview-database-url --data-file=- 2>/dev/null \
+  || printf 'ecto://relay:%s@%s/ansible_appview' "$DB_PASS" "$DB_PRIVATE_IP" \
+       | gcloud secrets versions add appview-database-url --data-file=-
+gcloud secrets add-iam-policy-binding appview-database-url \
+  --member="serviceAccount:${RUNTIME_SA}" --role="roles/secretmanager.secretAccessor" 2>/dev/null || true
+
+# Build (after creating a Cloud Build trigger, or manual):
+gcloud builds submit --config=ansible_appview/phoenix/cloudbuild.yaml \
+  --substitutions=SHORT_SHA="$TAG" .
+
+# Migrate (Cloud Run Job on the same image).
+gcloud run jobs create ansible-appview-migrate \
+  --image="${AR}/ansible-appview:${TAG}" --region="$REGION" \
+  --vpc-connector=ansible-conn --vpc-egress=private-ranges-only \
+  --set-secrets="DATABASE_URL=appview-database-url:latest" \
+  --command="/app/bin/ansible_appview" --args="eval,AnsibleAppview.Release.migrate()"
+gcloud run jobs execute ansible-appview-migrate --region="$REGION" --wait
+
+# Deploy. Single instance in Phase B: the ingest poller is the one firehose
+# consumer (ingestion is idempotent by log_id, but one instance avoids wasted
+# polling; the in-process cache, when added in Phase C, also requires it).
+gcloud run deploy ansible-appview \
+  --image="${AR}/ansible-appview:${TAG}" \
+  --region="$REGION" --platform=managed --port=8080 \
+  --vpc-connector=ansible-conn --vpc-egress=private-ranges-only \
+  --min-instances=1 --max-instances=1 \
+  --set-env-vars="RELAY_BASE_URL=https://${RELAY_HOST},INGEST_INTERVAL_MS=5000" \
+  --set-secrets="DATABASE_URL=appview-database-url:latest" \
+  --allow-unauthenticated
+```
+
+Point the app's `AppViewTimelineSource` transport at `https://<appview-host>` for
+federated follows; `localOnly` follows keep using the local path. Rebuild the
+projection any time with the Cloud Run Job command above swapped to
+`--args="eval,AnsibleAppview.Release.rebuild()"`.
+
+> Phase C (Pub/Sub firehose, fan-out-on-write, Redis cache, multi-instance,
+> celebrity handling) is out of scope here — see the scale-design spec.
+
 ## 9. Domain mapping and did:web
 
 Map each service to its hostname (or front them with a load balancer):
