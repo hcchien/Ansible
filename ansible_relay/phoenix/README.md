@@ -6,6 +6,44 @@
 > storage, and authorization contracts separate so a later Cloud Run/service
 > split does not require an API redesign.
 
+## Local install and run
+
+**Prerequisites:** Elixir ≥ 1.19 / OTP ≥ 27 (see `mix.exs`), a Rust toolchain
+(for the `sig_verifier_nif` Ed25519 NIF, built on first compile), PostgreSQL.
+
+```bash
+cd ansible_relay/phoenix
+mix deps.get
+mix ecto.create
+mix ecto.migrate
+mix run --no-halt          # listens on :4001 in dev
+```
+
+### Tests
+
+```bash
+# Requires PostgreSQL; test DB is ansible_relay_test.
+POSTGRES_USER="$USER" POSTGRES_PASSWORD=postgres MIX_ENV=test mix ecto.create
+POSTGRES_USER="$USER" POSTGRES_PASSWORD=postgres MIX_ENV=test mix ecto.migrate
+POSTGRES_USER="$USER" POSTGRES_PASSWORD=postgres MIX_ENV=test mix test
+```
+
+### Key environment variables (prod / runtime.exs)
+
+| Var | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection (required) |
+| `ISSUER_DID`, `ISSUER_PUBLIC_KEY_HEX` | Trusted VC issuer (public half of the issuer key) |
+| `RELAY_ORIGIN`, `FORUM_HOST_BASE_URL` | Public origins (not localhost in prod) |
+| `WEB_ALLOWED_ORIGINS` | Frontend origin(s) for credentialed CORS |
+| `PORT`, `POOL_SIZE`, `DATABASE_SSL` | HTTP port (`8080` in the image) / DB pool / TLS |
+| `REDIS_URL` | Optional shared cross-instance abuse limiter |
+| `LIBCLUSTER_HOSTS` | Optional Erlang clustering (GKE) |
+
+Migrations on a release image (no `mix`): `bin/ansible_relay eval "AnsibleRelay.Release.migrate()"`.
+Full deploy: [`../../docs/deployment/cloud_run_deploy.md`](../../docs/deployment/cloud_run_deploy.md);
+scaling flags: [`../../docs/deployment/scaling_operations.md`](../../docs/deployment/scaling_operations.md).
+
 ## Current API Surface
 
 Implemented route groups include:
