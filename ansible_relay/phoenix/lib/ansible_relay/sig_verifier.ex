@@ -20,16 +20,23 @@ defmodule AnsibleRelay.SigVerifier do
   @spec verify_ed25519(String.t(), binary(), String.t()) :: boolean()
   def verify_ed25519(public_key_hex, message, signature_hex)
       when is_binary(public_key_hex) and is_binary(message) and is_binary(signature_hex) do
-    try do
-      AnsibleRelay.SigVerifierNIF.verify_ed25519(public_key_hex, message, signature_hex)
-    rescue
-      e ->
-        Logger.warning(
-          "SigVerifier NIF unavailable (#{inspect(e)}), falling back to OTP Ed25519 verification"
-        )
+    result =
+      try do
+        AnsibleRelay.SigVerifierNIF.verify_ed25519(public_key_hex, message, signature_hex)
+      rescue
+        e ->
+          Logger.warning(
+            "SigVerifier NIF unavailable (#{inspect(e)}), falling back to OTP Ed25519 verification"
+          )
 
-        verify_with_otp(public_key_hex, message, signature_hex)
-    end
+          verify_with_otp(public_key_hex, message, signature_hex)
+      end
+
+    # Coerce to a strict boolean: the NIF can return error atoms (e.g.
+    # :invalid_signature) for malformed input, which are TRUTHY. Treating only
+    # `true` as success prevents callers (`if verify_ed25519(...)`) from
+    # accepting an invalid signature.
+    result === true
   end
 
   def verify_ed25519(_public_key_hex, _message, _signature_hex), do: false

@@ -6,7 +6,7 @@ substitutions:
   _REGION: asia-east1
   _REPOSITORY: ansible
   _IMAGE_NAME: ansible-appview
-  _ELIXIR_IMAGE: hexpm/elixir:1.16.3-erlang-26.2.5.12-debian-bookworm-20260202-slim
+  _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
 
 steps:
   - id: start-postgres
