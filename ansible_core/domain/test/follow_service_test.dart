@@ -132,6 +132,93 @@ void main() {
         OutboundFollowActivityType.undo,
       ]);
     });
+
+    test('unfollow purges the author\'s follow-only posts and content', () async {
+      final postRepo = InMemoryPostRepository();
+      final contentRepo = InMemoryContentItemRepository();
+      final now = DateTime.utc(2026, 6, 4);
+      final purging = FollowService(
+        followRepository: followRepo,
+        outboxRepository: outboxRepo,
+        boardSyncConfigRepository: boardSyncRepo,
+        postRepository: postRepo,
+        contentItemRepository: contentRepo,
+        idFactory: _SequenceIds(),
+      );
+
+      // Follow alice (user) and a board the user keeps.
+      await purging.followUser(
+        followerDid: 'did:key:local',
+        targetDid: 'did:key:alice',
+        displayName: 'Alice',
+        now: now,
+      );
+      await purging.followBoard(
+        followerDid: 'did:key:local',
+        boardId: 'kept-board',
+        boardSlug: 'kept',
+        displayName: 'Kept',
+        now: now,
+      );
+
+      Post post(String id, String boardId) => Post(
+            id: id,
+            threadId: 't-$id',
+            boardId: boardId,
+            authorId: 'did:key:alice',
+            content: 'c',
+            createdAt: now,
+            updatedAt: now,
+            lastEditAt: now,
+          );
+      await postRepo.create(post('p-unsynced', 'other-board')); // purged
+      await postRepo.create(post('p-kept', 'kept-board')); // kept (followed board)
+      await postRepo.create(
+        Post(
+          id: 'p-own',
+          threadId: 't-own',
+          boardId: 'other-board',
+          authorId: 'did:key:local',
+          content: 'mine',
+          createdAt: now,
+          updatedAt: now,
+          lastEditAt: now,
+        ),
+      ); // kept (own)
+
+      ContentItem citem(String id, String authorDid, {bool localOnly = false}) =>
+          ContentItem(
+            id: id,
+            authorDid: authorDid,
+            mode: ContentMode.murmur,
+            body: 'b',
+            status: ContentStatus.active,
+            visibility: ContentVisibility.public,
+            createdAt: now,
+            updatedAt: now,
+            localOnly: localOnly,
+          );
+      await contentRepo.create(citem('m-alice', 'did:key:alice')); // purged
+      await contentRepo.create(citem('m-bob', 'did:key:bob')); // kept (other author)
+
+      // Resolve alice's targetId to unfollow.
+      final aliceEdge = (await followRepo.listFollowing(
+        'did:key:local',
+        targetType: FollowTargetType.user,
+      )).single;
+
+      final result = await purging.unfollow(
+        followerDid: 'did:key:local',
+        targetId: aliceEdge.targetId,
+        now: now,
+      );
+      expect(result.status, FollowResultStatus.success);
+
+      final postIds = (await postRepo.list()).map((p) => p.id).toSet();
+      expect(postIds, {'p-kept', 'p-own'});
+      final contentIds = (await contentRepo.list()).map((i) => i.id).toSet();
+      expect(contentIds, {'m-bob'});
+    });
   });
 }
 

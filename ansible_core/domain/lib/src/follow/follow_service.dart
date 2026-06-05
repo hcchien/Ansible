@@ -20,12 +20,18 @@ class FollowService {
   final FollowRepository followRepository;
   final FollowActivityOutboxRepository outboxRepository;
   final BoardSyncConfigRepository boardSyncConfigRepository;
+  // Optional: when provided, unfollowing a user purges that author's locally
+  // synced posts/content that exist only because of the follow (exit/revoke).
+  final PostRepository? postRepository;
+  final ContentItemRepository? contentItemRepository;
   final FollowIdFactory idFactory;
 
   FollowService({
     required this.followRepository,
     required this.outboxRepository,
     required this.boardSyncConfigRepository,
+    this.postRepository,
+    this.contentItemRepository,
     FollowIdFactory? idFactory,
   }) : idFactory = idFactory ?? UtcTimestampFollowIdFactory();
 
@@ -207,7 +213,61 @@ class FollowService {
       activityId: edge.remoteActivityId,
       now: now,
     );
+
+    if (target.targetType == FollowTargetType.user) {
+      await _purgeFollowOnlyAuthorContent(followerDid, target);
+    }
     return FollowResult.success(edge.followId);
+  }
+
+  /// Deletes an unfollowed user's locally-synced content that exists only
+  /// because of the follow: posts not justified by a board the user still
+  /// follows, and synced murmur/note items. The user's own authored content has
+  /// a different author DID and is never matched.
+  Future<void> _purgeFollowOnlyAuthorContent(
+    String followerDid,
+    FollowTarget target,
+  ) async {
+    final authorDid = target.did ?? target.canonicalUri;
+    if (authorDid == null || authorDid.isEmpty) return;
+
+    final postRepo = postRepository;
+    if (postRepo != null) {
+      final keptBoardIds = await _keptBoardIds(followerDid);
+      for (final post in await postRepo.list()) {
+        if (post.authorId == authorDid &&
+            !keptBoardIds.contains(post.boardId)) {
+          await postRepo.delete(post.id);
+        }
+      }
+    }
+
+    final contentRepo = contentItemRepository;
+    if (contentRepo != null) {
+      for (final item in await contentRepo.list()) {
+        if (item.authorDid == authorDid && !item.localOnly) {
+          await contentRepo.delete(item.id);
+        }
+      }
+    }
+  }
+
+  Future<Set<String>> _keptBoardIds(String followerDid) async {
+    final edges = await followRepository.listFollowing(
+      followerDid,
+      targetType: FollowTargetType.board,
+    );
+    final ids = <String>{};
+    for (final edge in edges.where(
+      (edge) => edge.status == FollowStatus.accepted,
+    )) {
+      final t = await followRepository.getTarget(edge.targetId);
+      final boardId = t?.boardId;
+      if (boardId != null && boardId.isNotEmpty) {
+        ids.add(boardId);
+      }
+    }
+    return ids;
   }
 
   Future<FollowResult> retryFollow({
