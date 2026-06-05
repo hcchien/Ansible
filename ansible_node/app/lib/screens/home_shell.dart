@@ -52,6 +52,7 @@ import 'inbox_screen.dart' show ContactAvailabilityResolver;
 import 'search_screen.dart';
 import 'settings_home_screen.dart';
 import 'sync_settings_screen.dart';
+import 'user_profile_screen.dart';
 import 'wallet_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
@@ -2306,6 +2307,18 @@ class _MainPanel extends StatelessWidget {
                     authorDid: did,
                     opsDispatchService: opsDispatchService,
                     onFlushPendingOps: onFlushPendingOps,
+                    onOpenAuthor: (authorDid) {
+                      if (authorDid.isEmpty || authorDid == did) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => UserProfileScreen(
+                            db: db,
+                            followerDid: did,
+                            did: authorDid,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
         ),
@@ -4521,6 +4534,7 @@ class PostCard extends StatefulWidget {
     required this.authorDid,
     required this.opsDispatchService,
     required this.onFlushPendingOps,
+    this.onOpenAuthor,
   });
 
   final AppDatabase db;
@@ -4528,6 +4542,7 @@ class PostCard extends StatefulWidget {
   final String authorDid;
   final OpsDispatchService opsDispatchService;
   final Future<void> Function() onFlushPendingOps;
+  final void Function(String authorDid)? onOpenAuthor;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -4688,9 +4703,14 @@ class _PostCardState extends State<PostCard> {
                     color: AnsibleDesign.inkMuted,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    data.author,
-                    style: const TextStyle(color: AnsibleDesign.inkMuted),
+                  GestureDetector(
+                    onTap: widget.onOpenAuthor == null
+                        ? null
+                        : () => widget.onOpenAuthor!(data.author),
+                    child: Text(
+                      data.author,
+                      style: const TextStyle(color: AnsibleDesign.inkMuted),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Icon(
