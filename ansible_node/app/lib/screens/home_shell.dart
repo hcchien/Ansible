@@ -1022,6 +1022,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       keyStore: _nostrKeyStore,
       followRepository: _followRepo,
       followerDid: widget.did,
+      opsQueueRepo: _opsQueueRepo,
+      opsDispatchService: _opsDispatchService,
       signingBridge: const SchnorrSigningBridge(),
     );
   }

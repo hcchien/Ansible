@@ -1,6 +1,7 @@
 import 'package:ansible_node/services/app_sync_service.dart';
 import 'package:ansible_node/services/content_publication_service.dart';
 import 'package:ansible_node/services/nostr_relay_settings_store.dart';
+import 'package:ansible_node/services/ops_dispatch_service.dart';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
@@ -121,6 +122,74 @@ void main() {
     expect(result.publishSummary.publicItems, 0);
     expect(result.publishSummary.enqueued, 0);
     expect(await publicationRepo.listTargets(), isEmpty);
+  });
+
+  test('syncAll enqueues relay ops for public murmur/note, idempotently', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    final now = DateTime.utc(2026, 6, 4, 14);
+    final contentItems = DriftContentItemRepository(db);
+    final opsQueue = InMemoryOpsQueueRepository();
+
+    await contentItems.create(
+      ContentItem(
+        id: 'murmur-1',
+        authorDid: 'did:plc:alice',
+        mode: ContentMode.murmur,
+        body: 'a public thought',
+        status: ContentStatus.active,
+        visibility: ContentVisibility.public,
+        localOnly: false,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: now,
+      ),
+    );
+    // Private content must never become an op.
+    await contentItems.create(
+      ContentItem(
+        id: 'murmur-private',
+        authorDid: 'did:plc:alice',
+        mode: ContentMode.murmur,
+        body: 'secret',
+        status: ContentStatus.active,
+        visibility: ContentVisibility.private,
+        localOnly: false,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    AppSyncService build() => AppSyncService(
+          remoteNodeRepo: DriftRemoteNodeRepository(db),
+          boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+          boardRepo: DriftBoardRepository(db),
+          threadRepo: DriftThreadRepository(db),
+          postRepo: DriftPostRepository(db),
+          contentItemRepo: contentItems,
+          publicationRepo: DriftPublicationRepository(db),
+          relaySettings: const EmptyNostrRelaySettingsStore(),
+          keyStore: const InMemoryNostrKeyStore(),
+          opsQueueRepo: opsQueue,
+          opsDispatchService: OpsDispatchService(
+            repository: opsQueue,
+            signer: _FakeDidSigner(),
+          ),
+          didSigner: _FakeDidSigner(),
+          relayPublicationClient: _RecordingRelayPublicationClient(),
+        );
+
+    await build().syncAll(pullRemote: false);
+    var ops = await opsQueue.listAll();
+    expect(ops.map((o) => o.entityId), contains('murmur-1'));
+    expect(ops.any((o) => o.entityId == 'murmur-private'), isFalse);
+    expect(ops.where((o) => o.entityType == 'murmur').length, 1);
+
+    // Running again does not duplicate the op for the same entity.
+    await build().syncAll(pullRemote: false);
+    ops = await opsQueue.listAll();
+    expect(ops.where((o) => o.entityId == 'murmur-1').length, 1);
   });
 }
 

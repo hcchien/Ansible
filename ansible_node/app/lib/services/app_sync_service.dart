@@ -5,6 +5,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'content_publication_service.dart';
 import 'nostr_publication_service.dart';
 import 'nostr_relay_settings_store.dart';
+import 'ops_dispatch_service.dart';
 import 'relay_identity_client.dart';
 import 'remote_sync_service.dart';
 
@@ -70,6 +71,8 @@ class AppSyncService {
     required NostrKeyStore keyStore,
     FollowRepository? followRepository,
     String? followerDid,
+    OpsQueueRepository? opsQueueRepo,
+    OpsDispatchService? opsDispatchService,
     NostrSigningBridge signingBridge = const SchnorrSigningBridge(),
     DidSigner? didSigner,
     NostrRelayClient? relayClient,
@@ -78,6 +81,8 @@ class AppSyncService {
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
        _followerDid = followerDid,
+       _opsQueueRepo = opsQueueRepo,
+       _opsDispatchService = opsDispatchService,
        _boardSyncConfigRepo = boardSyncConfigRepo,
        _hostedBoardRepo = hostedBoardRepo,
        _boardRepo = boardRepo,
@@ -96,6 +101,8 @@ class AppSyncService {
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
   final String? _followerDid;
+  final OpsQueueRepository? _opsQueueRepo;
+  final OpsDispatchService? _opsDispatchService;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
   final HostedBoardRepository? _hostedBoardRepo;
   final BoardRepository _boardRepo;
@@ -116,12 +123,68 @@ class AppSyncService {
         ? await pullLatestFromRelays()
         : const RelayPullSummary(pulledActivities: 0);
 
+    await _enqueuePublicContentOps();
     final publishSummary = await bestEffortPublicPublish(publishPublicContent);
     return AppSyncResult(
       pulledActivities: pullSummary.pulledActivities,
       pullErrors: pullSummary.pullErrors,
       publishSummary: publishSummary,
     );
+  }
+
+  /// Enqueues relay ops for the user's public/unlisted murmur and note content
+  /// so it propagates through the op stream into followers' feeds. Idempotent:
+  /// an entity that already has an op (any status) is skipped. Best-effort —
+  /// failures never break the rest of the sync. Flushing the queue is the
+  /// existing ops-dispatch responsibility.
+  Future<int> _enqueuePublicContentOps() async {
+    final dispatch = _opsDispatchService;
+    final queue = _opsQueueRepo;
+    if (dispatch == null || queue == null) return 0;
+
+    try {
+      final items = (await _contentItemRepo.list()).where((item) {
+        final isFeedMode =
+            item.mode == ContentMode.murmur || item.mode == ContentMode.note;
+        return isFeedMode &&
+            item.visibility != ContentVisibility.private &&
+            !item.localOnly &&
+            item.status == ContentStatus.active &&
+            !item.isDeleted;
+      }).toList();
+      if (items.isEmpty) return 0;
+
+      final existingEntityIds = {
+        for (final op in await queue.listAll(limit: 1000)) op.entityId,
+      };
+
+      var enqueued = 0;
+      for (final item in items) {
+        if (existingEntityIds.contains(item.id)) continue;
+        final entry = item.mode == ContentMode.note
+            ? CrdtOpBuilder.createNote(
+                authorDid: item.authorDid,
+                entityId: item.id,
+                body: item.body,
+                title: item.title,
+                visibility: item.visibility.name,
+                publishedAt: item.publishedAt,
+              )
+            : CrdtOpBuilder.createMurmur(
+                authorDid: item.authorDid,
+                entityId: item.id,
+                text: item.body,
+                visibility: item.visibility.name,
+                publishedAt: item.publishedAt,
+              );
+        await dispatch.signAndEnqueue(entry);
+        enqueued += 1;
+      }
+      return enqueued;
+    } catch (_) {
+      // Best-effort: never let op enqueueing break sync.
+      return 0;
+    }
   }
 
   Future<RelayPullSummary> pullLatestFromRelays() async {
