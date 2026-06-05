@@ -119,11 +119,20 @@ defmodule AnsibleRelay.IdentityCache do
     end
   end
 
-  @doc "Check if a nullifier has already been registered."
+  @doc """
+  Check if a nullifier has already been registered. On an ETS miss, reads through
+  to PostgreSQL so duplicate-prevention holds across instances (and under the
+  lazy cache, where the nullifier index is not preloaded).
+  """
   def nullifier_exists?(nullifier) do
     case :ets.lookup(@nullifier_table, nullifier) do
-      [] -> false
-      _ -> true
+      [] ->
+        Repo.exists?(
+          from(v in VerifiedDid, where: v.nullifier == ^nullifier and v.nullifier != "")
+        )
+
+      _ ->
+        true
     end
   end
 
@@ -195,9 +204,55 @@ defmodule AnsibleRelay.IdentityCache do
     :ets.new(@table, [:set, :public, :named_table, read_concurrency: true])
     :ets.new(@nullifier_table, [:set, :public, :named_table])
     :ets.new(@challenge_table, [:set, :public, :named_table])
-    restored = restore_persisted_identities()
-    Logger.info("IdentityCache ETS tables created, restored #{restored} persisted DID(s)")
+
+    # Lazy by default: rely on per-DID read-through instead of loading every
+    # verified DID into RAM at boot (which grows per-instance memory and startup
+    # time with the total DID count). Eager restore is opt-in.
+    restored =
+      if Application.get_env(:ansible_relay, :eager_identity_cache, false) do
+        restore_persisted_identities()
+      else
+        0
+      end
+
+    Logger.info("IdentityCache ready (eager_restored=#{restored})")
+    schedule_sweep()
     {:ok, %{}}
+  end
+
+  @impl true
+  def handle_info(:sweep, state) do
+    sweep_expired()
+    schedule_sweep()
+    {:noreply, state}
+  end
+
+  defp schedule_sweep do
+    interval = Application.get_env(:ansible_relay, :identity_cache_sweep_ms, 3_600_000)
+    Process.send_after(self(), :sweep, interval)
+  end
+
+  # Evicts expired entries so the lazy cache stays bounded by the active DID set
+  # rather than every DID ever looked up.
+  defp sweep_expired do
+    now = DateTime.utc_now()
+
+    expired =
+      :ets.foldl(
+        fn {did, entry}, acc ->
+          if DateTime.compare(entry.expires_at, now) != :gt do
+            if entry[:nullifier], do: :ets.delete(@nullifier_table, entry.nullifier)
+            [did | acc]
+          else
+            acc
+          end
+        end,
+        [],
+        @table
+      )
+
+    Enum.each(expired, &:ets.delete(@table, &1))
+    length(expired)
   end
 
   defp restore_persisted_identities do
