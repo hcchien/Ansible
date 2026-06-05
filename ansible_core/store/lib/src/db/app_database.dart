@@ -16,6 +16,7 @@ import '../schema/content_items.dart';
 import '../schema/content_metadata.dart';
 import '../schema/content_relations.dart';
 import '../schema/context_packs.dart';
+import '../schema/did_reputations.dart';
 import '../schema/discussion_nodes.dart';
 import '../schema/follow_activity_events.dart';
 import '../schema/follow_edges.dart';
@@ -101,13 +102,14 @@ part 'app_database.g.dart';
     MessengerMessages,
     MessengerMailboxCursors,
     MurmurEmbeddings,
+    DidReputations,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -190,6 +192,9 @@ class AppDatabase extends _$AppDatabase {
           passportWalletExtensions,
           passportWalletExtensions.passportNumberHash,
         );
+      }
+      if (from < 20) {
+        await _createTableIfMissing(m, didReputations);
       }
       await _addColumnIfMissing(
         m,

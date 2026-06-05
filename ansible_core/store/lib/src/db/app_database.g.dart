@@ -26920,6 +26920,267 @@ class MurmurEmbeddingsCompanion extends UpdateCompanion<MurmurEmbedding> {
   }
 }
 
+class $DidReputationsTable extends DidReputations
+    with TableInfo<$DidReputationsTable, DidReputationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DidReputationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _didMeta = const VerificationMeta('did');
+  @override
+  late final GeneratedColumn<String> did = GeneratedColumn<String>(
+    'did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tierMeta = const VerificationMeta('tier');
+  @override
+  late final GeneratedColumn<String> tier = GeneratedColumn<String>(
+    'tier',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [did, tier, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'did_reputations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DidReputationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('did')) {
+      context.handle(
+        _didMeta,
+        did.isAcceptableOrUnknown(data['did']!, _didMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_didMeta);
+    }
+    if (data.containsKey('tier')) {
+      context.handle(
+        _tierMeta,
+        tier.isAcceptableOrUnknown(data['tier']!, _tierMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tierMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {did};
+  @override
+  DidReputationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DidReputationRow(
+      did: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}did'],
+      )!,
+      tier: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tier'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DidReputationsTable createAlias(String alias) {
+    return $DidReputationsTable(attachedDatabase, alias);
+  }
+}
+
+class DidReputationRow extends DataClass
+    implements Insertable<DidReputationRow> {
+  final String did;
+  final String tier;
+  final DateTime updatedAt;
+  const DidReputationRow({
+    required this.did,
+    required this.tier,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['did'] = Variable<String>(did);
+    map['tier'] = Variable<String>(tier);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DidReputationsCompanion toCompanion(bool nullToAbsent) {
+    return DidReputationsCompanion(
+      did: Value(did),
+      tier: Value(tier),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DidReputationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DidReputationRow(
+      did: serializer.fromJson<String>(json['did']),
+      tier: serializer.fromJson<String>(json['tier']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'did': serializer.toJson<String>(did),
+      'tier': serializer.toJson<String>(tier),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DidReputationRow copyWith({String? did, String? tier, DateTime? updatedAt}) =>
+      DidReputationRow(
+        did: did ?? this.did,
+        tier: tier ?? this.tier,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  DidReputationRow copyWithCompanion(DidReputationsCompanion data) {
+    return DidReputationRow(
+      did: data.did.present ? data.did.value : this.did,
+      tier: data.tier.present ? data.tier.value : this.tier,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DidReputationRow(')
+          ..write('did: $did, ')
+          ..write('tier: $tier, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(did, tier, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DidReputationRow &&
+          other.did == this.did &&
+          other.tier == this.tier &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DidReputationsCompanion extends UpdateCompanion<DidReputationRow> {
+  final Value<String> did;
+  final Value<String> tier;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const DidReputationsCompanion({
+    this.did = const Value.absent(),
+    this.tier = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DidReputationsCompanion.insert({
+    required String did,
+    required String tier,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : did = Value(did),
+       tier = Value(tier);
+  static Insertable<DidReputationRow> custom({
+    Expression<String>? did,
+    Expression<String>? tier,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (did != null) 'did': did,
+      if (tier != null) 'tier': tier,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DidReputationsCompanion copyWith({
+    Value<String>? did,
+    Value<String>? tier,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return DidReputationsCompanion(
+      did: did ?? this.did,
+      tier: tier ?? this.tier,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (did.present) {
+      map['did'] = Variable<String>(did.value);
+    }
+    if (tier.present) {
+      map['tier'] = Variable<String>(tier.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DidReputationsCompanion(')
+          ..write('did: $did, ')
+          ..write('tier: $tier, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -27007,6 +27268,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MurmurEmbeddingsTable murmurEmbeddings = $MurmurEmbeddingsTable(
     this,
   );
+  late final $DidReputationsTable didReputations = $DidReputationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -27060,6 +27322,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     messengerMessages,
     messengerMailboxCursors,
     murmurEmbeddings,
+    didReputations,
   ];
 }
 
@@ -46346,6 +46609,174 @@ typedef $$MurmurEmbeddingsTableProcessedTableManager =
       MurmurEmbedding,
       PrefetchHooks Function({bool contentItemId})
     >;
+typedef $$DidReputationsTableCreateCompanionBuilder =
+    DidReputationsCompanion Function({
+      required String did,
+      required String tier,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DidReputationsTableUpdateCompanionBuilder =
+    DidReputationsCompanion Function({
+      Value<String> did,
+      Value<String> tier,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$DidReputationsTableFilterComposer
+    extends Composer<_$AppDatabase, $DidReputationsTable> {
+  $$DidReputationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get did => $composableBuilder(
+    column: $table.did,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tier => $composableBuilder(
+    column: $table.tier,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DidReputationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DidReputationsTable> {
+  $$DidReputationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get did => $composableBuilder(
+    column: $table.did,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tier => $composableBuilder(
+    column: $table.tier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DidReputationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DidReputationsTable> {
+  $$DidReputationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get did =>
+      $composableBuilder(column: $table.did, builder: (column) => column);
+
+  GeneratedColumn<String> get tier =>
+      $composableBuilder(column: $table.tier, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DidReputationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DidReputationsTable,
+          DidReputationRow,
+          $$DidReputationsTableFilterComposer,
+          $$DidReputationsTableOrderingComposer,
+          $$DidReputationsTableAnnotationComposer,
+          $$DidReputationsTableCreateCompanionBuilder,
+          $$DidReputationsTableUpdateCompanionBuilder,
+          (
+            DidReputationRow,
+            BaseReferences<
+              _$AppDatabase,
+              $DidReputationsTable,
+              DidReputationRow
+            >,
+          ),
+          DidReputationRow,
+          PrefetchHooks Function()
+        > {
+  $$DidReputationsTableTableManager(
+    _$AppDatabase db,
+    $DidReputationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DidReputationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DidReputationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DidReputationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> did = const Value.absent(),
+                Value<String> tier = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DidReputationsCompanion(
+                did: did,
+                tier: tier,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String did,
+                required String tier,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DidReputationsCompanion.insert(
+                did: did,
+                tier: tier,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DidReputationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DidReputationsTable,
+      DidReputationRow,
+      $$DidReputationsTableFilterComposer,
+      $$DidReputationsTableOrderingComposer,
+      $$DidReputationsTableAnnotationComposer,
+      $$DidReputationsTableCreateCompanionBuilder,
+      $$DidReputationsTableUpdateCompanionBuilder,
+      (
+        DidReputationRow,
+        BaseReferences<_$AppDatabase, $DidReputationsTable, DidReputationRow>,
+      ),
+      DidReputationRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -46467,4 +46898,6 @@ class $AppDatabaseManager {
       );
   $$MurmurEmbeddingsTableTableManager get murmurEmbeddings =>
       $$MurmurEmbeddingsTableTableManager(_db, _db.murmurEmbeddings);
+  $$DidReputationsTableTableManager get didReputations =>
+      $$DidReputationsTableTableManager(_db, _db.didReputations);
 }
