@@ -23,6 +23,31 @@ if config_env() == :prod do
 
   config :ansible_appview, :relay_base_url, relay_base_url
 
+  # Optional read replica: route timeline reads to it when configured.
+  case System.get_env("DATABASE_REPLICA_URL") do
+    nil ->
+      :ok
+
+    replica_url ->
+      config :ansible_appview, AnsibleAppview.ReadRepo,
+        url: replica_url,
+        pool_size: String.to_integer(System.get_env("READ_POOL_SIZE") || "10")
+
+      config :ansible_appview, :read_repo, AnsibleAppview.ReadRepo
+      config :ansible_appview, :start_read_repo, true
+  end
+
+  # Optional Redis cache for multi-instance deployments.
+  case System.get_env("REDIS_URL") do
+    nil ->
+      :ok
+
+    redis_url ->
+      config :ansible_appview, :redis_url, redis_url
+      config :ansible_appview, :start_redis, true
+      config :ansible_appview, :cache_adapter, AnsibleAppview.Cache.Redix
+  end
+
   case System.get_env("INGEST_INTERVAL_MS") do
     nil -> :ok
     value -> config :ansible_appview, :ingest_interval_ms, String.to_integer(value)

@@ -14,24 +14,31 @@ defmodule AnsibleAppview.Ingest.Folder do
   @doc "Folds a list of relay op maps. Returns {indexed_count, max_log_id}."
   @spec apply_ops([map()]) :: {non_neg_integer(), integer() | nil}
   def apply_ops(ops) when is_list(ops) do
-    Enum.reduce(ops, {0, nil}, fn op, {count, max_log} ->
+    # Ed25519 verification is CPU-bound and independent per op, so verify the
+    # whole page in parallel across schedulers before the sequential DB upserts.
+    prepared =
+      ops
+      |> Task.async_stream(
+        fn op -> {op, decode_payload(op["payload"]), verify(op)} end,
+        max_concurrency: System.schedulers_online(),
+        ordered: true,
+        timeout: 30_000
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+
+    Enum.reduce(prepared, {0, nil}, fn {op, payload, verified?}, {count, max_log} ->
       new_max = max_int(max_log, op["log_id"])
 
-      case fold_one(op) do
-        :ok -> {count + 1, new_max}
-        :skip -> {count, new_max}
+      cond do
+        not verified? -> {count, new_max}
+        not visibility_ok?(op["entity_type"], payload) -> {count, new_max}
+        true ->
+          case do_upsert(op, payload) do
+            :ok -> {count + 1, new_max}
+            :skip -> {count, new_max}
+          end
       end
     end)
-  end
-
-  defp fold_one(op) do
-    payload = decode_payload(op["payload"])
-
-    cond do
-      not verify(op) -> :skip
-      not visibility_ok?(op["entity_type"], payload) -> :skip
-      true -> do_upsert(op, payload)
-    end
   end
 
   defp verify(op) do

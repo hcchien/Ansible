@@ -6,14 +6,69 @@ defmodule AnsibleAppview.Timeline do
   """
 
   import Ecto.Query
-  alias AnsibleAppview.Repo
   alias AnsibleAppview.Db.FeedItem
+
+  defp read_repo, do: Application.get_env(:ansible_appview, :read_repo, AnsibleAppview.Repo)
 
   @relayable ~w(public unlisted)
 
   @spec for_authors([String.t()], integer() | nil, pos_integer()) :: map()
   def for_authors(dids, cursor, limit) when is_list(dids) do
-    page(from(f in FeedItem, where: f.author_did in ^dids), cursor, limit)
+    # First page (no cursor) is served from the per-author building-block cache;
+    # deeper pages fall through to a direct cursor query (cold path).
+    if is_nil(cursor) or cursor <= 0 do
+      cached_first_page(dids, limit)
+    else
+      page(from(f in FeedItem, where: f.author_did in ^dids), cursor, limit)
+    end
+  end
+
+  defp cached_first_page(dids, limit) do
+    limit = limit |> min(200) |> max(1)
+
+    merged =
+      dids
+      |> Enum.uniq()
+      |> Enum.flat_map(&author_recent/1)
+      |> Enum.sort_by(& &1.log_id, :desc)
+
+    has_more = length(merged) > limit
+    visible = Enum.take(merged, limit)
+
+    next_cursor =
+      case visible do
+        [] -> nil
+        list -> List.last(list).log_id
+      end
+
+    %{items: visible, next_cursor: next_cursor, has_more: has_more}
+  end
+
+  defp author_recent(did) do
+    key = "author:" <> did
+
+    case AnsibleAppview.Cache.get(key) do
+      {:ok, items} ->
+        items
+
+      :miss ->
+        cap = Application.get_env(:ansible_appview, :author_cache_limit, 100)
+
+        items =
+          read_repo().all(
+            from f in FeedItem,
+              where:
+                f.author_did == ^did and f.deleted == false and
+                  (is_nil(f.visibility) or f.visibility in ^@relayable),
+              order_by: [desc: f.log_id],
+              limit: ^cap
+          )
+          |> Enum.map(&to_map/1)
+
+        ttl = Application.get_env(:ansible_appview, :author_cache_ttl_ms, 10_000)
+        AnsibleAppview.Cache.put(key, items, ttl)
+        items
+    end
   end
 
   @spec for_board(String.t(), integer() | nil, pos_integer()) :: map()
@@ -39,7 +94,7 @@ defmodule AnsibleAppview.Timeline do
         base
       end
 
-    rows = Repo.all(scoped)
+    rows = read_repo().all(scoped)
     has_more = length(rows) > limit
     visible = Enum.take(rows, limit)
 
