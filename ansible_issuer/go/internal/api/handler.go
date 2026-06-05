@@ -88,6 +88,7 @@ func NewHandler(
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)
+	mux.HandleFunc("GET /.well-known/did.json", h.didDocument)
 	mux.HandleFunc("POST /api/v1/vc/request", h.request)
 	mux.HandleFunc("POST /api/v1/vc/issue", h.issue)
 	mux.HandleFunc("GET /api/v1/vc/status/{id}", h.status)
@@ -139,6 +140,12 @@ func (h *Handler) ConfigurePassport(config PassportConfig) {
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+// didDocument serves the issuer's did:web DID document so external W3C verifiers
+// can resolve the assertion key used in issued credential proofs.
+func (h *Handler) didDocument(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, h.issuer.DIDDocument())
 }
 
 func (h *Handler) readyz(w http.ResponseWriter, r *http.Request) {

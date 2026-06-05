@@ -153,6 +153,34 @@ func (iss *Issuer) IssueMobileMoicaRP(holderDID, subjectCommitment string) (map[
 	)
 }
 
+// DIDDocument returns the did:web DID document so external W3C verifiers can
+// resolve the issuer's Ed25519 assertion key (#key-1) used in eddsa-jcs-2022
+// proofs. Served at https://<host>/.well-known/did.json for did:web:<host>.
+func (iss *Issuer) DIDDocument() map[string]any {
+	vmID := iss.issuerDID + "#key-1"
+	// Multikey publicKeyMultibase = multibase-base58btc(0xed01 || raw ed25519 key),
+	// where 0xed01 is the ed25519-pub multicodec varint prefix.
+	multibaseKey := multibaseBase58BTCEncode(
+		append([]byte{0xed, 0x01}, iss.pubKey...),
+	)
+	return map[string]any{
+		"@context": []string{
+			"https://www.w3.org/ns/did/v1",
+			"https://w3id.org/security/multikey/v1",
+		},
+		"id": iss.issuerDID,
+		"verificationMethod": []map[string]any{
+			{
+				"id":                 vmID,
+				"type":               "Multikey",
+				"controller":         iss.issuerDID,
+				"publicKeyMultibase": multibaseKey,
+			},
+		},
+		"assertionMethod": []string{vmID},
+	}
+}
+
 func (iss *Issuer) issue(
 	credentialType string,
 	subject CredentialSubject,

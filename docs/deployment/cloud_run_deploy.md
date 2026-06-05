@@ -329,23 +329,28 @@ gcloud run domain-mappings create --service=ansible-web --domain="$WEB_HOST" --r
 
 `ISSUER_DID=did:web:${ISSUER_HOST}` requires a DID document at
 `https://${ISSUER_HOST}/.well-known/did.json` for any external party (e.g. the
-app) that resolves the issuer DID. The relay does **not** need it (it trusts
-`ISSUER_PUBLIC_KEY_HEX` directly), but the app does. The issuer service does not
-serve this file today — publish it as a static object, for example:
+app, or any W3C verifier) that resolves the issuer DID. The relay does **not**
+need it (it trusts `ISSUER_PUBLIC_KEY_HEX` directly).
+
+**The issuer now serves this file itself** at `GET /.well-known/did.json`,
+derived from `ISSUER_DID` + the issuer key, e.g.:
 
 ```jsonc
 {
-  "@context": ["https://www.w3.org/ns/did/v1"],
+  "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"],
   "id": "did:web:issuer.trisaura.io",
   "verificationMethod": [{
     "id": "did:web:issuer.trisaura.io#key-1",
-    "type": "Ed25519VerificationKey2020",
+    "type": "Multikey",
     "controller": "did:web:issuer.trisaura.io",
-    "publicKeyMultibase": "<z-base58btc-multibase of the issuer public key>"
+    "publicKeyMultibase": "z6Mk…"  // multibase base58-btc, ed25519-pub multicodec
   }],
   "assertionMethod": ["did:web:issuer.trisaura.io#key-1"]
 }
 ```
+
+Just ensure the issuer is reachable at `https://${ISSUER_HOST}` (domain mapping
+above). Verify after deploy: `curl https://${ISSUER_HOST}/.well-known/did.json`.
 
 ---
 
