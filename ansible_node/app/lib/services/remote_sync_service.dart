@@ -288,6 +288,13 @@ class RemoteSyncService {
   final BoardRepository _boardRepo;
   final ThreadRepository _threadRepo;
   final PostRepository _postRepo;
+  // Optional follow-aware ingestion: when a follow repository and the local
+  // follower DID are provided, ops authored by followed users are retained even
+  // when their board is not synced, and standalone murmur/note ops are folded
+  // into the content item store. Null preserves the legacy board-only behavior.
+  final FollowRepository? _followRepo;
+  final ContentItemRepository? _contentItemRepo;
+  final String? _followerDid;
   final RemoteOpSignatureVerifier _opSignatureVerifier;
   final DateTime Function() _now;
 
@@ -298,6 +305,9 @@ class RemoteSyncService {
     required BoardRepository boardRepo,
     required ThreadRepository threadRepo,
     required PostRepository postRepo,
+    FollowRepository? followRepository,
+    ContentItemRepository? contentItemRepo,
+    String? followerDid,
     RemoteOpSignatureVerifier? opSignatureVerifier,
     RelayIdentityClient? identityClient,
     DateTime Function()? now,
@@ -307,6 +317,9 @@ class RemoteSyncService {
        _boardRepo = boardRepo,
        _threadRepo = threadRepo,
        _postRepo = postRepo,
+       _followRepo = followRepository,
+       _contentItemRepo = contentItemRepo,
+       _followerDid = followerDid,
        _opSignatureVerifier =
            opSignatureVerifier ??
            RemoteOpSignatureVerifier(
@@ -344,9 +357,11 @@ class RemoteSyncService {
           subscription.hostedBoardId: subscription,
       };
       final enabledBoardIdSet = enabledConfigs.map((c) => c.boardId).toSet();
+      final followedAuthorDids = await _resolveFollowedAuthorDids();
       if (requireBoardSyncConfig &&
           enabledBoardIdSet.isEmpty &&
-          hostedSubscriptions.isEmpty) {
+          hostedSubscriptions.isEmpty &&
+          followedAuthorDids.isEmpty) {
         return SyncResult.success(
           activitiesProcessed: 0,
           newCursor: remoteNode.syncCursor,
@@ -381,9 +396,13 @@ class RemoteSyncService {
           final boardId = entry.activity.boardId;
           final allowedByLegacy =
               boardId != null && enabledBoardIdSet.contains(boardId);
+          final allowedByFollowedAuthor = followedAuthorDids.contains(
+            entry.activity.authorId,
+          );
           if (requireBoardSyncConfig &&
               !allowedByLegacy &&
-              hostedRoute == null) {
+              hostedRoute == null &&
+              !allowedByFollowedAuthor) {
             continue;
           }
           final activity = hostedRoute?.activity ?? entry.activity;
@@ -392,6 +411,13 @@ class RemoteSyncService {
               retentionDaysByBoard[activity.boardId ?? boardId];
           if (!_isWithinRetention(activity, retentionDays, syncTime)) {
             continue;
+          }
+
+          // A followed-author op whose board is not synced has no local
+          // board/thread context; create lightweight stubs so the post/thread is
+          // storable and renderable. Standalone murmur/note need no context.
+          if (allowedByFollowedAuthor && !allowedByLegacy && hostedRoute == null) {
+            await _ensureFollowedContext(activity);
           }
 
           await _applyActivity(activity);
@@ -550,7 +576,127 @@ class RemoteSyncService {
       case 'post':
         await _applyPostActivity(activity);
         break;
+      case 'murmur':
+      case 'note':
+        await _applyContentItemActivity(activity);
+        break;
     }
+  }
+
+  Future<Set<String>> _resolveFollowedAuthorDids() async {
+    final followRepo = _followRepo;
+    final followerDid = _followerDid;
+    if (followRepo == null || followerDid == null) return const {};
+    final edges = await followRepo.listFollowing(
+      followerDid,
+      targetType: FollowTargetType.user,
+    );
+    final dids = <String>{};
+    for (final edge in edges.where(
+      (edge) => edge.status == FollowStatus.accepted,
+    )) {
+      final target = await followRepo.getTarget(edge.targetId);
+      final did = target?.did ?? target?.canonicalUri;
+      if (did != null && did.isNotEmpty) {
+        dids.add(did);
+      }
+    }
+    return dids;
+  }
+
+  Future<void> _ensureFollowedContext(Activity activity) async {
+    final type = activity.entityType.toLowerCase();
+    if (type != 'post' && type != 'thread') return;
+
+    final boardId = activity.boardId;
+    if (boardId != null && await _boardRepo.getById(boardId) == null) {
+      await _boardRepo.create(
+        Board(
+          id: boardId,
+          slug: await _uniqueBoardSlug(boardId, boardId),
+          title: 'Followed',
+          createdAt: activity.createdAt,
+          updatedAt: _now(),
+        ),
+      );
+    }
+
+    if (type == 'post') {
+      final threadId = activity.threadId;
+      if (threadId != null && await _threadRepo.getById(threadId) == null) {
+        await _threadRepo.create(
+          Thread(
+            id: threadId,
+            boardId: boardId ?? threadId,
+            title: 'Untitled',
+            authorId: activity.authorId,
+            createdAt: activity.createdAt,
+            updatedAt: _now(),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _applyContentItemActivity(Activity activity) async {
+    final repo = _contentItemRepo;
+    if (repo == null) return;
+
+    if (activity.type.toLowerCase() == 'delete') {
+      await repo.delete(activity.entityId);
+      return;
+    }
+
+    final mode = switch (activity.entityType.toLowerCase()) {
+      'murmur' => ContentMode.murmur,
+      'note' => ContentMode.note,
+      _ => null,
+    };
+    if (mode == null) return;
+
+    final payload = activity.payload;
+    final visibility = _contentVisibilityFor(payload['visibility']);
+    // Never store private content locally from the feed (fail-closed).
+    if (visibility == ContentVisibility.private) return;
+
+    final item = ContentItem(
+      id: activity.entityId,
+      authorDid: activity.authorId,
+      mode: mode,
+      body: payload['body'] as String? ?? '',
+      status: ContentStatus.active,
+      visibility: visibility,
+      createdAt: activity.createdAt,
+      updatedAt: _now(),
+      title: payload['title'] as String?,
+      publishedAt: _parseContentDate(payload['publishedAt']),
+      localOnly: false,
+    );
+
+    final existing = await repo.getById(activity.entityId);
+    if (existing == null) {
+      await repo.create(item);
+    } else {
+      await repo.update(item);
+    }
+  }
+
+  ContentVisibility _contentVisibilityFor(Object? value) {
+    if (value is String) {
+      try {
+        return ContentVisibility.parse(value);
+      } catch (_) {
+        return ContentVisibility.public;
+      }
+    }
+    return ContentVisibility.public;
+  }
+
+  DateTime? _parseContentDate(Object? value) {
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value)?.toUtc();
+    }
+    return null;
   }
 
   Future<void> _applyBoardActivity(Activity activity) async {

@@ -238,6 +238,126 @@ void main() {
     expect(await postRepo.list(), isEmpty);
   });
 
+  test('keeps followed-users murmur/note and posts without board opt-in', () async {
+    final boardRepo = InMemoryBoardRepository();
+    final threadRepo = InMemoryThreadRepository();
+    final postRepo = InMemoryPostRepository();
+    final contentRepo = InMemoryContentItemRepository();
+    final followRepo = InMemoryFollowRepository();
+    final remoteNodeRepo = _FakeRemoteNodeRepository();
+    final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(configs: const []);
+    final now = DateTime.utc(2026, 6, 4);
+
+    // Follow alice (accepted user follow with a DID).
+    await followRepo.upsertTarget(
+      FollowTarget(
+        targetId: 'target-alice',
+        targetType: FollowTargetType.user,
+        canonicalUri: 'did:key:alice',
+        displayName: 'Alice',
+        did: 'did:key:alice',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await followRepo.upsertEdge(
+      FollowEdge(
+        followId: 'f-alice',
+        followerDid: 'did:key:local',
+        targetId: 'target-alice',
+        targetType: FollowTargetType.user,
+        direction: FollowDirection.outbound,
+        status: FollowStatus.accepted,
+        visibility: FollowVisibility.federated,
+        createdAt: now,
+        updatedAt: now,
+        acceptedAt: now,
+      ),
+    );
+
+    final client = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 1,
+          'activity': {
+            'activityId': 'm1',
+            'type': 'create',
+            'entityType': 'murmur',
+            'entityId': 'm1',
+            'authorId': 'did:key:alice',
+            'createdAt': '2026-06-04T09:00:00Z',
+            'payload': {
+              'mode': 'murmur',
+              'body': 'hello',
+              'visibility': 'public',
+              'publishedAt': '2026-06-04T09:00:00Z',
+            },
+          },
+        },
+        {
+          'logId': 2,
+          'activity': {
+            'activityId': 'm2',
+            'type': 'create',
+            'entityType': 'murmur',
+            'entityId': 'm2',
+            'authorId': 'did:key:bob',
+            'createdAt': '2026-06-04T09:30:00Z',
+            'payload': {'mode': 'murmur', 'body': 'spam', 'visibility': 'public'},
+          },
+        },
+        {
+          'logId': 3,
+          'activity': {
+            'activityId': 'p1',
+            'type': 'create',
+            'entityType': 'post',
+            'entityId': 'p1',
+            'boardId': 'board-x',
+            'threadId': 'thread-x',
+            'authorId': 'did:key:alice',
+            'createdAt': '2026-06-04T08:00:00Z',
+            'payload': {'content': 'in an unsynced board'},
+          },
+        },
+      ],
+    );
+    final remoteNode = RemoteNode(
+      id: 'remote-1',
+      name: 'Remote',
+      url: 'https://relay.example',
+      syncCursor: 0,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final service = RemoteSyncService(
+      remoteNodeRepo: remoteNodeRepo,
+      boardSyncConfigRepo: boardSyncConfigRepo,
+      boardRepo: boardRepo,
+      threadRepo: threadRepo,
+      postRepo: postRepo,
+      followRepository: followRepo,
+      contentItemRepo: contentRepo,
+      followerDid: 'did:key:local',
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+    );
+
+    final result = await service.syncFromNode(client, remoteNode);
+    expect(result.success, isTrue);
+
+    // Alice's murmur stored; bob's dropped.
+    final items = await contentRepo.list();
+    expect(items.map((i) => i.id), ['m1']);
+    expect(items.single.mode, ContentMode.murmur);
+    expect(items.single.authorDid, 'did:key:alice');
+
+    // Alice's post stored with stub board + thread.
+    expect((await postRepo.list()).map((p) => p.id), ['p1']);
+    expect(await boardRepo.getById('board-x'), isNotNull);
+    expect(await threadRepo.getById('thread-x'), isNotNull);
+  });
+
   test('skips unsigned relay delta entries before applying them', () async {
     final boardRepo = InMemoryBoardRepository();
     final threadRepo = InMemoryThreadRepository();
