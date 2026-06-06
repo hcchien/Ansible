@@ -72,6 +72,7 @@ User creates public/unlisted content or a forum intent
 | AT Protocol / PLC bridge | ✅ partial / legacy | XRPC `createRecord` and `resolveHandle`; PLC genesis/local CID paths are compatibility stubs |
 | AppView Aggregator | ✅ MVP | `ansible_appview/phoenix` folds the relay op firehose into a PostgreSQL read model (follow graph, feed items) and serves the following/home feed; ETS by default, Redis + read replica for scale-out |
 | Following / home feed | ✅ MVP | Fan-out-on-read over the federated follow set, plus Phase C fan-out-on-write home timelines (Redis ZSET + per-item object cache) with celebrity hybrid and cold-reader fallback |
+| Discovery | ✅ MVP | Who-to-follow + explore + unified people/post search (AppView), board search (relay), in-app Discover screen; public-only, reputation-tier ranked; bilingual trigram search |
 | VC Issuer | ✅ MVP / partial | `ansible_issuer/go` issues W3C VCs (`eddsa-jcs-2022`, did:web `/.well-known/did.json`); TW provider production adapter is the remaining external integration |
 | DNS Handle verification | 🔜 future | DNS TXT + HTTPS /.well-known lookup |
 | Reputation Labeler | ✅ partial | VP-to-tier paths exist; tiers propagate through relay → AppView → app badges; standalone labeler service is future work |
@@ -92,6 +93,14 @@ fan-out-on-read (`POST /api/v1/timeline` over the federated follow set) or, when
 enabled, by the server-materialized fan-out-on-write home timeline
 (`GET /api/v1/home`), which degrades gracefully back to fan-out-on-read for cold
 readers or on cache loss. See `docs/deployment/scaling_operations.md`.
+
+Because the network is local-first, discovery (finding people/boards to follow)
+is a global-aggregation concern served by shared indexers, not the client: the
+AppView serves who-to-follow, explore, and people/post search; the relay serves
+board search over host-owned boards. The app publishes the user's public profile
+(handle/display name) as a `profile` op so others can find them. Discovery indexes
+public data only and ranks by reputation tier. See
+`docs/deployment/scaling_operations.md`.
 
 Follow data must not contain Wallet credential payloads or Taiwan digital
 identity assertions.

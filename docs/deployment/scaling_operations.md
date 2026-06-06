@@ -46,6 +46,31 @@ Celebrities (≥ `celebrity_follower_threshold` followers) are skipped on write 
 merged in at read time. Home timelines are a **reproducible cache** — safe to
 flush; a cold reader transparently falls back to fan-out-on-read.
 
+### Discovery
+
+So clients aren't isolated islands, the AppView serves people + content discovery
+and the relay serves board discovery (each indexes what it owns):
+
+| Endpoint | Service | Purpose |
+|---|---|---|
+| `GET /api/v1/suggest/follows?reader=` | AppView | Who-to-follow: popular authors + friends-of-friends from the follow graph |
+| `GET /api/v1/explore` | AppView | Global newest-first public feed (zero-follow cold start) |
+| `GET /api/v1/search?q=` | AppView | Unified people + post search (`{actors, posts}`) |
+| `GET /api/v1/search/actors?q=` | AppView | People-only search |
+| `GET /api/v1/discover/boards?q=` | Relay | Board search/browse over host-owned `forum_host_boards` |
+
+Two invariants every discovery path must keep:
+1. **Public only.** Discovery indexes only public/unlisted content and public
+   `profile` ops; `localOnly` follows and private content never reach it.
+2. **Abuse-resistant ranking.** Results carry `author_tier`; surface verified
+   authors and down-rank spam tiers. Discovery is the prime spam/Sybil surface.
+
+Search uses **pg_trgm + ILIKE** (not tsvector) because the network is bilingual
+(zh/en) and stock Postgres has no Chinese tokenizer; trigram substring matching
+works for CJK and Latin and is GIN-indexable (`feed_items.search_text`,
+`appview_profiles` handle/name). The app publishes the user's public profile
+(handle/display name) as a `profile` op on sync so they become findable.
+
 > The ingest poller should run on **one** AppView instance (single firehose
 > consumer); the timeline API can run on many.
 
