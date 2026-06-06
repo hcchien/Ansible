@@ -36,8 +36,15 @@ so they can run as **N stateless Cloud Run instances** (or a GKE deployment):
 | Env | Effect |
 |---|---|
 | `DATABASE_REPLICA_URL` | Route timeline reads to a read replica (else primary). |
-| `REDIS_URL` | Shared building-block cache across instances (else in-process ETS). |
+| `REDIS_URL` | Shared building-block cache, **and** the fan-out-on-write home-timeline ZSET + per-item object cache across instances (else in-process ETS, single instance only). |
 | `POOL_SIZE`, `INGEST_INTERVAL_MS` | DB pool / relay poll interval. |
+
+Fan-out-on-write (Phase C) is built into the ingest folder: federated `follow`
+ops are folded into `appview_follows` (the follow graph), and each new content op
+is pushed to its followers' home timelines (`GET /api/v1/home?reader=`).
+Celebrities (≥ `celebrity_follower_threshold` followers) are skipped on write and
+merged in at read time. Home timelines are a **reproducible cache** — safe to
+flush; a cold reader transparently falls back to fan-out-on-read.
 
 > The ingest poller should run on **one** AppView instance (single firehose
 > consumer); the timeline API can run on many.
@@ -46,6 +53,7 @@ so they can run as **N stateless Cloud Run instances** (or a GKE deployment):
 | Env | Effect |
 |---|---|
 | `ANSIBLE_USE_APPVIEW_FEED=true` + `ANSIBLE_APPVIEW_BASE_URL` | Following feed served by the AppView (fan-out-on-read) instead of the relay global delta — the key fix for relay egress at scale. |
+| `ANSIBLE_USE_APPVIEW_HOME_TIMELINE=true` | Following feed reads the reader's server-materialized home timeline (`GET /api/v1/home`, fan-out-on-write) instead of fan-out-on-read. Requires the AppView's `REDIS_URL` for multi-instance home timelines. The app publishes its **federated** follow edges as relay ops on each sync so the AppView can build the graph; `localOnly` follows never leave the device. |
 
 ## Connection pooling
 
@@ -71,9 +79,9 @@ Tracked here so they are not mistaken for done:
 5. **AppView client-side re-verification** — clients currently trust the
    first-party AppView's ingest-time signature check; full re-verification needs
    `feed_items` to also store the original signed payload + signature.
-6. **AppView fan-out-on-write + celebrity handling** (Phase C read-model stage 2)
-   and **deep-page cache / singleflight** to avoid cache stampede — only needed
-   when fan-out-on-read + building-block cache stops keeping up (measure first).
+6. **Deep-page cache / singleflight** to avoid cache stampede on cold deep pages —
+   only needed when the building-block cache stops keeping up (measure first).
+   (Phase C fan-out-on-write + celebrity handling is now implemented; see above.)
 7. **AbuseDetector** is per-instance unless `REDIS_URL` is set (see above).
 
 See `docs/superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md`
