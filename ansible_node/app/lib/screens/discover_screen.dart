@@ -98,6 +98,86 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  Future<void> _subscribeToBoard(BoardSearchResult board) async {
+    // Capture localized strings before any await (no BuildContext across gaps).
+    final addHostMsg =
+        context.uiCopy(zh: '請先新增 Forum Host', en: 'Add a forum host first');
+    final alreadyMsg = context.uiCopy(
+      zh: '已訂閱「${board.title}」',
+      en: 'Already following "${board.title}"',
+    );
+    final followingMsg = context.uiCopy(
+      zh: '已訂閱「${board.title}」',
+      en: 'Following "${board.title}"',
+    );
+
+    final hosts = (await DriftRemoteNodeRepository(widget.db).list())
+        .where((n) => n.isActive)
+        .toList();
+    if (hosts.isEmpty) {
+      _toast(addHostMsg);
+      return;
+    }
+    final host = hosts.first;
+    final hostedRepo = DriftHostedBoardRepository(widget.db);
+    final subscriptionId = '${host.id}_${board.hostedBoardId}';
+
+    final subs = await hostedRepo.listSubscriptions();
+    if (subs.any((s) => s.subscriptionId == subscriptionId)) {
+      _toast(alreadyMsg);
+      return;
+    }
+
+    final now = DateTime.now();
+    final localBoardId = subscriptionId; // also used as slug → guaranteed unique
+    final localBoard = Board(
+      id: localBoardId,
+      slug: localBoardId,
+      title: board.title,
+      description: board.description,
+      createdAt: now,
+      updatedAt: now,
+    );
+    try {
+      await DriftBoardRepository(widget.db).create(localBoard);
+    } catch (_) {
+      // Board row may already exist from a prior partial subscribe; continue.
+    }
+    await hostedRepo.upsertProjection(
+      HostedBoardProjection(
+        localBoardId: localBoard.id,
+        forumHostId: host.id,
+        hostedBoardId: board.hostedBoardId,
+        canonicalBoardUri: board.canonicalBoardUri ?? '',
+        remoteSlug: board.slug ?? board.hostedBoardId,
+        localSlug: localBoard.slug,
+        title: board.title,
+        description: board.description,
+        permissions: const {'read': true, 'write': true},
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await hostedRepo.upsertSubscription(
+      BoardSubscription(
+        subscriptionId: subscriptionId,
+        forumHostId: host.id,
+        hostedBoardId: board.hostedBoardId,
+        localBoardId: localBoard.id,
+        readEnabled: true,
+        writeEnabled: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    _toast(followingMsg);
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   void _openActor(String did) {
     if (did.isEmpty || did == widget.localDid) return;
     Navigator.of(context).push(
@@ -322,7 +402,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _boardRow(BuildContext context, BoardSearchResult board) {
     return InkWell(
-      onTap: widget.onOpenBoard == null ? null : () => widget.onOpenBoard!(board),
+      onTap: () => widget.onOpenBoard != null
+          ? widget.onOpenBoard!(board)
+          : _subscribeToBoard(board),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         decoration: const BoxDecoration(
@@ -330,28 +412,40 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              board.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: AnsibleDesign.ink,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    board.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: AnsibleDesign.ink,
+                    ),
+                  ),
+                  if ((board.description ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      board.description!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AnsibleDesign.inkMuted,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if ((board.description ?? '').isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(
-                board.description!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: AnsibleDesign.inkMuted),
-              ),
-            ],
+            const SizedBox(width: 10),
+            const Icon(Icons.add_circle_outline,
+                size: 18, color: AnsibleDesign.accent),
           ],
         ),
       ),

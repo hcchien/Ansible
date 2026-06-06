@@ -89,6 +89,8 @@ fi
 ANSIBLE_RELAY_BASE_URL="${ANSIBLE_RELAY_BASE_URL:-http://${LOCAL_IP}:4001}"
 ANSIBLE_ISSUER_BASE_URL="${ANSIBLE_ISSUER_BASE_URL:-http://${LOCAL_IP}:4002}"
 ANSIBLE_ATPROTO_BASE_URL="${ANSIBLE_ATPROTO_BASE_URL:-$ANSIBLE_RELAY_BASE_URL}"
+ANSIBLE_APPVIEW_BASE_URL="${ANSIBLE_APPVIEW_BASE_URL:-http://${LOCAL_IP}:4003}"
+ANSIBLE_USE_APPVIEW_FEED="${ANSIBLE_USE_APPVIEW_FEED:-true}"
 
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/elix-ios-release.XXXXXX")"
 stdin_fifo="$tmp_dir/flutter-stdin"
@@ -170,6 +172,8 @@ cmd=(
   --dart-define="ANSIBLE_ISSUER_BASE_URL=$ANSIBLE_ISSUER_BASE_URL"
   --dart-define="ANSIBLE_RELAY_BASE_URL=$ANSIBLE_RELAY_BASE_URL"
   --dart-define="ANSIBLE_ATPROTO_BASE_URL=$ANSIBLE_ATPROTO_BASE_URL"
+  --dart-define="ANSIBLE_APPVIEW_BASE_URL=$ANSIBLE_APPVIEW_BASE_URL"
+  --dart-define="ANSIBLE_USE_APPVIEW_FEED=$ANSIBLE_USE_APPVIEW_FEED"
 )
 
 echo "Installing iOS release build"
@@ -177,6 +181,7 @@ echo "  app dir:                $APP_DIR"
 echo "  device:                 $IOS_DEVICE_ID ($IOS_DEVICE_CONNECTION)"
 echo "  env:                    $ANSIBLE_APP_ENV"
 echo "  relay base URL:         $ANSIBLE_RELAY_BASE_URL"
+echo "  appview base URL:       $ANSIBLE_APPVIEW_BASE_URL"
 echo "  issuer base URL:        $ANSIBLE_ISSUER_BASE_URL"
 echo "  AT Protocol base URL:   $ANSIBLE_ATPROTO_BASE_URL"
 echo "  real Rust bridge:       $ANSIBLE_USES_REAL_RUST_BRIDGE"
