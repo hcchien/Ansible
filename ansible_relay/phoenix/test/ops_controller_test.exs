@@ -296,6 +296,23 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert response.status == 202
   end
 
+  test "verified DID can ingest a profile op and gets 202" do
+    did = "did:key:z6MkProfile#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op =
+      content_op(did, private_key, "profile", %{
+        "handle" => "alice.example",
+        "displayName" => "Alice",
+        "bio" => "hello",
+        "visibility" => "public"
+      })
+
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 202
+  end
+
   # ---- GET /api/v1/ops/delta ----
 
   test "delta returns 200 with ops, next_cursor, has_more" do

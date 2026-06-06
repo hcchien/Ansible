@@ -31,16 +31,20 @@ defmodule AnsibleAppview.Ingest.Folder do
         max_int(acc, op["log_id"])
       end)
 
-    # Follow ops update the follow graph, not feed_items.
-    for {op, payload, verified?} <- prepared,
-        verified? and op["entity_type"] == "follow" do
-      fold_follow(op, payload)
+    # Follow ops update the follow graph; profile ops update the actor directory.
+    # Neither belongs in feed_items.
+    for {op, payload, verified?} <- prepared, verified? do
+      case op["entity_type"] do
+        "follow" -> fold_follow(op, payload)
+        "profile" -> fold_profile(op, payload)
+        _ -> :noop
+      end
     end
 
     rows =
       prepared
       |> Enum.filter(fn {op, payload, verified?} ->
-        verified? and op["entity_type"] != "follow" and
+        verified? and op["entity_type"] not in ["follow", "profile"] and
           visibility_ok?(op["entity_type"], payload)
       end)
       |> Enum.map(fn {op, payload, _} -> row(op, payload) end)
@@ -165,6 +169,38 @@ defmodule AnsibleAppview.Ingest.Folder do
           _ -> AnsibleAppview.FollowGraph.upsert(follower, author, op["log_id"])
         end
       end
+    end
+  end
+
+  # Public actor profiles only. A delete op removes the directory entry.
+  defp fold_profile(op, payload) do
+    did = op["author_did"]
+
+    cond do
+      not (is_binary(did) and did != "") ->
+        :noop
+
+      op["op_type"] == "delete" ->
+        case AnsibleAppview.Profiles.get(did) do
+          nil -> :noop
+          profile -> Repo.delete(profile)
+        end
+
+      payload["visibility"] in [nil, "public"] ->
+        AnsibleAppview.Profiles.upsert(
+          did,
+          %{
+            handle: payload["handle"],
+            display_name: payload["displayName"],
+            bio: payload["bio"],
+            avatar_url: payload["avatarUrl"],
+            author_tier: op["reputation_tier"] || "basic"
+          },
+          op["log_id"]
+        )
+
+      true ->
+        :noop
     end
   end
 

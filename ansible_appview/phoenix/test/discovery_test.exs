@@ -71,6 +71,60 @@ defmodule AnsibleAppview.DiscoveryTest do
     refute "ex-private" in op_ids
   end
 
+  test "folds public profile ops and serves people search (handle prefix + name)" do
+    {pub, priv} = keypair()
+
+    Folder.apply_ops([
+      signed_op(pub, priv,
+        log_id: 6001,
+        op_id: "prof-alice",
+        author_did: "did:key:alice",
+        entity_type: "profile",
+        payload: %{
+          "handle" => "alice.example",
+          "displayName" => "Alice Wonder",
+          "bio" => "explorer",
+          "visibility" => "public"
+        }
+      ),
+      # private profile -> not indexed
+      signed_op(pub, priv,
+        log_id: 6002,
+        op_id: "prof-secret",
+        author_did: "did:key:secret",
+        entity_type: "profile",
+        payload: %{"handle" => "secret.example", "visibility" => "private"}
+      )
+    ])
+
+    by_handle = AnsibleAppview.Profiles.search("alice", 10)
+    assert Enum.map(by_handle, & &1.did) == ["did:key:alice"]
+    assert hd(by_handle).display_name == "Alice Wonder"
+
+    # Substring of the display name also matches.
+    assert AnsibleAppview.Profiles.search("wonder", 10) |> Enum.map(& &1.did) == ["did:key:alice"]
+
+    # Private profile is never findable.
+    assert AnsibleAppview.Profiles.search("secret", 10) == []
+
+    # A later op updates the same directory entry (last write wins).
+    Folder.apply_ops([
+      signed_op(pub, priv,
+        log_id: 6003,
+        op_id: "prof-alice-2",
+        author_did: "did:key:alice",
+        entity_type: "profile",
+        payload: %{
+          "handle" => "alice.example",
+          "displayName" => "Alice Renamed",
+          "visibility" => "public"
+        }
+      )
+    ])
+
+    assert AnsibleAppview.Profiles.get("did:key:alice").display_name == "Alice Renamed"
+  end
+
   defp keypair do
     {pub, priv} = :crypto.generate_key(:eddsa, :ed25519)
     {Base.encode16(pub, case: :lower), priv}

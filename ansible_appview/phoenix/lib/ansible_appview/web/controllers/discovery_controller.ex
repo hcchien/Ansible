@@ -2,7 +2,7 @@ defmodule AnsibleAppview.Web.Controllers.DiscoveryController do
   @moduledoc "Discovery read API: who-to-follow, explore, and search."
 
   import Plug.Conn
-  alias AnsibleAppview.Discovery
+  alias AnsibleAppview.{Discovery, Profiles}
 
   # GET /api/v1/suggest/follows?reader=did:...&limit=
   def suggest_follows(conn, params) do
@@ -20,6 +20,13 @@ defmodule AnsibleAppview.Web.Controllers.DiscoveryController do
   def explore(conn, params) do
     result = Discovery.explore(parse_int(params["cursor"]), parse_int(params["limit"]) || 50)
     send_json(conn, 200, result)
+  end
+
+  # GET /api/v1/search/actors?q=&limit=
+  def search_actors(conn, params) do
+    q = params["q"] || ""
+    items = Profiles.search(q, parse_int(params["limit"]) || 20)
+    send_json(conn, 200, %{items: items})
   end
 
   defp parse_int(nil), do: nil
