@@ -299,6 +299,81 @@ void main() {
     expect(followOps.any((o) => o.opType == 'delete' && o.entityId == 'did:plc:bob'),
         isTrue);
   });
+
+  test('syncAll publishes the self profile op and re-publishes only on change', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    final now = DateTime.utc(2026, 6, 4, 14);
+    final opsQueue = InMemoryOpsQueueRepository();
+    final contacts = DriftContactRepository(db);
+
+    await contacts.upsertContact(
+      ContactRecord(
+        subjectDid: 'did:plc:reader',
+        handle: 'me.example',
+        displayName: 'Me',
+        source: 'self',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    AppSyncService build() => AppSyncService(
+          remoteNodeRepo: DriftRemoteNodeRepository(db),
+          boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+          boardRepo: DriftBoardRepository(db),
+          threadRepo: DriftThreadRepository(db),
+          postRepo: DriftPostRepository(db),
+          contentItemRepo: DriftContentItemRepository(db),
+          publicationRepo: DriftPublicationRepository(db),
+          relaySettings: const EmptyNostrRelaySettingsStore(),
+          keyStore: const InMemoryNostrKeyStore(),
+          contactRepository: contacts,
+          followerDid: 'did:plc:reader',
+          opsQueueRepo: opsQueue,
+          opsDispatchService: OpsDispatchService(
+            repository: opsQueue,
+            signer: _FakeDidSigner(),
+          ),
+          didSigner: _FakeDidSigner(),
+          relayPublicationClient: _RecordingRelayPublicationClient(),
+        );
+
+    await build().syncAll(pullRemote: false);
+    var profileOps =
+        (await opsQueue.listAll()).where((o) => o.entityType == 'profile').toList();
+    expect(profileOps.length, 1);
+    expect(profileOps.single.entityId, 'did:plc:reader');
+    expect(
+      CrdtOpBuilder.decodePayload(profileOps.single.payload)['handle'],
+      'me.example',
+    );
+
+    // Unchanged profile -> no new op.
+    await build().syncAll(pullRemote: false);
+    expect(
+      (await opsQueue.listAll()).where((o) => o.entityType == 'profile').length,
+      1,
+    );
+
+    // Changed display name -> a new profile op is published.
+    await contacts.upsertContact(
+      ContactRecord(
+        subjectDid: 'did:plc:reader',
+        handle: 'me.example',
+        displayName: 'Me Renamed',
+        source: 'self',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await build().syncAll(pullRemote: false);
+    expect(
+      (await opsQueue.listAll()).where((o) => o.entityType == 'profile').length,
+      2,
+    );
+  });
 }
 
 class EmptyNostrRelaySettingsStore implements NostrRelaySettingsStore {

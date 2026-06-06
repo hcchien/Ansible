@@ -70,6 +70,7 @@ class AppSyncService {
     required NostrRelaySettingsStore relaySettings,
     required NostrKeyStore keyStore,
     FollowRepository? followRepository,
+    ContactRepository? contactRepository,
     DidReputationRepository? didReputationRepo,
     String? followerDid,
     OpsQueueRepository? opsQueueRepo,
@@ -81,6 +82,7 @@ class AppSyncService {
     RelayIdentityClient? identityClient,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
+       _contactRepository = contactRepository,
        _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
        _opsQueueRepo = opsQueueRepo,
@@ -102,6 +104,7 @@ class AppSyncService {
 
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
+  final ContactRepository? _contactRepository;
   final DidReputationRepository? _didReputationRepo;
   final String? _followerDid;
   final OpsQueueRepository? _opsQueueRepo;
@@ -128,6 +131,7 @@ class AppSyncService {
 
     await _enqueuePublicContentOps();
     await _enqueueFederatedFollowOps();
+    await _enqueueProfileOp();
     final publishSummary = await bestEffortPublicPublish(publishPublicContent);
     return AppSyncResult(
       pulledActivities: pullSummary.pulledActivities,
@@ -267,6 +271,71 @@ class AppSyncService {
       // Best-effort: never let follow-op enqueueing break sync.
       return 0;
     }
+  }
+
+  /// Publishes the user's own **public** profile (handle / display name / avatar)
+  /// as a `profile` op so they are findable in the actor directory. Only the
+  /// public subset of the self ContactRecord is published; re-publishes only when
+  /// that subset changes. Best-effort.
+  Future<int> _enqueueProfileOp() async {
+    final dispatch = _opsDispatchService;
+    final queue = _opsQueueRepo;
+    final contacts = _contactRepository;
+    final did = _followerDid;
+    if (dispatch == null ||
+        queue == null ||
+        contacts == null ||
+        did == null ||
+        did.isEmpty) {
+      return 0;
+    }
+
+    try {
+      final self = await contacts.contactForDid(did);
+      if (self == null) return 0;
+
+      final handle = _blank(self.handle);
+      final displayName = _blank(self.displayName);
+      final avatarUrl = _blank(self.avatarUrl);
+      // Nothing public to announce yet.
+      if (handle == null && displayName == null) return 0;
+
+      // Skip if the last published profile already matches the public subset.
+      OpsQueueEntry? latest;
+      for (final op in await queue.listAll(limit: 1000)) {
+        if (op.entityType != 'profile') continue;
+        if (latest == null || op.createdAt.isAfter(latest.createdAt)) {
+          latest = op;
+        }
+      }
+      if (latest != null) {
+        final prev = CrdtOpBuilder.decodePayload(latest.payload);
+        if (_blank(prev['handle'] as String?) == handle &&
+            _blank(prev['displayName'] as String?) == displayName &&
+            _blank(prev['avatarUrl'] as String?) == avatarUrl) {
+          return 0;
+        }
+      }
+
+      await dispatch.signAndEnqueue(
+        CrdtOpBuilder.createProfile(
+          authorDid: did,
+          handle: handle,
+          displayName: displayName,
+          avatarUrl: avatarUrl,
+        ),
+      );
+      return 1;
+    } catch (_) {
+      // Best-effort: never let profile publishing break sync.
+      return 0;
+    }
+  }
+
+  static String? _blank(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
   }
 
   Future<RelayPullSummary> pullLatestFromRelays() async {

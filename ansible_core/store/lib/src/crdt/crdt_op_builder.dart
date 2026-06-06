@@ -309,6 +309,39 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Build an Op announcing the author's **public** profile (the actor-directory
+  /// entry that makes them findable). Only public fields are ever published;
+  /// [entityId] is the author's own DID so updates address the same entry. The
+  /// AppView folds this into its profiles table (last write wins by log id).
+  static OpsQueueEntry createProfile({
+    required String authorDid,
+    String? handle,
+    String? displayName,
+    String? bio,
+    String? avatarUrl,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'handle': handle,
+      'displayName': displayName,
+      'bio': bio,
+      'avatarUrl': avatarUrl,
+      'visibility': 'public',
+      'updatedAt': createdAt.toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'profile',
+      entityId: authorDid,
+      opType: 'insert',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      createdAt: createdAt,
+    );
+  }
+
   /// Decode a payload back to a Map.
   static Map<String, dynamic> decodePayload(String payload) {
     return jsonDecode(utf8.decode(base64Decode(payload)))

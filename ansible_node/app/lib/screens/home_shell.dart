@@ -1059,6 +1059,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       relaySettings: _nostrRelaySettingsStore,
       keyStore: _nostrKeyStore,
       followRepository: _followRepo,
+      contactRepository: _contactRepo,
       didReputationRepo: _didReputationRepo,
       followerDid: widget.did,
       opsQueueRepo: _opsQueueRepo,

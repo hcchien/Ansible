@@ -93,4 +93,26 @@ void main() {
       );
     });
   });
+
+  group('CrdtOpBuilder profile', () {
+    test('createProfile builds a public profile op keyed by author DID', () {
+      final op = CrdtOpBuilder.createProfile(
+        authorDid: 'did:key:alice',
+        handle: 'alice.example',
+        displayName: 'Alice',
+        bio: 'hello',
+      );
+
+      expect(op.entityType, 'profile');
+      expect(op.opType, 'insert');
+      expect(op.authorDid, 'did:key:alice');
+      expect(op.entityId, 'did:key:alice');
+
+      final payload = CrdtOpBuilder.decodePayload(op.payload);
+      expect(payload['handle'], 'alice.example');
+      expect(payload['displayName'], 'Alice');
+      expect(payload['bio'], 'hello');
+      expect(payload['visibility'], 'public');
+    });
+  });
 }
