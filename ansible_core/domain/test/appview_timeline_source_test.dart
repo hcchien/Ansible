@@ -82,6 +82,45 @@ void main() {
       expect(page.hasMore, isTrue);
     });
 
+    test('uses homeFetcher (fan-out-on-write) with reader DID, skips follow set', () async {
+      var fetcherCalled = false;
+      String? requestedReader;
+
+      final source = AppViewTimelineSource(
+        followRepository: followRepo,
+        fetcher: ({required dids, cursor, limit = 50}) async {
+          fetcherCalled = true;
+          return const AppViewTimelinePage(items: []);
+        },
+        homeFetcher: ({required readerDid, cursor, limit = 50}) async {
+          requestedReader = readerDid;
+          return AppViewTimelinePage(
+            items: [
+              AppViewTimelineItem(
+                entityType: 'murmur',
+                entityId: 'm1',
+                authorDid: 'did:key:alice',
+                visibility: 'public',
+                createdAt: now,
+                payload: const {'body': 'fanned'},
+              ),
+            ],
+            nextCursor: 7,
+            hasMore: false,
+          );
+        },
+      );
+
+      // No federated follows configured: home path must still return items
+      // (the server materialized them), and the dids fetcher is never called.
+      final page = await source.fetch(followerDid: 'did:key:local');
+
+      expect(requestedReader, 'did:key:local');
+      expect(fetcherCalled, isFalse);
+      expect(page.items.whereType<ContentTimelineItem>().length, 1);
+      expect(page.nextCursor, 7);
+    });
+
     test('returns empty without calling fetcher when no federated follows', () async {
       var called = false;
       final source = AppViewTimelineSource(

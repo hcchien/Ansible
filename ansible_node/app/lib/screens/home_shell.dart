@@ -735,11 +735,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   // hybrid refinement.)
   FollowFeedSource _followFeedSource() {
     if (AppEnvironment.useAppViewFeed && AppEnvironment.appViewBaseUrl.isNotEmpty) {
+      final client = AppViewTimelineClient(baseUrl: AppEnvironment.appViewBaseUrl);
       return AppViewTimelineSource(
         followRepository: _followRepo,
-        fetcher: AppViewTimelineClient(
-          baseUrl: AppEnvironment.appViewBaseUrl,
-        ).fetch,
+        fetcher: client.fetch,
+        // Prefer the server-materialized home timeline (fan-out-on-write) when
+        // enabled; otherwise fall back to fan-out-on-read over the follow set.
+        homeFetcher:
+            AppEnvironment.useAppViewHomeTimeline ? client.fetchHome : null,
       );
     }
 

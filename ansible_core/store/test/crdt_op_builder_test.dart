@@ -58,4 +58,39 @@ void main() {
       expect(CrdtOpBuilder.decodePayload(op.payload)['visibility'], 'unlisted');
     });
   });
+
+  group('CrdtOpBuilder follow', () {
+    test('createFollow builds a federated follow op keyed by target DID', () {
+      final op = CrdtOpBuilder.createFollow(
+        followerDid: 'did:key:reader',
+        targetDid: 'did:key:author',
+      );
+
+      expect(op.entityType, 'follow');
+      expect(op.opType, 'insert');
+      // author_did is the follower; entityId is the stable edge (target DID).
+      expect(op.authorDid, 'did:key:reader');
+      expect(op.entityId, 'did:key:author');
+
+      final payload = CrdtOpBuilder.decodePayload(op.payload);
+      expect(payload['targetDid'], 'did:key:author');
+      expect(payload['visibility'], 'federated');
+    });
+
+    test('deleteFollow retracts the same edge', () {
+      final op = CrdtOpBuilder.deleteFollow(
+        followerDid: 'did:key:reader',
+        targetDid: 'did:key:author',
+      );
+
+      expect(op.entityType, 'follow');
+      expect(op.opType, 'delete');
+      expect(op.authorDid, 'did:key:reader');
+      expect(op.entityId, 'did:key:author');
+      expect(
+        CrdtOpBuilder.decodePayload(op.payload)['targetDid'],
+        'did:key:author',
+      );
+    });
+  });
 }

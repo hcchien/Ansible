@@ -60,6 +60,14 @@ class AppEnvironment {
     defaultValue: false,
   );
 
+  /// When true (and the AppView feed is enabled), the Following feed is served
+  /// from the reader's server-materialized home timeline (fan-out-on-write,
+  /// `GET /api/v1/home`) instead of fan-out-on-read over the follow set.
+  static const useAppViewHomeTimeline = bool.fromEnvironment(
+    'ANSIBLE_USE_APPVIEW_HOME_TIMELINE',
+    defaultValue: false,
+  );
+
   static const resetLocalIdentityOnStart = bool.fromEnvironment(
     'ANSIBLE_RESET_LOCAL_IDENTITY_ON_START',
     defaultValue: false,

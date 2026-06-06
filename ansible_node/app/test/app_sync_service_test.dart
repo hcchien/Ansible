@@ -191,6 +191,114 @@ void main() {
     ops = await opsQueue.listAll();
     expect(ops.where((o) => o.entityId == 'murmur-1').length, 1);
   });
+
+  test('syncAll publishes federated follow ops and converges on unfollow', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    final now = DateTime.utc(2026, 6, 4, 14);
+    final opsQueue = InMemoryOpsQueueRepository();
+    final follows = InMemoryFollowRepository();
+
+    await follows.upsertTarget(
+      FollowTarget(
+        targetId: 'target-bob',
+        targetType: FollowTargetType.user,
+        canonicalUri: 'did:plc:bob',
+        displayName: 'bob',
+        did: 'did:plc:bob',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    // A localOnly follow must never be published.
+    await follows.upsertTarget(
+      FollowTarget(
+        targetId: 'target-eve',
+        targetType: FollowTargetType.user,
+        canonicalUri: 'did:plc:eve',
+        displayName: 'eve',
+        did: 'did:plc:eve',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await follows.upsertEdge(
+      FollowEdge(
+        followId: 'f-bob',
+        followerDid: 'did:plc:reader',
+        targetId: 'target-bob',
+        targetType: FollowTargetType.user,
+        direction: FollowDirection.outbound,
+        status: FollowStatus.accepted,
+        visibility: FollowVisibility.federated,
+        createdAt: now,
+        updatedAt: now,
+        acceptedAt: now,
+      ),
+    );
+    await follows.upsertEdge(
+      FollowEdge(
+        followId: 'f-eve',
+        followerDid: 'did:plc:reader',
+        targetId: 'target-eve',
+        targetType: FollowTargetType.user,
+        direction: FollowDirection.outbound,
+        status: FollowStatus.accepted,
+        visibility: FollowVisibility.localOnly,
+        createdAt: now,
+        updatedAt: now,
+        acceptedAt: now,
+      ),
+    );
+
+    AppSyncService build() => AppSyncService(
+          remoteNodeRepo: DriftRemoteNodeRepository(db),
+          boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+          boardRepo: DriftBoardRepository(db),
+          threadRepo: DriftThreadRepository(db),
+          postRepo: DriftPostRepository(db),
+          contentItemRepo: DriftContentItemRepository(db),
+          publicationRepo: DriftPublicationRepository(db),
+          relaySettings: const EmptyNostrRelaySettingsStore(),
+          keyStore: const InMemoryNostrKeyStore(),
+          followRepository: follows,
+          followerDid: 'did:plc:reader',
+          opsQueueRepo: opsQueue,
+          opsDispatchService: OpsDispatchService(
+            repository: opsQueue,
+            signer: _FakeDidSigner(),
+          ),
+          didSigner: _FakeDidSigner(),
+          relayPublicationClient: _RecordingRelayPublicationClient(),
+        );
+
+    await build().syncAll(pullRemote: false);
+    var followOps =
+        (await opsQueue.listAll()).where((o) => o.entityType == 'follow').toList();
+    expect(followOps.length, 1);
+    expect(followOps.single.opType, 'insert');
+    expect(followOps.single.entityId, 'did:plc:bob');
+    // localOnly follow never produced an op.
+    expect(followOps.any((o) => o.entityId == 'did:plc:eve'), isFalse);
+
+    // Idempotent: re-running does not re-publish the active follow.
+    await build().syncAll(pullRemote: false);
+    expect(
+      (await opsQueue.listAll())
+          .where((o) => o.entityType == 'follow' && o.opType == 'insert')
+          .length,
+      1,
+    );
+
+    // Unfollow: cancel the edge -> a delete op converges the graph.
+    await follows.updateEdgeStatus('f-bob', FollowStatus.cancelled, now);
+    await build().syncAll(pullRemote: false);
+    followOps =
+        (await opsQueue.listAll()).where((o) => o.entityType == 'follow').toList();
+    expect(followOps.any((o) => o.opType == 'delete' && o.entityId == 'did:plc:bob'),
+        isTrue);
+  });
 }
 
 class EmptyNostrRelaySettingsStore implements NostrRelaySettingsStore {

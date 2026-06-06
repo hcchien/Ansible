@@ -127,6 +127,7 @@ class AppSyncService {
         : const RelayPullSummary(pulledActivities: 0);
 
     await _enqueuePublicContentOps();
+    await _enqueueFederatedFollowOps();
     final publishSummary = await bestEffortPublicPublish(publishPublicContent);
     return AppSyncResult(
       pulledActivities: pullSummary.pulledActivities,
@@ -186,6 +187,84 @@ class AppSyncService {
       return enqueued;
     } catch (_) {
       // Best-effort: never let op enqueueing break sync.
+      return 0;
+    }
+  }
+
+  /// Enqueues relay ops announcing the user's **federated** follow edges so the
+  /// AppView can build its follow graph and fan content out to this reader's home
+  /// timeline. Only federated follows are published; `localOnly` follows never
+  /// leave the device. Converges to the current edge set: a target whose latest
+  /// published follow op no longer matches its desired state gets an
+  /// insert/delete op. Best-effort — never breaks the rest of sync.
+  Future<int> _enqueueFederatedFollowOps() async {
+    final dispatch = _opsDispatchService;
+    final queue = _opsQueueRepo;
+    final follows = _followRepository;
+    final followerDid = _followerDid;
+    if (dispatch == null ||
+        queue == null ||
+        follows == null ||
+        followerDid == null ||
+        followerDid.isEmpty) {
+      return 0;
+    }
+
+    try {
+      final edges = await follows.listFollowing(
+        followerDid,
+        targetType: FollowTargetType.user,
+      );
+
+      // Desired federated follow targets (DIDs), accepted only.
+      final desired = <String>{};
+      for (final edge in edges.where(
+        (e) =>
+            e.status == FollowStatus.accepted &&
+            e.visibility == FollowVisibility.federated,
+      )) {
+        final target = await follows.getTarget(edge.targetId);
+        final did = target?.did ?? target?.canonicalUri;
+        if (did != null && did.isNotEmpty) desired.add(did);
+      }
+
+      // Latest published follow-op type per target (entityId == targetDid).
+      final latestOp = <String, OpsQueueEntry>{};
+      for (final op in await queue.listAll(limit: 1000)) {
+        if (op.entityType != 'follow') continue;
+        final prev = latestOp[op.entityId];
+        if (prev == null || op.createdAt.isAfter(prev.createdAt)) {
+          latestOp[op.entityId] = op;
+        }
+      }
+
+      var enqueued = 0;
+
+      // Follow: desired targets whose latest op is not an active insert.
+      for (final did in desired) {
+        if (latestOp[did]?.opType == 'insert') continue;
+        await dispatch.signAndEnqueue(
+          CrdtOpBuilder.createFollow(followerDid: followerDid, targetDid: did),
+        );
+        enqueued += 1;
+      }
+
+      // Unfollow: previously-followed targets no longer desired.
+      for (final entry in latestOp.entries) {
+        if (entry.value.opType == 'insert' && !desired.contains(entry.key)) {
+          await dispatch.signAndEnqueue(
+            CrdtOpBuilder.deleteFollow(
+              followerDid: followerDid,
+              targetDid: entry.key,
+            ),
+          );
+          enqueued += 1;
+        }
+      }
+
+      return enqueued;
+    } catch (_) {
+      // Best-effort: never let follow-op enqueueing break sync.
       return 0;
     }
   }

@@ -254,6 +254,61 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Build an Op announcing a **federated** follow edge (follower -> target).
+  ///
+  /// Only federated follows are ever published; `localOnly` follows never leave
+  /// the device. The AppView folds this into its follow graph and uses it to
+  /// fan content out to the follower's home timeline. [entityId] is the stable
+  /// edge identity (the target DID) so a later [deleteFollow] addresses the same
+  /// edge.
+  static OpsQueueEntry createFollow({
+    required String followerDid,
+    required String targetDid,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'targetDid': targetDid,
+      'visibility': 'federated',
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: followerDid,
+      entityType: 'follow',
+      entityId: targetDid,
+      opType: 'insert',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      createdAt: createdAt,
+    );
+  }
+
+  /// Build an Op retracting a federated follow edge (unfollow). Mirrors
+  /// [createFollow]'s [entityId] so the AppView removes the same graph edge.
+  static OpsQueueEntry deleteFollow({
+    required String followerDid,
+    required String targetDid,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'targetDid': targetDid,
+      'visibility': 'federated',
+      'deletedAt': createdAt.toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: followerDid,
+      entityType: 'follow',
+      entityId: targetDid,
+      opType: 'delete',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      createdAt: createdAt,
+    );
+  }
+
   /// Decode a payload back to a Map.
   static Map<String, dynamic> decodePayload(String payload) {
     return jsonDecode(utf8.decode(base64Decode(payload)))

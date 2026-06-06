@@ -50,6 +50,16 @@ typedef AppViewTimelineFetcher =
       int limit,
     });
 
+/// Server-materialized home timeline fetch (fan-out-on-write). The AppView
+/// assembles the page from the reader's pre-built home timeline, so the app only
+/// sends its own DID instead of the full follow set.
+typedef AppViewHomeFetcher =
+    Future<AppViewTimelinePage> Function({
+      required String readerDid,
+      int? cursor,
+      int limit,
+    });
+
 /// [FollowFeedSource] backed by the AppView timeline API (the scalable read
 /// path). Queries only **federated** user-follow DIDs; `localOnly` follows are
 /// resolved separately by [LocalDeltaFilterSource]. Drop-in replacement for the
@@ -58,9 +68,16 @@ class AppViewTimelineSource implements FollowFeedSource {
   final FollowRepository followRepository;
   final AppViewTimelineFetcher fetcher;
 
+  /// When provided, the reader's server-materialized home timeline is used
+  /// (fan-out-on-write): the app sends only its own DID and the AppView returns
+  /// the pre-assembled page. Falls back to the [fetcher] (fan-out-on-read over
+  /// the federated follow set) when null.
+  final AppViewHomeFetcher? homeFetcher;
+
   const AppViewTimelineSource({
     required this.followRepository,
     required this.fetcher,
+    this.homeFetcher,
   });
 
   @override
@@ -69,12 +86,20 @@ class AppViewTimelineSource implements FollowFeedSource {
     int? cursor,
     int limit = 50,
   }) async {
-    final dids = await _federatedFollowDids(followerDid);
-    if (dids.isEmpty) {
-      return const FollowFeedPage(items: [], hasMore: false);
+    final AppViewTimelinePage page;
+    if (homeFetcher != null) {
+      page = await homeFetcher!(
+        readerDid: followerDid,
+        cursor: cursor,
+        limit: limit,
+      );
+    } else {
+      final dids = await _federatedFollowDids(followerDid);
+      if (dids.isEmpty) {
+        return const FollowFeedPage(items: [], hasMore: false);
+      }
+      page = await fetcher(dids: dids, cursor: cursor, limit: limit);
     }
-
-    final page = await fetcher(dids: dids, cursor: cursor, limit: limit);
     final items = <FollowTimelineItem>[];
     for (final raw in page.items) {
       final mapped = _toTimelineItem(raw);

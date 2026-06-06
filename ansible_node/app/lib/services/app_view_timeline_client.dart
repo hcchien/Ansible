@@ -34,8 +34,32 @@ class AppViewTimelineClient {
       }),
     );
 
+    return _parse('timeline', response);
+  }
+
+  /// Fetches the reader's server-materialized home timeline (fan-out-on-write).
+  /// Matches the `AppViewHomeFetcher` typedef. The app sends only its own DID;
+  /// the AppView assembles the page from the reader's pre-built home timeline.
+  Future<AppViewTimelinePage> fetchHome({
+    required String readerDid,
+    int? cursor,
+    int limit = 50,
+  }) async {
+    final base = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$base/api/v1/home').replace(
+      queryParameters: {
+        'reader': readerDid,
+        if (cursor != null) 'cursor': '$cursor',
+        'limit': '$limit',
+      },
+    );
+    final response = await _client.get(uri);
+    return _parse('home', response);
+  }
+
+  AppViewTimelinePage _parse(String label, http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('AppView timeline failed: ${response.statusCode}');
+      throw StateError('AppView $label failed: ${response.statusCode}');
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
