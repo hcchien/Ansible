@@ -2254,9 +2254,11 @@ class _MainPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Feed filter (動態 / 追蹤 / 看板) — always visible so the Following
+        // timeline is reachable on phones (compact) too, not just wide layouts.
+        FeedFilterTabs(selected: feedFilter, onChanged: onFeedFilterChanged),
+        SizedBox(height: compact ? 10 : 12),
         if (!compact) ...[
-          FeedFilterTabs(selected: feedFilter, onChanged: onFeedFilterChanged),
-          const SizedBox(height: 12),
           // Board actions row
           LayoutBuilder(
             builder: (context, actionConstraints) {
