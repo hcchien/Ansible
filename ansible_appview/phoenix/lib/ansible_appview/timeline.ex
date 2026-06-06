@@ -12,6 +12,90 @@ defmodule AnsibleAppview.Timeline do
 
   @relayable ~w(public unlisted)
 
+  @doc """
+  Personalized home timeline for one reader (fan-out-on-write read path).
+
+  Reads `{log_id, op_id}` references from the materialized `HomeTimeline`, hydrates
+  them through the `item:{op_id}` object cache (MGET-style; DB fallback on miss),
+  then merges in recent items from followed celebrities (skipped on write). If the
+  reader has no materialized timeline yet (cold), falls back to fan-out-on-read
+  over the reader's follow graph so the first request is never empty.
+  """
+  @spec home(String.t(), integer() | nil, pos_integer()) :: map()
+  def home(reader_did, cursor, limit) when is_binary(reader_did) do
+    limit = limit |> min(200) |> max(1)
+    entries = AnsibleAppview.HomeTimeline.range(reader_did, cursor, limit)
+
+    if entries == [] and not AnsibleAppview.HomeTimeline.exists?(reader_did) do
+      # Cold reader: rebuild-on-read from the follow graph.
+      following = AnsibleAppview.FollowGraph.following(reader_did)
+      for_authors(following, cursor, limit)
+    else
+      fanned = hydrate(entries)
+
+      following = AnsibleAppview.FollowGraph.following(reader_did)
+      threshold = Application.get_env(:ansible_appview, :celebrity_follower_threshold, 10_000)
+
+      celeb_items =
+        following
+        |> AnsibleAppview.FollowGraph.celebrities(threshold)
+        |> Enum.flat_map(&author_recent/1)
+        |> Enum.filter(fn it -> is_nil(cursor) or cursor <= 0 or it.log_id < cursor end)
+
+      merged =
+        (fanned ++ celeb_items)
+        |> Enum.uniq_by(& &1.op_id)
+        |> Enum.sort_by(& &1.log_id, :desc)
+        |> Enum.take(limit)
+
+      next_cursor =
+        case merged do
+          [] -> nil
+          list -> List.last(list).log_id
+        end
+
+      %{items: merged, next_cursor: next_cursor, has_more: length(merged) >= limit}
+    end
+  end
+
+  # Resolve home-timeline references to full items via the object cache, falling
+  # back to a single batched DB read for misses (and warming the cache).
+  defp hydrate([]), do: []
+
+  defp hydrate(entries) do
+    {hits, misses} =
+      Enum.reduce(entries, {[], []}, fn e, {hits, misses} ->
+        case AnsibleAppview.Cache.get("item:" <> e.op_id) do
+          {:ok, :deleted} -> {hits, misses}
+          {:ok, item} -> {[item | hits], misses}
+          :miss -> {hits, [e.op_id | misses]}
+        end
+      end)
+
+    fetched =
+      case misses do
+        [] ->
+          []
+
+        ids ->
+          ttl = Application.get_env(:ansible_appview, :item_cache_ttl_ms, 30_000)
+
+          read_repo().all(
+            from f in FeedItem,
+              where:
+                f.op_id in ^ids and f.deleted == false and
+                  (is_nil(f.visibility) or f.visibility in ^@relayable)
+          )
+          |> Enum.map(fn f ->
+            item = to_map(f)
+            AnsibleAppview.Cache.put("item:" <> f.op_id, item, ttl)
+            item
+          end)
+      end
+
+    hits ++ fetched
+  end
+
   @spec for_authors([String.t()], integer() | nil, pos_integer()) :: map()
   def for_authors(dids, cursor, limit) when is_list(dids) do
     # First page (no cursor) is served from the per-author building-block cache;

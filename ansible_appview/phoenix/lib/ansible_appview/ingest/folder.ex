@@ -5,7 +5,7 @@ defmodule AnsibleAppview.Ingest.Folder do
   content. Idempotent by `log_id`, so re-folding an overlapping range is safe.
   """
 
-  alias AnsibleAppview.{Repo, SigVerifier, SigningPayload}
+  alias AnsibleAppview.{Cache, FollowGraph, HomeTimeline, Repo, SigVerifier, SigningPayload}
   alias AnsibleAppview.Db.FeedItem
 
   @content_types ~w(murmur note)
@@ -62,7 +62,77 @@ defmodule AnsibleAppview.Ingest.Folder do
           count
       end
 
+    # Fan-out-on-write: push references into followers' home timelines and warm
+    # the per-item object cache. Reproducible from feed_items + the graph, so a
+    # failure here only costs a fallback to fan-out-on-read, never correctness.
+    fan_out(rows)
+
     {indexed, max_log}
+  end
+
+  # Materialize newly-folded content into followers' home timelines and the
+  # `item:{op_id}` object cache (write-through; tombstone on delete).
+  defp fan_out([]), do: :ok
+
+  defp fan_out(rows) do
+    Enum.each(rows, fn row ->
+      key = "item:" <> row.op_id
+
+      if row.deleted do
+        Cache.put(key, :deleted, item_ttl())
+      else
+        Cache.put(key, read_map(row), item_ttl())
+      end
+    end)
+
+    content = Enum.reject(rows, & &1.deleted)
+    authors = content |> Enum.map(& &1.author_did) |> Enum.uniq()
+    counts = FollowGraph.follower_counts(authors)
+    threshold = Application.get_env(:ansible_appview, :celebrity_follower_threshold, 10_000)
+
+    # Celebrities are skipped on write and merged in at read time (hybrid).
+    entries =
+      content
+      |> Enum.reject(fn row -> Map.get(counts, row.author_did, 0) >= threshold end)
+      |> Enum.flat_map(fn row ->
+        row.author_did
+        |> FollowGraph.followers()
+        |> Enum.map(fn follower -> {follower, row.log_id, row.op_id} end)
+      end)
+
+    case entries do
+      [] ->
+        :ok
+
+      _ ->
+        HomeTimeline.add_many(entries)
+
+        entries
+        |> Enum.map(fn {reader, _, _} -> reader end)
+        |> Enum.uniq()
+        |> Enum.each(fn reader -> HomeTimeline.cap(reader, HomeTimeline.max_entries()) end)
+    end
+  end
+
+  defp item_ttl, do: Application.get_env(:ansible_appview, :item_cache_ttl_ms, 30_000)
+
+  # Same shape as Timeline.to_map/1, built from the insert row (no extra read).
+  defp read_map(row) do
+    %{
+      log_id: row.log_id,
+      op_id: row.op_id,
+      author_did: row.author_did,
+      entity_type: row.entity_type,
+      entity_id: row.entity_id,
+      op_type: row.op_type,
+      board_id: row.board_id,
+      thread_id: row.thread_id,
+      visibility: row.visibility,
+      created_at: row.item_created_at && DateTime.to_iso8601(row.item_created_at),
+      payload: row.payload,
+      public_key_hex: row.public_key_hex,
+      reputation_tier: row.author_tier
+    }
   end
 
   defp verify(op) do

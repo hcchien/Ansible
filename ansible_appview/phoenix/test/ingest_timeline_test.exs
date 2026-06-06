@@ -136,4 +136,43 @@ defmodule AnsibleAppview.IngestTimelineTest do
     AnsibleAppview.Ingest.Folder.apply_ops([follow.(3, "delete", "did:key:alice", "federated")])
     assert AnsibleAppview.FollowGraph.followers("did:key:alice") == []
   end
+
+  test "fan-out on write materializes a reader's home timeline" do
+    {pub, priv} = keypair()
+    reader = "did:key:fanreader"
+    author = "did:key:fanauthor"
+
+    # reader follows author (federated), then author posts a public murmur.
+    Folder.apply_ops([
+      signed_op(
+        log_id: 9001,
+        op_id: "follow-9001",
+        author_did: reader,
+        entity_type: "follow",
+        pub: pub,
+        priv: priv,
+        payload: %{"targetDid" => author, "visibility" => "federated"}
+      )
+    ])
+
+    Folder.apply_ops([
+      signed_op(
+        log_id: 9002,
+        op_id: "murmur-9002",
+        author_did: author,
+        entity_type: "murmur",
+        pub: pub,
+        priv: priv,
+        payload: %{"mode" => "murmur", "body" => "fanned out", "visibility" => "public"}
+      )
+    ])
+
+    home = Timeline.home(reader, nil, 50)
+    assert Enum.map(home.items, & &1.op_id) == ["murmur-9002"]
+    assert hd(home.items).author_did == author
+
+    # A reader who follows nobody and was never fanned out gets an empty home.
+    cold = Timeline.home("did:key:nobody-home", nil, 50)
+    assert cold.items == []
+  end
 end

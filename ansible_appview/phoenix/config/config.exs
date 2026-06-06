@@ -24,6 +24,8 @@ config :ansible_appview, :home_timeline_max, 800
 # Authors with more followers than this are treated as celebrities: not fanned
 # out on write; merged on read instead.
 config :ansible_appview, :celebrity_follower_threshold, 10_000
+# Per-item object cache TTL for home-timeline hydration (MGET path).
+config :ansible_appview, :item_cache_ttl_ms, 30_000
 # How often the ingest poller pulls the relay delta, in milliseconds.
 config :ansible_appview, :ingest_interval_ms, 5_000
 # Relay base URL the ingest worker polls. Overridden in runtime.exs for prod.

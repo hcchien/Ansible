@@ -23,6 +23,25 @@ defmodule AnsibleAppview.Web.Controllers.TimelineController do
     end
   end
 
+  # GET /api/v1/home?reader=did:...&cursor=&limit=
+  # Server-materialized fan-out-on-write timeline for a single reader.
+  def home(conn, params) do
+    reader = params["reader"]
+
+    if is_binary(reader) and reader != "" do
+      result =
+        Timeline.home(
+          reader,
+          parse_int(params["cursor"]),
+          parse_int(params["limit"]) || 50
+        )
+
+      send_json(conn, 200, result)
+    else
+      send_json(conn, 422, %{error: "reader_required"})
+    end
+  end
+
   # GET /api/v1/board-feed?board_id=&cursor=&limit=
   def board_feed(conn, params) do
     board_id = params["board_id"]

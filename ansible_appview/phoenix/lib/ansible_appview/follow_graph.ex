@@ -44,4 +44,38 @@ defmodule AnsibleAppview.FollowGraph do
   def follower_count(author_did) do
     Repo.aggregate(from(f in Follow, where: f.author_did == ^author_did), :count, :follower_did)
   end
+
+  @doc "Map of author_did => follower_count for the given authors (one query)."
+  def follower_counts(author_dids) when is_list(author_dids) do
+    case author_dids do
+      [] ->
+        %{}
+
+      _ ->
+        Repo.all(
+          from f in Follow,
+            where: f.author_did in ^author_dids,
+            group_by: f.author_did,
+            select: {f.author_did, count(f.follower_did)}
+        )
+        |> Map.new()
+    end
+  end
+
+  @doc "Of the given authors, those with at least `threshold` followers (celebrities)."
+  def celebrities(author_dids, threshold) when is_list(author_dids) do
+    case author_dids do
+      [] ->
+        []
+
+      _ ->
+        Repo.all(
+          from f in Follow,
+            where: f.author_did in ^author_dids,
+            group_by: f.author_did,
+            having: count(f.follower_did) >= ^threshold,
+            select: f.author_did
+        )
+    end
+  end
 end

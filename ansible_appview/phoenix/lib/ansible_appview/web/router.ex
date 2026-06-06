@@ -23,6 +23,10 @@ defmodule AnsibleAppview.Web.Router do
     AnsibleAppview.Web.Controllers.TimelineController.board_feed(conn, conn.query_params)
   end
 
+  get "/api/v1/home" do
+    AnsibleAppview.Web.Controllers.TimelineController.home(conn, conn.query_params)
+  end
+
   match _ do
     send_json(conn, 404, %{error: "not_found"})
   end
