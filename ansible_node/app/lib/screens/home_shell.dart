@@ -64,8 +64,8 @@ import '../theme/elix_screen_style.dart';
 // Persisted screen-style buckets. The current home surface uses feed/forum.
 enum _ElixTab { feed, circle, inbox, you }
 
-/// The two primary swipe boards.
-enum _Board { personal, forum }
+/// The primary swipe boards: 個人版 │ 時間軸 │ 討論區.
+enum _Board { personal, timeline, forum }
 
 enum _PersonalFilter { all, murmur, note }
 
@@ -136,6 +136,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   List<Board> _boards = [];
   List<PostCardData> _posts = [];
+  // Following timeline (時間軸 board) — computed independently of the forum board
+  // so both can render simultaneously in the swipe pager.
+  List<PostCardData> _followingPosts = [];
   List<ContentItem> _contentItems = [];
   Map<String, int> _murmurReferenceCounts = const {};
   bool _loading = true;
@@ -283,15 +286,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       )).length;
     }
     final boardMap = {for (final b in boards) b.id: b};
-    final followingEntries = _feedFilter == FeedFilter.following
-        ? (await _followFeedSource().fetch(
-            followerDid: widget.did,
-            limit: 100,
-          )).items
-        : null;
-    final threads = followingEntries == null
-        ? await _threadRepo.list(boardId: _selectedBoardId)
-        : <Thread>[];
+    final threads = await _threadRepo.list(boardId: _selectedBoardId);
     // preload posts per thread for content preview and counts
     final firstPosts = <String, Post?>{};
     final postCounts = <String, int>{};
@@ -321,41 +316,53 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
 
     threads.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    final postCards = followingEntries == null
-        ? threads.map((t) {
-            final board = boardMap[t.boardId];
-            final content = firstPosts[t.id]?.content ?? '';
-            final comments = postCounts[t.id] ?? 0;
-            final counts = reactionCounts[t.id] ?? const {};
-            return PostCardData(
-              thread: t,
-              category: board?.title ?? l10n.uncategorized,
-              title: t.title,
-              author: t.authorId,
-              board: board?.title ?? t.boardId,
-              timeAgo: _formatTimeAgo(t.createdAt),
-              content: content,
-              reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
-              comments: comments,
-              reacted: userReacted[t.id] ?? false,
-            );
-          }).toList()
-        : await _buildFollowingPostCards(followingEntries, boardMap);
+    // Forum board (討論區): board threads.
+    final forumCards = threads.map((t) {
+      final board = boardMap[t.boardId];
+      final content = firstPosts[t.id]?.content ?? '';
+      final comments = postCounts[t.id] ?? 0;
+      final counts = reactionCounts[t.id] ?? const {};
+      return PostCardData(
+        thread: t,
+        category: board?.title ?? l10n.uncategorized,
+        title: t.title,
+        author: t.authorId,
+        board: board?.title ?? t.boardId,
+        timeAgo: _formatTimeAgo(t.createdAt),
+        content: content,
+        reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
+        comments: comments,
+        reacted: userReacted[t.id] ?? false,
+      );
+    }).toList();
 
-    // Annotate each card with its author's reputation tier (verified badge).
-    final authorTiers = await _didReputationRepo.tiersFor(
-      postCards.map((card) => card.author).toSet(),
-    );
-    final tieredCards = postCards
-        .map(
-          (card) =>
-              card.copyWith(authorTier: authorTiers[card.author] ?? 'basic'),
-        )
-        .toList();
+    // Timeline board (時間軸): posts from people you follow. Best-effort — a
+    // discovery/AppView outage just yields an empty timeline, never an error.
+    List<PostCardData> followingCards = const [];
+    try {
+      final followingEntries = (await _followFeedSource().fetch(
+        followerDid: widget.did,
+        limit: 100,
+      )).items;
+      followingCards = await _buildFollowingPostCards(followingEntries, boardMap);
+    } catch (_) {
+      followingCards = const [];
+    }
+
+    // Annotate both lists with their author's reputation tier (verified badge).
+    final authorTiers = await _didReputationRepo.tiersFor({
+      ...forumCards.map((card) => card.author),
+      ...followingCards.map((card) => card.author),
+    });
+    PostCardData withTier(PostCardData card) =>
+        card.copyWith(authorTier: authorTiers[card.author] ?? 'basic');
+    final forumTiered = forumCards.map(withTier).toList();
+    final followingTiered = followingCards.map(withTier).toList();
 
     setState(() {
       _boards = boards;
-      _posts = tieredCards;
+      _posts = forumTiered;
+      _followingPosts = followingTiered;
       _contentItems = contentItems;
       _murmurReferenceCounts = murmurReferenceCounts;
       _hasActiveMessengerRelay = hasActiveRelay;
@@ -489,7 +496,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   void _handlePageChanged(int page) {
     final board = _Board.values[page.clamp(0, _Board.values.length - 1)];
-    final tab = board == _Board.personal ? _ElixTab.feed : _ElixTab.circle;
+    final tab = board == _Board.forum ? _ElixTab.circle : _ElixTab.feed;
     if (_selectedBoard == board && _selectedTab == tab) return;
     setState(() {
       _selectedBoard = board;
@@ -516,9 +523,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (_selectedBoard != board) {
       setState(() {
         _selectedBoard = board;
-        _selectedTab = board == _Board.personal
-            ? _ElixTab.feed
-            : _ElixTab.circle;
+        _selectedTab = board == _Board.forum ? _ElixTab.circle : _ElixTab.feed;
       });
     }
     if (_pageController.hasClients) {
@@ -1370,6 +1375,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onClearIdentity: widget.onClearIdentity,
                 loading: _loading,
                 posts: _posts,
+                followingPosts: _followingPosts,
                 onRefresh: _loadData,
                 onCreateThread: _createThread,
                 onCreateBoard: _createBoard,
@@ -1702,6 +1708,7 @@ class _MainPanel extends StatelessWidget {
     required this.atProtoClient,
     required this.loading,
     required this.posts,
+    required this.followingPosts,
     required this.onRefresh,
     required this.onCreateThread,
     required this.onCreateBoard,
@@ -1763,6 +1770,7 @@ class _MainPanel extends StatelessWidget {
   final AtProtoClient atProtoClient;
   final bool loading;
   final List<PostCardData> posts;
+  final List<PostCardData> followingPosts;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onCreateThread;
   final Future<void> Function() onCreateBoard;
@@ -2246,18 +2254,108 @@ class _MainPanel extends StatelessWidget {
     );
   }
 
-  // ── Forum board (討論區) ────────────────────────────────────────────────
-  // ignore: unused_element -- retained for the forum surface while the swipe shell exposes primary tabs first.
+  // ── Timeline board (時間軸) — posts from people you follow ──────────────
+  Widget _buildTimeline(BuildContext context, bool compact) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: loading
+              ? const Center(child: CircularProgressIndicator())
+              : followingPosts.isEmpty
+              ? _timelineEmptyState(context)
+              : ListView.separated(
+                  itemCount: followingPosts.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) => PostCard(
+                    db: db,
+                    data: followingPosts[index],
+                    authorDid: did,
+                    opsDispatchService: opsDispatchService,
+                    onFlushPendingOps: onFlushPendingOps,
+                    onOpenAuthor: (authorDid) {
+                      if (authorDid.isEmpty || authorDid == did) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => UserProfileScreen(
+                            db: db,
+                            followerDid: did,
+                            did: authorDid,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _timelineEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.uiCopy(
+                zh: '還沒有追蹤任何人',
+                en: 'You are not following anyone yet',
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AnsibleDesign.ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.uiCopy(
+                zh: '到「探索」找人追蹤，他們的貼文會出現在這裡。',
+                en: 'Find people in Discover — their posts will appear here.',
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.6,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => DiscoverScreen(
+                      db: db,
+                      localDid: did,
+                      client: DiscoveryClient(
+                        appViewBaseUrl: AppEnvironment.appViewBaseUrl,
+                        relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+                      ),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.explore_outlined, size: 18),
+              label: Text(context.uiCopy(zh: '探索', en: 'Discover')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Forum board (討論區) — boards only; the following feed lives in 時間軸 ──
   Widget _buildForum(BuildContext context, bool compact) {
     final l10n = context.l10n;
     final styleData = ElixScreenStyleScope.dataOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Feed filter (動態 / 追蹤 / 看板) — always visible so the Following
-        // timeline is reachable on phones (compact) too, not just wide layouts.
-        FeedFilterTabs(selected: feedFilter, onChanged: onFeedFilterChanged),
-        SizedBox(height: compact ? 10 : 12),
         if (!compact) ...[
           // Board actions row
           LayoutBuilder(
@@ -2448,6 +2546,24 @@ class _MainPanel extends StatelessWidget {
               ),
             ),
             _BoardFlipPage(
+              key: const Key('board_swipe_page_transform_timeline'),
+              pageController: pageController,
+              pageIndex: _Board.timeline.index,
+              selectedBoard: selectedBoard,
+              motion: boardMotion,
+              child: wrapPage(
+                _ElixTab.feed,
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: compact ? 16 : 28,
+                    right: compact ? 16 : 28,
+                    top: 12,
+                  ),
+                  child: _buildTimeline(context, compact),
+                ),
+              ),
+            ),
+            _BoardFlipPage(
               key: const Key('board_swipe_page_transform_circle'),
               pageController: pageController,
               pageIndex: _Board.forum.index,
@@ -2519,6 +2635,7 @@ class _MainPanel extends StatelessWidget {
               selectedBoard: selectedBoard,
               onTapBoard: onBoardChanged,
               personalStyle: screenStyles[_ElixTab.feed] ?? ElixScreenStyle.ink,
+              timelineStyle: screenStyles[_ElixTab.feed] ?? ElixScreenStyle.ink,
               forumStyle:
                   screenStyles[_ElixTab.circle] ?? ElixScreenStyle.paper,
               personalFilter: personalFilter,
@@ -3614,20 +3731,32 @@ class _BoardSwipeProgressPill extends StatelessWidget {
     return AnimatedBuilder(
       animation: pageController,
       builder: (context, _) {
-        final page = _boardPageValue(
-          pageController,
-          0.0,
-        ).clamp(0.0, 1.0).toDouble();
-        final fractional = page - page.floorToDouble();
+        final maxIndex = _Board.values.length - 1;
+        final page = _boardPageValue(pageController, 0.0)
+            .clamp(0.0, maxIndex.toDouble())
+            .toDouble();
+        final lo = page.floor().clamp(0, maxIndex);
+        final hi = page.ceil().clamp(0, maxIndex);
+        final fractional = page - lo;
         final distanceFromEdge = fractional <= 0.5
             ? fractional
             : 1.0 - fractional;
-        if (distanceFromEdge < 0.035) return const SizedBox.shrink();
+        if (lo == hi || distanceFromEdge < 0.035) {
+          return const SizedBox.shrink();
+        }
 
-        final targetLabel = page < 0.5
-            ? context.uiCopy(zh: '換到討論區', en: 'Switch to Forum')
-            : context.uiCopy(zh: '換到個人版', en: 'Switch to Personal');
-        final progress = page < 0.5 ? page : 1.0 - page;
+        final currentIsLo = fractional < 0.5;
+        final targetIndex = currentIsLo ? hi : lo;
+        String boardName(int i) => switch (_Board.values[i]) {
+          _Board.personal => context.uiCopy(zh: '個人版', en: 'Personal'),
+          _Board.timeline => context.uiCopy(zh: '時間軸', en: 'Timeline'),
+          _Board.forum => context.uiCopy(zh: '討論區', en: 'Forum'),
+        };
+        final targetLabel = context.uiCopy(
+          zh: '換到${boardName(targetIndex)}',
+          en: 'Switch to ${boardName(targetIndex)}',
+        );
+        final progress = currentIsLo ? fractional : 1.0 - fractional;
         final percent = (progress.clamp(0.0, 1.0) * 100).round();
         final dark = Theme.of(context).brightness == Brightness.dark;
         final bgColor = dark
@@ -3663,9 +3792,9 @@ class _BoardSwipeProgressPill extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        page < 0.5
-                            ? Icons.chevron_left_rounded
-                            : Icons.chevron_right_rounded,
+                        currentIsLo
+                            ? Icons.chevron_right_rounded
+                            : Icons.chevron_left_rounded,
                         size: 15,
                         color: ochreColor,
                       ),
@@ -3700,6 +3829,7 @@ class _BoardSwipeHeader extends StatelessWidget {
     required this.selectedBoard,
     required this.onTapBoard,
     required this.personalStyle,
+    required this.timelineStyle,
     required this.forumStyle,
     required this.personalFilter,
     required this.onPersonalFilterChanged,
@@ -3714,6 +3844,7 @@ class _BoardSwipeHeader extends StatelessWidget {
   final _Board selectedBoard;
   final ValueChanged<_Board> onTapBoard;
   final ElixScreenStyle personalStyle;
+  final ElixScreenStyle timelineStyle;
   final ElixScreenStyle forumStyle;
   final _PersonalFilter personalFilter;
   final ValueChanged<_PersonalFilter> onPersonalFilterChanged;
@@ -3727,47 +3858,34 @@ class _BoardSwipeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final brightness = Theme.of(context).brightness;
-    final personalData = personalStyle.dataFor(brightness);
-    final forumData = forumStyle.dataFor(brightness);
+    final datas = [
+      personalStyle.dataFor(brightness),
+      timelineStyle.dataFor(brightness),
+      forumStyle.dataFor(brightness),
+    ];
+    final maxIndex = datas.length - 1;
 
     return AnimatedBuilder(
       animation: pageController,
       builder: (context, _) {
+        // Smoothly interpolate header chrome between the two adjacent boards as
+        // the pager scrolls (generalizes the old 2-board lerp to N boards).
         final page = _boardPageValue(
           pageController,
           selectedBoard.index.toDouble(),
-        ).clamp(0.0, 1.0).toDouble();
-        final bgColor = Color.lerp(
-          personalData.background,
-          forumData.background,
-          page,
-        )!;
-        final ruleColor = Color.lerp(personalData.rule, forumData.rule, page)!;
-        final fgColor = Color.lerp(
-          personalData.foreground,
-          forumData.foreground,
-          page,
-        )!;
-        final faintColor = Color.lerp(
-          personalData.faint,
-          forumData.faint,
-          page,
-        )!;
-        final mutedColor = Color.lerp(
-          personalData.muted,
-          forumData.muted,
-          page,
-        )!;
-        final surfaceColor = Color.lerp(
-          personalData.surface,
-          forumData.surface,
-          page,
-        )!;
-        final ochreColor = Color.lerp(
-          personalData.accent,
-          forumData.accent,
-          page,
-        )!;
+        ).clamp(0.0, maxIndex.toDouble()).toDouble();
+        final lo = page.floor().clamp(0, maxIndex);
+        final hi = page.ceil().clamp(0, maxIndex);
+        final t = page - lo;
+        final activeIndex = page.round().clamp(0, maxIndex);
+        Color lf(Color a, Color b) => Color.lerp(a, b, t)!;
+        final bgColor = lf(datas[lo].background, datas[hi].background);
+        final ruleColor = lf(datas[lo].rule, datas[hi].rule);
+        final fgColor = lf(datas[lo].foreground, datas[hi].foreground);
+        final faintColor = lf(datas[lo].faint, datas[hi].faint);
+        final mutedColor = lf(datas[lo].muted, datas[hi].muted);
+        final surfaceColor = lf(datas[lo].surface, datas[hi].surface);
+        final ochreColor = lf(datas[lo].accent, datas[hi].accent);
 
         return Container(
           color: bgColor,
@@ -3778,37 +3896,60 @@ class _BoardSwipeHeader extends StatelessWidget {
               Stack(
                 alignment: Alignment.topCenter,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _boardButton(
-                        board: _Board.personal,
-                        label: context.uiCopy(zh: '個人版', en: 'Personal'),
-                        tooltip: context.uiCopy(
-                          zh: '個人版 · 你的 Note 和 Murmur',
-                          en: 'Personal · your Notes and Murmurs',
-                        ),
-                        active: page < 0.5,
-                        showMark: page < 0.5,
-                        underlineOpacity: (1 - page).clamp(0.0, 1.0),
-                        textColor: Color.lerp(fgColor, faintColor, page)!,
-                        ochreColor: ochreColor,
-                      ),
-                      const SizedBox(width: 32),
-                      _boardButton(
-                        board: _Board.forum,
-                        label: context.uiCopy(zh: '討論區', en: 'Forum'),
-                        tooltip: context.uiCopy(
-                          zh: '討論區 · 追蹤的人與板',
-                          en: 'Forum · follows and boards',
-                        ),
-                        active: page >= 0.5,
-                        showMark: false,
-                        underlineOpacity: page.clamp(0.0, 1.0),
-                        textColor: Color.lerp(faintColor, fgColor, page)!,
-                        ochreColor: ochreColor,
-                      ),
-                    ],
+                  Builder(
+                    builder: (context) {
+                      Widget btn(
+                        _Board board,
+                        String label,
+                        String tooltip, {
+                        bool showMark = false,
+                      }) {
+                        final dist = (page - board.index).abs().clamp(0.0, 1.0);
+                        return _boardButton(
+                          board: board,
+                          label: label,
+                          tooltip: tooltip,
+                          active: activeIndex == board.index,
+                          showMark: showMark && activeIndex == board.index,
+                          underlineOpacity: 1 - dist,
+                          textColor: Color.lerp(fgColor, faintColor, dist)!,
+                          ochreColor: ochreColor,
+                        );
+                      }
+
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          btn(
+                            _Board.personal,
+                            context.uiCopy(zh: '個人版', en: 'Personal'),
+                            context.uiCopy(
+                              zh: '個人版 · 你的 Note 和 Murmur',
+                              en: 'Personal · your Notes and Murmurs',
+                            ),
+                            showMark: true,
+                          ),
+                          const SizedBox(width: 24),
+                          btn(
+                            _Board.timeline,
+                            context.uiCopy(zh: '時間軸', en: 'Timeline'),
+                            context.uiCopy(
+                              zh: '時間軸 · 你追蹤的人的貼文',
+                              en: 'Timeline · posts from people you follow',
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          btn(
+                            _Board.forum,
+                            context.uiCopy(zh: '討論區', en: 'Forum'),
+                            context.uiCopy(
+                              zh: '討論區 · 看板',
+                              en: 'Forum · boards',
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   if (onOpenPreferences != null || onOpenSettings != null)
                     Positioned(
@@ -3860,7 +4001,7 @@ class _BoardSwipeHeader extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: ruleColor, width: 0.5)),
                 ),
-                child: page < 0.5
+                child: activeIndex == _Board.personal.index
                     ? _personalMetaRow(
                         context: context,
                         fgColor: fgColor,
@@ -3870,6 +4011,8 @@ class _BoardSwipeHeader extends StatelessWidget {
                         ruleColor: ruleColor,
                         ochreColor: ochreColor,
                       )
+                    : activeIndex == _Board.timeline.index
+                    ? _timelineMetaRow(context: context, faintColor: faintColor)
                     : _forumMetaRow(
                         context: context,
                         fgColor: fgColor,
@@ -3950,6 +4093,32 @@ class _BoardSwipeHeader extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _timelineMetaRow({
+    required BuildContext context,
+    required Color faintColor,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            context.uiCopy(
+              zh: '你追蹤的人的最新貼文',
+              en: 'Latest from people you follow',
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1,
+              color: faintColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
