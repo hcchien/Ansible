@@ -38,6 +38,7 @@ import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
+import '../services/discovery_client.dart';
 import '../services/relay_discovery_client.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/relay_ops_client.dart';
@@ -50,6 +51,7 @@ import 'note_workspace_screen.dart';
 import 'posts_view_screen.dart';
 import 'contact_picker_screen.dart' show ContactInputResolver;
 import 'inbox_screen.dart' show ContactAvailabilityResolver;
+import 'discover_screen.dart';
 import 'search_screen.dart';
 import 'settings_home_screen.dart';
 import 'sync_settings_screen.dart';
@@ -3355,6 +3357,25 @@ class _TopBar extends StatelessWidget {
                 icon: const Icon(Icons.search),
                 color: styleData.muted,
                 tooltip: l10n.search,
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DiscoverScreen(
+                        db: db,
+                        localDid: did,
+                        client: DiscoveryClient(
+                          appViewBaseUrl: AppEnvironment.appViewBaseUrl,
+                          relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.explore_outlined),
+                color: styleData.muted,
+                tooltip: context.uiCopy(zh: '探索', en: 'Discover'),
               ),
               IconButton(
                 key: const Key('screen_style_button'),

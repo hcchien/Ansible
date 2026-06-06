@@ -11,7 +11,7 @@ import '../widgets/ansible_screen_chrome.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'inbox_screen.dart';
-import 'profile_screen.dart';
+import 'edit_profile_screen.dart';
 import 'reading_preferences_screen.dart';
 import 'sync_settings_screen.dart';
 import 'wallet_screen.dart';
@@ -134,7 +134,7 @@ class SettingsHomeScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => ProfileScreen(did: did),
+                        builder: (_) => EditProfileScreen(db: db, did: did),
                       ),
                     );
                   },
