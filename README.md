@@ -19,13 +19,19 @@ ansible_core/
   vc/                     Lexicon record models, MST engine (Rust FFI)
 ansible_rust_core/        Rust crate — Ed25519, MST, Lexicon signing, atproto repo
 ansible_relay/phoenix/    Elixir/Phoenix — co-located Relay, Forum Host, web sessions,
-                          ActivityPub/XRPC compatibility, discovery APIs
+                          ActivityPub/XRPC compatibility, discovery APIs, op firehose
+ansible_appview/phoenix/  Elixir/Phoenix — AppView aggregator: folds the relay op
+                          firehose into a PostgreSQL read model, follow graph, and a
+                          scalable following/home feed (fan-out-on-read + write)
+ansible_issuer/go/        Go — W3C Verifiable Credential issuer (did:web), TW digital
+                          identity provider integration, Postgres-backed stores
 ansible_distribution_frontend/
                           Node/static web frontend — Forum Host public views and
                           app-approved web-session flow
 docs/
   protocol/               Sync spec v2.0, AT Protocol Lexicon conventions
-  architecture/           Genesis hosting, deployment notes
+  architecture/           Genesis hosting, full system architecture, TW VC wallet
+  deployment/             Cloud Run deploy steps, scaling/operations runbook
   security/               SOSP pre-launch security policy
 ```
 
@@ -64,9 +70,11 @@ User creates public/unlisted content or a forum intent
 | Nostr adapter | ✅ partial | App-side publication/settings/retry surfaces; production key custody remains incomplete |
 | ActivityPub adapter | ✅ partial | Relay-side actor/WebFinger/outbox/projection/retry; full federation behavior remains incomplete |
 | AT Protocol / PLC bridge | ✅ partial / legacy | XRPC `createRecord` and `resolveHandle`; PLC genesis/local CID paths are compatibility stubs |
-| AppView Aggregator | 🔜 draft | No `ansible_appview/phoenix` package currently exists |
+| AppView Aggregator | ✅ MVP | `ansible_appview/phoenix` folds the relay op firehose into a PostgreSQL read model (follow graph, feed items) and serves the following/home feed; ETS by default, Redis + read replica for scale-out |
+| Following / home feed | ✅ MVP | Fan-out-on-read over the federated follow set, plus Phase C fan-out-on-write home timelines (Redis ZSET + per-item object cache) with celebrity hybrid and cold-reader fallback |
+| VC Issuer | ✅ MVP / partial | `ansible_issuer/go` issues W3C VCs (`eddsa-jcs-2022`, did:web `/.well-known/did.json`); TW provider production adapter is the remaining external integration |
 | DNS Handle verification | 🔜 future | DNS TXT + HTTPS /.well-known lookup |
-| Reputation Labeler | ✅ partial | VP-to-tier paths exist; complete AppView labeler is missing |
+| Reputation Labeler | ✅ partial | VP-to-tier paths exist; tiers propagate through relay → AppView → app badges; standalone labeler service is future work |
 | AI Agent Comp F | 🔜 P4 | Summarisation and filtering over Firehose stream |
 
 ## Social Graph Direction
@@ -75,6 +83,15 @@ Follow users and follow boards are implemented as a local-first social
 subscription layer. User follows build a Following feed from accepted actor
 relationships. Board follows build the same feed from accepted board
 relationships and remote board follows toggle `BoardSyncConfig`.
+
+Follows carry an explicit visibility: **`federated`** follows are published to the
+relay as signed `follow` ops so the AppView can build a follow graph and serve a
+scalable home feed; **`localOnly`** follows never leave the device and resolve
+through the local delta filter. The app reads the following feed either by
+fan-out-on-read (`POST /api/v1/timeline` over the federated follow set) or, when
+enabled, by the server-materialized fan-out-on-write home timeline
+(`GET /api/v1/home`), which degrades gracefully back to fan-out-on-read for cold
+readers or on cache loss. See `docs/deployment/scaling_operations.md`.
 
 Follow data must not contain Wallet credential payloads or Taiwan digital
 identity assertions.
@@ -96,8 +113,9 @@ logged or stored.
 curl https://sh.rustup.rs -sSf | sh
 
 # Flutter SDK ≥ 3.10 on PATH
-# Elixir ≥ 1.16 + Erlang/OTP 26+ on PATH
-# PostgreSQL running locally
+# Elixir ≥ 1.19 + Erlang/OTP 27+ on PATH (relay + appview)
+# Go ≥ 1.25 on PATH (issuer)
+# PostgreSQL running locally (shared by relay/forum-host; separate DB for appview)
 ```
 
 ### Build (first time)
@@ -152,5 +170,10 @@ contract keeps the roles separate.
 the root DID private key. App-approved web sessions use Relay-issued httpOnly
 cookies, scoped grants, host audience checks, and explicit revocation.
 
-**AppView remains future work.** Do not treat the current repository as having a
-complete Phoenix AppView aggregator, Firehose pipeline, or PostgreSQL index.
+**The AppView is the scalable read side.** `ansible_appview/phoenix` consumes the
+relay op firehose, re-verifies signatures, and folds ops into a PostgreSQL read
+model (feed items + follow graph). It serves the following/home feed so clients
+never scan the global op stream — the key fix for relay egress at scale. It is a
+**reproducible projection**: the read model and home timelines can be rebuilt from
+the relay ops + follow graph, so caches are safe to flush. Full AT-style
+multi-AppView federation and a standalone reputation labeler remain future work.
