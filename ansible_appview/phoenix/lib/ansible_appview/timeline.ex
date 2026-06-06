@@ -195,7 +195,8 @@ defmodule AnsibleAppview.Timeline do
     }
   end
 
-  defp to_map(%FeedItem{} = f) do
+  @doc "Presents a FeedItem row as the public timeline/discovery item map."
+  def to_map(%FeedItem{} = f) do
     %{
       log_id: f.log_id,
       op_id: f.op_id,

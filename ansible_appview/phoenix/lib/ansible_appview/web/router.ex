@@ -27,6 +27,14 @@ defmodule AnsibleAppview.Web.Router do
     AnsibleAppview.Web.Controllers.TimelineController.home(conn, conn.query_params)
   end
 
+  get "/api/v1/suggest/follows" do
+    AnsibleAppview.Web.Controllers.DiscoveryController.suggest_follows(conn, conn.query_params)
+  end
+
+  get "/api/v1/explore" do
+    AnsibleAppview.Web.Controllers.DiscoveryController.explore(conn, conn.query_params)
+  end
+
   match _ do
     send_json(conn, 404, %{error: "not_found"})
   end
