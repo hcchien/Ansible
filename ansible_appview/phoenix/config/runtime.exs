@@ -46,6 +46,7 @@ if config_env() == :prod do
       config :ansible_appview, :redis_url, redis_url
       config :ansible_appview, :start_redis, true
       config :ansible_appview, :cache_adapter, AnsibleAppview.Cache.Redix
+      config :ansible_appview, :home_timeline_adapter, AnsibleAppview.HomeTimeline.Redix
   end
 
   case System.get_env("INGEST_INTERVAL_MS") do

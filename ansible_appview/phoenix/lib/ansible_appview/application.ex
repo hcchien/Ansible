@@ -38,9 +38,9 @@ defmodule AnsibleAppview.Application do
         []
       end
 
-    # The ETS adapter's table owner always runs (used as the local default and as
-    # a safe fallback even when Redis is the active adapter).
-    [AnsibleAppview.Cache.ETS] ++ redis
+    # The ETS table owners always run (local default + safe fallback even when
+    # Redis is the active adapter).
+    [AnsibleAppview.Cache.ETS, AnsibleAppview.HomeTimeline.ETS] ++ redis
   end
 
   defp ingest_children do

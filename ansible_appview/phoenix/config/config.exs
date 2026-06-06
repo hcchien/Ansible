@@ -18,6 +18,12 @@ config :ansible_appview, :start_redis, false
 # Per-author recent-list cache: entries kept and how many recent items per author.
 config :ansible_appview, :author_cache_ttl_ms, 10_000
 config :ansible_appview, :author_cache_limit, 100
+# Fan-out-on-write home timeline. Default: in-process ETS; Redix when REDIS_URL set.
+config :ansible_appview, :home_timeline_adapter, AnsibleAppview.HomeTimeline.ETS
+config :ansible_appview, :home_timeline_max, 800
+# Authors with more followers than this are treated as celebrities: not fanned
+# out on write; merged on read instead.
+config :ansible_appview, :celebrity_follower_threshold, 10_000
 # How often the ingest poller pulls the relay delta, in milliseconds.
 config :ansible_appview, :ingest_interval_ms, 5_000
 # Relay base URL the ingest worker polls. Overridden in runtime.exs for prod.
