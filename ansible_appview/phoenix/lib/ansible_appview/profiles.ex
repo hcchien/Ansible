@@ -47,7 +47,7 @@ defmodule AnsibleAppview.Profiles do
       read_repo().all(
         from p in Profile,
           where:
-            like(fragment("lower(?)", p.handle), ^like) or
+            like(fragment("lower(?)", p.handle), ^contains) or
               like(fragment("lower(?)", p.display_name), ^contains),
           order_by: [
             asc:

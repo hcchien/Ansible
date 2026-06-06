@@ -29,6 +29,13 @@ defmodule AnsibleAppview.Web.Controllers.DiscoveryController do
     send_json(conn, 200, %{items: items})
   end
 
+  # GET /api/v1/search?q=&limit=  -> {actors: [...], posts: [...]}
+  def search(conn, params) do
+    q = params["q"] || ""
+    result = Discovery.search(q, parse_int(params["limit"]) || 20)
+    send_json(conn, 200, result)
+  end
+
   defp parse_int(nil), do: nil
   defp parse_int(value) when is_integer(value), do: value
 

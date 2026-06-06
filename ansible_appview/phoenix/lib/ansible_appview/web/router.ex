@@ -39,6 +39,10 @@ defmodule AnsibleAppview.Web.Router do
     AnsibleAppview.Web.Controllers.DiscoveryController.search_actors(conn, conn.query_params)
   end
 
+  get "/api/v1/search" do
+    AnsibleAppview.Web.Controllers.DiscoveryController.search(conn, conn.query_params)
+  end
+
   match _ do
     send_json(conn, 404, %{error: "not_found"})
   end

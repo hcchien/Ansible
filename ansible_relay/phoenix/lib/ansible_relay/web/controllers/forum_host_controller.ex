@@ -20,6 +20,19 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     send_json(conn, 200, %{boards: Store.list_boards()})
   end
 
+  # GET /api/v1/discover/boards?q=&limit=  (empty q -> browse all)
+  def discover_boards(conn, params) do
+    q = params["q"] || ""
+
+    limit =
+      case Integer.parse(to_string(params["limit"] || "")) do
+        {n, _} -> n
+        :error -> 20
+      end
+
+    send_json(conn, 200, %{boards: Store.search_boards(q, limit)})
+  end
+
   def announcements(conn, _params) do
     send_json(conn, 200, %{announcements: Store.list_announcements("forum_host")})
   end

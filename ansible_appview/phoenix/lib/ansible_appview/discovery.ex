@@ -16,7 +16,7 @@ defmodule AnsibleAppview.Discovery do
 
   import Ecto.Query
 
-  alias AnsibleAppview.{FollowGraph, Repo, Timeline}
+  alias AnsibleAppview.{FollowGraph, Profiles, Repo, Timeline}
   alias AnsibleAppview.Db.{FeedItem, Follow}
 
   @relayable ~w(public unlisted)
@@ -130,5 +130,45 @@ defmodule AnsibleAppview.Discovery do
       next_cursor: next_cursor,
       has_more: has_more
     }
+  end
+
+  @doc """
+  Unified search across actors (profiles) and posts (content). Substring match
+  via trigram-indexed ILIKE so it works for both Chinese and Latin text. Returns
+  `%{actors: [...], posts: [...]}`; only public content is searched.
+  """
+  @spec search(String.t(), pos_integer()) :: map()
+  def search(query, limit \\ 20) when is_binary(query) do
+    q = query |> String.trim() |> String.downcase()
+    limit = limit |> min(50) |> max(1)
+
+    if q == "" do
+      %{actors: [], posts: []}
+    else
+      %{actors: Profiles.search(query, limit), posts: search_posts(q, limit)}
+    end
+  end
+
+  defp search_posts(q, limit) do
+    like = "%" <> escape_like(q) <> "%"
+
+    read_repo().all(
+      from f in FeedItem,
+        where:
+          f.deleted == false and f.entity_type in ^@explore_types and
+            (is_nil(f.visibility) or f.visibility in ^@relayable) and
+            fragment("search_text LIKE ?", ^like),
+        order_by: [desc: f.log_id],
+        limit: ^limit
+    )
+    |> Enum.map(&Timeline.to_map/1)
+  end
+
+  # Escape LIKE wildcards so literal % / _ in the query can't widen the match.
+  defp escape_like(value) do
+    value
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
   end
 end

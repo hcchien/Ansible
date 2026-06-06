@@ -125,6 +125,50 @@ defmodule AnsibleAppview.DiscoveryTest do
     assert AnsibleAppview.Profiles.get("did:key:alice").display_name == "Alice Renamed"
   end
 
+  test "search matches posts (incl. Chinese) and actors by substring, public only" do
+    {pub, priv} = keypair()
+
+    Folder.apply_ops([
+      signed_op(pub, priv,
+        log_id: 7001,
+        op_id: "s-en",
+        author_did: "did:key:writer",
+        entity_type: "murmur",
+        payload: %{"mode" => "murmur", "body" => "learning elixir today", "visibility" => "public"}
+      ),
+      signed_op(pub, priv,
+        log_id: 7002,
+        op_id: "s-zh",
+        author_did: "did:key:writer",
+        entity_type: "note",
+        payload: %{"mode" => "note", "body" => "今天在學習程式設計", "visibility" => "public"}
+      ),
+      signed_op(pub, priv,
+        log_id: 7003,
+        op_id: "s-private",
+        author_did: "did:key:writer",
+        entity_type: "note",
+        payload: %{"mode" => "note", "body" => "private elixir notes", "visibility" => "private"}
+      ),
+      signed_op(pub, priv,
+        log_id: 7004,
+        op_id: "s-prof",
+        author_did: "did:key:elixirfan",
+        entity_type: "profile",
+        payload: %{"handle" => "elixirfan.example", "displayName" => "Elixir Fan", "visibility" => "public"}
+      )
+    ])
+
+    en = Discovery.search("elixir", 20)
+    # Public post + the profile match; the private note does not.
+    assert Enum.map(en.posts, & &1.op_id) == ["s-en"]
+    assert Enum.map(en.actors, & &1.did) == ["did:key:elixirfan"]
+
+    # Chinese substring search works (trigram, no word boundaries needed).
+    zh = Discovery.search("學習", 20)
+    assert Enum.map(zh.posts, & &1.op_id) == ["s-zh"]
+  end
+
   defp keypair do
     {pub, priv} = :crypto.generate_key(:eddsa, :ed25519)
     {Base.encode16(pub, case: :lower), priv}

@@ -73,6 +73,38 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
     assert announcement.severity == "info"
   end
 
+  test "search_boards matches title/description/tags and browses on empty query" do
+    :ok = Store.ensure_seeded!()
+
+    {:ok, _} =
+      Store.create_board(%{
+        intent_id: "intent-photo",
+        author_did: "did:plc:a",
+        title: "Photography",
+        description: "Cameras and lenses",
+        tags: ["art", "hobby"]
+      })
+
+    {:ok, _} =
+      Store.create_board(%{
+        intent_id: "intent-cook",
+        author_did: "did:plc:b",
+        title: "Cooking",
+        description: "Recipes",
+        tags: ["food"]
+      })
+
+    # Title substring (case-insensitive).
+    assert Store.search_boards("photo", 20) |> Enum.map(& &1.title) == ["Photography"]
+    # Description substring.
+    assert Store.search_boards("recipes", 20) |> Enum.map(& &1.title) == ["Cooking"]
+    # Tag match.
+    assert Store.search_boards("hobby", 20) |> Enum.map(& &1.title) == ["Photography"]
+    # Empty query browses all (seeded General + the two created), title-ordered.
+    assert Store.search_boards("", 20) |> Enum.map(& &1.title) ==
+             ["Cooking", "General", "Photography"]
+  end
+
   test "create_board assigns host-owned identity and records accepted intent" do
     :ok = Store.ensure_seeded!()
 

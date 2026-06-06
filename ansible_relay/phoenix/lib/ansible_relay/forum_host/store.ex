@@ -46,6 +46,40 @@ defmodule AnsibleRelay.ForumHost.Store do
     |> Repo.all()
   end
 
+  @doc """
+  Searches boards by title/description/tag substring (case-insensitive). Boards
+  are host-owned, so board discovery lives here rather than in the AppView. An
+  empty query falls back to the full ordered list (browse).
+  """
+  def search_boards(query, limit \\ 20) do
+    ensure_seeded!()
+    q = String.trim(query || "")
+    limit = limit |> min(50) |> max(1)
+
+    if q == "" do
+      ForumHostBoard |> order_by([b], asc: b.title) |> limit(^limit) |> Repo.all()
+    else
+      like = "%" <> escape_like(q) <> "%"
+
+      ForumHostBoard
+      |> where(
+        [b],
+        ilike(b.title, ^like) or ilike(b.description, ^like) or
+          fragment("EXISTS (SELECT 1 FROM unnest(?) AS t WHERE t ILIKE ?)", b.tags, ^like)
+      )
+      |> order_by([b], asc: b.title)
+      |> limit(^limit)
+      |> Repo.all()
+    end
+  end
+
+  defp escape_like(value) do
+    value
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
+  end
+
   def list_announcements(owner_kind \\ nil) do
     ensure_seeded!()
     now = DateTime.utc_now()
