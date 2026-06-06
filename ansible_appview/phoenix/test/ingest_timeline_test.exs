@@ -96,10 +96,44 @@ defmodule AnsibleAppview.IngestTimelineTest do
     board = Timeline.for_board("board-1", nil, 50)
     assert Enum.map(board.items, & &1.entity_id) == ["e-4"]
 
+    # (follow-graph folding is covered by the dedicated test below)
+
     # Re-folding the same ops is idempotent.
     {reindexed, _} = Folder.apply_ops(ops)
     assert reindexed == 2
     again = Timeline.for_authors(["did:key:alice"], nil, 50)
     assert length(again.items) == 1
+  end
+
+  test "folds federated follow ops into the graph; localOnly ignored; delete removes" do
+    {pub, priv} = keypair()
+
+    follow = fn log_id, op_type, target, visibility ->
+      signed_op(
+        log_id: log_id,
+        op_id: "follow-#{log_id}",
+        author_did: "did:key:reader",
+        entity_type: "follow",
+        op_type: op_type,
+        pub: pub,
+        priv: priv,
+        payload: %{"targetDid" => target, "visibility" => visibility}
+      )
+    end
+
+    AnsibleAppview.Ingest.Folder.apply_ops([
+      follow.(1, "insert", "did:key:alice", "federated"),
+      follow.(2, "insert", "did:key:secret", "localOnly")
+    ])
+
+    assert AnsibleAppview.FollowGraph.followers("did:key:alice") == ["did:key:reader"]
+    # localOnly follow is never indexed.
+    assert AnsibleAppview.FollowGraph.followers("did:key:secret") == []
+    assert AnsibleAppview.FollowGraph.following("did:key:reader") == ["did:key:alice"]
+    assert AnsibleAppview.FollowGraph.follower_count("did:key:alice") == 1
+
+    # Unfollow (delete) removes the edge.
+    AnsibleAppview.Ingest.Folder.apply_ops([follow.(3, "delete", "did:key:alice", "federated")])
+    assert AnsibleAppview.FollowGraph.followers("did:key:alice") == []
   end
 end

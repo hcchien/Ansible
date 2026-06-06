@@ -31,10 +31,17 @@ defmodule AnsibleAppview.Ingest.Folder do
         max_int(acc, op["log_id"])
       end)
 
+    # Follow ops update the follow graph, not feed_items.
+    for {op, payload, verified?} <- prepared,
+        verified? and op["entity_type"] == "follow" do
+      fold_follow(op, payload)
+    end
+
     rows =
       prepared
       |> Enum.filter(fn {op, payload, verified?} ->
-        verified? and visibility_ok?(op["entity_type"], payload)
+        verified? and op["entity_type"] != "follow" and
+          visibility_ok?(op["entity_type"], payload)
       end)
       |> Enum.map(fn {op, payload, _} -> row(op, payload) end)
       # Same log_id can appear once per page; keep the last occurrence.
@@ -75,6 +82,21 @@ defmodule AnsibleAppview.Ingest.Folder do
   end
 
   defp visibility_ok?(_entity_type, _payload), do: true
+
+  defp fold_follow(op, payload) do
+    # Only federated follows are indexed.
+    if payload["visibility"] == "federated" do
+      follower = op["author_did"]
+      author = payload["targetDid"]
+
+      if is_binary(follower) and is_binary(author) and author != "" do
+        case op["op_type"] do
+          "delete" -> AnsibleAppview.FollowGraph.remove(follower, author)
+          _ -> AnsibleAppview.FollowGraph.upsert(follower, author, op["log_id"])
+        end
+      end
+    end
+  end
 
   defp row(op, payload) do
     now = DateTime.utc_now() |> DateTime.truncate(:microsecond)

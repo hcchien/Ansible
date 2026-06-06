@@ -5,7 +5,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SigVerifier}
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
-  @valid_entity_types ~w(board thread post reaction murmur note)
+  @valid_entity_types ~w(board thread post reaction murmur note follow)
   @valid_op_types ~w(insert update delete crdt_merge)
   # Standalone content kinds (no board/thread) whose public/unlisted visibility is
   # checked as defense-in-depth before relaying. Primary enforcement is app-side.

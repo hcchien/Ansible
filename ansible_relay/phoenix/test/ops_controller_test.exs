@@ -281,6 +281,21 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "private_content_not_relayable"
   end
 
+  test "verified DID can ingest a follow op and gets 202" do
+    did = "did:key:z6MkFollow#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op =
+      content_op(did, private_key, "follow", %{
+        "targetDid" => "did:key:z6MkAlice",
+        "visibility" => "federated"
+      })
+
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 202
+  end
+
   # ---- GET /api/v1/ops/delta ----
 
   test "delta returns 200 with ops, next_cursor, has_more" do
