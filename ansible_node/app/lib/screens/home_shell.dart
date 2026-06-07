@@ -880,6 +880,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       createdAt: createdAt,
       expiresAt: expiresAt,
     );
+    try {
     final signature = await DidSignerImpl()
         .sign(utf8.encode(jsonEncode(canonicalPayload)))
         .then((signature) => signature.hex);
@@ -946,6 +947,27 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
     );
     await _loadData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(zh: '已建立看板「$title」', en: 'Board "$title" created'),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '建立看板失敗：$e',
+              en: 'Could not create board: $e',
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _createThread() async {
