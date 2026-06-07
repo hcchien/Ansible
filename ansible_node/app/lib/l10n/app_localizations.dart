@@ -834,19 +834,19 @@ abstract class AppLocalizations {
   /// No description provided for @chooseHostedBoard.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'選擇託管看板'**
+  /// **'選擇看板'**
   String get chooseHostedBoard;
 
   /// No description provided for @hostedBoardMissing.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'請先加入或建立 Elix Relay 的託管看板'**
+  /// **'請先加入或建立 Elix Relay 的看板'**
   String get hostedBoardMissing;
 
   /// No description provided for @hostedBoardRequired.
   ///
   /// In zh_Hant, this message translates to:
-  /// **'請選擇託管看板'**
+  /// **'請選擇看板'**
   String get hostedBoardRequired;
 
   /// No description provided for @titleLabel.

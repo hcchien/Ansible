@@ -647,7 +647,7 @@ class _BottomActionSheet extends StatelessWidget {
             label,
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               color: AnsibleDesign.danger,
               letterSpacing: 1.5,
             ),

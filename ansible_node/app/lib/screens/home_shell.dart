@@ -2084,7 +2084,7 @@ class _MainPanel extends StatelessWidget {
               zh,
               style: TextStyle(
                 fontFamily: AnsibleDesign.mono,
-                fontSize: 9.5,
+                fontSize: 11,
                 letterSpacing: 1.4,
                 color: faintColor,
               ),
@@ -2094,7 +2094,7 @@ class _MainPanel extends StatelessWidget {
               '· $en',
               style: TextStyle(
                 fontFamily: AnsibleDesign.mono,
-                fontSize: 9.5,
+                fontSize: 11,
                 letterSpacing: 1.4,
                 color: faintColor,
               ),
@@ -2137,7 +2137,7 @@ class _MainPanel extends StatelessWidget {
                       context.uiCopy(zh: 'AI · 橫向橋', en: 'AI · BRIDGE'),
                       style: TextStyle(
                         fontFamily: AnsibleDesign.mono,
-                        fontSize: 9.5,
+                        fontSize: 11,
                         letterSpacing: 1.3,
                         color: styleData.accent,
                       ),
@@ -2492,7 +2492,7 @@ class _MainPanel extends StatelessWidget {
                 context.uiCopy(zh: '在討論區', en: 'In forum'),
                 style: TextStyle(
                   fontFamily: AnsibleDesign.mono,
-                  fontSize: 9.5,
+                  fontSize: 11,
                   color: AnsibleDesign.inkFaint,
                   letterSpacing: 0.8,
                 ),
@@ -3358,7 +3358,7 @@ class _MotionOption extends StatelessWidget {
                             badge!,
                             style: const TextStyle(
                               fontFamily: AnsibleDesign.mono,
-                              fontSize: 9.5,
+                              fontSize: 11,
                               letterSpacing: 1.1,
                               color: AnsibleDesign.ochre,
                             ),
@@ -3910,112 +3910,116 @@ class _BoardSwipeHeader extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Stack(
-                alignment: Alignment.topCenter,
-                children: [
-                  Builder(
-                    builder: (context) {
-                      Widget btn(
-                        _Board board,
-                        String label,
-                        String tooltip, {
-                        bool showMark = false,
-                      }) {
-                        final dist = (page - board.index).abs().clamp(0.0, 1.0);
-                        return _boardButton(
-                          board: board,
-                          label: label,
-                          tooltip: tooltip,
-                          active: activeIndex == board.index,
-                          showMark: showMark && activeIndex == board.index,
-                          underlineOpacity: 1 - dist,
-                          textColor: Color.lerp(fgColor, faintColor, dist)!,
-                          ochreColor: ochreColor,
-                        );
-                      }
+              Builder(
+                builder: (context) {
+                  Widget btn(
+                    _Board board,
+                    String label,
+                    String tooltip, {
+                    bool showMark = false,
+                  }) {
+                    final dist = (page - board.index).abs().clamp(0.0, 1.0);
+                    return _boardButton(
+                      board: board,
+                      label: label,
+                      tooltip: tooltip,
+                      active: activeIndex == board.index,
+                      showMark: showMark && activeIndex == board.index,
+                      underlineOpacity: 1 - dist,
+                      textColor: Color.lerp(fgColor, faintColor, dist)!,
+                      ochreColor: ochreColor,
+                    );
+                  }
 
-                      // Scale down rather than overflow when three labels are
-                      // wide (e.g. long German strings on a narrow phone).
-                      return FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          btn(
-                            _Board.personal,
-                            context.uiCopy(zh: '個人版', en: 'Personal'),
-                            context.uiCopy(
-                              zh: '個人版 · 你的 Note 和 Murmur',
-                              en: 'Personal · your Notes and Murmurs',
-                            ),
-                            showMark: true,
-                          ),
-                          const SizedBox(width: 24),
-                          btn(
-                            _Board.timeline,
-                            context.uiCopy(zh: '時間軸', en: 'Timeline'),
-                            context.uiCopy(
-                              zh: '時間軸 · 你追蹤的人的貼文',
-                              en: 'Timeline · posts from people you follow',
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          btn(
-                            _Board.forum,
-                            context.uiCopy(zh: '討論區', en: 'Forum'),
-                            context.uiCopy(
-                              zh: '討論區 · 看板',
-                              en: 'Forum · boards',
-                            ),
-                          ),
-                        ],
+                  // Right-side icon buttons (settings, optional preferences).
+                  final iconButtons = <Widget>[
+                    if (onOpenPreferences != null)
+                      IconButton(
+                        key: const Key('screen_style_button'),
+                        onPressed: onOpenPreferences,
+                        icon: const Icon(Icons.palette_outlined, size: 23),
+                        color: faintColor,
+                        tooltip: context.uiCopy(
+                          zh: '介面與動態',
+                          en: 'Interface and motion',
                         ),
-                      );
-                    },
-                  ),
-                  if (onOpenPreferences != null || onOpenSettings != null)
-                    Positioned(
-                      right: 0,
-                      top: -4,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (onOpenPreferences != null)
-                            IconButton(
-                              key: const Key('screen_style_button'),
-                              onPressed: onOpenPreferences,
-                              icon: const Icon(
-                                Icons.palette_outlined,
-                                size: 18,
-                              ),
-                              color: faintColor,
-                              tooltip: context.uiCopy(
-                                zh: '介面與動態',
-                                en: 'Interface and motion',
-                              ),
-                              constraints: const BoxConstraints.tightFor(
-                                width: 30,
-                                height: 34,
-                              ),
-                              padding: EdgeInsets.zero,
-                            ),
-                          if (onOpenSettings != null)
-                            IconButton(
-                              key: const Key('settings_button'),
-                              onPressed: onOpenSettings,
-                              icon: const Icon(Icons.person_outline, size: 19),
-                              color: faintColor,
-                              tooltip: l10n.settingsNav,
-                              constraints: const BoxConstraints.tightFor(
-                                width: 30,
-                                height: 34,
-                              ),
-                              padding: EdgeInsets.zero,
-                            ),
-                        ],
+                        constraints: const BoxConstraints.tightFor(
+                          width: 44,
+                          height: 44,
+                        ),
+                        padding: EdgeInsets.zero,
                       ),
-                    ),
-                ],
+                    if (onOpenSettings != null)
+                      IconButton(
+                        key: const Key('settings_button'),
+                        onPressed: onOpenSettings,
+                        icon: const Icon(Icons.person_outline, size: 24),
+                        color: faintColor,
+                        tooltip: l10n.settingsNav,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 44,
+                          height: 44,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                  ];
+                  // Equal side widths keep the board tabs visually centered while
+                  // the icons sit at the far right (normal flow → always tappable).
+                  // 48 = Material minimum tap target per icon.
+                  final sideWidth = iconButtons.length * 48.0;
+
+                  return Row(
+                    children: [
+                      SizedBox(width: sideWidth),
+                      Expanded(
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                btn(
+                                  _Board.personal,
+                                  context.uiCopy(zh: '個人版', en: 'Personal'),
+                                  context.uiCopy(
+                                    zh: '個人版 · 你的 Note 和 Murmur',
+                                    en: 'Personal · your Notes and Murmurs',
+                                  ),
+                                  showMark: true,
+                                ),
+                                const SizedBox(width: 24),
+                                btn(
+                                  _Board.timeline,
+                                  context.uiCopy(zh: '時間軸', en: 'Timeline'),
+                                  context.uiCopy(
+                                    zh: '時間軸 · 你追蹤的人的貼文',
+                                    en: 'Timeline · posts from people you follow',
+                                  ),
+                                ),
+                                const SizedBox(width: 24),
+                                btn(
+                                  _Board.forum,
+                                  context.uiCopy(zh: '討論區', en: 'Forum'),
+                                  context.uiCopy(
+                                    zh: '討論區 · 看板',
+                                    en: 'Forum · boards',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: sideWidth,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: iconButtons,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               Container(
                 margin: const EdgeInsets.only(top: 8),
@@ -4134,7 +4138,7 @@ class _BoardSwipeHeader extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               letterSpacing: 1,
               color: faintColor,
             ),
@@ -4163,7 +4167,7 @@ class _BoardSwipeHeader extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               letterSpacing: 1,
               color: faintColor,
             ),
@@ -4236,7 +4240,7 @@ class _BoardSwipeHeader extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               letterSpacing: 1,
               color: faintColor,
             ),
@@ -4607,7 +4611,7 @@ class _CircleFullScreenState extends State<_CircleFullScreen> {
                                 ),
                           style: TextStyle(
                             fontFamily: AnsibleDesign.mono,
-                            fontSize: 9.5,
+                            fontSize: 11,
                             letterSpacing: 1.2,
                             color: dark
                                 ? AnsibleDesign.darkInkFaint

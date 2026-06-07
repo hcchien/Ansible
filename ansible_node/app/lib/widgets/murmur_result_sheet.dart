@@ -540,7 +540,7 @@ class _SectionKicker extends StatelessWidget {
           context.uiCopy(zh: zh, en: en),
           style: const TextStyle(
             fontFamily: AnsibleDesign.mono,
-            fontSize: 9.5,
+            fontSize: 11,
             letterSpacing: 1.4,
             color: AnsibleDesign.inkFaint,
           ),
@@ -552,7 +552,7 @@ class _SectionKicker extends StatelessWidget {
             '· $en',
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               letterSpacing: 1.4,
               color: AnsibleDesign.inkFaint,
             ),

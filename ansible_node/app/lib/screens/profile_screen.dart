@@ -265,7 +265,7 @@ class _ProfileMeta extends StatelessWidget {
           label,
           style: const TextStyle(
             fontFamily: AnsibleDesign.mono,
-            fontSize: 9.5,
+            fontSize: 11,
             letterSpacing: 1,
             color: AnsibleDesign.inkFaint,
           ),

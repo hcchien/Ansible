@@ -235,7 +235,7 @@ class _DistributionSheetMainContent extends StatelessWidget {
                 context.uiCopy(zh: '誰能看見 · VISIBILITY', en: 'VISIBILITY'),
                 style: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
-                  fontSize: 9.5,
+                  fontSize: 11,
                   color: AnsibleDesign.inkFaint,
                   letterSpacing: 1.5,
                 ),
@@ -348,7 +348,7 @@ class _DistributionSettings extends StatelessWidget {
             key: const Key('distribution_summary'),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               color: AnsibleDesign.inkMuted,
               letterSpacing: 1,
             ),

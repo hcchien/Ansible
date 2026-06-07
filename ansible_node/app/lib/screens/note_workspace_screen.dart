@@ -392,7 +392,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 fontFamily: AnsibleDesign.mono,
-                                fontSize: 9.5,
+                                fontSize: 11,
                                 color: AnsibleDesign.inkFaint,
                                 letterSpacing: 1.4,
                               ),
@@ -438,7 +438,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
                   l10n.editing,
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.mono,
-                    fontSize: 9.5,
+                    fontSize: 11,
                     color: AnsibleDesign.inkFaint,
                     letterSpacing: 1.6,
                   ),
@@ -914,7 +914,7 @@ class _EditorMurmurDrawer extends StatelessWidget {
                     context.l10n.drawIn,
                     style: const TextStyle(
                       fontFamily: AnsibleDesign.mono,
-                      fontSize: 9.5,
+                      fontSize: 11,
                       color: AnsibleDesign.inkFaint,
                       letterSpacing: 1.5,
                     ),

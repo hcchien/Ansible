@@ -493,7 +493,7 @@ class AnsibleSectionHead extends StatelessWidget {
               en,
               style: const TextStyle(
                 fontFamily: AnsibleDesign.mono,
-                fontSize: 9.5,
+                fontSize: 11,
                 color: AnsibleDesign.inkFaint,
                 letterSpacing: 1.4,
               ),
@@ -570,7 +570,7 @@ class ElixSignedPill extends StatelessWidget {
             kind,
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.6,
               color: _fg(dark),
@@ -625,7 +625,7 @@ class ElixSourceLabel extends StatelessWidget {
           text,
           style: TextStyle(
             fontFamily: AnsibleDesign.mono,
-            fontSize: 9.5,
+            fontSize: 11,
             letterSpacing: 1.2,
             color: color,
             height: 1,

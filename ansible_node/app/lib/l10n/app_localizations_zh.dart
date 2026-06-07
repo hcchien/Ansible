@@ -381,13 +381,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get createDiscussion => '建立討論';
 
   @override
-  String get chooseHostedBoard => '選擇看板';
+  String get chooseHostedBoard => '選擇託管看板';
 
   @override
-  String get hostedBoardMissing => '請先加入或建立 Elix Relay 的看板';
+  String get hostedBoardMissing => '請先加入或建立 Elix Relay 的託管看板';
 
   @override
-  String get hostedBoardRequired => '請選擇看板';
+  String get hostedBoardRequired => '請選擇託管看板';
 
   @override
   String get titleLabel => '標題';

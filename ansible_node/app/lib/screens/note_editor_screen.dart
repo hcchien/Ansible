@@ -182,7 +182,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       context.uiCopy(zh: '編輯中 · EDITING', en: 'EDITING'),
                       style: const TextStyle(
                         fontFamily: AnsibleDesign.mono,
-                        fontSize: 9.5,
+                        fontSize: 11,
                         color: AnsibleDesign.inkFaint,
                         letterSpacing: 1.6,
                       ),
@@ -195,7 +195,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
-                          fontSize: 9.5,
+                          fontSize: 11,
                           color: AnsibleDesign.inkFaint,
                           letterSpacing: 1.0,
                         ),
@@ -321,7 +321,7 @@ class _AutoSaveStatus extends StatelessWidget {
           context.uiCopy(zh: '草稿保留 · 本機', en: 'Draft saved · Local'),
           style: const TextStyle(
             fontFamily: AnsibleDesign.mono,
-            fontSize: 9.5,
+            fontSize: 11,
             color: AnsibleDesign.inkFaint,
             letterSpacing: 1.4,
           ),

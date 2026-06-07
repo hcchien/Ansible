@@ -123,7 +123,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   l10n.searchSortRelevant,
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.mono,
-                    fontSize: 9.5,
+                    fontSize: 11,
                     letterSpacing: 1.1,
                     color: AnsibleDesign.inkFaint,
                   ),

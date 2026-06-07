@@ -170,7 +170,7 @@ class _ReadingScaleRow extends StatelessWidget {
               '${(preference.scale * 100).round()}%',
               style: const TextStyle(
                 fontFamily: AnsibleDesign.mono,
-                fontSize: 9.5,
+                fontSize: 11,
                 letterSpacing: 1.2,
                 color: AnsibleDesign.inkMuted,
               ),

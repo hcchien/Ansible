@@ -194,7 +194,7 @@ class AnsibleSettingsRow extends StatelessWidget {
                 value!,
                 style: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
-                  fontSize: 9.5,
+                  fontSize: 11,
                   letterSpacing: 1.2,
                 ).copyWith(color: valueColor ?? AnsibleDesign.inkMuted),
               ),

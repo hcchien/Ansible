@@ -122,7 +122,7 @@ class SettingsHomeScreen extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
-                          fontSize: 9.5,
+                          fontSize: 11,
                           letterSpacing: 1,
                           color: AnsibleDesign.inkFaint,
                         ),
@@ -311,7 +311,7 @@ class SettingsHomeScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AnsibleDesign.mono,
-                fontSize: 9.5,
+                fontSize: 11,
                 letterSpacing: 1.2,
                 color: AnsibleDesign.inkFaint,
               ),
@@ -536,7 +536,7 @@ class _InterfacePanelHeading extends StatelessWidget {
             textAlign: TextAlign.right,
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               letterSpacing: 1.1,
               color: AnsibleDesign.inkMuted,
             ),
@@ -573,7 +573,7 @@ class _SceneStylePicker extends StatelessWidget {
             label,
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
+              fontSize: 11,
               letterSpacing: 1.1,
               color: AnsibleDesign.inkFaint,
             ),
