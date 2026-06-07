@@ -4167,9 +4167,8 @@ class _BoardSwipeHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 11,
-              letterSpacing: 1,
+              fontSize: 13,
+              height: 1.3,
               color: faintColor,
             ),
           ),
@@ -4240,9 +4239,8 @@ class _BoardSwipeHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 11,
-              letterSpacing: 1,
+              fontSize: 13,
+              height: 1.3,
               color: faintColor,
             ),
           ),
@@ -4330,8 +4328,7 @@ class _FocusHeaderChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontFamily: AnsibleDesign.serif,
-              fontSize: 11.5,
+              fontSize: 12.5,
               color: selected ? fgColor : mutedColor,
               height: 1.2,
             ),
