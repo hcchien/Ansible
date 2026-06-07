@@ -21,6 +21,12 @@ void main() {
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.darkPaper);
 
+    // Three boards now: Personal │ Timeline │ Forum — two swipes to reach Forum.
+    await tester.drag(
+      find.byKey(const Key('board_swipe_page_view')),
+      const Offset(-340, 0),
+    );
+    await tester.pumpAndSettle();
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
       const Offset(-340, 0),
@@ -36,7 +42,11 @@ void main() {
     await _pumpHomeShell(tester);
 
     expect(find.byTooltip('Personal · your Notes and Murmurs'), findsOneWidget);
-    expect(find.byTooltip('Forum · follows and boards'), findsOneWidget);
+    expect(
+      find.byTooltip('Timeline · posts from people you follow'),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Forum · boards'), findsOneWidget);
     expect(find.text('This is your personal board.'), findsOneWidget);
     expect(
       find.text('Want to see others? Swipe left or tap Forum above.'),
@@ -70,6 +80,7 @@ void main() {
       findsOneWidget,
     );
 
+    // One swipe lands on the Timeline board (middle of three).
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
       const Offset(-340, 0),
@@ -77,7 +88,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(const Key('board_swipe_page_transform_circle')),
+      find.byKey(const Key('board_swipe_page_transform_timeline')),
       findsOneWidget,
     );
   });
@@ -106,6 +117,12 @@ void main() {
 
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
 
+    // Two swipes to cross Timeline and reach Forum.
+    await tester.drag(
+      find.byKey(const Key('board_swipe_page_view')),
+      const Offset(-340, 0),
+    );
+    await tester.pumpAndSettle();
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
       const Offset(-340, 0),
@@ -127,6 +144,12 @@ void main() {
 
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.darkPaper);
 
+    // Two swipes back across Timeline to the Personal board.
+    await tester.drag(
+      find.byKey(const Key('board_swipe_page_view')),
+      const Offset(340, 0),
+    );
+    await tester.pumpAndSettle();
     await tester.drag(
       find.byKey(const Key('board_swipe_page_view')),
       const Offset(340, 0),

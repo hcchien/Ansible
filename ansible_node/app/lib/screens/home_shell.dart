@@ -2506,13 +2506,13 @@ class _MainPanel extends StatelessWidget {
         ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
         : const EdgeInsets.symmetric(horizontal: 28, vertical: 12);
 
-    Widget wrapPage(_ElixTab tab, Widget child) {
+    Widget wrapPage(_ElixTab tab, Widget child, {String? scopeName}) {
       final style = screenStyles[tab] ?? ElixScreenStyle.paper;
       final data = style.dataFor(Theme.of(context).brightness);
       return ElixScreenStyleScope(
         style: style,
         child: AnimatedContainer(
-          key: Key('screen_style_scope_${tab.name}'),
+          key: Key('screen_style_scope_${scopeName ?? tab.name}'),
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(color: data.background),
@@ -2553,6 +2553,7 @@ class _MainPanel extends StatelessWidget {
               motion: boardMotion,
               child: wrapPage(
                 _ElixTab.feed,
+                scopeName: 'timeline',
                 Padding(
                   padding: EdgeInsets.only(
                     left: compact ? 16 : 28,
@@ -3917,7 +3918,11 @@ class _BoardSwipeHeader extends StatelessWidget {
                         );
                       }
 
-                      return Row(
+                      // Scale down rather than overflow when three labels are
+                      // wide (e.g. long German strings on a narrow phone).
+                      return FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           btn(
@@ -3948,6 +3953,7 @@ class _BoardSwipeHeader extends StatelessWidget {
                             ),
                           ),
                         ],
+                        ),
                       );
                     },
                   ),
