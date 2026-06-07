@@ -36,6 +36,32 @@ void main() {
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
   });
 
+  testWidgets('settings icon does not overlap the Forum tab on phone width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpHomeShell(tester, coachmarkSeen: true);
+
+    final forumTab = tester.getRect(
+      find.byKey(const Key('board_switch_forum')),
+    );
+    final settingsBtn = tester.getRect(
+      find.byKey(const Key('settings_button')),
+    );
+
+    // The settings icon sits entirely to the right of the Forum (討論區) tab.
+    expect(
+      forumTab.right <= settingsBtn.left,
+      isTrue,
+      reason:
+          'Forum tab (${forumTab.right}) overlaps settings icon (${settingsBtn.left})',
+    );
+  });
+
   testWidgets('board switcher exposes tap tooltips and first-run guidance', (
     tester,
   ) async {
