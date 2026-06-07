@@ -388,14 +388,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createDiscussion => 'Create Discussion';
 
   @override
-  String get chooseHostedBoard => 'Choose hosted board';
+  String get chooseHostedBoard => 'Choose board';
 
   @override
   String get hostedBoardMissing =>
-      'Join or create an Elix Relay hosted board first';
+      'Join or create an Elix Relay board first';
 
   @override
-  String get hostedBoardRequired => 'Choose a hosted board';
+  String get hostedBoardRequired => 'Choose a board';
 
   @override
   String get titleLabel => 'Title';

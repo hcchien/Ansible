@@ -1272,6 +1272,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                                     );
                                     if (confirm == true) {
                                       await _boardRepo.delete(board.id);
+                                      // Also drop the hosted subscription so the
+                                      // board is truly unsubscribed (no resync).
+                                      await _hostedBoardRepo.removeForLocalBoard(
+                                        board.id,
+                                      );
                                       await _loadData();
                                       setStateDialog(() {});
                                     }
@@ -2356,6 +2361,17 @@ class _MainPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Compact (phone): a clear entry to manage subscribed boards. On wide
+        // layouts the same action lives in the board-actions row below.
+        if (compact)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onManageBoards,
+              icon: const Icon(Icons.tune, size: 16),
+              label: Text(l10n.manageBoardsShort),
+            ),
+          ),
         if (!compact) ...[
           // Board actions row
           LayoutBuilder(

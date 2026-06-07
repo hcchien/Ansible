@@ -156,6 +156,16 @@ class DriftHostedBoardRepository implements HostedBoardRepository {
   }
 
   @override
+  Future<void> removeForLocalBoard(String localBoardId) async {
+    await (_db.delete(_db.boardSubscriptions)
+          ..where((table) => table.localBoardId.equals(localBoardId)))
+        .go();
+    await (_db.delete(_db.hostedBoardProjections)
+          ..where((table) => table.localBoardId.equals(localBoardId)))
+        .go();
+  }
+
+  @override
   Future<void> upsertPublicationTarget(
     publication.BoardPublicationTarget target,
   ) async {

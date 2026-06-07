@@ -15,6 +15,10 @@ abstract class HostedBoardRepository {
 
   Future<void> upsertSubscription(BoardSubscription subscription);
   Future<List<BoardSubscription>> listSubscriptions({String? forumHostId});
+
+  /// Unsubscribes a board: removes its projection and subscription for the given
+  /// local board id (the device stops syncing it).
+  Future<void> removeForLocalBoard(String localBoardId);
   Future<void> updateSubscriptionCursor(
     String subscriptionId,
     int cursor,

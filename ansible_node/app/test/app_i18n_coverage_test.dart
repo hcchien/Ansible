@@ -110,7 +110,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Create Discussion'), findsOneWidget);
-    expect(find.text('Choose hosted board'), findsOneWidget);
+    expect(find.text('Choose board'), findsOneWidget);
     expect(find.text('Title'), findsOneWidget);
     expect(find.text('Content'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);

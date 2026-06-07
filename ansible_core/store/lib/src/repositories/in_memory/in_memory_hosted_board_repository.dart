@@ -82,6 +82,14 @@ class InMemoryHostedBoardRepository implements HostedBoardRepository {
   }
 
   @override
+  Future<void> removeForLocalBoard(String localBoardId) async {
+    _projectionsByLocalId.remove(localBoardId);
+    _subscriptions.removeWhere(
+      (_, subscription) => subscription.localBoardId == localBoardId,
+    );
+  }
+
+  @override
   Future<List<BoardPublicationTarget>> listPublicationTargets({
     BoardPublicationStatus? status,
     String? forumHostId,
