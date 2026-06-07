@@ -98,6 +98,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   // Identity state: null = not anchored, non-null = DID string
   String? _anchoredDid;
+  String? _anchoredPublicKeyHex;
   bool _loadingIdentity = true;
   late final DidManager _didManager;
   late final DidPlcManager _didPlcManager;
@@ -195,12 +196,14 @@ class _MyAppState extends State<MyApp> {
       if (!mounted) return;
       setState(() {
         _anchoredDid = plcDid?.did ?? ownedDid?.did;
+        _anchoredPublicKeyHex = plcDid?.publicKeyHex ?? ownedDid?.publicKeyHex;
         _loadingIdentity = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _anchoredDid = null;
+        _anchoredPublicKeyHex = null;
         _loadingIdentity = false;
       });
     }
@@ -247,6 +250,7 @@ class _MyAppState extends State<MyApp> {
               ? HomeShell(
                   db: widget.db,
                   did: _anchoredDid!,
+                  publicKeyHex: _anchoredPublicKeyHex,
                   localeController: _localeController,
                   readingPreferencesController: _readingPreferencesController,
                   onClearIdentity: () => setState(() => _anchoredDid = null),

@@ -16,6 +16,7 @@ import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
+import '../services/relay_identity_client.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_provider_config_store.dart';
 import '../services/ai/apple_nl_embedding_service.dart';
@@ -77,6 +78,7 @@ class HomeShell extends StatefulWidget {
     super.key,
     required this.db,
     required this.did,
+    this.publicKeyHex,
     this.onClearIdentity,
     this.syncRunner,
     this.pullRefreshRunner,
@@ -88,6 +90,7 @@ class HomeShell extends StatefulWidget {
 
   final AppDatabase db;
   final String did;
+  final String? publicKeyHex;
   final VoidCallback? onClearIdentity;
   final Future<AppSyncResult> Function()? syncRunner;
   final Future<RelayPullSummary> Function()? pullRefreshRunner;
@@ -233,7 +236,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       unawaited(_loadScreenStyles());
       unawaited(_loadBoardMotion());
       unawaited(_loadData());
-      unawaited(_runForegroundPullIfConfigured());
+      // Make sure our DID is anchored on the relay before publishing anything,
+      // otherwise the relay rejects boards/follows/profile/content as unknown_did.
+      unawaited(
+        _ensureAnchored().whenComplete(() {
+          if (mounted) unawaited(_runForegroundPullIfConfigured());
+        }),
+      );
       unawaited(_murmurIndexingService.indexAllPending());
       unawaited(_checkCoachmark());
     });
@@ -841,6 +850,55 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       comments: 0,
       reacted: false,
     );
+  }
+
+  /// Idempotently anchors the local DID + public key with the active relay so
+  /// the relay accepts the user's ops (boards, follows, profile, content). The
+  /// app otherwise only anchors at registration, so a relay with a fresh DB (or
+  /// a newly-pointed relay) doesn't know this DID and rejects every publish with
+  /// `unknown_did`. Best-effort — failures surface when the user takes an action.
+  Future<void> _ensureAnchored() async {
+    final did = widget.did;
+    if (did.isEmpty) return;
+    final relayUrl = AppEnvironment.atProtoBaseUrl;
+    try {
+      final identityClient = RelayIdentityClient(baseUrl: relayUrl);
+      if (await identityClient.fetchPublicKey(did) != null) {
+        return; // already anchored on this relay
+      }
+      final pubKeyHex =
+          widget.publicKeyHex ?? (await DidManagerImpl().load())?.publicKeyHex;
+      if (pubKeyHex == null || pubKeyHex.isEmpty) return;
+
+      final suffix = _anchorHandleSuffix(did);
+      final client = AtProtoClient(baseUrl: relayUrl);
+      final challenge = await client.register(
+        publicKeyHex: pubKeyHex,
+        handleSuffix: suffix,
+      );
+      final sig = await DidSignerImpl().sign(utf8.encode(challenge.nonce));
+      await client.anchor(
+        AnchorRequest(
+          did: did,
+          publicKeyHex: pubKeyHex,
+          handle: challenge.handle ?? '$suffix.trisaura.io',
+          registrationSig: sig.hex,
+          nonce: challenge.nonce,
+        ),
+      );
+    } catch (_) {
+      // Best-effort; any failure is surfaced when the user performs an action.
+    }
+  }
+
+  /// A relay handle suffix derived from the DID (alphanumeric, ≤20 chars). Only
+  /// used to satisfy the relay's register/anchor handshake when re-anchoring.
+  String _anchorHandleSuffix(String did) {
+    final cleaned = did.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+    final tail = cleaned.length > 20
+        ? cleaned.substring(cleaned.length - 20)
+        : cleaned;
+    return tail.isEmpty ? 'user' : tail;
   }
 
   Future<void> _createBoard() async {
