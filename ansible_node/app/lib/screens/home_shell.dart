@@ -4136,10 +4136,11 @@ class _BoardSwipeHeader extends StatelessWidget {
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            // Prose (often CJK) — use the default font, not the mono label face
+            // (JetBrains Mono lacks CJK glyphs and renders an odd fallback).
             style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 11,
-              letterSpacing: 1,
+              fontSize: 13,
+              height: 1.3,
               color: faintColor,
             ),
           ),
