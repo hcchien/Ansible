@@ -89,8 +89,13 @@ fi
 ANSIBLE_RELAY_BASE_URL="${ANSIBLE_RELAY_BASE_URL:-http://${LOCAL_IP}:4001}"
 ANSIBLE_ISSUER_BASE_URL="${ANSIBLE_ISSUER_BASE_URL:-http://${LOCAL_IP}:4002}"
 ANSIBLE_ATPROTO_BASE_URL="${ANSIBLE_ATPROTO_BASE_URL:-$ANSIBLE_RELAY_BASE_URL}"
-ANSIBLE_APPVIEW_BASE_URL="${ANSIBLE_APPVIEW_BASE_URL:-http://${LOCAL_IP}:4003}"
-ANSIBLE_USE_APPVIEW_FEED="${ANSIBLE_USE_APPVIEW_FEED:-true}"
+# Use `-` (not `:-`) so an explicitly-set empty value is honored: when the
+# AppView is not deployed (e.g. dev pointing only at relay+issuer), pass
+# ANSIBLE_APPVIEW_BASE_URL="" to disable AppView-backed discovery/home-timeline.
+ANSIBLE_APPVIEW_BASE_URL="${ANSIBLE_APPVIEW_BASE_URL-http://${LOCAL_IP}:4003}"
+ANSIBLE_USE_APPVIEW_FEED="${ANSIBLE_USE_APPVIEW_FEED-true}"
+# Phase C: server-materialized home timeline (fan-out-on-write, GET /api/v1/home).
+ANSIBLE_USE_APPVIEW_HOME_TIMELINE="${ANSIBLE_USE_APPVIEW_HOME_TIMELINE-false}"
 
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/elix-ios-release.XXXXXX")"
 stdin_fifo="$tmp_dir/flutter-stdin"
@@ -174,6 +179,7 @@ cmd=(
   --dart-define="ANSIBLE_ATPROTO_BASE_URL=$ANSIBLE_ATPROTO_BASE_URL"
   --dart-define="ANSIBLE_APPVIEW_BASE_URL=$ANSIBLE_APPVIEW_BASE_URL"
   --dart-define="ANSIBLE_USE_APPVIEW_FEED=$ANSIBLE_USE_APPVIEW_FEED"
+  --dart-define="ANSIBLE_USE_APPVIEW_HOME_TIMELINE=$ANSIBLE_USE_APPVIEW_HOME_TIMELINE"
 )
 
 echo "Installing iOS release build"
