@@ -11,11 +11,16 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
-      cargo \
+      curl \
       git \
       pkg-config \
-      rustc \
     && rm -rf /var/lib/apt/lists/*
+
+# Debian's apt cargo (~1.63) cannot read Cargo.lock v4 (needs Cargo >= 1.78).
+# Install current stable Rust via rustup for the Rustler NIF build.
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --default-toolchain stable --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN mix local.hex --force && mix local.rebar --force
 
