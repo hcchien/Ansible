@@ -22,4 +22,7 @@ export 'src/did_signer.dart';
 export 'src/did_document.dart';
 export 'src/passkeys_manager.dart';
 export 'src/did_plc_manager.dart';
-export 'src/rust/frb_generated.dart' show RustLib, LexiconRecord, DidPlcBytes;
+// Generated flutter_rust_bridge API (RustLib + free functions + data types)
+// plus the RustLibCompat extension that preserves the historical
+// `RustLib.instance.apiX(...)` call style.
+export 'src/rust_api.dart';

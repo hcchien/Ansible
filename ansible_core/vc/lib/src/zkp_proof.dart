@@ -56,7 +56,7 @@ class ZkpProverImpl implements ZkpProver {
   @override
   Future<ZkpProof> prove({required String passportSecretHex}) async {
     try {
-      final result = await RustLib.instance.apiZkpGenerateProof(
+      final result = await apiZkpGenerateProof(
         passportSecretHex: passportSecretHex,
       );
       return ZkpProof(
@@ -64,8 +64,10 @@ class ZkpProverImpl implements ZkpProver {
         proofHex: result.proofHex,
         nullifierHex: result.nullifierHex,
         vkHash: result.vkHash,
-        nationalIdHash: result.nationalIdHash,
-        passportNumberHash: result.passportNumberHash,
+        // The Rust ZkpResult exposes only proof/nullifier/vkHash; the per-field
+        // MRZ hashes are not surfaced by the circuit output.
+        nationalIdHash: '',
+        passportNumberHash: '',
       );
     } on UnimplementedError {
       // Codegen not yet run — return a dev stub proof so the UI flow can be
@@ -94,7 +96,7 @@ class ZkpVerifier {
   /// Verify a [ZkpProof] locally (dev / test use only).
   static Future<bool> verify(ZkpProof proof) async {
     try {
-      return await RustLib.instance.apiZkpVerifyProof(
+      return await apiZkpVerifyProof(
         proofHex: proof.proofHex,
         nullifierHex: proof.nullifierHex,
       );

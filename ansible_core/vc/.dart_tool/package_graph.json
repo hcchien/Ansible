@@ -442,7 +442,7 @@
     },
     {
       "name": "flutter_rust_bridge",
-      "version": "2.12.0",
+      "version": "2.7.0",
       "dependencies": [
         "args",
         "async",

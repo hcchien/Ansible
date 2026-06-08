@@ -3,6 +3,8 @@
 //! Ed25519 DID operations for the Tris-Aura identity layer.
 //! Exposed to Dart via flutter_rust_bridge v2.
 
+mod frb_generated; // flutter_rust_bridge generated glue (see setup_codegen.sh)
+
 pub mod did_key;
 pub mod signing;
 pub mod api;

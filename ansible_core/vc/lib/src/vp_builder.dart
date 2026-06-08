@@ -126,7 +126,7 @@ class VpBuilder {
         );
       }
 
-      return await RustLib.instance.apiSignCommit(
+      return await apiSignCommit(
         cborBytes: bytes,
         privateKeyHex: privateKeyHex,
       );

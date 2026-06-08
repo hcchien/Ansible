@@ -147,7 +147,7 @@
     },
     {
       "name": "flutter_rust_bridge",
-      "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/flutter_rust_bridge-2.12.0",
+      "rootUri": "file:///Users/hcchien/.pub-cache/hosted/pub.dev/flutter_rust_bridge-2.7.0",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },

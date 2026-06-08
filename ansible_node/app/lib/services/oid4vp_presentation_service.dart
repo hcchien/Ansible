@@ -220,7 +220,7 @@ class LocalVpProofSigner implements VpProofSigner {
     }
 
     try {
-      final signatureHex = await RustLib.instance.apiSignCommit(
+      final signatureHex = await apiSignCommit(
         cborBytes: Uint8List.fromList(utf8.encode(canonicalPayload)),
         privateKeyHex: privateKeyHex,
       );

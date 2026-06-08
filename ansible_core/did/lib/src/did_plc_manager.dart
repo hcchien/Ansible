@@ -8,7 +8,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'rust/frb_generated.dart';
+import 'rust_api.dart';
 
 const _kPlcDidKey = 'ansible_plc_did';
 const _kPlcGenesisKey = 'ansible_plc_genesis_json';
@@ -171,7 +171,7 @@ class DidPlcManagerImpl implements DidPlcManager {
     await _secureStorage.delete(key: _kPlcPrivateKeyKey);
   }
 
-  void _validateProductionPlcResult(DidPlcBytes result) {
+  void _validateProductionPlcResult(PlcGenesisOp result) {
     if (_allowInsecureFallback) return;
 
     final validDid = RegExp(r'^did:plc:[a-z2-7]{10,}$').hasMatch(result.did);

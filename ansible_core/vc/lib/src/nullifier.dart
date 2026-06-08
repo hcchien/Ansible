@@ -40,7 +40,7 @@ class NullifierComputerImpl implements NullifierComputer {
   @override
   Future<Nullifier> compute(NullifierSeed seed) async {
     try {
-      final hex = RustLib.instance.apiZkpComputeNullifier(
+      final hex = apiZkpComputeNullifier(
         passportSecretHex: seed.passportSecretHex,
       );
       return Nullifier(hex);

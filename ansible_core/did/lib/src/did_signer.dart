@@ -10,7 +10,7 @@
 ///   Run flutter_rust_bridge_codegen generate, then uncomment RustLib.instance.* calls.
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'rust/frb_generated.dart';
+import 'rust_api.dart';
 
 /// A detached Ed25519 signature.
 class Ed25519Signature {

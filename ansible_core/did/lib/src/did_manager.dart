@@ -10,7 +10,7 @@
 ///   After codegen the RustLib calls here will use the real native library.
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'rust/frb_generated.dart';
+import 'rust_api.dart';
 
 const _kPrivateKeyStorageKey = 'ansible_did_private_key';
 const _kDidStorageKey = 'ansible_did_string';

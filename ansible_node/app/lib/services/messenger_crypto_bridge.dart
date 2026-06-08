@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 // ignore: implementation_imports
-import 'package:ansible_did/src/rust/frb_generated.dart' as frb;
+import 'package:ansible_did/ansible_did.dart' as frb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class MessengerDeviceBundle {
@@ -178,7 +178,7 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
 
   @override
   Future<MessengerDeviceBundle> createDevice(String subjectDid) async {
-    final device = await frb.RustLib.instance.apiMessengerCreateDevice(
+    final device = await frb.apiMessengerCreateDevice(
       subjectDid: subjectDid,
     );
     return _deviceFromRust(device);
@@ -190,7 +190,7 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
     int count,
   ) async {
     final rustDevice = await _deviceToRust(device);
-    final preKeys = await frb.RustLib.instance.apiMessengerGeneratePreKeys(
+    final preKeys = await frb.apiMessengerGeneratePreKeys(
       device: rustDevice,
       count: count,
     );
@@ -216,8 +216,7 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
     MessengerEncryptRequest request,
   ) async {
     final localDevice = await _deviceToRust(request.localDevice);
-    final ciphertext = await frb.RustLib.instance
-        .apiMessengerEncryptInitialMessage(
+    final ciphertext = await frb.apiMessengerEncryptInitialMessage(
           input: frb.MessengerEncryptInput(
             localDevice: localDevice,
             remoteBundle: _remoteBundleToRust(request.remoteBundle),
@@ -237,8 +236,7 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
     MessengerDecryptRequest request,
   ) async {
     final localDevice = await _deviceToRust(request.localDevice);
-    final plaintext = await frb.RustLib.instance
-        .apiMessengerDecryptInboundMessage(
+    final plaintext = await frb.apiMessengerDecryptInboundMessage(
           localDevice: localDevice,
           ciphertext: frb.MessengerCiphertext(
             protocolVersion: request.ciphertext.protocolVersion,

@@ -11,7 +11,7 @@ name = "ansible_rust_core"
 [dependencies]
 # Use ^2.4 so cargo can pick a compatible patch that resolves transitive dep
 # conflicts (e.g. the indicatif 0.17 vs 0.18 clash in the 2.4.0 codegen binary).
-flutter_rust_bridge = "^2.4"
+flutter_rust_bridge = "=2.7.0"
 ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 rand = { version = "0.8", features = ["getrandom"] }
 bs58 = "0.5"

@@ -23,10 +23,10 @@ abstract class LexiconSigner {
 ///
 /// Pipeline:
 ///   1. Build [LexiconRecord] struct from the map
-///   2. [RustLib.instance.apiCborEncodeRecord] → Uint8List (DAG-CBOR bytes)
-///   3. [RustLib.instance.apiComputeCid]       → CIDv1 string
+///   2. [apiCborEncodeRecord] → Uint8List (DAG-CBOR bytes)
+///   3. [apiComputeCid]       → CIDv1 string
 ///   4. Load private key from FlutterSecureStorage
-///   5. [RustLib.instance.apiSignCommit]       → 64-byte Ed25519 sig (hex)
+///   5. [apiSignCommit]       → 64-byte Ed25519 sig (hex)
 ///   6. Return [SignedLexiconRecord]
 ///
 /// Storage key note: private key is stored under [_kPrivateKeyStorageKey]
@@ -58,19 +58,19 @@ class LexiconSignerImpl implements LexiconSigner {
     try {
       // Build the Rust LexiconRecord struct from the JSON map
       final rustRecord = LexiconRecord(
-        type_: record[r'$type'] as String? ?? '',
+        type: record[r'$type'] as String? ?? '',
         text: record['text'] as String? ?? '',
         createdAt: record['createdAt'] as String? ?? '',
         replyTo: record['replyTo'] as String?,
       );
 
       // Step 1: encode to DAG-CBOR → Uint8List (NOT a hex string)
-      final Uint8List cborBytes = await RustLib.instance.apiCborEncodeRecord(
+      final Uint8List cborBytes = await apiCborEncodeRecord(
         record: rustRecord,
       );
 
       // Step 2: compute CID from bytes
-      final cid = RustLib.instance.apiComputeCid(cborBytes: cborBytes);
+      final cid = apiComputeCid(cborBytes: cborBytes);
 
       // Step 3: load private key — prefer plc key, fall back to legacy did key
       final privateKeyHex =
@@ -83,7 +83,7 @@ class LexiconSignerImpl implements LexiconSigner {
       }
 
       // Step 4: sign the CBOR bytes with Ed25519
-      final commitSigHex = await RustLib.instance.apiSignCommit(
+      final commitSigHex = await apiSignCommit(
         cborBytes: cborBytes,
         privateKeyHex: privateKeyHex,
       );
