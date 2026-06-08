@@ -89,6 +89,10 @@ fi
 ANSIBLE_RELAY_BASE_URL="${ANSIBLE_RELAY_BASE_URL:-http://${LOCAL_IP}:4001}"
 ANSIBLE_ISSUER_BASE_URL="${ANSIBLE_ISSUER_BASE_URL:-http://${LOCAL_IP}:4002}"
 ANSIBLE_ATPROTO_BASE_URL="${ANSIBLE_ATPROTO_BASE_URL:-$ANSIBLE_RELAY_BASE_URL}"
+# One-shot: wipe the local DID/passkeys/keypair on launch so a fresh identity is
+# created and anchored against the active relay. Use when an identity anchored on
+# an old relay can't re-anchor on a newly-pointed relay. Rebuild with =false after.
+ANSIBLE_RESET_LOCAL_IDENTITY_ON_START="${ANSIBLE_RESET_LOCAL_IDENTITY_ON_START-false}"
 # Use `-` (not `:-`) so an explicitly-set empty value is honored: when the
 # AppView is not deployed (e.g. dev pointing only at relay+issuer), pass
 # ANSIBLE_APPVIEW_BASE_URL="" to disable AppView-backed discovery/home-timeline.
@@ -180,6 +184,7 @@ cmd=(
   --dart-define="ANSIBLE_APPVIEW_BASE_URL=$ANSIBLE_APPVIEW_BASE_URL"
   --dart-define="ANSIBLE_USE_APPVIEW_FEED=$ANSIBLE_USE_APPVIEW_FEED"
   --dart-define="ANSIBLE_USE_APPVIEW_HOME_TIMELINE=$ANSIBLE_USE_APPVIEW_HOME_TIMELINE"
+  --dart-define="ANSIBLE_RESET_LOCAL_IDENTITY_ON_START=$ANSIBLE_RESET_LOCAL_IDENTITY_ON_START"
 )
 
 echo "Installing iOS release build"
