@@ -24,7 +24,7 @@ void main() {
       () async {
         final credential = entity.WalletCredential(
           credentialId: 'urn:uuid:test-humanity',
-          issuerDid: 'did:web:issuer.trisaura.io',
+          issuerDid: 'did:web:issuer.elix.cool',
           holderDid: 'did:key:z6Mkholder',
           credentialType: 'TrisAuraHumanityCredential',
           status: entity.WalletCredentialStatus.active,
@@ -57,7 +57,7 @@ void main() {
     test('updates credential status without rewriting payload', () async {
       final credential = entity.WalletCredential(
         credentialId: 'urn:uuid:test-humanity',
-        issuerDid: 'did:web:issuer.trisaura.io',
+        issuerDid: 'did:web:issuer.elix.cool',
         holderDid: 'did:key:z6Mkholder',
         credentialType: 'TrisAuraHumanityCredential',
         status: entity.WalletCredentialStatus.active,
@@ -96,7 +96,7 @@ void main() {
       final presentation = entity.WalletPresentation(
         presentationId: 'vp-1',
         credentialId: 'urn:uuid:test-humanity',
-        verifierAudience: 'https://relay.trisaura.io',
+        verifierAudience: 'https://relay.elix.cool',
         nonceHash: 'sha256-nonce',
         result: entity.WalletPresentationResult.approved,
         createdAt: DateTime.utc(2026, 5, 4, 10),
@@ -107,7 +107,7 @@ void main() {
       final history = await repo.listPresentations('urn:uuid:test-humanity');
       expect(history.single.result, entity.WalletPresentationResult.approved);
       expect(history.single.nonceHash, 'sha256-nonce');
-      expect(history.single.verifierAudience, 'https://relay.trisaura.io');
+      expect(history.single.verifierAudience, 'https://relay.elix.cool');
     });
 
     test(
@@ -115,7 +115,7 @@ void main() {
       () async {
         final credential = entity.WalletCredential(
           credentialId: 'urn:uuid:test-humanity',
-          issuerDid: 'did:web:issuer.trisaura.io',
+          issuerDid: 'did:web:issuer.elix.cool',
           holderDid: 'did:key:z6Mkholder',
           credentialType: 'TrisAuraHumanityCredential',
           status: entity.WalletCredentialStatus.active,
@@ -146,7 +146,7 @@ void main() {
     test('delete removes presentation history for the credential', () async {
       final credential = entity.WalletCredential(
         credentialId: 'urn:uuid:test-humanity',
-        issuerDid: 'did:web:issuer.trisaura.io',
+        issuerDid: 'did:web:issuer.elix.cool',
         holderDid: 'did:key:z6Mkholder',
         credentialType: 'TrisAuraHumanityCredential',
         status: entity.WalletCredentialStatus.active,
@@ -166,7 +166,7 @@ void main() {
         entity.WalletPresentation(
           presentationId: 'vp-1',
           credentialId: 'urn:uuid:test-humanity',
-          verifierAudience: 'https://relay.trisaura.io',
+          verifierAudience: 'https://relay.elix.cool',
           nonceHash: 'sha256-nonce',
           result: entity.WalletPresentationResult.approved,
           createdAt: DateTime.utc(2026, 5, 4, 10),

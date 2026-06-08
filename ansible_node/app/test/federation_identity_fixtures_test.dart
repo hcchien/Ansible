@@ -10,15 +10,15 @@ void main() {
   test('did:nostr fixture represents Nostr public identity', () {
     expect(fixtureDidNostr, 'did:nostr:$fixtureNostrPubkeyHex');
     expect(fixtureNostrPubkeyHex, matches(RegExp(r'^[0-9a-f]{64}$')));
-    expect(fixtureNip05Alias, 'alice@trisaura.io');
+    expect(fixtureNip05Alias, 'alice@elix.cool');
   });
 
   test('ActivityPub actor fixture is canonicalized under relay domain', () {
     final uri = Uri.parse(fixtureActivityPubActor);
 
     expect(uri.scheme, 'https');
-    expect(uri.host, 'relay.trisaura.io');
+    expect(uri.host, 'relay.elix.cool');
     expect(uri.path, '/users/alice');
-    expect(fixtureActivityPubAcct, 'acct:alice@relay.trisaura.io');
+    expect(fixtureActivityPubAcct, 'acct:alice@relay.elix.cool');
   });
 }

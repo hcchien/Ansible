@@ -20,7 +20,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Web sessions'), findsOneWidget);
-    expect(find.text('https://trisaura.io'), findsOneWidget);
+    expect(find.text('https://elix.cool'), findsOneWidget);
     expect(find.textContaining('app_device_abc'), findsOneWidget);
 
     await tester.tap(find.text('Revoke').first);
@@ -40,8 +40,8 @@ class _FakeSessionClient implements WebSessionApprovalGateway {
       sessionToken: 'wst_other',
       subjectDid: 'did:plc:abc23456789',
       approvingDeviceId: 'app_device_abc',
-      webOrigin: 'https://trisaura.io',
-      relayOrigin: 'https://relay.trisaura.io',
+      webOrigin: 'https://elix.cool',
+      relayOrigin: 'https://relay.elix.cool',
       trustTier: 'self_custody_did',
       scopes: const ['forum:read', 'forum:post'],
       createdAt: DateTime.utc(2026, 5, 11, 12),

@@ -12,7 +12,7 @@ void main() {
         credential: credential,
         holderDid: 'did:key:z6Mkholder',
         nonce: 'nonce-123',
-        audience: 'https://relay.trisaura.io',
+        audience: 'https://relay.elix.cool',
         createdAt: DateTime.utc(2026, 5, 4, 10),
       );
       final canonicalPayload = VpBuilder.canonicalPayload(unsigned);
@@ -26,7 +26,7 @@ void main() {
       expect((vp['proof']! as Map<String, Object?>)['challenge'], 'nonce-123');
       expect(
         (vp['proof']! as Map<String, Object?>)['domain'],
-        'https://relay.trisaura.io',
+        'https://relay.elix.cool',
       );
       expect(canonicalPayload, contains('nonce-123'));
       expect(canonicalPayload, isNot(contains('test-signature')));
@@ -40,7 +40,7 @@ void main() {
           credential: credential,
           holderDid: 'did:key:z6Mkother',
           nonce: 'nonce-123',
-          audience: 'https://relay.trisaura.io',
+          audience: 'https://relay.elix.cool',
         ),
         throwsA(
           isA<TrisAuraCredentialException>().having(

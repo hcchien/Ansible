@@ -8,14 +8,14 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   @router_opts Router.init([])
 
   defp get_json(path) do
-    %{conn(:get, path) | host: "relay.trisaura.io", scheme: :https, port: 443}
+    %{conn(:get, path) | host: "relay.elix.cool", scheme: :https, port: 443}
     |> Router.call(@router_opts)
   end
 
   defp post_json(path, body) do
     %{
       conn(:post, path, Jason.encode!(body))
-      | host: "relay.trisaura.io",
+      | host: "relay.elix.cool",
         scheme: :https,
         port: 443
     }
@@ -52,16 +52,16 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   end
 
   test "webfinger returns relay-domain actor link" do
-    response = get_json("/.well-known/webfinger?resource=acct:alice@relay.trisaura.io")
+    response = get_json("/.well-known/webfinger?resource=acct:alice@relay.elix.cool")
 
     assert response.status == 200
     body = Jason.decode!(response.resp_body)
-    assert body["subject"] == "acct:alice@relay.trisaura.io"
+    assert body["subject"] == "acct:alice@relay.elix.cool"
 
     assert [%{"rel" => "self", "type" => "application/activity+json", "href" => href}] =
              body["links"]
 
-    assert href == "https://relay.trisaura.io/users/alice"
+    assert href == "https://relay.elix.cool/users/alice"
   end
 
   test "actor endpoint returns ActivityPub actor document" do
@@ -70,11 +70,11 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
     assert response.status == 200
     body = Jason.decode!(response.resp_body)
     assert body["@context"] == "https://www.w3.org/ns/activitystreams"
-    assert body["id"] == "https://relay.trisaura.io/users/alice"
+    assert body["id"] == "https://relay.elix.cool/users/alice"
     assert body["type"] == "Person"
     assert body["preferredUsername"] == "alice"
-    assert body["inbox"] == "https://relay.trisaura.io/users/alice/inbox"
-    assert body["outbox"] == "https://relay.trisaura.io/users/alice/outbox"
+    assert body["inbox"] == "https://relay.elix.cool/users/alice/inbox"
+    assert body["outbox"] == "https://relay.elix.cool/users/alice/outbox"
   end
 
   test "outbox projects accepted publication intents to ActivityPub Create" do
@@ -88,8 +88,8 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
     assert body["totalItems"] == 1
     [activity] = body["orderedItems"]
     assert activity["type"] == "Create"
-    assert activity["id"] == "https://relay.trisaura.io/activities/#{intent.publication_id}"
-    assert activity["actor"] == "https://relay.trisaura.io/users/alice"
+    assert activity["id"] == "https://relay.elix.cool/activities/#{intent.publication_id}"
+    assert activity["actor"] == "https://relay.elix.cool/users/alice"
     assert activity["object"]["type"] == "Note"
     assert activity["object"]["name"] == "ActivityPub note"
   end

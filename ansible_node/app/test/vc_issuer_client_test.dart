@@ -85,7 +85,7 @@ void main() {
         final vcFixture = <String, dynamic>{
           'id': 'urn:uuid:issued-vc',
           'type': ['VerifiableCredential', 'EmailCredential'],
-          'issuer': 'did:web:issuer.trisaura.io',
+          'issuer': 'did:web:issuer.elix.cool',
         };
 
         final client = VcIssuerClient(
@@ -112,7 +112,7 @@ void main() {
         );
 
         expect(vc['id'], 'urn:uuid:issued-vc');
-        expect(vc['issuer'], 'did:web:issuer.trisaura.io');
+        expect(vc['issuer'], 'did:web:issuer.elix.cool');
       },
     );
 

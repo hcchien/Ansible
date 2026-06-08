@@ -6,7 +6,7 @@ defmodule AnsibleRelay.Db.DidAccount do
   schema "did_accounts" do
     field :public_key_hex, :string
     field :handle,         :string
-    field :pds_endpoint,   :string, default: "https://trisaura.io"
+    field :pds_endpoint,   :string, default: "https://elix.cool"
     field :reputation_tier,:string, default: "basic"
     field :registered_at,  :utc_datetime_usec
     field :expires_at,     :utc_datetime_usec

@@ -381,7 +381,7 @@ final _emailCredentialJson = <String, dynamic>{
   '@context': ['https://www.w3.org/2018/credentials/v1'],
   'id': 'urn:uuid:email-credential',
   'type': ['VerifiableCredential', 'EmailCredential'],
-  'issuer': 'did:web:issuer.trisaura.io',
+  'issuer': 'did:web:issuer.elix.cool',
   'issuanceDate': '2026-05-10T00:00:00Z',
   'expirationDate': '2026-08-08T00:00:00Z',
   'credentialSubject': {'id': 'did:plc:abcdefghijklmnop', 'emailHash': 'hash'},
@@ -390,7 +390,7 @@ final _emailCredentialJson = <String, dynamic>{
     'type': 'DataIntegrityProof',
     'cryptosuite': 'eddsa-jcs-2022',
     'created': '2026-05-10T00:00:00Z',
-    'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
+    'verificationMethod': 'did:web:issuer.elix.cool#key-1',
     'proofPurpose': 'assertionMethod',
     'proofValue': 'zissuerproof',
   },
@@ -399,11 +399,11 @@ final _emailCredentialJson = <String, dynamic>{
 final _passportCredentialJson = <String, dynamic>{
   '@context': [
     'https://www.w3.org/ns/credentials/v2',
-    'https://trisaura.io/contexts/humanity/v1',
+    'https://elix.cool/contexts/humanity/v1',
   ],
   'id': 'urn:uuid:passport-credential',
   'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-  'issuer': 'did:web:issuer.trisaura.io',
+  'issuer': 'did:web:issuer.elix.cool',
   'validFrom': '2026-05-24T00:00:00Z',
   'validUntil': '2026-08-22T00:00:00Z',
   'credentialSubject': {
@@ -416,12 +416,12 @@ final _passportCredentialJson = <String, dynamic>{
   'proof': {
     '@context': [
       'https://www.w3.org/ns/credentials/v2',
-      'https://trisaura.io/contexts/humanity/v1',
+      'https://elix.cool/contexts/humanity/v1',
     ],
     'type': 'DataIntegrityProof',
     'cryptosuite': 'eddsa-jcs-2022',
     'created': '2026-05-24T00:00:00Z',
-    'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
+    'verificationMethod': 'did:web:issuer.elix.cool#key-1',
     'proofPurpose': 'assertionMethod',
     'proofValue': 'zissuerproof',
   },

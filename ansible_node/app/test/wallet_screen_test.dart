@@ -18,7 +18,7 @@ void main() {
     final repo = InMemoryWalletRepository.withCredentials([
       WalletCredential(
         credentialId: 'urn:uuid:test-humanity',
-        issuerDid: 'did:web:issuer.trisaura.io',
+        issuerDid: 'did:web:issuer.elix.cool',
         holderDid: 'did:key:z6Mkholder',
         credentialType: 'TrisAuraHumanityCredential',
         status: WalletCredentialStatus.active,
@@ -138,7 +138,7 @@ void main() {
     final repo = InMemoryWalletRepository.withCredentials([
       WalletCredential(
         credentialId: 'urn:uuid:test-humanity',
-        issuerDid: 'did:web:issuer.trisaura.io',
+        issuerDid: 'did:web:issuer.elix.cool',
         holderDid: 'did:plc:abcdefghijklmnop',
         credentialType: 'TrisAuraHumanityCredential',
         status: WalletCredentialStatus.active,
@@ -271,7 +271,7 @@ class FakeMobileMoicaIssuerClient extends VcIssuerClient {
       '@context': ['https://www.w3.org/ns/credentials/v2'],
       'id': 'urn:uuid:inline-humanity',
       'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-      'issuer': 'did:web:issuer.trisaura.io',
+      'issuer': 'did:web:issuer.elix.cool',
       'validFrom': '2026-05-05T12:00:00Z',
       'validUntil': '2026-08-03T12:00:00Z',
       'credentialSubject': {'id': 'did:plc:abcdefghijklmnop', 'humanity': true},
@@ -280,7 +280,7 @@ class FakeMobileMoicaIssuerClient extends VcIssuerClient {
         'type': 'DataIntegrityProof',
         'cryptosuite': 'eddsa-jcs-2022',
         'created': '2026-05-05T12:00:00Z',
-        'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
+        'verificationMethod': 'did:web:issuer.elix.cool#key-1',
         'proofPurpose': 'assertionMethod',
         'proofValue': 'zabcd',
       },

@@ -192,7 +192,7 @@ func (iss *Issuer) issue(
 	cred := &Credential{
 		Context: []string{
 			"https://www.w3.org/ns/credentials/v2",
-			"https://trisaura.io/contexts/humanity/v1",
+			"https://elix.cool/contexts/humanity/v1",
 		},
 		ID:                fmt.Sprintf("%s/vc/%s", iss.issuerURL, randomHex(16)),
 		Type:              []string{"VerifiableCredential", credentialType},

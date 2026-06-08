@@ -86,8 +86,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   defp approved_store_session(did, scopes \\ ["forum:read"]) do
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => scopes,
         "ttl_seconds" => 300
       })
@@ -125,10 +125,10 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     original_origin = Application.get_env(:ansible_relay, :relay_origin)
     original_abuse_policy = Application.get_env(:ansible_relay, :abuse_detector)
     original_allowed_origins = Application.get_env(:ansible_relay, :web_allowed_origins)
-    Application.put_env(:ansible_relay, :relay_origin, "https://relay.trisaura.io")
+    Application.put_env(:ansible_relay, :relay_origin, "https://relay.elix.cool")
 
     Application.put_env(:ansible_relay, :web_allowed_origins, [
-      "https://trisaura.io",
+      "https://elix.cool",
       "http://127.0.0.1:5173"
     ])
 
@@ -158,15 +158,15 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   test "approved challenge creates a scoped session token" do
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read", "forum:post"],
         "ttl_seconds" => 300
       })
 
     assert {:ok, pending} = WebSessionStore.get_challenge(challenge.challenge_id)
     assert pending.status == "pending"
-    assert pending.audience == "https://relay.trisaura.io"
+    assert pending.audience == "https://relay.elix.cool"
 
     assert {:ok, session} =
              WebSessionStore.approve_challenge(challenge.challenge_id, %{
@@ -179,7 +179,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert {:ok, found} = WebSessionStore.get_session(session.session_token)
     assert found.subject_did == "did:plc:abc23456789"
     assert found.approving_device_id == "app_device_store"
-    assert found.audience == "https://relay.trisaura.io"
+    assert found.audience == "https://relay.elix.cool"
     assert found.scopes == ["forum:read", "forum:post"]
     assert {:error, :consumed} = WebSessionStore.get_challenge(challenge.challenge_id)
   end
@@ -215,7 +215,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
         "/api/v1/web-sessions/challenges",
         %{
           "web_origin" => "http://127.0.0.1:5173",
-          "relay_origin" => "https://relay.trisaura.io",
+          "relay_origin" => "https://relay.elix.cool",
           "scopes" => ["forum:read", "forum:post"]
         },
         [{"origin", "http://127.0.0.1:5173"}]
@@ -234,7 +234,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     response =
       post_json("/api/v1/web-sessions/challenges", %{
         "web_origin" => "https://evil.example",
-        "relay_origin" => "https://relay.trisaura.io",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"]
       })
 
@@ -251,8 +251,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
         ] do
       response =
         post_json("/api/v1/web-sessions/challenges", %{
-          "web_origin" => "https://trisaura.io",
-          "relay_origin" => "https://relay.trisaura.io",
+          "web_origin" => "https://elix.cool",
+          "relay_origin" => "https://relay.elix.cool",
           "audience" => audience,
           "scopes" => ["forum:read"]
         })
@@ -269,8 +269,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
       for index <- 1..5 do
         {:ok, challenge} =
           WebSessionStore.issue_challenge(%{
-            "web_origin" => "https://trisaura.io",
-            "relay_origin" => "https://relay.trisaura.io",
+            "web_origin" => "https://elix.cool",
+            "relay_origin" => "https://relay.elix.cool",
             "scopes" => ["forum:read"],
             "ttl_seconds" => 300
           })
@@ -288,8 +288,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, extra_challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -321,8 +321,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     for _index <- 1..3 do
       {:ok, challenge} =
         WebSessionStore.issue_challenge(%{
-          "web_origin" => "https://trisaura.io",
-          "relay_origin" => "https://relay.trisaura.io",
+          "web_origin" => "https://elix.cool",
+          "relay_origin" => "https://relay.elix.cool",
           "scopes" => ["forum:read"],
           "ttl_seconds" => 300
         })
@@ -338,8 +338,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, blocked_challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -356,15 +356,15 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   test "POST /api/v1/web-sessions/challenges creates a challenge and QR payload" do
     response =
       post_json("/api/v1/web-sessions/challenges", %{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read", "forum:post"]
       })
 
     assert response.status == 201
     body = Jason.decode!(response.resp_body)
     assert String.starts_with?(body["challenge_id"], "wsc_")
-    assert body["audience"] == "https://relay.trisaura.io"
+    assert body["audience"] == "https://relay.elix.cool"
     assert String.contains?(body["deep_link"], "trisaura://web-session/approve")
     assert body["qr_payload"] == body["deep_link"]
     assert {:ok, _} = WebSessionStore.get_challenge(body["challenge_id"])
@@ -373,8 +373,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   test "GET /api/v1/web-sessions/challenges/:id exposes app approval metadata" do
     create_response =
       post_json("/api/v1/web-sessions/challenges", %{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "audience" => "http://localhost:4001",
         "scopes" => ["forum:read", "forum:post"]
       })
@@ -387,8 +387,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert response.status == 200
     body = Jason.decode!(response.resp_body)
     assert body["challenge_id"] == challenge_id
-    assert body["relay_origin"] == "https://relay.trisaura.io"
-    assert body["web_origin"] == "https://trisaura.io"
+    assert body["relay_origin"] == "https://relay.elix.cool"
+    assert body["web_origin"] == "https://elix.cool"
     assert body["audience"] == "http://localhost:4001"
     assert body["scopes"] == ["forum:read", "forum:post"]
     assert body["status"] == "pending"
@@ -402,8 +402,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     challenge_response =
       post_json("/api/v1/web-sessions/challenges", %{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "audience" => "http://localhost:4001",
         "scopes" => ["forum:post"]
       })
@@ -435,8 +435,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     })
 
     body = %{
-      "web_origin" => "https://trisaura.io",
-      "relay_origin" => "https://relay.trisaura.io",
+      "web_origin" => "https://elix.cool",
+      "relay_origin" => "https://relay.elix.cool",
       "scopes" => ["forum:read"]
     }
 
@@ -455,8 +455,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read", "forum:post"],
         "ttl_seconds" => 300
       })
@@ -479,14 +479,14 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     poll =
       get_json("/api/v1/web-sessions/challenges/#{challenge.challenge_id}", [
-        {"origin", "https://trisaura.io"}
+        {"origin", "https://elix.cool"}
       ])
 
     poll_body = Jason.decode!(poll.resp_body)
     assert poll_body["status"] == "approved"
-    assert poll_body["relay_origin"] == "https://relay.trisaura.io"
-    assert poll_body["web_origin"] == "https://trisaura.io"
-    assert poll_body["audience"] == "https://relay.trisaura.io"
+    assert poll_body["relay_origin"] == "https://relay.elix.cool"
+    assert poll_body["web_origin"] == "https://elix.cool"
+    assert poll_body["audience"] == "https://relay.elix.cool"
     assert poll_body["scopes"] == ["forum:read", "forum:post"]
     assert is_binary(poll_body["expires_at"])
     assert poll_body["trust_tier"] == "self_custody_did"
@@ -499,7 +499,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert Enum.any?(set_cookie, &String.contains?(&1, "trisaura_session="))
     assert Enum.any?(set_cookie, &String.contains?(&1, "HttpOnly"))
 
-    assert get_resp_header(poll, "access-control-allow-origin") == ["https://trisaura.io"]
+    assert get_resp_header(poll, "access-control-allow-origin") == ["https://elix.cool"]
     assert get_resp_header(poll, "access-control-allow-credentials") == ["true"]
   end
 
@@ -510,8 +510,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -537,8 +537,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "audience" => "http://localhost:4001",
         "scopes" => ["forum:post"],
         "ttl_seconds" => 300
@@ -561,8 +561,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   test "reject, revoke, and me endpoints expose web session state via Bearer token (backward compat)" do
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -573,8 +573,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, approved_challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -610,8 +610,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   test "me and revoke endpoints work via httpOnly session cookie" do
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -688,8 +688,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   test "me endpoint lists active sessions for the same DID" do
     {:ok, first_challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -704,8 +704,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, second_challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -734,8 +734,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
   test "session revoke endpoint can revoke another active session for the same DID by session id" do
     {:ok, first_challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })
@@ -750,8 +750,8 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
 
     {:ok, second_challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "scopes" => ["forum:read"],
         "ttl_seconds" => 300
       })

@@ -245,7 +245,7 @@ class _FakeDidPlcManager implements DidPlcManager {
   @override
   Future<DidPlcResult> createDid({
     required String handle,
-    String pdsEndpoint = 'https://trisaura.io',
+    String pdsEndpoint = 'https://elix.cool',
     String? signingKeyHex,
   }) async {
     this.signingKeyHex = signingKeyHex;

@@ -26,11 +26,11 @@ Add test fixtures that use `validFrom` and `validUntil`, not `issuanceDate` and 
 final _v2CredentialJson = <String, dynamic>{
   '@context': [
     'https://www.w3.org/ns/credentials/v2',
-    'https://trisaura.io/contexts/humanity/v1',
+    'https://elix.cool/contexts/humanity/v1',
   ],
   'id': 'urn:uuid:v2-credential',
   'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-  'issuer': 'did:web:issuer.trisaura.io',
+  'issuer': 'did:web:issuer.elix.cool',
   'validFrom': '2026-05-10T00:00:00Z',
   'validUntil': '2026-08-08T00:00:00Z',
   'credentialSubject': {

@@ -39,7 +39,7 @@ defmodule AnsibleRelay.DidAccountCache do
 
     now = DateTime.utc_now()
     expiry = Keyword.get(opts, :expires_at) || DateTime.add(now, ttl_seconds, :second)
-    pds_endpoint = Keyword.get(opts, :pds_endpoint, "https://trisaura.io")
+    pds_endpoint = Keyword.get(opts, :pds_endpoint, "https://elix.cool")
     reputation_tier = Keyword.get(opts, :reputation_tier, "basic")
 
     entry = %{

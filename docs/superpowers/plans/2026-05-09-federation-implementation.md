@@ -173,7 +173,7 @@ Modify the Phoenix relay for ActivityPub:
 - Test `ansible_relay/phoenix/test/activity_pub_controller_test.exs`.
 - Test `ansible_relay/phoenix/test/activity_pub_delivery_test.exs`.
 
-- [x] Add WebFinger endpoint for relay-domain actors, e.g. `acct:alice@relay.trisaura.io`.
+- [x] Add WebFinger endpoint for relay-domain actors, e.g. `acct:alice@relay.elix.cool`.
 - [x] Add Actor endpoint under `/users/:actor`.
 - [x] Add inbox and outbox endpoints under `/users/:actor/inbox` and `/users/:actor/outbox`.
 - [x] Map publication intent `publish` to ActivityPub `Create`.

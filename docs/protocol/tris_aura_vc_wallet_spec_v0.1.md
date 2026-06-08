@@ -63,11 +63,11 @@ for profile claims, but verifiers must not treat them as identity assurance.
 ```json
 {
   "offer_id": "vc-offer-01HX8QGJ5A2Y8V5J61D6GZ",
-  "issuer": "did:web:issuer.trisaura.io",
+  "issuer": "did:web:issuer.elix.cool",
   "expires_at": "2026-05-04T10:15:00Z",
   "auth_request": {
     "mode": "external",
-    "url": "https://issuer.trisaura.io/tw/auth/start?offer_id=vc-offer-01HX8QGJ5A2Y8V5J61D6GZ",
+    "url": "https://issuer.elix.cool/tw/auth/start?offer_id=vc-offer-01HX8QGJ5A2Y8V5J61D6GZ",
     "qr_payload": "trisaura-vc-offer://vc-offer-01HX8QGJ5A2Y8V5J61D6GZ"
   }
 }
@@ -140,11 +140,11 @@ Storage rule:
   "credential": {
     "@context": [
       "https://www.w3.org/ns/credentials/v2",
-      "https://trisaura.io/contexts/humanity/v1"
+      "https://elix.cool/contexts/humanity/v1"
     ],
     "id": "urn:uuid:2f4574e6-0ef3-4d87-bc24-5ab5168e6a7a",
     "type": ["VerifiableCredential", "TrisAuraHumanityCredential"],
-    "issuer": "did:web:issuer.trisaura.io",
+    "issuer": "did:web:issuer.elix.cool",
     "validFrom": "2026-05-04T00:00:00Z",
     "validUntil": "2026-08-02T00:00:00Z",
     "credentialSubject": {
@@ -155,14 +155,14 @@ Storage rule:
       "jurisdiction": "TW"
     },
     "credentialStatus": {
-      "id": "https://issuer.trisaura.io/status/humanity/2026-05#2f4574e6",
+      "id": "https://issuer.elix.cool/status/humanity/2026-05#2f4574e6",
       "type": "TrisAuraStatusList2026",
       "statusPurpose": "revocation"
     },
     "proof": {
       "type": "DataIntegrityProof",
       "cryptosuite": "eddsa-jcs-2022",
-      "verificationMethod": "did:web:issuer.trisaura.io#key-2026-05",
+      "verificationMethod": "did:web:issuer.elix.cool#key-2026-05",
       "created": "2026-05-04T10:12:00Z",
       "proofPurpose": "assertionMethod",
       "proofValue": "zBase58BtcMultibaseSignature"
@@ -229,7 +229,7 @@ External verifiers should use the OID4VP QR flow described in section 6.1.
 ```json
 {
   "request_id": "vp-request-01HX8QYJBT7KXW",
-  "audience": "https://relay.trisaura.io",
+  "audience": "https://relay.elix.cool",
   "nonce": "base64url-random-32-bytes",
   "accepted_types": ["TrisAuraHumanityCredential"],
   "purpose": "Upgrade reputation tier to Verified Human",
@@ -291,7 +291,7 @@ MVP constraints:
       "created": "2026-05-04T10:18:00Z",
       "proofPurpose": "authentication",
       "challenge": "base64url-random-32-bytes",
-      "domain": "https://relay.trisaura.io",
+      "domain": "https://relay.elix.cool",
       "proofValue": "zBase58BtcMultibaseSignature"
     }
   }

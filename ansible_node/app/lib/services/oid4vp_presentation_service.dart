@@ -89,7 +89,7 @@ class Oid4vpPresentationService implements Oid4vpPresentationApprover {
   factory Oid4vpPresentationService.forWallet({
     required WalletRepository walletRepository,
     http.Client? httpClient,
-    Set<String> trustedIssuers = const {'did:web:issuer.trisaura.io'},
+    Set<String> trustedIssuers = const {'did:web:issuer.elix.cool'},
   }) {
     return Oid4vpPresentationService(
       presentationService: VcPresentationService(

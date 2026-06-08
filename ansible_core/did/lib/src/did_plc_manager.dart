@@ -36,13 +36,13 @@ class DidPlcResult {
 abstract class DidPlcManager {
   /// Create a new did:plc by generating a keypair and submitting the genesis op.
   ///
-  /// [handle] — the AT Protocol handle (e.g. "alice.trisaura.io")
+  /// [handle] — the AT Protocol handle (e.g. "alice.elix.cool")
   /// [pdsEndpoint] — the PDS service endpoint to embed in the genesis op
   /// [signingKeyHex] — optional existing Ed25519 public key to use as the
   /// PLC signing key. When omitted, a fresh keypair is generated.
   Future<DidPlcResult> createDid({
     required String handle,
-    String pdsEndpoint = 'https://trisaura.io',
+    String pdsEndpoint = 'https://elix.cool',
     String? signingKeyHex,
   });
 
@@ -76,7 +76,7 @@ class DidPlcManagerImpl implements DidPlcManager {
   @override
   Future<DidPlcResult> createDid({
     required String handle,
-    String pdsEndpoint = 'https://trisaura.io',
+    String pdsEndpoint = 'https://elix.cool',
     String? signingKeyHex,
   }) async {
     try {

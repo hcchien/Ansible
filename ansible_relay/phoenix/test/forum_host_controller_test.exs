@@ -91,8 +91,8 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
 
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "audience" => audience,
         "scopes" => scopes,
         "ttl_seconds" => 300

@@ -65,7 +65,7 @@ test('stores encrypted credential payload separately from metadata', () async {
   await repo.saveCredential(
     metadata: WalletCredential(
       credentialId: 'urn:uuid:test-humanity',
-      issuerDid: 'did:web:issuer.trisaura.io',
+      issuerDid: 'did:web:issuer.elix.cool',
       holderDid: 'did:key:z6Mkholder',
       credentialType: 'TrisAuraHumanityCredential',
       status: 'active',
@@ -94,7 +94,7 @@ test('records presentation metadata without claim payloads', () async {
     WalletPresentation(
       presentationId: 'vp-1',
       credentialId: 'urn:uuid:test-humanity',
-      verifierAudience: 'https://relay.trisaura.io',
+      verifierAudience: 'https://relay.elix.cool',
       nonceHash: 'sha256-nonce',
       result: 'approved',
       createdAt: DateTime.utc(2026, 5, 4, 10),
@@ -160,7 +160,7 @@ test('expired credential fails verification result', () {
   final result = VcVerifier.verifyCredential(
     credential,
     now: DateTime.utc(2026, 9, 1),
-    trustedIssuers: {'did:web:issuer.trisaura.io'},
+    trustedIssuers: {'did:web:issuer.elix.cool'},
     status: CredentialStatus.active,
   );
 
@@ -177,13 +177,13 @@ test('builds presentation bound to nonce and audience', () {
     credential: TrisAuraCredential.fromJson(humanityFixture),
     holderDid: 'did:key:z6Mkholder',
     nonce: 'nonce-123',
-    audience: 'https://relay.trisaura.io',
+    audience: 'https://relay.elix.cool',
     proofValue: 'test-signature',
   );
 
   expect(vp['holder'], 'did:key:z6Mkholder');
   expect(vp['proof']['challenge'], 'nonce-123');
-  expect(vp['proof']['domain'], 'https://relay.trisaura.io');
+  expect(vp['proof']['domain'], 'https://relay.elix.cool');
 });
 ```
 
@@ -224,14 +224,14 @@ Expected: parser, verifier, and VP builder tests pass.
 ```dart
 test('creates credential offer request with holder DID and requested type', () async {
   final client = VcIssuerClient(
-    baseUrl: Uri.parse('https://relay.trisaura.io'),
+    baseUrl: Uri.parse('https://relay.elix.cool'),
     httpClient: fakeHttpClient((request) {
       expect(request.path, '/api/v1/vc/offer');
       expect(request.json['holder_did'], 'did:key:z6Mkholder');
       expect(request.json['requested_types'], ['TrisAuraHumanityCredential']);
       return {
         'offer_id': 'vc-offer-test',
-        'issuer': 'did:web:issuer.trisaura.io',
+        'issuer': 'did:web:issuer.elix.cool',
         'expires_at': '2026-05-04T10:15:00Z',
         'auth_request': {'mode': 'mock', 'mock_assertion_token': 'test-only'}
       };
@@ -255,7 +255,7 @@ testWidgets('wallet screen lists credential status and expiry', (tester) async {
   final repo = InMemoryWalletRepository.withCredentials([
     WalletCredential(
       credentialId: 'urn:uuid:test-humanity',
-      issuerDid: 'did:web:issuer.trisaura.io',
+      issuerDid: 'did:web:issuer.elix.cool',
       holderDid: 'did:key:z6Mkholder',
       credentialType: 'TrisAuraHumanityCredential',
       status: 'active',
@@ -387,7 +387,7 @@ test('rejects presentation with wrong audience', () {
   final result = VpVerifier.verify(
     presentation: validHumanityPresentationWithAudience('https://evil.example'),
     requestNonce: 'nonce-123',
-    expectedAudience: 'https://relay.trisaura.io',
+    expectedAudience: 'https://relay.elix.cool',
     statusResolver: (_) async => CredentialStatus.active,
   );
 
@@ -398,7 +398,7 @@ test('valid humanity presentation upgrades reputation tier', () async {
   final tier = await ReputationFromCredential.resolve(
     presentation: validHumanityPresentation(),
     requestNonce: 'nonce-123',
-    audience: 'https://relay.trisaura.io',
+    audience: 'https://relay.elix.cool',
   );
 
   expect(tier, 'verified_human');

@@ -305,11 +305,11 @@ Map<String, dynamic> humanityVcFixture() {
   return {
     '@context': [
       'https://www.w3.org/ns/credentials/v2',
-      'https://trisaura.io/contexts/humanity/v1',
+      'https://elix.cool/contexts/humanity/v1',
     ],
     'id': 'urn:uuid:tw-provider-humanity',
     'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-    'issuer': 'did:web:issuer.trisaura.io',
+    'issuer': 'did:web:issuer.elix.cool',
     'validFrom': '2026-05-05T12:00:00Z',
     'validUntil': '2026-08-03T12:00:00Z',
     'credentialSubject': {
@@ -320,12 +320,12 @@ Map<String, dynamic> humanityVcFixture() {
     'proof': {
       '@context': [
         'https://www.w3.org/ns/credentials/v2',
-        'https://trisaura.io/contexts/humanity/v1',
+        'https://elix.cool/contexts/humanity/v1',
       ],
       'type': 'DataIntegrityProof',
       'cryptosuite': 'eddsa-jcs-2022',
       'created': '2026-05-05T12:00:00Z',
-      'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
+      'verificationMethod': 'did:web:issuer.elix.cool#key-1',
       'proofPurpose': 'assertionMethod',
       'proofValue': 'zabcd',
     },

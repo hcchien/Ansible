@@ -43,7 +43,7 @@ ISSUER_TEST_DATABASE_URL="postgres://$USER@localhost:5432/ansible_issuer_test" g
 
 | Var | Purpose |
 |---|---|
-| `ISSUER_DID` | Issuer DID, e.g. `did:web:issuer.trisaura.io` |
+| `ISSUER_DID` | Issuer DID, e.g. `did:web:issuer.elix.cool` |
 | `ISSUER_URL` | Public base URL (used in VC IDs) |
 | `ISSUER_PRIVATE_KEY_HEX` | Ed25519 seed (32-byte hex). Its public half is the relay's `ISSUER_PUBLIC_KEY_HEX`. |
 | `SUBJECT_COMMITMENT_PEPPER` | HMAC pepper for subject commitments |

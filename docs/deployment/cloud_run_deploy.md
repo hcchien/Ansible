@@ -27,9 +27,9 @@ export REPO="ansible"                       # Artifact Registry repo (matches cl
 export TAG="$(git rev-parse --short HEAD)"  # image tag for this deploy
 
 # Public hostnames you will map to each service (set up DNS/SSL separately).
-export RELAY_HOST="relay.trisaura.io"
-export ISSUER_HOST="issuer.trisaura.io"
-export WEB_HOST="forum.trisaura.io"
+export RELAY_HOST="relay.elix.cool"
+export ISSUER_HOST="issuer.elix.cool"
+export WEB_HOST="forum.elix.cool"
 
 export ISSUER_DID="did:web:${ISSUER_HOST}"
 export AR="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}"
@@ -338,14 +338,14 @@ derived from `ISSUER_DID` + the issuer key, e.g.:
 ```jsonc
 {
   "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"],
-  "id": "did:web:issuer.trisaura.io",
+  "id": "did:web:issuer.elix.cool",
   "verificationMethod": [{
-    "id": "did:web:issuer.trisaura.io#key-1",
+    "id": "did:web:issuer.elix.cool#key-1",
     "type": "Multikey",
-    "controller": "did:web:issuer.trisaura.io",
+    "controller": "did:web:issuer.elix.cool",
     "publicKeyMultibase": "z6Mk…"  // multibase base58-btc, ed25519-pub multicodec
   }],
-  "assertionMethod": ["did:web:issuer.trisaura.io#key-1"]
+  "assertionMethod": ["did:web:issuer.elix.cool#key-1"]
 }
 ```
 

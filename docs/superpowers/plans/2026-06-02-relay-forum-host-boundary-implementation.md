@@ -1434,8 +1434,8 @@ test "approved challenge persists audience into session response" do
 
   challenge_response =
     post_json("/api/v1/web-sessions/challenges", %{
-      "web_origin" => "https://trisaura.io",
-      "relay_origin" => "https://relay.trisaura.io",
+      "web_origin" => "https://elix.cool",
+      "relay_origin" => "https://relay.elix.cool",
       "audience" => "http://localhost:4001",
       "scopes" => ["forum:post"]
     })
@@ -2071,9 +2071,9 @@ Add to `ansible_node/app/test/web_session_grant_service_test.dart`:
 test('canonical web session grant includes audience when present', () {
   final grant = WebSessionGrant(
     challengeId: 'wsc_test',
-    relayOrigin: 'https://relay.trisaura.io',
-    webOrigin: 'https://trisaura.io',
-    audience: 'https://forum.trisaura.io',
+    relayOrigin: 'https://relay.elix.cool',
+    webOrigin: 'https://elix.cool',
+    audience: 'https://forum.elix.cool',
     subjectDid: 'did:plc:abc23456789',
     approvingDeviceId: 'app_device_abc',
     scopes: const ['forum:post'],
@@ -2081,8 +2081,8 @@ test('canonical web session grant includes audience when present', () {
     createdAt: DateTime.utc(2026, 6, 2, 11, 45),
   );
 
-  expect(jsonDecode(grant.canonicalJson())['audience'], 'https://forum.trisaura.io');
-  expect(grant.toJson()['audience'], 'https://forum.trisaura.io');
+  expect(jsonDecode(grant.canonicalJson())['audience'], 'https://forum.elix.cool');
+  expect(grant.toJson()['audience'], 'https://forum.elix.cool');
 });
 ```
 

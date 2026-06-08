@@ -1,5 +1,5 @@
 const _activityStreamsContext = 'https://www.w3.org/ns/activitystreams';
-const _trisAuraFollowContext = 'https://trisaura.io/ns/follow';
+const _trisAuraFollowContext = 'https://elix.cool/ns/follow';
 
 class FollowActivity {
   final String id;

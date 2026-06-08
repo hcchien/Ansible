@@ -17,8 +17,8 @@ defmodule AnsibleRelay.Web.VerifyWebSessionTest do
   defp approved_session(scopes, expires_at \\ nil, attrs \\ %{}) do
     {:ok, challenge} =
       WebSessionStore.issue_challenge(%{
-        "web_origin" => "https://trisaura.io",
-        "relay_origin" => "https://relay.trisaura.io",
+        "web_origin" => "https://elix.cool",
+        "relay_origin" => "https://relay.elix.cool",
         "audience" => Map.get(attrs, :audience),
         "scopes" => scopes,
         "ttl_seconds" => 300

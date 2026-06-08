@@ -27,7 +27,7 @@ void main() {
             jsonEncode({
               'nonce': 'nonce-1',
               'expires_at': '2026-05-04T00:00:00Z',
-              'handle': 'alice.trisaura.io',
+              'handle': 'alice.elix.cool',
             }),
             200,
           );
@@ -41,7 +41,7 @@ void main() {
 
       expect(challenge.nonce, 'nonce-1');
       expect(challenge.expiresAt, '2026-05-04T00:00:00Z');
-      expect(challenge.handle, 'alice.trisaura.io');
+      expect(challenge.handle, 'alice.elix.cool');
     },
   );
 
@@ -56,7 +56,7 @@ void main() {
           expect(jsonDecode(request.body), {
             'did': 'did:plc:test',
             'public_key_hex': '11' * 32,
-            'handle': 'alice.trisaura.io',
+            'handle': 'alice.elix.cool',
             'registration_sig': 'sig-hex',
             'nonce': 'nonce-1',
           });
@@ -64,7 +64,7 @@ void main() {
           return http.Response(
             jsonEncode({
               'did': 'did:plc:test',
-              'handle': 'alice.trisaura.io',
+              'handle': 'alice.elix.cool',
               'expires_at': '2026-08-04T00:00:00Z',
             }),
             200,
@@ -76,14 +76,14 @@ void main() {
         AnchorRequest(
           did: 'did:plc:test',
           publicKeyHex: '11' * 32,
-          handle: 'alice.trisaura.io',
+          handle: 'alice.elix.cool',
           registrationSig: 'sig-hex',
           nonce: 'nonce-1',
         ),
       );
 
       expect(anchored.did, 'did:plc:test');
-      expect(anchored.handle, 'alice.trisaura.io');
+      expect(anchored.handle, 'alice.elix.cool');
     },
   );
 
@@ -123,13 +123,13 @@ void main() {
         client: MockClient((request) async {
           expect(request.method, 'GET');
           expect(request.url.path, '/xrpc/com.atproto.identity.resolveHandle');
-          expect(request.url.queryParameters, {'handle': 'alice.trisaura.io'});
+          expect(request.url.queryParameters, {'handle': 'alice.elix.cool'});
 
           return http.Response(jsonEncode({'did': 'did:plc:alice'}), 200);
         }),
       );
 
-      expect(await client.resolveHandle('alice.trisaura.io'), 'did:plc:alice');
+      expect(await client.resolveHandle('alice.elix.cool'), 'did:plc:alice');
     },
   );
 

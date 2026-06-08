@@ -3,7 +3,7 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   alias AnsibleRelay.{DidAccountCache, VpVerifier}
 
-  @issuer_did "did:web:issuer.trisaura.io"
+  @issuer_did "did:web:issuer.elix.cool"
   @holder_did "did:plc:abcdefghijklmnop"
 
   setup do
@@ -57,9 +57,9 @@ defmodule AnsibleRelay.VpVerifierTest do
     vc_without_proof = %{
       "@context" => [
         "https://www.w3.org/ns/credentials/v2",
-        "https://trisaura.io/contexts/humanity/v1"
+        "https://elix.cool/contexts/humanity/v1"
       ],
-      "id" => Keyword.get(opts, :id, "https://issuer.trisaura.io/vc/test001"),
+      "id" => Keyword.get(opts, :id, "https://issuer.elix.cool/vc/test001"),
       "type" => ["VerifiableCredential", "TrisAuraHumanityCredential"],
       "issuer" => Keyword.get(opts, :issuer, @issuer_did),
       "validFrom" => now,
@@ -117,7 +117,7 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   test "accepts valid TrisAuraHumanityCredential VP", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv)
     vp = build_vp(@holder_did, priv, [vc])
@@ -127,35 +127,35 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   test "accepts VP with matching nonce and audience", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv)
-    vp = build_vp(@holder_did, priv, [vc], nonce: "nonce-123", audience: "https://relay.trisaura.io")
+    vp = build_vp(@holder_did, priv, [vc], nonce: "nonce-123", audience: "https://relay.elix.cool")
 
     assert {:ok, "TrisAuraHumanityCredential"} =
              VpVerifier.verify(@holder_did, vp,
                nonce: "nonce-123",
-               audience: "https://relay.trisaura.io"
+               audience: "https://relay.elix.cool"
              )
   end
 
   test "rejects VP with wrong nonce", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv)
-    vp = build_vp(@holder_did, priv, [vc], nonce: "nonce-abc", audience: "https://relay.trisaura.io")
+    vp = build_vp(@holder_did, priv, [vc], nonce: "nonce-abc", audience: "https://relay.elix.cool")
 
     assert {:error, :wrong_nonce} =
              VpVerifier.verify(@holder_did, vp,
                nonce: "nonce-DIFFERENT",
-               audience: "https://relay.trisaura.io"
+               audience: "https://relay.elix.cool"
              )
   end
 
   test "rejects VP with wrong audience", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv)
     vp = build_vp(@holder_did, priv, [vc], nonce: "nonce-123", audience: "https://evil.example")
@@ -163,14 +163,14 @@ defmodule AnsibleRelay.VpVerifierTest do
     assert {:error, :wrong_audience} =
              VpVerifier.verify(@holder_did, vp,
                nonce: "nonce-123",
-               audience: "https://relay.trisaura.io"
+               audience: "https://relay.elix.cool"
              )
   end
 
   test "rejects VP with invalid holder signature", %{issuer_priv: issuer_priv} do
     {pub_hex, _priv} = holder_keypair()
     {_other_pub, other_priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv)
     vp = build_vp(@holder_did, other_priv, [vc])
@@ -180,7 +180,7 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   test "rejects VP whose VC subject does not match holder", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc("did:plc:someoneelseabcd", issuer_priv)
     vp = build_vp(@holder_did, priv, [vc])
@@ -190,7 +190,7 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   test "rejects expired VC (validUntil in the past)", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     past = DateTime.add(DateTime.utc_now(), -1, :second) |> DateTime.to_iso8601()
     vc = build_humanity_vc(@holder_did, issuer_priv, valid_until: past)
@@ -201,7 +201,7 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   test "rejects VC with unknown credential type", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc =
       build_humanity_vc(@holder_did, issuer_priv)
@@ -222,7 +222,7 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   test "rejects VC with untrusted issuer", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv, issuer: "did:web:evil.example")
     vp = build_vp(@holder_did, priv, [vc])

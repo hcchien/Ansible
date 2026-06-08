@@ -15,7 +15,7 @@ func TestDIDDocumentServed(t *testing.T) {
 
 	doc := bodyJSON(t, w)
 
-	if doc["id"] != "did:web:issuer.trisaura.io" {
+	if doc["id"] != "did:web:issuer.elix.cool" {
 		t.Fatalf("unexpected id: %v", doc["id"])
 	}
 
@@ -27,13 +27,13 @@ func TestDIDDocumentServed(t *testing.T) {
 	if !ok {
 		t.Fatalf("verificationMethod not an object: %v", vms[0])
 	}
-	if vm["id"] != "did:web:issuer.trisaura.io#key-1" {
+	if vm["id"] != "did:web:issuer.elix.cool#key-1" {
 		t.Fatalf("unexpected vm id: %v", vm["id"])
 	}
 	if vm["type"] != "Multikey" {
 		t.Fatalf("unexpected vm type: %v", vm["type"])
 	}
-	if vm["controller"] != "did:web:issuer.trisaura.io" {
+	if vm["controller"] != "did:web:issuer.elix.cool" {
 		t.Fatalf("unexpected controller: %v", vm["controller"])
 	}
 	pkm, ok := vm["publicKeyMultibase"].(string)
@@ -42,7 +42,7 @@ func TestDIDDocumentServed(t *testing.T) {
 	}
 
 	am, ok := doc["assertionMethod"].([]any)
-	if !ok || len(am) != 1 || am[0] != "did:web:issuer.trisaura.io#key-1" {
+	if !ok || len(am) != 1 || am[0] != "did:web:issuer.elix.cool#key-1" {
 		t.Fatalf("unexpected assertionMethod: %v", doc["assertionMethod"])
 	}
 }

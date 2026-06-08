@@ -415,7 +415,7 @@ For MVP, boards that federate are represented as ActivityPub `Group` actors.
 {
   "@context": [
     "https://www.w3.org/ns/activitystreams",
-    "https://trisaura.io/ns/follow"
+    "https://elix.cool/ns/follow"
   ],
   "id": "https://node.example/activities/follow/board-9d10",
   "type": "Follow",

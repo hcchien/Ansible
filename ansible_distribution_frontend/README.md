@@ -38,7 +38,7 @@ frontend's origin to the relay's `WEB_ALLOWED_ORIGINS`.
 
 ```bash
 docker build -t ansible-web ansible_distribution_frontend
-docker run -p 8080:8080 -e RELAY_BASE_URL=https://relay.trisaura.io ansible-web
+docker run -p 8080:8080 -e RELAY_BASE_URL=https://relay.elix.cool ansible-web
 ```
 
 ## Deploy

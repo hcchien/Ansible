@@ -56,7 +56,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert is_binary(body["nonce"])
     assert byte_size(body["nonce"]) > 20
     assert is_binary(body["expires_at"])
-    assert body["handle"] == "alice.trisaura.io"
+    assert body["handle"] == "alice.elix.cool"
   end
 
   test "register reserves a handle while a nonce is pending" do
@@ -123,7 +123,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
       post_json("/api/v2/identity/anchor", %{
         "did" => @valid_did,
         "public_key_hex" => @valid_public_key,
-        "handle" => "alice.trisaura.io",
+        "handle" => "alice.elix.cool",
         "registration_sig" => "00",
         "nonce" => nonce
       })
@@ -149,7 +149,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
       post_json("/api/v2/identity/anchor", %{
         "did" => @valid_did,
         "public_key_hex" => public_key_hex,
-        "handle" => "alice.trisaura.io",
+        "handle" => "alice.elix.cool",
         "registration_sig" => signature,
         "nonce" => nonce
       })
@@ -157,7 +157,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert response.status == 200
     body = Jason.decode!(response.resp_body)
     assert body["did"] == @valid_did
-    assert body["handle"] == "alice.trisaura.io"
+    assert body["handle"] == "alice.elix.cool"
     assert {:ok, %{public_key_hex: ^public_key_hex}} = DidAccountCache.get(@valid_did)
     assert {:ok, %{public_key_hex: ^public_key_hex}} = IdentityCache.get(@valid_did)
   end
@@ -182,7 +182,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
       post_json("/api/v2/identity/anchor", %{
         "did" => @valid_did,
         "public_key_hex" => @valid_public_key,
-        "handle" => "alice.trisaura.io",
+        "handle" => "alice.elix.cool",
         "registration_sig" => "dev-sig-local",
         "nonce" => nonce
       })
@@ -207,7 +207,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
       post_json("/api/v2/identity/anchor", %{
         "did" => @valid_did,
         "public_key_hex" => public_key_hex,
-        "handle" => "bob.trisaura.io",
+        "handle" => "bob.elix.cool",
         "registration_sig" => signature,
         "nonce" => nonce
       })

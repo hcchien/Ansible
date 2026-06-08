@@ -93,7 +93,7 @@ class _ExistingDidPlcManager implements DidPlcManager {
   @override
   Future<DidPlcResult> createDid({
     required String handle,
-    String pdsEndpoint = 'https://trisaura.io',
+    String pdsEndpoint = 'https://elix.cool',
     String? signingKeyHex,
   }) {
     throw UnimplementedError('Not used by this test.');

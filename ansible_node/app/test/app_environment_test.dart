@@ -135,8 +135,8 @@ void main() {
   test('runtime readiness blocks production with development Rust bridge', () {
     final issues = AppEnvironment.runtimeReadinessIssues(
       environmentName: AppEnvironmentName.prod,
-      relayBaseUrl: 'https://relay.trisaura.io',
-      issuerBaseUrl: 'https://issuer.trisaura.io',
+      relayBaseUrl: 'https://relay.elix.cool',
+      issuerBaseUrl: 'https://issuer.elix.cool',
       atProtoBaseUrl: 'https://bsky.social',
       allowInsecureSigningFallback: false,
       allowInsecureIdentityFallback: false,

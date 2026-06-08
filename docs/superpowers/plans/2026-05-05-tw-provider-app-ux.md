@@ -108,7 +108,7 @@ testWidgets('wallet app bar add credential opens TW provider flow', (tester) asy
   final repo = InMemoryWalletRepository.withCredentials([
     WalletCredential(
       credentialId: 'urn:uuid:test-humanity',
-      issuerDid: 'did:web:issuer.trisaura.io',
+      issuerDid: 'did:web:issuer.elix.cool',
       holderDid: 'did:plc:abcdefghijklmnop',
       credentialType: 'TrisAuraHumanityCredential',
       status: WalletCredentialStatus.active,

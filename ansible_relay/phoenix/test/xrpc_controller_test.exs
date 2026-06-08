@@ -30,7 +30,7 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
 
   # Seed a DID into DidAccountCache with a real Ed25519 public key hex
   defp seed_did(did, pub_hex, handle \\ nil) do
-    h = handle || "#{System.unique_integer([:positive])}.trisaura.io"
+    h = handle || "#{System.unique_integer([:positive])}.elix.cool"
     DidAccountCache.put(did, pub_hex, h)
   end
 
@@ -362,7 +362,7 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
   test "resolveHandle returns DID for a registered handle" do
     {pub_hex, _} = ed25519_keypair()
     did = "did:plc:resolveme#{System.unique_integer([:positive])}"
-    handle = "alice#{System.unique_integer([:positive])}.trisaura.io"
+    handle = "alice#{System.unique_integer([:positive])}.elix.cool"
     DidAccountCache.put(did, pub_hex, handle)
 
     response = get_json("/xrpc/com.atproto.identity.resolveHandle?handle=#{handle}")
@@ -372,7 +372,7 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
   end
 
   test "resolveHandle returns 404 for unknown handle" do
-    response = get_json("/xrpc/com.atproto.identity.resolveHandle?handle=nobody.trisaura.io")
+    response = get_json("/xrpc/com.atproto.identity.resolveHandle?handle=nobody.elix.cool")
 
     assert response.status == 404
     assert Jason.decode!(response.resp_body)["error"] == "handle_not_found"

@@ -28,7 +28,7 @@ void main() {
     );
     final presentationService = VcPresentationService(
       walletRepository: repo,
-      trustedIssuers: {'did:web:issuer.trisaura.io'},
+      trustedIssuers: {'did:web:issuer.elix.cool'},
       proofVerifier: _FakeProofVerifier.valid(),
       statusResolver: (_) async => CredentialStatus.active,
       proofSigner: _FakeVpProofSigner('zholderproof'),
@@ -88,7 +88,7 @@ void main() {
     );
     final presentationService = VcPresentationService(
       walletRepository: repo,
-      trustedIssuers: {'did:web:issuer.trisaura.io'},
+      trustedIssuers: {'did:web:issuer.elix.cool'},
       proofVerifier: _FakeProofVerifier.valid(),
       statusResolver: (_) async => CredentialStatus.active,
       proofSigner: _FakeVpProofSigner('zholderproof'),
@@ -120,7 +120,7 @@ Future<InMemoryWalletRepository> _walletWithHumanityCredential() async {
   await repo.saveCredential(
     metadata: WalletCredential(
       credentialId: 'urn:uuid:test-humanity',
-      issuerDid: 'did:web:issuer.trisaura.io',
+      issuerDid: 'did:web:issuer.elix.cool',
       holderDid: 'did:key:z6Mkholder',
       credentialType: 'TrisAuraHumanityCredential',
       status: WalletCredentialStatus.active,
@@ -175,11 +175,11 @@ String _requestUri() {
 final _humanityFixture = <String, Object?>{
   '@context': [
     'https://www.w3.org/ns/credentials/v2',
-    'https://trisaura.io/contexts/humanity/v1',
+    'https://elix.cool/contexts/humanity/v1',
   ],
   'id': 'urn:uuid:test-humanity',
   'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-  'issuer': 'did:web:issuer.trisaura.io',
+  'issuer': 'did:web:issuer.elix.cool',
   'validFrom': '2026-05-04T00:00:00Z',
   'validUntil': '2026-08-02T00:00:00Z',
   'credentialSubject': {
@@ -192,12 +192,12 @@ final _humanityFixture = <String, Object?>{
   'proof': {
     '@context': [
       'https://www.w3.org/ns/credentials/v2',
-      'https://trisaura.io/contexts/humanity/v1',
+      'https://elix.cool/contexts/humanity/v1',
     ],
     'type': 'DataIntegrityProof',
     'cryptosuite': 'eddsa-jcs-2022',
     'created': '2026-05-04T10:12:00Z',
-    'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
+    'verificationMethod': 'did:web:issuer.elix.cool#key-1',
     'proofPurpose': 'assertionMethod',
     'proofValue': 'zissuerproof',
   },

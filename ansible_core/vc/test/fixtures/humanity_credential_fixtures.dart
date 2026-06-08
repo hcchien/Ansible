@@ -3,11 +3,11 @@ import 'package:ansible_vc/ansible_vc.dart';
 final humanityFixture = <String, Object?>{
   '@context': [
     'https://www.w3.org/ns/credentials/v2',
-    'https://trisaura.io/contexts/humanity/v1',
+    'https://elix.cool/contexts/humanity/v1',
   ],
   'id': 'urn:uuid:test-humanity',
   'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-  'issuer': 'did:web:issuer.trisaura.io',
+  'issuer': 'did:web:issuer.elix.cool',
   'validFrom': '2026-05-04T00:00:00Z',
   'validUntil': '2026-08-02T00:00:00Z',
   'credentialSubject': {
@@ -18,14 +18,14 @@ final humanityFixture = <String, Object?>{
     'jurisdiction': 'TW',
   },
   'credentialStatus': {
-    'id': 'https://issuer.trisaura.io/status/humanity/2026-05#test',
+    'id': 'https://issuer.elix.cool/status/humanity/2026-05#test',
     'type': 'TrisAuraStatusList2026',
     'statusPurpose': 'revocation',
   },
   'proof': {
     'type': 'DataIntegrityProof',
     'cryptosuite': 'eddsa-jcs-2022',
-    'verificationMethod': 'did:web:issuer.trisaura.io#key-2026-05',
+    'verificationMethod': 'did:web:issuer.elix.cool#key-2026-05',
     'created': '2026-05-04T10:12:00Z',
     'proofPurpose': 'assertionMethod',
     'proofValue': 'test-proof',

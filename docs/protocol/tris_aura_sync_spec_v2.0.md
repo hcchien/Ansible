@@ -79,7 +79,7 @@ App                           Relay (Elixir/Phoenix)          PLC Directory
  |   body: {                       |                               |
  |     did: "did:plc:...",         |                               |
  |     public_key_hex: <hex>,      |                               |
- |     handle: "@user.trisaura.io",|                               |
+ |     handle: "@user.elix.cool",|                               |
  |     registration_sig: <hex>     |                               |
  |   }                             |                               |
  |                                 |                               |
@@ -91,7 +91,7 @@ App                           Relay (Elixir/Phoenix)          PLC Directory
 
 ### Handle 解析
 
-- 預設 Handle：`@{username}.trisaura.io`（由 Relay 統一管理 DNS）
+- 預設 Handle：`@{username}.elix.cool`（由 Relay 統一管理 DNS）
 - 自訂 Handle：使用者在自有網域設定 DNS TXT 記錄或 HTTPS `/.well-known/atproto-did`
 - Handle 解析邏輯（Rust FFI）：
   1. DNS TXT 查詢 `_atproto.{domain}` → `did={did}`

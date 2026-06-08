@@ -1275,7 +1275,7 @@ test('submits zkID MOICA proof and issues credential', () async {
           '@context': ['https://www.w3.org/ns/credentials/v2'],
           'id': 'urn:uuid:moica-zkid-vc',
           'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-          'issuer': 'did:web:issuer.trisaura.io',
+          'issuer': 'did:web:issuer.elix.cool',
           'validFrom': '2026-05-30T12:00:00Z',
           'validUntil': '2026-08-28T12:00:00Z',
           'credentialSubject': {

@@ -15,7 +15,7 @@ void main() {
       await repo.saveCredential(
         metadata: WalletCredential(
           credentialId: 'urn:uuid:test-humanity',
-          issuerDid: 'did:web:issuer.trisaura.io',
+          issuerDid: 'did:web:issuer.elix.cool',
           holderDid: 'did:key:z6Mkholder',
           credentialType: 'TrisAuraHumanityCredential',
           status: WalletCredentialStatus.active,
@@ -31,7 +31,7 @@ void main() {
 
       final service = VcPresentationService(
         walletRepository: repo,
-        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        trustedIssuers: {'did:web:issuer.elix.cool'},
         proofVerifier: _FakeProofVerifier.valid(),
         proofSigner: _FakeVpProofSigner('holder-proof'),
         statusResolver: (_) async => CredentialStatus.active,
@@ -40,7 +40,7 @@ void main() {
 
       final envelope = await service.createForPost(
         holderDid: 'did:key:z6Mkholder',
-        audience: 'https://relay.trisaura.io',
+        audience: 'https://relay.elix.cool',
         nonce: 'post-nonce',
         now: DateTime.utc(2026, 5, 5),
       );
@@ -51,7 +51,7 @@ void main() {
       expect(
         (envelope.verifiablePresentation['proof']!
             as Map<String, Object?>)['domain'],
-        'https://relay.trisaura.io',
+        'https://relay.elix.cool',
       );
       expect(
         (envelope.verifiablePresentation['proof']!
@@ -67,7 +67,7 @@ void main() {
       final history = await repo.listPresentations('urn:uuid:test-humanity');
       expect(history.single.presentationId, 'vp-test');
       expect(history.single.result, WalletPresentationResult.approved);
-      expect(history.single.verifierAudience, 'https://relay.trisaura.io');
+      expect(history.single.verifierAudience, 'https://relay.elix.cool');
       expect(history.single.nonceHash, isNot('post-nonce'));
     },
   );
@@ -79,7 +79,7 @@ void main() {
       await repo.saveCredential(
         metadata: WalletCredential(
           credentialId: 'urn:uuid:test-humanity',
-          issuerDid: 'did:web:issuer.trisaura.io',
+          issuerDid: 'did:web:issuer.elix.cool',
           holderDid: 'did:key:z6Mkholder',
           credentialType: 'TrisAuraHumanityCredential',
           status: WalletCredentialStatus.active,
@@ -96,7 +96,7 @@ void main() {
 
       final service = VcPresentationService(
         walletRepository: repo,
-        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        trustedIssuers: {'did:web:issuer.elix.cool'},
         proofVerifier: _FakeProofVerifier.valid(),
         proofSigner: _FakeVpProofSigner('holder-proof'),
         nostrBindingSigner: nostrSigner,
@@ -106,7 +106,7 @@ void main() {
 
       final envelope = await service.createForPost(
         holderDid: 'did:key:z6Mkholder',
-        audience: 'https://relay.trisaura.io',
+        audience: 'https://relay.elix.cool',
         nonce: 'post-nonce',
         now: DateTime.utc(2026, 5, 5, 12),
         nostrPubkey: 'b' * 64,
@@ -137,7 +137,7 @@ void main() {
       );
       expect(_hasTag(tags, 'holder', 'did:key:z6Mkholder'), isTrue);
       expect(_hasTag(tags, 'challenge', 'post-nonce'), isTrue);
-      expect(_hasTag(tags, 'domain', 'https://relay.trisaura.io'), isTrue);
+      expect(_hasTag(tags, 'domain', 'https://relay.elix.cool'), isTrue);
       expect(_hasTag(tags, 'vp_sha256', expectedVpHash), isTrue);
       expect(event['id'], nostrSigner.lastDraft!.computeId());
       expect(event['sig'], 'c' * 128);
@@ -147,7 +147,7 @@ void main() {
   test('returns null when no active humanity credential exists', () async {
     final service = VcPresentationService(
       walletRepository: InMemoryWalletRepository(),
-      trustedIssuers: {'did:web:issuer.trisaura.io'},
+      trustedIssuers: {'did:web:issuer.elix.cool'},
       proofVerifier: _FakeProofVerifier.valid(),
       proofSigner: _FakeVpProofSigner('holder-proof'),
       statusResolver: (_) async => CredentialStatus.active,
@@ -155,7 +155,7 @@ void main() {
 
     final envelope = await service.createForPost(
       holderDid: 'did:key:z6Mkholder',
-      audience: 'https://relay.trisaura.io',
+      audience: 'https://relay.elix.cool',
       nonce: 'post-nonce',
       now: DateTime.utc(2026, 5, 5),
     );
@@ -168,7 +168,7 @@ void main() {
     await repo.saveCredential(
       metadata: WalletCredential(
         credentialId: 'urn:uuid:test-humanity',
-        issuerDid: 'did:web:issuer.trisaura.io',
+        issuerDid: 'did:web:issuer.elix.cool',
         holderDid: 'did:key:z6Mkholder',
         credentialType: 'TrisAuraHumanityCredential',
         status: WalletCredentialStatus.active,
@@ -184,7 +184,7 @@ void main() {
 
     final service = VcPresentationService(
       walletRepository: repo,
-      trustedIssuers: {'did:web:issuer.trisaura.io'},
+      trustedIssuers: {'did:web:issuer.elix.cool'},
       proofVerifier: _FakeProofVerifier.valid(),
       proofSigner: _FakeVpProofSigner('holder-proof'),
       statusResolver: (_) async => CredentialStatus.active,
@@ -192,7 +192,7 @@ void main() {
 
     final envelope = await service.createForPost(
       holderDid: 'did:key:z6Mkother',
-      audience: 'https://relay.trisaura.io',
+      audience: 'https://relay.elix.cool',
       nonce: 'post-nonce',
       now: DateTime.utc(2026, 5, 5),
     );
@@ -211,7 +211,7 @@ void main() {
       await repo.saveCredential(
         metadata: WalletCredential(
           credentialId: 'urn:uuid:test-humanity',
-          issuerDid: 'did:web:issuer.trisaura.io',
+          issuerDid: 'did:web:issuer.elix.cool',
           holderDid: 'did:key:z6Mkholder',
           credentialType: 'TrisAuraHumanityCredential',
           status: WalletCredentialStatus.active,
@@ -227,7 +227,7 @@ void main() {
 
       final service = VcPresentationService(
         walletRepository: repo,
-        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        trustedIssuers: {'did:web:issuer.elix.cool'},
         proofVerifier: _FakeProofVerifier.valid(),
         proofSigner: _FakeVpProofSigner('holder-proof'),
         statusResolver: (_) async => status,
@@ -235,7 +235,7 @@ void main() {
 
       final envelope = await service.createForPost(
         holderDid: 'did:key:z6Mkholder',
-        audience: 'https://relay.trisaura.io',
+        audience: 'https://relay.elix.cool',
         nonce: 'post-nonce',
         now: DateTime.utc(2026, 5, 5),
       );
@@ -249,11 +249,11 @@ void main() {
 final _humanityFixture = <String, Object?>{
   '@context': [
     'https://www.w3.org/ns/credentials/v2',
-    'https://trisaura.io/contexts/humanity/v1',
+    'https://elix.cool/contexts/humanity/v1',
   ],
   'id': 'urn:uuid:test-humanity',
   'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
-  'issuer': 'did:web:issuer.trisaura.io',
+  'issuer': 'did:web:issuer.elix.cool',
   'validFrom': '2026-05-04T00:00:00Z',
   'validUntil': '2026-08-02T00:00:00Z',
   'credentialSubject': {
@@ -266,12 +266,12 @@ final _humanityFixture = <String, Object?>{
   'proof': {
     '@context': [
       'https://www.w3.org/ns/credentials/v2',
-      'https://trisaura.io/contexts/humanity/v1',
+      'https://elix.cool/contexts/humanity/v1',
     ],
     'type': 'DataIntegrityProof',
     'cryptosuite': 'eddsa-jcs-2022',
     'created': '2026-05-04T10:12:00Z',
-    'verificationMethod': 'did:web:issuer.trisaura.io#key-1',
+    'verificationMethod': 'did:web:issuer.elix.cool#key-1',
     'proofPurpose': 'assertionMethod',
     'proofValue': 'zissuerproof',
   },

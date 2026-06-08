@@ -31,8 +31,8 @@ func newTestIssuerUsingStore(t *testing.T, store *vc.Store) *vc.Issuer {
 		t.Fatal(err)
 	}
 	iss, err := vc.NewIssuer(vc.Config{
-		IssuerDID:  "did:web:issuer.trisaura.io",
-		IssuerURL:  "https://issuer.trisaura.io",
+		IssuerDID:  "did:web:issuer.elix.cool",
+		IssuerURL:  "https://issuer.elix.cool",
 		PrivKeyHex: hex.EncodeToString(priv.Seed()),
 		TTLDays:    90,
 	}, store)
@@ -362,8 +362,8 @@ func TestIssuer_FileStorePersistsActivePersonhoodBinding(t *testing.T) {
 
 func TestIssuer_InvalidKeyHex(t *testing.T) {
 	_, err := vc.NewIssuer(vc.Config{
-		IssuerDID:  "did:web:issuer.trisaura.io",
-		IssuerURL:  "https://issuer.trisaura.io",
+		IssuerDID:  "did:web:issuer.elix.cool",
+		IssuerURL:  "https://issuer.elix.cool",
 		PrivKeyHex: "not-hex",
 	}, vc.NewStore())
 	if err == nil {

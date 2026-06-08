@@ -8,8 +8,8 @@ void main() {
   test('builds canonical web session grant payload', () {
     final grant = WebSessionGrant(
       challengeId: 'wsc_test',
-      relayOrigin: 'https://relay.trisaura.io',
-      webOrigin: 'https://trisaura.io',
+      relayOrigin: 'https://relay.elix.cool',
+      webOrigin: 'https://elix.cool',
       subjectDid: 'did:plc:abc23456789',
       approvingDeviceId: 'app_device_abc',
       scopes: const ['forum:post', 'forum:read'],
@@ -19,16 +19,16 @@ void main() {
 
     expect(
       grant.canonicalJson(),
-      '{"approving_device_id":"app_device_abc","challenge_id":"wsc_test","created_at":"2026-05-11T12:45:00.000Z","expires_at":"2026-05-11T13:00:00.000Z","relay_origin":"https://relay.trisaura.io","scopes":["forum:post","forum:read"],"subject_did":"did:plc:abc23456789","type":"io.trisaura.webSessionGrant","version":1,"web_origin":"https://trisaura.io"}',
+      '{"approving_device_id":"app_device_abc","challenge_id":"wsc_test","created_at":"2026-05-11T12:45:00.000Z","expires_at":"2026-05-11T13:00:00.000Z","relay_origin":"https://relay.elix.cool","scopes":["forum:post","forum:read"],"subject_did":"did:plc:abc23456789","type":"io.trisaura.webSessionGrant","version":1,"web_origin":"https://elix.cool"}',
     );
   });
 
   test('canonical web session grant includes audience when present', () {
     final grant = WebSessionGrant(
       challengeId: 'wsc_test',
-      relayOrigin: 'https://relay.trisaura.io',
-      webOrigin: 'https://trisaura.io',
-      audience: 'https://forum.trisaura.io',
+      relayOrigin: 'https://relay.elix.cool',
+      webOrigin: 'https://elix.cool',
+      audience: 'https://forum.elix.cool',
       subjectDid: 'did:plc:abc23456789',
       approvingDeviceId: 'app_device_abc',
       scopes: const ['forum:post'],
@@ -38,13 +38,13 @@ void main() {
 
     expect(
       grant.canonicalJson(),
-      '{"approving_device_id":"app_device_abc","audience":"https://forum.trisaura.io","challenge_id":"wsc_test","created_at":"2026-06-02T11:45:00.000Z","expires_at":"2026-06-02T12:00:00.000Z","relay_origin":"https://relay.trisaura.io","scopes":["forum:post"],"subject_did":"did:plc:abc23456789","type":"io.trisaura.webSessionGrant","version":1,"web_origin":"https://trisaura.io"}',
+      '{"approving_device_id":"app_device_abc","audience":"https://forum.elix.cool","challenge_id":"wsc_test","created_at":"2026-06-02T11:45:00.000Z","expires_at":"2026-06-02T12:00:00.000Z","relay_origin":"https://relay.elix.cool","scopes":["forum:post"],"subject_did":"did:plc:abc23456789","type":"io.trisaura.webSessionGrant","version":1,"web_origin":"https://elix.cool"}',
     );
     expect(
       jsonDecode(grant.canonicalJson())['audience'],
-      'https://forum.trisaura.io',
+      'https://forum.elix.cool',
     );
-    expect(grant.toJson()['audience'], 'https://forum.trisaura.io');
+    expect(grant.toJson()['audience'], 'https://forum.elix.cool');
   });
 
   test('signs canonical grant bytes with the injected DID signer', () async {
@@ -52,8 +52,8 @@ void main() {
     final service = WebSessionGrantService(signer: signer);
     final grant = WebSessionGrant(
       challengeId: 'wsc_test',
-      relayOrigin: 'https://relay.trisaura.io',
-      webOrigin: 'https://trisaura.io',
+      relayOrigin: 'https://relay.elix.cool',
+      webOrigin: 'https://elix.cool',
       subjectDid: 'did:plc:abc23456789',
       approvingDeviceId: 'app_device_abc',
       scopes: const ['forum:read'],
@@ -70,12 +70,12 @@ void main() {
   test('parses valid app-mediated web session approval links', () {
     final link = WebSessionApprovalLink.parse(
       Uri.parse(
-        'trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=https%3A%2F%2Frelay.trisaura.io',
+        'trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=https%3A%2F%2Frelay.elix.cool',
       ),
     );
 
     expect(link.challengeId, 'wsc_abc');
-    expect(link.relayOrigin, 'https://relay.trisaura.io');
+    expect(link.relayOrigin, 'https://relay.elix.cool');
   });
 
   test('rejects malformed approval links', () {
@@ -104,7 +104,7 @@ void main() {
         Uri.parse(
           'trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=https%3A%2F%2Fevil.example',
         ),
-        allowedRelayOrigins: const {'https://relay.trisaura.io'},
+        allowedRelayOrigins: const {'https://relay.elix.cool'},
       ),
       throwsA(isA<FormatException>()),
     );

@@ -53,8 +53,8 @@ func newTestHandler(t *testing.T) *api.Handler {
 		t.Fatal(err)
 	}
 	iss, err := vc.NewIssuer(vc.Config{
-		IssuerDID:  "did:web:issuer.trisaura.io",
-		IssuerURL:  "https://issuer.trisaura.io",
+		IssuerDID:  "did:web:issuer.elix.cool",
+		IssuerURL:  "https://issuer.elix.cool",
 		PrivKeyHex: hex.EncodeToString(priv.Seed()),
 		TTLDays:    90,
 	}, vc.NewStore())

@@ -8,7 +8,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
   alias AnsibleRelay.{DidAccountCache, IdentityCache, SigVerifier}
 
-  @handle_domain "trisaura.io"
+  @handle_domain "elix.cool"
 
   def register(conn, params) do
     with {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
@@ -159,7 +159,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   defp validate_did(_), do: {:error, :invalid_did}
 
   defp validate_handle(handle) when is_binary(handle) do
-    if String.match?(handle, ~r/\A[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.trisaura\.io\z/) do
+    if String.match?(handle, ~r/\A[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.elix\.cool\z/) do
       :ok
     else
       {:error, :invalid_handle}

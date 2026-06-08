@@ -91,7 +91,7 @@ class _PasskeysRegistrationScreenState
       });
       return;
     }
-    final handle = '$handleSuffix.trisaura.io';
+    final handle = '$handleSuffix.elix.cool';
 
     setState(() {
       _phase = _Phase.generatingKey;
@@ -437,7 +437,7 @@ class _PasskeysRegistrationScreenState
                                       zh: '帳號名稱',
                                       en: 'Account name',
                                     ),
-                                    suffixText: '.trisaura.io',
+                                    suffixText: '.elix.cool',
                                   ),
                                 ),
                               ),

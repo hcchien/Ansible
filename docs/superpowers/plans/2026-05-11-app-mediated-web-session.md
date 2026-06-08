@@ -70,8 +70,8 @@ and one-time challenge consumption:
 test "approved challenge creates a scoped session token" do
   {:ok, challenge} =
     WebSessionStore.issue_challenge(%{
-      "web_origin" => "https://trisaura.io",
-      "relay_origin" => "https://relay.trisaura.io",
+      "web_origin" => "https://elix.cool",
+      "relay_origin" => "https://relay.elix.cool",
       "scopes" => ["forum:read", "forum:post"],
       "ttl_seconds" => 300
     })
@@ -358,8 +358,8 @@ Add a deterministic test:
 test('builds canonical web session grant payload', () {
   final grant = WebSessionGrant(
     challengeId: 'wsc_test',
-    relayOrigin: 'https://relay.trisaura.io',
-    webOrigin: 'https://trisaura.io',
+    relayOrigin: 'https://relay.elix.cool',
+    webOrigin: 'https://elix.cool',
     subjectDid: 'did:plc:abc23456789',
     approvingDeviceId: 'app_device_abc',
     scopes: const ['forum:post', 'forum:read'],
@@ -369,7 +369,7 @@ test('builds canonical web session grant payload', () {
 
   expect(
     grant.canonicalJson(),
-    '{"approving_device_id":"app_device_abc","challenge_id":"wsc_test","created_at":"2026-05-11T12:45:00.000Z","expires_at":"2026-05-11T13:00:00.000Z","relay_origin":"https://relay.trisaura.io","scopes":["forum:post","forum:read"],"subject_did":"did:plc:abc23456789","type":"io.trisaura.webSessionGrant","version":1,"web_origin":"https://trisaura.io"}',
+    '{"approving_device_id":"app_device_abc","challenge_id":"wsc_test","created_at":"2026-05-11T12:45:00.000Z","expires_at":"2026-05-11T13:00:00.000Z","relay_origin":"https://relay.elix.cool","scopes":["forum:post","forum:read"],"subject_did":"did:plc:abc23456789","type":"io.trisaura.webSessionGrant","version":1,"web_origin":"https://elix.cool"}',
   );
 });
 ```
@@ -533,7 +533,7 @@ Expected: fail because screens do not exist.
 Support payloads shaped as:
 
 ```text
-trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=https%3A%2F%2Frelay.trisaura.io
+trisaura://web-session/approve?challenge_id=wsc_abc&relay_origin=https%3A%2F%2Frelay.elix.cool
 ```
 
 Reject payloads without `challenge_id` or with non-http relay origins.

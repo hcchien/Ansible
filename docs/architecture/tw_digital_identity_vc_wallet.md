@@ -22,7 +22,7 @@ Federation transition note: `did:plc` remains the current holder DID and
 AT Protocol compatibility context for this wallet plan. It should not be read
 as the only public identity path. Public Nostr identity is represented by
 `did:nostr` / `npub`, while ActivityPub identity is a relay-domain Actor URL
-such as `https://relay.trisaura.io/users/alice`.
+such as `https://relay.elix.cool/users/alice`.
 
 The Relay/Issuer verifies a user through Taiwan digital identity, then issues a
 privacy-preserving Tris-Aura VC bound to the user's holder DID. The App stores
@@ -270,7 +270,7 @@ Compatibility target:
 
 ### Issuer DID
 
-Use `did:web:issuer.trisaura.io` for the first production Issuer because it is
+Use `did:web:issuer.elix.cool` for the first production Issuer because it is
 operationally simple and auditable. The DID document must publish:
 
 - assertion method key for VC issuance
@@ -292,7 +292,7 @@ Required claims:
 ```json
 {
   "type": ["VerifiableCredential", "TrisAuraHumanityCredential"],
-  "issuer": "did:web:issuer.trisaura.io",
+  "issuer": "did:web:issuer.elix.cool",
   "credentialSubject": {
     "id": "did:plc:holder...",
     "humanVerified": true,
@@ -305,7 +305,7 @@ Required claims:
   "credentialStatus": {
     "type": "TrisAuraStatusList2026",
     "statusPurpose": "revocation",
-    "statusListCredential": "https://issuer.trisaura.io/status/humanity/2026-05"
+    "statusListCredential": "https://issuer.elix.cool/status/humanity/2026-05"
   }
 }
 ```

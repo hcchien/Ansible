@@ -7,7 +7,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
   @router_opts Router.init([])
 
-  @issuer_did "did:web:issuer.trisaura.io"
+  @issuer_did "did:web:issuer.elix.cool"
   @holder_did "did:plc:abcdefghijklmnop"
   @nostr_binding_kind 27_235
   @nostr_binding_marker "io.trisaura.vc.nostr-binding.v1"
@@ -51,9 +51,9 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     vc_without_proof = %{
       "@context" => [
         "https://www.w3.org/ns/credentials/v2",
-        "https://trisaura.io/contexts/humanity/v1"
+        "https://elix.cool/contexts/humanity/v1"
       ],
-      "id" => "https://issuer.trisaura.io/vc/test001",
+      "id" => "https://issuer.elix.cool/vc/test001",
       "type" => ["VerifiableCredential", credential_type],
       "issuer" => @issuer_did,
       "validFrom" => now,
@@ -258,7 +258,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
   test "present upgrades holder to verified_human with valid humanity credential VP",
        %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_vc(@holder_did, issuer_priv)
     vp = build_vp(@holder_did, priv_key, [vc])
@@ -275,14 +275,14 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
   test "present binds a Nostr pubkey to the verified holder for local relay trust",
        %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_vc(@holder_did, issuer_priv)
 
     vp =
       build_vp(@holder_did, priv_key, [vc],
         nonce: "post-nonce",
-        audience: "https://relay.trisaura.io"
+        audience: "https://relay.elix.cool"
       )
 
     nostr_binding = build_nostr_binding_event(@holder_did, vp)
@@ -306,7 +306,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
   test "present does not treat email credential as verified human",
        %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_vc(@holder_did, issuer_priv, credential_type: "EmailCredential")
     vp = build_vp(@holder_did, priv_key, [vc])
@@ -322,7 +322,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
   test "present rejects VP with invalid holder proof", %{issuer_priv: issuer_priv} do
     {pub_hex, _priv_key} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_vc(@holder_did, issuer_priv)
     {_other_pub, other_priv} = holder_keypair()
@@ -337,7 +337,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
   test "present rejects VP when VC subject does not match holder", %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io")
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_vc("did:plc:someoneelse0001", issuer_priv)
     vp = build_vp(@holder_did, priv_key, [vc])
@@ -351,7 +351,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
   test "present does not downgrade a higher tier", %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
 
-    DidAccountCache.put(@holder_did, pub_hex, "alice.trisaura.io",
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool",
       reputation_tier: "verified_human"
     )
 

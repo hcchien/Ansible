@@ -137,7 +137,7 @@ Future<void> _exercisesPublicationRepository(
 
   await repository.markTargetPublished(
     'target-activitypub',
-    remoteId: 'https://relay.trisaura.io/users/alice/outbox/1',
+    remoteId: 'https://relay.elix.cool/users/alice/outbox/1',
   );
   await repository.markIntentComplete('intent-signed');
 
@@ -209,7 +209,7 @@ PublicationTarget _target({
     protocol: protocol,
     endpoint: protocol == PublicationProtocol.nostr
         ? 'wss://relay.example'
-        : 'https://relay.trisaura.io',
+        : 'https://relay.elix.cool',
     status: PublicationStatus.pending,
   );
 }

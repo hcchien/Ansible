@@ -881,7 +881,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         AnchorRequest(
           did: did,
           publicKeyHex: pubKeyHex,
-          handle: challenge.handle ?? '$suffix.trisaura.io',
+          handle: challenge.handle ?? '$suffix.elix.cool',
           registrationSig: sig.hex,
           nonce: challenge.nonce,
         ),

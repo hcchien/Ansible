@@ -9,7 +9,7 @@ void main() {
       final credential = TrisAuraCredential.fromJson(humanityFixture);
 
       expect(credential.id, 'urn:uuid:test-humanity');
-      expect(credential.issuerDid, 'did:web:issuer.trisaura.io');
+      expect(credential.issuerDid, 'did:web:issuer.elix.cool');
       expect(credential.holderDid, 'did:key:z6Mkholder');
       expect(credential.types, contains('TrisAuraHumanityCredential'));
       expect(credential.claims['humanVerified'], true);
@@ -91,7 +91,7 @@ void main() {
       final credential = TrisAuraCredential.fromJson(expiredHumanityFixture);
       final verifier = VcVerifier(
         proofVerifier: FakeProofVerifier.valid(),
-        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        trustedIssuers: {'did:web:issuer.elix.cool'},
         statusResolver: (_) async => CredentialStatus.active,
       );
 
@@ -125,7 +125,7 @@ void main() {
       final credential = TrisAuraCredential.fromJson(humanityFixture);
       final verifier = VcVerifier(
         proofVerifier: FakeProofVerifier.valid(),
-        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        trustedIssuers: {'did:web:issuer.elix.cool'},
         statusResolver: (_) async => CredentialStatus.revoked,
       );
 
@@ -142,7 +142,7 @@ void main() {
       final credential = TrisAuraCredential.fromJson(humanityFixture);
       final verifier = VcVerifier(
         proofVerifier: FakeProofVerifier.invalid(),
-        trustedIssuers: {'did:web:issuer.trisaura.io'},
+        trustedIssuers: {'did:web:issuer.elix.cool'},
         statusResolver: (_) async => CredentialStatus.active,
       );
 

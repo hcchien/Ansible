@@ -7,8 +7,8 @@ void main() {
   test('Dart fallback emits a relay-compatible local did:plc stub', () async {
     final result = await RustLib.instance.apiCreateDidPlc(
       signingKeyHex: 'ab' * 32,
-      handle: 'alice.trisaura.io',
-      pdsEndpoint: 'https://trisaura.io',
+      handle: 'alice.elix.cool',
+      pdsEndpoint: 'https://elix.cool',
     );
 
     expect(result.did, matches(RegExp(r'^did:plc:[a-z2-7]{10,}$')));

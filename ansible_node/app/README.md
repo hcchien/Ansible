@@ -28,9 +28,9 @@ fallbacks:
 ```bash
 flutter build ios --release \
   --dart-define=ANSIBLE_APP_ENV=prod \
-  --dart-define=ANSIBLE_RELAY_BASE_URL=https://relay.trisaura.io \
-  --dart-define=ANSIBLE_ISSUER_BASE_URL=https://issuer.trisaura.io \
-  --dart-define=ANSIBLE_ATPROTO_BASE_URL=https://relay.trisaura.io \
+  --dart-define=ANSIBLE_RELAY_BASE_URL=https://relay.elix.cool \
+  --dart-define=ANSIBLE_ISSUER_BASE_URL=https://issuer.elix.cool \
+  --dart-define=ANSIBLE_ATPROTO_BASE_URL=https://relay.elix.cool \
   --dart-define=ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK=false \
   --dart-define=ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK=false
 ```

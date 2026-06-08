@@ -7,7 +7,7 @@ defmodule AnsibleRelay.ActivityPub.DeliveryQueue do
   alias AnsibleRelay.ActivityPub.ActivityBuilder
 
   def enqueue(intent, remote_inbox, opts \\ []) when is_binary(remote_inbox) do
-    base_url = Keyword.get(opts, :base_url, "https://relay.trisaura.io")
+    base_url = Keyword.get(opts, :base_url, "https://relay.elix.cool")
     activity = ActivityBuilder.from_intent(intent, base_url: base_url)
 
     attrs = %{

@@ -48,13 +48,13 @@ The app may maintain multiple identity bindings for a single local account:
 | Nostr | `did:nostr:<pubkey>` / `npub` | Public Nostr author identity and event signing key |
 | ActivityPub | `https://relay.example/users/<actor>` | Relay-owned federated actor endpoint |
 | AT Protocol | `did:plc` / handle | Optional alias, discovery bridge, or legacy compatibility path |
-| Human identifier | NIP-05, e.g. `alice@trisaura.io` | Verifiable display and search identifier |
+| Human identifier | NIP-05, e.g. `alice@elix.cool` | Verifiable display and search identifier |
 
 Rules:
 
 - Nostr clients follow public keys, not NIP-05 names or AT Protocol handles.
 - ActivityPub actors are canonicalized by the relay domain, e.g.
-  `@alice@relay.trisaura.io`.
+  `@alice@relay.elix.cool`.
 - `did:plc` and AT Protocol handles may be advertised as aliases, but they are
   not the primary Nostr author key and do not define the ActivityPub Actor URL.
 - `did:nostr` is the public DID method for Nostr-facing identity.
@@ -123,7 +123,7 @@ protocol shapes:
 |---|---|
 | [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md) | Event envelope, event id, secp256k1 Schnorr signatures, WebSocket relay flow. |
 | [NIP-02](https://github.com/nostr-protocol/nips/blob/master/02.md) | Follow/contact list projection. |
-| [NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md) | DNS-based identifier such as `alice@trisaura.io`; store and follow pubkeys, not handles. |
+| [NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md) | DNS-based identifier such as `alice@elix.cool`; store and follow pubkeys, not handles. |
 | [NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md) | Deletion request events for public Nostr content. |
 | [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md) | User-facing identifiers such as `npub`, `note`, `nevent`, and `naddr`. |
 | [NIP-23](https://github.com/nostr-protocol/nips/blob/master/23.md) | Long-form note/article projection using `kind:30023`; drafts may use `kind:30024` only if explicitly distributed. |

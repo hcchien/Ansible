@@ -81,8 +81,8 @@ Each local account may have multiple public bindings:
 - Nostr public identity: secp256k1 public key represented as `did:nostr` and
   user-facing `npub`.
 - ActivityPub identity: relay-domain Actor URL, for example
-  `https://relay.trisaura.io/users/alice`.
-- NIP-05 identifier: alias such as `alice@trisaura.io`.
+  `https://relay.elix.cool/users/alice`.
+- NIP-05 identifier: alias such as `alice@elix.cool`.
 - AT Protocol identity: optional `did:plc` / handle alias.
 - Web session identity: relay-issued browser session bound either to a hosted web
   account or to a short-lived app-signed session grant.

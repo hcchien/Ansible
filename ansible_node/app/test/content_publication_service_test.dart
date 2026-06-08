@@ -187,7 +187,7 @@ void main() {
               active: RemoteNode(
                 id: 'node-1',
                 name: 'Ansible relay',
-                url: 'https://relay.trisaura.io',
+                url: 'https://relay.elix.cool',
                 createdAt: now,
                 updatedAt: now,
               ),
@@ -207,7 +207,7 @@ void main() {
       expect(nostrRelayClient.calls.single.endpoint, 'wss://relay.example');
       expect(
         relayPublicationClient.calls.single.baseUrl,
-        'https://relay.trisaura.io',
+        'https://relay.elix.cool',
       );
       expect(
         relayPublicationClient.calls.single.intent.signatureScheme,
@@ -247,7 +247,7 @@ void main() {
             active: RemoteNode(
               id: 'node-1',
               name: 'Ansible relay',
-              url: 'https://relay.trisaura.io',
+              url: 'https://relay.elix.cool',
               createdAt: now,
               updatedAt: now,
             ),
@@ -291,7 +291,7 @@ void main() {
       active: RemoteNode(
         id: 'node-1',
         name: 'Ansible relay',
-        url: 'https://relay.trisaura.io',
+        url: 'https://relay.elix.cool',
         createdAt: now,
         updatedAt: now,
       ),
@@ -330,7 +330,7 @@ void main() {
     expect(result.enqueued, 1);
     expect(result.published, 1);
     expect(result.failed, 0);
-    expect(retryClient.calls.single.baseUrl, 'https://relay.trisaura.io');
+    expect(retryClient.calls.single.baseUrl, 'https://relay.elix.cool');
     final target = (await publications.listTargets()).single;
     expect(target.status, PublicationStatus.published);
     expect(target.error, isNull);

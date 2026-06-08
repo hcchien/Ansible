@@ -1019,7 +1019,7 @@ class FollowActivity {
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{
       '@context': isBoardFollow
-          ? ['https://www.w3.org/ns/activitystreams', 'https://trisaura.io/ns/follow']
+          ? ['https://www.w3.org/ns/activitystreams', 'https://elix.cool/ns/follow']
           : 'https://www.w3.org/ns/activitystreams',
       'id': id,
       'type': 'Follow',

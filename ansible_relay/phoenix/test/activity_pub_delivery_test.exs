@@ -37,13 +37,13 @@ defmodule AnsibleRelay.ActivityPubDeliveryTest do
     update = accepted_intent(action: "update")
     delete = accepted_intent(action: "delete")
 
-    assert ActivityBuilder.from_intent(create, base_url: "https://relay.trisaura.io")["type"] ==
+    assert ActivityBuilder.from_intent(create, base_url: "https://relay.elix.cool")["type"] ==
              "Create"
 
-    assert ActivityBuilder.from_intent(update, base_url: "https://relay.trisaura.io")["type"] ==
+    assert ActivityBuilder.from_intent(update, base_url: "https://relay.elix.cool")["type"] ==
              "Update"
 
-    delete_activity = ActivityBuilder.from_intent(delete, base_url: "https://relay.trisaura.io")
+    delete_activity = ActivityBuilder.from_intent(delete, base_url: "https://relay.elix.cool")
     assert delete_activity["type"] == "Delete"
     assert delete_activity["object"]["type"] == "Tombstone"
   end
