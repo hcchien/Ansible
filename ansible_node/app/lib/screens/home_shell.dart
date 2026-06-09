@@ -86,11 +86,16 @@ class HomeShell extends StatefulWidget {
     this.networkStatusMonitor,
     this.localeController,
     this.readingPreferencesController,
+    this.autoSeedDefaultRelay = true,
   });
 
   final AppDatabase db;
   final String did;
   final String? publicKeyHex;
+  /// When true (default), a default relay node is seeded on first run if the
+  /// local node list is empty. Tests that assert first-run-without-relay set
+  /// this to false.
+  final bool autoSeedDefaultRelay;
   final VoidCallback? onClearIdentity;
   final Future<AppSyncResult> Function()? syncRunner;
   final Future<RelayPullSummary> Function()? pullRefreshRunner;
@@ -860,6 +865,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// node list is empty, so a fresh install can sync without the user having to
   /// manually add a relay in Sync settings. Idempotent + best-effort.
   Future<void> _ensureDefaultRelayNode() async {
+    if (!widget.autoSeedDefaultRelay) return;
     try {
       final existing = await _remoteNodeRepo.list();
       if (existing.isNotEmpty) return;

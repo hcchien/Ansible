@@ -96,14 +96,25 @@ class LexiconSignerImpl implements LexiconSigner {
         commitSigHex: commitSigHex,
         authorDid: authorDid,
       );
-    } on UnimplementedError catch (e) {
+    } catch (e) {
+      // Only the "native bridge unavailable" cases route to the dev fallback:
+      //  - UnimplementedError: legacy stub bridge
+      //  - StateError "...has not been initialized": flutter_rust_bridge not
+      //    initialised (e.g. unit tests without the compiled native lib)
+      //  - ArgumentError: dlsym symbol lookup miss (lib not linked)
+      // Anything else (e.g. missing keypair) is a real error and rethrown.
+      final bridgeUnavailable = e is UnimplementedError ||
+          e is ArgumentError ||
+          (e is StateError &&
+              e.toString().contains('has not been initialized'));
+      if (!bridgeUnavailable) rethrow;
       if (!_allowInsecureFallback) {
         throw StateError(
           'Native Lexicon signing is not available. Enable only the explicit development signing fallback for local tests.',
         );
       }
       debugPrint(
-        '[LexiconSigner] DEV WARNING: Rust signing APIs not implemented — '
+        '[LexiconSigner] DEV WARNING: native Rust signing unavailable — '
         'returning stub signature. Error: $e',
       );
       return _stubSign(record, authorDid: authorDid);

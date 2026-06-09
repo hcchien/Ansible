@@ -43,6 +43,8 @@ void main() {
     }, authorDid: 'did:plc:abcdefghijklmnop');
 
     expect(signed.cid, startsWith('bafydev'));
-    expect(signed.commitSigHex, startsWith('devsig'));
+    // LexiconSignerImpl._stubSign marks dev signatures with a 'deadbeef' filler
+    // (one of the recognised dev-fallback markers).
+    expect(signed.commitSigHex, startsWith('deadbeef'));
   });
 }

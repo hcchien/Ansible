@@ -143,33 +143,25 @@ ok "Release build succeeded"
 # ── 4. flutter_rust_bridge_codegen ───────────────────────────────────────────
 step "Running flutter_rust_bridge_codegen generate"
 
-# frb ≥ 2.5 uses Rust module paths (crate::api) + --rust-root instead of
-# file paths.  All three API modules are listed so Ed25519, ZKP, and CRDT
-# functions are emitted into a single frb_generated.dart.
-# frb 2.4 --dart-output / --c-output take FILE paths (not directories).
-# frb canonicalize()s the dart output path, so the file must pre-exist.
-# Wipe ALL frb_generated* files first — stale siblings (*.io.dart, *.web.dart)
-# cause EEXIST when frb tries to create them with O_CREAT|O_EXCL.
+# frb ≥ 2.5 uses Rust module paths (crate::api) + --rust-root instead of file
+# paths. List every API module so all functions are emitted.
+# IMPORTANT: in frb 2.7, --dart-output is a DIRECTORY (frb writes
+# frb_generated.dart + per-module files inside it); --c-output is a FILE path.
+# Passing a file to --dart-output makes frb mkdir(frb_generated.dart) and fail
+# with "File exists". Wipe the output dir first so there are no stale siblings.
 FRB_DART_DIR="$REPO_ROOT/ansible_core/did/lib/src/rust"
 FRB_C_DIR="$REPO_ROOT/ansible_core/did/ios/Classes"
-FRB_DART_OUTPUT="$FRB_DART_DIR/frb_generated.dart"
 FRB_C_OUTPUT="$FRB_C_DIR/frb_generated.h"
 
-# frb 2.4 with web=true tries to create a DIRECTORY named frb_generated.dart/
-# for platform-split impl files, which collides with the pre-touched file.
-# --no-web collapses output to a single frb_generated.dart file, eliminating
-# the subdirectory and the EEXIST.  The canonicalize() call still requires the
-# output file to pre-exist, hence the touch after wiping.
 rm -rf "$FRB_DART_DIR"
 mkdir -p "$FRB_DART_DIR" "$FRB_C_DIR"
-touch "$FRB_DART_OUTPUT"                         # must exist for frb canonicalize()
 rm -f "$FRB_C_DIR"/frb_generated*.h
 rm -f "$REPO_ROOT/ansible_rust_core/src/frb_generated.rs"
 
 flutter_rust_bridge_codegen generate \
-  --rust-input  "crate::api,crate::api_atproto,crate::api_zkp,crate::api_crdt" \
+  --rust-input  "crate::api,crate::api_atproto,crate::api_zkp,crate::api_crdt,crate::api_messenger" \
   --rust-root   "$REPO_ROOT/ansible_rust_core" \
-  --dart-output "$FRB_DART_OUTPUT" \
+  --dart-output "$FRB_DART_DIR" \
   --c-output    "$FRB_C_OUTPUT" \
   --no-web
 

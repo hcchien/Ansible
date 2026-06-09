@@ -28,6 +28,7 @@ void main() {
           did: 'did:plc:alice',
           networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
           relayDiscoveryLoader: () async => _starterDiscovery(),
+          autoSeedDefaultRelay: false,
         ),
       ),
     );
@@ -183,6 +184,7 @@ void main() {
           did: 'did:plc:alice',
           networkStatusMonitor: network,
           relayDiscoveryLoader: () async => _emptyDiscovery(),
+          autoSeedDefaultRelay: false,
         ),
       ),
     );
@@ -215,6 +217,7 @@ void main() {
           did: 'did:plc:alice',
           networkStatusMonitor: network,
           relayDiscoveryLoader: () async => _emptyDiscovery(),
+          autoSeedDefaultRelay: false,
         ),
       ),
     );
@@ -302,6 +305,7 @@ void main() {
           did: 'did:plc:alice',
           networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
           relayDiscoveryLoader: () async => _emptyDiscovery(),
+          autoSeedDefaultRelay: false,
         ),
       ),
     );
