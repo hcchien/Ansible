@@ -1,5 +1,3 @@
-include: package:lints/recommended.yaml
-
 analyzer:
   exclude:
     # Vendored flutter_rust_bridge build tool — a self-contained Dart project
@@ -7,4 +5,4 @@ analyzer:
     # this package's library surface.
     - cargokit/**
     # Generated flutter_rust_bridge bindings.
-    - lib/src/rust/frb_generated*.dart
+    - lib/src/rust/**

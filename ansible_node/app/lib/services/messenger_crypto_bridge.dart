@@ -178,7 +178,7 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
 
   @override
   Future<MessengerDeviceBundle> createDevice(String subjectDid) async {
-    final device = await frb.apiMessengerCreateDevice(
+    final device = frb.apiMessengerCreateDevice(
       subjectDid: subjectDid,
     );
     return _deviceFromRust(device);
@@ -190,7 +190,7 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
     int count,
   ) async {
     final rustDevice = await _deviceToRust(device);
-    final preKeys = await frb.apiMessengerGeneratePreKeys(
+    final preKeys = frb.apiMessengerGeneratePreKeys(
       device: rustDevice,
       count: count,
     );
