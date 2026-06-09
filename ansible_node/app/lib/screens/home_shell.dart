@@ -231,7 +231,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _lastNetworkStatus = _networkStatusService.status;
     _networkStatusService.addListener(_handleNetworkStatusChanged);
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      // Seed the default relay (from the build config) on a fresh install so the
+      // app can sync out-of-box without the user manually adding a relay.
+      await _ensureDefaultRelayNode();
       if (!mounted) return;
       unawaited(_loadScreenStyles());
       unawaited(_loadBoardMotion());
@@ -850,6 +854,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       comments: 0,
       reacted: false,
     );
+  }
+
+  /// Seeds the default relay node (from the build's relay URL) when the local
+  /// node list is empty, so a fresh install can sync without the user having to
+  /// manually add a relay in Sync settings. Idempotent + best-effort.
+  Future<void> _ensureDefaultRelayNode() async {
+    try {
+      final existing = await _remoteNodeRepo.list();
+      if (existing.isNotEmpty) return;
+      final url = AppEnvironment.defaultRelayBaseUrl.trim();
+      if (url.isEmpty) return;
+      final host = Uri.tryParse(url)?.host ?? '';
+      final name = host.isNotEmpty ? host.split('.').first : 'Elix Relay';
+      final now = DateTime.now();
+      await _remoteNodeRepo.create(
+        RemoteNode(
+          id: now.millisecondsSinceEpoch.toString(),
+          name: name,
+          url: url,
+          createdAt: now,
+          updatedAt: now,
+          isActive: true,
+        ),
+      );
+    } catch (_) {
+      // Best-effort; the user can still add a relay manually in Sync settings.
+    }
   }
 
   /// Idempotently anchors the local DID + public key with the active relay so
