@@ -28,26 +28,79 @@ final ElixThemeController themeController = ElixThemeController();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  AppEnvironment.validateRuntimeReadiness(
-    isReleaseBuild: kReleaseMode,
-    usesDevelopmentRustBridge: !AppEnvironment.hasRealRustBridge,
-  );
+  try {
+    AppEnvironment.validateRuntimeReadiness(
+      isReleaseBuild: kReleaseMode,
+      usesDevelopmentRustBridge: !AppEnvironment.hasRealRustBridge,
+    );
 
-  // Initialise the Rust native library (Ed25519, did:key, signing).
-  // Placeholder stub until ./setup_codegen.sh is run; after that it loads the
-  // real .so / .dylib via flutter_rust_bridge.
-  await RustLib.init();
-  await _resetLocalIdentityIfRequested();
+    // Initialise the Rust native library (Ed25519, did:key, signing).
+    // initRustBridge() picks the right loader per platform: iOS resolves the
+    // statically-linked symbols from the process, others open the dynamic lib.
+    await initRustBridge();
+    await _resetLocalIdentityIfRequested();
 
-  // Load persisted theme before the first frame.
-  await themeController.load();
+    // Load persisted theme before the first frame.
+    await themeController.load();
 
-  // Initialise local SQLite store (Drift schema v7).
-  // No username/password — identity is DID-based.
-  final storagePaths = await BackupPolicyService().prepareStorage();
-  final db = await _openAppDatabase(storagePaths: storagePaths);
+    // Initialise local SQLite store (Drift schema v7).
+    // No username/password — identity is DID-based.
+    final storagePaths = await BackupPolicyService().prepareStorage();
+    final db = await _openAppDatabase(storagePaths: storagePaths);
 
-  runApp(MyApp(db: db, webSessionLinks: AppLinks().uriLinkStream));
+    runApp(MyApp(db: db, webSessionLinks: AppLinks().uriLinkStream));
+  } catch (error, stack) {
+    // A failure before runApp() otherwise shows a blank screen with no clue.
+    // Surface it on-device so startup problems are diagnosable.
+    runApp(_BootErrorApp(error: error, stack: stack));
+  }
+}
+
+/// Minimal app shown when startup fails before the real UI can mount.
+class _BootErrorApp extends StatelessWidget {
+  final Object error;
+  final StackTrace stack;
+  const _BootErrorApp({required this.error, required this.stack});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFF1A0000),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Startup failed',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SelectableText(
+                    '$error',
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+                  SelectableText(
+                    '$stack',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 Future<AppDatabase> _openAppDatabase({BackupPolicyPaths? storagePaths}) async {

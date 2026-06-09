@@ -26,11 +26,11 @@ Pod::Spec.new do |s|
     :script => 'sh "$PODS_TARGET_SRCROOT/../cargokit/build_pod.sh" ../../../ansible_rust_core ansible_rust_core',
     :execution_position => :before_compile,
     :input_files => ['${BUILT_PRODUCTS_DIR}/cargokit_phony'],
-    :output_files => ['${PODS_CONFIGURATION_BUILD_DIR}/ansible_rust_core/libansible_rust_core.a'],
+    :output_files => ['${PODS_CONFIGURATION_BUILD_DIR}/ansible_did/libansible_rust_core.a'],
   }
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
-    'OTHER_LDFLAGS' => '-force_load ${PODS_CONFIGURATION_BUILD_DIR}/ansible_rust_core/libansible_rust_core.a',
+    'OTHER_LDFLAGS' => '-force_load ${PODS_CONFIGURATION_BUILD_DIR}/ansible_did/libansible_rust_core.a',
   }
 end

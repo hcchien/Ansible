@@ -18,7 +18,11 @@ export 'rust/messenger.dart';
 export 'rust/atproto/did_plc.dart';
 export 'rust/atproto/lexicon.dart';
 
+import 'dart:io' show Platform;
 import 'dart:typed_data';
+
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show ExternalLibrary;
 
 import 'rust/frb_generated.dart';
 import 'rust/api.dart' as _api;
@@ -30,6 +34,23 @@ import 'rust/did_key.dart';
 import 'rust/messenger.dart';
 import 'rust/atproto/did_plc.dart';
 import 'rust/atproto/lexicon.dart';
+
+/// Initialise the Rust bridge with the correct library loader per platform.
+///
+/// iOS statically links `libansible_rust_core.a` (via `-force_load` in the
+/// plugin podspec), so there is no dynamic library to open — the FFI symbols
+/// live in the app binary and must be resolved from the running process.
+/// Other platforms (Android `.so`, desktop `.dylib`/`.so`) use frb's default
+/// stem-based loader.
+Future<void> initRustBridge() async {
+  if (Platform.isIOS) {
+    await RustLib.init(
+      externalLibrary: ExternalLibrary.process(iKnowHowToUseIt: true),
+    );
+  } else {
+    await RustLib.init();
+  }
+}
 
 /// Maps the historical method-style API onto the generated free functions, so
 /// callers can keep using `RustLib.instance.apiX(...)`.

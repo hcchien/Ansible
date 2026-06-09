@@ -1,0 +1,10 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    # Vendored flutter_rust_bridge build tool — a self-contained Dart project
+    # (its own pubspec) executed by the iOS/Android native build, not part of
+    # this package's library surface.
+    - cargokit/**
+    # Generated flutter_rust_bridge bindings.
+    - lib/src/rust/frb_generated*.dart
