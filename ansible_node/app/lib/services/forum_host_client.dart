@@ -14,6 +14,10 @@ class CreateHostedBoardIntent {
   final String signature;
   final String title;
   final String? description;
+
+  /// Optional board posting policy, e.g. `{"min_post_tier": "verified_human"}`.
+  /// Omitted from the payload when null or empty (ungated default).
+  final Map<String, Object?>? postingPolicy;
   final DateTime createdAt;
   final DateTime expiresAt;
 
@@ -26,6 +30,7 @@ class CreateHostedBoardIntent {
     required this.createdAt,
     required this.expiresAt,
     this.description,
+    this.postingPolicy,
   });
 
   static Map<String, Object?> canonicalPayload({
@@ -36,6 +41,7 @@ class CreateHostedBoardIntent {
     required DateTime createdAt,
     required DateTime expiresAt,
     String? description,
+    Map<String, Object?>? postingPolicy,
   }) {
     return {
       'action': 'create_board',
@@ -43,6 +49,8 @@ class CreateHostedBoardIntent {
       'board': {
         if (description != null && description.isNotEmpty)
           'description': description,
+        if (postingPolicy != null && postingPolicy.isNotEmpty)
+          'posting_policy': postingPolicy,
         'title': title,
       },
       'created_at': createdAt.toUtc().toIso8601String(),
@@ -62,6 +70,7 @@ class CreateHostedBoardIntent {
         targetForumHost: targetForumHost,
         title: title,
         description: description,
+        postingPolicy: postingPolicy,
         createdAt: createdAt,
         expiresAt: expiresAt,
       ),

@@ -4,7 +4,8 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
 
   alias AnsibleRelay.Web.Router
   alias AnsibleRelay.ForumHost.SignedIntent
-  alias AnsibleRelay.{AbuseDetector, IdentityCache, Repo, WebSessionStore}
+  alias AnsibleRelay.Db.ForumHostBoard
+  alias AnsibleRelay.{AbuseDetector, DidAccountCache, IdentityCache, Repo, WebSessionStore}
 
   @router_opts Router.init([])
 
@@ -505,6 +506,191 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert first.status == 202
     assert second.status == 429
     assert Jason.decode!(second.resp_body)["error"] == "rate_limited"
+  end
+
+  # ---- posting_policy["min_post_tier"] gate ----
+
+  defp insert_hosted_board(posting_policy) do
+    board_id = "gated-board-#{System.unique_integer([:positive])}"
+
+    Repo.insert!(%ForumHostBoard{
+      hosted_board_id: board_id,
+      slug: board_id,
+      canonical_board_uri: "http://localhost:4001/boards/#{board_id}",
+      title: "Gated Board #{board_id}",
+      posting_policy: posting_policy
+    })
+
+    board_id
+  end
+
+  defp seed_reputation_tier(did, tier) do
+    case DidAccountCache.start_link([]) do
+      {:ok, _} -> :ok
+      {:error, {:already_started, _}} -> :ok
+    end
+
+    :ok =
+      DidAccountCache.put(
+        did,
+        "pubkey_hex_forum_tier_test",
+        "forum_tier_handle_#{System.unique_integer([:positive])}",
+        reputation_tier: tier
+      )
+  end
+
+  test "GET /api/v1/forum-host/boards exposes posting_policy min_post_tier" do
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+
+    response = get_json("/api/v1/forum-host/boards")
+    assert response.status == 200
+
+    board =
+      response.resp_body
+      |> Jason.decode!()
+      |> Map.fetch!("boards")
+      |> Enum.find(&(&1["hosted_board_id"] == board_id))
+
+    assert board["posting_policy"] == %{"min_post_tier" => "verified_human"}
+  end
+
+  test "GET /api/v1/discover/boards exposes posting_policy min_post_tier" do
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+
+    response = get_json("/api/v1/discover/boards?q=#{board_id}")
+    assert response.status == 200
+
+    assert [board] = Jason.decode!(response.resp_body)["boards"]
+    assert board["hosted_board_id"] == board_id
+    assert board["posting_policy"]["min_post_tier"] == "verified_human"
+  end
+
+  test "GET /api/v1/forum-host exposes the configured posting_policy min_post_tier" do
+    original_policy = Application.get_env(:ansible_relay, :forum_host_posting_policy)
+
+    Application.put_env(:ansible_relay, :forum_host_posting_policy, %{
+      "min_trust_tier" => "self_custody_did",
+      "min_post_tier" => "verified_human"
+    })
+
+    on_exit(fn -> restore_env(:forum_host_posting_policy, original_policy) end)
+
+    response = get_json("/api/v1/forum-host")
+    assert response.status == 200
+
+    body = Jason.decode!(response.resp_body)
+    assert body["posting_policy"]["min_post_tier"] == "verified_human"
+  end
+
+  test "POST /api/v1/forum-host/boards rejects an unknown posting_policy min_post_tier" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:badtierboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "board" => %{
+            "title" => "Bad Tier",
+            "posting_policy" => %{"min_post_tier" => "vip"}
+          }
+        }),
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_min_post_tier"
+  end
+
+  test "POST /api/v1/forum-host/boards stores and returns posting_policy min_post_tier" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:gatedboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "board" => %{
+            "title" => "Humans Only #{System.unique_integer([:positive])}",
+            "posting_policy" => %{"min_post_tier" => "verified_human"}
+          }
+        }),
+        []
+      )
+
+    assert response.status == 201
+
+    body = Jason.decode!(response.resp_body)
+    assert body["posting_policy"] == %{"min_post_tier" => "verified_human"}
+  end
+
+  test "web thread creation in a gated board rejects a basic session DID with the 403 contract" do
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+    did = "did:plc:gatedbasic#{System.unique_integer([:positive])}"
+    token = approved_session_token(["forum:read", "forum:post"], did)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/web/threads",
+        %{"title" => "Hello", "board_id" => board_id},
+        [{"authorization", "Bearer #{token}"}]
+      )
+
+    assert response.status == 403
+
+    assert Jason.decode!(response.resp_body) == %{
+             "error" => "posting_requires_tier",
+             "required_tier" => "verified_human",
+             "current_tier" => "basic"
+           }
+  end
+
+  test "web thread creation in a gated board accepts a verified_human session DID" do
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+    did = "did:plc:gatedhuman#{System.unique_integer([:positive])}"
+    seed_reputation_tier(did, "verified_human")
+    token = approved_session_token(["forum:read", "forum:post"], did)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/web/threads",
+        %{"title" => "Hello", "board_id" => board_id},
+        [{"authorization", "Bearer #{token}"}]
+      )
+
+    assert response.status == 202
+    assert Jason.decode!(response.resp_body)["accepted"] == true
+  end
+
+  test "web thread creation in an ungated board stays open to a basic session DID" do
+    board_id = insert_hosted_board(%{"min_trust_tier" => "self_custody_did"})
+    did = "did:plc:ungatedbasic#{System.unique_integer([:positive])}"
+    token = approved_session_token(["forum:read", "forum:post"], did)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/web/threads",
+        %{"title" => "Hello", "board_id" => board_id},
+        [{"authorization", "Bearer #{token}"}]
+      )
+
+    assert response.status == 202
+  end
+
+  test "web thread creation rejects an unknown board_id" do
+    token = approved_session_token(["forum:read", "forum:post"])
+
+    response =
+      post_json(
+        "/api/v1/forum-host/web/threads",
+        %{"title" => "Hello", "board_id" => "no-such-board"},
+        [{"authorization", "Bearer #{token}"}]
+      )
+
+    assert response.status == 404
+    assert Jason.decode!(response.resp_body)["error"] == "board_not_found"
   end
 
   defp restore_env(key, nil), do: Application.delete_env(:ansible_relay, key)

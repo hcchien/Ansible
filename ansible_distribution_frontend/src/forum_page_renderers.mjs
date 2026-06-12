@@ -9,6 +9,7 @@ import {
 import { escapeHtml } from './forum_shell_renderer.mjs';
 import { renderQrCodeSvg } from './qr_code.mjs';
 import { t } from './web_i18n.mjs';
+import { TRUST_TIERS, meetsMinPostTier } from './web_session_client.mjs';
 
 export function renderPageBody(viewModel, uiState = {}) {
   const pageId = viewModel?.page?.id ?? viewModel?.route?.pageId;
@@ -85,9 +86,8 @@ function renderBoard(viewModel) {
 
   const boardTitle = board.title || viewModel.page?.title || t('common.board');
   const threads = viewModel.threads ?? [];
-  const postAction = viewModel.actions?.canCreateThread
-    ? `<button class="primary-action" type="button" data-action="new-thread">${escapeHtml(t('common.newThread'))}</button>`
-    : `<a class="primary-action" href="#/login">${escapeHtml(t('board.signInToPost'))}</a>`;
+  const gate = boardPostingGate(board, viewModel.session);
+  const postAction = renderBoardPostAction(viewModel, gate);
 
   return `
     ${renderError(viewModel.error)}
@@ -97,8 +97,9 @@ function renderBoard(viewModel) {
         <section class="board-head" aria-labelledby="board-title">
           <div class="heading">
             <p class="section-label">${escapeHtml(t('board.kicker'))}</p>
-            <h1 id="board-title">${escapeHtml(boardTitle)}</h1>
+            <h1 id="board-title">${escapeHtml(boardTitle)}${gate.gated ? ` ${renderGateBadge()}` : ''}</h1>
             ${board.description ? `<p>${escapeHtml(board.description)}</p>` : ''}
+            ${gate.gated ? `<p class="gate-requirement">${escapeHtml(t('board.gateRequirement', { tier: trustTierLabel(gate.requiredTier) }))}</p>` : ''}
             <p>${escapeHtml(t('board.description'))}</p>
           </div>
           <div class="permission-state" aria-label="${escapeAttribute(t('common.permission'))}">
@@ -120,6 +121,41 @@ function renderBoard(viewModel) {
       ${renderRightRail(viewModel, viewModel.boards ?? [])}
     </section>
   `;
+}
+
+// The relay enforces posting gates at intent acceptance; this client-side
+// check only makes the board's `posting_policy.min_post_tier` discoverable
+// before the user tries to write.
+function boardPostingGate(board, session) {
+  const minPostTier = board?.postingPolicy?.minPostTier ?? null;
+  const gated = minPostTier === TRUST_TIERS.verifiedHuman;
+  const trustTier = session?.trustTier ?? TRUST_TIERS.anonymous;
+
+  return {
+    gated,
+    requiredTier: minPostTier,
+    blocked:
+      gated && Boolean(session?.authenticated) && !meetsMinPostTier(trustTier, minPostTier),
+  };
+}
+
+function renderGateBadge() {
+  return `<span class="gate-badge">${escapeHtml(t('board.gateBadge'))}</span>`;
+}
+
+function renderBoardPostAction(viewModel, gate) {
+  if (gate.blocked) {
+    return `
+      <div class="gate-blocked" role="note">
+        <button class="primary-action" type="button" disabled>${escapeHtml(t('common.newThread'))}</button>
+        <p>${escapeHtml(t('board.gateBlockedMessage', { tier: trustTierLabel(viewModel.session?.trustTier ?? TRUST_TIERS.anonymous) }))}</p>
+      </div>
+    `;
+  }
+
+  return viewModel.actions?.canCreateThread
+    ? `<button class="primary-action" type="button" data-action="new-thread">${escapeHtml(t('common.newThread'))}</button>`
+    : `<a class="primary-action" href="#/login">${escapeHtml(t('board.signInToPost'))}</a>`;
 }
 
 function renderMissingBoard(viewModel, board) {
@@ -643,10 +679,11 @@ function renderBoardDirectory(boards, { title, emptyText }) {
 function renderBoardDirectoryItem(board) {
   const title = board.title || board.id || t('common.board');
   const href = `#/boards/${encodeURIComponent(board.slug || board.id || '')}`;
+  const gated = board.postingPolicy?.minPostTier === TRUST_TIERS.verifiedHuman;
 
   return `
     <li>
-      <a href="${escapeAttribute(href)}">${escapeHtml(title)}</a>
+      <a href="${escapeAttribute(href)}">${escapeHtml(title)}${gated ? ` ${renderGateBadge()}` : ''}</a>
       <span class="perm${board.permissions?.canWrite ? '' : ' read'}">${escapeHtml(board.permissions?.canWrite ? t('boards.posting') : t('boards.readOnly'))}</span>
       ${board.description ? `<p class="descr">${escapeHtml(board.description)}</p>` : ''}
     </li>

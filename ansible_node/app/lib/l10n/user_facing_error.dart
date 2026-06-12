@@ -3,6 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 
+import '../services/atproto_client.dart';
+import '../services/forum_host_client.dart';
+import '../services/posting_gate.dart';
 import 'app_l10n.dart';
 
 /// Maps low-level exceptions to short, localized copy that is safe to show
@@ -11,6 +14,13 @@ import 'app_l10n.dart';
 /// Falls back to a generic message with a trimmed one-line detail so the user
 /// never sees a bare `Exception: ...` stack string.
 String userFacingError(BuildContext context, Object error) {
+  if (_isPostingRequiresTier(error)) {
+    return context.uiCopy(
+      zh: '此看板僅限通過真人驗證的成員發文。請先完成真人驗證（升級驗證），再試一次。',
+      en: 'Only verified humans can post in this board. Complete identity '
+          'verification first, then try again.',
+    );
+  }
   if (error is SocketException || error is HttpException) {
     return context.uiCopy(
       zh: '無法連線到伺服器，請檢查網路或同步設定後再試一次。',
@@ -37,6 +47,20 @@ String userFacingError(BuildContext context, Object error) {
     en: 'Something went wrong. Please try again.',
   );
   return detail.isEmpty ? generic : '$generic\n($detail)';
+}
+
+/// Whether [error] is the relay's reason-coded posting-gate rejection
+/// (HTTP 403 with `{"error": "posting_requires_tier", ...}`), regardless of
+/// which client surfaced it.
+bool _isPostingRequiresTier(Object error) {
+  if (error is ForumHostException) {
+    return error.error == PostingGate.requiresTierErrorCode ||
+        error.body['error'] == PostingGate.requiresTierErrorCode;
+  }
+  if (error is AtProtoException) {
+    return error.error == PostingGate.requiresTierErrorCode;
+  }
+  return false;
 }
 
 String _shortDetail(Object error) {

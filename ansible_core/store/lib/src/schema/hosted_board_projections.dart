@@ -10,6 +10,8 @@ class HostedBoardProjections extends Table {
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
   TextColumn get permissionsJson => text().withDefault(const Constant('{}'))();
+  TextColumn get postingPolicyJson =>
+      text().withDefault(const Constant('{}'))();
   IntColumn get lastSeenCursor => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();

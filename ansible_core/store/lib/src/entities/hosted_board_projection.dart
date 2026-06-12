@@ -8,6 +8,10 @@ class HostedBoardProjection {
   final String title;
   final String? description;
   final Map<String, Object?> permissions;
+
+  /// Host-declared posting policy, e.g. `{"min_post_tier": "verified_human"}`.
+  /// Empty map ⇒ no gate (default).
+  final Map<String, Object?> postingPolicy;
   final int lastSeenCursor;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -23,11 +27,19 @@ class HostedBoardProjection {
     required this.title,
     this.description,
     this.permissions = const {},
+    this.postingPolicy = const {},
     this.lastSeenCursor = 0,
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
   });
+
+  /// Minimum reputation tier required to post, or null when ungated.
+  String? get minPostTier {
+    final tier = postingPolicy['min_post_tier'];
+    if (tier is String && tier.trim().isNotEmpty) return tier;
+    return null;
+  }
 
   HostedBoardProjection copyWith({
     String? localBoardId,
@@ -39,6 +51,7 @@ class HostedBoardProjection {
     String? title,
     String? description,
     Map<String, Object?>? permissions,
+    Map<String, Object?>? postingPolicy,
     int? lastSeenCursor,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -54,6 +67,7 @@ class HostedBoardProjection {
       title: title ?? this.title,
       description: description ?? this.description,
       permissions: permissions ?? this.permissions,
+      postingPolicy: postingPolicy ?? this.postingPolicy,
       lastSeenCursor: lastSeenCursor ?? this.lastSeenCursor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

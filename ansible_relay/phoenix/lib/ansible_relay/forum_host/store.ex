@@ -382,21 +382,37 @@ defmodule AnsibleRelay.ForumHost.Store do
   defp normalize_create_board_attrs(attrs) do
     missing = missing_create_board_fields(attrs)
 
-    if missing == [] do
-      title = get_attr(attrs, :title)
+    cond do
+      missing != [] ->
+        {:error, {:invalid_board, missing}}
 
-      {:ok,
-       %{
-         intent_id: get_attr(attrs, :intent_id),
-         author_did: get_attr(attrs, :author_did),
-         base_slug: slugify(title),
-         submitted_board_payload: submitted_board_payload(attrs),
-         stored_board_payload: stored_board_payload(attrs)
-       }}
-    else
-      {:error, {:invalid_board, missing}}
+      not valid_posting_policy?(get_attr(attrs, :posting_policy)) ->
+        {:error, :invalid_min_post_tier}
+
+      true ->
+        title = get_attr(attrs, :title)
+
+        {:ok,
+         %{
+           intent_id: get_attr(attrs, :intent_id),
+           author_did: get_attr(attrs, :author_did),
+           base_slug: slugify(title),
+           submitted_board_payload: submitted_board_payload(attrs),
+           stored_board_payload: stored_board_payload(attrs)
+         }}
     end
   end
+
+  # posting_policy["min_post_tier"] is optional (absent = ungated) but must be
+  # a known tier when present.
+  defp valid_posting_policy?(%{} = policy) do
+    case Map.get(policy, "min_post_tier") || Map.get(policy, :min_post_tier) do
+      nil -> true
+      tier -> AnsibleRelay.ReputationTier.valid_min_post_tier?(tier)
+    end
+  end
+
+  defp valid_posting_policy?(_policy), do: true
 
   defp missing_create_board_fields(attrs) do
     [:intent_id, :author_did, :title]

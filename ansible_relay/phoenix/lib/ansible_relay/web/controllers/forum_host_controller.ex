@@ -9,7 +9,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
   import Plug.Conn
   alias AnsibleRelay.AbuseDetector
-  alias AnsibleRelay.ForumHost.{SignedIntent, Store}
+  alias AnsibleRelay.ForumHost.{PostingGate, SignedIntent, Store}
   alias AnsibleRelay.Web.Plugs.VerifyWebSession
 
   def info(conn, _params) do
@@ -66,12 +66,25 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
       title = Map.get(params, "title")
 
       if is_binary(title) and String.trim(title) != "" do
-        case AbuseDetector.check_did(conn.assigns.verified_did) do
-          :ok ->
-            send_json(conn, 202, %{
-              accepted: true,
-              subject_did: conn.assigns.verified_did,
-              trust_tier: conn.assigns.web_session.trust_tier
+        with {:ok, board} <- resolve_web_thread_board(params),
+             # Tier gate runs at acceptance time on the session DID — cookie
+             # writes get the identical posting_policy check as signed ops.
+             :ok <- PostingGate.authorize_post(board, conn.assigns.verified_did),
+             :ok <- AbuseDetector.check_did(conn.assigns.verified_did) do
+          send_json(conn, 202, %{
+            accepted: true,
+            subject_did: conn.assigns.verified_did,
+            trust_tier: conn.assigns.web_session.trust_tier
+          })
+        else
+          {:error, :board_not_found} ->
+            send_json(conn, 404, %{error: "board_not_found"})
+
+          {:error, :posting_requires_tier, required_tier, current_tier} ->
+            send_json(conn, 403, %{
+              error: "posting_requires_tier",
+              required_tier: required_tier,
+              current_tier: current_tier
             })
 
           {:error, :rate_limited, detail} ->
@@ -80,6 +93,25 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
       else
         send_json(conn, 422, %{error: "invalid_thread"})
       end
+    end
+  end
+
+  # board_id is optional for backward compatibility (the endpoint predates
+  # board-scoped web threads), but when present it must resolve to a hosted
+  # board so a gated board cannot be bypassed with a mistyped id.
+  defp resolve_web_thread_board(params) do
+    case Map.get(params, "board_id") || Map.get(params, "hosted_board_id") do
+      nil ->
+        {:ok, nil}
+
+      board_id when is_binary(board_id) ->
+        case PostingGate.get_board(board_id) do
+          nil -> {:error, :board_not_found}
+          board -> {:ok, board}
+        end
+
+      _invalid ->
+        {:error, :board_not_found}
     end
   end
 

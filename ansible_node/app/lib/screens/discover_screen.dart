@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/discovery_client.dart';
+import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import '../widgets/board_gate_badge.dart';
 import 'user_profile_screen.dart';
 
 /// Network discovery: find people and boards to follow, and explore public
@@ -169,6 +171,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         title: board.title,
         description: board.description,
         permissions: const {'read': true, 'write': true},
+        postingPolicy: board.postingPolicy,
         createdAt: now,
         updatedAt: now,
       ),
@@ -470,15 +473,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    board.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: AnsibleDesign.ink,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          board.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: AnsibleDesign.ink,
+                          ),
+                        ),
+                      ),
+                      if (board.minPostTier ==
+                          PostingGate.verifiedHumanTier) ...[
+                        const SizedBox(width: 6),
+                        const BoardGateBadge(),
+                      ],
+                    ],
                   ),
                   if ((board.description ?? '').isNotEmpty) ...[
                     const SizedBox(height: 2),

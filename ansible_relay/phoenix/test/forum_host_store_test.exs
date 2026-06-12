@@ -214,6 +214,68 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
     assert second.canonical_board_uri == "https://forum.trisaura.test/boards/shared-title-2"
   end
 
+  test "create_board accepts a known posting_policy min_post_tier and persists it" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:ok, board} =
+             Store.create_board(%{
+               intent_id: "intent-gated-board",
+               author_did: "did:plc:gatedhost",
+               title: "Humans Only",
+               posting_policy: %{"min_post_tier" => "verified_human"}
+             })
+
+    assert board.posting_policy == %{"min_post_tier" => "verified_human"}
+
+    assert %ForumHostBoard{posting_policy: %{"min_post_tier" => "verified_human"}} =
+             Repo.get(ForumHostBoard, board.hosted_board_id)
+  end
+
+  test "create_board rejects an unknown posting_policy min_post_tier" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:error, :invalid_min_post_tier} =
+             Store.create_board(%{
+               intent_id: "intent-bad-tier",
+               author_did: "did:plc:badtier",
+               title: "Bad Tier Board",
+               posting_policy: %{"min_post_tier" => "vip"}
+             })
+
+    assert {:error, :invalid_min_post_tier} =
+             Store.create_board(%{
+               intent_id: "intent-bad-tier-2",
+               author_did: "did:plc:badtier",
+               title: "Bad Tier Board",
+               posting_policy: %{"min_post_tier" => "dns_verified"}
+             })
+  end
+
+  test "board changeset rejects an unknown posting_policy min_post_tier" do
+    changeset =
+      ForumHostBoard.changeset(%ForumHostBoard{}, %{
+        "hosted_board_id" => "gated",
+        "slug" => "gated",
+        "canonical_board_uri" => "https://forum.trisaura.test/boards/gated",
+        "title" => "Gated",
+        "posting_policy" => %{"min_post_tier" => "vip"}
+      })
+
+    refute changeset.valid?
+    assert Keyword.has_key?(changeset.errors, :posting_policy)
+
+    valid_changeset =
+      ForumHostBoard.changeset(%ForumHostBoard{}, %{
+        "hosted_board_id" => "gated-ok",
+        "slug" => "gated-ok",
+        "canonical_board_uri" => "https://forum.trisaura.test/boards/gated-ok",
+        "title" => "Gated OK",
+        "posting_policy" => %{"min_post_tier" => "verified_human"}
+      })
+
+    assert valid_changeset.valid?
+  end
+
   test "create_board returns structured error for missing title" do
     assert {:error, {:invalid_board, [:title]}} =
              Store.create_board(%{

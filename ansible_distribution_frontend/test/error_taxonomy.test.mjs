@@ -36,6 +36,26 @@ const cases = [
     },
   ],
   [
+    'posting requires tier',
+    new RelayApiError('posting_requires_tier', {
+      status: 403,
+      code: 'posting_requires_tier',
+      body: {
+        error: 'posting_requires_tier',
+        required_tier: 'verified_human',
+        current_tier: 'basic',
+      },
+    }),
+    {
+      type: ERROR_TYPES.postingRequiresTier,
+      message: 'posting_requires_tier',
+      retryable: false,
+      status: 403,
+      code: 'posting_requires_tier',
+      detail: { requiredTier: 'verified_human', currentTier: 'basic' },
+    },
+  ],
+  [
     'rate limited',
     new RelayApiError('rate_limited', {
       status: 429,

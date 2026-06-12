@@ -3,10 +3,14 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   import Plug.Conn
   alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SigVerifier}
+  alias AnsibleRelay.ForumHost.PostingGate
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
   @valid_entity_types ~w(board thread post reaction murmur note follow profile)
   @valid_op_types ~w(insert update delete crdt_merge)
+  # Entity kinds whose creation is gated by a hosted board's
+  # posting_policy["min_post_tier"] (threads and replies alike).
+  @gated_entity_types ~w(thread post)
   # Standalone content kinds (no board/thread) whose public/unlisted visibility is
   # checked as defense-in-depth before relaying. Primary enforcement is app-side.
   @content_entity_types ~w(murmur note)
@@ -24,7 +28,14 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          :ok <- check_op_not_duplicate(params["op_id"]),
          public_key = IdentityCache.public_key_hex(author_did),
          message = signing_payload(params),
-         :ok <- check_signature(public_key, message, params["signature"]) do
+         :ok <- check_signature(public_key, message, params["signature"]),
+         :ok <-
+           check_posting_gate(
+             params["entity_type"],
+             params["op_type"],
+             params["payload"],
+             author_did
+           ) do
       op = %{
         op_id: params["op_id"],
         author_did: author_did,
@@ -67,6 +78,13 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       {:error, :rate_limited, detail} ->
         send_json(conn, 429, %{error: "rate_limited", detail: detail})
+
+      {:error, :posting_requires_tier, required_tier, current_tier} ->
+        send_json(conn, 403, %{
+          error: "posting_requires_tier",
+          required_tier: required_tier,
+          current_tier: current_tier
+        })
     end
   end
 
@@ -168,6 +186,28 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   defp check_op_not_duplicate(op_id) do
     if OpStore.exists?(op_id), do: {:error, :duplicate_op}, else: :ok
   end
+
+  # Thread/post creation in a hosted board must satisfy that board's
+  # posting_policy["min_post_tier"]. The author's tier is resolved at
+  # acceptance time (never cached); ops that do not target a board hosted
+  # here pass through untouched. Runs after signature verification so the
+  # response never discloses a tier for an unauthenticated DID.
+  defp check_posting_gate(entity_type, "insert", payload, author_did)
+       when entity_type in @gated_entity_types do
+    board_id =
+      case decode_payload(payload) do
+        {:ok, %{} = decoded} -> decoded["boardId"] || decoded["board_id"]
+        _ -> nil
+      end
+
+    if is_binary(board_id) do
+      PostingGate.authorize_post(board_id, author_did)
+    else
+      :ok
+    end
+  end
+
+  defp check_posting_gate(_entity_type, _op_type, _payload, _author_did), do: :ok
 
   defp check_signature(public_key, message, sig_hex) do
     if SigVerifier.verify_ed25519(public_key, message, sig_hex),

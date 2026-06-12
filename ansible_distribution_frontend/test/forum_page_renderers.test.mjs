@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
 
+import { CONTRACT_FIXTURES } from '../src/contract_fixtures.mjs';
+import {
+  normalizeForumHost,
+  normalizeHostedBoard,
+} from '../src/forum_data_adapter.mjs';
 import { renderPageBody } from '../src/forum_page_renderers.mjs';
 import {
   createFrontendFlowHarness,
@@ -49,6 +54,93 @@ assert.match(boardHtml, /class="board-head"/);
 assert.match(boardHtml, /class="card thread-list"/);
 assert.match(boardHtml, /BOARD ACTIVITY/);
 assert.doesNotMatch(boardHtml, /New thread|Sign in to post|Self-custody DID/);
+assert.doesNotMatch(boardHtml, /class="gate-badge"|真人驗證版/);
+
+const gatedBoard = normalizeHostedBoard(CONTRACT_FIXTURES.forum.gatedBoard);
+const gatedForum = {
+  host: normalizeForumHost(CONTRACT_FIXTURES.forum.host),
+  boards: [gatedBoard],
+  board: gatedBoard,
+  threads: [],
+  capabilities: { canCreateThread: true, canReply: true },
+};
+const gatedRoute = { pageId: PAGE_IDS.board, params: { boardId: 'verified-humans' } };
+
+const belowTierVm = buildAppViewModel({
+  route: gatedRoute,
+  session: {
+    authenticated: true,
+    trustTier: 'self_custody_did',
+    subjectDid: 'did:plc:fixture',
+    scopes: ['forum:read', 'forum:post'],
+    capabilities: { canPost: true, canReply: true },
+  },
+  forum: gatedForum,
+});
+const belowTierHtml = renderPageBody(belowTierVm);
+assert.match(belowTierHtml, /class="gate-badge"/);
+assert.match(belowTierHtml, /真人驗證版/);
+assert.match(belowTierHtml, /這個板需要「已驗證真人」層級才能發文/);
+assert.match(belowTierHtml, /class="gate-blocked"/);
+assert.match(belowTierHtml, /<button class="primary-action" type="button" disabled>/);
+assert.match(belowTierHtml, /你目前的層級是「自持有 DID」/);
+assert.match(belowTierHtml, /請在 Elix app 完成真人驗證/);
+assert.doesNotMatch(belowTierHtml, /data-action="new-thread"/);
+
+const verifiedHumanVm = buildAppViewModel({
+  route: gatedRoute,
+  session: {
+    authenticated: true,
+    trustTier: 'verified_human',
+    subjectDid: 'did:plc:fixture',
+    scopes: ['forum:read', 'forum:post'],
+    capabilities: { canPost: true, canReply: true },
+  },
+  forum: gatedForum,
+});
+const verifiedHumanHtml = renderPageBody(verifiedHumanVm);
+assert.match(verifiedHumanHtml, /class="gate-badge"/);
+assert.match(verifiedHumanHtml, /這個板需要「已驗證真人」層級才能發文/);
+assert.match(verifiedHumanHtml, /data-action="new-thread"/);
+assert.doesNotMatch(verifiedHumanHtml, /class="gate-blocked"/);
+assert.doesNotMatch(verifiedHumanHtml, /請在 Elix app 完成真人驗證/);
+
+const anonymousGatedVm = buildAppViewModel({
+  route: gatedRoute,
+  session: { authenticated: false, trustTier: 'anonymous', scopes: [] },
+  forum: { ...gatedForum, capabilities: { canCreateThread: false, canReply: false } },
+});
+const anonymousGatedHtml = renderPageBody(anonymousGatedVm);
+assert.match(anonymousGatedHtml, /class="gate-badge"/);
+assert.match(anonymousGatedHtml, /這個板需要「已驗證真人」層級才能發文/);
+assert.match(anonymousGatedHtml, /登入後發文/);
+assert.doesNotMatch(anonymousGatedHtml, /class="gate-blocked"/);
+
+const rejectedPostVm = buildAppViewModel({
+  route: gatedRoute,
+  session: {
+    authenticated: true,
+    trustTier: 'self_custody_did',
+    subjectDid: 'did:plc:fixture',
+    scopes: ['forum:read', 'forum:post'],
+    capabilities: { canPost: true, canReply: true },
+  },
+  forum: gatedForum,
+  error: CONTRACT_FIXTURES.errors.postingRequiresTier,
+});
+const rejectedPostHtml = renderPageBody(rejectedPostVm);
+assert.match(rejectedPostHtml, /class="info-banner is-warning"/);
+assert.match(rejectedPostHtml, /需要真人驗證/);
+assert.match(rejectedPostHtml, /這個板需要「已驗證真人」層級才能發文。請在 Elix app 完成驗證後再試一次。/);
+
+const gatedDirectoryVm = buildAppViewModel({
+  route: { pageId: PAGE_IDS.boards, params: {} },
+  session: { authenticated: false, trustTier: 'anonymous', scopes: [] },
+  forum: { ...gatedForum, board: null },
+});
+const gatedDirectoryHtml = renderPageBody(gatedDirectoryVm);
+assert.match(gatedDirectoryHtml, /class="gate-badge"/);
+assert.match(gatedDirectoryHtml, /真人驗證版/);
 
 const loginVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.login, params: {} },

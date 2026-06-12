@@ -16,7 +16,7 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     EmailCredential → "basic"
   """
 
-  alias AnsibleRelay.{DidAccountCache, VpVerifier}
+  alias AnsibleRelay.{DidAccountCache, ReputationTier, VpVerifier}
 
   @tier_for_credential %{
     "TrisAuraHumanityCredential" => "verified_human",
@@ -92,7 +92,7 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
   defp upgrade_tier(conn, holder_did, tier, nostr_pubkey) do
     case DidAccountCache.get(holder_did) do
       {:ok, entry} ->
-        if tier_rank(tier) > tier_rank(entry.reputation_tier) do
+        if ReputationTier.rank(tier) > ReputationTier.rank(entry.reputation_tier) do
           :ok =
             DidAccountCache.put(
               holder_did,
@@ -118,12 +118,6 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
         send_json(conn, 404, %{error: "holder_not_found"})
     end
   end
-
-  # Higher rank = higher trust. Prevents downgrade attacks.
-  defp tier_rank("verified_human"), do: 3
-  defp tier_rank("dns_verified"), do: 2
-  defp tier_rank("basic"), do: 1
-  defp tier_rank(_), do: 0
 
   defp require_field(params, key) do
     case Map.get(params, key) do

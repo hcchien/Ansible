@@ -39,6 +39,27 @@ assert.deepEqual(
 );
 
 assert.deepEqual(
+  describeError({
+    type: ERROR_TYPES.postingRequiresTier,
+    detail: { requiredTier: 'verified_human', currentTier: 'basic' },
+  }),
+  {
+    tone: 'warning',
+    title: '需要真人驗證',
+    message: '這個板需要「已驗證真人」層級才能發文。請在 Elix app 完成驗證後再試一次。',
+  },
+);
+
+assert.deepEqual(
+  describeError({ type: ERROR_TYPES.postingRequiresTier }),
+  {
+    tone: 'warning',
+    title: '需要真人驗證',
+    message: '這個板需要「已驗證真人」層級才能發文。請在 Elix app 完成驗證後再試一次。',
+  },
+);
+
+assert.deepEqual(
   describeError({ type: ERROR_TYPES.unauthenticated }),
   {
     tone: 'danger',

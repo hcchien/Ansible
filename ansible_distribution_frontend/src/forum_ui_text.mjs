@@ -56,6 +56,18 @@ export function describeError(error) {
     };
   }
 
+  if (error.type === ERROR_TYPES.postingRequiresTier) {
+    const requiredTier = error.detail?.requiredTier ?? 'verified_human';
+
+    return {
+      tone: 'warning',
+      title: t('error.postingRequiresTier.title'),
+      message: t('error.postingRequiresTier.message', {
+        tier: trustTierLabel(requiredTier),
+      }),
+    };
+  }
+
   if (error.type === ERROR_TYPES.unauthenticated) {
     return {
       tone: 'danger',

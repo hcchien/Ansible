@@ -45,8 +45,24 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
       :moderation_policy
     ])
     |> validate_required([:hosted_board_id, :slug, :canonical_board_uri, :title])
+    |> validate_posting_policy()
     |> unique_constraint(:hosted_board_id, name: :forum_host_boards_pkey)
     |> unique_constraint(:slug)
     |> unique_constraint(:canonical_board_uri)
+  end
+
+  # posting_policy["min_post_tier"] is optional (absent = no gate) but must be
+  # a known tier when present so an unknown gate value can never be stored.
+  defp validate_posting_policy(changeset) do
+    validate_change(changeset, :posting_policy, fn :posting_policy, policy ->
+      tier = Map.get(policy, "min_post_tier") || Map.get(policy, :min_post_tier)
+
+      if is_nil(tier) or AnsibleRelay.ReputationTier.valid_min_post_tier?(tier) do
+        []
+      else
+        allowed = Enum.join(AnsibleRelay.ReputationTier.allowed_min_post_tiers(), ", ")
+        [posting_policy: "min_post_tier must be one of: #{allowed}"]
+      end
+    end)
   end
 end

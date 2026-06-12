@@ -10,6 +10,17 @@ export const TRUST_TIERS = Object.freeze({
   verifiedHuman: 'verified_human',
 });
 
+// Board posting gates use the relay reputation-tier ordering: basic < verified_human.
+// An absent or "basic" gate keeps the board open to every posting-capable session.
+export function meetsMinPostTier(trustTier, minPostTier) {
+  if (!minPostTier || minPostTier === 'basic') return true;
+  if (minPostTier === TRUST_TIERS.verifiedHuman) {
+    return trustTier === TRUST_TIERS.verifiedHuman;
+  }
+
+  return trustTier === minPostTier;
+}
+
 export function classifyTrustTier(trustTier) {
   const tier = trustTier ?? TRUST_TIERS.anonymous;
 

@@ -109,7 +109,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -195,6 +195,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 20) {
         await _createTableIfMissing(m, didReputations);
+      }
+      if (from < 21) {
+        await _addColumnIfMissing(
+          m,
+          hostedBoardProjections,
+          hostedBoardProjections.postingPolicyJson,
+        );
       }
       await _addColumnIfMissing(
         m,

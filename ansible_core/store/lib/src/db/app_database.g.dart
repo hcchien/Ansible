@@ -1159,6 +1159,19 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
     requiredDuringInsert: false,
     defaultValue: const Constant('{}'),
   );
+  static const VerificationMeta _postingPolicyJsonMeta = const VerificationMeta(
+    'postingPolicyJson',
+  );
+  @override
+  late final GeneratedColumn<String> postingPolicyJson =
+      GeneratedColumn<String>(
+        'posting_policy_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('{}'),
+      );
   static const VerificationMeta _lastSeenCursorMeta = const VerificationMeta(
     'lastSeenCursor',
   );
@@ -1221,6 +1234,7 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
     title,
     description,
     permissionsJson,
+    postingPolicyJson,
     lastSeenCursor,
     createdAt,
     updatedAt,
@@ -1324,6 +1338,15 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
         ),
       );
     }
+    if (data.containsKey('posting_policy_json')) {
+      context.handle(
+        _postingPolicyJsonMeta,
+        postingPolicyJson.isAcceptableOrUnknown(
+          data['posting_policy_json']!,
+          _postingPolicyJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('last_seen_cursor')) {
       context.handle(
         _lastSeenCursorMeta,
@@ -1400,6 +1423,10 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
         DriftSqlType.string,
         data['${effectivePrefix}permissions_json'],
       )!,
+      postingPolicyJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}posting_policy_json'],
+      )!,
       lastSeenCursor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}last_seen_cursor'],
@@ -1436,6 +1463,7 @@ class HostedBoardProjection extends DataClass
   final String title;
   final String? description;
   final String permissionsJson;
+  final String postingPolicyJson;
   final int lastSeenCursor;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1450,6 +1478,7 @@ class HostedBoardProjection extends DataClass
     required this.title,
     this.description,
     required this.permissionsJson,
+    required this.postingPolicyJson,
     required this.lastSeenCursor,
     required this.createdAt,
     required this.updatedAt,
@@ -1469,6 +1498,7 @@ class HostedBoardProjection extends DataClass
       map['description'] = Variable<String>(description);
     }
     map['permissions_json'] = Variable<String>(permissionsJson);
+    map['posting_policy_json'] = Variable<String>(postingPolicyJson);
     map['last_seen_cursor'] = Variable<int>(lastSeenCursor);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1489,6 +1519,7 @@ class HostedBoardProjection extends DataClass
           ? const Value.absent()
           : Value(description),
       permissionsJson: Value(permissionsJson),
+      postingPolicyJson: Value(postingPolicyJson),
       lastSeenCursor: Value(lastSeenCursor),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1511,6 +1542,7 @@ class HostedBoardProjection extends DataClass
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
       permissionsJson: serializer.fromJson<String>(json['permissionsJson']),
+      postingPolicyJson: serializer.fromJson<String>(json['postingPolicyJson']),
       lastSeenCursor: serializer.fromJson<int>(json['lastSeenCursor']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1530,6 +1562,7 @@ class HostedBoardProjection extends DataClass
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String?>(description),
       'permissionsJson': serializer.toJson<String>(permissionsJson),
+      'postingPolicyJson': serializer.toJson<String>(postingPolicyJson),
       'lastSeenCursor': serializer.toJson<int>(lastSeenCursor),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1547,6 +1580,7 @@ class HostedBoardProjection extends DataClass
     String? title,
     Value<String?> description = const Value.absent(),
     String? permissionsJson,
+    String? postingPolicyJson,
     int? lastSeenCursor,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1561,6 +1595,7 @@ class HostedBoardProjection extends DataClass
     title: title ?? this.title,
     description: description.present ? description.value : this.description,
     permissionsJson: permissionsJson ?? this.permissionsJson,
+    postingPolicyJson: postingPolicyJson ?? this.postingPolicyJson,
     lastSeenCursor: lastSeenCursor ?? this.lastSeenCursor,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1593,6 +1628,9 @@ class HostedBoardProjection extends DataClass
       permissionsJson: data.permissionsJson.present
           ? data.permissionsJson.value
           : this.permissionsJson,
+      postingPolicyJson: data.postingPolicyJson.present
+          ? data.postingPolicyJson.value
+          : this.postingPolicyJson,
       lastSeenCursor: data.lastSeenCursor.present
           ? data.lastSeenCursor.value
           : this.lastSeenCursor,
@@ -1614,6 +1652,7 @@ class HostedBoardProjection extends DataClass
           ..write('title: $title, ')
           ..write('description: $description, ')
           ..write('permissionsJson: $permissionsJson, ')
+          ..write('postingPolicyJson: $postingPolicyJson, ')
           ..write('lastSeenCursor: $lastSeenCursor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1633,6 +1672,7 @@ class HostedBoardProjection extends DataClass
     title,
     description,
     permissionsJson,
+    postingPolicyJson,
     lastSeenCursor,
     createdAt,
     updatedAt,
@@ -1651,6 +1691,7 @@ class HostedBoardProjection extends DataClass
           other.title == this.title &&
           other.description == this.description &&
           other.permissionsJson == this.permissionsJson &&
+          other.postingPolicyJson == this.postingPolicyJson &&
           other.lastSeenCursor == this.lastSeenCursor &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -1668,6 +1709,7 @@ class HostedBoardProjectionsCompanion
   final Value<String> title;
   final Value<String?> description;
   final Value<String> permissionsJson;
+  final Value<String> postingPolicyJson;
   final Value<int> lastSeenCursor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1683,6 +1725,7 @@ class HostedBoardProjectionsCompanion
     this.title = const Value.absent(),
     this.description = const Value.absent(),
     this.permissionsJson = const Value.absent(),
+    this.postingPolicyJson = const Value.absent(),
     this.lastSeenCursor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1699,6 +1742,7 @@ class HostedBoardProjectionsCompanion
     required String title,
     this.description = const Value.absent(),
     this.permissionsJson = const Value.absent(),
+    this.postingPolicyJson = const Value.absent(),
     this.lastSeenCursor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1721,6 +1765,7 @@ class HostedBoardProjectionsCompanion
     Expression<String>? title,
     Expression<String>? description,
     Expression<String>? permissionsJson,
+    Expression<String>? postingPolicyJson,
     Expression<int>? lastSeenCursor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1737,6 +1782,7 @@ class HostedBoardProjectionsCompanion
       if (title != null) 'title': title,
       if (description != null) 'description': description,
       if (permissionsJson != null) 'permissions_json': permissionsJson,
+      if (postingPolicyJson != null) 'posting_policy_json': postingPolicyJson,
       if (lastSeenCursor != null) 'last_seen_cursor': lastSeenCursor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1755,6 +1801,7 @@ class HostedBoardProjectionsCompanion
     Value<String>? title,
     Value<String?>? description,
     Value<String>? permissionsJson,
+    Value<String>? postingPolicyJson,
     Value<int>? lastSeenCursor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1771,6 +1818,7 @@ class HostedBoardProjectionsCompanion
       title: title ?? this.title,
       description: description ?? this.description,
       permissionsJson: permissionsJson ?? this.permissionsJson,
+      postingPolicyJson: postingPolicyJson ?? this.postingPolicyJson,
       lastSeenCursor: lastSeenCursor ?? this.lastSeenCursor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1809,6 +1857,9 @@ class HostedBoardProjectionsCompanion
     if (permissionsJson.present) {
       map['permissions_json'] = Variable<String>(permissionsJson.value);
     }
+    if (postingPolicyJson.present) {
+      map['posting_policy_json'] = Variable<String>(postingPolicyJson.value);
+    }
     if (lastSeenCursor.present) {
       map['last_seen_cursor'] = Variable<int>(lastSeenCursor.value);
     }
@@ -1839,6 +1890,7 @@ class HostedBoardProjectionsCompanion
           ..write('title: $title, ')
           ..write('description: $description, ')
           ..write('permissionsJson: $permissionsJson, ')
+          ..write('postingPolicyJson: $postingPolicyJson, ')
           ..write('lastSeenCursor: $lastSeenCursor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -28236,6 +28288,7 @@ typedef $$HostedBoardProjectionsTableCreateCompanionBuilder =
       required String title,
       Value<String?> description,
       Value<String> permissionsJson,
+      Value<String> postingPolicyJson,
       Value<int> lastSeenCursor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -28253,6 +28306,7 @@ typedef $$HostedBoardProjectionsTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String?> description,
       Value<String> permissionsJson,
+      Value<String> postingPolicyJson,
       Value<int> lastSeenCursor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -28311,6 +28365,11 @@ class $$HostedBoardProjectionsTableFilterComposer
 
   ColumnFilters<String> get permissionsJson => $composableBuilder(
     column: $table.permissionsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get postingPolicyJson => $composableBuilder(
+    column: $table.postingPolicyJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -28389,6 +28448,11 @@ class $$HostedBoardProjectionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get postingPolicyJson => $composableBuilder(
+    column: $table.postingPolicyJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get lastSeenCursor => $composableBuilder(
     column: $table.lastSeenCursor,
     builder: (column) => ColumnOrderings(column),
@@ -28457,6 +28521,11 @@ class $$HostedBoardProjectionsTableAnnotationComposer
 
   GeneratedColumn<String> get permissionsJson => $composableBuilder(
     column: $table.permissionsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get postingPolicyJson => $composableBuilder(
+    column: $table.postingPolicyJson,
     builder: (column) => column,
   );
 
@@ -28530,6 +28599,7 @@ class $$HostedBoardProjectionsTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String> permissionsJson = const Value.absent(),
+                Value<String> postingPolicyJson = const Value.absent(),
                 Value<int> lastSeenCursor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -28545,6 +28615,7 @@ class $$HostedBoardProjectionsTableTableManager
                 title: title,
                 description: description,
                 permissionsJson: permissionsJson,
+                postingPolicyJson: postingPolicyJson,
                 lastSeenCursor: lastSeenCursor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -28562,6 +28633,7 @@ class $$HostedBoardProjectionsTableTableManager
                 required String title,
                 Value<String?> description = const Value.absent(),
                 Value<String> permissionsJson = const Value.absent(),
+                Value<String> postingPolicyJson = const Value.absent(),
                 Value<int> lastSeenCursor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -28577,6 +28649,7 @@ class $$HostedBoardProjectionsTableTableManager
                 title: title,
                 description: description,
                 permissionsJson: permissionsJson,
+                postingPolicyJson: postingPolicyJson,
                 lastSeenCursor: lastSeenCursor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

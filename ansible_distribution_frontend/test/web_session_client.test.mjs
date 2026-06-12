@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   TRUST_TIERS,
   classifyTrustTier,
+  meetsMinPostTier,
   createWebSessionChallenge,
   fetchChallengeStatus,
   fetchCurrentWebSession,
@@ -65,6 +66,17 @@ test('keeps basic web, passkey web, and app-approved DID tiers distinct', () => 
     isPasskeyBacked: false,
     isSelfCustodyDid: true,
   });
+});
+
+test('orders posting gates so only verified humans pass a verified_human gate', () => {
+  assert.equal(meetsMinPostTier(TRUST_TIERS.anonymous, null), true);
+  assert.equal(meetsMinPostTier(TRUST_TIERS.anonymous, 'basic'), true);
+  assert.equal(meetsMinPostTier(TRUST_TIERS.selfCustodyDid, 'basic'), true);
+  assert.equal(meetsMinPostTier(TRUST_TIERS.anonymous, 'verified_human'), false);
+  assert.equal(meetsMinPostTier(TRUST_TIERS.basicWeb, 'verified_human'), false);
+  assert.equal(meetsMinPostTier(TRUST_TIERS.webPasskey, 'verified_human'), false);
+  assert.equal(meetsMinPostTier(TRUST_TIERS.selfCustodyDid, 'verified_human'), false);
+  assert.equal(meetsMinPostTier(TRUST_TIERS.verifiedHuman, 'verified_human'), true);
 });
 
 test('continues polling pending challenges without storing identity state', () => {

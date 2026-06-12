@@ -7,7 +7,7 @@
       },
       "declaration": {
         "source_uri": "package:ansible_store/src/db/app_database.dart",
-        "offset": 2450,
+        "offset": 3141,
         "name": "AppDatabase"
       },
       "references": [
@@ -80,6 +80,10 @@
           "name": "wallet_presentations"
         },
         {
+          "library_uri": "package:ansible_store/src/schema/passport_wallet_extensions.dart",
+          "name": "passport_wallet_extensions"
+        },
+        {
           "library_uri": "package:ansible_store/src/schema/follow_targets.dart",
           "name": "follow_targets"
         },
@@ -144,6 +148,10 @@
           "name": "ai_provider_configs"
         },
         {
+          "library_uri": "package:ansible_store/src/schema/contact_records.dart",
+          "name": "contact_records"
+        },
+        {
           "library_uri": "package:ansible_store/src/schema/context_packs.dart",
           "name": "context_packs"
         },
@@ -166,6 +174,38 @@
         {
           "library_uri": "package:ansible_store/src/schema/local_collections.dart",
           "name": "local_collections"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_devices.dart",
+          "name": "messenger_devices"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_pre_keys.dart",
+          "name": "messenger_pre_keys"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_sessions.dart",
+          "name": "messenger_sessions"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_conversations.dart",
+          "name": "messenger_conversations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_messages.dart",
+          "name": "messenger_messages"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_mailbox_cursors.dart",
+          "name": "messenger_mailbox_cursors"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/murmur_embeddings.dart",
+          "name": "murmur_embeddings"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/did_reputations.dart",
+          "name": "did_reputations"
         }
       ],
       "type": "database",
@@ -239,6 +279,10 @@
           "name": "wallet_presentations"
         },
         {
+          "library_uri": "package:ansible_store/src/schema/passport_wallet_extensions.dart",
+          "name": "passport_wallet_extensions"
+        },
+        {
           "library_uri": "package:ansible_store/src/schema/follow_targets.dart",
           "name": "follow_targets"
         },
@@ -303,6 +347,10 @@
           "name": "ai_provider_configs"
         },
         {
+          "library_uri": "package:ansible_store/src/schema/contact_records.dart",
+          "name": "contact_records"
+        },
+        {
           "library_uri": "package:ansible_store/src/schema/context_packs.dart",
           "name": "context_packs"
         },
@@ -325,12 +373,44 @@
         {
           "library_uri": "package:ansible_store/src/schema/local_collections.dart",
           "name": "local_collections"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_devices.dart",
+          "name": "messenger_devices"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_pre_keys.dart",
+          "name": "messenger_pre_keys"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_sessions.dart",
+          "name": "messenger_sessions"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_conversations.dart",
+          "name": "messenger_conversations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_messages.dart",
+          "name": "messenger_messages"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/messenger_mailbox_cursors.dart",
+          "name": "messenger_mailbox_cursors"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/murmur_embeddings.dart",
+          "name": "murmur_embeddings"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/did_reputations.dart",
+          "name": "did_reputations"
         }
       ],
       "views": [],
       "includes": [],
       "queries": [],
-      "schema_version": 14,
+      "schema_version": 21,
       "daos": [],
       "has_constructor_arg": true
     }
@@ -346,10 +426,12 @@
     "package:ansible_store/src/schema/board_sync_configs.dart",
     "package:ansible_store/src/schema/boards.dart",
     "package:ansible_store/src/schema/ai_provider_configs.dart",
+    "package:ansible_store/src/schema/contact_records.dart",
     "package:ansible_store/src/schema/content_items.dart",
     "package:ansible_store/src/schema/content_metadata.dart",
     "package:ansible_store/src/schema/content_relations.dart",
     "package:ansible_store/src/schema/context_packs.dart",
+    "package:ansible_store/src/schema/did_reputations.dart",
     "package:ansible_store/src/schema/discussion_nodes.dart",
     "package:ansible_store/src/schema/follow_activity_events.dart",
     "package:ansible_store/src/schema/follow_edges.dart",
@@ -359,9 +441,16 @@
     "package:ansible_store/src/schema/identities.dart",
     "package:ansible_store/src/schema/identity_bindings.dart",
     "package:ansible_store/src/schema/local_collections.dart",
+    "package:ansible_store/src/schema/messenger_conversations.dart",
+    "package:ansible_store/src/schema/messenger_devices.dart",
+    "package:ansible_store/src/schema/messenger_mailbox_cursors.dart",
+    "package:ansible_store/src/schema/messenger_messages.dart",
+    "package:ansible_store/src/schema/messenger_pre_keys.dart",
+    "package:ansible_store/src/schema/messenger_sessions.dart",
     "package:ansible_store/src/schema/ops_queue.dart",
     "package:ansible_store/src/schema/outbound_follow_activities.dart",
     "package:ansible_store/src/schema/ownership_policies.dart",
+    "package:ansible_store/src/schema/passport_wallet_extensions.dart",
     "package:ansible_store/src/schema/posts.dart",
     "package:ansible_store/src/schema/publication_intents.dart",
     "package:ansible_store/src/schema/publication_targets.dart",
@@ -373,6 +462,7 @@
     "package:ansible_store/src/schema/transformation_jobs.dart",
     "package:ansible_store/src/schema/wallet_credential_payloads.dart",
     "package:ansible_store/src/schema/wallet_credentials.dart",
-    "package:ansible_store/src/schema/wallet_presentations.dart"
+    "package:ansible_store/src/schema/wallet_presentations.dart",
+    "package:ansible_store/src/schema/murmur_embeddings.dart"
   ]
 }

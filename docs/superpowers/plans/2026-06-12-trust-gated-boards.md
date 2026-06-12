@@ -2,6 +2,20 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status: ✅ implemented 2026-06-13** (relay + app + frontend, all suites
+> green). Deviations from the plan as written:
+> - App-originated thread/post creation flows through the signed **ops
+>   pipeline** (`POST /api/v1/ops`), not `signed_intent.ex` (which only
+>   handles `create_board`) — the gate lives in `ops_controller.ex` after
+>   signature verification, plus `posting_gate.ex` / `reputation_tier.ex`.
+> - AppView item is **N/A**: board metadata/search is relay-served; AppView
+>   carries no board projections to pass the policy through.
+> - `create_web_thread` gained an optional `board_id` (unknown id → 404 so
+>   the gate cannot be bypassed; existing title-only callers unaffected).
+> - Board rows rendered inside `home_shell.dart` don't show the badge yet —
+>   deferred while that file is being refactored in a parallel session;
+>   boards list / discover / threads screens all show it.
+
 **Goal:** Let a board owner require a minimum reputation tier to **post** in a
 hosted board — the flagship use case being「只有驗證過的真人能發文」boards.
 This turns the existing VC → reputation-tier pipeline into a user-visible
@@ -100,57 +114,57 @@ discoverable before posting, posting-only scope, and ungated default.
 
 ## Task 1: Relay — policy validation + gate at both write chokepoints
 
-- [ ] `forum_host/store.ex` `create_board/1` (and board update path) validates
+- [x] `forum_host/store.ex` `create_board/1` (and board update path) validates
       `posting_policy["min_post_tier"]` against the allowed tier enum; rejects
       unknown values.
-- [ ] Signed-intent acceptance for thread/post creation resolves the author
+- [x] Signed-intent acceptance for thread/post creation resolves the author
       DID's `reputation_tier` via `did_account_cache` and rejects with the
       reason-coded 403 contract when below `min_post_tier`.
-- [ ] Web-session scoped write path applies the identical check (no bypass via
+- [x] Web-session scoped write path applies the identical check (no bypass via
       cookie writes).
-- [ ] Tier ordering helper (`basic < verified_human`) lives in one module used
+- [x] Tier ordering helper (`basic < verified_human`) lives in one module used
       by both paths.
-- [ ] Tests: ungated board unchanged; gated board rejects `basic` and accepts
+- [x] Tests: ungated board unchanged; gated board rejects `basic` and accepts
       `verified_human` on both paths; rejection body matches the contract;
       unknown tier value in policy rejected at board create.
 
 ## Task 2: Relay — expose the gate in discovery and board APIs
 
-- [ ] `min_post_tier` included in board listings, board search results, and
+- [x] `min_post_tier` included in board listings, board search results, and
       host info responses (it already serializes via the `posting_policy`
       field — verify and add explicit tests so it never regresses).
-- [ ] AppView board-feed / board search projections carry the policy through
+- [x] AppView board-feed / board search projections carry the policy through
       unchanged.
 
 ## Task 3: App — set the gate at creation, show it before posting
 
-- [ ] `board_form_dialog.dart`: host-side option「發文資格」(不限 /
+- [x] `board_form_dialog.dart`: host-side option「發文資格」(不限 /
       真人驗證) writes `posting_policy.min_post_tier` into the create-board
       intent.
-- [ ] Board rows (boards list, discover search results, board header) show a
+- [x] Board rows (boards list, discover search results, board header) show a
       gate badge（「真人版」）when `min_post_tier == verified_human`.
-- [ ] Compose entry points check the local tier badge state: below-tier users
+- [x] Compose entry points check the local tier badge state: below-tier users
       see the composer disabled with an explanation and a button into
       `credential_issuance_wizard.dart`（升級驗證）— gate discoverable
       **before** writing, per the constitution review.
-- [ ] Server 403 `posting_requires_tier` is mapped to the same friendly
+- [x] Server 403 `posting_requires_tier` is mapped to the same friendly
       message (the relay remains authoritative; the client check is UX only).
-- [ ] Widget tests for: badge rendering, disabled composer + upgrade CTA,
+- [x] Widget tests for: badge rendering, disabled composer + upgrade CTA,
       403 mapping.
 
 ## Task 4: Frontend — display + block
 
-- [ ] Board pages render the gate badge and requirement text.
-- [ ] Web-session write UI hides/disables posting for sessions whose DID tier
+- [x] Board pages render the gate badge and requirement text.
+- [x] Web-session write UI hides/disables posting for sessions whose DID tier
       is below the gate, with the same upgrade messaging (pointing back to
       the app).
-- [ ] Node tests for both states.
+- [x] Node tests for both states.
 
 ## Task 5: Docs + status
 
-- [ ] README component table: Reputation Labeler row notes tiers now gate
+- [x] README component table: Reputation Labeler row notes tiers now gate
       posting per board.
-- [ ] `docs/ROADMAP.md` Product Track row → Done with link here.
+- [x] `docs/ROADMAP.md` Product Track row → Done with link here.
 
 ## Definition of Done
 

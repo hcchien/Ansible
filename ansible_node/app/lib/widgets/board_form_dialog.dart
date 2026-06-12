@@ -1,6 +1,9 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+import '../services/posting_gate.dart';
+
 class BoardFormDialog extends StatefulWidget {
   final String? initialTitle;
   final String? initialDescription;
@@ -26,6 +29,9 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
   late final TextEditingController _descriptionController;
   final _formKey = GlobalKey<FormState>();
   String? _selectedForumHostId;
+
+  /// `posting_policy.min_post_tier` for the new board; null ⇒ no gate.
+  String? _minPostTier;
 
   @override
   void initState() {
@@ -108,6 +114,34 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
               ),
               maxLines: 3,
             ),
+            if (widget.requireForumHost) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                initialValue: _minPostTier,
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text(context.uiCopy(zh: '不限', en: 'Anyone')),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: PostingGate.verifiedHumanTier,
+                    child: Text(
+                      context.uiCopy(zh: '需真人驗證', en: 'Verified humans only'),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _minPostTier = value);
+                },
+                decoration: InputDecoration(
+                  labelText: context.uiCopy(zh: '發文資格', en: 'Who can post'),
+                  helperText: context.uiCopy(
+                    zh: '僅限制發文；任何人都能閱讀。',
+                    en: 'Restricts posting only; anyone can read.',
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -125,6 +159,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                 'description': description.isEmpty ? null : description,
                 if (_selectedForumHostId != null)
                   'forumHostId': _selectedForumHostId,
+                if (_minPostTier != null) 'minPostTier': _minPostTier,
               });
             }
           },

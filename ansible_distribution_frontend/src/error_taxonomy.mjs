@@ -3,6 +3,7 @@ import { RelayApiError } from './relay_api_client.mjs';
 export const ERROR_TYPES = Object.freeze({
   unauthenticated: 'unauthenticated',
   missingScope: 'missing_scope',
+  postingRequiresTier: 'posting_requires_tier',
   rateLimited: 'rate_limited',
   challengeExpired: 'challenge_expired',
   sessionExpired: 'session_expired',
@@ -60,8 +61,21 @@ function relayError(error) {
     retryable: retryableForType(type),
     status: error.status,
     code: error.code,
-    detail: error.detail,
+    detail: detailForRelayFailure(type, error),
   });
+}
+
+function detailForRelayFailure(type, error) {
+  if (type === ERROR_TYPES.postingRequiresTier) {
+    // Relay 403 contract:
+    // {"error": "posting_requires_tier", "required_tier": ..., "current_tier": ...}
+    return {
+      requiredTier: error.body?.required_tier ?? null,
+      currentTier: error.body?.current_tier ?? null,
+    };
+  }
+
+  return error.detail;
 }
 
 function errorTypeForRelayFailure(error) {
@@ -74,6 +88,10 @@ function errorTypeForRelayFailure(error) {
   }
 
   if (error.status === 403) {
+    if (error.code === 'posting_requires_tier') {
+      return ERROR_TYPES.postingRequiresTier;
+    }
+
     return ERROR_TYPES.missingScope;
   }
 

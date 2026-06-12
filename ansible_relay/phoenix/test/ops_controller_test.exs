@@ -313,6 +313,131 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert response.status == 202
   end
 
+  # ---- Posting gate (posting_policy["min_post_tier"]) ----
+
+  defp insert_hosted_board(posting_policy) do
+    board_id = "gated-board-#{System.unique_integer([:positive])}"
+
+    AnsibleRelay.Repo.insert!(%AnsibleRelay.Db.ForumHostBoard{
+      hosted_board_id: board_id,
+      slug: board_id,
+      canonical_board_uri: "http://localhost:4001/boards/#{board_id}",
+      title: "Board #{board_id}",
+      posting_policy: posting_policy
+    })
+
+    board_id
+  end
+
+  defp seed_reputation_tier(did, tier) do
+    :ok =
+      AnsibleRelay.DidAccountCache.put(
+        did,
+        "pubkey_hex_tier_test",
+        "tier_handle_#{System.unique_integer([:positive])}",
+        reputation_tier: tier
+      )
+  end
+
+  test "thread insert into a tier-gated board rejects a basic DID with the 403 contract" do
+    did = "did:key:z6MkGatedBasic#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+
+    op = content_op(did, private_key, "thread", %{"boardId" => board_id, "title" => "Hi"})
+    response = post_json("/api/v1/ops", op)
+
+    assert response.status == 403
+
+    assert Jason.decode!(response.resp_body) == %{
+             "error" => "posting_requires_tier",
+             "required_tier" => "verified_human",
+             "current_tier" => "basic"
+           }
+  end
+
+  test "post insert (reply) into a tier-gated board is gated by the same key" do
+    did = "did:key:z6MkGatedReply#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+
+    op =
+      content_op(did, private_key, "post", %{
+        "boardId" => board_id,
+        "threadId" => "thread-1",
+        "body" => "reply"
+      })
+
+    response = post_json("/api/v1/ops", op)
+
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "posting_requires_tier"
+  end
+
+  test "thread insert into a tier-gated board accepts a verified_human DID" do
+    did = "did:key:z6MkGatedHuman#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+    seed_reputation_tier(did, "verified_human")
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+
+    op = content_op(did, private_key, "thread", %{"boardId" => board_id, "title" => "Hi"})
+    response = post_json("/api/v1/ops", op)
+
+    assert response.status == 202
+    assert Jason.decode!(response.resp_body)["accepted"] == true
+  end
+
+  test "thread insert into an ungated board stays unchanged for a basic DID" do
+    did = "did:key:z6MkUngated#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+    board_id = insert_hosted_board(%{"min_trust_tier" => "self_custody_did"})
+
+    op = content_op(did, private_key, "thread", %{"boardId" => board_id, "title" => "Hi"})
+    response = post_json("/api/v1/ops", op)
+
+    assert response.status == 202
+  end
+
+  test "thread update op on a gated board is not gated (gate applies to creation only)" do
+    did = "did:key:z6MkGatedUpdate#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+
+    op = %{
+      "op_id" => "op-#{System.unique_integer()}",
+      "author_did" => did,
+      "entity_type" => "thread",
+      "entity_id" => "entity-#{System.unique_integer()}",
+      "op_type" => "update",
+      "payload" => Base.encode64(Jason.encode!(%{"boardId" => board_id, "title" => "Edited"}))
+    }
+
+    op = Map.put(op, "signature", sign(private_key, signing_payload(op)))
+    response = post_json("/api/v1/ops", op)
+
+    assert response.status == 202
+  end
+
+  test "thread insert referencing a board not hosted here passes through" do
+    did = "did:key:z6MkForeignBoard#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op =
+      content_op(did, private_key, "thread", %{
+        "boardId" => "board-not-hosted-#{System.unique_integer([:positive])}",
+        "title" => "Hi"
+      })
+
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 202
+  end
+
   # ---- GET /api/v1/ops/delta ----
 
   test "delta returns 200 with ops, next_cursor, has_more" do

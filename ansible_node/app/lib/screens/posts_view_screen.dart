@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:uuid/uuid.dart';
-import '../widgets/post_form_dialog.dart';
+import '../l10n/app_l10n.dart';
 import '../services/ops_dispatch_service.dart';
+import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
+import '../widgets/post_form_dialog.dart';
+import '../widgets/posting_gate_notice.dart';
 
 class PostsViewScreen extends StatefulWidget {
   final AppDatabase db;
@@ -32,6 +35,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   List<Post> _posts = [];
   bool _isLoading = true;
 
+  /// True when the board requires a higher tier than the local user has.
+  /// Client-side UX only — the relay re-checks at intent acceptance.
+  bool _postingBlocked = false;
+
   String get _authorDid => widget.authorDid ?? widget.thread.authorId;
 
   @override
@@ -44,10 +51,23 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
     final posts = await _postRepo.list(threadId: widget.thread.id);
+    final postingBlocked = await _checkPostingGate();
     setState(() {
       _posts = posts;
+      _postingBlocked = postingBlocked;
       _isLoading = false;
     });
+  }
+
+  Future<bool> _checkPostingGate() async {
+    final projection = await DriftHostedBoardRepository(widget.db)
+        .getProjectionByLocalBoardId(widget.thread.boardId);
+    final requiredTier = projection?.minPostTier;
+    if (requiredTier == null) return false;
+    final tier = await DriftDidReputationRepository(
+      widget.db,
+    ).tierFor(_authorDid);
+    return !PostingGate.satisfies(tier, requiredTier);
   }
 
   Future<void> _createPost() async {
@@ -305,14 +325,21 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                   ),
                   padding: const EdgeInsets.all(16),
                   child: SafeArea(
-                    child: ElevatedButton.icon(
-                      onPressed: _createPost,
-                      icon: const Icon(Icons.add),
-                      label: const Text('New Post'),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                      ),
-                    ),
+                    child: _postingBlocked
+                        ? PostingGateNotice(
+                            localDid: _authorDid,
+                            onUpgradeCompleted: _loadPosts,
+                          )
+                        : ElevatedButton.icon(
+                            onPressed: _createPost,
+                            icon: const Icon(Icons.add),
+                            label: Text(
+                              context.uiCopy(zh: '發表貼文', en: 'New Post'),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                          ),
                   ),
                 ),
               ],

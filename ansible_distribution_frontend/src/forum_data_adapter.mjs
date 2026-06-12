@@ -109,6 +109,7 @@ export function normalizeForumHost(host) {
 
 export function normalizeHostedBoard(board) {
   const permissions = board?.permissions ?? {};
+  const postingPolicy = board?.posting_policy ?? {};
 
   return {
     id: board?.hosted_board_id ?? '',
@@ -119,6 +120,9 @@ export function normalizeHostedBoard(board) {
     permissions: {
       canRead: permissions.read !== false,
       canWrite: Boolean(permissions.write),
+    },
+    postingPolicy: {
+      minPostTier: postingPolicy.min_post_tier ?? null,
     },
   };
 }

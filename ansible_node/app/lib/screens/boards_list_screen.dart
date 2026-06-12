@@ -2,14 +2,19 @@ import 'package:ansible_domain/ansible_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import '../l10n/app_l10n.dart';
+import '../services/posting_gate.dart';
 import '../widgets/board_form_dialog.dart';
+import '../widgets/board_gate_badge.dart';
 import '../widgets/follow_button.dart';
 import 'threads_list_screen.dart';
 
 class BoardsListScreen extends StatefulWidget {
   final AppDatabase db;
 
-  const BoardsListScreen({super.key, required this.db});
+  /// The local user's DID; used to check posting gates downstream.
+  final String? localDid;
+
+  const BoardsListScreen({super.key, required this.db, this.localDid});
 
   @override
   State<BoardsListScreen> createState() => _BoardsListScreenState();
@@ -20,9 +25,13 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
 
   late final DriftBoardRepository _boardRepo;
   late final DriftFollowRepository _followRepo;
+  late final DriftHostedBoardRepository _hostedBoardRepo;
   late final FollowService _followService;
   List<Board> _boards = [];
   Set<String> _followedBoardIds = {};
+
+  /// Local board ids whose hosted projection requires verified_human to post.
+  Set<String> _gatedBoardIds = {};
   bool _isLoading = true;
 
   @override
@@ -30,6 +39,7 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
     super.initState();
     _boardRepo = DriftBoardRepository(widget.db);
     _followRepo = DriftFollowRepository(widget.db);
+    _hostedBoardRepo = DriftHostedBoardRepository(widget.db);
     _followService = FollowService(
       followRepository: _followRepo,
       outboxRepository: DriftFollowActivityOutboxRepository(widget.db),
@@ -58,9 +68,16 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
         followedBoardIds.add(board.id);
       }
     }
+    final projections = await _hostedBoardRepo.listProjections();
+    final gatedBoardIds = {
+      for (final projection in projections)
+        if (projection.minPostTier == PostingGate.verifiedHumanTier)
+          projection.localBoardId,
+    };
     setState(() {
       _boards = boards;
       _followedBoardIds = followedBoardIds;
+      _gatedBoardIds = gatedBoardIds;
       _isLoading = false;
     });
   }
@@ -189,7 +206,20 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
                   ),
                   child: ListTile(
                     leading: const Icon(Icons.dashboard),
-                    title: Text(board.title),
+                    title: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            board.title,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (_gatedBoardIds.contains(board.id)) ...[
+                          const SizedBox(width: 6),
+                          const BoardGateBadge(),
+                        ],
+                      ],
+                    ),
                     subtitle: board.description != null
                         ? Text(board.description!)
                         : null,
@@ -245,8 +275,11 @@ class _BoardsListScreenState extends State<BoardsListScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              ThreadsListScreen(db: widget.db, board: board),
+                          builder: (context) => ThreadsListScreen(
+                            db: widget.db,
+                            board: board,
+                            localDid: widget.localDid,
+                          ),
                         ),
                       );
                     },

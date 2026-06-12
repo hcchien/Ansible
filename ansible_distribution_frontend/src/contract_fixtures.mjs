@@ -67,6 +67,15 @@ export const CONTRACT_FIXTURES = Object.freeze({
         permissions: Object.freeze({ read: true, write: true }),
       }),
     ]),
+    gatedBoard: Object.freeze({
+      hosted_board_id: 'verified-humans',
+      canonical_board_uri: 'http://localhost:4001/boards/verified-humans',
+      slug: 'verified-humans',
+      title: 'Verified Humans',
+      description: 'Only verified humans can post here',
+      permissions: Object.freeze({ read: true, write: true }),
+      posting_policy: Object.freeze({ min_post_tier: 'verified_human' }),
+    }),
     threadAccepted: Object.freeze({
       accepted: true,
       subject_did: 'did:plc:fixture',
@@ -80,6 +89,17 @@ export const CONTRACT_FIXTURES = Object.freeze({
       retryable: false,
       code: 'missing_scope',
       detail: Object.freeze({ requiredScope: 'forum:post' }),
+    }),
+    postingRequiresTier: Object.freeze({
+      type: ERROR_TYPES.postingRequiresTier,
+      message: 'posting_requires_tier',
+      retryable: false,
+      status: 403,
+      code: 'posting_requires_tier',
+      detail: Object.freeze({
+        requiredTier: 'verified_human',
+        currentTier: 'basic',
+      }),
     }),
     rateLimited: Object.freeze({
       type: ERROR_TYPES.rateLimited,

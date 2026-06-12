@@ -56,6 +56,9 @@ class BoardSearchResult {
   final String? canonicalBoardUri;
   final List<String> tags;
 
+  /// Host-declared posting policy, e.g. `{"min_post_tier": "verified_human"}`.
+  final Map<String, Object?> postingPolicy;
+
   const BoardSearchResult({
     required this.hostedBoardId,
     required this.title,
@@ -63,7 +66,15 @@ class BoardSearchResult {
     this.description,
     this.canonicalBoardUri,
     this.tags = const [],
+    this.postingPolicy = const {},
   });
+
+  /// Minimum reputation tier required to post, or null when ungated.
+  String? get minPostTier {
+    final tier = postingPolicy['min_post_tier'];
+    if (tier is String && tier.trim().isNotEmpty) return tier;
+    return null;
+  }
 
   factory BoardSearchResult.fromJson(Map<String, dynamic> m) => BoardSearchResult(
         hostedBoardId: m['hosted_board_id'] as String? ?? '',
@@ -74,6 +85,9 @@ class BoardSearchResult {
         tags: (m['tags'] as List<dynamic>? ?? const [])
             .whereType<String>()
             .toList(),
+        postingPolicy: Map<String, Object?>.from(
+          (m['posting_policy'] as Map?) ?? const {},
+        ),
       );
 }
 

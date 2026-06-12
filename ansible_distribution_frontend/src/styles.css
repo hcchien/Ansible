@@ -481,6 +481,47 @@ button.header-action.is-danger:hover:not(:disabled) {
   font-size: 0.9rem;
 }
 
+.gate-badge {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  border: 0.5px solid var(--warning);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--warning);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.gate-requirement {
+  color: var(--warning);
+  font-size: 0.86rem;
+}
+
+.gate-blocked {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+  max-width: 260px;
+}
+
+.gate-blocked .primary-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gate-blocked p {
+  margin: 0;
+  color: var(--warning);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
 .permission-state {
   display: grid;
   gap: 4px;

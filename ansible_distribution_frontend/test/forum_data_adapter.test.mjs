@@ -30,8 +30,20 @@ test('normalizes hosted boards into UI-ready board records', () => {
       description: 'General discussion',
       canonicalUri: 'http://localhost:4001/boards/general',
       permissions: { canRead: true, canWrite: false },
+      postingPolicy: { minPostTier: null },
     },
   );
+});
+
+test('normalizes the posting policy gate on tier-gated boards', () => {
+  const gated = normalizeHostedBoard({
+    hosted_board_id: 'verified-humans',
+    slug: 'verified-humans',
+    title: 'Verified Humans',
+    posting_policy: { min_post_tier: 'verified_human' },
+  });
+
+  assert.deepEqual(gated.postingPolicy, { minPostTier: 'verified_human' });
 });
 
 test('builds forum home data from host, boards, and session capabilities', () => {
@@ -69,6 +81,7 @@ test('builds forum home data from host, boards, and session capabilities', () =>
         description: '',
         canonicalUri: '',
         permissions: { canRead: true, canWrite: true },
+        postingPolicy: { minPostTier: null },
       },
     ],
     primaryBoardId: 'general',
