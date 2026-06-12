@@ -33,8 +33,10 @@ federation, and ranking. Checklist answers:
 5. **Trust/ranking changes:** Phase 1 makes external-host compliance level a
    policy input — reason-coded per Base Rules 4/7.
 6. **Personhood bindings:** unchanged (issuer boundary stays as reviewed).
-7. **Exit/rotation:** Phase 1 reduced-trust mode preserves a lower-trust path;
-   key migration paths must survive the custody change.
+7. **Exit/rotation:** Phase 1.0 makes this explicit — recovery, re-anchor, and
+   anchor portability are designed *before* hardware custody lands, so the
+   custody upgrade never removes the user's exit or recovery path; reduced-
+   trust mode preserves a lower-trust option throughout.
 8. **External hosts:** compliance level becomes persisted and policy-readable
    (closing the review's second remaining gap).
 
@@ -90,13 +92,20 @@ adapters; the app signs intents, the relay distributes.
 | G11 | DNS handle verification not started | README | Low |
 | G12 | Standalone reputation labeler (tier mapping lives inside relay) | README | Low |
 | G13 | Multi-region / multi-AppView (genesis target) | genesis_hosting.md | Later |
+| G14 | No identity recovery path — hardware custody (G1) makes device loss = permanent identity loss; constitution requires migration/recovery without operator authority | Base Rule 1; this review | **Launch blocker** |
+| G15 | Relay is the de facto identity authority: anchors are relay DB rows, not user-signed portable objects; identity/forum/federation data not schema-separated | Base Rule 1; this review | High |
+| G16 | No app↔relay API versioning/negotiation — op format evolution (Phase 2) will break long-tail clients | This review | High |
+| G17 | No observability baseline — phase exit criteria (signature rejection rate, op growth, ingest lag) have no metrics to stand on | SOSP C-1 (partial); this review | High |
 
 ## 3. Target Architecture（目標架構）
 
 At **launch**: same five services, with (a) hardware-held or explicitly
-reduced-trust keys on device, (b) every public fold independently signature-
-verified, (c) bounded relay storage with signed snapshots, (d) compliance level
-as a first-class policy input across ranking/sync/trust.
+reduced-trust keys on device **plus a working recovery path**, (b) every
+public fold independently signature-verified, (c) bounded relay storage with
+signed snapshots, (d) compliance level as a first-class policy input across
+ranking/sync/trust, (e) DID anchors as user-signed, self-certifying objects
+that can be re-presented to a different relay — the relay stores and serves
+anchors but is not the sole authority over identity continuity.
 
 At **scale**: push-based op distribution (WebSocket firehose with jittered
 backoff), queue-backed delivery workers, partitioned op storage with archived
@@ -111,10 +120,35 @@ multi-region demands otherwise (decision D2 below).
 
 ## 4. Phased Plan（分階段計畫）
 
+### Phase 0 — Cross-cutting foundations (start immediately, runs alongside)
+
+Closes G16, G17. Cheap now, expensive to retrofit.
+
+1. **API versioning**: client sends an app/protocol version on relay/appview
+   calls; servers advertise a minimum supported version; op payloads carry a
+   schema version so Phase 2 format evolution is additive, not breaking.
+   Long-tail devices that never update must degrade with a clear message,
+   not silent corruption.
+2. **Observability baseline**: metrics endpoints (PromEx or equivalent) on
+   relay/appview, request + ingest counters on issuer/frontend; the specific
+   series each later phase needs as exit criteria — op-table growth rate,
+   delta-poll QPS, signature verification pass/reject, AppView ingest lag,
+   delivery queue depth — defined here so the phases can be measured.
+
 ### Phase 1 — Identity custody & trust policy (launch blockers)
 
-Closes G1, G2, G3. All work is app + rust core + small relay/appview reads.
+Closes G1, G2, G3, G14. All work is app + rust core + relay anchor protocol.
 
+0. **Identity recovery & re-anchor design (gate for everything below)**:
+   hardware custody makes keys unexportable by design, so device loss must
+   not mean identity loss. Design before implementing 1.–2.: multi-device
+   key attestation (new device key signed by an existing device key), an
+   optional user-passphrase encrypted backup of the *content* key as a
+   reduced-trust path (NIP-49-style), and a relay re-anchor protocol that
+   accepts a recovery proof (old-key signature or recovery credential) to
+   rebind a handle to a new key. The anchor record itself becomes a
+   user-signed self-certifying object (G15's portability half) so the same
+   proof works against a different relay. Decision D5.
 1. **Hardware-backed signing keys** (`ansible_core/did`, `ansible_rust_core`,
    app): generate/sign inside Secure Enclave (iOS) / StrongBox-backed Keystore
    (Android) where available; key handles replace raw hex in storage; no
@@ -129,11 +163,13 @@ Closes G1, G2, G3. All work is app + rust core + small relay/appview reads.
    board sync gating, and recommendation read it; reason-coded UI label.
 
 Exit criteria: compliance review G1/G2 sections flip to compliant; migration
-path for existing raw-hex keys verified on both platforms.
+path for existing raw-hex keys verified on both platforms; **a documented,
+tested device-loss recovery walkthrough** (lose device A, recover identity on
+device B, relay accepts the re-anchor).
 
 ### Phase 2 — Data-plane integrity & durability
 
-Closes G4, G5. Relay + AppView.
+Closes G4, G5, G15 (schema half). Relay + AppView.
 
 1. **AppView independent verification** (SOSP D-1): Rustler batch Ed25519
    verifier at ingest; require valid signature **and** non-expired DID anchor
@@ -144,6 +180,11 @@ Closes G4, G5. Relay + AppView.
 3. **Relay op storage lifecycle**: time-based partitioning of `ops`; signed
    snapshot format so AppView rebuilds don't require full history; retention
    policy for archived partitions (tombstones remain authoritative locally).
+4. **Relay internal schema separation**: identity-anchor, forum-host, and
+   federation data live in separable schema/table groups with no cross-group
+   joins in hot paths. The relay stays one deployable (splitting now would be
+   premature), but each concern keeps its own data ownership so a future
+   extraction is a deployment change, not a rewrite.
 
 Exit criteria: AppView rebuild-from-snapshot tested; ops partitions rotating
 in staging; public fold rejects bad signatures with reason-coded metrics.
@@ -196,22 +237,27 @@ Closes G13. Only after Phases 2–3 are stable in production.
 
 | # | Decision | Default position |
 |---|---|---|
-| D1 | Secure Enclave keys are P-256, not Ed25519 — dual-key DID (hardware P-256 device key attesting an Ed25519 content key) vs migrating record signatures to ES256 | Dual-key: keep Ed25519 for Lexicon/Nostr compatibility; hardware key wraps/attests it. Decide during Phase 1 design |
+| D1 | Secure Enclave keys are P-256, not Ed25519 — dual-key DID (hardware P-256 device key attesting an Ed25519 content key) vs migrating record signatures to ES256 | Dual-key: keeps Ed25519 for Lexicon/Nostr compatibility, **and** the content key stays backupable while the device key stays hardware-bound — which is exactly the split the recovery design (Phase 1.0) needs. Decide during Phase 1 design |
 | D2 | Cross-service op transport at scale: Phoenix PubSub vs GCP Pub/Sub vs NATS | Phoenix Channels single-region (Phase 3); revisit only at Phase 5 multi-region |
 | D3 | Standalone labeler timing | Extract only when a second consumer (external AppView or moderation tooling) exists |
 | D4 | Oban vs hand-rolled queue for delivery workers | Oban (battle-tested, Postgres-native, no new infra) |
+| D5 | Recovery mechanism mix: multi-device attestation, passphrase-encrypted content-key backup, recovery credential — which are launch-required vs later | Multi-device attestation + encrypted backup at launch (no new server trust); recovery credential (issuer-assisted) later. Decide during Phase 1.0 design |
+| D6 | Issuer trust anchor: relay pins a single `ISSUER_DID`/pubkey via env — needs a rotation/multi-key story before first issuer key rotation | Move to a small signed issuer-key document (did:web already serves one) consumed by relay; low urgency, schedule with Phase 4 |
 
 ## 6. Sequencing & Ownership（順序與依賴）
 
 ```
-Phase 1 (app/rust/core)  ──────────►  launch gate
+Phase 0 (cross-cutting)  ── starts now, runs alongside everything
+Phase 1 (app/rust/core)  ── 1.0 recovery design gates 1.1–1.2 ──►  launch gate
 Phase 2 (relay/appview)  ──────────►  needed before meaningful external traffic
 Phase 3 (relay/appview)  ── after 2 (snapshots make push restart-safe)
 Phase 4 (federation)     ── 4.1 after Phase 1; 4.2–4.4 independent
 Phase 5 (infra)          ── after 2+3 stable in prod
 ```
 
-Phases 1 and 2 can run in parallel (different services). Within each phase,
+Phases 1 and 2 can run in parallel (different services), but Phase 1.0's
+anchor-as-portable-object design should be agreed before Phase 2 freezes the
+ops/snapshot schema, so anchors and ops don't diverge. Within each phase,
 items are ordered by dependency. Each item should get its own plan file under
 `docs/superpowers/plans/` with a Constitution Review section before
 implementation, per the AGENTS.md gate.
