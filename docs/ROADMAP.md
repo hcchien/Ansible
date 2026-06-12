@@ -1,0 +1,128 @@
+# Ansible / Tris-Aura Roadmap
+
+> **What this is:** the single master index of planning state for the Ansible
+> (Tris-Aura Hybrid Network V2.0) repo — what is in flight, what is next, what
+> is parked, and what already landed, with links to the underlying specs and
+> plans.
+>
+> **Last updated:** 2026-06-12
+>
+> **Keep it current:** when a plan lands, is paused, or a new spec/plan is
+> added under `docs/superpowers/`, update this file in the same change.
+> Statuses below are based on plan checklists **and** git history — several
+> completed plans never had their checkboxes ticked, so commits are the source
+> of truth where they disagree.
+
+## Now（進行中）
+
+| Item | Priority | Links | Notes / dependencies |
+|---|---|---|---|
+| iOS staging release hardening — real Rust FFI bridge, relay auto-seed, DID auto-anchor, `elix.cool` rebrand, CI strict analyze | P1 | (no plan file; see recent `main` commits) | Current active work stream; consider capturing remaining iOS/TestFlight steps in a plan like the Android checklist |
+| Hardware-backed signing keys + explicit reduced-trust mode | P1 — launch blocker | [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | No plan file yet. DID/PLC/Nostr keys still persist raw hex via `flutter_secure_storage`; needs Secure Enclave / StrongBox custody, no-export guarantee, reduced-trust fallback |
+
+## Next（下一步）
+
+| Item | Priority | Links | Notes / dependencies |
+|---|---|---|---|
+| TW provider **production** adapter (real TW FidO/MOICA partner API) | P1 | [Plan](superpowers/plans/2026-05-05-tw-provider-production-integration.md) · [Adapter boundary plan](superpowers/plans/2026-05-05-issuer-production-adapter-boundary.md) | Production-shaped flow + fail-closed boundary are done; the real partner integration is blocked on external partner API / trust-anchor details |
+| MobileMoica RP production configuration | P1 | [Plan](superpowers/plans/2026-05-30-mobilemoica-rp-explicit-disclosure.md) · [Spec](superpowers/specs/2026-05-30-mobilemoica-rp-explicit-disclosure-design.md) | Flow implemented; production stays fail-closed until approval artifact IDs, MobileMoica service credentials, trust anchors, PKCS#7 validation, and revocation checks are configured |
+| Android release readiness (beta build → Play Store) | P2 | [Plan](superpowers/plans/2026-05-10-android-release-readiness-checklist.md) | **In progress, stalled** — Task 1 (DID plugin packaging, build unblocked) done; identity/assets/signing, platform verification, and release checklist remain. Recent release effort has gone to iOS |
+| External host compliance level — local persistence + policy use | P2 | [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | Discovery exposes compliance labels already; local `ForumHost`/`RemoteNode` records don't persist them and ranking/sync/trust policy don't consume them yet |
+
+## Later（未來）
+
+| Item | Priority | Links | Notes / dependencies |
+|---|---|---|---|
+| DNS handle verification (DNS TXT + HTTPS `/.well-known`) | P3 | README component table | 🔜 future in component status; no spec/plan yet |
+| Standalone Reputation Labeler service | P3 | README component table | VP→tier paths exist and propagate relay → AppView → app badges; extracting a standalone labeler is future work |
+| LLM plugin / MCP agent access (ChatGPT, Claude, Codex, local MCP) | P3 | [TODO](superpowers/todos/2026-05-16-llm-plugin-mcp-access.md) | Backlog only — all phases unchecked. Should reuse app-mediated web-session grants; never exposes root DID keys |
+| AI Agent (Component F) — summarisation/filtering over firehose | P4 | README component table | Explicitly P4; local AI-assistance foundation (providers, context packs, review flows) already landed via content lineage work |
+| Multi-AppView federation | P4 | [AppView design](superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md) | Single AppView is a reproducible projection today; full AT-style multi-AppView federation remains future work |
+
+## Parked（暫停）
+
+| Item | Links | Why parked |
+|---|---|---|
+| zkID / OpenAC MOICA forum personhood path | [Plan](superpowers/plans/2026-05-30-zkid-moica-forum-personhood.md) | Explicitly **paused** in favor of the MobileMoica RP path; resume only if a true zkID/Mopro TW FidO binding becomes available with raw artifacts kept inside the local proving boundary |
+
+## Done（已完成）
+
+Ordered roughly by plan date. "Done" = MVP scope of the plan landed on `main`
+(verified against commit history); partial/legacy caveats live in the README
+component status table.
+
+| Plan | Spec | Notes |
+|---|---|---|
+| [Follow users & boards](superpowers/plans/2026-05-04-follow-users-boards.md) | [design](superpowers/specs/2026-05-04-follow-users-boards-design.md) | Follow store, domain service, projector, inbox routing, UI (checklist not ticked; commits landed 05-04/05) |
+| [TW digital identity VC wallet](superpowers/plans/2026-05-04-tw-digital-identity-vc-wallet.md) | — | Wallet foundation, Go issuer, VP verifier, presentation UI ("complete VC wallet Tasks 3-5" landed; mock provider later replaced) |
+| [Issuer production adapter boundary](superpowers/plans/2026-05-05-issuer-production-adapter-boundary.md) | [design](superpowers/specs/2026-05-05-issuer-production-adapter-boundary-design.md) | Fail-closed without TW production adapter |
+| [Shared credential wizard](superpowers/plans/2026-05-05-shared-credential-wizard.md) | [design](superpowers/specs/2026-05-05-shared-credential-wizard-design.md) | Multi-flow wizard embedded in Wallet |
+| [TW provider app UX](superpowers/plans/2026-05-05-tw-provider-app-ux.md) | [design](superpowers/specs/2026-05-05-tw-provider-app-ux-design.md) | Wallet-first start/authorize/poll/issue flow |
+| [TW provider production integration](superpowers/plans/2026-05-05-tw-provider-production-integration.md) | — | Stateful start/callback/status/issue API, replay rejection, no raw-assertion storage. Real partner adapter → see **Next** |
+| [Content lineage, transformation & AI assistance](superpowers/plans/2026-05-06-content-lineage-transformation-ai.md) | [design](superpowers/specs/2026-05-06-content-lineage-transformation-design.md) · [TODO](superpowers/todos/2026-05-06-content-lineage-transformation-ai.md) | All TODO phases checked: murmur/note/discussion lineage, AI providers, review flows, public Lexicon sync |
+| [TW provider operational hardening](superpowers/plans/2026-05-06-tw-provider-operational-hardening.md) | [design](superpowers/specs/2026-05-06-tw-provider-operational-hardening-design.md) | Session cleanup, audit-safe counters, health/readiness, deployment doc |
+| [Federation implementation](superpowers/plans/2026-05-09-federation-implementation.md) | [strategy](superpowers/specs/2026-05-09-federation-strategy-design.md) | Publication outbox, app-side Nostr adapter, relay-side ActivityPub projection (80/81 boxes checked). Adapters remain "partial" per README |
+| [Forum Host board model](superpowers/plans/2026-05-10-forum-host-board-implementation.md) | [design](superpowers/specs/2026-05-10-forum-host-board-design.md) | Forum-Host-owned hosted boards; UI copy superseded by 06-02 boundary work (see plan's alignment note) |
+| [Mobile backup storage policy](superpowers/plans/2026-05-10-mobile-backup-storage-policy.md) | — | Backup-eligible canonical data vs no-backup remote mirror cache, iOS + Android |
+| [App-mediated web session](superpowers/plans/2026-05-11-app-mediated-web-session.md) | [design](superpowers/specs/2026-05-11-app-mediated-web-session-design.md) · [TODO](superpowers/todos/2026-05-11-app-mediated-web-session.md) | All phases checked; bearer-token path superseded by httpOnly cookie hardening from boundary work |
+| [Forum frontend IA / visual](superpowers/plans/2026-05-11-forum-frontend-ia-visual-implementation.md) | [design](superpowers/specs/2026-05-11-forum-frontend-ia-visual-design.md) · [web dev design](superpowers/specs/2026-05-11-web-development-design.md) | Renderers, app shell, Elix design system, frontend tests (checklist not ticked; commits landed) |
+| [Encrypted messenger protocol](superpowers/plans/2026-05-14-encrypted-messenger-protocol.md) | [design](superpowers/specs/2026-05-14-encrypted-messenger-protocol-design.md) | 1:1 E2E messenger: Rust crypto facade, mailbox API, Postgres relay store, UI (checklist not ticked; commits landed) |
+| [Messenger contact discovery](superpowers/plans/2026-05-14-messenger-contact-discovery.md) | [design](superpowers/specs/2026-05-14-messenger-contact-discovery-design.md) | Contact store, resolvers, availability endpoint, picker, requests/ID compose |
+| [Passport wallet credential extension](superpowers/plans/2026-05-24-passport-wallet-credential-extension.md) | [design](superpowers/specs/2026-05-24-passport-wallet-credential-extension-design.md) | Passport NFC personhood, unified bindings, Data Integrity proofs, OID4VP QR presentation |
+| [MobileMoica RP explicit disclosure](superpowers/plans/2026-05-30-mobilemoica-rp-explicit-disclosure.md) | [design](superpowers/specs/2026-05-30-mobilemoica-rp-explicit-disclosure-design.md) | Flow + broker boundary implemented; production config → see **Next** |
+| [Relay / Forum Host boundary](superpowers/plans/2026-06-02-relay-forum-host-boundary-implementation.md) | [design](superpowers/specs/2026-06-02-relay-forum-host-boundary-design.md) | Durable forum host store, signed intents, discovery endpoints, cookie web sessions, compliance metadata (checklist not ticked; ~40 commits landed) |
+| [Following feed — followed-author sync](superpowers/plans/2026-06-04-following-feed-author-sync.md) | [AppView design](superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md) | Followed-author op retention gate, unfollow purge |
+| [Following feed — murmur/note timeline](superpowers/plans/2026-06-04-following-feed-murmur-note.md) | same as above | Public murmur/note as relay ops + timeline projector |
+| [AppView Component D — Phase B](superpowers/plans/2026-06-05-appview-component-d-phase-b.md) | same as above | `ansible_appview/phoenix` ingest + timeline; **Phase C** (fan-out-on-write home timeline, follow-graph index, Redis) and discovery P1–P3 also landed |
+
+Spec-only items that landed without a separate plan: the
+[engineering constitution](superpowers/specs/2026-05-24-tris-aura-engineering-constitution-design.md)
+and the [full architecture diagram](superpowers/specs/2026-05-31-full-architecture-diagram-design.md).
+
+## Known gaps & compliance debt（已知缺口）
+
+Source: [constitution compliance review (2026-05-24)](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md)
+and the README component status table.
+
+1. **Hardware-backed key custody + reduced-trust mode** — *not compliant yet;
+   launch blocker.* Raw private key hex still persists via secure-storage-style
+   APIs; some comments overclaim Secure Enclave/StrongBox semantics. Needs
+   platform-backed signing keys, no raw-key export from self-custody paths, and
+   an explicit reduced-trust mode. Affects DID, PLC, and Nostr key paths.
+2. **External host compliance level** — *partially implemented.* Discovery
+   exposes and the app displays compliance labels, but local host records do
+   not persist `constitution_compliance`, and ranking/sync/recommendation/trust
+   policy do not consume it.
+3. **TW provider production adapter** — issuer fails closed in production by
+   design until the real partner API / trust anchors are configured (same gap
+   gates MobileMoica RP production).
+4. **Standalone Reputation Labeler** — tier mapping exists inside the relay
+   path only; no independent labeler service.
+5. **DNS handle verification** — not started (🔜 future).
+6. **AI Agent (Component F)** — not started (P4).
+7. **Partial adapters** — Nostr production key custody incomplete; ActivityPub
+   full federation behavior incomplete; AT Protocol/PLC genesis & local CID
+   paths are compatibility stubs (see README component table).
+8. Items the review **fixed** (Email OTP ≠ verified human; wallet parser
+   rejects passport/personhood claims; mock provider no raw-assertion
+   fallback) and **cleared as compliant** (passport binding, publication
+   fail-closed, TW raw-data retention specs) are recorded in the review doc.
+
+## How planning works here（規劃流程）
+
+- **Specs** live in `docs/superpowers/specs/` — design documents
+  (`YYYY-MM-DD-*-design.md`) plus the
+  [engineering constitution](superpowers/specs/2026-05-24-tris-aura-engineering-constitution-design.md)
+  and its [compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md).
+- **Plans** live in `docs/superpowers/plans/` — task-by-task implementation
+  plans with `- [ ]` checklists. Caveat: checklists are not always ticked when
+  work lands, so cross-check git history before trusting an unchecked plan.
+- **Constitution gate** (see [AGENTS.md](../AGENTS.md)): before any spec, plan,
+  or implementation touching identity, storage, sync, verification,
+  federation, moderation, ranking, governance, credentials, Wallet, Issuer,
+  Relay, Forum Host, or AppView, read the constitution first; specs/plans must
+  include a `Constitution Review` section (or state why it does not apply),
+  and check the compliance review before claiming compliance.
+- **TODOs / parked backlog** live in `docs/superpowers/todos/` — currently the
+  two completed phase checklists linked above plus the parked
+  [LLM plugin & MCP access](superpowers/todos/2026-05-16-llm-plugin-mcp-access.md) backlog.

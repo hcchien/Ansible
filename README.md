@@ -113,7 +113,26 @@ credential issuance after callback verification. Raw provider assertions and
 government identity fields stay inside the issuer boundary and must not be
 logged or stored.
 
+## Project Navigation
+
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — master planning index: what is in
+  flight, next, parked, done, and known compliance gaps, with links to every
+  spec/plan under `docs/superpowers/`.
+- **[docs/getting-started-dev.md](docs/getting-started-dev.md)** — full dev
+  environment setup (all six toolchains), per-service run commands, tests,
+  and common pitfalls.
+- **Governance:** [AGENTS.md](AGENTS.md) mandates the constitution gate — read
+  the [engineering constitution](docs/superpowers/specs/2026-05-24-tris-aura-engineering-constitution-design.md)
+  and [compliance review](docs/superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md)
+  before changing identity, sync, federation, credentials, or ranking behavior.
+- **One-command workflows:** `make help` lists test/analyze targets per
+  component; `make dev` boots the backend stack (postgres + relay + appview +
+  issuer + frontend) via [docker-compose.yml](docker-compose.yml).
+
 ## Getting Started
+
+For the complete guide (databases, env vars, pitfalls), see
+[docs/getting-started-dev.md](docs/getting-started-dev.md). Short version:
 
 ### Prerequisites
 

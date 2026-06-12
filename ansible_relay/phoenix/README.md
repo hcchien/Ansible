@@ -77,8 +77,9 @@ instead of web-session auth.
 - **Comp C**: Carrier-Grade Relay / Genesis Relay
 - **Forum Host MVP**: co-located hosted-board discovery, board creation, and
   scoped web thread creation.
-- **Comp D / AppView**: future work. There is no complete Phoenix AppView
-  aggregator in this repo.
+- **Comp D / AppView**: implemented as a separate service in
+  [`../../ansible_appview/phoenix`](../../ansible_appview/phoenix) — it polls
+  this relay's op delta endpoint and serves the scalable following/home feed.
 
 Genesis Hosting reference: [`../../docs/architecture/genesis_hosting.md`](../../docs/architecture/genesis_hosting.md).
 Security launch checklist: [`../../docs/security/sosp.md`](../../docs/security/sosp.md).

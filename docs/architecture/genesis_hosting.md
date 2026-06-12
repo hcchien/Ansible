@@ -63,7 +63,11 @@ relay-domain actor URLs owned by the distribution relay.
 - Accepted events are forwarded to Component D through GCP Pub/Sub.
 - Rejected / irrelevant events are dropped without logging content.
 
-Current code does not implement this Firehose/Pub/Sub/AppView path.
+Status (2026-06): Component D now exists as `ansible_appview/phoenix` — it
+polls the relay op delta endpoint and folds it into a PostgreSQL projection
+(see the AppView README). The global atproto Firehose WebSocket subscription
+and GCP Pub/Sub forwarding described above remain unimplemented; ingestion is
+relay-poll based.
 
 ### C-4 XRPC Ingestion Handler
 
