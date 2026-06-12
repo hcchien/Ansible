@@ -1,0 +1,228 @@
+name: Services CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: services-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect service changes
+    runs-on: ubuntu-latest
+    outputs:
+      relay: ${{ steps.filter.outputs.relay }}
+      appview: ${{ steps.filter.outputs.appview }}
+      issuer: ${{ steps.filter.outputs.issuer }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relay:
+              - 'ansible_relay/**'
+              - '.github/workflows/services-ci.yml'
+            appview:
+              - 'ansible_appview/**'
+              - '.github/workflows/services-ci.yml'
+            issuer:
+              - 'ansible_issuer/**'
+              - '.github/workflows/services-ci.yml'
+            frontend:
+              - 'ansible_distribution_frontend/**'
+              - '.github/workflows/services-ci.yml'
+            rust:
+              - 'ansible_rust_core/**'
+              - '.github/workflows/services-ci.yml'
+
+  elixir:
+    name: Elixir (${{ matrix.app }})
+    needs: changes
+    if: ${{ needs.changes.outputs.relay == 'true' || needs.changes.outputs.appview == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: relay
+            dir: ansible_relay/phoenix
+          - app: appview
+            dir: ansible_appview/phoenix
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Skip unchanged app
+        if: ${{ github.event_name != 'workflow_dispatch' && needs.changes.outputs[matrix.app] != 'true' }}
+        run: echo "skip=true" >> "$GITHUB_ENV"
+
+      - name: Set up Elixir
+        if: ${{ env.skip != 'true' }}
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.19'
+          otp-version: '27'
+
+      - name: Cache mix deps and build
+        if: ${{ env.skip != 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ matrix.dir }}/deps
+            ${{ matrix.dir }}/_build
+          key: mix-${{ matrix.app }}-${{ runner.os }}-${{ hashFiles(format('{0}/mix.lock', matrix.dir)) }}
+          restore-keys: |
+            mix-${{ matrix.app }}-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: ${{ env.skip != 'true' }}
+        run: mix deps.get
+
+      - name: Set up test database
+        if: ${{ env.skip != 'true' }}
+        env:
+          MIX_ENV: test
+        run: |
+          mix ecto.create --quiet
+          mix ecto.migrate --quiet
+
+      - name: Run tests
+        if: ${{ env.skip != 'true' }}
+        env:
+          MIX_ENV: test
+        run: mix test
+
+  go-issuer:
+    name: Go issuer
+    needs: changes
+    if: ${{ needs.changes.outputs.issuer == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ansible_issuer_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: ansible_issuer/go
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ansible_issuer/go/go.mod
+          cache-dependency-path: ansible_issuer/go/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (including Postgres store tests)
+        env:
+          ISSUER_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/ansible_issuer_test
+        run: go test ./...
+
+  node-frontend:
+    name: Distribution frontend
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible_distribution_frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run tests
+        run: npm test
+
+  rust-core:
+    name: Rust core
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible_rust_core
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ansible_rust_core/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('ansible_rust_core/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Build and test
+        run: cargo test
+
+  services-ci:
+    name: Services CI status
+    needs: [changes, elixir, go-issuer, node-frontend, rust-core]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check job results
+        run: |
+          results="${{ needs.elixir.result }} ${{ needs.go-issuer.result }} ${{ needs.node-frontend.result }} ${{ needs.rust-core.result }}"
+          echo "results: $results"
+          for r in $results; do
+            if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
+              exit 1
+            fi
+          done
