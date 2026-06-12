@@ -12,13 +12,19 @@
 > Statuses below are based on plan checklists **and** git history — several
 > completed plans never had their checkboxes ticked, so commits are the source
 > of truth where they disagree.
+>
+> **Architecture sequencing:** the service-level phases (key custody →
+> data-plane integrity → push distribution → federation completion →
+> scale-out) live in the
+> [service architecture plan](architecture/service_architecture_plan.md);
+> "Phase N" references below point there.
 
 ## Now（進行中）
 
 | Item | Priority | Links | Notes / dependencies |
 |---|---|---|---|
 | iOS staging release hardening — real Rust FFI bridge, relay auto-seed, DID auto-anchor, `elix.cool` rebrand, CI strict analyze | P1 | (no plan file; see recent `main` commits) | Current active work stream; consider capturing remaining iOS/TestFlight steps in a plan like the Android checklist |
-| Hardware-backed signing keys + explicit reduced-trust mode | P1 — launch blocker | [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | No plan file yet. DID/PLC/Nostr keys still persist raw hex via `flutter_secure_storage`; needs Secure Enclave / StrongBox custody, no-export guarantee, reduced-trust fallback |
+| Hardware-backed signing keys + explicit reduced-trust mode + rust `zeroize` | P1 — launch blocker | [Architecture plan — Phase 1](architecture/service_architecture_plan.md) · [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | DID/PLC/Nostr keys still persist raw hex via `flutter_secure_storage`; needs Secure Enclave / StrongBox custody, no-export guarantee, reduced-trust fallback. Key design decision D1 (dual-key vs ES256) pending |
 
 ## Next（下一步）
 
@@ -27,17 +33,20 @@
 | TW provider **production** adapter (real TW FidO/MOICA partner API) | P1 | [Plan](superpowers/plans/2026-05-05-tw-provider-production-integration.md) · [Adapter boundary plan](superpowers/plans/2026-05-05-issuer-production-adapter-boundary.md) | Production-shaped flow + fail-closed boundary are done; the real partner integration is blocked on external partner API / trust-anchor details |
 | MobileMoica RP production configuration | P1 | [Plan](superpowers/plans/2026-05-30-mobilemoica-rp-explicit-disclosure.md) · [Spec](superpowers/specs/2026-05-30-mobilemoica-rp-explicit-disclosure-design.md) | Flow implemented; production stays fail-closed until approval artifact IDs, MobileMoica service credentials, trust anchors, PKCS#7 validation, and revocation checks are configured |
 | Android release readiness (beta build → Play Store) | P2 | [Plan](superpowers/plans/2026-05-10-android-release-readiness-checklist.md) | **In progress, stalled** — Task 1 (DID plugin packaging, build unblocked) done; identity/assets/signing, platform verification, and release checklist remain. Recent release effort has gone to iOS |
-| External host compliance level — local persistence + policy use | P2 | [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | Discovery exposes compliance labels already; local `ForumHost`/`RemoteNode` records don't persist them and ranking/sync/trust policy don't consume them yet |
+| External host compliance level — local persistence + policy use | P2 | [Architecture plan — Phase 1.4](architecture/service_architecture_plan.md) · [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | Discovery exposes compliance labels already; local `ForumHost`/`RemoteNode` records don't persist them and ranking/sync/trust policy don't consume them yet |
+| Data-plane integrity — AppView independent signature re-verification, relay `ops` partitioning + signed snapshots | P2 | [Architecture plan — Phase 2](architecture/service_architecture_plan.md) | Needed before meaningful external traffic; AppView currently trusts relay ingest checks and the `ops` table is unbounded |
 
 ## Later（未來）
 
 | Item | Priority | Links | Notes / dependencies |
 |---|---|---|---|
-| DNS handle verification (DNS TXT + HTTPS `/.well-known`) | P3 | README component table | 🔜 future in component status; no spec/plan yet |
-| Standalone Reputation Labeler service | P3 | README component table | VP→tier paths exist and propagate relay → AppView → app badges; extracting a standalone labeler is future work |
+| Push distribution — op firehose over Phoenix Channels, Oban delivery workers, abuse-detection completion | P3 | [Architecture plan — Phase 3](architecture/service_architecture_plan.md) | After Phase 2 (snapshots make push restart-safe); replaces AppView polling and the Postgres retry loop |
+| Federation completion — Nostr key custody, full ActivityPub inbox behaviors | P3 | [Architecture plan — Phase 4](architecture/service_architecture_plan.md) | Nostr custody depends on Phase 1; AP behaviors independent |
+| DNS handle verification (DNS TXT + HTTPS `/.well-known`) | P3 | [Architecture plan — Phase 4.3](architecture/service_architecture_plan.md) | 🔜 future in component status; no spec/plan yet |
+| Standalone Reputation Labeler service | P3 | [Architecture plan — Phase 4.4](architecture/service_architecture_plan.md) | Extract only when a second consumer exists (decision D3); VP→tier paths already propagate relay → AppView → app badges |
 | LLM plugin / MCP agent access (ChatGPT, Claude, Codex, local MCP) | P3 | [TODO](superpowers/todos/2026-05-16-llm-plugin-mcp-access.md) | Backlog only — all phases unchecked. Should reuse app-mediated web-session grants; never exposes root DID keys |
 | AI Agent (Component F) — summarisation/filtering over firehose | P4 | README component table | Explicitly P4; local AI-assistance foundation (providers, context packs, review flows) already landed via content lineage work |
-| Multi-AppView federation | P4 | [AppView design](superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md) | Single AppView is a reproducible projection today; full AT-style multi-AppView federation remains future work |
+| Multi-AppView federation / multi-region scale-out | P4 | [Architecture plan — Phase 5](architecture/service_architecture_plan.md) · [AppView design](superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md) | Single AppView is a reproducible projection today; multi-region (genesis target), cross-region transport (decision D2), and CDN/WAF land here |
 
 ## Parked（暫停）
 

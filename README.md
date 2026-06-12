@@ -118,6 +118,10 @@ logged or stored.
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — master planning index: what is in
   flight, next, parked, done, and known compliance gaps, with links to every
   spec/plan under `docs/superpowers/`.
+- **[docs/architecture/service_architecture_plan.md](docs/architecture/service_architecture_plan.md)**
+  — how the services evolve to launch and scale: five sequenced phases (key
+  custody → data-plane integrity → push distribution → federation completion
+  → scale-out) with the full gap inventory and open design decisions.
 - **[docs/getting-started-dev.md](docs/getting-started-dev.md)** — full dev
   environment setup (all six toolchains), per-service run commands, tests,
   and common pitfalls.

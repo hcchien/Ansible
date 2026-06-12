@@ -67,7 +67,11 @@ Status (2026-06): Component D now exists as `ansible_appview/phoenix` — it
 polls the relay op delta endpoint and folds it into a PostgreSQL projection
 (see the AppView README). The global atproto Firehose WebSocket subscription
 and GCP Pub/Sub forwarding described above remain unimplemented; ingestion is
-relay-poll based.
+relay-poll based. Direction update: per the
+[service architecture plan](service_architecture_plan.md) (Phase 3 /
+decision D2), single-region push will use Phoenix Channels rather than GCP
+Pub/Sub; Pub/Sub (or NATS) is reconsidered only at the Phase 5 multi-region
+stage.
 
 ### C-4 XRPC Ingestion Handler
 
