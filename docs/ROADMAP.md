@@ -19,6 +19,41 @@
 > [service architecture plan](architecture/service_architecture_plan.md);
 > "Phase N" references below point there.
 
+## Product Track（產品線）
+
+Product-priority view, parallel to the
+[architecture phases](architecture/service_architecture_plan.md). Rationale:
+the engineering foundation (identity/security/federation) is ahead of the
+product loop — retention (notifications), safety (reporting/moderation), and
+the flagship differentiator (trust-gated boards) are missing, and growth
+surfaces (sharing/OG) have zero investment. PM review 2026-06-12.
+
+### Add（新增）
+
+| Item | Priority | Plan | Why |
+|---|---|---|---|
+| Notification system — in-app feed + badge first, content-free push second | P1 | [Plan](superpowers/plans/2026-06-12-notification-system.md) | Verified absent (no token registry, no FCM/APNS, no store). Broken retention loop: users never learn about replies/follows/messages |
+| Content reporting + board moderation tools | P1 | [Plan](superpowers/plans/2026-06-12-content-reporting-moderation.md) | Verified absent. Hard requirement before real users (constitution Rule 6/7 mandates reason-coded, visible moderation); host-level only, system-level stays in abuse detector |
+| Trust-gated boards（真人驗證版）| P1 | [Plan](superpowers/plans/2026-06-12-trust-gated-boards.md) | Highest ROI in the repo: the whole VC→tier pipeline exists, boards already have an empty `posting_policy` field — wiring `min_post_tier` turns the identity stack into a visible product differentiator |
+| Cold-start strategy — genesis boards, default follows/subscriptions, seed content | P2 | (operations plan needed, not engineering) | Discover/feed are built but day-one network is empty; without seeding, launch = ghost town |
+| Sharing & deep links — OG tags on frontend, share sheet + universal links in app | P2 | — | Verified absent (no OG tags, no share/deep-link). The natural forum growth channel (content → LINE/Threads → visit → register) is closed |
+| Privacy-preserving product metrics (activation/retention, constitution-compatible) | P2 | — | Constitution restricts analytics, but without DAU/retention/board-activity aggregates every priority above is a guess; needs an explicit "constitutional measurement" design |
+
+### Remove / Freeze（刪除或凍結）
+
+| Item | Decision |
+|---|---|
+| AT Protocol / PLC bridge | **Freeze**: no further investment, remove from marketing surface; keep code as-is (removal costs more than keeping) |
+| Extra app locales (de/es/fr/ja/ko/pt) | **Cut to zh-Hant + en**: maintenance liability — most screens bypass ARB via `uiCopy(zh:, en:)` anyway; re-add with real international users |
+| Messenger expansion | **Contain**: 1:1 MVP stays, but no further scope (groups/media/read-receipts) — E2E messaging is a separate product and not this one's wedge |
+
+### Improve（改善）
+
+| Item | Notes |
+|---|---|
+| Value-prop copy: mechanism → benefit | Onboarding/marketing says「先建立身分」(engineer-speak); users need outcomes:「沒有機器人的討論區」「帳號和內容永遠是你的」 |
+| Post-registration empty state | First session should guide: subscribe genesis boards, follow suggestions, first murmur — client half of the cold-start item |
+
 ## Now（進行中）
 
 | Item | Priority | Links | Notes / dependencies |
