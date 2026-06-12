@@ -1,6 +1,8 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+
 /// Shown before the app builds and sends a Verifiable Presentation.
 ///
 /// Returns `true` via [Navigator.pop] when the user approves, `false` when
@@ -47,7 +49,7 @@ class PresentationApprovalScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0C1424),
         foregroundColor: Colors.white,
-        title: const Text('Share Credential?'),
+        title: Text(context.uiCopy(zh: '分享憑證？', en: 'Share Credential?')),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -56,18 +58,27 @@ class PresentationApprovalScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SectionLabel(label: 'YOU ARE ABOUT TO SHARE'),
+              _SectionLabel(
+                label: context.uiCopy(
+                  zh: '即將分享的憑證',
+                  en: 'YOU ARE ABOUT TO SHARE',
+                ),
+              ),
               const SizedBox(height: 12),
               _CredentialCard(credential: credential),
               const SizedBox(height: 24),
-              _SectionLabel(label: 'WITH'),
+              _SectionLabel(
+                label: context.uiCopy(zh: '分享對象', en: 'WITH'),
+              ),
               const SizedBox(height: 12),
               _InfoRow(
                 icon: Icons.public,
                 text: verifierAudience,
               ),
               const SizedBox(height: 24),
-              _SectionLabel(label: 'PURPOSE'),
+              _SectionLabel(
+                label: context.uiCopy(zh: '用途', en: 'PURPOSE'),
+              ),
               const SizedBox(height: 12),
               _InfoRow(
                 icon: Icons.info_outline,
@@ -83,20 +94,24 @@ class PresentationApprovalScreen extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.shield_outlined,
                       color: Color(0xFFFFC857),
                       size: 18,
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        '"Verified Human" means Tris-Aura has confirmed your '
-                        'credential after Taiwan digital identity proofing. '
-                        'No raw identity data is transmitted.',
-                        style: TextStyle(
+                        context.uiCopy(
+                          zh: '「真人驗證」代表 Tris-Aura 已在台灣數位身分驗證後'
+                              '確認你的憑證，過程不會傳輸任何原始身分資料。',
+                          en: '"Verified Human" means Tris-Aura has confirmed '
+                              'your credential after Taiwan digital identity '
+                              'proofing. No raw identity data is transmitted.',
+                        ),
+                        style: const TextStyle(
                           color: Color(0xFFFFC857),
                           fontSize: 12,
                         ),
@@ -121,7 +136,7 @@ class PresentationApprovalScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Decline'),
+                      child: Text(context.uiCopy(zh: '拒絕', en: 'Decline')),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -136,9 +151,9 @@ class PresentationApprovalScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Share',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                      child: Text(
+                        context.uiCopy(zh: '分享', en: 'Share'),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),

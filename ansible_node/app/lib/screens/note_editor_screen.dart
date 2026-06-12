@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 
 import '../l10n/app_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/atproto_client.dart';
 import '../theme/ansible_design.dart';
 
@@ -111,7 +112,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       if (!mounted) return;
       setState(() {
         _isSending = false;
-        _errorMessage = _copy(zh: '發送失敗：$e', en: 'Send failed: $e');
+        _errorMessage = userFacingError(context, e);
       });
     }
   }

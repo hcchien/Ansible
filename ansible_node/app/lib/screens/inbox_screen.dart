@@ -2,6 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/subpage_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/messenger_sync_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -101,7 +102,7 @@ class _InboxBodyState extends State<_InboxBody> {
         }
         final error = snapshot.error;
         if (error != null) {
-          return _InboxError(message: error.toString());
+          return _InboxError(message: userFacingError(context, error));
         }
         final previews = snapshot.data ?? const [];
         final onCompose = _canCompose ? _openComposer : null;
@@ -195,9 +196,9 @@ class _InboxBodyState extends State<_InboxBody> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(userFacingError(context, error))),
+      );
     } finally {
       if (mounted) setState(() => _composing = false);
     }

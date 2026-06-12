@@ -87,7 +87,9 @@ class _WalletVerifierConsentScreenState
   Widget build(BuildContext context) {
     final result = _result;
     return Scaffold(
-      appBar: AppBar(title: const Text('Verifier Request')),
+      appBar: AppBar(
+        title: Text(context.uiCopy(zh: '驗證方請求', en: 'Verifier Request')),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(22),
         children: [
@@ -95,7 +97,7 @@ class _WalletVerifierConsentScreenState
           const SizedBox(height: 14),
           Text(
             result == null
-                ? 'Verifier Request'
+                ? context.uiCopy(zh: '驗證方請求', en: 'Verifier Request')
                 : context.uiCopy(zh: 'VP 已送出', en: 'VP Submitted'),
             style: Theme.of(
               context,

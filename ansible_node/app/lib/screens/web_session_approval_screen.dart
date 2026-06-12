@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/web_session_approval_client.dart';
 import '../services/web_session_grant_service.dart';
 
@@ -78,12 +80,16 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
       final result = await _client.approve(signed);
       if (!mounted) return;
       widget.onApproved?.call(result);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Web session approved.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(zh: '網頁工作階段已核准。', en: 'Web session approved.'),
+          ),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
-      setState(() => _error = error.toString());
+      setState(() => _error = userFacingError(context, error));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -98,12 +104,16 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
       await _client.reject(widget.challengeId);
       if (!mounted) return;
       widget.onRejected?.call();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Web session rejected.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(zh: '網頁工作階段已拒絕。', en: 'Web session rejected.'),
+          ),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
-      setState(() => _error = error.toString());
+      setState(() => _error = userFacingError(context, error));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -112,7 +122,11 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Approve web session')),
+      appBar: AppBar(
+        title: Text(
+          context.uiCopy(zh: '核准網頁工作階段', en: 'Approve web session'),
+        ),
+      ),
       body: FutureBuilder<WebSessionChallenge>(
         future: _challengeFuture,
         builder: (context, snapshot) {
@@ -120,7 +134,9 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return _ErrorState(message: snapshot.error.toString());
+            return _ErrorState(
+              message: userFacingError(context, snapshot.error!),
+            );
           }
           final challenge = snapshot.requireData;
           return _ApprovalContent(
@@ -168,26 +184,35 @@ class _ApprovalContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Text(
-          'A website is asking to use your app identity.',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        Text(
+          context.uiCopy(
+            zh: '有網站要求使用你的 App 身分。',
+            en: 'A website is asking to use your app identity.',
+          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 20),
-        _DetailRow(label: 'Website', value: challenge.webOrigin),
+        _DetailRow(
+          label: context.uiCopy(zh: '網站', en: 'Website'),
+          value: challenge.webOrigin,
+        ),
         _DetailRow(label: 'Relay', value: challenge.relayOrigin),
         if (challenge.audience != null && challenge.audience!.isNotEmpty)
           _DetailRow(label: 'Forum Host', value: challenge.audience!),
         _DetailRow(label: 'DID', value: currentDid),
         _DetailRow(
-          label: 'Request expires',
+          label: context.uiCopy(zh: '請求有效期限', en: 'Request expires'),
           value: challenge.expiresAt.toLocal().toIso8601String(),
         ),
         _DetailRow(
-          label: 'Session expires',
+          label: context.uiCopy(zh: '工作階段有效期限', en: 'Session expires'),
           value: sessionExpiresAt.toLocal().toIso8601String(),
         ),
         const SizedBox(height: 12),
-        const Text('Scopes', style: TextStyle(fontWeight: FontWeight.w600)),
+        Text(
+          context.uiCopy(zh: '授權範圍', en: 'Scopes'),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -198,9 +223,12 @@ class _ApprovalContent extends StatelessWidget {
         ),
         if (expired) ...[
           const SizedBox(height: 16),
-          const Text(
-            'This request has expired.',
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+          Text(
+            context.uiCopy(zh: '此請求已過期。', en: 'This request has expired.'),
+            style: const TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
         if (error != null) ...[
@@ -213,7 +241,7 @@ class _ApprovalContent extends StatelessWidget {
             Expanded(
               child: OutlinedButton(
                 onPressed: submitting ? null : onReject,
-                child: const Text('Reject'),
+                child: Text(context.uiCopy(zh: '拒絕', en: 'Reject')),
               ),
             ),
             const SizedBox(width: 12),
@@ -225,7 +253,7 @@ class _ApprovalContent extends StatelessWidget {
                         dimension: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Approve'),
+                    : Text(context.uiCopy(zh: '核准', en: 'Approve')),
               ),
             ),
           ],

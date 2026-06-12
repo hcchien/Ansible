@@ -22,7 +22,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Approve web session'), findsOneWidget);
+    // Without localization delegates the app copy falls back to zh-Hant.
+    expect(find.text('核准網頁工作階段'), findsOneWidget);
     expect(find.text('https://elix.cool'), findsOneWidget);
     expect(find.text('https://relay.elix.cool'), findsOneWidget);
     expect(find.text('Forum Host'), findsOneWidget);
@@ -30,8 +31,8 @@ void main() {
     expect(find.text('forum:read'), findsOneWidget);
     expect(find.text('forum:post'), findsOneWidget);
     expect(find.text('did:plc:abc23456789'), findsOneWidget);
-    expect(find.text('Request expires'), findsOneWidget);
-    expect(find.text('Session expires'), findsOneWidget);
+    expect(find.text('請求有效期限'), findsOneWidget);
+    expect(find.text('工作階段有效期限'), findsOneWidget);
     expect(
       find.text(DateTime.utc(2026, 5, 12, 0, 50).toLocal().toIso8601String()),
       findsOneWidget,
@@ -60,9 +61,9 @@ void main() {
 
     expect(client.approveCalled, isFalse);
 
-    await tester.ensureVisible(find.text('Approve'));
+    await tester.ensureVisible(find.text('核准'));
     await tester.pump();
-    await tester.tap(find.text('Approve'));
+    await tester.tap(find.text('核准'));
     await tester.pumpAndSettle();
 
     expect(client.approveCalled, isTrue);
@@ -95,7 +96,7 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('Reject'));
+    await tester.tap(find.text('拒絕'));
     await tester.pumpAndSettle();
 
     expect(client.rejectedChallengeId, 'wsc_abc');
@@ -122,10 +123,10 @@ void main() {
     await tester.pump();
 
     final approve = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Approve'),
+      find.widgetWithText(ElevatedButton, '核准'),
     );
     expect(approve.onPressed, isNull);
-    expect(find.text('This request has expired.'), findsOneWidget);
+    expect(find.text('此請求已過期。'), findsOneWidget);
   });
 }
 

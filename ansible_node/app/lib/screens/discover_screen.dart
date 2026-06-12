@@ -4,6 +4,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/discovery_client.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -40,6 +41,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   bool _loadingFeed = true;
   bool _searching = false;
   String _query = '';
+  String? _feedError;
+  String? _searchError;
 
   @override
   void initState() {
@@ -55,7 +58,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _loadFeed() async {
-    setState(() => _loadingFeed = true);
+    setState(() {
+      _loadingFeed = true;
+      _feedError = null;
+    });
     try {
       final suggestions = await widget.client
           .suggestFollows(readerDid: widget.localDid, limit: 20);
@@ -66,9 +72,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _explore = explore;
         _loadingFeed = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
-      setState(() => _loadingFeed = false);
+      setState(() {
+        _loadingFeed = false;
+        _feedError = userFacingError(context, error);
+      });
     }
   }
 
@@ -84,7 +93,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _runSearch(String q) async {
-    setState(() => _searching = true);
+    setState(() {
+      _searching = true;
+      _searchError = null;
+    });
     try {
       final results = await widget.client.search(query: q, limit: 20);
       if (!mounted || _query != q) return;
@@ -92,9 +104,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _results = results;
         _searching = false;
       });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _searching = false);
+    } catch (error) {
+      if (!mounted || _query != q) return;
+      setState(() {
+        _searching = false;
+        _searchError = userFacingError(context, error);
+      });
     }
   }
 
@@ -260,6 +275,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ];
     }
+    if (_feedError != null) {
+      return [_errorPane(context, _feedError!, _loadFeed)];
+    }
     return [
       _section(
         context,
@@ -286,6 +304,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
       ];
+    }
+    if (_searchError != null) {
+      return [_errorPane(context, _searchError!, () => _runSearch(_query))];
     }
     return [
       _section(
@@ -319,6 +340,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         AnsibleMonoLabel(label, padding: const EdgeInsets.fromLTRB(22, 20, 22, 8)),
         AnsibleRuleGroup(children: rows),
       ],
+    );
+  }
+
+  Widget _errorPane(
+    BuildContext context,
+    String message,
+    VoidCallback onRetry,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off, size: 28, color: AnsibleDesign.inkFaint),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12.5,
+              height: 1.6,
+              color: AnsibleDesign.inkMuted,
+            ),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh, size: 16),
+            label: Text(context.uiCopy(zh: '重試', en: 'Retry')),
+          ),
+        ],
+      ),
     );
   }
 

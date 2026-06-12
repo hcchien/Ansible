@@ -2,6 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/subpage_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
@@ -61,7 +62,9 @@ class _ContactPickerScreenState extends State<ContactPickerScreen> {
         _inputController.clear();
       });
     } catch (error) {
-      setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() => _error = userFacingError(context, error));
+      }
     } finally {
       if (mounted) setState(() => _resolving = false);
     }

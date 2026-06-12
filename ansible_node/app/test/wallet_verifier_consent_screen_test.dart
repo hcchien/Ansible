@@ -23,7 +23,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Verifier Request'), findsWidgets);
+    // Without localization delegates the app copy falls back to zh-Hant.
+    expect(find.text('驗證方請求'), findsWidgets);
     expect(find.text('https://verifier.example'), findsOneWidget);
     expect(find.text('TrisAuraHumanityCredential'), findsOneWidget);
     expect(find.textContaining('humanVerified'), findsOneWidget);

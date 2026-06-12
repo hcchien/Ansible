@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/atproto_client.dart';
 import '../theme/ansible_design.dart';
 
@@ -307,7 +308,7 @@ class _PasskeysRegistrationScreenState
         en: 'Registration state is inconsistent. Start again.',
       );
     }
-    return error.toString();
+    return userFacingError(context, error);
   }
 
   String _copy({required String zh, required String en}) {
