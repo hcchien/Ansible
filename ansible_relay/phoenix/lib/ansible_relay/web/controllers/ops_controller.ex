@@ -21,6 +21,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     with :ok <- validate_fields(params, @required_fields),
          :ok <- validate_enum(params["entity_type"], @valid_entity_types, "entity_type"),
          :ok <- validate_enum(params["op_type"], @valid_op_types, "op_type"),
+         :ok <- validate_schema_version(params["schema_version"]),
          :ok <- check_content_visibility(params["entity_type"], params["payload"]),
          author_did = params["author_did"],
          :ok <- check_did_verified(author_did),
@@ -48,6 +49,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
         op_type: params["op_type"],
         payload: params["payload"],
         signature: params["signature"],
+        schema_version: params["schema_version"] || 1,
         received_at: DateTime.utc_now() |> DateTime.to_iso8601()
       }
 
@@ -67,6 +69,13 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       {:error, :invalid_enum, {field, value, valid}} ->
         send_json(conn, 422, %{error: "invalid_value", field: field, value: value, valid: valid})
+
+      {:error, :invalid_schema_version, value} ->
+        send_json(conn, 422, %{
+          error: "invalid_schema_version",
+          value: value,
+          max_supported: AnsibleRelay.Protocol.current_version()
+        })
 
       {:error, :private_content} ->
         send_json(conn, 422, %{error: "private_content_not_relayable"})
@@ -142,6 +151,22 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       do: :ok,
       else: {:error, :invalid_enum, {field, value, valid_values}}
   end
+
+  # Optional op payload format version (Phase 0 — API versioning). Absent
+  # means 1 (the only version that exists today); when present it must be an
+  # integer between 1 and the relay's current protocol version, so a future
+  # client can never store an op this relay does not understand.
+  defp validate_schema_version(nil), do: :ok
+
+  defp validate_schema_version(version) when is_integer(version) and version >= 1 do
+    if version <= AnsibleRelay.Protocol.current_version() do
+      :ok
+    else
+      {:error, :invalid_schema_version, version}
+    end
+  end
+
+  defp validate_schema_version(version), do: {:error, :invalid_schema_version, version}
 
   # Defense-in-depth: standalone content (murmur/note) may only be relayed when
   # public/unlisted. Notes must carry an explicit relayable visibility; murmurs

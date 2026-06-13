@@ -4,6 +4,7 @@ defmodule AnsibleRelay.Web.Router do
 
   plug(Plug.Logger)
   plug(:put_cors_headers)
+  plug(AnsibleRelay.Web.Plugs.RequireProtocolVersion)
   plug(:match)
 
   plug(Plug.Parsers,
@@ -20,6 +21,16 @@ defmodule AnsibleRelay.Web.Router do
 
   get "/health" do
     send_json(conn, 200, %{status: "ok", relay: "ansible_relay", version: "0.1.0"})
+  end
+
+  # Phase 0 — API versioning: advertise the protocol versions this relay
+  # speaks so clients can detect upgrade requirements before they break.
+  get "/api/v1/meta" do
+    send_json(conn, 200, %{
+      service: "ansible_relay",
+      version: "0.1.0",
+      protocol: AnsibleRelay.Protocol.advertisement()
+    })
   end
 
   get "/api/v1/discovery" do

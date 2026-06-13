@@ -39,6 +39,7 @@ defmodule AnsibleRelay.OpStore do
       op_type: op.op_type,
       payload: op.payload,
       signature: op.signature,
+      schema_version: Map.get(op, :schema_version, 1),
       received_at: received_at(op)
     }
 
@@ -59,17 +60,18 @@ defmodule AnsibleRelay.OpStore do
   @doc "List ops after a given log_id cursor (indexed primary-key range scan)."
   def list(after_log_id: cursor, limit: limit) do
     Repo.all(
-      from o in Op,
+      from(o in Op,
         where: o.id > ^cursor,
         order_by: [asc: o.id],
         limit: ^limit
+      )
     )
     |> Enum.map(&to_op_map/1)
   end
 
   @doc "Check if an op_id has already been processed (indexed unique lookup)."
   def exists?(op_id) do
-    Repo.exists?(from o in Op, where: o.op_id == ^op_id)
+    Repo.exists?(from(o in Op, where: o.op_id == ^op_id))
   end
 
   @doc """
@@ -80,13 +82,14 @@ defmodule AnsibleRelay.OpStore do
   """
   def create_op_author(entity_type, entity_id) do
     Repo.one(
-      from o in Op,
+      from(o in Op,
         where:
           o.entity_type == ^entity_type and o.entity_id == ^entity_id and
             o.op_type == "insert",
         order_by: [asc: o.id],
         limit: 1,
         select: o.author_did
+      )
     )
   end
 
@@ -107,6 +110,7 @@ defmodule AnsibleRelay.OpStore do
       op_type: o.op_type,
       payload: o.payload,
       signature: o.signature,
+      schema_version: o.schema_version || 1,
       received_at: o.received_at && DateTime.to_iso8601(o.received_at)
     }
   end

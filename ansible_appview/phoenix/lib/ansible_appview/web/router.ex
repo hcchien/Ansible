@@ -1,6 +1,7 @@
 defmodule AnsibleAppview.Web.Router do
   use Plug.Router
 
+  plug(AnsibleAppview.Web.Plugs.RequireProtocolVersion)
   plug(:match)
 
   plug(Plug.Parsers,
@@ -13,6 +14,16 @@ defmodule AnsibleAppview.Web.Router do
 
   get "/health" do
     send_json(conn, 200, %{status: "ok", service: "ansible_appview", version: "0.1.0"})
+  end
+
+  # Phase 0 — API versioning: advertise the protocol versions this AppView
+  # speaks so clients can detect upgrade requirements before they break.
+  get "/api/v1/meta" do
+    send_json(conn, 200, %{
+      service: "ansible_appview",
+      version: "0.1.0",
+      protocol: AnsibleAppview.Protocol.advertisement()
+    })
   end
 
   post "/api/v1/timeline" do

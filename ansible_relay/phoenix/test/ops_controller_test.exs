@@ -508,6 +508,71 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert body["has_more"] == true
   end
 
+  # ---- Op schema_version (Phase 0 — API versioning) ----
+
+  # schema_version is intentionally outside the signing payload, so a signed
+  # op stays valid whether or not the field is present.
+  test "op without schema_version is accepted and served as version 1" do
+    did = "did:key:z6MkSchemaDefault#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    response = post_json("/api/v1/ops", valid_op(did, private_key))
+    assert response.status == 202
+    log_id = Jason.decode!(response.resp_body)["log_id"]
+
+    delta = get_json("/api/v1/ops/delta?cursor=#{log_id - 1}&limit=1")
+    assert delta.status == 200
+
+    [op] = Jason.decode!(delta.resp_body)["ops"]
+    assert op["log_id"] == log_id
+    assert op["schema_version"] == 1
+  end
+
+  test "op with explicit schema_version 1 round-trips through delta" do
+    did = "did:key:z6MkSchemaOne#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    op = valid_op(did, private_key) |> Map.put("schema_version", 1)
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 202
+    log_id = Jason.decode!(response.resp_body)["log_id"]
+
+    delta = get_json("/api/v1/ops/delta?cursor=#{log_id - 1}&limit=1")
+    [served] = Jason.decode!(delta.resp_body)["ops"]
+    assert served["schema_version"] == 1
+  end
+
+  test "schema_version above the relay's current version is rejected with 422" do
+    did = "did:key:z6MkSchemaFuture#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    future = AnsibleRelay.Protocol.current_version() + 1
+    op = valid_op(did, private_key) |> Map.put("schema_version", future)
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 422
+
+    body = Jason.decode!(response.resp_body)
+    assert body["error"] == "invalid_schema_version"
+    assert body["value"] == future
+    assert body["max_supported"] == AnsibleRelay.Protocol.current_version()
+  end
+
+  test "non-integer or sub-1 schema_version is rejected with 422" do
+    did = "did:key:z6MkSchemaBad#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    for bad <- ["1", 0, -3] do
+      op = valid_op(did, private_key) |> Map.put("schema_version", bad)
+      response = post_json("/api/v1/ops", op)
+      assert response.status == 422
+      assert Jason.decode!(response.resp_body)["error"] == "invalid_schema_version"
+    end
+  end
+
   # ---- GET /health ----
 
   test "health endpoint returns 200" do
