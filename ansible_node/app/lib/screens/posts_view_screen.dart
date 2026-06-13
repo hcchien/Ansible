@@ -251,17 +251,22 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Post'),
-        content: const Text('Are you sure you want to delete this post?'),
+        title: Text(context.uiCopy(zh: '刪除貼文', en: 'Delete Post')),
+        content: Text(
+          context.uiCopy(
+            zh: '確定要刪除這則貼文嗎？',
+            en: 'Are you sure you want to delete this post?',
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(context.uiCopy(zh: '刪除', en: 'Delete')),
           ),
         ],
       ),
@@ -325,13 +330,16 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No posts yet',
+                                context.uiCopy(zh: '還沒有貼文', en: 'No posts yet'),
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(color: AnsibleDesign.inkMuted),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Be the first to post',
+                                context.uiCopy(
+                                  zh: '搶先發表第一則貼文',
+                                  en: 'Be the first to post',
+                                ),
                                 style: const TextStyle(
                                   color: AnsibleDesign.inkMuted,
                                 ),
@@ -390,11 +398,17 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                                 ).textTheme.titleSmall,
                                               ),
                                               Text(
-                                                _formatDate(post.createdAt) +
+                                                _formatDate(
+                                                      context,
+                                                      post.createdAt,
+                                                    ) +
                                                     (post.lastEditAt.isAfter(
                                                           post.createdAt,
                                                         )
-                                                        ? ' (edited)'
+                                                        ? context.uiCopy(
+                                                            zh: '（已編輯）',
+                                                            en: ' (edited)',
+                                                          )
                                                         : ''),
                                                 style: Theme.of(
                                                   context,
@@ -405,28 +419,36 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                         ),
                                         PopupMenuButton(
                                           itemBuilder: (context) => [
-                                            const PopupMenuItem(
+                                            PopupMenuItem(
                                               value: 'edit',
                                               child: Row(
                                                 children: [
-                                                  Icon(Icons.edit),
-                                                  SizedBox(width: 8),
-                                                  Text('Edit'),
+                                                  const Icon(Icons.edit),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    context.uiCopy(
+                                                      zh: '編輯',
+                                                      en: 'Edit',
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
                                             ),
-                                            const PopupMenuItem(
+                                            PopupMenuItem(
                                               value: 'delete',
                                               child: Row(
                                                 children: [
-                                                  Icon(
+                                                  const Icon(
                                                     Icons.delete,
                                                     color: Colors.red,
                                                   ),
-                                                  SizedBox(width: 8),
+                                                  const SizedBox(width: 8),
                                                   Text(
-                                                    'Delete',
-                                                    style: TextStyle(
+                                                    context.uiCopy(
+                                                      zh: '刪除',
+                                                      en: 'Delete',
+                                                    ),
+                                                    style: const TextStyle(
                                                       color: Colors.red,
                                                     ),
                                                   ),
@@ -657,20 +679,32 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(BuildContext context, DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
 
     if (difference.inDays > 7) {
       return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     } else if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      final n = difference.inDays;
+      return context.uiCopy(
+        zh: '$n 天前',
+        en: '$n day${n > 1 ? 's' : ''} ago',
+      );
     } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      final n = difference.inHours;
+      return context.uiCopy(
+        zh: '$n 小時前',
+        en: '$n hour${n > 1 ? 's' : ''} ago',
+      );
     } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+      final n = difference.inMinutes;
+      return context.uiCopy(
+        zh: '$n 分鐘前',
+        en: '$n minute${n > 1 ? 's' : ''} ago',
+      );
     } else {
-      return 'Just now';
+      return context.uiCopy(zh: '剛剛', en: 'Just now');
     }
   }
 }

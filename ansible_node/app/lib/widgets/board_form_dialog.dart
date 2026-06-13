@@ -57,8 +57,8 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
     return AlertDialog(
       title: Text(
         widget.initialTitle == null
-            ? 'Create hosted board'
-            : 'Edit hosted board',
+            ? context.uiCopy(zh: '建立託管看板', en: 'Create hosted board')
+            : context.uiCopy(zh: '編輯託管看板', en: 'Edit hosted board'),
       ),
       content: Form(
         key: _formKey,
@@ -79,12 +79,17 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                 onChanged: (value) {
                   setState(() => _selectedForumHostId = value);
                 },
-                decoration: const InputDecoration(labelText: 'Elix Relay'),
+                decoration: InputDecoration(
+                  labelText: context.uiCopy(zh: 'Elix Relay', en: 'Elix Relay'),
+                ),
                 validator: (_) {
                   if (!widget.requireForumHost) return null;
                   if (_selectedForumHostId == null ||
                       _selectedForumHostId!.isEmpty) {
-                    return 'Select an Elix Relay';
+                    return context.uiCopy(
+                      zh: '請選擇 Elix Relay',
+                      en: 'Select an Elix Relay',
+                    );
                   }
                   return null;
                 },
@@ -93,14 +98,17 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
             ],
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                hintText: 'Enter hosted board title',
+              decoration: InputDecoration(
+                labelText: context.uiCopy(zh: '標題', en: 'Title'),
+                hintText: context.uiCopy(
+                  zh: '輸入託管看板標題',
+                  en: 'Enter hosted board title',
+                ),
               ),
               autofocus: true,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Title is required';
+                  return context.uiCopy(zh: '請輸入標題', en: 'Title is required');
                 }
                 return null;
               },
@@ -108,9 +116,15 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                hintText: 'Enter board description',
+              decoration: InputDecoration(
+                labelText: context.uiCopy(
+                  zh: '描述（選填）',
+                  en: 'Description (optional)',
+                ),
+                hintText: context.uiCopy(
+                  zh: '輸入看板描述',
+                  en: 'Enter board description',
+                ),
               ),
               maxLines: 3,
             ),
@@ -148,7 +162,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
         ),
         FilledButton(
           onPressed: () {
@@ -163,7 +177,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
               });
             }
           },
-          child: const Text('Save'),
+          child: Text(context.uiCopy(zh: '儲存', en: 'Save')),
         ),
       ],
     );

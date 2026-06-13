@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+
 class PostFormDialog extends StatefulWidget {
   final String? initialContent;
 
@@ -28,21 +30,25 @@ class _PostFormDialogState extends State<PostFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.initialContent == null ? 'New Post' : 'Edit Post'),
+      title: Text(
+        widget.initialContent == null
+            ? context.uiCopy(zh: '發表貼文', en: 'New Post')
+            : context.uiCopy(zh: '編輯貼文', en: 'Edit Post'),
+      ),
       content: Form(
         key: _formKey,
         child: TextFormField(
           controller: _contentController,
-          decoration: const InputDecoration(
-            labelText: 'Content',
-            hintText: 'Enter your post content',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.uiCopy(zh: '內容', en: 'Content'),
+            hintText: context.uiCopy(zh: '輸入貼文內容', en: 'Enter your post content'),
+            border: const OutlineInputBorder(),
           ),
           maxLines: 5,
           autofocus: true,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Content is required';
+              return context.uiCopy(zh: '請輸入內容', en: 'Content is required');
             }
             return null;
           },
@@ -51,7 +57,7 @@ class _PostFormDialogState extends State<PostFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
         ),
         FilledButton(
           onPressed: () {
@@ -59,7 +65,7 @@ class _PostFormDialogState extends State<PostFormDialog> {
               Navigator.pop(context, _contentController.text.trim());
             }
           },
-          child: const Text('Post'),
+          child: Text(context.uiCopy(zh: '發表', en: 'Post')),
         ),
       ],
     );
