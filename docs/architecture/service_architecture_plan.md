@@ -126,11 +126,15 @@ multi-region demands otherwise (decision D2 below).
 
 Closes G16, G17. Cheap now, expensive to retrofit.
 
-1. **API versioning**: client sends an app/protocol version on relay/appview
-   calls; servers advertise a minimum supported version; op payloads carry a
-   schema version so Phase 2 format evolution is additive, not breaking.
-   Long-tail devices that never update must degrade with a clear message,
-   not silent corruption.
+1. **API versioning — ✅ done 2026-06-13** (closes G16): the app sends
+   `x-ansible-protocol: 1` on every relay/appview call; both servers
+   advertise `{current, min_supported}` at `GET /api/v1/meta` and enforce
+   the minimum via a router plug (missing/newer headers pass; older →
+   `426 upgrade_required`, mapped to a friendly "update the app" message).
+   Ops carry an independent `schema_version` (column on the relay `ops`
+   table, validated `1..current`, kept out of the signed payload so
+   signatures stay valid); the app op builder stamps it and sync skips
+   unknown-future-version ops instead of misparsing them.
 2. **Observability baseline**: metrics endpoints (PromEx or equivalent) on
    relay/appview, request + ingest counters on issuer/frontend; the specific
    series each later phase needs as exit criteria — op-table growth rate,
