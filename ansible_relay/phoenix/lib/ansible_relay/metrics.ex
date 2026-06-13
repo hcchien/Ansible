@@ -27,6 +27,8 @@ defmodule AnsibleRelay.Metrics do
     * `relay_abuse_rejections_total{subject_type}` — abuse-limiter rejections
     * `relay_wake_sends_total{category}` — push wake-scheduler sends
     * `relay_reports_total{rail}` — report intake (signed-intent / web-session)
+    * `relay_snapshot_generated_total` — signed op-snapshots generated (Phase 2.3)
+    * `relay_snapshot_cursor` (gauge) — cursor (log_id) of the latest snapshot
   """
 
   use GenServer
@@ -52,7 +54,9 @@ defmodule AnsibleRelay.Metrics do
     "relay_abuse_rejections_total" =>
       {:counter, "Abuse-limiter rejections by subject type (did/peer)."},
     "relay_wake_sends_total" => {:counter, "Push wake-scheduler sends by category."},
-    "relay_reports_total" => {:counter, "Forum-host report intakes by rail."}
+    "relay_reports_total" => {:counter, "Forum-host report intakes by rail."},
+    "relay_snapshot_generated_total" => {:counter, "Signed op-snapshots generated (Phase 2.3)."},
+    "relay_snapshot_cursor" => {:gauge, "Cursor (log_id) of the latest published op-snapshot."}
   }
 
   # --- Public API ---

@@ -16,6 +16,16 @@ config :ansible_relay, :did_cache_ttl_seconds, 7_776_000
 # 10 minutes
 config :ansible_relay, :identity_challenge_ttl_seconds, 600
 config :ansible_relay, :port, 4000
+
+# Phase 2.3 — op snapshot lifecycle.
+# Snapshot signing key: a 32-byte Ed25519 seed in lowercase hex (64 chars).
+# Unset here so dev/test derive a deterministic local key; production sets it
+# from ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX (see runtime.exs).
+config :ansible_relay, :snapshot_signing_key_hex, nil
+# Op retention window in days. `:infinity` (default) NEVER prunes anything;
+# set to an integer N to enable the guarded prune (snapshot-covered, non-
+# tombstone ops older than N days). Tombstones/moderation rows are never pruned.
+config :ansible_relay, :snapshot_retention_days, :infinity
 config :ansible_relay, :allow_dev_identity_signatures, false
 config :ansible_relay, :allow_dev_publication_signatures, false
 config :ansible_relay, :allow_dev_zkp_proofs, false

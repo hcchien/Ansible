@@ -90,6 +90,12 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.OpsController.delta(conn, conn.query_params)
   end
 
+  # Phase 2.3 — Signed snapshot: consumers fold this then apply the delta after
+  # snapshot.cursor to rebuild a read model without replaying full op history.
+  get "/api/v1/ops/snapshot" do
+    AnsibleRelay.Web.Controllers.OpsController.snapshot(conn, conn.query_params)
+  end
+
   # Forum Host — hosted-board discovery and creation
   get "/api/v1/forum-host" do
     AnsibleRelay.Web.Controllers.ForumHostController.info(conn, conn.query_params)

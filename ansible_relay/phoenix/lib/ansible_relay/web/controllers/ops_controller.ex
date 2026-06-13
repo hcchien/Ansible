@@ -2,7 +2,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   @moduledoc "Phase 2 — Op ingestion and delta pull endpoints."
 
   import Plug.Conn
-  alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SigVerifier}
+  alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SigVerifier, SnapshotStore}
   alias AnsibleRelay.ForumHost.{Moderation, PostingGate}
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
@@ -150,6 +150,30 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       next_cursor: next_cursor,
       has_more: has_more
     })
+  end
+
+  # GET /api/v1/ops/snapshot
+  #
+  # Phase 2.3 — returns the latest relay-signed snapshot (or the newest snapshot
+  # at/before `?cursor=`). A consumer folds this snapshot then applies
+  # `GET /api/v1/ops/delta?cursor=<snapshot.cursor>` to reconstruct the full op
+  # set without replaying history. The snapshot is independently verifiable:
+  # recompute the digest from the ops + recompute the CID + check the Ed25519
+  # signature against `signing_public_key_hex`.
+  def snapshot(conn, params) do
+    snapshot =
+      case parse_optional_int(params["cursor"]) do
+        nil -> SnapshotStore.latest()
+        cursor -> SnapshotStore.at_or_before(cursor)
+      end
+
+    case snapshot do
+      nil ->
+        send_json(conn, 404, %{error: "no_snapshot_available"})
+
+      %{} = snap ->
+        send_json(conn, 200, %{snapshot: snap})
+    end
   end
 
   # --- Private helpers ---
@@ -339,6 +363,18 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   end
 
   defp parse_int(n, _default) when is_integer(n), do: n
+
+  defp parse_optional_int(nil), do: nil
+
+  defp parse_optional_int(str) when is_binary(str) do
+    case Integer.parse(str) do
+      {n, _} -> n
+      :error -> nil
+    end
+  end
+
+  defp parse_optional_int(n) when is_integer(n), do: n
+  defp parse_optional_int(_), do: nil
 
   defp send_json(conn, status, body) do
     conn

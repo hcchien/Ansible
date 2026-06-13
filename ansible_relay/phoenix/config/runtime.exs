@@ -86,6 +86,30 @@ if config_env() == :prod do
     %{did: issuer_did, public_key_hex: String.downcase(issuer_public_key_hex)}
   ]
 
+  # Phase 2.3 — op snapshot signing key (32-byte Ed25519 seed, 64 hex chars).
+  # If unset, the relay derives a per-node dev key and logs a warning; set this
+  # in production so snapshots are signed by a stable, operator-controlled key.
+  case System.get_env("ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX") do
+    nil ->
+      :ok
+
+    hex ->
+      unless Regex.match?(~r/\A[0-9a-fA-F]{64}\z/, hex) do
+        raise """
+        environment variable ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX must be a
+        64-character Ed25519 seed in hex (32 bytes).
+        """
+      end
+
+      config :ansible_relay, :snapshot_signing_key_hex, String.downcase(hex)
+  end
+
+  # Phase 2.3 — op retention window in days. Unset = :infinity (never prune).
+  case System.get_env("ANSIBLE_RELAY_SNAPSHOT_RETENTION_DAYS") do
+    nil -> :ok
+    value -> config :ansible_relay, :snapshot_retention_days, String.to_integer(value)
+  end
+
   # Shared cross-instance abuse limiter (Redis). Without it, rate limits are
   # per-instance (looser behind a load balancer).
   case System.get_env("REDIS_URL") do
