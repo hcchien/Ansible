@@ -1,18 +1,36 @@
+import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n/app_l10n.dart';
 import '../services/notification_preferences_controller.dart';
+import '../services/push_registration_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
-/// Per-category notification toggles (Phase A). Preferences gate the local
-/// projector; Phase B will reuse the same categories for push opt-ins.
+/// Per-category notification toggles (Phase A) and the content-free wake
+/// push opt-in (Phase B). Category preferences gate the local projector and
+/// are sent as push categories on registration.
 class NotificationSettingsScreen extends StatefulWidget {
-  const NotificationSettingsScreen({super.key, this.controller});
+  const NotificationSettingsScreen({
+    super.key,
+    this.controller,
+    this.db,
+    this.did,
+    this.pushServiceFactory,
+  });
 
   /// Injectable for tests / shared app instance; defaults to a controller
   /// over SharedPreferences.
   final NotificationPreferencesController? controller;
+
+  /// Needed (with [did]) for the push opt-in; the section is hidden when
+  /// either is missing (e.g. legacy callers).
+  final AppDatabase? db;
+  final String? did;
+
+  /// Test seam: builds the registration service for a relay base URL.
+  final PushRegistrationService Function(String baseUrl)? pushServiceFactory;
 
   @override
   State<NotificationSettingsScreen> createState() =>
@@ -21,7 +39,11 @@ class NotificationSettingsScreen extends StatefulWidget {
 
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
+  static const _pushEnabledKey = 'elix-push-wake-enabled';
+
   late final NotificationPreferencesController _controller;
+  bool _pushEnabled = false;
+  bool _pushBusy = false;
 
   @override
   void initState() {
@@ -30,6 +52,83 @@ class _NotificationSettingsScreenState
     if (!_controller.loaded) {
       _controller.load();
     }
+    _loadPushEnabled();
+  }
+
+  Future<void> _loadPushEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_pushEnabledKey) ?? false;
+    if (mounted && enabled != _pushEnabled) {
+      setState(() => _pushEnabled = enabled);
+    }
+  }
+
+  bool get _pushSectionAvailable => widget.db != null && widget.did != null;
+
+  Future<void> _setPushEnabled(bool enabled) async {
+    final db = widget.db;
+    final did = widget.did;
+    if (db == null || did == null || _pushBusy) return;
+    // Copy resolved before the async gaps (build-context lint).
+    final noRelayMessage = context.uiCopy(
+      zh: '請先在同步設定中加入 Relay',
+      en: 'Add a relay in sync settings first',
+    );
+    final notConfiguredMessage = context.uiCopy(
+      zh: '此版本尚未設定平台推播（FCM/APNS），暫時無法開啟',
+      en: 'Platform push (FCM/APNS) is not configured in this build yet',
+    );
+    final failureMessage = context.uiCopy(
+      zh: '推播設定失敗，請稍後再試',
+      en: 'Could not update push settings; try again later',
+    );
+    setState(() => _pushBusy = true);
+    try {
+      final node = await DriftRemoteNodeRepository(db).getActive();
+      if (node == null) {
+        _showSnack(noRelayMessage);
+        return;
+      }
+      final service =
+          widget.pushServiceFactory?.call(node.url) ??
+          PushRegistrationService(baseUrl: node.url);
+      try {
+        if (enabled) {
+          final categories = [
+            for (final category in NotificationCategory.values)
+              if (_controller.isEnabled(category)) category.storageValue,
+          ];
+          final registered = await service.register(
+            did: did,
+            categories: categories,
+          );
+          if (!registered) {
+            // No platform push token (FCM/APNS config absent) — keep the
+            // toggle off and explain instead of silently failing.
+            _showSnack(notConfiguredMessage);
+            return;
+          }
+        } else {
+          await service.unregister(did: did);
+        }
+      } finally {
+        service.close();
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_pushEnabledKey, enabled);
+      if (mounted) setState(() => _pushEnabled = enabled);
+    } catch (_) {
+      _showSnack(failureMessage);
+    } finally {
+      if (mounted) setState(() => _pushBusy = false);
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _categoryLabel(BuildContext context, NotificationCategory category) {
@@ -112,6 +211,34 @@ class _NotificationSettingsScreenState
                     ),
                 ],
               ),
+              if (_pushSectionAvailable) ...[
+                AnsibleMonoLabel(
+                  context.uiCopy(zh: '推播喚醒 · PUSH', en: 'PUSH WAKE-UPS'),
+                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
+                ),
+                AnsibleRuleGroup(
+                  children: [
+                    _CategoryToggleRow(
+                      key: const Key('notification_toggle_push_wake'),
+                      label: context.uiCopy(
+                        zh: '背景喚醒推播',
+                        en: 'Background wake pushes',
+                      ),
+                      subtitle: context.uiCopy(
+                        zh: '伺服器只會推送「去同步」的空訊號，通知內容一律在'
+                            '裝置上組合，不經過 Apple/Google。',
+                        en: 'The server only pushes an empty "go sync" '
+                            'signal; notification content is composed '
+                            'on-device and never passes through '
+                            'Apple/Google.',
+                      ),
+                      value: _pushEnabled,
+                      last: true,
+                      onChanged: _pushBusy ? null : _setPushEnabled,
+                    ),
+                  ],
+                ),
+              ],
             ],
           );
         },
@@ -133,7 +260,10 @@ class _CategoryToggleRow extends StatelessWidget {
   final String label;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// Null renders the switch disabled (e.g. while a registration request
+  /// is in flight).
+  final ValueChanged<bool>? onChanged;
   final bool last;
 
   @override

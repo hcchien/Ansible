@@ -77,8 +77,8 @@ User creates public/unlisted content or a forum intent
 | DNS Handle verification | 🔜 future | DNS TXT + HTTPS /.well-known lookup |
 | Reputation Labeler | ✅ partial | VP-to-tier paths exist; tiers propagate through relay → AppView → app badges and now gate posting per board (`posting_policy.min_post_tier`, relay-enforced); standalone labeler service is future work |
 | Trust-gated boards（真人驗證版）| ✅ MVP | Hosts can require `verified_human` to post; enforced at both relay write chokepoints (signed ops + web sessions), surfaced in app (badge, gated composer, upgrade CTA) and web frontend |
-| Content reporting & moderation | ✅ MVP | Reason-coded reports (app signed intents + web sessions, tier-aware rate limits), moderator console on the web frontend (queue/dismiss/remove/lock + audit), host-scoped tombstones in listings; app-side tombstone rendering is follow-up |
-| Notifications | ✅ Phase A | Pure local projection — replies/follows/messages fold into a local table during sync (zero new server surface); in-app feed, unread bell badge, per-category settings. Phase B (content-free push) future |
+| Content reporting & moderation | ✅ MVP | Reason-coded reports (app signed intents + web sessions, tier-aware rate limits), moderator console on the web frontend (queue/dismiss/remove/lock + audit), host-scoped tombstones rendered in listings, web **and** app (authors keep their content + see the reason); moderation of your content raises a local notification |
+| Notifications | ✅ Phase A + B pipeline | Pure local projection — replies/follows/messages/moderation outcomes fold into a local table during sync (zero new server surface); in-app feed, unread bell badge, per-category settings. Phase B wake-push pipeline (relay token registry + debounced `{"hint":"sync"}` scheduler + app opt-in) ships end-to-end; only APNS/FCM platform credentials remain (see getting-started) |
 | AI Agent Comp F | 🔜 P4 | Summarisation and filtering over Firehose stream |
 
 ## Social Graph Direction

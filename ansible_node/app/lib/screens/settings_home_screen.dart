@@ -243,7 +243,7 @@ class SettingsHomeScreen extends StatelessWidget {
                   );
                 },
               ),
-              _NotificationSettingsRow(text: text),
+              _NotificationSettingsRow(text: text, db: db, did: did),
               AnsibleSettingsRow(
                 glyph: 'A',
                 label: text.readingPreferences,
@@ -873,9 +873,11 @@ class _LanguageOptionRow extends StatelessWidget {
 }
 
 class _NotificationSettingsRow extends StatefulWidget {
-  const _NotificationSettingsRow({required this.text});
+  const _NotificationSettingsRow({required this.text, this.db, this.did});
 
   final _SettingsText text;
+  final AppDatabase? db;
+  final String? did;
 
   @override
   State<_NotificationSettingsRow> createState() =>
@@ -902,7 +904,10 @@ class _NotificationSettingsRowState extends State<_NotificationSettingsRow> {
 
   Future<void> _openNotificationSettings() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            NotificationSettingsScreen(db: widget.db, did: widget.did),
+      ),
     );
     if (!mounted) return;
     setState(() {

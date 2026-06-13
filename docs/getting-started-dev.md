@@ -197,6 +197,28 @@ cd ansible_distribution_frontend && npm test
   if relay/issuer/atproto endpoints are local or insecure, or if the insecure
   identity/signing fallbacks are enabled.
 
+## Push Notifications (Phase B platform config)
+
+The wake-push pipeline ships end-to-end (relay token registry + debounced
+scheduler with content-free `{"hint":"sync"}` payloads; app token lifecycle
++ settings opt-in), but actually delivering pushes needs platform
+credentials that are deliberately not in the repo:
+
+1. **Relay sender adapter.** The default `:push_sender` is
+   `AnsibleRelay.Push.LogSender` (logs instead of sending). Implement/enable
+   an APNS or FCM adapter and point `config :ansible_relay, :push_sender` at
+   it; credentials go in env (APNS team/key id + .p8, or an FCM service
+   account).
+2. **App token provider.** `PushRegistrationService` takes a
+   `PushTokenProvider`; the default `UnavailablePushTokenProvider` returns
+   null, which keeps the settings toggle visibly "not configured". Wire a
+   provider backed by the platform push plugin (e.g. `firebase_messaging`)
+   plus the matching platform config (google-services.json / APNS
+   entitlement) and pass it where the settings screen builds the service.
+3. The constitution constraint to preserve: payloads stay content-free; the
+   background wake handler syncs and composes notifications **on-device**
+   from the local notifications table.
+
 ## Deeper Docs
 
 - [`docs/ROADMAP.md`](ROADMAP.md) — master planning index (now / next / parked / done, known gaps)

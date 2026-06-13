@@ -2,14 +2,22 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **Status: Phase A ✅ implemented 2026-06-13** (store 91 / app 336 tests
-> green). Local projection only, exactly as designed — zero new server
-> surface. Notes: badge lives as a bell + unread count in the board swipe
-> header (`home/board_swipe_header.dart`), refreshed via `_loadData` after
-> every sync pass; dedup keys are `reply:<postId>`, `follower:<actorDid>`,
-> `messenger:<messageId>`; preferences persist via SharedPreferences
-> (`elix-notification-pref.*`). `moderation_outcome` type and Phase B
-> (push) remain open.
+> **Status: Phase A ✅ + Phase B pipeline ✅ implemented 2026-06-13**
+> (relay 246 / store 105 / app 361 tests green). Phase A is a pure local
+> projection — zero new server surface; badge is a bell + unread count in
+> `home/board_swipe_header.dart`, refreshed via `_loadData`; dedup keys
+> `reply:<postId>`, `follower:<actorDid>`, `messenger:<messageId>`,
+> `moderation:<action>:<targetRef>` (the `moderation_outcome` type landed
+> with the moderation-state sync — always-on, no toggle, per Base Rule 6).
+> Phase B ships end-to-end **except platform credentials**: relay token
+> registry + debounced wake scheduler (payload asserted to be exactly
+> `{"hint":"sync"}`; unregister inside the debounce window cancels the
+> send), app token lifecycle (`push_registration_service.dart`) + settings
+> opt-in. Remaining config work (documented in
+> `docs/getting-started-dev.md` § Push Notifications): an APNS/FCM
+> `PushSender` adapter relay-side, a `PushTokenProvider` backed by the
+> platform push plugin app-side, and the background wake handler that the
+> plugin's background callback drives.
 
 **Goal:** Users find out when something happened to them — replies to their
 threads/posts, new followers, new messenger messages, moderation outcomes —
@@ -139,31 +147,37 @@ Elixir/Phoenix (`mix test`) + platform push setup (APNS key, FCM project).
 
 ## Task 3: Relay — push token registry + wake scheduling (Phase B)
 
-- [ ] `device_push_tokens` table + authenticated register/unregister
+- [x] `device_push_tokens` table + authenticated register/unregister
       endpoints (disable deletes the row — tested).
-- [ ] Wake scheduler: on accepting a reply/follow op targeting an opted-in
+- [x] Wake scheduler: on accepting a reply/follow op targeting an opted-in
       DID and on mailbox delivery, enqueue a debounced content-free push;
       respects per-category opt-outs.
-- [ ] Payloads are `{"hint": "sync"}` — a test asserts no content fields can
+- [x] Payloads are `{"hint": "sync"}` — a test asserts no content fields can
       appear.
-- [ ] Tests: scheduling per type, debounce window, opt-out respected,
+- [x] Tests: scheduling per type, debounce window, opt-out respected,
       unregister stops sends.
 
 ## Task 4: App — push wiring (Phase B)
 
-- [ ] FCM/APNS integration: permission prompt (only when the user enables
-      push in settings — not at first launch), token registration with the
-      relay, token rotation handling.
-- [ ] Background wake handler runs a bounded sync pass and posts **local**
-      notifications from the Phase A table (content is composed on-device).
-- [ ] iOS/Android platform config documented in
-      `docs/getting-started-dev.md` (keys, entitlements).
-- [ ] Tests: token lifecycle (mockable), wake handler folds + posts local
-      notifications.
+- [x] Token registration with the relay: `push_registration_service.dart`
+      (signed canonical payloads, stable per-install device id, register
+      returns false when no platform token exists) + settings opt-in that
+      only prompts/registers when the user enables push (never at first
+      launch). Permission prompt + token **rotation** land with the platform
+      plugin below.
+- [ ] (platform config) FCM/APNS plugin integration: a `PushTokenProvider`
+      backed by `firebase_messaging`/APNS with google-services.json / APNS
+      entitlement, and the background wake handler that runs a bounded sync
+      pass and posts **local** notifications from the Phase A table.
+- [x] Platform config steps documented in `docs/getting-started-dev.md`
+      (§ Push Notifications).
+- [x] Tests: token lifecycle (mockable signer/provider/client), settings
+      toggle register/unregister, hidden-without-context state. Wake-handler
+      tests land with the plugin integration above.
 
 ## Task 5: Docs + status
 
-- [ ] README component table row for notifications; `docs/ROADMAP.md`
+- [x] README component table row for notifications; `docs/ROADMAP.md`
       Product Track row updated; architecture plan's Phase 3 note that op
       firehose later replaces poll-on-wake.
 

@@ -12,9 +12,13 @@
 > - Tombstones/lock flags are served in `/api/v1/ops/delta` (content
 >   stripped, stored ops untouched) and in the public
 >   `GET /boards/:id/moderation-state`; the **web frontend** renders them.
->   **App-side** tombstone/lock rendering from the synced overlay is the one
->   remaining follow-up (unticked below), as is the `moderation_outcome`
->   notification type (waits on this + notification Phase B).
+>   **App-side rendering landed 2026-06-13**: a `host_moderation_states`
+>   snapshot table syncs per hosted board (failure-tolerant, in
+>   `host_moderation_sync_service.dart`); others' removed posts render as
+>   tombstones, the author keeps their content with a reason-coded notice,
+>   locked threads show a banner and disable the composer (lock wins over
+>   the tier gate). New moderation of the local user's content emits the
+>   always-on `moderation_outcome` notification.
 > - `dismiss_report` requires `report_id` (422 `unknown_report` otherwise).
 
 **Goal:** Users can report a thread/post with a reason code; board moderators
@@ -157,11 +161,11 @@ Node tests for the frontend console.
 - [x] Report action (reason picker + optional note) on posts and threads in
       `posts_view_screen.dart` / `discussion_detail_screen.dart`, submitted as
       a signed intent; confirmation + already-reported state.
-- [ ] (follow-up) Removed-post tombstones and locked-thread banners render
-      in the **app** with localized reason labels; the author of a removed
-      post sees the reason code (constitution-mandated visibility). Web
-      frontend already renders both; the app currently learns lock state
-      only via the reason-coded 403 on reply.
+- [x] Removed-post tombstones and locked-thread banners render in the
+      **app** with localized reason labels; the author of a removed post
+      keeps their content and sees the reason code (constitution-mandated
+      visibility). Synced via the public moderation-state endpoint into a
+      local snapshot table.
 - [x] Widget tests for report flow, tombstone, lock banner.
 
 ## Task 4: Frontend — moderator console
