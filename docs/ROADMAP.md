@@ -28,6 +28,34 @@ product loop — retention (notifications), safety (reporting/moderation), and
 the flagship differentiator (trust-gated boards) are missing, and growth
 surfaces (sharing/OG) have zero investment. PM review 2026-06-12.
 
+### Review findings (2026-06-13) — basis for the next cycle
+
+Two professional reviews were run against the built product; the full
+documents are the reference for future implementation:
+
+- [PM / product review](reviews/2026-06-13-pm-product-review.md)
+- [UX / UI design review](reviews/2026-06-13-ux-ui-review.md)
+
+**Convergent signal (both reviews independently):** the foundation is ahead
+of the product loop — stop expanding identity/federation surface, spend the
+next cycle making the network *exist, shareable, and measurable*.
+
+Top actions distilled from the two reviews:
+
+| # | Action | Source | Priority |
+|---|---|---|---|
+| 1 | **Cold-start seeding** — genesis boards, recruited founding posters, default subscriptions, guided first-session empty state | PM (highest leverage, no owner) | P0 for soft launch |
+| 2 | **Outbound sharing loop** — OG meta tags + native share sheet + universal/deep links (verified absent) | PM | P1, cheap |
+| 3 | **Identity recovery implementation** + tested device-loss walkthrough | PM + architecture Phase 1 | P0 foundation (in progress) |
+| 4 | **Compose-loop i18n bugs** — `post_form_dialog.dart`, `board_form_dialog.dart`, `posts_view_screen.dart` leak English in the primary zh-Hant create path | UX (reads as bugs, quick win) | P1, quick win |
+| 5 | **Onboarding benefit-framing + guided first session** — lead with outcome not mechanism; surface Discover; first-three-actions guidance | UX | P1 |
+| 6 | **Trust-gated upgrade CTA dead-end** — gate the「升級驗證」CTA on a configured issuer or add an interim「即將開放」state while TW-provider is fail-closed | UX | P1 (protects the flagship) |
+| 7 | Privacy-preserving metrics baseline folded into the above so launch teaches something | PM (+ Phase 0 observability) | P1 |
+
+Items 1, 2, 5, 6 are new/sharpened; they extend the Add/Improve tables
+below. Item 4 is a tracked quick-win bug-fix batch. Items 3 and 7 are
+already underway (architecture Phase 1 / Phase 0).
+
 ### Add（新增）
 
 | Item | Priority | Plan | Why |
