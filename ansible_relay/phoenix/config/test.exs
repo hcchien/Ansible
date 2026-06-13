@@ -10,6 +10,11 @@ config :ansible_relay, AnsibleRelay.Repo,
   pool_size: 5
 
 config :ansible_relay, :port, String.to_integer(System.get_env("RELAY_TEST_PORT") || "4002")
+
+# Push wakes: capture sends in-process and shrink the debounce window so
+# burst-coalescing tests stay fast.
+config :ansible_relay, :push_sender, AnsibleRelay.Push.TestSender
+config :ansible_relay, :push_wake_debounce_ms, 100
 config :ansible_relay, :persist_did_accounts, false
 config :ansible_relay, :allow_dev_zkp_proofs, true
 

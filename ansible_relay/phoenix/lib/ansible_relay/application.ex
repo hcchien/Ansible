@@ -19,6 +19,7 @@ defmodule AnsibleRelay.Application do
           AnsibleRelay.AbuseDetector,
           AnsibleRelay.ForumHost.ReportRateLimiter,
           AnsibleRelay.OpStore,
+          AnsibleRelay.Push.WakeScheduler,
           {Bandit, plug: AnsibleRelay.Web.Router, port: port}
         ]
 

@@ -199,6 +199,16 @@ defmodule AnsibleRelay.Web.Router do
     )
   end
 
+  # Phase B notifications — push token registry (signed; wake payloads are
+  # content-free by construction)
+  post "/api/v1/push/tokens" do
+    AnsibleRelay.Web.Controllers.PushController.register(conn, conn.body_params)
+  end
+
+  post "/api/v1/push/tokens/unregister" do
+    AnsibleRelay.Web.Controllers.PushController.unregister(conn, conn.body_params)
+  end
+
   # V2 — Passkeys Identity
   post "/api/v2/identity/register" do
     AnsibleRelay.Web.Controllers.IdentityV2Controller.register(conn, conn.body_params)

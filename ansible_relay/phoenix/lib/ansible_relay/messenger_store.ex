@@ -227,6 +227,12 @@ defmodule AnsibleRelay.MessengerStore do
       }
 
       {:ok, message} = Repo.insert(message)
+
+      # Fire-and-forget (async cast): mailbox delivery wakes the recipient's
+      # registered devices with a content-free hint. Self-sends are skipped
+      # inside the scheduler; failures never affect message acceptance.
+      AnsibleRelay.Push.WakeScheduler.mailbox_delivered(sender_did, recipient_did)
+
       {:ok, message_map(message)}
     else
       {:error, reason} -> {:error, reason}

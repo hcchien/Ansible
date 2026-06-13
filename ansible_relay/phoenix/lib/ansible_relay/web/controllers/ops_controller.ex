@@ -53,6 +53,9 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       case OpStore.append(op) do
         {:ok, log_id} ->
+          # Fire-and-forget (async cast): wake scheduling can never affect
+          # the ingest response.
+          AnsibleRelay.Push.WakeScheduler.op_accepted(op)
           send_json(conn, 202, %{accepted: true, log_id: log_id})
 
         {:error, :duplicate} ->

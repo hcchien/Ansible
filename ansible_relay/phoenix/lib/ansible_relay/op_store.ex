@@ -72,6 +72,24 @@ defmodule AnsibleRelay.OpStore do
     Repo.exists?(from o in Op, where: o.op_id == ^op_id)
   end
 
+  @doc """
+  Author DID of the create (`insert`) op for an entity, or nil.
+
+  Used by wake scheduling to resolve a reply's parent-thread author without
+  reading any content fields.
+  """
+  def create_op_author(entity_type, entity_id) do
+    Repo.one(
+      from o in Op,
+        where:
+          o.entity_type == ^entity_type and o.entity_id == ^entity_id and
+            o.op_type == "insert",
+        order_by: [asc: o.id],
+        limit: 1,
+        select: o.author_did
+    )
+  end
+
   # --- GenServer (vestigial: supervision compatibility only) ---
 
   @impl true
