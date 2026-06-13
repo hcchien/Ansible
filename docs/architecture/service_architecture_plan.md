@@ -237,11 +237,11 @@ Closes G13. Only after Phases 2–3 are stable in production.
 
 | # | Decision | Default position |
 |---|---|---|
-| D1 | Secure Enclave keys are P-256, not Ed25519 — dual-key DID (hardware P-256 device key attesting an Ed25519 content key) vs migrating record signatures to ES256 | Dual-key: keeps Ed25519 for Lexicon/Nostr compatibility, **and** the content key stays backupable while the device key stays hardware-bound — which is exactly the split the recovery design (Phase 1.0) needs. Decide during Phase 1 design |
+| D1 | Secure Enclave keys are P-256, not Ed25519 — dual-key DID (hardware P-256 device key attesting an Ed25519 content key) vs migrating record signatures to ES256 | **Settled (pending owner review): dual-key** — see the [Phase 1.0 design](../superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md); ES256 migration would make the identity key unexportable and recovery unsolvable by construction |
 | D2 | Cross-service op transport at scale: Phoenix PubSub vs GCP Pub/Sub vs NATS | Phoenix Channels single-region (Phase 3); revisit only at Phase 5 multi-region |
 | D3 | Standalone labeler timing | Extract only when a second consumer (external AppView or moderation tooling) exists |
 | D4 | Oban vs hand-rolled queue for delivery workers | Oban (battle-tested, Postgres-native, no new infra) |
-| D5 | Recovery mechanism mix: multi-device attestation, passphrase-encrypted content-key backup, recovery credential — which are launch-required vs later | Multi-device attestation + encrypted backup at launch (no new server trust); recovery credential (issuer-assisted) later. Decide during Phase 1.0 design |
+| D5 | Recovery mechanism mix: multi-device attestation, passphrase-encrypted content-key backup, recovery credential — which are launch-required vs later | **Settled (pending owner review):** multi-device attestation + encrypted backup at launch (no new server trust); issuer-assisted recovery credential later behind its own constitution review; social recovery out of scope — see the [Phase 1.0 design](../superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) |
 | D6 | Issuer trust anchor: relay pins a single `ISSUER_DID`/pubkey via env — needs a rotation/multi-key story before first issuer key rotation | Move to a small signed issuer-key document (did:web already serves one) consumed by relay; low urgency, schedule with Phase 4 |
 
 ## 6. Sequencing & Ownership（順序與依賴）
