@@ -58,6 +58,7 @@ dependencies:
   path_provider: ^2.1.5
   url_launcher: ^6.3.2
   app_links: ^6.4.0
+  share_plus: ^10.0.0
   mobile_scanner: ^7.0.0
   intl: any
   shared_preferences: ^2.3.0

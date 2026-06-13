@@ -11,13 +11,18 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'config/app_environment.dart';
+import 'l10n/app_l10n.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_shell.dart';
 // import 'screens/identity_anchor_screen.dart'; // V1: DID anchoring via NFC passport (replaced by PasskeysRegistrationScreen in V2.0)
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
+import 'screens/posts_view_screen.dart';
+import 'screens/threads_list_screen.dart';
 import 'screens/web_session_approval_screen.dart';
 import 'services/app_locale_controller.dart';
 import 'services/backup_policy_service.dart';
+import 'services/elix_content_link.dart';
+import 'services/elix_content_router.dart';
 import 'services/reading_preferences_controller.dart';
 import 'services/relay_identity_client.dart';
 import 'services/web_session_approval_client.dart';
@@ -199,6 +204,17 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
+    // Outbound sharing loop (PM review finding #2): a tapped Elix board/thread
+    // link opens the app and routes to that content.
+    final contentRef = ElixContentLink.parse(
+      uri,
+      allowLocalHttp: !AppEnvironment.isProduction,
+    );
+    if (contentRef != null) {
+      unawaited(_handleContentLink(contentRef));
+      return;
+    }
+
     WebSessionApprovalLink link;
     try {
       link = WebSessionApprovalLink.parse(
@@ -228,6 +244,51 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
     );
+  }
+
+  /// Resolves an inbound Elix content link against the local store and routes
+  /// to the matching screen. Content that is not available locally surfaces a
+  /// graceful message rather than a dead end.
+  Future<void> _handleContentLink(ElixContentRef ref) async {
+    final resolution = await ElixContentRouter(widget.db).resolve(ref);
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) return;
+
+    switch (resolution) {
+      case ResolvedThread(:final thread):
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => PostsViewScreen(
+              db: widget.db,
+              thread: thread,
+              authorDid: _anchoredDid,
+            ),
+          ),
+        );
+      case ResolvedBoard(:final board):
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => ThreadsListScreen(
+              db: widget.db,
+              board: board,
+              localDid: _anchoredDid,
+            ),
+          ),
+        );
+      case ContentUnavailable():
+        _showContentUnavailableMessage();
+    }
+  }
+
+  void _showContentUnavailableMessage() {
+    final context = _navigatorKey.currentContext;
+    final message = context != null
+        ? context.uiCopy(
+            zh: '這個連結指向的內容尚未同步到這台裝置',
+            en: 'That link points to content not yet on this device',
+          )
+        : 'That link points to content not yet on this device';
+    _showWebSessionMessage(message);
   }
 
   bool _isMobileMoicaCallbackLink(Uri uri) {

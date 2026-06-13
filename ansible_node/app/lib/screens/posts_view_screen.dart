@@ -4,10 +4,12 @@ import 'dart:convert';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
 import '../l10n/user_facing_error.dart';
+import '../services/elix_content_link.dart';
 import '../services/forum_host_client.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
@@ -16,12 +18,23 @@ import '../widgets/post_form_dialog.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
 
+/// Seam for invoking the platform share sheet. Defaults to share_plus; tests
+/// inject a fake to assert the constructed URL without a real share sheet.
+typedef ShareSheet = Future<void> Function(String text, {String? subject});
+
+Future<void> _defaultShareSheet(String text, {String? subject}) {
+  return Share.share(text, subject: subject);
+}
+
 class PostsViewScreen extends StatefulWidget {
   final AppDatabase db;
   final Thread thread;
   final String? authorDid;
   final OpsDispatchService? opsDispatchService;
   final Future<void> Function()? onFlushPendingOps;
+
+  /// Platform share-sheet seam (overridable in tests).
+  final ShareSheet shareSheet;
 
   const PostsViewScreen({
     super.key,
@@ -30,6 +43,7 @@ class PostsViewScreen extends StatefulWidget {
     this.authorDid,
     this.opsDispatchService,
     this.onFlushPendingOps,
+    this.shareSheet = _defaultShareSheet,
   });
 
   @override
@@ -103,6 +117,27 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       widget.db,
     ).tierFor(_authorDid);
     return !PostingGate.satisfies(tier, requiredTier);
+  }
+
+  /// Public web URL for this thread on the distribution frontend, or null when
+  /// the board is not hosted (local-only content has no public URL to share).
+  String? get _threadShareUrl {
+    final projection = _hostedProjection;
+    if (projection == null) return null;
+    return ElixContentLink.threadUrl(
+      canonicalBoardUri: projection.canonicalBoardUri,
+      boardId: projection.hostedBoardId,
+      threadId: widget.thread.id,
+    );
+  }
+
+  /// Opens the platform share sheet with this thread's public web URL so it can
+  /// be pasted into LINE / Threads / Messenger (the outbound growth loop). The
+  /// shared link renders a rich preview via the frontend's Open Graph tags.
+  Future<void> _shareThread() async {
+    final url = _threadShareUrl;
+    if (url == null) return;
+    await widget.shareSheet(url, subject: widget.thread.title);
   }
 
   /// Reports a post (or, with [post] null, the thread itself) to the Forum
@@ -301,6 +336,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         backgroundColor: AnsibleDesign.paper,
         foregroundColor: AnsibleDesign.ink,
         actions: [
+          if (_threadShareUrl != null)
+            IconButton(
+              key: const Key('share_thread_button'),
+              icon: const Icon(Icons.ios_share, size: 21),
+              tooltip: context.uiCopy(zh: '分享討論串', en: 'Share thread'),
+              onPressed: _shareThread,
+            ),
           if (_hostedProjection != null &&
               widget.thread.authorId != _authorDid)
             IconButton(

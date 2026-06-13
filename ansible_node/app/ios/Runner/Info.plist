@@ -27,12 +27,24 @@
 		<dict>
 			<key>CFBundleURLName</key>
 			<string>io.trisaura.elix.mobilemoica</string>
+			<!-- The trisaura:// scheme also carries shared-content deep links
+			     (trisaura://content/boards/:id[/threads/:tid]); see
+			     lib/services/elix_content_link.dart + lib/main.dart. -->
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>trisaura</string>
 			</array>
 		</dict>
 	</array>
+	<!-- TODO(universal links): to make plain https://<share-host>/boards/...
+	     links open the app directly (iOS Universal Links), add the
+	     com.apple.developer.associated-domains entitlement
+	     (applinks:<share-host>) to Runner.entitlements and publish
+	     /.well-known/apple-app-site-association on that host mapping
+	     /boards/* to this app's <TeamID>.<bundle-id>. In-app routing already
+	     accepts https content links (ElixContentLink), so only the OS
+	     association files remain. -->
+
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>mobilemoica</string>

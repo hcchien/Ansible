@@ -1,9 +1,17 @@
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { createServer as createHttpServer, request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import {
+  buildPageMetadata,
+  injectMetaTags,
+  parseSharePath,
+  renderMetaTags,
+  resolveOrigin,
+} from './src/og_meta.mjs';
 
 const DEFAULT_PORT = 5173;
 const DEFAULT_HOST = '127.0.0.1';
@@ -197,8 +205,112 @@ async function handleRequest(request, response, context) {
     return;
   }
 
+  // Outbound sharing loop (PM review finding #2): board/thread pages are served
+  // with per-page Open Graph + Twitter Card meta tags so a pasted link renders
+  // a rich preview in LINE / Threads / Messenger and pulls visitors back in.
+  const sharePath = parseSharePath(url.pathname);
+  if (sharePath && ['GET', 'HEAD'].includes(request.method ?? 'GET')) {
+    metrics.inc('frontend_requests_total', 'share');
+    await serveSharePage(request, response, sharePath, context);
+    return;
+  }
+
   metrics.inc('frontend_requests_total', 'asset');
   await serveFrontendAsset(request, response, url, context);
+}
+
+// Serves the SPA index.html with per-page OG/Twitter meta injected into the
+// <head>. Board metadata is sourced from the relay's public boards list; a
+// relay failure degrades gracefully to origin-only canonical tags rather than
+// taking the page down (the SPA still boots for human visitors regardless).
+async function serveSharePage(request, response, sharePath, context) {
+  const { rootDir, relayBaseUrl } = context;
+  let html;
+  try {
+    html = await readFile(resolve(rootDir, 'index.html'), 'utf8');
+  } catch {
+    // No index.html to enrich — fall back to the normal asset/SPA path.
+    await serveFrontendAsset(request, response, new URL(request.url ?? '/', 'http://frontend.local'), context);
+    return;
+  }
+
+  const origin = resolveOrigin(request);
+  const boards = await fetchPublicBoards(relayBaseUrl);
+  const metadata = buildPageMetadata(sharePath, { boards, origin });
+  const headTags = renderMetaTags(metadata);
+  const document = injectMetaTags(html, headTags);
+  const body = Buffer.from(document, 'utf8');
+
+  response.writeHead(200, {
+    ...SECURITY_HEADERS,
+    'content-type': 'text/html; charset=utf-8',
+    'content-length': body.length,
+    'cache-control': 'no-store',
+  });
+  response.end(request.method === 'HEAD' ? undefined : body);
+}
+
+// Fetches the relay's public boards list (same endpoint the SPA uses) for
+// board title/description. Uses node http/https directly (the frontend ships
+// with zero runtime deps and targets Node < 18, where global fetch is absent),
+// returning [] on any failure so meta injection never blocks page delivery.
+function fetchPublicBoards(relayBaseUrl) {
+  return new Promise((resolvePromise) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolvePromise(value);
+    };
+
+    let relayUrl;
+    try {
+      relayUrl = new URL('/api/v1/forum-host/boards', `${trimTrailingSlash(relayBaseUrl)}/`);
+    } catch {
+      finish([]);
+      return;
+    }
+
+    const requestFn = relayUrl.protocol === 'https:' ? httpsRequest : httpRequest;
+    const relayRequest = requestFn(
+      relayUrl,
+      { method: 'GET', headers: { accept: 'application/json' } },
+      (relayResponse) => {
+        if ((relayResponse.statusCode ?? 500) >= 400) {
+          relayResponse.resume();
+          finish([]);
+          return;
+        }
+        let raw = '';
+        relayResponse.setEncoding('utf8');
+        relayResponse.on('data', (chunk) => {
+          raw += chunk;
+        });
+        relayResponse.on('end', () => {
+          try {
+            const payload = JSON.parse(raw);
+            finish(
+              (payload?.boards ?? []).map((board) => ({
+                id: board?.hosted_board_id ?? '',
+                slug: board?.slug ?? board?.hosted_board_id ?? '',
+                title: board?.title ?? '',
+                description: board?.description ?? '',
+              })),
+            );
+          } catch {
+            finish([]);
+          }
+        });
+      },
+    );
+
+    relayRequest.on('error', () => finish([]));
+    relayRequest.setTimeout(2000, () => {
+      relayRequest.destroy();
+      finish([]);
+    });
+    relayRequest.end();
+  });
 }
 
 async function serveFrontendAsset(request, response, url, { rootDir }) {

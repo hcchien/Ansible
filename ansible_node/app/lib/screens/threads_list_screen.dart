@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
+import '../services/elix_content_link.dart';
 import '../services/posting_gate.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/thread_form_dialog.dart';
 import 'posts_view_screen.dart';
+
+Future<void> _defaultBoardShareSheet(String text, {String? subject}) {
+  return Share.share(text, subject: subject);
+}
 
 class ThreadsListScreen extends StatefulWidget {
   final AppDatabase db;
@@ -16,11 +22,15 @@ class ThreadsListScreen extends StatefulWidget {
   /// null, the gate check falls back to the unverified default tier.
   final String? localDid;
 
+  /// Platform share-sheet seam (overridable in tests).
+  final ShareSheet shareSheet;
+
   const ThreadsListScreen({
     super.key,
     required this.db,
     required this.board,
     this.localDid,
+    this.shareSheet = _defaultBoardShareSheet,
   });
 
   @override
@@ -35,6 +45,10 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
 
   /// Host moderation overlay: lock entries keyed by thread id (reason-coded).
   Map<String, HostModerationState> _lockedByThreadId = const {};
+
+  /// Set when this board is hosted by a Forum Host; only hosted boards have a
+  /// public web URL to share.
+  HostedBoardProjection? _hostedProjection;
 
   /// True when the board requires a higher tier than the local user has.
   /// Client-side UX only — the relay re-checks at intent acceptance.
@@ -51,7 +65,10 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   Future<void> _loadThreads() async {
     setState(() => _isLoading = true);
     final threads = await _threadRepo.list(boardId: widget.board.id);
-    final postingBlocked = await _checkPostingGate();
+    final projection = await DriftHostedBoardRepository(
+      widget.db,
+    ).getProjectionByLocalBoardId(widget.board.id);
+    final postingBlocked = await _checkPostingGate(projection);
     final moderationEntries = await DriftHostModerationStateRepository(
       widget.db,
     ).listForBoard(widget.board.id);
@@ -63,15 +80,14 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     };
     setState(() {
       _threads = threads;
+      _hostedProjection = projection;
       _postingBlocked = postingBlocked;
       _lockedByThreadId = lockedByThreadId;
       _isLoading = false;
     });
   }
 
-  Future<bool> _checkPostingGate() async {
-    final projection = await DriftHostedBoardRepository(widget.db)
-        .getProjectionByLocalBoardId(widget.board.id);
+  Future<bool> _checkPostingGate(HostedBoardProjection? projection) async {
     final requiredTier = projection?.minPostTier;
     if (requiredTier == null) return false;
     final did = widget.localDid;
@@ -79,6 +95,24 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         ? PostingGate.basicTier
         : await DriftDidReputationRepository(widget.db).tierFor(did);
     return !PostingGate.satisfies(tier, requiredTier);
+  }
+
+  /// Public web URL for this board on the distribution frontend, or null when
+  /// the board is local-only (no hosted projection ⇒ nothing public to share).
+  String? get _boardShareUrl {
+    final projection = _hostedProjection;
+    if (projection == null) return null;
+    return ElixContentLink.boardUrl(
+      canonicalBoardUri: projection.canonicalBoardUri,
+      boardId: projection.hostedBoardId,
+    );
+  }
+
+  /// Opens the platform share sheet with this board's public web URL.
+  Future<void> _shareBoard() async {
+    final url = _boardShareUrl;
+    if (url == null) return;
+    await widget.shareSheet(url, subject: widget.board.title);
   }
 
   Future<void> _createThread() async {
@@ -135,6 +169,15 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       appBar: AppBar(
         title: Text(widget.board.title),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          if (_boardShareUrl != null)
+            IconButton(
+              key: const Key('share_board_button'),
+              icon: const Icon(Icons.ios_share, size: 21),
+              tooltip: context.uiCopy(zh: '分享看板', en: 'Share board'),
+              onPressed: _shareBoard,
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
