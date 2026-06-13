@@ -276,6 +276,131 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
     assert valid_changeset.valid?
   end
 
+  test "create_board accepts external_inclusion=true and persists + exposes it" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:ok, board} =
+             Store.create_board(%{
+               intent_id: "intent-external-board",
+               author_did: "did:plc:externalhost",
+               title: "External Mix",
+               posting_policy: %{"external_inclusion" => true}
+             })
+
+    assert board.posting_policy == %{"external_inclusion" => true}
+
+    assert %ForumHostBoard{posting_policy: %{"external_inclusion" => true}} =
+             Repo.get(ForumHostBoard, board.hosted_board_id)
+
+    # Exposed in listings and search (posting_policy is the surface).
+    listed = Enum.find(Store.list_boards(), &(&1.hosted_board_id == board.hosted_board_id))
+    assert listed.posting_policy["external_inclusion"] == true
+
+    [searched] = Store.search_boards("External Mix", 20)
+    assert searched.posting_policy["external_inclusion"] == true
+  end
+
+  test "create_board defaults external_inclusion off (absent key)" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:ok, board} =
+             Store.create_board(%{
+               intent_id: "intent-default-external-off",
+               author_did: "did:plc:defaulthost",
+               title: "Default External Off"
+             })
+
+    refute Map.has_key?(board.posting_policy, "external_inclusion")
+  end
+
+  test "create_board rejects external_inclusion=true with a gated min_post_tier" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:error, :external_inclusion_conflicts_with_trust_gate} =
+             Store.create_board(%{
+               intent_id: "intent-conflict-1",
+               author_did: "did:plc:conflicthost",
+               title: "Conflict Board",
+               posting_policy: %{
+                 "external_inclusion" => true,
+                 "min_post_tier" => "verified_human"
+               }
+             })
+  end
+
+  test "create_board rejects the conflict regardless of key order (tier then external)" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:error, :external_inclusion_conflicts_with_trust_gate} =
+             Store.create_board(%{
+               intent_id: "intent-conflict-2",
+               author_did: "did:plc:conflicthost2",
+               title: "Conflict Board Reversed",
+               posting_policy: %{
+                 "min_post_tier" => "verified_human",
+                 "external_inclusion" => true
+               }
+             })
+  end
+
+  test "create_board allows external_inclusion with the open basic tier (not a real-human gate)" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:ok, board} =
+             Store.create_board(%{
+               intent_id: "intent-external-basic",
+               author_did: "did:plc:basicexternal",
+               title: "External Basic OK",
+               posting_policy: %{"external_inclusion" => true, "min_post_tier" => "basic"}
+             })
+
+    assert board.posting_policy["external_inclusion"] == true
+    assert board.posting_policy["min_post_tier"] == "basic"
+  end
+
+  test "create_board allows a gated board when external_inclusion is false/absent" do
+    :ok = Store.ensure_seeded!()
+
+    assert {:ok, gated} =
+             Store.create_board(%{
+               intent_id: "intent-gated-only",
+               author_did: "did:plc:gatedonly",
+               title: "Gated Only",
+               posting_policy: %{"min_post_tier" => "verified_human"}
+             })
+
+    assert gated.posting_policy == %{"min_post_tier" => "verified_human"}
+
+    assert {:ok, gated_explicit_off} =
+             Store.create_board(%{
+               intent_id: "intent-gated-external-off",
+               author_did: "did:plc:gatedoff",
+               title: "Gated External Off",
+               posting_policy: %{
+                 "min_post_tier" => "verified_human",
+                 "external_inclusion" => false
+               }
+             })
+
+    assert gated_explicit_off.posting_policy["min_post_tier"] == "verified_human"
+  end
+
+  test "board changeset rejects external_inclusion=true with a gated min_post_tier" do
+    changeset =
+      ForumHostBoard.changeset(%ForumHostBoard{}, %{
+        "hosted_board_id" => "conflict",
+        "slug" => "conflict",
+        "canonical_board_uri" => "https://forum.trisaura.test/boards/conflict",
+        "title" => "Conflict",
+        "posting_policy" => %{"external_inclusion" => true, "min_post_tier" => "verified_human"}
+      })
+
+    refute changeset.valid?
+
+    assert {"external_inclusion_conflicts_with_trust_gate", _} =
+             changeset.errors[:posting_policy]
+  end
+
   test "create_board returns structured error for missing title" do
     assert {:error, {:invalid_board, [:title]}} =
              Store.create_board(%{

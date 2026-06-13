@@ -626,6 +626,96 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert body["posting_policy"] == %{"min_post_tier" => "verified_human"}
   end
 
+  test "GET /api/v1/forum-host/boards exposes posting_policy external_inclusion" do
+    board_id = insert_hosted_board(%{"external_inclusion" => true})
+
+    response = get_json("/api/v1/forum-host/boards")
+    assert response.status == 200
+
+    board =
+      response.resp_body
+      |> Jason.decode!()
+      |> Map.fetch!("boards")
+      |> Enum.find(&(&1["hosted_board_id"] == board_id))
+
+    assert board["posting_policy"]["external_inclusion"] == true
+  end
+
+  test "GET /api/v1/discover/boards exposes posting_policy external_inclusion" do
+    board_id = insert_hosted_board(%{"external_inclusion" => true})
+
+    response = get_json("/api/v1/discover/boards?q=#{board_id}")
+    assert response.status == 200
+
+    assert [board] = Jason.decode!(response.resp_body)["boards"]
+    assert board["hosted_board_id"] == board_id
+    assert board["posting_policy"]["external_inclusion"] == true
+  end
+
+  test "GET /api/v1/forum-host exposes the configured posting_policy external_inclusion" do
+    original_policy = Application.get_env(:ansible_relay, :forum_host_posting_policy)
+
+    Application.put_env(:ansible_relay, :forum_host_posting_policy, %{
+      "min_trust_tier" => "self_custody_did",
+      "external_inclusion" => true
+    })
+
+    on_exit(fn -> restore_env(:forum_host_posting_policy, original_policy) end)
+
+    response = get_json("/api/v1/forum-host")
+    assert response.status == 200
+
+    body = Jason.decode!(response.resp_body)
+    assert body["posting_policy"]["external_inclusion"] == true
+  end
+
+  test "POST /api/v1/forum-host/boards stores and returns posting_policy external_inclusion" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:externalboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "board" => %{
+            "title" => "External Mix #{System.unique_integer([:positive])}",
+            "posting_policy" => %{"external_inclusion" => true}
+          }
+        }),
+        []
+      )
+
+    assert response.status == 201
+    assert Jason.decode!(response.resp_body)["posting_policy"]["external_inclusion"] == true
+  end
+
+  test "POST /api/v1/forum-host/boards rejects external_inclusion with a trust gate (422 reason code)" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:conflictboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "board" => %{
+            "title" => "Conflict #{System.unique_integer([:positive])}",
+            "posting_policy" => %{
+              "external_inclusion" => true,
+              "min_post_tier" => "verified_human"
+            }
+          }
+        }),
+        []
+      )
+
+    assert response.status == 422
+
+    assert Jason.decode!(response.resp_body)["error"] ==
+             "external_inclusion_conflicts_with_trust_gate"
+  end
+
   test "web thread creation in a gated board rejects a basic session DID with the 403 contract" do
     board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
     did = "did:plc:gatedbasic#{System.unique_integer([:positive])}"

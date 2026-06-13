@@ -46,6 +46,7 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
     ])
     |> validate_required([:hosted_board_id, :slug, :canonical_board_uri, :title])
     |> validate_posting_policy()
+    |> validate_external_inclusion()
     |> unique_constraint(:hosted_board_id, name: :forum_host_boards_pkey)
     |> unique_constraint(:slug)
     |> unique_constraint(:canonical_board_uri)
@@ -65,4 +66,43 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
       end
     end)
   end
+
+  # Constitution invariant: a board may not be both trust-gated (a verified-
+  # humans 真人版 `min_post_tier`) and externally inclusive — a verified-only
+  # board cannot carry unverified external content. `external_inclusion` lives
+  # in `posting_policy` alongside `min_post_tier` so the mutual-exclusion check
+  # is local to one map and surfaces wherever `posting_policy` already does.
+  defp validate_external_inclusion(changeset) do
+    validate_change(changeset, :posting_policy, fn :posting_policy, policy ->
+      if external_inclusion?(policy) and gated_min_post_tier?(policy) do
+        [posting_policy: "external_inclusion_conflicts_with_trust_gate"]
+      else
+        []
+      end
+    end)
+  end
+
+  defp external_inclusion?(%{} = policy) do
+    case Map.get(policy, "external_inclusion") || Map.get(policy, :external_inclusion) do
+      true -> true
+      _value -> false
+    end
+  end
+
+  defp external_inclusion?(_policy), do: false
+
+  # A "gated" tier is any tier above the open baseline `basic` (e.g.
+  # `verified_human`). `basic` is not a real-human gate, so it does not
+  # conflict with external inclusion.
+  defp gated_min_post_tier?(%{} = policy) do
+    case Map.get(policy, "min_post_tier") || Map.get(policy, :min_post_tier) do
+      tier when is_binary(tier) ->
+        AnsibleRelay.ReputationTier.valid_min_post_tier?(tier) and tier != "basic"
+
+      _value ->
+        false
+    end
+  end
+
+  defp gated_min_post_tier?(_policy), do: false
 end

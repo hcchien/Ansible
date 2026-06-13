@@ -389,6 +389,9 @@ defmodule AnsibleRelay.ForumHost.Store do
       not valid_posting_policy?(get_attr(attrs, :posting_policy)) ->
         {:error, :invalid_min_post_tier}
 
+      external_inclusion_conflicts_with_trust_gate?(get_attr(attrs, :posting_policy)) ->
+        {:error, :external_inclusion_conflicts_with_trust_gate}
+
       true ->
         title = get_attr(attrs, :title)
 
@@ -413,6 +416,34 @@ defmodule AnsibleRelay.ForumHost.Store do
   end
 
   defp valid_posting_policy?(_policy), do: true
+
+  # Constitution invariant: reject a board that is BOTH externally inclusive
+  # (`external_inclusion == true`) AND trust-gated to a real-human tier
+  # (`min_post_tier` above `basic`, e.g. `verified_human`). A 真人版 board
+  # cannot carry unverified external content. `external_inclusion` defaults
+  # false and is reversible (a host can turn it off later).
+  defp external_inclusion_conflicts_with_trust_gate?(%{} = policy) do
+    external_inclusion?(policy) and gated_min_post_tier?(policy)
+  end
+
+  defp external_inclusion_conflicts_with_trust_gate?(_policy), do: false
+
+  defp external_inclusion?(%{} = policy) do
+    case Map.get(policy, "external_inclusion") || Map.get(policy, :external_inclusion) do
+      true -> true
+      _value -> false
+    end
+  end
+
+  defp gated_min_post_tier?(%{} = policy) do
+    case Map.get(policy, "min_post_tier") || Map.get(policy, :min_post_tier) do
+      tier when is_binary(tier) ->
+        AnsibleRelay.ReputationTier.valid_min_post_tier?(tier) and tier != "basic"
+
+      _value ->
+        false
+    end
+  end
 
   defp missing_create_board_fields(attrs) do
     [:intent_id, :author_did, :title]
