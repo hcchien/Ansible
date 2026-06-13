@@ -1,9 +1,31 @@
 defmodule AnsibleAppview.Ingest.Folder do
   @moduledoc """
-  Folds relay ops into the `feed_items` projection. Re-verifies every op's
-  Ed25519 signature (double verification) and only indexes public/unlisted
-  content. Idempotent by `log_id`, so re-folding an overlapping range is safe.
+  Folds relay ops into the `feed_items` projection.
+
+  Defense-in-depth (Phase 2 / SOSP D-1): the AppView does **not** trust the
+  relay's ingest-time signature check. It independently re-verifies every op's
+  Ed25519 signature over the same canonical bytes the app/relay signed
+  (`SigningPayload.build/1`, byte-identical to the relay's
+  `OpsController.signing_payload/1` — the six sorted keys `author_did`,
+  `entity_id`, `entity_type`, `op_id`, `op_type`, `payload`, with
+  `schema_version`/`signature` excluded so signatures stay valid), and requires
+  a non-expired author DID anchor, before folding an op into a public
+  projection. Ops that fail either check are dropped (never written) and counted
+  in `appview_ingest_rejections_total{reason}`.
+
+  Only verified, public/unlisted content reaches `feed_items`; folded rows carry
+  `sig_verified=true` plus verification provenance (verified_at, source, the
+  original signature, and the anchor expiry when known). Idempotent by `log_id`,
+  so re-folding an overlapping range is safe.
+
+  Anchor-expiry status: the relay op delta does not yet carry the author's DID
+  anchor expiry (`OpsController.attach_public_key/1` adds only `public_key_hex`
+  and `reputation_tier`). The expiry check is fully plumbed here — if/when the
+  firehose carries `anchor_expires_at` it is enforced and persisted — but until
+  then no op can be rejected for an expired anchor (see `anchor_ok?/1` TODO).
   """
+
+  @source "relay_firehose"
 
   alias AnsibleAppview.{Cache, FollowGraph, HomeTimeline, Repo, SigVerifier, SigningPayload}
   alias AnsibleAppview.Db.FeedItem
@@ -16,6 +38,8 @@ defmodule AnsibleAppview.Ingest.Folder do
   def apply_ops(ops) when is_list(ops) do
     # Ed25519 verification is CPU-bound and independent per op, so verify the
     # whole page in parallel across schedulers before the sequential DB upserts.
+    # Each entry is {op, decoded_payload, verification}, where verification is
+    # {:ok, anchor_expires_at} | {:error, :bad_signature | :expired_anchor}.
     prepared =
       ops
       |> Task.async_stream(
@@ -27,13 +51,19 @@ defmodule AnsibleAppview.Ingest.Folder do
       |> Enum.map(fn {:ok, result} -> result end)
 
     max_log =
-      Enum.reduce(prepared, nil, fn {op, _payload, _ok?}, acc ->
+      Enum.reduce(prepared, nil, fn {op, _payload, _verification}, acc ->
         max_int(acc, op["log_id"])
       end)
 
+    # Reason-coded rejection metric: an op failing independent verification is
+    # never folded into any public projection (timeline/discovery/follow/
+    # profile). Counted so the Phase 2 exit criterion — "public fold rejects bad
+    # signatures with reason-coded metrics" — is measurable.
+    record_rejections(prepared)
+
     # Follow ops update the follow graph; profile ops update the actor directory.
-    # Neither belongs in feed_items.
-    for {op, payload, verified?} <- prepared, verified? do
+    # Neither belongs in feed_items. Only verified ops fold.
+    for {op, payload, {:ok, _expires}} <- prepared do
       case op["entity_type"] do
         "follow" -> fold_follow(op, payload)
         "profile" -> fold_profile(op, payload)
@@ -43,11 +73,11 @@ defmodule AnsibleAppview.Ingest.Folder do
 
     rows =
       prepared
-      |> Enum.filter(fn {op, payload, verified?} ->
-        verified? and op["entity_type"] not in ["follow", "profile"] and
+      |> Enum.filter(fn {op, payload, verification} ->
+        match?({:ok, _}, verification) and op["entity_type"] not in ["follow", "profile"] and
           visibility_ok?(op["entity_type"], payload)
       end)
-      |> Enum.map(fn {op, payload, _} -> row(op, payload) end)
+      |> Enum.map(fn {op, payload, {:ok, expires_at}} -> row(op, payload, expires_at) end)
       # Same log_id can appear once per page; keep the last occurrence.
       |> Enum.uniq_by(& &1.log_id)
 
@@ -74,7 +104,7 @@ defmodule AnsibleAppview.Ingest.Folder do
     # Observability (Phase 0): count signature-valid ops folded into the
     # projection (follows/profiles/feed items alike), the Phase 3 ingest-rate
     # exit metric. The ingest-lag gauge is sampled by Metrics.poll_gauges.
-    folded = Enum.count(prepared, fn {_op, _payload, verified?} -> verified? end)
+    folded = Enum.count(prepared, fn {_op, _payload, v} -> match?({:ok, _}, v) end)
     if folded > 0, do: AnsibleAppview.Metrics.inc("appview_ingest_folds_total", %{}, folded)
 
     {indexed, max_log}
@@ -145,12 +175,63 @@ defmodule AnsibleAppview.Ingest.Folder do
     }
   end
 
+  # Independent verification of one op. Returns {:ok, anchor_expires_at} when the
+  # signature verifies over the canonical bytes AND the author's DID anchor is
+  # non-expired; otherwise {:error, :bad_signature} | {:error, :expired_anchor}.
+  # Signature is checked first so an unverifiable op never has its anchor probed.
   defp verify(op) do
     pk = op["public_key_hex"]
     sig = op["signature"]
 
-    is_binary(pk) and is_binary(sig) and
-      SigVerifier.verify_ed25519(pk, SigningPayload.build(op), sig)
+    cond do
+      not (is_binary(pk) and is_binary(sig) and
+               SigVerifier.verify_ed25519(pk, SigningPayload.build(op), sig)) ->
+        {:error, :bad_signature}
+
+      true ->
+        case anchor_ok?(op) do
+          {:ok, expires_at} -> {:ok, expires_at}
+          :expired -> {:error, :expired_anchor}
+        end
+    end
+  end
+
+  # DID-anchor expiry gate. The relay op delta does not yet carry the author's
+  # anchor expiry, so when no expiry is supplied we accept the op (the signature
+  # already proves authorship) and leave anchor_expires_at nil.
+  #
+  # TODO(Phase 2): once the relay's delta carries the author DID anchor expiry
+  # (e.g. `anchor_expires_at` alongside `public_key_hex` in
+  # OpsController.attach_public_key/1), this check becomes load-bearing and
+  # expired-anchor ops will be rejected. The enforcement path below is already
+  # wired — only the relay-side field is missing.
+  defp anchor_ok?(op) do
+    case parse_dt(op["anchor_expires_at"]) do
+      nil ->
+        {:ok, nil}
+
+      %DateTime{} = expires_at ->
+        if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
+          {:ok, expires_at}
+        else
+          :expired
+        end
+    end
+  end
+
+  defp record_rejections(prepared) do
+    prepared
+    |> Enum.reduce(%{}, fn
+      {_op, _payload, {:error, reason}}, acc -> Map.update(acc, reason, 1, &(&1 + 1))
+      {_op, _payload, {:ok, _}}, acc -> acc
+    end)
+    |> Enum.each(fn {reason, count} ->
+      AnsibleAppview.Metrics.inc(
+        "appview_ingest_rejections_total",
+        %{reason: Atom.to_string(reason)},
+        count
+      )
+    end)
   end
 
   defp visibility_ok?(entity_type, payload) when entity_type in @content_types do
@@ -210,7 +291,7 @@ defmodule AnsibleAppview.Ingest.Folder do
     end
   end
 
-  defp row(op, payload) do
+  defp row(op, payload, anchor_expires_at) do
     now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
 
     %{
@@ -230,6 +311,14 @@ defmodule AnsibleAppview.Ingest.Folder do
       author_tier: op["reputation_tier"] || "basic",
       deleted: op["op_type"] == "delete",
       sig_verified: true,
+      # Verification provenance (Phase 2 / SOSP D-1): this row was
+      # independently re-verified here, not trusted from the relay.
+      source: @source,
+      verified_at: now,
+      # Retain the original signature so clients/third parties can re-verify
+      # without trusting this projection (plan item 2, partial).
+      signature: op["signature"],
+      anchor_expires_at: anchor_expires_at,
       inserted_at: now,
       updated_at: now
     }

@@ -17,6 +17,9 @@ defmodule AnsibleAppview.Metrics do
   ## Exposed series (appview)
 
     * `appview_ingest_folds_total` — ops folded into the projection
+    * `appview_ingest_rejections_total{reason}` — ops rejected at fold time
+      (`reason=bad_signature|expired_anchor`); rejected ops never reach a
+      public projection
     * `appview_ingest_lag_seconds` (gauge) — now − newest folded op timestamp
     * `appview_timeline_requests_total{kind}` — timeline reads (following/home/board)
     * `appview_timeline_request_duration_seconds` (histogram) — timeline latency
@@ -33,6 +36,9 @@ defmodule AnsibleAppview.Metrics do
 
   @metric_defs %{
     "appview_ingest_folds_total" => {:counter, "Ops folded into the feed projection."},
+    "appview_ingest_rejections_total" =>
+      {:counter,
+       "Ops rejected at fold time by reason (bad_signature/expired_anchor); never folded into public projections."},
     "appview_ingest_lag_seconds" =>
       {:gauge, "Seconds between now and the newest folded op timestamp."},
     "appview_timeline_requests_total" =>

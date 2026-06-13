@@ -1,8 +1,13 @@
 defmodule AnsibleAppview.Timeline do
   @moduledoc """
   Fan-out-on-read timeline queries over the `feed_items` projection. Returns only
-  non-deleted, public/unlisted items, newest first, paginated by relay `log_id`.
-  Each item carries `public_key_hex` so the client can re-verify.
+  non-deleted, public/unlisted, independently signature-verified
+  (`sig_verified=true`) items, newest first, paginated by relay `log_id`. Each
+  item carries `public_key_hex` so the client can re-verify.
+
+  The `sig_verified` filter is defense-in-depth: the fold path already drops ops
+  that fail independent verification, but every public read also excludes
+  unverified rows so a row written by any other path can never surface.
   """
 
   import Ecto.Query
@@ -81,10 +86,11 @@ defmodule AnsibleAppview.Timeline do
           ttl = Application.get_env(:ansible_appview, :item_cache_ttl_ms, 30_000)
 
           read_repo().all(
-            from f in FeedItem,
+            from(f in FeedItem,
               where:
-                f.op_id in ^ids and f.deleted == false and
+                f.op_id in ^ids and f.deleted == false and f.sig_verified == true and
                   (is_nil(f.visibility) or f.visibility in ^@relayable)
+            )
           )
           |> Enum.map(fn f ->
             item = to_map(f)
@@ -140,12 +146,13 @@ defmodule AnsibleAppview.Timeline do
 
         items =
           read_repo().all(
-            from f in FeedItem,
+            from(f in FeedItem,
               where:
-                f.author_did == ^did and f.deleted == false and
+                f.author_did == ^did and f.deleted == false and f.sig_verified == true and
                   (is_nil(f.visibility) or f.visibility in ^@relayable),
               order_by: [desc: f.log_id],
               limit: ^cap
+            )
           )
           |> Enum.map(&to_map/1)
 
@@ -164,16 +171,17 @@ defmodule AnsibleAppview.Timeline do
     limit = limit |> min(200) |> max(1)
 
     base =
-      from f in query,
+      from(f in query,
         where:
-          f.deleted == false and
+          f.deleted == false and f.sig_verified == true and
             (is_nil(f.visibility) or f.visibility in ^@relayable),
         order_by: [desc: f.log_id],
         limit: ^(limit + 1)
+      )
 
     scoped =
       if is_integer(cursor) and cursor > 0 do
-        from f in base, where: f.log_id < ^cursor
+        from(f in base, where: f.log_id < ^cursor)
       else
         base
       end

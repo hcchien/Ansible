@@ -4,26 +4,32 @@ defmodule AnsibleAppview.Db.FeedItem do
 
   @primary_key {:log_id, :integer, autogenerate: false}
   schema "feed_items" do
-    field :op_id, :string
-    field :author_did, :string
-    field :entity_type, :string
-    field :entity_id, :string
-    field :op_type, :string
-    field :board_id, :string
-    field :thread_id, :string
-    field :visibility, :string
-    field :item_created_at, :utc_datetime_usec
-    field :payload, :map
-    field :public_key_hex, :string
-    field :author_tier, :string, default: "basic"
-    field :deleted, :boolean, default: false
-    field :sig_verified, :boolean, default: false
+    field(:op_id, :string)
+    field(:author_did, :string)
+    field(:entity_type, :string)
+    field(:entity_id, :string)
+    field(:op_type, :string)
+    field(:board_id, :string)
+    field(:thread_id, :string)
+    field(:visibility, :string)
+    field(:item_created_at, :utc_datetime_usec)
+    field(:payload, :map)
+    field(:public_key_hex, :string)
+    field(:author_tier, :string, default: "basic")
+    field(:deleted, :boolean, default: false)
+    field(:sig_verified, :boolean, default: false)
+    # Verification provenance (Phase 2 / SOSP D-1).
+    field(:source, :string, default: "relay_firehose")
+    field(:verified_at, :utc_datetime_usec)
+    field(:signature, :string)
+    field(:anchor_expires_at, :utc_datetime_usec)
 
     timestamps(type: :utc_datetime_usec)
   end
 
   @fields ~w(log_id op_id author_did entity_type entity_id op_type board_id thread_id
-             visibility item_created_at payload public_key_hex author_tier deleted sig_verified)a
+             visibility item_created_at payload public_key_hex author_tier deleted sig_verified
+             source verified_at signature anchor_expires_at)a
   @required ~w(log_id op_id author_did entity_type entity_id op_type)a
 
   def changeset(struct, attrs) do

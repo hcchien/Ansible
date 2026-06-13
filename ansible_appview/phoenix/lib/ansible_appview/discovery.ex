@@ -9,9 +9,10 @@ defmodule AnsibleAppview.Discovery do
   - `explore/2` — a global, newest-first feed of public content, so a brand-new
     account with zero follows still has something to read.
 
-  Privacy: only public/unlisted, non-deleted content is ever surfaced (same gate
-  as the timeline). Abuse-resistance: results carry `author_tier` so callers can
-  rank verified authors up and spam tiers down.
+  Privacy: only public/unlisted, non-deleted, independently signature-verified
+  (`sig_verified=true`) content is ever surfaced (same gate as the timeline).
+  Abuse-resistance: results carry `author_tier` so callers can rank verified
+  authors up and spam tiers down.
   """
 
   import Ecto.Query
@@ -49,10 +50,11 @@ defmodule AnsibleAppview.Discovery do
 
         _ ->
           read_repo().all(
-            from f in Follow,
+            from(f in Follow,
               where: f.follower_did in ^following,
               group_by: f.author_did,
               select: {f.author_did, count(f.follower_did)}
+            )
           )
           |> Map.new()
       end
@@ -60,11 +62,12 @@ defmodule AnsibleAppview.Discovery do
     # Globally popular authors (cap the scan; we only need a ranked shortlist).
     popular =
       read_repo().all(
-        from f in Follow,
+        from(f in Follow,
           group_by: f.author_did,
           select: f.author_did,
           order_by: [desc: count(f.follower_did)],
           limit: ^(limit * 5)
+        )
       )
 
     candidates =
@@ -101,16 +104,18 @@ defmodule AnsibleAppview.Discovery do
     limit = limit |> min(100) |> max(1)
 
     base =
-      from f in FeedItem,
+      from(f in FeedItem,
         where:
-          f.deleted == false and f.entity_type in ^@explore_types and
+          f.deleted == false and f.sig_verified == true and
+            f.entity_type in ^@explore_types and
             (is_nil(f.visibility) or f.visibility in ^@relayable),
         order_by: [desc: f.log_id],
         limit: ^(limit + 1)
+      )
 
     scoped =
       if is_integer(cursor) and cursor > 0 do
-        from f in base, where: f.log_id < ^cursor
+        from(f in base, where: f.log_id < ^cursor)
       else
         base
       end
@@ -153,13 +158,15 @@ defmodule AnsibleAppview.Discovery do
     like = "%" <> escape_like(q) <> "%"
 
     read_repo().all(
-      from f in FeedItem,
+      from(f in FeedItem,
         where:
-          f.deleted == false and f.entity_type in ^@explore_types and
+          f.deleted == false and f.sig_verified == true and
+            f.entity_type in ^@explore_types and
             (is_nil(f.visibility) or f.visibility in ^@relayable) and
             fragment("search_text LIKE ?", ^like),
         order_by: [desc: f.log_id],
         limit: ^limit
+      )
     )
     |> Enum.map(&Timeline.to_map/1)
   end
