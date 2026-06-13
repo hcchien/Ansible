@@ -189,23 +189,38 @@ remaining enrolled devices receive the identity alert and can veto).
 
 Closes G4, G5, G15 (schema half). Relay + AppView.
 
-1. **AppView independent verification** (SOSP D-1): Rustler batch Ed25519
-   verifier at ingest; require valid signature **and** non-expired DID anchor
-   before folding into public projections; persist verification status +
-   source provenance on `feed_items`.
-2. **Retain signed payloads**: store original signed record + signature
-   alongside projections so clients/third parties can re-verify (scaling §5).
-3. **Relay op storage lifecycle**: time-based partitioning of `ops`; signed
-   snapshot format so AppView rebuilds don't require full history; retention
-   policy for archived partitions (tombstones remain authoritative locally).
-4. **Relay internal schema separation**: identity-anchor, forum-host, and
-   federation data live in separable schema/table groups with no cross-group
-   joins in hot paths. The relay stays one deployable (splitting now would be
-   premature), but each concern keeps its own data ownership so a future
-   extraction is a deployment change, not a rewrite.
+1. **AppView independent verification — ✅ done 2026-06-13** (SOSP D-1):
+   Elixir `:crypto` Ed25519 verify at fold (the existing `SigVerifier`
+   satisfied the "no Rust NIF" call), over the same canonical 6-key payload
+   the relay/app sign; only verified ops fold, and a defense-in-depth
+   `sig_verified == true` filter on every public read (timeline + discovery)
+   guarantees an unverified row can never surface; verification provenance
+   (`source`, `verified_at`, `signature`, `anchor_expires_at`) persisted on
+   `feed_items`; `appview_ingest_rejections_total{reason}` metric. Anchor-
+   expiry enforcement is plumbed + tested but becomes load-bearing only once
+   the relay delta carries `anchor_expires_at` (relay-side TODO).
+2. **Retain signed payloads — ✅ done** (with item 1): the op `signature`
+   is now stored alongside the projection on `feed_items`, so clients/third
+   parties can re-verify.
+3. **Relay op storage lifecycle — ✅ snapshots + retention done
+   2026-06-13; partitioning deferred**: signed, content-addressed snapshot
+   format (`GET /api/v1/ops/snapshot`) so AppView rebuilds fold a snapshot +
+   delta instead of full history, independently verifiable
+   (`SnapshotStore.verify/1`); guarded retention
+   (`ANSIBLE_RELAY_SNAPSHOT_RETENTION_DAYS`, default `:infinity`) that prunes
+   only aged + snapshot-covered + non-tombstone ops. **Physical time-based
+   partitioning of `ops` is a documented TODO** (risky live-table migration);
+   snapshot/retention are partition-agnostic.
+4. **Relay internal schema separation — ⏳ open**: identity-anchor,
+   forum-host, and federation data should live in separable schema/table
+   groups with no cross-group joins in hot paths. The relay stays one
+   deployable (splitting now would be premature), but each concern keeps its
+   own data ownership so a future extraction is a deployment change, not a
+   rewrite. Remaining Phase 2 work alongside ops partitioning.
 
-Exit criteria: AppView rebuild-from-snapshot tested; ops partitions rotating
-in staging; public fold rejects bad signatures with reason-coded metrics.
+Exit criteria: AppView rebuild-from-snapshot tested ✅; public fold rejects
+bad signatures with reason-coded metrics ✅; ops partitions rotating in
+staging (pending — with the deferred partitioning work).
 
 ### Phase 3 — Push distribution & delivery workers
 
