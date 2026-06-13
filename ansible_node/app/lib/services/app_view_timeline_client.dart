@@ -18,6 +18,66 @@ class AppViewTimelineClient {
   AppViewTimelineClient({required this.baseUrl, http.Client? client})
     : _client = client ?? http.Client();
 
+  /// Fetches a board's curated external (fediverse) items from the committed
+  /// AppView contract:
+  /// `GET /api/v1/boards/:board_id/external?cursor=&limit=`.
+  ///
+  /// These items are NEVER verified Elix content (`sig_verified == false`,
+  /// `reputation_tier == external_unverified`). The caller must already have
+  /// confirmed BOTH gates (board.externalInclusion AND the user opt-in) before
+  /// calling — this client does no gating itself (inbound-federation D4).
+  Future<AppViewExternalPage> fetchBoardExternal(
+    String boardId, {
+    String? cursor,
+    int limit = 50,
+  }) async {
+    final base = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri =
+        Uri.parse('$base/api/v1/boards/$boardId/external').replace(
+      queryParameters: {
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        'limit': '$limit',
+      },
+    );
+    final response = await _client.get(uri, headers: AnsibleProtocol.headers);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('AppView board external failed: ${response.statusCode}');
+    }
+
+    // Decode as UTF-8 explicitly: external content is real fediverse text
+    // (often CJK), and http defaults `.body` to Latin-1 absent a charset.
+    final body =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final items = (body['items'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map((raw) {
+          final m = Map<String, dynamic>.from(raw);
+          return AppViewExternalItem(
+            logId: m['log_id'],
+            opId: m['op_id'] as String? ?? '',
+            boardId: m['board_id'] as String? ?? boardId,
+            content: m['content'] as String? ?? '',
+            createdAt: m['created_at'] is String
+                ? DateTime.tryParse(m['created_at'] as String)
+                : null,
+            externalActorUri: m['external_actor_uri'] as String? ?? '',
+            externalInstance: m['external_instance'] as String? ?? '',
+            complianceLevel: m['compliance_level'] as String? ?? 'unknown',
+            reputationTier:
+                m['reputation_tier'] as String? ?? 'external_unverified',
+            origin: m['origin'] as String? ?? 'activitypub',
+          );
+        })
+        .toList();
+
+    return AppViewExternalPage(
+      items: items,
+      nextCursor: body['next_cursor'] as String?,
+      hasMore: body['has_more'] as bool? ?? false,
+    );
+  }
+
   Future<AppViewTimelinePage> fetch({
     required List<String> dids,
     int? cursor,
@@ -95,4 +155,69 @@ class AppViewTimelineClient {
       hasMore: body['has_more'] as bool? ?? false,
     );
   }
+}
+
+/// A single curated external (fediverse) item surfaced into a board. It is
+/// honestly-labeled external content — never verified Elix content, never a
+/// 真人 author (inbound-federation Constitution Review §5).
+class AppViewExternalItem {
+  const AppViewExternalItem({
+    required this.opId,
+    required this.boardId,
+    required this.content,
+    required this.externalActorUri,
+    required this.externalInstance,
+    required this.complianceLevel,
+    this.logId,
+    this.createdAt,
+    this.reputationTier = 'external_unverified',
+    this.origin = 'activitypub',
+  });
+
+  /// AppView log id (int in the contract, kept dynamic for robustness).
+  final Object? logId;
+  final String opId;
+  final String boardId;
+  final String content;
+  final DateTime? createdAt;
+
+  /// Remote actor URI, e.g. `https://g0v.social/users/somebody`.
+  final String externalActorUri;
+
+  /// Remote instance host, e.g. `g0v.social`.
+  final String externalInstance;
+
+  /// Assessed instance compliance: `compatible` for assessed allowlisted
+  /// instances, else `unknown` (lower-ranked, surfaced as such).
+  final String complianceLevel;
+
+  /// Fixed external tier; never an Elix reputation tier.
+  final String reputationTier;
+
+  /// Source protocol, e.g. `activitypub`.
+  final String origin;
+
+  bool get isCompatible => complianceLevel == 'compatible';
+
+  /// Best-effort actor handle (`@user@instance`) derived from the actor URI.
+  String get actorHandle {
+    final uri = Uri.tryParse(externalActorUri);
+    if (uri == null) return externalActorUri;
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    final name = segments.isNotEmpty ? segments.last : uri.host;
+    final instance = externalInstance.isNotEmpty ? externalInstance : uri.host;
+    return '@$name@$instance';
+  }
+}
+
+class AppViewExternalPage {
+  const AppViewExternalPage({
+    required this.items,
+    this.nextCursor,
+    this.hasMore = false,
+  });
+
+  final List<AppViewExternalItem> items;
+  final String? nextCursor;
+  final bool hasMore;
 }

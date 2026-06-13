@@ -41,6 +41,13 @@ class HostedBoardProjection {
     return null;
   }
 
+  /// True when the board owner invited curated external (fediverse) content
+  /// into this board's view (inbound-federation design D4, set by 4a into the
+  /// same `posting_policy` map). Mutually exclusive with [minPostTier] —
+  /// a trust-gated 真人版 board never carries unverified external content
+  /// (enforced host-side at the policy chokepoint).
+  bool get externalInclusion => postingPolicy['external_inclusion'] == true;
+
   HostedBoardProjection copyWith({
     String? localBoardId,
     String? forumHostId,

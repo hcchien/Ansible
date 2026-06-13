@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../services/app_locale_controller.dart';
+import '../services/external_content_preferences_controller.dart';
 import '../services/identity_anchor_service.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/recovery_readiness_store.dart';
@@ -42,6 +43,7 @@ class SettingsHomeScreen extends StatelessWidget {
     required this.did,
     this.localeController,
     this.readingPreferencesController,
+    this.externalContentPreferencesController,
     this.onClearIdentity,
     this.personalScreenStyle,
     this.forumScreenStyle,
@@ -59,6 +61,11 @@ class SettingsHomeScreen extends StatelessWidget {
   final String did;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
+
+  /// Per-user opt-in for curated external (fediverse) content. When null the
+  /// row builds its own controller from the production SharedPreferences store.
+  final ExternalContentPreferencesController?
+  externalContentPreferencesController;
 
   /// Source of recovery-readiness state for the RECOVERY settings row.
   final RecoveryReadinessStore recoveryReadinessStore;
@@ -313,7 +320,11 @@ class SettingsHomeScreen extends StatelessWidget {
                 recoveryReadinessStore: recoveryReadinessStore,
                 onOpenRecoveryWizard: onOpenRecoveryWizard,
               ),
-              _BlockedListSettingsRow(db: db, text: text, last: true),
+              _BlockedListSettingsRow(db: db, text: text, last: false),
+              _ExternalContentSettingsRow(
+                controller: externalContentPreferencesController,
+                last: true,
+              ),
             ],
           ),
           _SettingsSection(
@@ -1161,6 +1172,113 @@ class _BlockedListSettingsRowState extends State<_BlockedListSettingsRow> {
           value: '${snapshot.data ?? 0}',
           last: widget.last,
           onTap: _openBlockedList,
+        );
+      },
+    );
+  }
+}
+
+/// Per-user opt-in toggle for curated external (fediverse) content
+/// (inbound-federation design D4). Default OFF; effective board visibility is
+/// `board.externalInclusion AND this toggle`. The label always states it is
+/// unverified external content so it is never mistaken for 真人 content.
+class _ExternalContentSettingsRow extends StatefulWidget {
+  const _ExternalContentSettingsRow({this.controller, this.last = false});
+
+  final ExternalContentPreferencesController? controller;
+  final bool last;
+
+  @override
+  State<_ExternalContentSettingsRow> createState() =>
+      _ExternalContentSettingsRowState();
+}
+
+class _ExternalContentSettingsRowState
+    extends State<_ExternalContentSettingsRow> {
+  late final ExternalContentPreferencesController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        widget.controller ?? ExternalContentPreferencesController();
+    if (!_controller.loaded) {
+      _controller.load();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: widget.last
+                  ? BorderSide.none
+                  : const BorderSide(
+                      color: AnsibleDesign.ruleSoft,
+                      width: 0.5,
+                    ),
+            ),
+          ),
+          child: Row(
+            children: [
+              const AnsibleGlyphBox(glyph: '⊕'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          context.uiCopy(zh: '站外內容', en: 'External content'),
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            color: AnsibleDesign.ink,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        const Text(
+                          'FEDIVERSE',
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.mono,
+                            fontSize: 8.5,
+                            letterSpacing: 1.4,
+                            color: AnsibleDesign.inkFaint,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.uiCopy(
+                        zh: '在開放引入的看板顯示站外（未驗證）內容；預設關閉',
+                        en: 'Show unverified fediverse content on boards that '
+                            'opt in; off by default',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Switch(
+                key: const Key('settings_show_external_switch'),
+                value: _controller.showExternal,
+                onChanged: (enabled) =>
+                    _controller.setShowExternal(enabled),
+              ),
+            ],
+          ),
         );
       },
     );

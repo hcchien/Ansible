@@ -2,13 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
+import '../services/app_view_timeline_client.dart';
 import '../services/elix_content_link.dart';
+import '../services/external_content_preferences_controller.dart';
 import '../services/posting_gate.dart';
+import '../widgets/external_content_section.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/thread_form_dialog.dart';
 import 'posts_view_screen.dart';
+
+/// Fetches a board's curated external items. Mirrors the AppView client method
+/// signature so tests can inject a fake without a real HTTP client.
+typedef BoardExternalFetcher =
+    Future<AppViewExternalPage> Function(String boardId);
 
 Future<void> _defaultBoardShareSheet(String text, {String? subject}) {
   return Share.share(text, subject: subject);
@@ -25,12 +34,23 @@ class ThreadsListScreen extends StatefulWidget {
   /// Platform share-sheet seam (overridable in tests).
   final ShareSheet shareSheet;
 
+  /// Per-user opt-in for external (fediverse) content. When null the screen
+  /// builds its own controller from SharedPreferences (default OFF). One of the
+  /// two gates for surfacing external content (inbound-federation D4).
+  final ExternalContentPreferencesController? externalContentPreferences;
+
+  /// Test/override seam for fetching the board's external items. When null the
+  /// screen uses the AppView client (only when the AppView base URL is set).
+  final BoardExternalFetcher? externalFetcher;
+
   const ThreadsListScreen({
     super.key,
     required this.db,
     required this.board,
     this.localDid,
     this.shareSheet = _defaultBoardShareSheet,
+    this.externalContentPreferences,
+    this.externalFetcher,
   });
 
   @override
@@ -54,11 +74,20 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   /// Client-side UX only — the relay re-checks at intent acceptance.
   bool _postingBlocked = false;
 
+  /// Curated external (fediverse) items for this board, fetched ONLY when both
+  /// gates pass (board.externalInclusion AND the user opt-in). Empty otherwise.
+  List<AppViewExternalItem> _externalItems = const [];
+
+  late final ExternalContentPreferencesController _externalPrefs;
+
   @override
   void initState() {
     super.initState();
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
+    _externalPrefs =
+        widget.externalContentPreferences ??
+        ExternalContentPreferencesController();
     _loadThreads();
   }
 
@@ -78,13 +107,47 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             entry.action == HostModerationState.actionLocked)
           entry.targetRef: entry,
     };
+    final externalItems = await _loadExternalItems(projection);
     setState(() {
       _threads = threads;
       _hostedProjection = projection;
       _postingBlocked = postingBlocked;
       _lockedByThreadId = lockedByThreadId;
+      _externalItems = externalItems;
       _isLoading = false;
     });
+  }
+
+  /// Fetches the board's curated external items ONLY when BOTH gates pass:
+  /// the board is external-inclusive AND the user opted into external content
+  /// (inbound-federation Constitution must-have). Returns an empty list — and
+  /// makes NO network call — when either gate is closed.
+  Future<List<AppViewExternalItem>> _loadExternalItems(
+    HostedBoardProjection? projection,
+  ) async {
+    if (projection == null || !projection.externalInclusion) return const [];
+    final allowed = await _externalPrefs.externalAllowed();
+    if (!allowed) return const [];
+
+    final fetcher = _resolveExternalFetcher();
+    if (fetcher == null) return const [];
+    try {
+      final page = await fetcher(projection.hostedBoardId);
+      return page.items;
+    } catch (_) {
+      // External content is best-effort and non-load-bearing: a fetch failure
+      // never blocks the native thread list.
+      return const [];
+    }
+  }
+
+  BoardExternalFetcher? _resolveExternalFetcher() {
+    if (widget.externalFetcher != null) return widget.externalFetcher;
+    if (AppEnvironment.appViewBaseUrl.isEmpty) return null;
+    final client = AppViewTimelineClient(
+      baseUrl: AppEnvironment.appViewBaseUrl,
+    );
+    return (boardId) => client.fetchBoardExternal(boardId);
   }
 
   Future<bool> _checkPostingGate(HostedBoardProjection? projection) async {
@@ -191,7 +254,17 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                       onUpgradeCompleted: _loadThreads,
                     ),
                   ),
-                Expanded(child: _threadsBody(context)),
+                Expanded(
+                  child: _externalItems.isEmpty
+                      ? _threadsBody(context)
+                      : ListView(
+                          children: [
+                            for (final thread in _threads)
+                              _threadCard(context, thread),
+                            ExternalContentSection(items: _externalItems),
+                          ],
+                        ),
+                ),
               ],
             ),
       floatingActionButton: FloatingActionButton(
@@ -232,60 +305,59 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           )
         : ListView.builder(
             itemCount: _threads.length,
-            itemBuilder: (context, index) {
-              final thread = _threads[index];
-              final lock = _lockedByThreadId[thread.id];
-              return Card(
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.chat_bubble_outline),
-                  title: Row(
-                    children: [
-                      Flexible(child: Text(thread.title)),
-                      if (lock != null) ...[
-                        const SizedBox(width: 6),
-                        Tooltip(
-                          message: context.uiCopy(
-                            zh:
-                                '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
-                            en:
-                                'Locked by the board moderators '
-                                '(${moderationReasonLabel(context, lock.reasonCode)})',
-                          ),
-                          child: Icon(
-                            Icons.lock_outline,
-                            key: Key('thread_lock_icon_${thread.id}'),
-                            size: 15,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  subtitle: Text(
-                    'Created ${_formatDate(thread.createdAt)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PostsViewScreen(
-                          db: widget.db,
-                          thread: thread,
-                          authorDid: widget.localDid,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
+            itemBuilder: (context, index) =>
+                _threadCard(context, _threads[index]),
           );
+  }
+
+  Widget _threadCard(BuildContext context, Thread thread) {
+    final lock = _lockedByThreadId[thread.id];
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        leading: const Icon(Icons.chat_bubble_outline),
+        title: Row(
+          children: [
+            Flexible(child: Text(thread.title)),
+            if (lock != null) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: context.uiCopy(
+                  zh:
+                      '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
+                  en:
+                      'Locked by the board moderators '
+                      '(${moderationReasonLabel(context, lock.reasonCode)})',
+                ),
+                child: Icon(
+                  Icons.lock_outline,
+                  key: Key('thread_lock_icon_${thread.id}'),
+                  size: 15,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ],
+        ),
+        subtitle: Text(
+          'Created ${_formatDate(thread.createdAt)}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PostsViewScreen(
+                db: widget.db,
+                thread: thread,
+                authorDid: widget.localDid,
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {

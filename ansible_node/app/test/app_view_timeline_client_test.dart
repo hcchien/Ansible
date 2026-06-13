@@ -63,4 +63,75 @@ void main() {
     expect(page.nextCursor, 8);
     expect(page.hasMore, isTrue);
   });
+
+  test('fetchBoardExternal sends the protocol header and parses items', () async {
+    String? sentProtocolHeader;
+    final client = AppViewTimelineClient(
+      baseUrl: 'https://appview.example/',
+      client: MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(
+          request.url.path,
+          '/api/v1/boards/board-1/external',
+        );
+        expect(request.url.queryParameters['cursor'], 'c1');
+        expect(request.url.queryParameters['limit'], '25');
+        sentProtocolHeader = request.headers['x-ansible-protocol'];
+        return http.Response.bytes(
+          utf8.encode(jsonEncode({
+            'items': [
+              {
+                'log_id': 42,
+                'op_id': 'op-ext-1',
+                'board_id': 'board-1',
+                'content': '哈囉 from the fediverse',
+                'created_at': '2026-06-10T00:00:00.000000Z',
+                'external_actor_uri': 'https://g0v.social/users/alice',
+                'external_instance': 'g0v.social',
+                'compliance_level': 'compatible',
+                'reputation_tier': 'external_unverified',
+                'external': true,
+                'origin': 'activitypub',
+              },
+              {
+                'log_id': 41,
+                'op_id': 'op-ext-2',
+                'board_id': 'board-1',
+                'content': 'second',
+                'external_actor_uri': 'https://mstdn.example/users/bob',
+                'external_instance': 'mstdn.example',
+                'compliance_level': 'unknown',
+                'origin': 'activitypub',
+              },
+            ],
+            'next_cursor': 'c2',
+            'has_more': true,
+          })),
+          200,
+        );
+      }),
+    );
+
+    final page = await client.fetchBoardExternal(
+      'board-1',
+      cursor: 'c1',
+      limit: 25,
+    );
+
+    expect(sentProtocolHeader, isNotNull);
+    expect(page.items, hasLength(2));
+    final first = page.items.first;
+    expect(first.opId, 'op-ext-1');
+    expect(first.content, '哈囉 from the fediverse');
+    expect(first.externalInstance, 'g0v.social');
+    expect(first.complianceLevel, 'compatible');
+    expect(first.isCompatible, isTrue);
+    expect(first.reputationTier, 'external_unverified');
+    expect(first.actorHandle, '@alice@g0v.social');
+    expect(first.createdAt, isNotNull);
+    expect(page.items[1].isCompatible, isFalse);
+    expect(page.items[1].reputationTier, 'external_unverified');
+    expect(page.nextCursor, 'c2');
+    expect(page.hasMore, isTrue);
+  });
 }
