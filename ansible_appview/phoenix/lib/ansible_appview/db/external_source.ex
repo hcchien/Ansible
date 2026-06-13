@@ -20,11 +20,15 @@ defmodule AnsibleAppview.Db.ExternalSource do
     field(:compliance_level, :string, default: "unknown")
     field(:enabled, :boolean, default: true)
     field(:last_polled_at, :utc_datetime_usec)
+    # The Elix board this source's content surfaces in (design D4, Task 4b-1).
+    # NULL = ingested but not surfaced to any board. Ingest stamps this onto the
+    # external feed_items rows so per-board reads are a simple filter.
+    field(:board_id, :string)
 
     timestamps(type: :utc_datetime_usec)
   end
 
-  @fields ~w(actor_uri instance display_name compliance_level enabled last_polled_at)a
+  @fields ~w(actor_uri instance display_name compliance_level enabled last_polled_at board_id)a
   @required ~w(actor_uri instance)a
 
   def changeset(struct, attrs) do

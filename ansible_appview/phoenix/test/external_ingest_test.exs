@@ -11,13 +11,17 @@ defmodule AnsibleAppview.ExternalIngestTest do
   fetch-failure tolerance.
   """
   use ExUnit.Case, async: false
+  use Plug.Test
 
   import Ecto.Query
 
-  alias AnsibleAppview.{Discovery, ExternalSources, Metrics, Repo, Timeline}
+  alias AnsibleAppview.{Discovery, External, ExternalSources, Metrics, Repo, Timeline}
   alias AnsibleAppview.Db.FeedItem
   alias AnsibleAppview.Ingest.{ExternalIngest, Folder}
   alias AnsibleAppview.SigningPayload
+  alias AnsibleAppview.Web.Router
+
+  @router_opts Router.init([])
 
   @actor "https://m.example.test/users/alice"
   @instance "m.example.test"
@@ -170,6 +174,123 @@ defmodule AnsibleAppview.ExternalIngestTest do
     # Discovery search must not surface external content either.
     search_ops = Enum.map(Discovery.search("fediverse", 50).posts, & &1.op_id)
     refute "https://m.example.test/notes/1" in search_ops
+  end
+
+  # ============================================================================
+  # Per-board external read lane (Task 4b-1) — the ONLY external read path
+  # ============================================================================
+
+  defp board_external(board_id, query \\ "") do
+    conn(:get, "/api/v1/boards/#{board_id}/external" <> query)
+    |> Router.call(@router_opts)
+  end
+
+  test "per-board external endpoint returns external items for the mapped board" do
+    source = add_source(%{board_id: "board-news"})
+    stub_outbox({:ok, [ap_note("https://m.example.test/notes/b1")]})
+    assert {:ok, %{ingested: 1}} = ExternalIngest.ingest_source(source)
+
+    # Context layer.
+    %{items: items} = External.for_board("board-news", nil, 50)
+    assert [item] = items
+    assert item.op_id == "https://m.example.test/notes/b1"
+    assert item.external == true
+    assert item.origin == "activitypub"
+    assert item.external_actor_uri == @actor
+    assert item.external_instance == @instance
+    assert item.compliance_level == "compatible"
+    assert item.content == "hello from the fediverse"
+    assert item.board_id == "board-news"
+    assert is_binary(item.created_at)
+
+    # HTTP layer (response shape + 200).
+    resp = board_external("board-news")
+    assert resp.status == 200
+    body = Jason.decode!(resp.resp_body)
+    assert [row] = body["items"]
+    assert row["external"] == true
+    assert row["origin"] == "activitypub"
+    assert row["external_actor_uri"] == @actor
+    assert row["compliance_level"] == "compatible"
+    assert Map.has_key?(body, "next_cursor")
+    assert Map.has_key?(body, "has_more")
+  end
+
+  test "per-board external endpoint does NOT return items mapped to a different board" do
+    src_a = add_source(%{board_id: "board-a"})
+    stub_outbox({:ok, [ap_note("https://m.example.test/notes/a")]})
+    assert {:ok, %{ingested: 1}} = ExternalIngest.ingest_source(src_a)
+
+    # A second source, different actor, mapped to a different board. Note id is
+    # the dedup key; the source struct (not attributedTo) decides the board_id.
+    {:ok, src_b} =
+      ExternalSources.add(%{
+        actor_uri: "https://m.example.test/users/bob",
+        instance: @instance,
+        compliance_level: "compatible",
+        board_id: "board-b"
+      })
+
+    stub_outbox({:ok, [ap_note("https://m.example.test/notes/b")]})
+    assert {:ok, %{ingested: 1}} = ExternalIngest.ingest_source(src_b)
+
+    a_ops = Enum.map(External.for_board("board-a", nil, 50).items, & &1.op_id)
+    assert "https://m.example.test/notes/a" in a_ops
+    refute "https://m.example.test/notes/b" in a_ops
+
+    b_ops = Enum.map(External.for_board("board-b", nil, 50).items, & &1.op_id)
+    assert "https://m.example.test/notes/b" in b_ops
+    refute "https://m.example.test/notes/a" in b_ops
+  end
+
+  test "external items remain absent from timeline and discovery even when board-mapped" do
+    # Native verified item is present everywhere it should be.
+    native = native_verified_op(700, "did:key:native3")
+    {1, _} = Folder.apply_ops([native])
+
+    source = add_source(%{board_id: "board-mixed"})
+    stub_outbox({:ok, [ap_note("https://m.example.test/notes/inv")]})
+    assert {:ok, %{ingested: 1}} = ExternalIngest.ingest_source(source)
+
+    # Surfaced on its board lane...
+    board_ops = Enum.map(External.for_board("board-mixed", nil, 50).items, & &1.op_id)
+    assert "https://m.example.test/notes/inv" in board_ops
+
+    # ...but NEVER on verified reads.
+    explore_ops = Enum.map(Discovery.explore(nil, 50).items, & &1.op_id)
+    refute "https://m.example.test/notes/inv" in explore_ops
+    assert "op-700" in explore_ops
+
+    refute "https://m.example.test/notes/inv" in Enum.map(
+             Discovery.search("fediverse", 50).posts,
+             & &1.op_id
+           )
+
+    # The board's verified timeline (sig_verified filter) excludes it too.
+    assert Timeline.for_board("board-mixed", nil, 50).items == []
+  end
+
+  test "a board with no mapped sources returns an empty external page" do
+    # Ingest an external item mapped to a different board so the table is non-empty.
+    source = add_source(%{board_id: "board-other"})
+    stub_outbox({:ok, [ap_note("https://m.example.test/notes/other")]})
+    assert {:ok, %{ingested: 1}} = ExternalIngest.ingest_source(source)
+
+    assert %{items: [], next_cursor: nil, has_more: false} =
+             External.for_board("board-empty", nil, 50)
+
+    resp = board_external("board-empty")
+    assert resp.status == 200
+    body = Jason.decode!(resp.resp_body)
+    assert body["items"] == []
+  end
+
+  test "per-board external read increments external_read_requests_total{board}" do
+    before = metric_count("external_read_requests_total", "\\{board=\"board-metric\"\\}")
+    assert board_external("board-metric").status == 200
+
+    assert metric_count("external_read_requests_total", "\\{board=\"board-metric\"\\}") ==
+             before + 1
   end
 
   # ============================================================================

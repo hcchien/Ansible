@@ -42,6 +42,14 @@ defmodule AnsibleAppview.Web.Router do
     AnsibleAppview.Web.Controllers.TimelineController.board_feed(conn, conn.query_params)
   end
 
+  # Per-board external lane (inbound federation, Task 4b-1). The ONLY path that
+  # returns external (source=activitypub) content. Caller must gate on
+  # board.external_inclusion (relay policy) AND user opt-in — see the controller
+  # moduledoc. `conn.params` carries the `:board_id` path segment + query params.
+  get "/api/v1/boards/:board_id/external" do
+    AnsibleAppview.Web.Controllers.ExternalController.board_external(conn, conn.params)
+  end
+
   get "/api/v1/home" do
     AnsibleAppview.Web.Controllers.TimelineController.home(conn, conn.query_params)
   end

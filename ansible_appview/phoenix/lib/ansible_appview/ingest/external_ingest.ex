@@ -22,10 +22,13 @@ defmodule AnsibleAppview.Ingest.ExternalIngest do
   is counted in `external_source_fetch_errors_total`; it never raises, so the
   poller and the native firehose ingest are unaffected.
 
-  TODO(Task 4a/4b): these rows are deliberately invisible. They become *readable*
-  only via the later per-board `external_inclusion` policy (relay forum-host) AND
-  the per-user opt-in filter — never on verified/真人版 surfaces. No public read
-  path is built here.
+  These rows are off every verified surface. They become *readable* only via the
+  per-board external read endpoint (`AnsibleAppview.External` / Task 4b-1):
+  `GET /api/v1/boards/:board_id/external`, scoped by the source's mapped
+  `board_id`. Whether that lane is *shown* is gated upstream by the per-board
+  `external_inclusion` policy (relay forum-host) AND the per-user opt-in filter —
+  the AppView serves the lane; the board/user gating lives at the relay policy +
+  client (design D4). External content never reaches verified/真人版 surfaces.
   """
 
   require Logger
@@ -132,7 +135,11 @@ defmodule AnsibleAppview.Ingest.ExternalIngest do
       entity_type: "note",
       entity_id: item.object_id,
       op_type: "insert",
-      board_id: nil,
+      # Stamp the source's mapped Elix board onto the row (design D4, Task 4b-1)
+      # so the per-board external read is a simple (board_id, source) filter.
+      # NULL when the source is ingested but not surfaced to any board — still off
+      # all verified reads via sig_verified=false.
+      board_id: source.board_id,
       thread_id: nil,
       visibility: "public",
       item_created_at: parse_dt(item.published_at) || now,

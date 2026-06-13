@@ -34,6 +34,21 @@ defmodule AnsibleAppview.ExternalSources do
     Repo.all(from(s in ExternalSource, where: s.enabled == true, order_by: [asc: s.id]))
   end
 
+  @doc """
+  Curated sources mapped to one Elix board (design D4, Task 4b-1), newest first.
+  These are the sources whose external content surfaces in `board_id`'s external
+  lane. Returns `[]` for a board with no mapped sources.
+  """
+  @spec list_for_board(String.t()) :: [ExternalSource.t()]
+  def list_for_board(board_id) when is_binary(board_id) do
+    Repo.all(
+      from(s in ExternalSource,
+        where: s.board_id == ^board_id,
+        order_by: [desc: s.inserted_at]
+      )
+    )
+  end
+
   @doc "Fetch by AP actor URI, or nil."
   @spec get_by_actor_uri(String.t()) :: ExternalSource.t() | nil
   def get_by_actor_uri(actor_uri), do: Repo.get_by(ExternalSource, actor_uri: actor_uri)
@@ -41,7 +56,9 @@ defmodule AnsibleAppview.ExternalSources do
   @doc """
   Add (or update on conflict) a curated source. `attrs` must carry `:actor_uri`
   and `:instance`; `:compliance_level` defaults to `"unknown"`, `:enabled` to
-  true. Idempotent on `actor_uri` so re-seeding is safe.
+  true, and `:board_id` (the Elix board this source surfaces in) is optional
+  (NULL = not surfaced to any board). Idempotent on `actor_uri` so re-seeding is
+  safe — `board_id` is updated on conflict so re-mapping a source is a re-add.
   """
   @spec add(map()) :: {:ok, ExternalSource.t()} | {:error, Ecto.Changeset.t()}
   def add(attrs) do
@@ -51,7 +68,8 @@ defmodule AnsibleAppview.ExternalSources do
     |> ExternalSource.changeset(attrs)
     |> Repo.insert(
       on_conflict:
-        {:replace, [:instance, :display_name, :compliance_level, :enabled, :updated_at]},
+        {:replace,
+         [:instance, :display_name, :compliance_level, :enabled, :board_id, :updated_at]},
       conflict_target: :actor_uri,
       returning: true
     )

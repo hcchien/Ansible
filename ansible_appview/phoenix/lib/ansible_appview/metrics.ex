@@ -28,6 +28,7 @@ defmodule AnsibleAppview.Metrics do
     * `external_ingest_total{instance}` — external AP items ingested (external lane)
     * `external_ingest_dedup_total` — re-polled external items skipped (already present)
     * `external_source_fetch_errors_total{instance}` — tolerated source fetch failures
+    * `external_read_requests_total{board}` — per-board external lane read requests
   """
 
   use GenServer
@@ -57,7 +58,9 @@ defmodule AnsibleAppview.Metrics do
     "external_ingest_dedup_total" =>
       {:counter, "External items skipped on re-poll because the AP object id already existed."},
     "external_source_fetch_errors_total" =>
-      {:counter, "Curated external source outbox fetch failures (tolerated), by instance."}
+      {:counter, "Curated external source outbox fetch failures (tolerated), by instance."},
+    "external_read_requests_total" =>
+      {:counter, "Per-board external lane read requests (the only external read path), by board."}
   }
 
   # --- Public API ---
