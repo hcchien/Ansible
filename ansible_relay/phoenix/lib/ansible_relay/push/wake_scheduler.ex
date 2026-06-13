@@ -121,7 +121,7 @@ defmodule AnsibleRelay.Push.WakeScheduler do
     |> Enum.each(fn device ->
       key = {device.subject_did, device.device_id}
 
-      if :ets.insert_new(@table, {key}) do
+      if :ets.insert_new(@table, {key, category}) do
         Process.send_after(
           self(),
           {:flush, device.subject_did, device.device_id},
@@ -132,6 +132,12 @@ defmodule AnsibleRelay.Push.WakeScheduler do
   end
 
   defp flush(subject_did, device_id) do
+    category =
+      case :ets.lookup(@table, {subject_did, device_id}) do
+        [{_key, cat}] -> cat
+        _ -> "unknown"
+      end
+
     :ets.delete(@table, {subject_did, device_id})
 
     # Re-read at flush time so an unregister inside the debounce window wins:
@@ -143,6 +149,7 @@ defmodule AnsibleRelay.Push.WakeScheduler do
       device ->
         case PushSender.impl().send_wake(device.push_token, device.platform, @wake_payload) do
           :ok ->
+            AnsibleRelay.Metrics.inc("relay_wake_sends_total", %{category: category})
             :ok
 
           {:error, reason} ->

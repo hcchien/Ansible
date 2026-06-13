@@ -2,38 +2,51 @@ defmodule AnsibleAppview.Web.Controllers.DiscoveryController do
   @moduledoc "Discovery read API: who-to-follow, explore, and search."
 
   import Plug.Conn
-  alias AnsibleAppview.{Discovery, Profiles}
+  alias AnsibleAppview.{Discovery, Metrics, Profiles}
 
   # GET /api/v1/suggest/follows?reader=did:...&limit=
   def suggest_follows(conn, params) do
-    reader = params["reader"]
+    instrument("suggest", fn ->
+      reader = params["reader"]
 
-    if is_binary(reader) and reader != "" do
-      items = Discovery.suggested_follows(reader, parse_int(params["limit"]) || 20)
-      send_json(conn, 200, %{items: items})
-    else
-      send_json(conn, 422, %{error: "reader_required"})
-    end
+      if is_binary(reader) and reader != "" do
+        items = Discovery.suggested_follows(reader, parse_int(params["limit"]) || 20)
+        send_json(conn, 200, %{items: items})
+      else
+        send_json(conn, 422, %{error: "reader_required"})
+      end
+    end)
   end
 
   # GET /api/v1/explore?cursor=&limit=
   def explore(conn, params) do
-    result = Discovery.explore(parse_int(params["cursor"]), parse_int(params["limit"]) || 50)
-    send_json(conn, 200, result)
+    instrument("explore", fn ->
+      result = Discovery.explore(parse_int(params["cursor"]), parse_int(params["limit"]) || 50)
+      send_json(conn, 200, result)
+    end)
   end
 
   # GET /api/v1/search/actors?q=&limit=
   def search_actors(conn, params) do
-    q = params["q"] || ""
-    items = Profiles.search(q, parse_int(params["limit"]) || 20)
-    send_json(conn, 200, %{items: items})
+    instrument("search_actors", fn ->
+      q = params["q"] || ""
+      items = Profiles.search(q, parse_int(params["limit"]) || 20)
+      send_json(conn, 200, %{items: items})
+    end)
   end
 
   # GET /api/v1/search?q=&limit=  -> {actors: [...], posts: [...]}
   def search(conn, params) do
-    q = params["q"] || ""
-    result = Discovery.search(q, parse_int(params["limit"]) || 20)
-    send_json(conn, 200, result)
+    instrument("search", fn ->
+      q = params["q"] || ""
+      result = Discovery.search(q, parse_int(params["limit"]) || 20)
+      send_json(conn, 200, result)
+    end)
+  end
+
+  defp instrument(kind, fun) do
+    Metrics.inc("appview_discovery_requests_total", %{kind: kind})
+    Metrics.time("appview_discovery_request_duration_seconds", %{kind: kind}, fun)
   end
 
   defp parse_int(nil), do: nil

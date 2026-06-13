@@ -10,6 +10,73 @@ const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_RELAY_BASE_URL = 'http://localhost:4001';
 const SERVER_ROOT = dirname(fileURLToPath(import.meta.url));
 
+// Observability baseline (service architecture plan, Phase 0 — closes G17).
+// A dependency-free Prometheus counter set: prom-client would be the idiomatic
+// choice, but the frontend ships with zero runtime deps, so a tiny hand-rolled
+// registry keeps it that way while emitting standard Prometheus exposition.
+//
+// Exposed series (served at GET /metrics):
+//   frontend_requests_total{kind}            — requests by kind (asset/proxy/health/metrics)
+//   frontend_upstream_requests_total         — relay calls attempted via the proxy
+//   frontend_upstream_errors_total{reason}   — relay calls that failed (transport/5xx)
+function createMetrics() {
+  const counters = {
+    frontend_requests_total: {
+      help: 'Frontend HTTP requests by kind.',
+      label: 'kind',
+      values: new Map(),
+    },
+    frontend_upstream_requests_total: {
+      help: 'Upstream relay calls attempted via the proxy.',
+      label: null,
+      values: new Map(),
+    },
+    frontend_upstream_errors_total: {
+      help: 'Upstream relay calls that failed, by reason.',
+      label: 'reason',
+      values: new Map(),
+    },
+  };
+
+  function inc(name, labelValue = '') {
+    const counter = counters[name];
+    if (!counter) return;
+    counter.values.set(labelValue, (counter.values.get(labelValue) ?? 0) + 1);
+  }
+
+  function render() {
+    let out = '';
+    for (const [name, counter] of Object.entries(counters)) {
+      out += `# HELP ${name} ${counter.help}\n# TYPE ${name} counter\n`;
+      if (counter.values.size === 0) {
+        // Emit at zero so the series is discoverable before the first event.
+        out += `${name} 0\n`;
+        continue;
+      }
+      for (const key of [...counter.values.keys()].sort()) {
+        const value = counter.values.get(key);
+        if (counter.label && key !== '') {
+          out += `${name}{${counter.label}="${escapeLabel(key)}"} ${value}\n`;
+        } else {
+          out += `${name} ${value}\n`;
+        }
+      }
+    }
+    return out;
+  }
+
+  return { inc, render };
+}
+
+function escapeLabel(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+// Module-level singleton: shared across all servers created in-process.
+const metrics = createMetrics();
+
+export { metrics };
+
 const MIME_TYPES = Object.freeze({
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -101,9 +168,22 @@ export function startFrontendServer({
 async function handleRequest(request, response, context) {
   const url = new URL(request.url ?? '/', 'http://frontend.local');
 
+  if (url.pathname === '/metrics') {
+    // Phase 0 — observability baseline. Deliberately not counted as a request
+    // so scrapes do not inflate frontend_requests_total.
+    response.writeHead(200, {
+      ...SECURITY_HEADERS,
+      'content-type': 'text/plain; version=0.0.4; charset=utf-8',
+      'cache-control': 'no-store',
+    });
+    response.end(metrics.render());
+    return;
+  }
+
   if (url.pathname === '/healthz') {
     // Do not include relayBaseUrl in the response — it reveals internal service
     // topology (host, port) to any caller that can reach this endpoint.
+    metrics.inc('frontend_requests_total', 'health');
     sendJson(response, 200, {
       ok: true,
       service: 'elix-web-frontend',
@@ -112,10 +192,12 @@ async function handleRequest(request, response, context) {
   }
 
   if (url.pathname.startsWith('/api/')) {
+    metrics.inc('frontend_requests_total', 'proxy');
     await proxyRelayRequest(request, response, url, context);
     return;
   }
 
+  metrics.inc('frontend_requests_total', 'asset');
   await serveFrontendAsset(request, response, url, context);
 }
 
@@ -190,6 +272,8 @@ function proxyRelayRequest(clientRequest, clientResponse, url, { relayBaseUrl })
     const headers = filterProxyHeaders(clientRequest.headers);
     headers.host = relayUrl.host;
 
+    metrics.inc('frontend_upstream_requests_total');
+
     const relayRequest = requestFn(
       relayUrl,
       {
@@ -197,18 +281,23 @@ function proxyRelayRequest(clientRequest, clientResponse, url, { relayBaseUrl })
         headers,
       },
       (relayResponse) => {
+        const status = relayResponse.statusCode ?? 502;
+        if (status >= 500) {
+          metrics.inc('frontend_upstream_errors_total', 'upstream_5xx');
+        }
         // Merge security headers last so they cannot be overridden by relay.
         const proxiedHeaders = {
           ...filterProxyHeaders(relayResponse.headers),
           ...SECURITY_HEADERS,
         };
-        clientResponse.writeHead(relayResponse.statusCode ?? 502, proxiedHeaders);
+        clientResponse.writeHead(status, proxiedHeaders);
         relayResponse.pipe(clientResponse);
         relayResponse.on('end', resolvePromise);
       },
     );
 
     relayRequest.on('error', () => {
+      metrics.inc('frontend_upstream_errors_total', 'transport');
       sendJson(clientResponse, 502, { error: 'relay_unavailable' });
       resolvePromise();
     });

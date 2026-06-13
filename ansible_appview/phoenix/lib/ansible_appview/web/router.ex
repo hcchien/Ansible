@@ -16,6 +16,14 @@ defmodule AnsibleAppview.Web.Router do
     send_json(conn, 200, %{status: "ok", service: "ansible_appview", version: "0.1.0"})
   end
 
+  # Phase 0 — Observability baseline (G17): Prometheus metrics scrape target.
+  # Deliberately outside /api/* so the protocol-version plug never gates it.
+  get "/metrics" do
+    conn
+    |> put_resp_content_type("text/plain; version=0.0.4")
+    |> send_resp(200, AnsibleAppview.Metrics.render())
+  end
+
   # Phase 0 — API versioning: advertise the protocol versions this AppView
   # speaks so clients can detect upgrade requirements before they break.
   get "/api/v1/meta" do

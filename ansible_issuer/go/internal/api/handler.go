@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/trisaura/ansible_issuer/internal/commitment"
+	"github.com/trisaura/ansible_issuer/internal/metrics"
 	"github.com/trisaura/ansible_issuer/internal/otp"
 	"github.com/trisaura/ansible_issuer/internal/provider"
 	"github.com/trisaura/ansible_issuer/internal/vc"
@@ -47,6 +48,8 @@ type Handler struct {
 	mobileMoicaTTL       time.Duration
 
 	passportVerifier PassportBindingVerifier
+
+	metrics *metrics.Registry
 }
 
 type TWProviderConfig struct {
@@ -81,25 +84,70 @@ func NewHandler(
 		pepper:   pepper,
 		mockMode: mockMode,
 		now:      time.Now,
+		metrics:  metrics.NewRegistry(),
 	}
 }
 
+// Metrics exposes the issuer's metric registry (for the /metrics scrape target).
+func (h *Handler) Metrics() *metrics.Registry {
+	return h.metrics
+}
+
 // Register mounts all VC endpoints on mux.
+//
+// Every endpoint is wrapped with request counting (Phase 0 — observability
+// baseline); /metrics serves the Prometheus exposition and is intentionally
+// unwrapped so scrapes do not inflate the request series.
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("GET /readyz", h.readyz)
+	mux.HandleFunc("GET /metrics", h.metrics.Handler())
 	mux.HandleFunc("GET /.well-known/did.json", h.didDocument)
-	mux.HandleFunc("POST /api/v1/vc/request", h.request)
-	mux.HandleFunc("POST /api/v1/vc/issue", h.issue)
-	mux.HandleFunc("GET /api/v1/vc/status/{id}", h.status)
-	mux.HandleFunc("POST /api/v1/vc/tw/start", h.twStart)
-	mux.HandleFunc("POST /api/v1/vc/tw/callback", h.twCallback)
-	mux.HandleFunc("GET /api/v1/vc/tw/status/{offer_id}", h.twStatus)
-	mux.HandleFunc("POST /api/v1/vc/tw/issue", h.twIssue)
-	mux.HandleFunc("POST /api/v1/vc/mobilemoica/start", h.mobileMoicaStart)
-	mux.HandleFunc("GET /api/v1/vc/mobilemoica/status/{offer_id}", h.mobileMoicaStatus)
-	mux.HandleFunc("POST /api/v1/vc/mobilemoica/issue", h.mobileMoicaIssue)
-	mux.HandleFunc("POST /api/v1/vc/passport/issue", h.passportIssue)
+	mux.HandleFunc("POST /api/v1/vc/request", h.instrument("vc_request", h.request))
+	mux.HandleFunc("POST /api/v1/vc/issue", h.instrument("vc_issue", h.issue))
+	mux.HandleFunc("GET /api/v1/vc/status/{id}", h.instrument("vc_status", h.status))
+	mux.HandleFunc("POST /api/v1/vc/tw/start", h.instrument("vc_tw_start", h.twStart))
+	mux.HandleFunc("POST /api/v1/vc/tw/callback", h.instrument("vc_tw_callback", h.twCallback))
+	mux.HandleFunc("GET /api/v1/vc/tw/status/{offer_id}", h.instrument("vc_tw_status", h.twStatus))
+	mux.HandleFunc("POST /api/v1/vc/tw/issue", h.instrument("vc_tw_issue", h.twIssue))
+	mux.HandleFunc("POST /api/v1/vc/mobilemoica/start", h.instrument("vc_mobilemoica_start", h.mobileMoicaStart))
+	mux.HandleFunc("GET /api/v1/vc/mobilemoica/status/{offer_id}", h.instrument("vc_mobilemoica_status", h.mobileMoicaStatus))
+	mux.HandleFunc("POST /api/v1/vc/mobilemoica/issue", h.instrument("vc_mobilemoica_issue", h.mobileMoicaIssue))
+	mux.HandleFunc("POST /api/v1/vc/passport/issue", h.instrument("vc_passport_issue", h.passportIssue))
+}
+
+// instrument wraps a handler with request counting and error counting (4xx/5xx)
+// keyed by a stable endpoint label.
+func (h *Handler) instrument(endpoint string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h.metrics.IncRequest(endpoint)
+		sw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next(sw, r)
+		if sw.status >= 400 {
+			h.metrics.IncError(endpoint)
+		}
+	}
+}
+
+// statusRecorder captures the response status so the wrapper can classify
+// errors without the handlers having to report them.
+type statusRecorder struct {
+	http.ResponseWriter
+	status      int
+	wroteHeader bool
+}
+
+func (s *statusRecorder) WriteHeader(code int) {
+	if !s.wroteHeader {
+		s.status = code
+		s.wroteHeader = true
+	}
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func (s *statusRecorder) Write(b []byte) (int, error) {
+	s.wroteHeader = true
+	return s.ResponseWriter.Write(b)
 }
 
 func (h *Handler) ConfigureTWProvider(config TWProviderConfig) {
@@ -225,6 +273,7 @@ func (h *Handler) issue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.metrics.IncCredentialIssued("email")
 	writeJSON(w, http.StatusOK, map[string]any{"vc": credMap})
 }
 
@@ -397,6 +446,7 @@ func (h *Handler) twIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.metrics.IncCredentialIssued("email")
 	writeJSON(w, http.StatusOK, map[string]any{"vc": credMap})
 }
 
@@ -471,6 +521,7 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.metrics.IncCredentialIssued("passport")
 	writeJSON(w, http.StatusOK, map[string]any{"vc": credMap})
 }
 

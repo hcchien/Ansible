@@ -232,6 +232,7 @@ func (h *Handler) mobileMoicaIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.metrics.IncCredentialIssued("mobilemoica_humanity")
 	h.logMobileMoicaRP("mobilemoica_rp_issue", "issued", body.OfferID, "credential_type=TrisAuraHumanityCredential")
 	writeJSON(w, http.StatusOK, map[string]any{"vc": credMap})
 }

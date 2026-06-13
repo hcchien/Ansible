@@ -51,6 +51,26 @@ timeline API can run on many. See
 - `GET /health`
 - `POST /api/v1/timeline` — body `{dids, cursor?, limit?}` (following timeline)
 - `GET /api/v1/board-feed?board_id=&cursor=`
+- `GET /metrics` — Prometheus metrics (see below)
+
+## Metrics
+
+Prometheus metrics are exposed at `GET /metrics` (plain text, outside `/api/*`
+so the protocol-version plug never gates the scrape). The registry is a
+dependency-free ETS-backed module (`AnsibleAppview.Metrics`) supervised in
+`application.ex`; a periodic poller samples the ingest-lag gauge. Series:
+
+| Metric | Type | Labels | Source |
+|---|---|---|---|
+| `appview_ingest_folds_total` | counter | — | signature-valid ops folded (`Ingest.Folder.apply_ops`) |
+| `appview_ingest_lag_seconds` | gauge | — | now − newest folded op timestamp, polled |
+| `appview_timeline_requests_total` | counter | `kind` (`following`/`home`/`board`) | timeline reads |
+| `appview_timeline_request_duration_seconds` | histogram | `kind` | timeline latency |
+| `appview_discovery_requests_total` | counter | `kind` (`explore`/`suggest`/`search`/`search_actors`) | discovery reads |
+| `appview_discovery_request_duration_seconds` | histogram | `kind` | discovery latency |
+
+`appview_ingest_lag_seconds` is the Phase 3 ingest-lag exit metric; ingest
+fold count backs the ingest-rate criteria.
 
 ## Migrations / rebuild (release)
 

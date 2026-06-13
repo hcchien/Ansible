@@ -9,7 +9,8 @@ defmodule AnsibleAppview.Application do
 
     children =
       [
-        AnsibleAppview.Repo
+        AnsibleAppview.Repo,
+        AnsibleAppview.Metrics
       ] ++
         read_repo_children() ++
         cache_children() ++

@@ -34,6 +34,18 @@ npm test                   # runs test/*.test.mjs
 Point `RELAY_BASE_URL` at the deployed relay in production, and add this
 frontend's origin to the relay's `WEB_ALLOWED_ORIGINS`.
 
+## Metrics
+
+Prometheus metrics are exposed at `GET /metrics` (plain text). The registry is a
+tiny dependency-free counter set in `server.mjs` (no `prom-client`, keeping the
+frontend zero-runtime-dep); the `/metrics` scrape is not self-counted. Series:
+
+| Metric | Type | Labels | Source |
+|---|---|---|---|
+| `frontend_requests_total` | counter | `kind` (`asset`/`proxy`/`health`) | every served request |
+| `frontend_upstream_requests_total` | counter | — | relay calls attempted via the `/api/*` proxy |
+| `frontend_upstream_errors_total` | counter | `reason` (`transport`/`upstream_5xx`) | failed relay calls |
+
 ## Docker
 
 ```bash

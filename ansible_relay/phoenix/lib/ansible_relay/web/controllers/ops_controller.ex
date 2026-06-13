@@ -55,6 +55,11 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       case OpStore.append(op) do
         {:ok, log_id} ->
+          AnsibleRelay.Metrics.inc("relay_op_ingest_total", %{
+            entity_type: op.entity_type,
+            op_type: op.op_type
+          })
+
           # Fire-and-forget (async cast): wake scheduling can never affect
           # the ingest response.
           AnsibleRelay.Push.WakeScheduler.op_accepted(op)
@@ -109,6 +114,14 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   # GET /api/v1/ops/delta
   def delta(conn, params) do
+    AnsibleRelay.Metrics.inc("relay_delta_requests_total")
+
+    AnsibleRelay.Metrics.time("relay_delta_request_duration_seconds", fn ->
+      do_delta(conn, params)
+    end)
+  end
+
+  defp do_delta(conn, params) do
     cursor = parse_int(params["cursor"], 0)
     raw_limit = parse_int(params["limit"], 100)
     limit = min(raw_limit, 500)
@@ -221,8 +234,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   defp check_abuse_limit(did) do
     case AbuseDetector.check_did(did) do
-      :ok -> :ok
-      {:error, :rate_limited, detail} -> {:error, :rate_limited, detail}
+      :ok ->
+        :ok
+
+      {:error, :rate_limited, detail} ->
+        AnsibleRelay.Metrics.inc("relay_abuse_rejections_total", %{subject_type: "did"})
+        {:error, :rate_limited, detail}
     end
   end
 
@@ -267,9 +284,13 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   defp check_thread_lock(_entity_type, _op_type, _payload), do: :ok
 
   defp check_signature(public_key, message, sig_hex) do
-    if SigVerifier.verify_ed25519(public_key, message, sig_hex),
-      do: :ok,
-      else: {:error, :bad_signature}
+    if SigVerifier.verify_ed25519(public_key, message, sig_hex) do
+      AnsibleRelay.Metrics.inc("relay_signature_verifications_total", %{result: "pass"})
+      :ok
+    else
+      AnsibleRelay.Metrics.inc("relay_signature_verifications_total", %{result: "fail"})
+      {:error, :bad_signature}
+    end
   end
 
   defp attach_public_key(%{author_did: author_did} = op) do

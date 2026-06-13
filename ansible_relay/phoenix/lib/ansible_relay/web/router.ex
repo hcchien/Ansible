@@ -23,6 +23,14 @@ defmodule AnsibleRelay.Web.Router do
     send_json(conn, 200, %{status: "ok", relay: "ansible_relay", version: "0.1.0"})
   end
 
+  # Phase 0 — Observability baseline (G17): Prometheus metrics scrape target.
+  # Deliberately outside /api/* so the protocol-version plug never gates it.
+  get "/metrics" do
+    conn
+    |> Plug.Conn.put_resp_content_type("text/plain; version=0.0.4")
+    |> Plug.Conn.send_resp(200, AnsibleRelay.Metrics.render())
+  end
+
   # Phase 0 — API versioning: advertise the protocol versions this relay
   # speaks so clients can detect upgrade requirements before they break.
   get "/api/v1/meta" do

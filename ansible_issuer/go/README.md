@@ -65,8 +65,21 @@ closed until the real provider integration lands.
 
 - `GET /healthz` — liveness
 - `GET /readyz` — `200` when the TW provider flow is configured, else `503`
+- `GET /metrics` — Prometheus metrics (see below)
 - `GET /.well-known/did.json` — issuer DID document (Multikey)
 - `POST /api/v1/vc/*` — issuance flows (email, passport, TW, MobileMoica)
+
+## Metrics
+
+Prometheus metrics are exposed at `GET /metrics` (plain text). The registry is a
+dependency-free counter set (`internal/metrics`) held on the API handler;
+`Register` wraps every endpoint with request + error counting. Series:
+
+| Metric | Type | Labels | Source |
+|---|---|---|---|
+| `issuer_requests_total` | counter | `endpoint` | every wrapped HTTP endpoint |
+| `issuer_credentials_issued_total` | counter | `type` (`email`/`passport`/`mobilemoica_humanity`) | successful issuance |
+| `issuer_errors_total` | counter | `endpoint` | handler responses with status ≥ 400 |
 
 ## Docker
 

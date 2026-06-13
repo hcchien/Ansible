@@ -12,6 +12,7 @@ defmodule AnsibleRelay.Application do
         abuse_limiter_children() ++
         [
           AnsibleRelay.Repo,
+          AnsibleRelay.Metrics,
           AnsibleRelay.IdentityCache,
           AnsibleRelay.DidAccountCache,
           AnsibleRelay.WebSessionStore,

@@ -135,9 +135,18 @@ Closes G16, G17. Cheap now, expensive to retrofit.
    table, validated `1..current`, kept out of the signed payload so
    signatures stay valid); the app op builder stamps it and sync skips
    unknown-future-version ops instead of misparsing them.
-2. **Observability baseline**: metrics endpoints (PromEx or equivalent) on
-   relay/appview, request + ingest counters on issuer/frontend; the specific
-   series each later phase needs as exit criteria — op-table growth rate,
+2. **Observability baseline — ✅ done 2026-06-13** (closes G17):
+   `GET /metrics` (Prometheus text, outside `/api/*` so the version plug
+   doesn't gate it) on relay, appview, issuer, and frontend. Relay exposes
+   op-ingest, op-table rows, delta count/latency, signature pass/fail,
+   abuse rejections, wake sends, report intake; appview exposes ingest
+   folds, ingest lag, timeline/discovery count/latency; issuer exposes
+   request/issuance/error counts; frontend exposes request + upstream
+   counts. Hand-rolled ETS/atomic registries (no new deps — offline
+   constraint); swap to `telemetry_metrics_prometheus_core`/`client_golang`/
+   `prom-client` later with identical call sites. Series declared up front
+   so they render at 0 before traffic. The specific series each later phase
+   needs as exit criteria — op-table growth rate,
    delta-poll QPS, signature verification pass/reject, AppView ingest lag,
    delivery queue depth — defined here so the phases can be measured.
 

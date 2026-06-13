@@ -2,11 +2,19 @@ defmodule AnsibleAppview.Web.Controllers.TimelineController do
   @moduledoc "Following timeline + board feed read API."
 
   import Plug.Conn
-  alias AnsibleAppview.Timeline
+  alias AnsibleAppview.{Metrics, Timeline}
 
   # POST /api/v1/timeline  body: {dids: [...], cursor?, limit?}
   # The follow set is read transiently and never logged or persisted.
   def timeline(conn, params) do
+    Metrics.inc("appview_timeline_requests_total", %{kind: "following"})
+
+    Metrics.time("appview_timeline_request_duration_seconds", %{kind: "following"}, fn ->
+      do_timeline(conn, params)
+    end)
+  end
+
+  defp do_timeline(conn, params) do
     dids = params["dids"]
 
     if is_list(dids) do
@@ -26,6 +34,14 @@ defmodule AnsibleAppview.Web.Controllers.TimelineController do
   # GET /api/v1/home?reader=did:...&cursor=&limit=
   # Server-materialized fan-out-on-write timeline for a single reader.
   def home(conn, params) do
+    Metrics.inc("appview_timeline_requests_total", %{kind: "home"})
+
+    Metrics.time("appview_timeline_request_duration_seconds", %{kind: "home"}, fn ->
+      do_home(conn, params)
+    end)
+  end
+
+  defp do_home(conn, params) do
     reader = params["reader"]
 
     if is_binary(reader) and reader != "" do
@@ -44,6 +60,14 @@ defmodule AnsibleAppview.Web.Controllers.TimelineController do
 
   # GET /api/v1/board-feed?board_id=&cursor=&limit=
   def board_feed(conn, params) do
+    Metrics.inc("appview_timeline_requests_total", %{kind: "board"})
+
+    Metrics.time("appview_timeline_request_duration_seconds", %{kind: "board"}, fn ->
+      do_board_feed(conn, params)
+    end)
+  end
+
+  defp do_board_feed(conn, params) do
     board_id = params["board_id"]
 
     if is_binary(board_id) and board_id != "" do

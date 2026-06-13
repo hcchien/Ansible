@@ -72,6 +72,28 @@ scoped Forum Host web writes; bearer tokens remain a compatibility path for
 server/API callers. App-originated create-board writes use DID signed intents
 instead of web-session auth.
 
+## Metrics
+
+Prometheus metrics are exposed at `GET /metrics` (plain text, outside `/api/*`
+so the protocol-version plug never gates the scrape). The registry is a
+dependency-free ETS-backed module (`AnsibleRelay.Metrics`) supervised in
+`application.ex`; a periodic poller samples gauges. Series:
+
+| Metric | Type | Labels | Source |
+|---|---|---|---|
+| `relay_op_ingest_total` | counter | `entity_type`, `op_type` | accepted op ingest (`OpsController.ingest`) |
+| `relay_op_table_rows` | gauge | — | `ops` table row count, polled |
+| `relay_delta_requests_total` | counter | — | `GET /api/v1/ops/delta` |
+| `relay_delta_request_duration_seconds` | histogram | — | delta-pull latency |
+| `relay_signature_verifications_total` | counter | `result` (`pass`/`fail`) | op Ed25519 verification |
+| `relay_abuse_rejections_total` | counter | `subject_type` | abuse-limiter rejections (`did` wired; `peer` TODO Phase 3) |
+| `relay_wake_sends_total` | counter | `category` | push wake-scheduler sends |
+| `relay_reports_total` | counter | `rail` (`signed_intent`/`web_session`) | forum-host report intake |
+
+These back the later phases' exit criteria (op-table growth, delta-poll QPS,
+signature pass/reject, delivery/wake queue depth). Phase 3's delivery-queue and
+peer-abuse gauges will be added against the same module as those paths land.
+
 ## 對應 V1.1 組件
 
 - **Comp C**: Carrier-Grade Relay / Genesis Relay

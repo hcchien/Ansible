@@ -71,6 +71,12 @@ defmodule AnsibleAppview.Ingest.Folder do
     # failure here only costs a fallback to fan-out-on-read, never correctness.
     fan_out(rows)
 
+    # Observability (Phase 0): count signature-valid ops folded into the
+    # projection (follows/profiles/feed items alike), the Phase 3 ingest-rate
+    # exit metric. The ingest-lag gauge is sampled by Metrics.poll_gauges.
+    folded = Enum.count(prepared, fn {_op, _payload, verified?} -> verified? end)
+    if folded > 0, do: AnsibleAppview.Metrics.inc("appview_ingest_folds_total", %{}, folded)
+
     {indexed, max_log}
   end
 

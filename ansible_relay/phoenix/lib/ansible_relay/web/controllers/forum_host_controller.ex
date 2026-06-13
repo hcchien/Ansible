@@ -106,6 +106,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
   # POST /api/v1/forum-host/web/reports
   def create_web_report(conn, params) do
+    AnsibleRelay.Metrics.inc("relay_reports_total", %{rail: "web_session"})
     conn = VerifyWebSession.call(conn, ["forum:post"], audience: Store.base_url())
 
     if conn.halted do
@@ -129,6 +130,8 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
   # POST /api/v1/forum-host/reports
   def create_report(conn, params) do
+    AnsibleRelay.Metrics.inc("relay_reports_total", %{rail: "signed_intent"})
+
     case SignedIntent.verify_report_content(params) do
       {:ok, attrs} ->
         send_report_result(conn, Moderation.create_report(attrs))
