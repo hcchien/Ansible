@@ -1,23 +1,30 @@
 # Identity Recovery & Re-Anchor Design（Phase 1.0）
 
-> Status: **Design for review** — settles architecture decisions D1 and D5
-> and the anchor-portability half of G15. Gates Phase 1 hardware-key
-> custody (G1/G14) and should be agreed before Phase 2 freezes the
-> ops/snapshot schema. See
+> Status: **Design for review (v1.1)** — settles architecture decisions
+> D1 and D5 and the anchor-portability half of G15; should be agreed
+> before Phase 2 freezes the ops/snapshot schema. See
 > `docs/architecture/service_architecture_plan.md`.
 > Date: 2026-06-13
+>
+> **v1.1 (2026-06-13): hardware binding deferred** by product decision —
+> too high a barrier for users right now. Device keys are software
+> Ed25519 in platform secure storage; the protocol is custody-agnostic
+> (`custody_class` on the anchor), so hardware backing can be added later
+> per-device as an opt-in upgrade with **zero protocol change**.
+> Constitutionally this rides Base Rule 1's explicit alternative: keys in
+> "platform secure hardware **or an explicitly reduced-trust mode**" —
+> the custody class makes that mode explicit.
 
-**Problem.** Phase 1 moves signing keys into platform secure hardware,
-which makes them unexportable *by design*. Today the only copy of a user's
-Ed25519 identity key is raw hex in `flutter_secure_storage`
-(`ansible_core/did/`): lose the device, lose the identity — and the relay
-anchor (`did_accounts` row: did, public_key_hex, handle, ~90-day TTL) is a
-server-side record the user cannot independently prove or carry elsewhere.
-Hardware custody without a recovery design turns a compliance gap (G1)
-into a guaranteed data-loss event (G14) and violates Base Rule 1
-("support identity migration or recovery without making the operator the
-sole authority"). This document designs recovery **before** custody
-hardens.
+**Problem.** Today the only copy of a user's Ed25519 identity key is raw
+hex in `flutter_secure_storage` (`ansible_core/did/`): lose the device,
+lose the identity — and the relay anchor (`did_accounts` row: did,
+public_key_hex, handle, ~90-day TTL) is a server-side record the user
+cannot independently prove or carry elsewhere. That is already a
+guaranteed data-loss event (G14) and leaves Base Rule 1 ("support
+identity migration or recovery without making the operator the sole
+authority") unmet — independent of any future hardware-custody work.
+This document designs recovery and anchor portability now; hardware
+custody, when it returns, slots into the same structure.
 
 ## Source Context
 
@@ -97,10 +104,10 @@ harm" — conflict-priority #1).
 ```
 Identity key (Ed25519)               ─ signs content ops, Lexicon records,
   │   "content key" — the user's        Nostr events, anchor objects.
-  │   long-term public identity.        BACKUPABLE (encrypted) — never
-  │                                     hardware-bound.
-  ├── Device keys (P-256, hardware) ─ one per device, Secure Enclave /
-  │     attested by the identity key   StrongBox, NON-exportable. Sign
+  │   long-term public identity.        BACKUPABLE (encrypted).
+  ├── Device keys (Ed25519,          ─ one per device, generated on-device,
+  │     software, secure storage)      stored in platform secure storage,
+  │     attested by the identity key   NEVER backed up or synced. Sign
   │     via a signed device record     device-scoped assertions: re-anchor
   │     (messenger binding pattern).   approvals, new-device attestations.
   └── Recovery material              ─ §D5: passphrase-encrypted backup
@@ -110,39 +117,58 @@ Identity key (Ed25519)               ─ signs content ops, Lexicon records,
 ```
 
 The split is the load-bearing decision: **the key that must survive
-device loss (identity) is the one that stays software + backupable; the
-keys that prove "a real enrolled device acted" (device) are the ones that
-go into hardware.** Hardware custody strengthens day-to-day signing
-without making the identity itself hostage to one device.
+device loss (identity) is backupable; device keys are deliberately
+never backed up**, so "an enrolled device signed this" keeps meaning a
+physical device the user enrolled — that property comes from the
+no-backup policy, not from hardware. All keys are Ed25519 (one signature
+scheme everywhere). Each device record carries a `custody_class`
+(`software` today; `hardware` if/when enclave backing ships as an
+opt-in upgrade — same protocol, stronger label).
 
 Signing policy: content ops continue to be signed by the identity key
 (no relay/verifier changes). High-value operations (re-anchor, device
 enrollment, backup deletion) require a device-key co-signature when the
-account has ≥1 enrolled hardware device — this is what makes a stolen
-backup passphrase alone insufficient on a multi-device account.
+account has ≥1 enrolled device — this is what makes a stolen backup
+passphrase alone insufficient on a multi-device account.
 
-## D1 — Hardware keys vs signature migration（決策）
+## D1 — Hardware custody（決策：延後，協議保留掛載點）
 
-| Option | Mechanics | Pros | Cons |
-|---|---|---|---|
-| **A. Dual-key（建議）** | Identity stays Ed25519; per-device P-256 enclave keys attest it (hierarchy above) | No change to Lexicon/Nostr/relay verification (all Ed25519 today); identity key backupable ⇒ recovery possible; device keys genuinely hardware-bound; incremental migration | Two key types to manage; "hardware-backed" claim is per-device, not per-identity |
-| B. Migrate to ES256 | Re-key identities to P-256 so the enclave holds *the* identity key | Single key type; identity key itself hardware-bound | Breaks Nostr (secp256k1/Schnorr) and current Ed25519 verification across relay/AppView/issuer; **an unexportable identity key makes device loss unrecoverable by construction** — the exact failure this design exists to prevent; ecosystem migration cost is enormous |
-| C. Status quo (software Ed25519 only) | Keep raw keys in secure storage | No work | G1 stays open; no hardware custody story at all |
+**Position (v1.1): hardware binding is deferred** — product decision: the
+enrollment/availability barrier (StrongBox device coverage, biometric
+ceremonies, simulator/desktop dev) is too high for users right now.
+What this design fixes in its place:
 
-**Position: Option A (dual-key).** B is self-defeating — it would make
-the recovery problem *unsolvable* rather than solved, because the thing
-you must be able to back up (identity) becomes the thing you cannot
-export. A keeps every existing verifier unchanged and gives hardware
-custody where it actually helps (device-scoped proof). The "reduced-trust
-mode" (Phase 1 item 2) is then precisely: an account whose only
-enrollment is a software device key, surfaced as a custody-class label on
-the anchor.
+- Device keys are **software Ed25519 in platform secure storage, never
+  backed up or synced** — the "a physical enrolled device acted" property
+  comes from the no-backup policy. One signature scheme everywhere (the
+  P-256 dual-curve complexity disappears from the launch scope).
+- Every device record and anchor carries `custody_class` (`software` |
+  `hardware`). Base Rule 1 is satisfied through its **explicit
+  reduced-trust branch**: custody is software, and the label says so —
+  no silent overclaiming (which also fixes the current code comments
+  that overclaim enclave custody).
+- **When hardware returns** (as an opt-in, per-device upgrade — not a
+  requirement): an enclave-backed P-256 device key enrolls via the same
+  device-record flow with `custody_class: "hardware"`, and relays/
+  verifiers MAY weight it in trust decisions. Zero protocol change; the
+  earlier dual-key analysis (rejecting ES256 identity-key migration as
+  self-defeating for recovery) is preserved below for that future.
+
+<details>
+<summary>Preserved analysis for the future hardware decision</summary>
+
+| Option | Mechanics | Verdict |
+|---|---|---|
+| Dual-key | Identity stays Ed25519 (backupable); per-device P-256 enclave keys attest it | The viable path when hardware ships |
+| Migrate identity to ES256 | Enclave holds *the* identity key | Rejected permanently: an unexportable identity key makes device loss unrecoverable by construction, and it breaks Nostr/Lexicon/relay verification |
+
+</details>
 
 ## D5 — Recovery mechanism mix（決策）
 
 | Mechanism | How it works | Trust added | Launch? |
 |---|---|---|---|
-| **(a) Multi-device attestation（建議：launch）** | Device B scans a QR /deep-link from device A; A's enclave key signs an enrollment of B; either device can later sign a re-anchor for a replacement | None — pure user-held keys | ✅ |
+| **(a) Multi-device attestation（建議：launch）** | Device B scans a QR /deep-link from device A; A's device key signs an enrollment of B; either device can later sign a re-anchor for a replacement | None — pure user-held keys | ✅ |
 | **(b) Passphrase-encrypted backup（建議：launch）** | Identity key encrypted with a key derived from a user passphrase (scrypt, NIP-49-style); ciphertext exportable as a file/QR and optionally stored on the relay (relay sees ciphertext only) | None for the file path; relay-stored ciphertext adds availability, not authority | ✅ |
 | (c) Issuer-assisted recovery credential | During high-assurance verification the issuer records a recovery commitment; later re-verification of the same human yields a recovery VC accepted as re-anchor proof | Adds the issuer as a recovery authority; needs its own Rule 3/5 review (personhood ↔ key linkage) | ⏩ later |
 | (d) Social recovery (M-of-N contacts) | Trusted contacts co-sign recovery | New protocol surface + coercion/collusion analysis | ⏩ explicitly out of scope |
@@ -175,7 +201,8 @@ relay *stores and serves* but does not own:
   "identity_key": "<ed25519 pubkey hex>",
   "custody_class": "hardware" | "software",
   "devices": [
-    {"device_id": "…", "device_key": "<p256 pub>", "enrolled_at": "…",
+    {"device_id": "…", "device_key": "<ed25519 pubkey hex>",
+     "custody_class": "software", "enrolled_at": "…",
      "attestation_sig": "<by identity key>"}
   ],
   "prev_anchor_cid": "<hash of the previous anchor object or null>",
@@ -232,8 +259,8 @@ not a *continuity* authority — Base Rule 1 satisfied structurally.
 Existing accounts (raw-hex Ed25519, no anchor object) migrate lazily: on
 first launch after the feature ships, the app (1) offers backup creation
 (D5-b) using the existing key, (2) creates anchor v1 with
-`reason: "initial"`, `custody_class: "software"`, and (3) when Phase 1
-hardware enrollment lands, device keys attach via flow 2. No flag-day, no
+`reason: "initial"`, `custody_class: "software"`, and (3) generates this
+device's device key and attaches it via flow 2. No flag-day, no
 re-registration.
 
 ## Non-Goals
@@ -251,8 +278,9 @@ re-registration.
 - [ ] **Task 2 (app/store):** anchor chain persistence; backup
       create/restore UX (scrypt params per NIP-49; export as file + QR);
       recovery-readiness indicator in settings + onboarding backup offer.
-- [ ] **Task 3 (app/did):** device-key abstraction (enclave-backed P-256
-      with software fallback ⇒ custody class); device enrollment QR flow
+- [ ] **Task 3 (app/did):** device-key abstraction (software Ed25519 in
+      secure storage, never-backed-up; `custody_class` recorded — the
+      future hardware upgrade hooks in here); device enrollment QR flow
       (reuse messenger binding pattern).
 - [ ] **Task 4 (relay):** anchor store (chain-verifying), re-anchor
       endpoints for flows 1–3, grace-window + veto + `identity_alert`

@@ -59,8 +59,8 @@ surfaces (sharing/OG) have zero investment. PM review 2026-06-12.
 | Item | Priority | Links | Notes / dependencies |
 |---|---|---|---|
 | iOS staging release hardening — real Rust FFI bridge, relay auto-seed, DID auto-anchor, `elix.cool` rebrand, CI strict analyze | P1 | (no plan file; see recent `main` commits) | Current active work stream; consider capturing remaining iOS/TestFlight steps in a plan like the Android checklist |
-| **Identity recovery & re-anchor design** — multi-device attestation, encrypted content-key backup, relay re-anchor protocol, anchor as user-signed portable object | P1 — launch blocker, **gates hardware custody** · **📝 design written 2026-06-13, awaiting review** | [Design](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) · [Architecture plan — Phase 1.0](architecture/service_architecture_plan.md) | Proposed positions: D1 = dual-key (hardware P-256 device keys attest a backupable Ed25519 identity key), D5 = multi-device attestation + passphrase backup at launch, issuer-assisted later; self-certifying hash-chained anchor; recovery re-anchors get a 72h veto window with device alerts |
-| Hardware-backed signing keys + explicit reduced-trust mode + rust `zeroize` | P1 — launch blocker | [Architecture plan — Phase 1](architecture/service_architecture_plan.md) · [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | DID/PLC/Nostr keys still persist raw hex via `flutter_secure_storage`; needs Secure Enclave / StrongBox custody, no-export guarantee, reduced-trust fallback. Blocked by recovery design above |
+| **Identity recovery & re-anchor** — multi-device attestation, encrypted identity-key backup, relay re-anchor protocol, anchor as user-signed portable object | P1 — launch blocker · **📝 design v1.1 written 2026-06-13 (hardware-deferred), awaiting review** | [Design](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) · [Architecture plan — Phase 1](architecture/service_architecture_plan.md) | All-Ed25519 hierarchy: backupable identity key + never-backed-up software device keys with `custody_class` labeling; D5 = multi-device attestation + passphrase backup at launch, issuer-assisted later; self-certifying hash-chained anchor; recovery re-anchors get a 72h veto window with device alerts. Implementation is the next Phase 1 work |
+| Custody-class labeling + rust `zeroize` (reduced-trust mode made explicit) | P1 | [Architecture plan — Phase 1](architecture/service_architecture_plan.md) · [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | G1 closes via Base Rule 1's explicit reduced-trust branch: software custody, plainly labeled; fix comments that overclaim enclave custody. **Hardware custody itself deferred to Later** (product decision 2026-06-13 — user barrier too high; returns as opt-in per-device upgrade, zero protocol change) |
 | Cross-cutting foundations — app↔relay API versioning + observability baseline | P1 | [Architecture plan — Phase 0](architecture/service_architecture_plan.md) | Cheap now, expensive to retrofit: op schema versioning before Phase 2 evolves formats; metrics that later phase exit criteria depend on |
 
 ## Next（下一步）
@@ -77,6 +77,7 @@ surfaces (sharing/OG) have zero investment. PM review 2026-06-12.
 
 | Item | Priority | Links | Notes / dependencies |
 |---|---|---|---|
+| Hardware key custody (Secure Enclave / StrongBox) as an **opt-in per-device upgrade** | P3 — deferred 2026-06-13 | [Phase 1.0 design §D1](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) | Product decision: user barrier too high for launch. The anchor's `custody_class` + device-record flow is the ready mount point — dual-key P-256 attestation slots in with zero protocol change; ES256 identity-key migration permanently rejected |
 | Push distribution — op firehose over Phoenix Channels, Oban delivery workers, abuse-detection completion | P3 | [Architecture plan — Phase 3](architecture/service_architecture_plan.md) | After Phase 2 (snapshots make push restart-safe); replaces AppView polling and the Postgres retry loop |
 | Federation completion — Nostr key custody, full ActivityPub inbox behaviors | P3 | [Architecture plan — Phase 4](architecture/service_architecture_plan.md) | Nostr custody depends on Phase 1; AP behaviors independent |
 | DNS handle verification (DNS TXT + HTTPS `/.well-known`) | P3 | [Architecture plan — Phase 4.3](architecture/service_architecture_plan.md) | 🔜 future in component status; no spec/plan yet |
@@ -130,11 +131,15 @@ and the [full architecture diagram](superpowers/specs/2026-05-31-full-architectu
 Source: [constitution compliance review (2026-05-24)](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md)
 and the README component status table.
 
-1. **Hardware-backed key custody + reduced-trust mode** — *not compliant yet;
-   launch blocker.* Raw private key hex still persists via secure-storage-style
-   APIs; some comments overclaim Secure Enclave/StrongBox semantics. Needs
-   platform-backed signing keys, no raw-key export from self-custody paths, and
-   an explicit reduced-trust mode. Affects DID, PLC, and Nostr key paths.
+1. **Key custody + reduced-trust mode** — *resolution path changed
+   2026-06-13.* Raw private key hex still persists via secure-storage-style
+   APIs and some comments overclaim Secure Enclave/StrongBox semantics, but
+   per product decision hardware custody is **deferred** (user barrier too
+   high): compliance now closes via Base Rule 1's explicit reduced-trust
+   branch — software custody with `custody_class` labeling + the recovery
+   design ([Phase 1.0 design](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md)),
+   no silent overclaiming. Hardware returns later as an opt-in per-device
+   upgrade. Affects DID, PLC, and Nostr key paths.
 2. **External host compliance level** — *partially implemented.* Discovery
    exposes and the app displays compliance labels, but local host records do
    not persist `constitution_compliance`, and ranking/sync/recommendation/trust

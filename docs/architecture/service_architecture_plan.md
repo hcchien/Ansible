@@ -21,8 +21,10 @@ Per [AGENTS.md](../../AGENTS.md), this plan touches identity, storage, sync,
 federation, and ranking. Checklist answers:
 
 1. **Identity/credentials involved:** app-held DID signing keys, Nostr keys,
-   VC trust anchors. Phase 1 moves these toward platform hardware custody —
-   strengthening Base Rule 1 (identity autonomy), not weakening it.
+   VC trust anchors. Phase 1 gives them a recovery path and explicit
+   custody-class labeling (Base Rule 1's reduced-trust branch); hardware
+   custody is deferred to an opt-in upgrade — identity autonomy is
+   strengthened either way, never weakened.
 2. **Data leaving the device:** no new paths. Phases 2–3 change *how* already
    chosen distribution paths are stored/delivered (partitioning, push), never
    *what* is distributed. Private content remains fail-closed (Base Rule 2).
@@ -79,7 +81,7 @@ adapters; the app signs intents, the relay distributes.
 
 | # | Gap | Source | Severity |
 |---|---|---|---|
-| G1 | Raw private key hex in secure storage; no hardware custody, no reduced-trust mode | Compliance review | **Launch blocker** |
+| G1 | Raw private key hex in secure storage; no hardware custody, no reduced-trust mode | Compliance review | **Launch blocker** — closes via explicit custody-class labeling (Phase 1); hardware custody itself deferred to Later (opt-in upgrade, product decision 2026-06-13) |
 | G2 | External-host compliance level not persisted locally, not consumed by ranking/sync/trust | Compliance review | **Launch blocker** |
 | G3 | No `zeroize`/`secrecy` in `ansible_rust_core` (key material lingers in memory) | SOSP A-1 | High |
 | G4 | AppView ingest trusts relay's signature check; no independent re-verification, signed payloads not retained | SOSP D-1, scaling §5 | High |
@@ -92,7 +94,7 @@ adapters; the app signs intents, the relay distributes.
 | G11 | DNS handle verification not started | README | Low |
 | G12 | Standalone reputation labeler (tier mapping lives inside relay) | README | Low |
 | G13 | Multi-region / multi-AppView (genesis target) | genesis_hosting.md | Later |
-| G14 | No identity recovery path — hardware custody (G1) makes device loss = permanent identity loss; constitution requires migration/recovery without operator authority | Base Rule 1; this review | **Launch blocker** |
+| G14 | No identity recovery path — single-device raw keys already make device loss = permanent identity loss; constitution requires migration/recovery without operator authority | Base Rule 1; this review | **Launch blocker** — design written 2026-06-13 |
 | G15 | Relay is the de facto identity authority: anchors are relay DB rows, not user-signed portable objects; identity/forum/federation data not schema-separated | Base Rule 1; this review | High |
 | G16 | No app↔relay API versioning/negotiation — op format evolution (Phase 2) will break long-tail clients | This review | High |
 | G17 | No observability baseline — phase exit criteria (signature rejection rate, op growth, ingest lag) have no metrics to stand on | SOSP C-1 (partial); this review | High |
@@ -135,37 +137,40 @@ Closes G16, G17. Cheap now, expensive to retrofit.
    delta-poll QPS, signature verification pass/reject, AppView ingest lag,
    delivery queue depth — defined here so the phases can be measured.
 
-### Phase 1 — Identity custody & trust policy (launch blockers)
+### Phase 1 — Identity recovery & trust policy (launch blockers)
 
-Closes G1, G2, G3, G14. All work is app + rust core + relay anchor protocol.
+Closes G14, G2, G3; G1 closes via Base Rule 1's explicit reduced-trust
+branch (custody-class labeling), **hardware custody itself deferred to
+Later by product decision (2026-06-13)** — too high a user barrier now;
+the recovery design keeps a custody-agnostic mount point for it.
 
-0. **Identity recovery & re-anchor design (gate for everything below)**:
-   hardware custody makes keys unexportable by design, so device loss must
-   not mean identity loss. Design before implementing 1.–2.: multi-device
-   key attestation (new device key signed by an existing device key), an
-   optional user-passphrase encrypted backup of the *content* key as a
-   reduced-trust path (NIP-49-style), and a relay re-anchor protocol that
-   accepts a recovery proof (old-key signature or recovery credential) to
-   rebind a handle to a new key. The anchor record itself becomes a
-   user-signed self-certifying object (G15's portability half) so the same
-   proof works against a different relay. Decision D5.
-1. **Hardware-backed signing keys** (`ansible_core/did`, `ansible_rust_core`,
-   app): generate/sign inside Secure Enclave (iOS) / StrongBox-backed Keystore
-   (Android) where available; key handles replace raw hex in storage; no
-   raw-key export on self-custody paths.
-2. **Reduced-trust mode**: explicit, user-visible state when hardware backing
-   is unavailable (simulator, old devices, desktop dev); registration flow
-   surfaces it; relay anchor records the custody class as a trust-tier input.
+0. **Identity recovery & re-anchor design — ✅ written 2026-06-13**
+   ([design](../superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md),
+   v1.1 hardware-deferred): key hierarchy (backupable Ed25519 identity key
+   + never-backed-up software device keys), multi-device attestation,
+   NIP-49-style passphrase backup, self-certifying hash-chained anchor
+   (G15's portability half), re-anchor flows with a 72h recovery veto
+   window. Decisions D1 (deferred w/ preserved analysis) and D5 settled.
+1. **Recovery implementation** (per the design's task outline): anchor
+   object in rust core, backup create/restore + device enrollment + 
+   recovery wizard in app, chain-verifying anchor store + re-anchor
+   endpoints + veto/alerts on relay. `did_accounts` becomes a cache.
+2. **Custody-class labeling (reduced-trust made explicit)**: anchors and
+   device records carry `custody_class: software`; registration UX states
+   plainly that keys are software-held; fix code comments that overclaim
+   enclave custody. This is the constitution-compliant posture until
+   hardware ships as an opt-in upgrade.
 3. **Memory hygiene**: add `zeroize`/`secrecy` to `ansible_rust_core` secret
-   buffers; tests for zeroing; fix comments that overclaim enclave custody.
+   buffers; tests for zeroing.
 4. **Compliance-level policy use**: persist `constitution_compliance` on local
    `ForumHost`/`RemoteNode` rows (default `unknown`); discovery ranking,
    board sync gating, and recommendation read it; reason-coded UI label.
 
-Exit criteria: compliance review G1/G2 sections flip to compliant; migration
-path for existing raw-hex keys verified on both platforms; **a documented,
-tested device-loss recovery walkthrough** (lose device A, recover identity on
-device B, relay accepts the re-anchor).
+Exit criteria: compliance review G14 flips to compliant and G1 to
+"compliant via explicit reduced-trust mode"; **a documented, tested
+device-loss recovery walkthrough** (lose device A, recover identity on
+device B via backup or second device, relay accepts the re-anchor;
+remaining enrolled devices receive the identity alert and can veto).
 
 ### Phase 2 — Data-plane integrity & durability
 
@@ -237,7 +242,7 @@ Closes G13. Only after Phases 2–3 are stable in production.
 
 | # | Decision | Default position |
 |---|---|---|
-| D1 | Secure Enclave keys are P-256, not Ed25519 — dual-key DID (hardware P-256 device key attesting an Ed25519 content key) vs migrating record signatures to ES256 | **Settled (pending owner review): dual-key** — see the [Phase 1.0 design](../superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md); ES256 migration would make the identity key unexportable and recovery unsolvable by construction |
+| D1 | Hardware custody approach (Secure Enclave P-256 vs ES256 migration) | **Deferred (product decision 2026-06-13: user barrier too high)** — device keys are software Ed25519 with `custody_class` labeling; when hardware returns it's an opt-in per-device upgrade via dual-key attestation, zero protocol change; ES256 identity-key migration permanently rejected (makes recovery unsolvable). See the [Phase 1.0 design](../superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) §D1 |
 | D2 | Cross-service op transport at scale: Phoenix PubSub vs GCP Pub/Sub vs NATS | Phoenix Channels single-region (Phase 3); revisit only at Phase 5 multi-region |
 | D3 | Standalone labeler timing | Extract only when a second consumer (external AppView or moderation tooling) exists |
 | D4 | Oban vs hand-rolled queue for delivery workers | Oban (battle-tested, Postgres-native, no new infra) |
