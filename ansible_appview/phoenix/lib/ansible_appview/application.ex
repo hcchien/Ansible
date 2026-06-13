@@ -45,10 +45,22 @@ defmodule AnsibleAppview.Application do
   end
 
   defp ingest_children do
-    if Application.get_env(:ansible_appview, :start_ingest, true) do
-      [AnsibleAppview.Ingest.Poller]
-    else
-      []
-    end
+    native =
+      if Application.get_env(:ansible_appview, :start_ingest, true) do
+        [AnsibleAppview.Ingest.Poller]
+      else
+        []
+      end
+
+    # Inbound federation (design 2026-06-13). Off by default; pull-only, bounded
+    # by the curated allowlist.
+    external =
+      if Application.get_env(:ansible_appview, :start_external_ingest, false) do
+        [AnsibleAppview.Ingest.ExternalPoller]
+      else
+        []
+      end
+
+    native ++ external
   end
 end

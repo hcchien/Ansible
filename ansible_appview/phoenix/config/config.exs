@@ -33,4 +33,15 @@ config :ansible_appview, :relay_base_url, "http://localhost:4001"
 # Start the background ingest poller with the app. Disabled in tests.
 config :ansible_appview, :start_ingest, true
 
+# Inbound federation — curated ActivityPub ingest (design 2026-06-13).
+# How often the external poller pulls each enabled curated source's outbox.
+# 0 = OFF (never schedule); pull only when explicitly configured.
+config :ansible_appview, :external_ingest_interval_ms, 0
+# Start the external (inbound-federation) poller with the app. Off by default and
+# in tests (tests drive AnsibleAppview.Ingest.ExternalIngest.ingest_source/1).
+config :ansible_appview, :start_external_ingest, false
+# Curated allowlist seed: a list of maps with :actor_uri, :instance, and
+# optionally :display_name / :compliance_level / :enabled. Seeded idempotently.
+config :ansible_appview, :external_sources, []
+
 import_config "#{config_env()}.exs"

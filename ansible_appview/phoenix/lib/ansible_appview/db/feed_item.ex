@@ -23,13 +23,20 @@ defmodule AnsibleAppview.Db.FeedItem do
     field(:verified_at, :utc_datetime_usec)
     field(:signature, :string)
     field(:anchor_expires_at, :utc_datetime_usec)
+    # External lane (inbound federation, design 2026-06-13). NULL on native rows.
+    # External rows always carry sig_verified=false + author_tier=external_unverified
+    # so the Phase 2 read filter excludes them by construction.
+    field(:external_actor_uri, :string)
+    field(:external_instance, :string)
+    field(:compliance_level, :string)
 
     timestamps(type: :utc_datetime_usec)
   end
 
   @fields ~w(log_id op_id author_did entity_type entity_id op_type board_id thread_id
              visibility item_created_at payload public_key_hex author_tier deleted sig_verified
-             source verified_at signature anchor_expires_at)a
+             source verified_at signature anchor_expires_at
+             external_actor_uri external_instance compliance_level)a
   @required ~w(log_id op_id author_did entity_type entity_id op_type)a
 
   def changeset(struct, attrs) do

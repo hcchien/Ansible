@@ -25,6 +25,9 @@ defmodule AnsibleAppview.Metrics do
     * `appview_timeline_request_duration_seconds` (histogram) — timeline latency
     * `appview_discovery_requests_total{kind}` — discovery/explore/search reads
     * `appview_discovery_request_duration_seconds` (histogram) — discovery latency
+    * `external_ingest_total{instance}` — external AP items ingested (external lane)
+    * `external_ingest_dedup_total` — re-polled external items skipped (already present)
+    * `external_source_fetch_errors_total{instance}` — tolerated source fetch failures
   """
 
   use GenServer
@@ -48,7 +51,13 @@ defmodule AnsibleAppview.Metrics do
     "appview_discovery_requests_total" =>
       {:counter, "Discovery read requests by kind (explore/suggest/search)."},
     "appview_discovery_request_duration_seconds" =>
-      {:histogram, "Discovery read request latency in seconds."}
+      {:histogram, "Discovery read request latency in seconds."},
+    "external_ingest_total" =>
+      {:counter, "External ActivityPub items ingested into the external lane, by instance."},
+    "external_ingest_dedup_total" =>
+      {:counter, "External items skipped on re-poll because the AP object id already existed."},
+    "external_source_fetch_errors_total" =>
+      {:counter, "Curated external source outbox fetch failures (tolerated), by instance."}
   }
 
   # --- Public API ---
