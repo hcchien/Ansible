@@ -8,6 +8,7 @@ import '../services/atproto_client.dart';
 import '../services/forum_host_client.dart';
 import '../services/messenger_relay_client.dart';
 import '../services/posting_gate.dart';
+import '../services/relay_anchor_client.dart';
 import '../services/relay_identity_client.dart';
 import '../services/relay_ops_client.dart';
 import 'app_l10n.dart';
@@ -35,6 +36,10 @@ String userFacingError(BuildContext context, Object error) {
       zh: '這個討論串已被板務鎖定，無法新增回覆。',
       en: 'This thread has been locked by the moderators.',
     );
+  }
+  if (error is RelayAnchorException) {
+    final mapped = _anchorErrorCopy(context, error);
+    if (mapped != null) return mapped;
   }
   if (_isPostingRequiresTier(error)) {
     return context.uiCopy(
@@ -88,8 +93,64 @@ bool _isUpgradeRequired(Object error) {
       statusCode == 426 || error == code,
     RelayIdentityException(:final statusCode, :final error) =>
       statusCode == 426 || error == code,
+    RelayAnchorException(:final statusCode, :final error) =>
+      statusCode == 426 || error == code,
     _ => false,
   };
+}
+
+/// Friendly bilingual copy for relay identity-anchor failures (recovery design
+/// Task 4 endpoints). Returns null for codes that should fall through to the
+/// generic mapping. 426 upgrade-required is handled earlier.
+String? _anchorErrorCopy(BuildContext context, RelayAnchorException error) {
+  if (error.statusCode == 426 ||
+      error.error == AnsibleProtocol.upgradeRequiredCode) {
+    return null; // handled by _isUpgradeRequired
+  }
+  // 423 account_frozen — a veto froze the account; manual resolution needed.
+  if (error.statusCode == 423 || error.error == 'account_frozen') {
+    return context.uiCopy(
+      zh: '帳號已凍結，需人工協助才能繼續復原。',
+      en: 'This account is frozen and needs manual help to recover.',
+    );
+  }
+  switch (error.error) {
+    case 'invalid_signature':
+    case 'invalid_attestation':
+    case 'invalid_recovery_proof':
+      return context.uiCopy(
+        zh: '簽章驗證失敗，無法完成這次身分重新錨定。',
+        en: 'Signature verification failed; the re-anchor could not be '
+            'completed.',
+      );
+    case 'conflict':
+      return context.uiCopy(
+        zh: '與目前的身分錨定狀態衝突，請重新整理後再試一次。',
+        en: 'This conflicts with the current anchor state. Refresh and try '
+            'again.',
+      );
+    case 'chain_mismatch':
+      return context.uiCopy(
+        zh: '身分錨定鏈對不上，請重新整理後再試一次。',
+        en: 'The anchor chain does not line up. Refresh and try again.',
+      );
+    case 'malformed_anchor':
+    case 'malformed_veto':
+    case 'unknown_reason':
+      return context.uiCopy(
+        zh: '送出的身分錨定資料格式不正確。',
+        en: 'The submitted anchor data was not valid.',
+      );
+  }
+  // 409 without a recognised code still reads as a conflict.
+  if (error.statusCode == 409) {
+    return context.uiCopy(
+      zh: '與目前的身分錨定狀態衝突，請重新整理後再試一次。',
+      en: 'This conflicts with the current anchor state. Refresh and try '
+          'again.',
+    );
+  }
+  return null;
 }
 
 /// Whether [error] is the relay's reason-coded posting-gate rejection

@@ -67,7 +67,11 @@ void main() {
     );
     await tester.pump();
 
-    await tester.drag(find.byType(ListView), const Offset(0, -620));
+    await tester.dragUntilVisible(
+      find.text('封鎖名單'),
+      find.byType(ListView),
+      const Offset(0, -280),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('封鎖名單'));
     await tester.pumpAndSettle();

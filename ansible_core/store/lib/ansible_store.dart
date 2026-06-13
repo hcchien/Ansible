@@ -23,6 +23,7 @@ export 'src/entities/notification.dart'; // Local-projection notifications (Phas
 export 'src/entities/identity_anchor.dart'; // Self-certifying identity anchor (recovery design Task 1)
 export 'src/entities/identity_anchor_chain.dart'; // Anchor hash-chain verification
 export 'src/entities/identity_key_backup.dart'; // Passphrase-encrypted identity-key backup (D5-b)
+export 'src/entities/device_key.dart'; // Per-install software device key (recovery design Task 3)
 export 'src/entities/host_moderation_state.dart'; // Host moderation overlay (removed/locked)
 export 'src/entities/identity.dart'; // DID-based identity (replaces User+passwordHash)
 export 'src/entities/ops_queue.dart'; // Local Op queue for offline-first / Comp B

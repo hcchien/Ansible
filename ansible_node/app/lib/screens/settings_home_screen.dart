@@ -6,8 +6,11 @@ import '../l10n/app_localizations.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../services/app_locale_controller.dart';
+import '../services/identity_anchor_service.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/recovery_readiness_store.dart';
+import '../services/relay_anchor_client.dart';
+import '../services/secure_device_key_store.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -16,6 +19,7 @@ import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'identity_backup_screen.dart';
 import 'inbox_screen.dart';
+import 'recovery_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'edit_profile_screen.dart';
 import 'reading_preferences_screen.dart';
@@ -48,6 +52,7 @@ class SettingsHomeScreen extends StatelessWidget {
     this.recoveryReadinessStore =
         const SharedPreferencesRecoveryReadinessStore(),
     this.identityPrivateKeyProvider = _defaultIdentityPrivateKey,
+    this.onOpenRecoveryWizard,
   });
 
   final AppDatabase db;
@@ -61,6 +66,11 @@ class SettingsHomeScreen extends StatelessWidget {
   /// Provides the identity private key (hex) for the backup screen. Injectable
   /// for tests; defaults to reading platform secure storage.
   final Future<String?> Function() identityPrivateKeyProvider;
+
+  /// Opens the recovery wizard (restore-from-backup). Injectable for tests;
+  /// when null the row builds a default [RecoveryWizardScreen] from production
+  /// dependencies.
+  final void Function(BuildContext context)? onOpenRecoveryWizard;
   final VoidCallback? onClearIdentity;
   final ElixScreenStyle? personalScreenStyle;
   final ElixScreenStyle? forumScreenStyle;
@@ -296,6 +306,12 @@ class SettingsHomeScreen extends StatelessWidget {
                 did: did,
                 store: recoveryReadinessStore,
                 identityPrivateKeyProvider: identityPrivateKeyProvider,
+              ),
+              _RecoverAccountRow(
+                db: db,
+                did: did,
+                recoveryReadinessStore: recoveryReadinessStore,
+                onOpenRecoveryWizard: onOpenRecoveryWizard,
               ),
               _BlockedListSettingsRow(db: db, text: text, last: true),
             ],
@@ -1018,6 +1034,66 @@ class _RecoveryReadinessRowState extends State<_RecoveryReadinessRow> {
           onTap: _openBackup,
         );
       },
+    );
+  }
+}
+
+/// Entry point to the restore-from-backup recovery wizard (recovery design
+/// Task 5). Sits next to the backup/RECOVERY readiness row.
+class _RecoverAccountRow extends StatelessWidget {
+  const _RecoverAccountRow({
+    required this.db,
+    required this.did,
+    required this.recoveryReadinessStore,
+    this.onOpenRecoveryWizard,
+  });
+
+  final AppDatabase db;
+  final String did;
+  final RecoveryReadinessStore recoveryReadinessStore;
+  final void Function(BuildContext context)? onOpenRecoveryWizard;
+
+  Future<void> _installRecoveredKey(String privateKeyHex) {
+    return const FlutterSecureStorage().write(
+      key: 'ansible_did_private_key',
+      value: privateKeyHex,
+    );
+  }
+
+  void _open(BuildContext context) {
+    if (onOpenRecoveryWizard != null) {
+      onOpenRecoveryWizard!(context);
+      return;
+    }
+    final service = IdentityAnchorService(
+      relayClient: RelayAnchorClient(),
+      anchorRepository: DriftIdentityAnchorRepository(db),
+      deviceKeyStore: const SecureDeviceKeyStore(),
+      readinessStore: recoveryReadinessStore,
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RecoveryWizardScreen(
+          service: service,
+          installRecoveredKey: _installRecoveredKey,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnsibleSettingsRow(
+      key: const Key('settings_recover_account_row'),
+      glyph: '⟲',
+      label: context.uiCopy(zh: '復原帳號', en: 'Recover account'),
+      en: 'RESTORE',
+      sub: context.uiCopy(
+        zh: '用加密備份在新裝置上找回身分',
+        en: 'Restore identity from an encrypted backup',
+      ),
+      value: context.uiCopy(zh: '從備份', en: 'From backup'),
+      onTap: () => _open(context),
     );
   }
 }
