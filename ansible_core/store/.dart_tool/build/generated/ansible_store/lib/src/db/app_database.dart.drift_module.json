@@ -7,7 +7,7 @@
       },
       "declaration": {
         "source_uri": "package:ansible_store/src/db/app_database.dart",
-        "offset": 3141,
+        "offset": 3199,
         "name": "AppDatabase"
       },
       "references": [
@@ -206,6 +206,10 @@
         {
           "library_uri": "package:ansible_store/src/schema/did_reputations.dart",
           "name": "did_reputations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/notifications.dart",
+          "name": "notifications"
         }
       ],
       "type": "database",
@@ -405,12 +409,16 @@
         {
           "library_uri": "package:ansible_store/src/schema/did_reputations.dart",
           "name": "did_reputations"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/notifications.dart",
+          "name": "notifications"
         }
       ],
       "views": [],
       "includes": [],
       "queries": [],
-      "schema_version": 21,
+      "schema_version": 22,
       "daos": [],
       "has_constructor_arg": true
     }
@@ -447,6 +455,7 @@
     "package:ansible_store/src/schema/messenger_messages.dart",
     "package:ansible_store/src/schema/messenger_pre_keys.dart",
     "package:ansible_store/src/schema/messenger_sessions.dart",
+    "package:ansible_store/src/schema/notifications.dart",
     "package:ansible_store/src/schema/ops_queue.dart",
     "package:ansible_store/src/schema/outbound_follow_activities.dart",
     "package:ansible_store/src/schema/ownership_policies.dart",

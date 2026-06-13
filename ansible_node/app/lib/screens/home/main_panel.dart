@@ -44,6 +44,8 @@ class MainPanel extends StatelessWidget {
     required this.onFlushPendingOps,
     required this.onSync,
     required this.syncing,
+    this.notificationUnreadCount = 0,
+    this.onOpenNotifications,
     required this.atProtoClient,
     required this.loading,
     required this.posts,
@@ -106,6 +108,12 @@ class MainPanel extends StatelessWidget {
   final Future<void> Function() onFlushPendingOps;
   final Future<void> Function() onSync;
   final bool syncing;
+
+  /// Unread count for the notification bell (local notifications table).
+  final int notificationUnreadCount;
+
+  /// Opens the notification feed; when null the bell is hidden.
+  final VoidCallback? onOpenNotifications;
   final AtProtoClient atProtoClient;
   final bool loading;
   final List<PostCardData> posts;
@@ -330,6 +338,8 @@ class MainPanel extends StatelessWidget {
               feedFilter: feedFilter,
               onFeedFilterChanged: onFeedFilterChanged,
               forumPostCount: posts.length,
+              notificationUnreadCount: notificationUnreadCount,
+              onOpenNotifications: onOpenNotifications,
               onOpenPreferences: null,
               onOpenSettings: compact
                   ? () {

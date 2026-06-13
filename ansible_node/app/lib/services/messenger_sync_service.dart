@@ -7,6 +7,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'messenger_crypto_bridge.dart';
 import 'messenger_device_service.dart';
 import 'messenger_relay_client.dart';
+import 'notification_projector.dart';
 
 class MessengerSyncService {
   final MessengerRepository repository;
@@ -16,6 +17,11 @@ class MessengerSyncService {
   final MessengerCryptoBridge crypto;
   final MessengerSecretStore secretStore;
   final DidSigner didSigner;
+
+  /// Optional local notification projection: emits `messenger_message`
+  /// notifications for decrypted inbound messages. The projector reuses the
+  /// inbox's blocked-contact checks, so blocked senders never notify.
+  final NotificationProjector? notificationProjector;
   final DateTime Function() now;
   final String Function() idGenerator;
 
@@ -26,6 +32,7 @@ class MessengerSyncService {
     required this.relayClient,
     required this.crypto,
     required this.didSigner,
+    this.notificationProjector,
     MessengerSecretStore? secretStore,
     DateTime Function()? now,
     String Function()? idGenerator,
@@ -224,6 +231,13 @@ class MessengerSyncService {
       final isRequest = await _recordMessageRequestIfNeeded(
         message.senderDid,
         updatedAt,
+      );
+      // Local notification (dedup-keyed by message id, so re-pulls never
+      // duplicate). Blocked senders are excluded inside the projector.
+      await notificationProjector?.onMessengerMessage(
+        senderDid: message.senderDid,
+        messageId: message.messageId,
+        receivedAt: receivedAt,
       );
       await repository.saveSession(
         MessengerSessionRecord(

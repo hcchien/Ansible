@@ -27233,6 +27233,679 @@ class DidReputationsCompanion extends UpdateCompanion<DidReputationRow> {
   }
 }
 
+class $NotificationsTable extends Notifications
+    with TableInfo<$NotificationsTable, NotificationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actorDidMeta = const VerificationMeta(
+    'actorDid',
+  );
+  @override
+  late final GeneratedColumn<String> actorDid = GeneratedColumn<String>(
+    'actor_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetRefMeta = const VerificationMeta(
+    'targetRef',
+  );
+  @override
+  late final GeneratedColumn<String> targetRef = GeneratedColumn<String>(
+    'target_ref',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boardIdMeta = const VerificationMeta(
+    'boardId',
+  );
+  @override
+  late final GeneratedColumn<String> boardId = GeneratedColumn<String>(
+    'board_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _threadIdMeta = const VerificationMeta(
+    'threadId',
+  );
+  @override
+  late final GeneratedColumn<String> threadId = GeneratedColumn<String>(
+    'thread_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _postIdMeta = const VerificationMeta('postId');
+  @override
+  late final GeneratedColumn<String> postId = GeneratedColumn<String>(
+    'post_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+    'conversation_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<DateTime> readAt = GeneratedColumn<DateTime>(
+    'read_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dedupKeyMeta = const VerificationMeta(
+    'dedupKey',
+  );
+  @override
+  late final GeneratedColumn<String> dedupKey = GeneratedColumn<String>(
+    'dedup_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    type,
+    actorDid,
+    targetRef,
+    boardId,
+    threadId,
+    postId,
+    conversationId,
+    createdAt,
+    readAt,
+    dedupKey,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notifications';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NotificationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('actor_did')) {
+      context.handle(
+        _actorDidMeta,
+        actorDid.isAcceptableOrUnknown(data['actor_did']!, _actorDidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actorDidMeta);
+    }
+    if (data.containsKey('target_ref')) {
+      context.handle(
+        _targetRefMeta,
+        targetRef.isAcceptableOrUnknown(data['target_ref']!, _targetRefMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetRefMeta);
+    }
+    if (data.containsKey('board_id')) {
+      context.handle(
+        _boardIdMeta,
+        boardId.isAcceptableOrUnknown(data['board_id']!, _boardIdMeta),
+      );
+    }
+    if (data.containsKey('thread_id')) {
+      context.handle(
+        _threadIdMeta,
+        threadId.isAcceptableOrUnknown(data['thread_id']!, _threadIdMeta),
+      );
+    }
+    if (data.containsKey('post_id')) {
+      context.handle(
+        _postIdMeta,
+        postId.isAcceptableOrUnknown(data['post_id']!, _postIdMeta),
+      );
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('read_at')) {
+      context.handle(
+        _readAtMeta,
+        readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta),
+      );
+    }
+    if (data.containsKey('dedup_key')) {
+      context.handle(
+        _dedupKeyMeta,
+        dedupKey.isAcceptableOrUnknown(data['dedup_key']!, _dedupKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dedupKeyMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NotificationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      actorDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_did'],
+      )!,
+      targetRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_ref'],
+      )!,
+      boardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}board_id'],
+      ),
+      threadId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}thread_id'],
+      ),
+      postId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}post_id'],
+      ),
+      conversationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conversation_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      readAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}read_at'],
+      ),
+      dedupKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dedup_key'],
+      )!,
+    );
+  }
+
+  @override
+  $NotificationsTable createAlias(String alias) {
+    return $NotificationsTable(attachedDatabase, alias);
+  }
+}
+
+class NotificationRow extends DataClass implements Insertable<NotificationRow> {
+  final String id;
+
+  /// Storage value of [NotificationType] (e.g. `reply_to_thread`).
+  final String type;
+
+  /// DID of the user who triggered the notification (replier / follower /
+  /// message sender).
+  final String actorDid;
+
+  /// Id of the triggering entity (reply post id, follower DID, message id).
+  final String targetRef;
+  final String? boardId;
+  final String? threadId;
+  final String? postId;
+  final String? conversationId;
+  final DateTime createdAt;
+  final DateTime? readAt;
+
+  /// Stable identity of the underlying event; unique so re-applied ops
+  /// cannot duplicate notifications.
+  final String dedupKey;
+  const NotificationRow({
+    required this.id,
+    required this.type,
+    required this.actorDid,
+    required this.targetRef,
+    this.boardId,
+    this.threadId,
+    this.postId,
+    this.conversationId,
+    required this.createdAt,
+    this.readAt,
+    required this.dedupKey,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['type'] = Variable<String>(type);
+    map['actor_did'] = Variable<String>(actorDid);
+    map['target_ref'] = Variable<String>(targetRef);
+    if (!nullToAbsent || boardId != null) {
+      map['board_id'] = Variable<String>(boardId);
+    }
+    if (!nullToAbsent || threadId != null) {
+      map['thread_id'] = Variable<String>(threadId);
+    }
+    if (!nullToAbsent || postId != null) {
+      map['post_id'] = Variable<String>(postId);
+    }
+    if (!nullToAbsent || conversationId != null) {
+      map['conversation_id'] = Variable<String>(conversationId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<DateTime>(readAt);
+    }
+    map['dedup_key'] = Variable<String>(dedupKey);
+    return map;
+  }
+
+  NotificationsCompanion toCompanion(bool nullToAbsent) {
+    return NotificationsCompanion(
+      id: Value(id),
+      type: Value(type),
+      actorDid: Value(actorDid),
+      targetRef: Value(targetRef),
+      boardId: boardId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boardId),
+      threadId: threadId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(threadId),
+      postId: postId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(postId),
+      conversationId: conversationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conversationId),
+      createdAt: Value(createdAt),
+      readAt: readAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(readAt),
+      dedupKey: Value(dedupKey),
+    );
+  }
+
+  factory NotificationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationRow(
+      id: serializer.fromJson<String>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      actorDid: serializer.fromJson<String>(json['actorDid']),
+      targetRef: serializer.fromJson<String>(json['targetRef']),
+      boardId: serializer.fromJson<String?>(json['boardId']),
+      threadId: serializer.fromJson<String?>(json['threadId']),
+      postId: serializer.fromJson<String?>(json['postId']),
+      conversationId: serializer.fromJson<String?>(json['conversationId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
+      dedupKey: serializer.fromJson<String>(json['dedupKey']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'type': serializer.toJson<String>(type),
+      'actorDid': serializer.toJson<String>(actorDid),
+      'targetRef': serializer.toJson<String>(targetRef),
+      'boardId': serializer.toJson<String?>(boardId),
+      'threadId': serializer.toJson<String?>(threadId),
+      'postId': serializer.toJson<String?>(postId),
+      'conversationId': serializer.toJson<String?>(conversationId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'readAt': serializer.toJson<DateTime?>(readAt),
+      'dedupKey': serializer.toJson<String>(dedupKey),
+    };
+  }
+
+  NotificationRow copyWith({
+    String? id,
+    String? type,
+    String? actorDid,
+    String? targetRef,
+    Value<String?> boardId = const Value.absent(),
+    Value<String?> threadId = const Value.absent(),
+    Value<String?> postId = const Value.absent(),
+    Value<String?> conversationId = const Value.absent(),
+    DateTime? createdAt,
+    Value<DateTime?> readAt = const Value.absent(),
+    String? dedupKey,
+  }) => NotificationRow(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    actorDid: actorDid ?? this.actorDid,
+    targetRef: targetRef ?? this.targetRef,
+    boardId: boardId.present ? boardId.value : this.boardId,
+    threadId: threadId.present ? threadId.value : this.threadId,
+    postId: postId.present ? postId.value : this.postId,
+    conversationId: conversationId.present
+        ? conversationId.value
+        : this.conversationId,
+    createdAt: createdAt ?? this.createdAt,
+    readAt: readAt.present ? readAt.value : this.readAt,
+    dedupKey: dedupKey ?? this.dedupKey,
+  );
+  NotificationRow copyWithCompanion(NotificationsCompanion data) {
+    return NotificationRow(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      actorDid: data.actorDid.present ? data.actorDid.value : this.actorDid,
+      targetRef: data.targetRef.present ? data.targetRef.value : this.targetRef,
+      boardId: data.boardId.present ? data.boardId.value : this.boardId,
+      threadId: data.threadId.present ? data.threadId.value : this.threadId,
+      postId: data.postId.present ? data.postId.value : this.postId,
+      conversationId: data.conversationId.present
+          ? data.conversationId.value
+          : this.conversationId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
+      dedupKey: data.dedupKey.present ? data.dedupKey.value : this.dedupKey,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationRow(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('actorDid: $actorDid, ')
+          ..write('targetRef: $targetRef, ')
+          ..write('boardId: $boardId, ')
+          ..write('threadId: $threadId, ')
+          ..write('postId: $postId, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('dedupKey: $dedupKey')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    type,
+    actorDid,
+    targetRef,
+    boardId,
+    threadId,
+    postId,
+    conversationId,
+    createdAt,
+    readAt,
+    dedupKey,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationRow &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.actorDid == this.actorDid &&
+          other.targetRef == this.targetRef &&
+          other.boardId == this.boardId &&
+          other.threadId == this.threadId &&
+          other.postId == this.postId &&
+          other.conversationId == this.conversationId &&
+          other.createdAt == this.createdAt &&
+          other.readAt == this.readAt &&
+          other.dedupKey == this.dedupKey);
+}
+
+class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
+  final Value<String> id;
+  final Value<String> type;
+  final Value<String> actorDid;
+  final Value<String> targetRef;
+  final Value<String?> boardId;
+  final Value<String?> threadId;
+  final Value<String?> postId;
+  final Value<String?> conversationId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> readAt;
+  final Value<String> dedupKey;
+  final Value<int> rowid;
+  const NotificationsCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.actorDid = const Value.absent(),
+    this.targetRef = const Value.absent(),
+    this.boardId = const Value.absent(),
+    this.threadId = const Value.absent(),
+    this.postId = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.dedupKey = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotificationsCompanion.insert({
+    required String id,
+    required String type,
+    required String actorDid,
+    required String targetRef,
+    this.boardId = const Value.absent(),
+    this.threadId = const Value.absent(),
+    this.postId = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    required DateTime createdAt,
+    this.readAt = const Value.absent(),
+    required String dedupKey,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       type = Value(type),
+       actorDid = Value(actorDid),
+       targetRef = Value(targetRef),
+       createdAt = Value(createdAt),
+       dedupKey = Value(dedupKey);
+  static Insertable<NotificationRow> custom({
+    Expression<String>? id,
+    Expression<String>? type,
+    Expression<String>? actorDid,
+    Expression<String>? targetRef,
+    Expression<String>? boardId,
+    Expression<String>? threadId,
+    Expression<String>? postId,
+    Expression<String>? conversationId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? readAt,
+    Expression<String>? dedupKey,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (actorDid != null) 'actor_did': actorDid,
+      if (targetRef != null) 'target_ref': targetRef,
+      if (boardId != null) 'board_id': boardId,
+      if (threadId != null) 'thread_id': threadId,
+      if (postId != null) 'post_id': postId,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (readAt != null) 'read_at': readAt,
+      if (dedupKey != null) 'dedup_key': dedupKey,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotificationsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? type,
+    Value<String>? actorDid,
+    Value<String>? targetRef,
+    Value<String?>? boardId,
+    Value<String?>? threadId,
+    Value<String?>? postId,
+    Value<String?>? conversationId,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? readAt,
+    Value<String>? dedupKey,
+    Value<int>? rowid,
+  }) {
+    return NotificationsCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      actorDid: actorDid ?? this.actorDid,
+      targetRef: targetRef ?? this.targetRef,
+      boardId: boardId ?? this.boardId,
+      threadId: threadId ?? this.threadId,
+      postId: postId ?? this.postId,
+      conversationId: conversationId ?? this.conversationId,
+      createdAt: createdAt ?? this.createdAt,
+      readAt: readAt ?? this.readAt,
+      dedupKey: dedupKey ?? this.dedupKey,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (actorDid.present) {
+      map['actor_did'] = Variable<String>(actorDid.value);
+    }
+    if (targetRef.present) {
+      map['target_ref'] = Variable<String>(targetRef.value);
+    }
+    if (boardId.present) {
+      map['board_id'] = Variable<String>(boardId.value);
+    }
+    if (threadId.present) {
+      map['thread_id'] = Variable<String>(threadId.value);
+    }
+    if (postId.present) {
+      map['post_id'] = Variable<String>(postId.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<String>(conversationId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (readAt.present) {
+      map['read_at'] = Variable<DateTime>(readAt.value);
+    }
+    if (dedupKey.present) {
+      map['dedup_key'] = Variable<String>(dedupKey.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationsCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('actorDid: $actorDid, ')
+          ..write('targetRef: $targetRef, ')
+          ..write('boardId: $boardId, ')
+          ..write('threadId: $threadId, ')
+          ..write('postId: $postId, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('dedupKey: $dedupKey, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -27321,6 +27994,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $DidReputationsTable didReputations = $DidReputationsTable(this);
+  late final $NotificationsTable notifications = $NotificationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -27375,6 +28049,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     messengerMailboxCursors,
     murmurEmbeddings,
     didReputations,
+    notifications,
   ];
 }
 
@@ -46850,6 +47525,322 @@ typedef $$DidReputationsTableProcessedTableManager =
       DidReputationRow,
       PrefetchHooks Function()
     >;
+typedef $$NotificationsTableCreateCompanionBuilder =
+    NotificationsCompanion Function({
+      required String id,
+      required String type,
+      required String actorDid,
+      required String targetRef,
+      Value<String?> boardId,
+      Value<String?> threadId,
+      Value<String?> postId,
+      Value<String?> conversationId,
+      required DateTime createdAt,
+      Value<DateTime?> readAt,
+      required String dedupKey,
+      Value<int> rowid,
+    });
+typedef $$NotificationsTableUpdateCompanionBuilder =
+    NotificationsCompanion Function({
+      Value<String> id,
+      Value<String> type,
+      Value<String> actorDid,
+      Value<String> targetRef,
+      Value<String?> boardId,
+      Value<String?> threadId,
+      Value<String?> postId,
+      Value<String?> conversationId,
+      Value<DateTime> createdAt,
+      Value<DateTime?> readAt,
+      Value<String> dedupKey,
+      Value<int> rowid,
+    });
+
+class $$NotificationsTableFilterComposer
+    extends Composer<_$AppDatabase, $NotificationsTable> {
+  $$NotificationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorDid => $composableBuilder(
+    column: $table.actorDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetRef => $composableBuilder(
+    column: $table.targetRef,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get threadId => $composableBuilder(
+    column: $table.threadId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get postId => $composableBuilder(
+    column: $table.postId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dedupKey => $composableBuilder(
+    column: $table.dedupKey,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NotificationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotificationsTable> {
+  $$NotificationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorDid => $composableBuilder(
+    column: $table.actorDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetRef => $composableBuilder(
+    column: $table.targetRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get threadId => $composableBuilder(
+    column: $table.threadId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get postId => $composableBuilder(
+    column: $table.postId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dedupKey => $composableBuilder(
+    column: $table.dedupKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NotificationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotificationsTable> {
+  $$NotificationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get actorDid =>
+      $composableBuilder(column: $table.actorDid, builder: (column) => column);
+
+  GeneratedColumn<String> get targetRef =>
+      $composableBuilder(column: $table.targetRef, builder: (column) => column);
+
+  GeneratedColumn<String> get boardId =>
+      $composableBuilder(column: $table.boardId, builder: (column) => column);
+
+  GeneratedColumn<String> get threadId =>
+      $composableBuilder(column: $table.threadId, builder: (column) => column);
+
+  GeneratedColumn<String> get postId =>
+      $composableBuilder(column: $table.postId, builder: (column) => column);
+
+  GeneratedColumn<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
+
+  GeneratedColumn<String> get dedupKey =>
+      $composableBuilder(column: $table.dedupKey, builder: (column) => column);
+}
+
+class $$NotificationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotificationsTable,
+          NotificationRow,
+          $$NotificationsTableFilterComposer,
+          $$NotificationsTableOrderingComposer,
+          $$NotificationsTableAnnotationComposer,
+          $$NotificationsTableCreateCompanionBuilder,
+          $$NotificationsTableUpdateCompanionBuilder,
+          (
+            NotificationRow,
+            BaseReferences<_$AppDatabase, $NotificationsTable, NotificationRow>,
+          ),
+          NotificationRow,
+          PrefetchHooks Function()
+        > {
+  $$NotificationsTableTableManager(_$AppDatabase db, $NotificationsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotificationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotificationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> actorDid = const Value.absent(),
+                Value<String> targetRef = const Value.absent(),
+                Value<String?> boardId = const Value.absent(),
+                Value<String?> threadId = const Value.absent(),
+                Value<String?> postId = const Value.absent(),
+                Value<String?> conversationId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<String> dedupKey = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotificationsCompanion(
+                id: id,
+                type: type,
+                actorDid: actorDid,
+                targetRef: targetRef,
+                boardId: boardId,
+                threadId: threadId,
+                postId: postId,
+                conversationId: conversationId,
+                createdAt: createdAt,
+                readAt: readAt,
+                dedupKey: dedupKey,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String type,
+                required String actorDid,
+                required String targetRef,
+                Value<String?> boardId = const Value.absent(),
+                Value<String?> threadId = const Value.absent(),
+                Value<String?> postId = const Value.absent(),
+                Value<String?> conversationId = const Value.absent(),
+                required DateTime createdAt,
+                Value<DateTime?> readAt = const Value.absent(),
+                required String dedupKey,
+                Value<int> rowid = const Value.absent(),
+              }) => NotificationsCompanion.insert(
+                id: id,
+                type: type,
+                actorDid: actorDid,
+                targetRef: targetRef,
+                boardId: boardId,
+                threadId: threadId,
+                postId: postId,
+                conversationId: conversationId,
+                createdAt: createdAt,
+                readAt: readAt,
+                dedupKey: dedupKey,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NotificationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotificationsTable,
+      NotificationRow,
+      $$NotificationsTableFilterComposer,
+      $$NotificationsTableOrderingComposer,
+      $$NotificationsTableAnnotationComposer,
+      $$NotificationsTableCreateCompanionBuilder,
+      $$NotificationsTableUpdateCompanionBuilder,
+      (
+        NotificationRow,
+        BaseReferences<_$AppDatabase, $NotificationsTable, NotificationRow>,
+      ),
+      NotificationRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -46973,4 +47964,6 @@ class $AppDatabaseManager {
       $$MurmurEmbeddingsTableTableManager(_db, _db.murmurEmbeddings);
   $$DidReputationsTableTableManager get didReputations =>
       $$DidReputationsTableTableManager(_db, _db.didReputations);
+  $$NotificationsTableTableManager get notifications =>
+      $$NotificationsTableTableManager(_db, _db.notifications);
 }

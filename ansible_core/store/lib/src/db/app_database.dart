@@ -32,6 +32,7 @@ import '../schema/messenger_mailbox_cursors.dart';
 import '../schema/messenger_messages.dart';
 import '../schema/messenger_pre_keys.dart';
 import '../schema/messenger_sessions.dart';
+import '../schema/notifications.dart';
 import '../schema/ops_queue.dart';
 import '../schema/outbound_follow_activities.dart';
 import '../schema/ownership_policies.dart';
@@ -103,13 +104,14 @@ part 'app_database.g.dart';
     MessengerMailboxCursors,
     MurmurEmbeddings,
     DidReputations,
+    Notifications,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -202,6 +204,9 @@ class AppDatabase extends _$AppDatabase {
           hostedBoardProjections,
           hostedBoardProjections.postingPolicyJson,
         );
+      }
+      if (from < 22) {
+        await _createTableIfMissing(m, notifications);
       }
       await _addColumnIfMissing(
         m,

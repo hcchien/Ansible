@@ -2,6 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status: Phase A ✅ implemented 2026-06-13** (store 91 / app 336 tests
+> green). Local projection only, exactly as designed — zero new server
+> surface. Notes: badge lives as a bell + unread count in the board swipe
+> header (`home/board_swipe_header.dart`), refreshed via `_loadData` after
+> every sync pass; dedup keys are `reply:<postId>`, `follower:<actorDid>`,
+> `messenger:<messageId>`; preferences persist via SharedPreferences
+> (`elix-notification-pref.*`). `moderation_outcome` type and Phase B
+> (push) remain open.
+
 **Goal:** Users find out when something happened to them — replies to their
 threads/posts, new followers, new messenger messages, moderation outcomes —
 first in an in-app notification feed, then via privacy-preserving push.
@@ -108,25 +117,25 @@ Elixir/Phoenix (`mix test`) + platform push setup (APNS key, FCM project).
 
 ## Task 1: Local notification store + projector (Phase A)
 
-- [ ] Drift table + repository in `ansible_core/store` with dedup-key upsert
+- [x] Drift table + repository in `ansible_core/store` with dedup-key upsert
       (re-synced ops must not duplicate notifications).
-- [ ] Projector folds during op sync: replies where the parent
+- [x] Projector folds during op sync: replies where the parent
       thread/post author is the local DID (self-replies excluded); follow ops
       targeting the local DID.
-- [ ] Messenger sync emits `messenger_message` notifications for non-blocked
+- [x] Messenger sync emits `messenger_message` notifications for non-blocked
       contacts (reusing existing block/trust checks).
-- [ ] Unit tests: each type, dedup on re-sync, self-action exclusion,
+- [x] Unit tests: each type, dedup on re-sync, self-action exclusion,
       blocked-contact exclusion.
 
 ## Task 2: Notification UI (Phase A)
 
-- [ ] Notification feed screen (actor, type label zh/en, target preview,
+- [x] Notification feed screen (actor, type label zh/en, target preview,
       relative time); tap navigates to thread/post/profile/conversation;
       mark-read on view + mark-all-read.
-- [ ] Unread badge on the home shell tab bar driven by the local count.
-- [ ] Settings: per-category toggles (feeding both the projector and, later,
+- [x] Unread badge on the home shell tab bar driven by the local count.
+- [x] Settings: per-category toggles (feeding both the projector and, later,
       push categories) replacing the placeholder label.
-- [ ] Widget tests: feed render, navigation per type, badge count, toggles.
+- [x] Widget tests: feed render, navigation per type, badge count, toggles.
 
 ## Task 3: Relay — push token registry + wake scheduling (Phase B)
 

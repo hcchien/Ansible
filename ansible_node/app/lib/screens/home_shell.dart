@@ -38,11 +38,14 @@ import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
+import '../services/notification_preferences_controller.dart';
+import '../services/notification_projector.dart';
 import '../services/relay_discovery_client.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/relay_ops_client.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
+import 'notifications_screen.dart';
 import 'sync_settings_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
@@ -105,6 +108,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final MessengerRelayClient _messengerRelayClient;
   late final MessengerDeviceService _messengerDeviceService;
   late final MessengerSyncService _messengerSyncService;
+  late final store.NotificationRepository _notificationRepo;
+  late final NotificationPreferencesController _notificationPrefs;
+  late final NotificationProjector _notificationProjector;
+  int _notificationUnreadCount = 0;
   late final MessengerContactResolver _messengerContactResolver;
   late final ContactResolver _contactResolver;
   late final DriftRemoteNodeRepository _remoteNodeRepo;
@@ -176,6 +183,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       repository: _messengerRepo,
       relayClient: _messengerRelayClient,
     );
+    _notificationRepo = store.DriftNotificationRepository(widget.db);
+    _notificationPrefs = NotificationPreferencesController();
+    _notificationProjector = NotificationProjector(
+      notifications: _notificationRepo,
+      localDid: widget.did,
+      threadRepository: _threadRepo,
+      postRepository: _postRepo,
+      contactRepository: _contactRepo,
+      isCategoryEnabled: _notificationPrefs.categoryEnabled,
+    );
     _messengerSyncService = MessengerSyncService(
       repository: _messengerRepo,
       contactRepository: _contactRepo,
@@ -183,6 +200,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       relayClient: _messengerRelayClient,
       crypto: _messengerDeviceService.crypto,
       didSigner: DidSignerImpl(),
+      notificationProjector: _notificationProjector,
     );
     _messengerContactResolver = MessengerContactResolver(
       relayClient: _messengerRelayClient,
@@ -264,6 +282,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
+    unawaited(_refreshNotificationUnread());
     final l10n = context.l10n;
     await ContactSourceSyncService(
       followRepository: _followRepo,
@@ -952,6 +971,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       orElse: () => forumHosts.first,
     );
     final title = result['title']!;
+    final minPostTier = result['minPostTier'];
+    final postingPolicy = minPostTier == null
+        ? null
+        : <String, Object?>{'min_post_tier': minPostTier};
     final intentId = _uuid.v4();
     final createdAt = now.toUtc();
     final expiresAt = createdAt.add(const Duration(minutes: 5));
@@ -961,6 +984,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       targetForumHost: forumHost.url,
       title: title,
       description: result['description'],
+      postingPolicy: postingPolicy,
       createdAt: createdAt,
       expiresAt: expiresAt,
     );
@@ -979,6 +1003,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             signature: signature,
             title: title,
             description: result['description'],
+            postingPolicy: postingPolicy,
             createdAt: createdAt,
             expiresAt: expiresAt,
           ),
@@ -1013,6 +1038,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           permissions: Map<String, Object?>.from(
             remoteBoard['permissions'] as Map? ??
                 const {'read': true, 'write': true},
+          ),
+          postingPolicy: Map<String, Object?>.from(
+            remoteBoard['posting_policy'] as Map? ?? postingPolicy ?? const {},
           ),
           createdAt: now,
           updatedAt: now,
@@ -1172,10 +1200,28 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       contactRepository: _contactRepo,
       didReputationRepo: _didReputationRepo,
       followerDid: widget.did,
+      notificationProjector: _notificationProjector,
       opsQueueRepo: _opsQueueRepo,
       opsDispatchService: _opsDispatchService,
       signingBridge: const SchnorrSigningBridge(),
     );
+  }
+
+  /// Badge truth is local: the unread count comes from the device's
+  /// notifications table, never a server.
+  Future<void> _refreshNotificationUnread() async {
+    final count = await _notificationRepo.unreadCount();
+    if (!mounted || count == _notificationUnreadCount) return;
+    setState(() => _notificationUnreadCount = count);
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NotificationsScreen(db: widget.db, did: widget.did),
+      ),
+    );
+    await _refreshNotificationUnread();
   }
 
   void _handleNetworkStatusChanged() {
@@ -1478,6 +1524,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onFlushPendingOps: _flushPendingOps,
                 onSync: () => _runHeaderSync(),
                 syncing: _syncing,
+                notificationUnreadCount: _notificationUnreadCount,
+                onOpenNotifications: _openNotifications,
                 atProtoClient: _atProtoClient,
                 onClearIdentity: widget.onClearIdentity,
                 loading: _loading,

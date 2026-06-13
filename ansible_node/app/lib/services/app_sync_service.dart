@@ -3,6 +3,7 @@ import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 
 import 'content_publication_service.dart';
+import 'notification_projector.dart';
 import 'nostr_publication_service.dart';
 import 'nostr_relay_settings_store.dart';
 import 'ops_dispatch_service.dart';
@@ -73,6 +74,7 @@ class AppSyncService {
     ContactRepository? contactRepository,
     DidReputationRepository? didReputationRepo,
     String? followerDid,
+    NotificationProjector? notificationProjector,
     OpsQueueRepository? opsQueueRepo,
     OpsDispatchService? opsDispatchService,
     NostrSigningBridge signingBridge = const SchnorrSigningBridge(),
@@ -85,6 +87,7 @@ class AppSyncService {
        _contactRepository = contactRepository,
        _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
+       _notificationProjector = notificationProjector,
        _opsQueueRepo = opsQueueRepo,
        _opsDispatchService = opsDispatchService,
        _boardSyncConfigRepo = boardSyncConfigRepo,
@@ -107,6 +110,7 @@ class AppSyncService {
   final ContactRepository? _contactRepository;
   final DidReputationRepository? _didReputationRepo;
   final String? _followerDid;
+  final NotificationProjector? _notificationProjector;
   final OpsQueueRepository? _opsQueueRepo;
   final OpsDispatchService? _opsDispatchService;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
@@ -358,6 +362,7 @@ class AppSyncService {
         contentItemRepo: _contentItemRepo,
         didReputationRepo: _didReputationRepo,
         followerDid: _followerDid,
+        notificationProjector: _notificationProjector,
         identityClient: _identityClient,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);
       if (result.success) {

@@ -8,9 +8,11 @@ import '../services/reading_preferences_controller.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import '../services/notification_preferences_controller.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'inbox_screen.dart';
+import 'notification_settings_screen.dart';
 import 'edit_profile_screen.dart';
 import 'reading_preferences_screen.dart';
 import 'sync_settings_screen.dart';
@@ -241,13 +243,7 @@ class SettingsHomeScreen extends StatelessWidget {
                   );
                 },
               ),
-              AnsibleSettingsRow(
-                glyph: '◇',
-                label: text.notifications,
-                en: 'NOTIFICATIONS',
-                sub: text.notificationsSubtitle,
-                value: text.light,
-              ),
+              _NotificationSettingsRow(text: text),
               AnsibleSettingsRow(
                 glyph: 'A',
                 label: text.readingPreferences,
@@ -876,6 +872,64 @@ class _LanguageOptionRow extends StatelessWidget {
   }
 }
 
+class _NotificationSettingsRow extends StatefulWidget {
+  const _NotificationSettingsRow({required this.text});
+
+  final _SettingsText text;
+
+  @override
+  State<_NotificationSettingsRow> createState() =>
+      _NotificationSettingsRowState();
+}
+
+class _NotificationSettingsRowState extends State<_NotificationSettingsRow> {
+  static const _store = SharedPreferencesNotificationPreferencesStore();
+  late Future<int> _enabledCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _enabledCount = _loadEnabledCount();
+  }
+
+  Future<int> _loadEnabledCount() async {
+    var enabled = 0;
+    for (final category in NotificationCategory.values) {
+      if (await _store.loadEnabled(category) ?? true) enabled += 1;
+    }
+    return enabled;
+  }
+
+  Future<void> _openNotificationSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+    );
+    if (!mounted) return;
+    setState(() {
+      _enabledCount = _loadEnabledCount();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = NotificationCategory.values.length;
+    return FutureBuilder<int>(
+      future: _enabledCount,
+      builder: (context, snapshot) {
+        return AnsibleSettingsRow(
+          key: const Key('settings_notifications_row'),
+          glyph: '◇',
+          label: widget.text.notifications,
+          en: 'NOTIFICATIONS',
+          sub: widget.text.notificationsSubtitle,
+          value: '${snapshot.data ?? total}/$total',
+          onTap: _openNotificationSettings,
+        );
+      },
+    );
+  }
+}
+
 class _BlockedListSettingsRow extends StatefulWidget {
   const _BlockedListSettingsRow({
     required this.db,
@@ -993,7 +1047,6 @@ class _SettingsText {
   String get notifications => l10n?.notifications ?? '通知';
   String get notificationsSubtitle =>
       l10n?.notificationsSubtitle ?? '決定哪些事會打擾你';
-  String get light => l10n?.light ?? '輕';
   String get readingPreferences => l10n?.readingPreferences ?? '閱讀偏好';
   String get readingPreferencesSubtitle =>
       l10n?.readingPreferencesSubtitle ?? '字級、行距、主題';

@@ -5,6 +5,7 @@ import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:http/http.dart' as http;
 
+import 'notification_projector.dart';
 import 'op_signature_payload.dart';
 import 'relay_identity_client.dart';
 
@@ -299,6 +300,11 @@ class RemoteSyncService {
   final ContentItemRepository? _contentItemRepo;
   final DidReputationRepository? _didReputationRepo;
   final String? _followerDid;
+  // Optional local notification projection (Phase A): folds trusted incoming
+  // ops into the local notifications table. Pure local projection — adds no
+  // server request and runs before board filtering so follow ops (which have
+  // no board) still notify.
+  final NotificationProjector? _notificationProjector;
   final RemoteOpSignatureVerifier _opSignatureVerifier;
   final DateTime Function() _now;
 
@@ -313,6 +319,7 @@ class RemoteSyncService {
     ContentItemRepository? contentItemRepo,
     DidReputationRepository? didReputationRepo,
     String? followerDid,
+    NotificationProjector? notificationProjector,
     RemoteOpSignatureVerifier? opSignatureVerifier,
     RelayIdentityClient? identityClient,
     DateTime Function()? now,
@@ -326,6 +333,7 @@ class RemoteSyncService {
        _contentItemRepo = contentItemRepo,
        _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
+       _notificationProjector = notificationProjector,
        _opSignatureVerifier =
            opSignatureVerifier ??
            RemoteOpSignatureVerifier(
@@ -396,6 +404,11 @@ class RemoteSyncService {
         });
 
         for (final entry in delta.activities) {
+          // Local notification projection first: replies to the local user's
+          // threads/posts and follows targeting the local DID must notify even
+          // when the op is filtered out below (e.g. follow ops have no board).
+          // Dedup-keyed, so re-synced ops never duplicate.
+          await _notificationProjector?.onSyncedActivity(entry.activity);
           final hostedRoute = _routeHostedActivity(
             entry.activity,
             hostedSubscriptionByBoardId,

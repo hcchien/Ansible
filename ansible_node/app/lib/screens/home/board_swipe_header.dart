@@ -24,6 +24,8 @@ class BoardSwipeHeader extends StatelessWidget {
     required this.forumPostCount,
     this.onOpenPreferences,
     this.onOpenSettings,
+    this.onOpenNotifications,
+    this.notificationUnreadCount = 0,
   });
 
   final PageController pageController;
@@ -39,6 +41,11 @@ class BoardSwipeHeader extends StatelessWidget {
   final int forumPostCount;
   final VoidCallback? onOpenPreferences;
   final VoidCallback? onOpenSettings;
+
+  /// Opens the notification feed; when set, a bell icon (with the unread
+  /// count from the local notifications table) joins the icon cluster.
+  final VoidCallback? onOpenNotifications;
+  final int notificationUnreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +109,12 @@ class BoardSwipeHeader extends StatelessWidget {
 
                   // Right-side icon buttons (settings, optional preferences).
                   final iconButtons = <Widget>[
+                    if (onOpenNotifications != null)
+                      _NotificationBell(
+                        unreadCount: notificationUnreadCount,
+                        color: faintColor,
+                        onPressed: onOpenNotifications!,
+                      ),
                     if (onOpenPreferences != null)
                       IconButton(
                         key: const Key('screen_style_button'),
@@ -439,6 +452,69 @@ class BoardSwipeHeader extends StatelessWidget {
     const weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     final weekday = weekdays[now.weekday - 1];
     return '${now.year}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')} $weekday';
+  }
+}
+
+/// Bell icon with the local unread-notification count. Badge truth is local:
+/// the count comes from the device's notifications table, never a server.
+class _NotificationBell extends StatelessWidget {
+  const _NotificationBell({
+    required this.unreadCount,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final int unreadCount;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          key: const Key('notifications_button'),
+          onPressed: onPressed,
+          icon: const Icon(Icons.notifications_none, size: 23),
+          color: color,
+          tooltip: context.uiCopy(zh: '通知', en: 'Notifications'),
+          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+          padding: EdgeInsets.zero,
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            top: 6,
+            right: 4,
+            child: IgnorePointer(
+              child: Container(
+                key: const Key('notifications_unread_badge'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4.5,
+                  vertical: 1.5,
+                ),
+                decoration: BoxDecoration(
+                  color: AnsibleDesign.ochre,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                constraints: const BoxConstraints(minWidth: 15),
+                child: Text(
+                  unreadCount > 99 ? '99+' : '$unreadCount',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 8.5,
+                    height: 1.2,
+                    letterSpacing: 0.2,
+                    color: AnsibleDesign.paper,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
