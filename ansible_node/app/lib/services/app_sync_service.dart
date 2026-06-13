@@ -3,6 +3,7 @@ import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 
 import 'content_publication_service.dart';
+import 'host_moderation_sync_service.dart';
 import 'notification_projector.dart';
 import 'nostr_publication_service.dart';
 import 'nostr_relay_settings_store.dart';
@@ -75,6 +76,7 @@ class AppSyncService {
     DidReputationRepository? didReputationRepo,
     String? followerDid,
     NotificationProjector? notificationProjector,
+    HostModerationSyncService? hostModerationSync,
     OpsQueueRepository? opsQueueRepo,
     OpsDispatchService? opsDispatchService,
     NostrSigningBridge signingBridge = const SchnorrSigningBridge(),
@@ -88,6 +90,7 @@ class AppSyncService {
        _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
        _notificationProjector = notificationProjector,
+       _hostModerationSync = hostModerationSync,
        _opsQueueRepo = opsQueueRepo,
        _opsDispatchService = opsDispatchService,
        _boardSyncConfigRepo = boardSyncConfigRepo,
@@ -111,6 +114,7 @@ class AppSyncService {
   final DidReputationRepository? _didReputationRepo;
   final String? _followerDid;
   final NotificationProjector? _notificationProjector;
+  final HostModerationSyncService? _hostModerationSync;
   final OpsQueueRepository? _opsQueueRepo;
   final OpsDispatchService? _opsDispatchService;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
@@ -369,6 +373,15 @@ class AppSyncService {
         pulledActivities += result.activitiesProcessed;
       } else {
         pullErrors.add('${node.name}: ${result.errorMessage}');
+      }
+      // After the node's op pull: refresh the host moderation overlay for
+      // its subscribed hosted boards. Strictly best-effort — the service
+      // swallows its own errors, and the extra guard here keeps any future
+      // surprise from ever failing a sync pass.
+      try {
+        await _hostModerationSync?.syncForNode(node);
+      } catch (_) {
+        // Never let the moderation overlay break sync.
       }
     }
     return RelayPullSummary(

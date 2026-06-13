@@ -22,6 +22,7 @@ import '../schema/follow_activity_events.dart';
 import '../schema/follow_edges.dart';
 import '../schema/follow_targets.dart';
 import '../schema/forum_hosts.dart';
+import '../schema/host_moderation_states.dart';
 import '../schema/hosted_board_projections.dart';
 import '../schema/identities.dart';
 import '../schema/identity_bindings.dart';
@@ -105,13 +106,14 @@ part 'app_database.g.dart';
     MurmurEmbeddings,
     DidReputations,
     Notifications,
+    HostModerationStates,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -207,6 +209,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 22) {
         await _createTableIfMissing(m, notifications);
+      }
+      if (from < 23) {
+        await _createTableIfMissing(m, hostModerationStates);
       }
       await _addColumnIfMissing(
         m,

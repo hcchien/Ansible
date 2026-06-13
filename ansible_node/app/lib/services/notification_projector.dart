@@ -95,6 +95,45 @@ class NotificationProjector {
     }
   }
 
+  /// Folds one **new** host-moderation entry whose target the local user
+  /// authored (discovered by the moderation-state snapshot diff) into a
+  /// `moderation_outcome` notification.
+  ///
+  /// Constitution note (Base Rule 6): the affected author MUST be able to
+  /// see the action and its reason, so this category is always-on — there is
+  /// deliberately no category toggle gating it. Dedup key
+  /// `moderation:<action>:<targetRef>` makes re-applied snapshots a no-op.
+  Future<void> onModerationOutcome({
+    required String targetKind,
+    required String targetRef,
+    required String boardId,
+    String? threadId,
+    required String reasonCode,
+    required String action,
+    DateTime? occurredAt,
+  }) async {
+    try {
+      final dedupKey = 'moderation:$action:$targetRef';
+      await _notifications.upsertByDedupKey(
+        AppNotification(
+          id: dedupKey,
+          type: NotificationType.moderationOutcome,
+          // The public moderation state carries no moderator DID — the actor
+          // is "the board moderators", rendered as such in the feed.
+          actorDid: '',
+          targetRef: targetRef,
+          boardId: boardId,
+          threadId: threadId ?? (targetKind == 'thread' ? targetRef : null),
+          postId: targetKind == 'post' ? targetRef : null,
+          createdAt: occurredAt ?? _now(),
+          dedupKey: dedupKey,
+        ),
+      );
+    } catch (_) {
+      // Best-effort; never let notifications break sync.
+    }
+  }
+
   Future<void> _onPostCreated(Activity activity) async {
     final parentPostId = activity.payload['parentPostId'] as String?;
 

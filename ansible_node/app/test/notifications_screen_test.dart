@@ -114,6 +114,65 @@ void main() {
     expect(await repo.unreadCount(), 0);
   });
 
+  testWidgets('renders a moderation outcome with the reason from the synced '
+      'state', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    // The reason comes from the synced host moderation overlay.
+    await DriftHostModerationStateRepository(db).replaceForBoard('board-1', [
+      HostModerationState(
+        localBoardId: 'board-1',
+        targetKind: 'post',
+        targetRef: 'post-1',
+        action: 'removed',
+        reasonCode: 'spam',
+        updatedAt: DateTime.utc(2026, 6, 13),
+      ),
+    ]);
+    final repo = InMemoryNotificationRepository();
+    await repo.upsertByDedupKey(
+      AppNotification(
+        id: 'moderation:removed:post-1',
+        type: NotificationType.moderationOutcome,
+        actorDid: '',
+        targetRef: 'post-1',
+        boardId: 'board-1',
+        threadId: 'thread-1',
+        postId: 'post-1',
+        createdAt: DateTime.utc(2026, 6, 13),
+        dedupKey: 'moderation:removed:post-1',
+      ),
+    );
+
+    await pumpScreen(tester, db, repo);
+
+    expect(find.text('板務'), findsOneWidget);
+    expect(find.text('你的內容已被板務處理（垃圾訊息）'), findsOneWidget);
+  });
+
+  testWidgets('renders a generic moderation label when the state entry is '
+      'gone', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final repo = InMemoryNotificationRepository();
+    await repo.upsertByDedupKey(
+      AppNotification(
+        id: 'moderation:locked:thread-1',
+        type: NotificationType.moderationOutcome,
+        actorDid: '',
+        targetRef: 'thread-1',
+        boardId: 'board-1',
+        threadId: 'thread-1',
+        createdAt: DateTime.utc(2026, 6, 13),
+        dedupKey: 'moderation:locked:thread-1',
+      ),
+    );
+
+    await pumpScreen(tester, db, repo);
+
+    expect(find.text('你的內容已被板務處理'), findsOneWidget);
+  });
+
   testWidgets('settings toggles persist per category', (tester) async {
     final store = InMemoryNotificationPreferencesStore();
     final controller = NotificationPreferencesController(store: store);

@@ -2,6 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
+import '../l10n/moderation_copy.dart';
 import '../services/messenger_sync_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -41,9 +42,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationRepository _repo;
   late final DriftThreadRepository _threadRepo;
   late final DriftContactRepository _contactRepo;
+  late final DriftHostModerationStateRepository _moderationRepo;
 
   List<AppNotification> _notifications = const [];
   Map<String, ContactRecord> _actorContacts = const {};
+
+  /// notification id → moderation reason code, looked up from the synced
+  /// host moderation overlay (the notification row itself carries no reason).
+  Map<String, String> _moderationReasons = const {};
   bool _loading = true;
 
   @override
@@ -52,6 +58,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _repo = widget.repository ?? DriftNotificationRepository(widget.db);
     _threadRepo = DriftThreadRepository(widget.db);
     _contactRepo = DriftContactRepository(widget.db);
+    _moderationRepo = DriftHostModerationStateRepository(widget.db);
     _load();
   }
 
@@ -59,13 +66,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final notifications = await _repo.list();
     final contacts = <String, ContactRecord>{};
     for (final did in notifications.map((n) => n.actorDid).toSet()) {
+      if (did.isEmpty) continue;
       final contact = await _contactRepo.contactForDid(did);
       if (contact != null) contacts[did] = contact;
+    }
+    final moderationReasons = <String, String>{};
+    for (final notification in notifications.where(
+      (n) => n.type == NotificationType.moderationOutcome,
+    )) {
+      final targetKind = notification.postId != null
+          ? HostModerationState.targetKindPost
+          : HostModerationState.targetKindThread;
+      final entry = await _moderationRepo.entryFor(
+        targetKind,
+        notification.targetRef,
+      );
+      if (entry != null) moderationReasons[notification.id] = entry.reasonCode;
     }
     if (!mounted) return;
     setState(() {
       _notifications = notifications;
       _actorContacts = contacts;
+      _moderationReasons = moderationReasons;
       _loading = false;
     });
   }
@@ -97,6 +119,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         break;
       case NotificationType.messengerMessage:
         await _openConversation(notification);
+        break;
+      case NotificationType.moderationOutcome:
+        // Navigate to the thread context, like replies do.
+        await _openThread(notification);
         break;
     }
     if (mounted) await _load();
@@ -145,7 +171,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  String _actorLabel(AppNotification notification) {
+  String _actorLabel(BuildContext context, AppNotification notification) {
+    if (notification.type == NotificationType.moderationOutcome) {
+      // Public moderation state carries no moderator DID by design.
+      return context.uiCopy(zh: '板務', en: 'Board moderators');
+    }
     final contact = _actorContacts[notification.actorDid];
     if (contact != null) return contact.label;
     return _shortDid(notification.actorDid);
@@ -156,8 +186,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return '${did.substring(0, 14)}…${did.substring(did.length - 4)}';
   }
 
-  String _typeLabel(BuildContext context, NotificationType type) {
-    return switch (type) {
+  String _typeLabel(BuildContext context, AppNotification notification) {
+    return switch (notification.type) {
       NotificationType.replyToThread => context.uiCopy(
         zh: '回覆了你的討論串',
         en: 'replied to your thread',
@@ -174,7 +204,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         zh: '傳來一則私訊',
         en: 'sent you a message',
       ),
+      NotificationType.moderationOutcome => _moderationOutcomeLabel(
+        context,
+        notification,
+      ),
     };
+  }
+
+  String _moderationOutcomeLabel(
+    BuildContext context,
+    AppNotification notification,
+  ) {
+    final reasonCode = _moderationReasons[notification.id];
+    if (reasonCode == null) {
+      return context.uiCopy(
+        zh: '你的內容已被板務處理',
+        en: 'Your content was moderated',
+      );
+    }
+    final reason = moderationReasonLabel(context, reasonCode);
+    return context.uiCopy(
+      zh: '你的內容已被板務處理（$reason）',
+      en: 'Your content was moderated ($reason)',
+    );
   }
 
   String _typeGlyph(NotificationType type) {
@@ -183,6 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       NotificationType.replyToPost => '↩',
       NotificationType.newFollower => '◎',
       NotificationType.messengerMessage => '✉',
+      NotificationType.moderationOutcome => '⚑',
     };
   }
 
@@ -238,8 +291,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 return _NotificationRow(
                   key: Key('notification_row_${notification.id}'),
                   glyph: _typeGlyph(notification.type),
-                  actorLabel: _actorLabel(notification),
-                  typeLabel: _typeLabel(context, notification.type),
+                  actorLabel: _actorLabel(context, notification),
+                  typeLabel: _typeLabel(context, notification),
                   timeLabel: _relativeTime(context, notification.createdAt),
                   unread: !notification.isRead,
                   onTap: () => _openNotification(notification),

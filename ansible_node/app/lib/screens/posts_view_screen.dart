@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
+import '../l10n/moderation_copy.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/forum_host_client.dart';
 import '../services/ops_dispatch_service.dart';
@@ -48,6 +49,12 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   /// only possible for hosted content (local-only boards have no moderator).
   HostedBoardProjection? _hostedProjection;
 
+  /// Host moderation overlay (synced snapshot): the lock entry for this
+  /// thread, if any, and removal entries keyed by post id. Host-scoped
+  /// projection only — local content rows are never touched.
+  HostModerationState? _threadLock;
+  Map<String, HostModerationState> _removedByPostId = const {};
+
   String get _authorDid => widget.authorDid ?? widget.thread.authorId;
 
   @override
@@ -64,10 +71,27 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       widget.db,
     ).getProjectionByLocalBoardId(widget.thread.boardId);
     final postingBlocked = await _checkPostingGate(projection);
+    final moderationEntries = await DriftHostModerationStateRepository(
+      widget.db,
+    ).listForBoard(widget.thread.boardId);
+    HostModerationState? threadLock;
+    final removedByPostId = <String, HostModerationState>{};
+    for (final entry in moderationEntries) {
+      if (entry.targetKind == HostModerationState.targetKindThread &&
+          entry.targetRef == widget.thread.id &&
+          entry.action == HostModerationState.actionLocked) {
+        threadLock = entry;
+      } else if (entry.targetKind == HostModerationState.targetKindPost &&
+          entry.action == HostModerationState.actionRemoved) {
+        removedByPostId[entry.targetRef] = entry;
+      }
+    }
     setState(() {
       _posts = posts;
       _hostedProjection = projection;
       _postingBlocked = postingBlocked;
+      _threadLock = threadLock;
+      _removedByPostId = removedByPostId;
       _isLoading = false;
     });
   }
@@ -286,6 +310,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                if (_threadLock != null)
+                  _threadLockedBanner(context, _threadLock!),
                 Expanded(
                   child: _posts.isEmpty
                       ? Center(
@@ -318,6 +344,19 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                           itemCount: _posts.length,
                           itemBuilder: (context, index) {
                             final post = _posts[index];
+                            final removal = _removedByPostId[post.id];
+                            // Removed on the host: others see a reason-coded
+                            // tombstone; the author keeps their content and
+                            // sees why (constitution Base Rule 6 — the local
+                            // copy is never deleted).
+                            if (removal != null &&
+                                post.authorId != _authorDid) {
+                              return _removedPostTombstone(
+                                context,
+                                post,
+                                removal,
+                              );
+                            }
                             return Card(
                               margin: const EdgeInsets.only(bottom: 16),
                               child: Padding(
@@ -427,6 +466,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 12),
+                                    if (removal != null) ...[
+                                      _ownPostRemovalNotice(context, removal),
+                                      const SizedBox(height: 12),
+                                    ],
                                     Text(post.content),
                                   ],
                                 ),
@@ -444,7 +487,11 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                   ),
                   padding: const EdgeInsets.all(16),
                   child: SafeArea(
-                    child: _postingBlocked
+                    // A host lock wins over the tier gate: no reply UI at
+                    // all while the thread is locked.
+                    child: _threadLock != null
+                        ? _lockedComposerNotice(context, _threadLock!)
+                        : _postingBlocked
                         ? PostingGateNotice(
                             localDid: _authorDid,
                             onUpgradeCompleted: _loadPosts,
@@ -463,6 +510,150 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  /// Reason-coded banner shown to everyone while the host has this thread
+  /// locked.
+  Widget _threadLockedBanner(BuildContext context, HostModerationState lock) {
+    final reason = moderationReasonLabel(context, lock.reasonCode);
+    return Container(
+      key: const Key('thread_locked_banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: AnsibleDesign.paperDeep,
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.lock_outline,
+            size: 16,
+            color: AnsibleDesign.inkMuted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              context.uiCopy(
+                zh: '此討論串已被板務鎖定（$reason），暫停回覆',
+                en: 'This thread was locked by the board moderators '
+                    '($reason); replies are paused',
+              ),
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Replaces the reply composer while the thread is locked.
+  Widget _lockedComposerNotice(
+    BuildContext context,
+    HostModerationState lock,
+  ) {
+    final reason = moderationReasonLabel(context, lock.reasonCode);
+    return Container(
+      key: const Key('thread_locked_composer'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paperDeep,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.lock_outline,
+            size: 16,
+            color: AnsibleDesign.inkMuted,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              context.uiCopy(
+                zh: '討論串已鎖定（$reason），無法發表新貼文',
+                en: 'Thread locked ($reason) — new posts are disabled',
+              ),
+              style: const TextStyle(color: AnsibleDesign.inkMuted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Tombstone shown in place of someone else's removed post: content
+  /// hidden, reason visible.
+  Widget _removedPostTombstone(
+    BuildContext context,
+    Post post,
+    HostModerationState removal,
+  ) {
+    final reason = moderationReasonLabel(context, removal.reasonCode);
+    return Card(
+      key: Key('removed_post_tombstone_${post.id}'),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.visibility_off_outlined,
+              size: 18,
+              color: AnsibleDesign.inkFaint,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                context.uiCopy(
+                  zh: '此留言已被板務移除（$reason）',
+                  en: 'This post was removed by the board moderators '
+                      '($reason)',
+                ),
+                style: const TextStyle(
+                  color: AnsibleDesign.inkMuted,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Removal notice on the author's own post: their content stays visible
+  /// (the host removed its board projection, never the local copy) and the
+  /// reason is shown — constitution-mandated author visibility.
+  Widget _ownPostRemovalNotice(
+    BuildContext context,
+    HostModerationState removal,
+  ) {
+    final reason = moderationReasonLabel(context, removal.reasonCode);
+    return Container(
+      key: Key('own_post_removal_notice_${removal.targetRef}'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paperDeep,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        context.uiCopy(
+          zh: '你的留言已被板務移除（$reason）。其他人看不到這則內容；你的本地副本不受影響。',
+          en: 'Your post was removed by the board moderators ($reason). '
+              'Others no longer see it; your local copy is untouched.',
+        ),
+        style: const TextStyle(fontSize: 12.5, color: AnsibleDesign.inkMuted),
+      ),
     );
   }
 

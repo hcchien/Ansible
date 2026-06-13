@@ -6,6 +6,84 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('fetchBoardModerationState parses the public state lists', () async {
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(
+          request.url.toString(),
+          'http://relay.local/api/v1/forum-host/boards/hosted-1/moderation-state',
+        );
+
+        return http.Response(
+          jsonEncode({
+            'removed_posts': [
+              {'target_ref': 'post-1', 'reason_code': 'spam'},
+              {'target_ref': 'post-2', 'reason_code': 'harassment'},
+            ],
+            'locked_threads': [
+              {'thread_id': 'thread-1', 'reason_code': 'off_topic'},
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+
+    final state = await client.fetchBoardModerationState('hosted-1');
+
+    expect(state.removedPosts, hasLength(2));
+    expect(state.removedPosts.first.targetRef, 'post-1');
+    expect(state.removedPosts.first.reasonCode, 'spam');
+    expect(state.lockedThreads, hasLength(1));
+    expect(state.lockedThreads.single.targetRef, 'thread-1');
+    expect(state.lockedThreads.single.reasonCode, 'off_topic');
+  });
+
+  test('fetchBoardModerationState tolerates empty/malformed lists', () async {
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'removed_posts': [
+              {'target_ref': '', 'reason_code': 'spam'},
+              {'reason_code': 'spam'},
+            ],
+            'locked_threads': null,
+          }),
+          200,
+        ),
+      ),
+    );
+
+    final state = await client.fetchBoardModerationState('hosted-1');
+
+    expect(state.removedPosts, isEmpty);
+    expect(state.lockedThreads, isEmpty);
+  });
+
+  test('fetchBoardModerationState surfaces unknown_board errors', () async {
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient(
+        (_) async => http.Response(jsonEncode({'error': 'unknown_board'}), 404),
+      ),
+    );
+
+    await expectLater(
+      client.fetchBoardModerationState('missing'),
+      throwsA(
+        isA<ForumHostException>().having(
+          (e) => e.error,
+          'error',
+          'unknown_board',
+        ),
+      ),
+    );
+  });
+
   test('getHostInfo reads Forum Host metadata', () async {
     final client = ForumHostClient(
       baseUrl: 'http://relay.local/root',

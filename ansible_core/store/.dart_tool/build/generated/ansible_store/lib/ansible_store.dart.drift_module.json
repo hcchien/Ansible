@@ -22,6 +22,7 @@
     "package:ansible_store/src/entities/follow_activity_event.dart",
     "package:ansible_store/src/entities/outbound_follow_activity.dart",
     "package:ansible_store/src/entities/notification.dart",
+    "package:ansible_store/src/entities/host_moderation_state.dart",
     "package:ansible_store/src/entities/identity.dart",
     "package:ansible_store/src/entities/ops_queue.dart",
     "package:ansible_store/src/entities/wallet_credential.dart",
@@ -66,6 +67,7 @@
     "package:ansible_store/src/repositories/messenger_repository.dart",
     "package:ansible_store/src/repositories/contact_repository.dart",
     "package:ansible_store/src/repositories/notification_repository.dart",
+    "package:ansible_store/src/repositories/host_moderation_state_repository.dart",
     "package:ansible_store/src/crdt/crdt_op_builder.dart",
     "package:ansible_store/src/repositories/in_memory/in_memory_board_repository.dart",
     "package:ansible_store/src/repositories/in_memory/in_memory_forum_host_repository.dart",
@@ -91,6 +93,7 @@
     "package:ansible_store/src/repositories/in_memory/in_memory_context_pack_repository.dart",
     "package:ansible_store/src/repositories/in_memory/in_memory_summary_job_repository.dart",
     "package:ansible_store/src/repositories/in_memory/in_memory_notification_repository.dart",
+    "package:ansible_store/src/repositories/in_memory/in_memory_host_moderation_state_repository.dart",
     "package:ansible_store/src/repositories/drift/drift_board_repository.dart",
     "package:ansible_store/src/repositories/drift/drift_forum_host_repository.dart",
     "package:ansible_store/src/repositories/drift/drift_hosted_board_repository.dart",
@@ -119,6 +122,7 @@
     "package:ansible_store/src/repositories/drift/drift_messenger_repository.dart",
     "package:ansible_store/src/repositories/drift/drift_contact_repository.dart",
     "package:ansible_store/src/repositories/drift/drift_notification_repository.dart",
+    "package:ansible_store/src/repositories/drift/drift_host_moderation_state_repository.dart",
     "package:ansible_store/src/repositories/murmur_embedding_repository.dart",
     "package:ansible_store/src/db/app_database.dart"
   ]

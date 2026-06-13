@@ -27902,6 +27902,445 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRow> {
   }
 }
 
+class $HostModerationStatesTable extends HostModerationStates
+    with TableInfo<$HostModerationStatesTable, HostModerationStateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HostModerationStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _localBoardIdMeta = const VerificationMeta(
+    'localBoardId',
+  );
+  @override
+  late final GeneratedColumn<String> localBoardId = GeneratedColumn<String>(
+    'local_board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetKindMeta = const VerificationMeta(
+    'targetKind',
+  );
+  @override
+  late final GeneratedColumn<String> targetKind = GeneratedColumn<String>(
+    'target_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetRefMeta = const VerificationMeta(
+    'targetRef',
+  );
+  @override
+  late final GeneratedColumn<String> targetRef = GeneratedColumn<String>(
+    'target_ref',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonCodeMeta = const VerificationMeta(
+    'reasonCode',
+  );
+  @override
+  late final GeneratedColumn<String> reasonCode = GeneratedColumn<String>(
+    'reason_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    localBoardId,
+    targetKind,
+    targetRef,
+    action,
+    reasonCode,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'host_moderation_states';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HostModerationStateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('local_board_id')) {
+      context.handle(
+        _localBoardIdMeta,
+        localBoardId.isAcceptableOrUnknown(
+          data['local_board_id']!,
+          _localBoardIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localBoardIdMeta);
+    }
+    if (data.containsKey('target_kind')) {
+      context.handle(
+        _targetKindMeta,
+        targetKind.isAcceptableOrUnknown(data['target_kind']!, _targetKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetKindMeta);
+    }
+    if (data.containsKey('target_ref')) {
+      context.handle(
+        _targetRefMeta,
+        targetRef.isAcceptableOrUnknown(data['target_ref']!, _targetRefMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetRefMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('reason_code')) {
+      context.handle(
+        _reasonCodeMeta,
+        reasonCode.isAcceptableOrUnknown(data['reason_code']!, _reasonCodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonCodeMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {localBoardId, targetKind, targetRef};
+  @override
+  HostModerationStateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HostModerationStateRow(
+      localBoardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_board_id'],
+      )!,
+      targetKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_kind'],
+      )!,
+      targetRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_ref'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      reasonCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason_code'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HostModerationStatesTable createAlias(String alias) {
+    return $HostModerationStatesTable(attachedDatabase, alias);
+  }
+}
+
+class HostModerationStateRow extends DataClass
+    implements Insertable<HostModerationStateRow> {
+  /// Local board id (the hosted board's projection on this device).
+  final String localBoardId;
+
+  /// `"post"` | `"thread"`.
+  final String targetKind;
+
+  /// Op entity id of the moderated post/thread.
+  final String targetRef;
+
+  /// `"removed"` | `"locked"`.
+  final String action;
+
+  /// Reason code from the fixed enum (spam, harassment, ...).
+  final String reasonCode;
+  final DateTime updatedAt;
+  const HostModerationStateRow({
+    required this.localBoardId,
+    required this.targetKind,
+    required this.targetRef,
+    required this.action,
+    required this.reasonCode,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['local_board_id'] = Variable<String>(localBoardId);
+    map['target_kind'] = Variable<String>(targetKind);
+    map['target_ref'] = Variable<String>(targetRef);
+    map['action'] = Variable<String>(action);
+    map['reason_code'] = Variable<String>(reasonCode);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  HostModerationStatesCompanion toCompanion(bool nullToAbsent) {
+    return HostModerationStatesCompanion(
+      localBoardId: Value(localBoardId),
+      targetKind: Value(targetKind),
+      targetRef: Value(targetRef),
+      action: Value(action),
+      reasonCode: Value(reasonCode),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory HostModerationStateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HostModerationStateRow(
+      localBoardId: serializer.fromJson<String>(json['localBoardId']),
+      targetKind: serializer.fromJson<String>(json['targetKind']),
+      targetRef: serializer.fromJson<String>(json['targetRef']),
+      action: serializer.fromJson<String>(json['action']),
+      reasonCode: serializer.fromJson<String>(json['reasonCode']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'localBoardId': serializer.toJson<String>(localBoardId),
+      'targetKind': serializer.toJson<String>(targetKind),
+      'targetRef': serializer.toJson<String>(targetRef),
+      'action': serializer.toJson<String>(action),
+      'reasonCode': serializer.toJson<String>(reasonCode),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  HostModerationStateRow copyWith({
+    String? localBoardId,
+    String? targetKind,
+    String? targetRef,
+    String? action,
+    String? reasonCode,
+    DateTime? updatedAt,
+  }) => HostModerationStateRow(
+    localBoardId: localBoardId ?? this.localBoardId,
+    targetKind: targetKind ?? this.targetKind,
+    targetRef: targetRef ?? this.targetRef,
+    action: action ?? this.action,
+    reasonCode: reasonCode ?? this.reasonCode,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  HostModerationStateRow copyWithCompanion(HostModerationStatesCompanion data) {
+    return HostModerationStateRow(
+      localBoardId: data.localBoardId.present
+          ? data.localBoardId.value
+          : this.localBoardId,
+      targetKind: data.targetKind.present
+          ? data.targetKind.value
+          : this.targetKind,
+      targetRef: data.targetRef.present ? data.targetRef.value : this.targetRef,
+      action: data.action.present ? data.action.value : this.action,
+      reasonCode: data.reasonCode.present
+          ? data.reasonCode.value
+          : this.reasonCode,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HostModerationStateRow(')
+          ..write('localBoardId: $localBoardId, ')
+          ..write('targetKind: $targetKind, ')
+          ..write('targetRef: $targetRef, ')
+          ..write('action: $action, ')
+          ..write('reasonCode: $reasonCode, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    localBoardId,
+    targetKind,
+    targetRef,
+    action,
+    reasonCode,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HostModerationStateRow &&
+          other.localBoardId == this.localBoardId &&
+          other.targetKind == this.targetKind &&
+          other.targetRef == this.targetRef &&
+          other.action == this.action &&
+          other.reasonCode == this.reasonCode &&
+          other.updatedAt == this.updatedAt);
+}
+
+class HostModerationStatesCompanion
+    extends UpdateCompanion<HostModerationStateRow> {
+  final Value<String> localBoardId;
+  final Value<String> targetKind;
+  final Value<String> targetRef;
+  final Value<String> action;
+  final Value<String> reasonCode;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const HostModerationStatesCompanion({
+    this.localBoardId = const Value.absent(),
+    this.targetKind = const Value.absent(),
+    this.targetRef = const Value.absent(),
+    this.action = const Value.absent(),
+    this.reasonCode = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HostModerationStatesCompanion.insert({
+    required String localBoardId,
+    required String targetKind,
+    required String targetRef,
+    required String action,
+    required String reasonCode,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : localBoardId = Value(localBoardId),
+       targetKind = Value(targetKind),
+       targetRef = Value(targetRef),
+       action = Value(action),
+       reasonCode = Value(reasonCode),
+       updatedAt = Value(updatedAt);
+  static Insertable<HostModerationStateRow> custom({
+    Expression<String>? localBoardId,
+    Expression<String>? targetKind,
+    Expression<String>? targetRef,
+    Expression<String>? action,
+    Expression<String>? reasonCode,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (localBoardId != null) 'local_board_id': localBoardId,
+      if (targetKind != null) 'target_kind': targetKind,
+      if (targetRef != null) 'target_ref': targetRef,
+      if (action != null) 'action': action,
+      if (reasonCode != null) 'reason_code': reasonCode,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HostModerationStatesCompanion copyWith({
+    Value<String>? localBoardId,
+    Value<String>? targetKind,
+    Value<String>? targetRef,
+    Value<String>? action,
+    Value<String>? reasonCode,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return HostModerationStatesCompanion(
+      localBoardId: localBoardId ?? this.localBoardId,
+      targetKind: targetKind ?? this.targetKind,
+      targetRef: targetRef ?? this.targetRef,
+      action: action ?? this.action,
+      reasonCode: reasonCode ?? this.reasonCode,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (localBoardId.present) {
+      map['local_board_id'] = Variable<String>(localBoardId.value);
+    }
+    if (targetKind.present) {
+      map['target_kind'] = Variable<String>(targetKind.value);
+    }
+    if (targetRef.present) {
+      map['target_ref'] = Variable<String>(targetRef.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (reasonCode.present) {
+      map['reason_code'] = Variable<String>(reasonCode.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HostModerationStatesCompanion(')
+          ..write('localBoardId: $localBoardId, ')
+          ..write('targetKind: $targetKind, ')
+          ..write('targetRef: $targetRef, ')
+          ..write('action: $action, ')
+          ..write('reasonCode: $reasonCode, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -27991,6 +28430,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $DidReputationsTable didReputations = $DidReputationsTable(this);
   late final $NotificationsTable notifications = $NotificationsTable(this);
+  late final $HostModerationStatesTable hostModerationStates =
+      $HostModerationStatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -28046,6 +28487,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     murmurEmbeddings,
     didReputations,
     notifications,
+    hostModerationStates,
   ];
 }
 
@@ -47837,6 +48279,247 @@ typedef $$NotificationsTableProcessedTableManager =
       NotificationRow,
       PrefetchHooks Function()
     >;
+typedef $$HostModerationStatesTableCreateCompanionBuilder =
+    HostModerationStatesCompanion Function({
+      required String localBoardId,
+      required String targetKind,
+      required String targetRef,
+      required String action,
+      required String reasonCode,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$HostModerationStatesTableUpdateCompanionBuilder =
+    HostModerationStatesCompanion Function({
+      Value<String> localBoardId,
+      Value<String> targetKind,
+      Value<String> targetRef,
+      Value<String> action,
+      Value<String> reasonCode,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$HostModerationStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $HostModerationStatesTable> {
+  $$HostModerationStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetKind => $composableBuilder(
+    column: $table.targetKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetRef => $composableBuilder(
+    column: $table.targetRef,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reasonCode => $composableBuilder(
+    column: $table.reasonCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HostModerationStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $HostModerationStatesTable> {
+  $$HostModerationStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetKind => $composableBuilder(
+    column: $table.targetKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetRef => $composableBuilder(
+    column: $table.targetRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reasonCode => $composableBuilder(
+    column: $table.reasonCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HostModerationStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HostModerationStatesTable> {
+  $$HostModerationStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get localBoardId => $composableBuilder(
+    column: $table.localBoardId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetKind => $composableBuilder(
+    column: $table.targetKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetRef =>
+      $composableBuilder(column: $table.targetRef, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get reasonCode => $composableBuilder(
+    column: $table.reasonCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$HostModerationStatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HostModerationStatesTable,
+          HostModerationStateRow,
+          $$HostModerationStatesTableFilterComposer,
+          $$HostModerationStatesTableOrderingComposer,
+          $$HostModerationStatesTableAnnotationComposer,
+          $$HostModerationStatesTableCreateCompanionBuilder,
+          $$HostModerationStatesTableUpdateCompanionBuilder,
+          (
+            HostModerationStateRow,
+            BaseReferences<
+              _$AppDatabase,
+              $HostModerationStatesTable,
+              HostModerationStateRow
+            >,
+          ),
+          HostModerationStateRow,
+          PrefetchHooks Function()
+        > {
+  $$HostModerationStatesTableTableManager(
+    _$AppDatabase db,
+    $HostModerationStatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HostModerationStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HostModerationStatesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HostModerationStatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> localBoardId = const Value.absent(),
+                Value<String> targetKind = const Value.absent(),
+                Value<String> targetRef = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<String> reasonCode = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HostModerationStatesCompanion(
+                localBoardId: localBoardId,
+                targetKind: targetKind,
+                targetRef: targetRef,
+                action: action,
+                reasonCode: reasonCode,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String localBoardId,
+                required String targetKind,
+                required String targetRef,
+                required String action,
+                required String reasonCode,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => HostModerationStatesCompanion.insert(
+                localBoardId: localBoardId,
+                targetKind: targetKind,
+                targetRef: targetRef,
+                action: action,
+                reasonCode: reasonCode,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HostModerationStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HostModerationStatesTable,
+      HostModerationStateRow,
+      $$HostModerationStatesTableFilterComposer,
+      $$HostModerationStatesTableOrderingComposer,
+      $$HostModerationStatesTableAnnotationComposer,
+      $$HostModerationStatesTableCreateCompanionBuilder,
+      $$HostModerationStatesTableUpdateCompanionBuilder,
+      (
+        HostModerationStateRow,
+        BaseReferences<
+          _$AppDatabase,
+          $HostModerationStatesTable,
+          HostModerationStateRow
+        >,
+      ),
+      HostModerationStateRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -47962,4 +48645,6 @@ class $AppDatabaseManager {
       $$DidReputationsTableTableManager(_db, _db.didReputations);
   $$NotificationsTableTableManager get notifications =>
       $$NotificationsTableTableManager(_db, _db.notifications);
+  $$HostModerationStatesTableTableManager get hostModerationStates =>
+      $$HostModerationStatesTableTableManager(_db, _db.hostModerationStates);
 }

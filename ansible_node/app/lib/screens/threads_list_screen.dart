@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
+import '../l10n/moderation_copy.dart';
 import '../services/posting_gate.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/thread_form_dialog.dart';
@@ -32,6 +33,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   List<Thread> _threads = [];
   bool _isLoading = true;
 
+  /// Host moderation overlay: lock entries keyed by thread id (reason-coded).
+  Map<String, HostModerationState> _lockedByThreadId = const {};
+
   /// True when the board requires a higher tier than the local user has.
   /// Client-side UX only — the relay re-checks at intent acceptance.
   bool _postingBlocked = false;
@@ -48,9 +52,19 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     setState(() => _isLoading = true);
     final threads = await _threadRepo.list(boardId: widget.board.id);
     final postingBlocked = await _checkPostingGate();
+    final moderationEntries = await DriftHostModerationStateRepository(
+      widget.db,
+    ).listForBoard(widget.board.id);
+    final lockedByThreadId = {
+      for (final entry in moderationEntries)
+        if (entry.targetKind == HostModerationState.targetKindThread &&
+            entry.action == HostModerationState.actionLocked)
+          entry.targetRef: entry,
+    };
     setState(() {
       _threads = threads;
       _postingBlocked = postingBlocked;
+      _lockedByThreadId = lockedByThreadId;
       _isLoading = false;
     });
   }
@@ -177,6 +191,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             itemCount: _threads.length,
             itemBuilder: (context, index) {
               final thread = _threads[index];
+              final lock = _lockedByThreadId[thread.id];
               return Card(
                 margin: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -184,7 +199,29 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 ),
                 child: ListTile(
                   leading: const Icon(Icons.chat_bubble_outline),
-                  title: Text(thread.title),
+                  title: Row(
+                    children: [
+                      Flexible(child: Text(thread.title)),
+                      if (lock != null) ...[
+                        const SizedBox(width: 6),
+                        Tooltip(
+                          message: context.uiCopy(
+                            zh:
+                                '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
+                            en:
+                                'Locked by the board moderators '
+                                '(${moderationReasonLabel(context, lock.reasonCode)})',
+                          ),
+                          child: Icon(
+                            Icons.lock_outline,
+                            key: Key('thread_lock_icon_${thread.id}'),
+                            size: 15,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   subtitle: Text(
                     'Created ${_formatDate(thread.createdAt)}',
                     style: Theme.of(context).textTheme.bodySmall,

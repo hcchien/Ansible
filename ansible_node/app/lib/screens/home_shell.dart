@@ -36,6 +36,7 @@ import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
+import '../services/host_moderation_sync_service.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
 import '../services/notification_preferences_controller.dart';
@@ -1201,6 +1202,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       didReputationRepo: _didReputationRepo,
       followerDid: widget.did,
       notificationProjector: _notificationProjector,
+      hostModerationSync: HostModerationSyncService(
+        moderationRepo: store.DriftHostModerationStateRepository(widget.db),
+        hostedBoardRepo: _hostedBoardRepo,
+        threadRepo: _threadRepo,
+        postRepo: _postRepo,
+        notificationProjector: _notificationProjector,
+        localDid: widget.did,
+      ),
       opsQueueRepo: _opsQueueRepo,
       opsDispatchService: _opsDispatchService,
       signingBridge: const SchnorrSigningBridge(),

@@ -221,6 +221,65 @@ void main() {
     expect(all.single.conversationId, otherDid);
   });
 
+  test('moderation outcome dedups on re-apply', () async {
+    Future<void> emit() => projector.onModerationOutcome(
+      targetKind: 'post',
+      targetRef: 'post-1',
+      boardId: 'board-1',
+      threadId: 'thread-1',
+      reasonCode: 'spam',
+      action: 'removed',
+    );
+
+    await emit();
+    await emit();
+
+    final all = await notifications.list();
+    expect(all, hasLength(1));
+    expect(all.single.type, NotificationType.moderationOutcome);
+    expect(all.single.dedupKey, 'moderation:removed:post-1');
+    expect(all.single.postId, 'post-1');
+    expect(all.single.threadId, 'thread-1');
+  });
+
+  test(
+    'moderation outcome is always-on (no category toggle can suppress it)',
+    () async {
+      // Disable every toggleable category: constitution Base Rule 6 requires
+      // the affected author to see moderation outcomes regardless.
+      final prefs = NotificationPreferencesController(
+        store: InMemoryNotificationPreferencesStore(
+          enabled: {
+            for (final category in NotificationCategory.values)
+              category: false,
+          },
+        ),
+      );
+      projector = NotificationProjector(
+        notifications: notifications,
+        localDid: localDid,
+        threadRepository: DriftThreadRepository(db),
+        postRepository: DriftPostRepository(db),
+        contactRepository: DriftContactRepository(db),
+        isCategoryEnabled: prefs.categoryEnabled,
+      );
+
+      await projector.onModerationOutcome(
+        targetKind: 'thread',
+        targetRef: 'thread-1',
+        boardId: 'board-1',
+        reasonCode: 'off_topic',
+        action: 'locked',
+      );
+
+      final all = await notifications.list();
+      expect(all, hasLength(1));
+      expect(all.single.type, NotificationType.moderationOutcome);
+      // Thread targets navigate via threadId even when none is passed.
+      expect(all.single.threadId, 'thread-1');
+    },
+  );
+
   test('blocked senders never notify for messenger messages', () async {
     final now = DateTime.now().toUtc();
     await DriftContactRepository(db).upsertContact(

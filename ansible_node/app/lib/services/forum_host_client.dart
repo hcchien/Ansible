@@ -187,6 +187,33 @@ class ReportSubmission {
   const ReportSubmission({required this.duplicate, required this.report});
 }
 
+/// One reason-coded moderation effect from a board's public moderation
+/// state: a removed post or a locked thread.
+class ModerationStateEntry {
+  /// Op entity id of the moderated post/thread.
+  final String targetRef;
+
+  /// Reason code from the fixed enum ([ReportContentIntent.reasonCodes]).
+  final String reasonCode;
+
+  const ModerationStateEntry({
+    required this.targetRef,
+    required this.reasonCode,
+  });
+}
+
+/// Public, reason-coded moderation state of a hosted board
+/// (`GET /api/v1/forum-host/boards/:id/moderation-state`).
+class BoardModerationState {
+  final List<ModerationStateEntry> removedPosts;
+  final List<ModerationStateEntry> lockedThreads;
+
+  const BoardModerationState({
+    required this.removedPosts,
+    required this.lockedThreads,
+  });
+}
+
 class ForumHostException implements Exception {
   final int statusCode;
   final String? error;
@@ -267,6 +294,40 @@ class ForumHostClient {
       duplicate: response.statusCode == 200,
       report: Map<String, dynamic>.from(body['report'] as Map? ?? body),
     );
+  }
+
+  /// Fetches the public, reason-coded moderation state for a hosted board:
+  /// removed-post tombstone refs and locked threads. Public by design — the
+  /// affected author must be able to see the action and its reason
+  /// (constitution Base Rule 6).
+  Future<BoardModerationState> fetchBoardModerationState(
+    String hostedBoardId,
+  ) async {
+    final body = await _getJson(
+      '/api/v1/forum-host/boards/$hostedBoardId/moderation-state',
+    );
+    return BoardModerationState(
+      removedPosts: _moderationEntries(body['removed_posts'], 'target_ref'),
+      lockedThreads: _moderationEntries(body['locked_threads'], 'thread_id'),
+    );
+  }
+
+  List<ModerationStateEntry> _moderationEntries(Object? raw, String refKey) {
+    if (raw is! List) return const [];
+    final entries = <ModerationStateEntry>[];
+    for (final item in raw.whereType<Map>()) {
+      final targetRef = item[refKey];
+      final reasonCode = item['reason_code'];
+      if (targetRef is String &&
+          targetRef.isNotEmpty &&
+          reasonCode is String &&
+          reasonCode.isNotEmpty) {
+        entries.add(
+          ModerationStateEntry(targetRef: targetRef, reasonCode: reasonCode),
+        );
+      }
+    }
+    return entries;
   }
 
   Future<Map<String, dynamic>> _getJson(String path) async {

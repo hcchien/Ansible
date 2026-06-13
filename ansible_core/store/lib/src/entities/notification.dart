@@ -3,7 +3,8 @@ enum NotificationType {
   replyToThread('reply_to_thread'),
   replyToPost('reply_to_post'),
   newFollower('new_follower'),
-  messengerMessage('messenger_message');
+  messengerMessage('messenger_message'),
+  moderationOutcome('moderation_outcome');
 
   const NotificationType(this.storageValue);
 

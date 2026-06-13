@@ -7,7 +7,7 @@
       },
       "declaration": {
         "source_uri": "package:ansible_store/src/db/app_database.dart",
-        "offset": 3199,
+        "offset": 3273,
         "name": "AppDatabase"
       },
       "references": [
@@ -210,6 +210,10 @@
         {
           "library_uri": "package:ansible_store/src/schema/notifications.dart",
           "name": "notifications"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/host_moderation_states.dart",
+          "name": "host_moderation_states"
         }
       ],
       "type": "database",
@@ -413,12 +417,16 @@
         {
           "library_uri": "package:ansible_store/src/schema/notifications.dart",
           "name": "notifications"
+        },
+        {
+          "library_uri": "package:ansible_store/src/schema/host_moderation_states.dart",
+          "name": "host_moderation_states"
         }
       ],
       "views": [],
       "includes": [],
       "queries": [],
-      "schema_version": 22,
+      "schema_version": 23,
       "daos": [],
       "has_constructor_arg": true
     }
@@ -445,6 +453,7 @@
     "package:ansible_store/src/schema/follow_edges.dart",
     "package:ansible_store/src/schema/follow_targets.dart",
     "package:ansible_store/src/schema/forum_hosts.dart",
+    "package:ansible_store/src/schema/host_moderation_states.dart",
     "package:ansible_store/src/schema/hosted_board_projections.dart",
     "package:ansible_store/src/schema/identities.dart",
     "package:ansible_store/src/schema/identity_bindings.dart",
