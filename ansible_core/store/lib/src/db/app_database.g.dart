@@ -28345,6 +28345,652 @@ class HostModerationStatesCompanion
   }
 }
 
+class $IdentityAnchorsTable extends IdentityAnchors
+    with TableInfo<$IdentityAnchorsTable, IdentityAnchorRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IdentityAnchorsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cidMeta = const VerificationMeta('cid');
+  @override
+  late final GeneratedColumn<String> cid = GeneratedColumn<String>(
+    'cid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _didMeta = const VerificationMeta('did');
+  @override
+  late final GeneratedColumn<String> did = GeneratedColumn<String>(
+    'did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _handleMeta = const VerificationMeta('handle');
+  @override
+  late final GeneratedColumn<String> handle = GeneratedColumn<String>(
+    'handle',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _identityKeyMeta = const VerificationMeta(
+    'identityKey',
+  );
+  @override
+  late final GeneratedColumn<String> identityKey = GeneratedColumn<String>(
+    'identity_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _custodyClassMeta = const VerificationMeta(
+    'custodyClass',
+  );
+  @override
+  late final GeneratedColumn<String> custodyClass = GeneratedColumn<String>(
+    'custody_class',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _prevAnchorCidMeta = const VerificationMeta(
+    'prevAnchorCid',
+  );
+  @override
+  late final GeneratedColumn<String> prevAnchorCid = GeneratedColumn<String>(
+    'prev_anchor_cid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _chainIndexMeta = const VerificationMeta(
+    'chainIndex',
+  );
+  @override
+  late final GeneratedColumn<int> chainIndex = GeneratedColumn<int>(
+    'chain_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _canonicalJsonMeta = const VerificationMeta(
+    'canonicalJson',
+  );
+  @override
+  late final GeneratedColumn<String> canonicalJson = GeneratedColumn<String>(
+    'canonical_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    cid,
+    did,
+    handle,
+    identityKey,
+    custodyClass,
+    reason,
+    prevAnchorCid,
+    chainIndex,
+    createdAt,
+    canonicalJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'identity_anchors';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<IdentityAnchorRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('cid')) {
+      context.handle(
+        _cidMeta,
+        cid.isAcceptableOrUnknown(data['cid']!, _cidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cidMeta);
+    }
+    if (data.containsKey('did')) {
+      context.handle(
+        _didMeta,
+        did.isAcceptableOrUnknown(data['did']!, _didMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_didMeta);
+    }
+    if (data.containsKey('handle')) {
+      context.handle(
+        _handleMeta,
+        handle.isAcceptableOrUnknown(data['handle']!, _handleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_handleMeta);
+    }
+    if (data.containsKey('identity_key')) {
+      context.handle(
+        _identityKeyMeta,
+        identityKey.isAcceptableOrUnknown(
+          data['identity_key']!,
+          _identityKeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_identityKeyMeta);
+    }
+    if (data.containsKey('custody_class')) {
+      context.handle(
+        _custodyClassMeta,
+        custodyClass.isAcceptableOrUnknown(
+          data['custody_class']!,
+          _custodyClassMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_custodyClassMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('prev_anchor_cid')) {
+      context.handle(
+        _prevAnchorCidMeta,
+        prevAnchorCid.isAcceptableOrUnknown(
+          data['prev_anchor_cid']!,
+          _prevAnchorCidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chain_index')) {
+      context.handle(
+        _chainIndexMeta,
+        chainIndex.isAcceptableOrUnknown(data['chain_index']!, _chainIndexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_chainIndexMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('canonical_json')) {
+      context.handle(
+        _canonicalJsonMeta,
+        canonicalJson.isAcceptableOrUnknown(
+          data['canonical_json']!,
+          _canonicalJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_canonicalJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cid};
+  @override
+  IdentityAnchorRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IdentityAnchorRow(
+      cid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cid'],
+      )!,
+      did: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}did'],
+      )!,
+      handle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}handle'],
+      )!,
+      identityKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}identity_key'],
+      )!,
+      custodyClass: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custody_class'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      prevAnchorCid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prev_anchor_cid'],
+      ),
+      chainIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}chain_index'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      canonicalJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}canonical_json'],
+      )!,
+    );
+  }
+
+  @override
+  $IdentityAnchorsTable createAlias(String alias) {
+    return $IdentityAnchorsTable(attachedDatabase, alias);
+  }
+}
+
+class IdentityAnchorRow extends DataClass
+    implements Insertable<IdentityAnchorRow> {
+  /// CID of this anchor (`sha256:` of its canonical body) — primary key.
+  final String cid;
+
+  /// DID this anchor belongs to.
+  final String did;
+  final String handle;
+
+  /// Ed25519 identity public key, hex.
+  final String identityKey;
+
+  /// `software` | `hardware`.
+  final String custodyClass;
+
+  /// `initial` | `rotation` | `recovery` | `device_change`.
+  final String reason;
+
+  /// CID of the previous anchor, or null for the genesis anchor.
+  final String? prevAnchorCid;
+
+  /// Monotonic position in the chain (0 = genesis). Used for ordering.
+  final int chainIndex;
+  final DateTime createdAt;
+
+  /// Full canonical JSON (body + signatures) — the authoritative blob.
+  final String canonicalJson;
+  const IdentityAnchorRow({
+    required this.cid,
+    required this.did,
+    required this.handle,
+    required this.identityKey,
+    required this.custodyClass,
+    required this.reason,
+    this.prevAnchorCid,
+    required this.chainIndex,
+    required this.createdAt,
+    required this.canonicalJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['cid'] = Variable<String>(cid);
+    map['did'] = Variable<String>(did);
+    map['handle'] = Variable<String>(handle);
+    map['identity_key'] = Variable<String>(identityKey);
+    map['custody_class'] = Variable<String>(custodyClass);
+    map['reason'] = Variable<String>(reason);
+    if (!nullToAbsent || prevAnchorCid != null) {
+      map['prev_anchor_cid'] = Variable<String>(prevAnchorCid);
+    }
+    map['chain_index'] = Variable<int>(chainIndex);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['canonical_json'] = Variable<String>(canonicalJson);
+    return map;
+  }
+
+  IdentityAnchorsCompanion toCompanion(bool nullToAbsent) {
+    return IdentityAnchorsCompanion(
+      cid: Value(cid),
+      did: Value(did),
+      handle: Value(handle),
+      identityKey: Value(identityKey),
+      custodyClass: Value(custodyClass),
+      reason: Value(reason),
+      prevAnchorCid: prevAnchorCid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prevAnchorCid),
+      chainIndex: Value(chainIndex),
+      createdAt: Value(createdAt),
+      canonicalJson: Value(canonicalJson),
+    );
+  }
+
+  factory IdentityAnchorRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IdentityAnchorRow(
+      cid: serializer.fromJson<String>(json['cid']),
+      did: serializer.fromJson<String>(json['did']),
+      handle: serializer.fromJson<String>(json['handle']),
+      identityKey: serializer.fromJson<String>(json['identityKey']),
+      custodyClass: serializer.fromJson<String>(json['custodyClass']),
+      reason: serializer.fromJson<String>(json['reason']),
+      prevAnchorCid: serializer.fromJson<String?>(json['prevAnchorCid']),
+      chainIndex: serializer.fromJson<int>(json['chainIndex']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      canonicalJson: serializer.fromJson<String>(json['canonicalJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cid': serializer.toJson<String>(cid),
+      'did': serializer.toJson<String>(did),
+      'handle': serializer.toJson<String>(handle),
+      'identityKey': serializer.toJson<String>(identityKey),
+      'custodyClass': serializer.toJson<String>(custodyClass),
+      'reason': serializer.toJson<String>(reason),
+      'prevAnchorCid': serializer.toJson<String?>(prevAnchorCid),
+      'chainIndex': serializer.toJson<int>(chainIndex),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'canonicalJson': serializer.toJson<String>(canonicalJson),
+    };
+  }
+
+  IdentityAnchorRow copyWith({
+    String? cid,
+    String? did,
+    String? handle,
+    String? identityKey,
+    String? custodyClass,
+    String? reason,
+    Value<String?> prevAnchorCid = const Value.absent(),
+    int? chainIndex,
+    DateTime? createdAt,
+    String? canonicalJson,
+  }) => IdentityAnchorRow(
+    cid: cid ?? this.cid,
+    did: did ?? this.did,
+    handle: handle ?? this.handle,
+    identityKey: identityKey ?? this.identityKey,
+    custodyClass: custodyClass ?? this.custodyClass,
+    reason: reason ?? this.reason,
+    prevAnchorCid: prevAnchorCid.present
+        ? prevAnchorCid.value
+        : this.prevAnchorCid,
+    chainIndex: chainIndex ?? this.chainIndex,
+    createdAt: createdAt ?? this.createdAt,
+    canonicalJson: canonicalJson ?? this.canonicalJson,
+  );
+  IdentityAnchorRow copyWithCompanion(IdentityAnchorsCompanion data) {
+    return IdentityAnchorRow(
+      cid: data.cid.present ? data.cid.value : this.cid,
+      did: data.did.present ? data.did.value : this.did,
+      handle: data.handle.present ? data.handle.value : this.handle,
+      identityKey: data.identityKey.present
+          ? data.identityKey.value
+          : this.identityKey,
+      custodyClass: data.custodyClass.present
+          ? data.custodyClass.value
+          : this.custodyClass,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      prevAnchorCid: data.prevAnchorCid.present
+          ? data.prevAnchorCid.value
+          : this.prevAnchorCid,
+      chainIndex: data.chainIndex.present
+          ? data.chainIndex.value
+          : this.chainIndex,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      canonicalJson: data.canonicalJson.present
+          ? data.canonicalJson.value
+          : this.canonicalJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IdentityAnchorRow(')
+          ..write('cid: $cid, ')
+          ..write('did: $did, ')
+          ..write('handle: $handle, ')
+          ..write('identityKey: $identityKey, ')
+          ..write('custodyClass: $custodyClass, ')
+          ..write('reason: $reason, ')
+          ..write('prevAnchorCid: $prevAnchorCid, ')
+          ..write('chainIndex: $chainIndex, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('canonicalJson: $canonicalJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    cid,
+    did,
+    handle,
+    identityKey,
+    custodyClass,
+    reason,
+    prevAnchorCid,
+    chainIndex,
+    createdAt,
+    canonicalJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IdentityAnchorRow &&
+          other.cid == this.cid &&
+          other.did == this.did &&
+          other.handle == this.handle &&
+          other.identityKey == this.identityKey &&
+          other.custodyClass == this.custodyClass &&
+          other.reason == this.reason &&
+          other.prevAnchorCid == this.prevAnchorCid &&
+          other.chainIndex == this.chainIndex &&
+          other.createdAt == this.createdAt &&
+          other.canonicalJson == this.canonicalJson);
+}
+
+class IdentityAnchorsCompanion extends UpdateCompanion<IdentityAnchorRow> {
+  final Value<String> cid;
+  final Value<String> did;
+  final Value<String> handle;
+  final Value<String> identityKey;
+  final Value<String> custodyClass;
+  final Value<String> reason;
+  final Value<String?> prevAnchorCid;
+  final Value<int> chainIndex;
+  final Value<DateTime> createdAt;
+  final Value<String> canonicalJson;
+  final Value<int> rowid;
+  const IdentityAnchorsCompanion({
+    this.cid = const Value.absent(),
+    this.did = const Value.absent(),
+    this.handle = const Value.absent(),
+    this.identityKey = const Value.absent(),
+    this.custodyClass = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.prevAnchorCid = const Value.absent(),
+    this.chainIndex = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.canonicalJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  IdentityAnchorsCompanion.insert({
+    required String cid,
+    required String did,
+    required String handle,
+    required String identityKey,
+    required String custodyClass,
+    required String reason,
+    this.prevAnchorCid = const Value.absent(),
+    required int chainIndex,
+    required DateTime createdAt,
+    required String canonicalJson,
+    this.rowid = const Value.absent(),
+  }) : cid = Value(cid),
+       did = Value(did),
+       handle = Value(handle),
+       identityKey = Value(identityKey),
+       custodyClass = Value(custodyClass),
+       reason = Value(reason),
+       chainIndex = Value(chainIndex),
+       createdAt = Value(createdAt),
+       canonicalJson = Value(canonicalJson);
+  static Insertable<IdentityAnchorRow> custom({
+    Expression<String>? cid,
+    Expression<String>? did,
+    Expression<String>? handle,
+    Expression<String>? identityKey,
+    Expression<String>? custodyClass,
+    Expression<String>? reason,
+    Expression<String>? prevAnchorCid,
+    Expression<int>? chainIndex,
+    Expression<DateTime>? createdAt,
+    Expression<String>? canonicalJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cid != null) 'cid': cid,
+      if (did != null) 'did': did,
+      if (handle != null) 'handle': handle,
+      if (identityKey != null) 'identity_key': identityKey,
+      if (custodyClass != null) 'custody_class': custodyClass,
+      if (reason != null) 'reason': reason,
+      if (prevAnchorCid != null) 'prev_anchor_cid': prevAnchorCid,
+      if (chainIndex != null) 'chain_index': chainIndex,
+      if (createdAt != null) 'created_at': createdAt,
+      if (canonicalJson != null) 'canonical_json': canonicalJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  IdentityAnchorsCompanion copyWith({
+    Value<String>? cid,
+    Value<String>? did,
+    Value<String>? handle,
+    Value<String>? identityKey,
+    Value<String>? custodyClass,
+    Value<String>? reason,
+    Value<String?>? prevAnchorCid,
+    Value<int>? chainIndex,
+    Value<DateTime>? createdAt,
+    Value<String>? canonicalJson,
+    Value<int>? rowid,
+  }) {
+    return IdentityAnchorsCompanion(
+      cid: cid ?? this.cid,
+      did: did ?? this.did,
+      handle: handle ?? this.handle,
+      identityKey: identityKey ?? this.identityKey,
+      custodyClass: custodyClass ?? this.custodyClass,
+      reason: reason ?? this.reason,
+      prevAnchorCid: prevAnchorCid ?? this.prevAnchorCid,
+      chainIndex: chainIndex ?? this.chainIndex,
+      createdAt: createdAt ?? this.createdAt,
+      canonicalJson: canonicalJson ?? this.canonicalJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cid.present) {
+      map['cid'] = Variable<String>(cid.value);
+    }
+    if (did.present) {
+      map['did'] = Variable<String>(did.value);
+    }
+    if (handle.present) {
+      map['handle'] = Variable<String>(handle.value);
+    }
+    if (identityKey.present) {
+      map['identity_key'] = Variable<String>(identityKey.value);
+    }
+    if (custodyClass.present) {
+      map['custody_class'] = Variable<String>(custodyClass.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (prevAnchorCid.present) {
+      map['prev_anchor_cid'] = Variable<String>(prevAnchorCid.value);
+    }
+    if (chainIndex.present) {
+      map['chain_index'] = Variable<int>(chainIndex.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (canonicalJson.present) {
+      map['canonical_json'] = Variable<String>(canonicalJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IdentityAnchorsCompanion(')
+          ..write('cid: $cid, ')
+          ..write('did: $did, ')
+          ..write('handle: $handle, ')
+          ..write('identityKey: $identityKey, ')
+          ..write('custodyClass: $custodyClass, ')
+          ..write('reason: $reason, ')
+          ..write('prevAnchorCid: $prevAnchorCid, ')
+          ..write('chainIndex: $chainIndex, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('canonicalJson: $canonicalJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -28436,6 +29082,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $NotificationsTable notifications = $NotificationsTable(this);
   late final $HostModerationStatesTable hostModerationStates =
       $HostModerationStatesTable(this);
+  late final $IdentityAnchorsTable identityAnchors = $IdentityAnchorsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -28492,6 +29141,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     didReputations,
     notifications,
     hostModerationStates,
+    identityAnchors,
   ];
 }
 
@@ -48524,6 +49174,317 @@ typedef $$HostModerationStatesTableProcessedTableManager =
       HostModerationStateRow,
       PrefetchHooks Function()
     >;
+typedef $$IdentityAnchorsTableCreateCompanionBuilder =
+    IdentityAnchorsCompanion Function({
+      required String cid,
+      required String did,
+      required String handle,
+      required String identityKey,
+      required String custodyClass,
+      required String reason,
+      Value<String?> prevAnchorCid,
+      required int chainIndex,
+      required DateTime createdAt,
+      required String canonicalJson,
+      Value<int> rowid,
+    });
+typedef $$IdentityAnchorsTableUpdateCompanionBuilder =
+    IdentityAnchorsCompanion Function({
+      Value<String> cid,
+      Value<String> did,
+      Value<String> handle,
+      Value<String> identityKey,
+      Value<String> custodyClass,
+      Value<String> reason,
+      Value<String?> prevAnchorCid,
+      Value<int> chainIndex,
+      Value<DateTime> createdAt,
+      Value<String> canonicalJson,
+      Value<int> rowid,
+    });
+
+class $$IdentityAnchorsTableFilterComposer
+    extends Composer<_$AppDatabase, $IdentityAnchorsTable> {
+  $$IdentityAnchorsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get cid => $composableBuilder(
+    column: $table.cid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get did => $composableBuilder(
+    column: $table.did,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get handle => $composableBuilder(
+    column: $table.handle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get identityKey => $composableBuilder(
+    column: $table.identityKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get custodyClass => $composableBuilder(
+    column: $table.custodyClass,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prevAnchorCid => $composableBuilder(
+    column: $table.prevAnchorCid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get chainIndex => $composableBuilder(
+    column: $table.chainIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get canonicalJson => $composableBuilder(
+    column: $table.canonicalJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$IdentityAnchorsTableOrderingComposer
+    extends Composer<_$AppDatabase, $IdentityAnchorsTable> {
+  $$IdentityAnchorsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get cid => $composableBuilder(
+    column: $table.cid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get did => $composableBuilder(
+    column: $table.did,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get handle => $composableBuilder(
+    column: $table.handle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get identityKey => $composableBuilder(
+    column: $table.identityKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get custodyClass => $composableBuilder(
+    column: $table.custodyClass,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prevAnchorCid => $composableBuilder(
+    column: $table.prevAnchorCid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get chainIndex => $composableBuilder(
+    column: $table.chainIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get canonicalJson => $composableBuilder(
+    column: $table.canonicalJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$IdentityAnchorsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IdentityAnchorsTable> {
+  $$IdentityAnchorsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get cid =>
+      $composableBuilder(column: $table.cid, builder: (column) => column);
+
+  GeneratedColumn<String> get did =>
+      $composableBuilder(column: $table.did, builder: (column) => column);
+
+  GeneratedColumn<String> get handle =>
+      $composableBuilder(column: $table.handle, builder: (column) => column);
+
+  GeneratedColumn<String> get identityKey => $composableBuilder(
+    column: $table.identityKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get custodyClass => $composableBuilder(
+    column: $table.custodyClass,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get prevAnchorCid => $composableBuilder(
+    column: $table.prevAnchorCid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get chainIndex => $composableBuilder(
+    column: $table.chainIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get canonicalJson => $composableBuilder(
+    column: $table.canonicalJson,
+    builder: (column) => column,
+  );
+}
+
+class $$IdentityAnchorsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $IdentityAnchorsTable,
+          IdentityAnchorRow,
+          $$IdentityAnchorsTableFilterComposer,
+          $$IdentityAnchorsTableOrderingComposer,
+          $$IdentityAnchorsTableAnnotationComposer,
+          $$IdentityAnchorsTableCreateCompanionBuilder,
+          $$IdentityAnchorsTableUpdateCompanionBuilder,
+          (
+            IdentityAnchorRow,
+            BaseReferences<
+              _$AppDatabase,
+              $IdentityAnchorsTable,
+              IdentityAnchorRow
+            >,
+          ),
+          IdentityAnchorRow,
+          PrefetchHooks Function()
+        > {
+  $$IdentityAnchorsTableTableManager(
+    _$AppDatabase db,
+    $IdentityAnchorsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IdentityAnchorsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IdentityAnchorsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IdentityAnchorsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> cid = const Value.absent(),
+                Value<String> did = const Value.absent(),
+                Value<String> handle = const Value.absent(),
+                Value<String> identityKey = const Value.absent(),
+                Value<String> custodyClass = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String?> prevAnchorCid = const Value.absent(),
+                Value<int> chainIndex = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String> canonicalJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IdentityAnchorsCompanion(
+                cid: cid,
+                did: did,
+                handle: handle,
+                identityKey: identityKey,
+                custodyClass: custodyClass,
+                reason: reason,
+                prevAnchorCid: prevAnchorCid,
+                chainIndex: chainIndex,
+                createdAt: createdAt,
+                canonicalJson: canonicalJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String cid,
+                required String did,
+                required String handle,
+                required String identityKey,
+                required String custodyClass,
+                required String reason,
+                Value<String?> prevAnchorCid = const Value.absent(),
+                required int chainIndex,
+                required DateTime createdAt,
+                required String canonicalJson,
+                Value<int> rowid = const Value.absent(),
+              }) => IdentityAnchorsCompanion.insert(
+                cid: cid,
+                did: did,
+                handle: handle,
+                identityKey: identityKey,
+                custodyClass: custodyClass,
+                reason: reason,
+                prevAnchorCid: prevAnchorCid,
+                chainIndex: chainIndex,
+                createdAt: createdAt,
+                canonicalJson: canonicalJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$IdentityAnchorsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $IdentityAnchorsTable,
+      IdentityAnchorRow,
+      $$IdentityAnchorsTableFilterComposer,
+      $$IdentityAnchorsTableOrderingComposer,
+      $$IdentityAnchorsTableAnnotationComposer,
+      $$IdentityAnchorsTableCreateCompanionBuilder,
+      $$IdentityAnchorsTableUpdateCompanionBuilder,
+      (
+        IdentityAnchorRow,
+        BaseReferences<_$AppDatabase, $IdentityAnchorsTable, IdentityAnchorRow>,
+      ),
+      IdentityAnchorRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -48651,4 +49612,6 @@ class $AppDatabaseManager {
       $$NotificationsTableTableManager(_db, _db.notifications);
   $$HostModerationStatesTableTableManager get hostModerationStates =>
       $$HostModerationStatesTableTableManager(_db, _db.hostModerationStates);
+  $$IdentityAnchorsTableTableManager get identityAnchors =>
+      $$IdentityAnchorsTableTableManager(_db, _db.identityAnchors);
 }

@@ -1,22 +1,35 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../services/app_locale_controller.dart';
 import '../services/reading_preferences_controller.dart';
+import '../services/recovery_readiness_store.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../services/notification_preferences_controller.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
+import 'identity_backup_screen.dart';
 import 'inbox_screen.dart';
 import 'notification_settings_screen.dart';
 import 'edit_profile_screen.dart';
 import 'reading_preferences_screen.dart';
 import 'sync_settings_screen.dart';
 import 'wallet_screen.dart';
+
+/// Reads the raw Ed25519 identity private key from platform secure storage
+/// (the same key [DidSignerImpl] uses). Returns null when no key is anchored.
+///
+/// TODO(Task 2/3): centralize this read in ansible_did so the backup screen and
+/// signer share one accessor.
+Future<String?> _defaultIdentityPrivateKey() {
+  return const FlutterSecureStorage().read(key: 'ansible_did_private_key');
+}
 
 class SettingsHomeScreen extends StatelessWidget {
   const SettingsHomeScreen({
@@ -32,12 +45,22 @@ class SettingsHomeScreen extends StatelessWidget {
     this.onPersonalScreenStyleChanged,
     this.onForumScreenStyleChanged,
     this.onBoardMotionChanged,
+    this.recoveryReadinessStore =
+        const SharedPreferencesRecoveryReadinessStore(),
+    this.identityPrivateKeyProvider = _defaultIdentityPrivateKey,
   });
 
   final AppDatabase db;
   final String did;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
+
+  /// Source of recovery-readiness state for the RECOVERY settings row.
+  final RecoveryReadinessStore recoveryReadinessStore;
+
+  /// Provides the identity private key (hex) for the backup screen. Injectable
+  /// for tests; defaults to reading platform secure storage.
+  final Future<String?> Function() identityPrivateKeyProvider;
   final VoidCallback? onClearIdentity;
   final ElixScreenStyle? personalScreenStyle;
   final ElixScreenStyle? forumScreenStyle;
@@ -268,13 +291,11 @@ class SettingsHomeScreen extends StatelessWidget {
           _SettingsSection(
             label: text.boundaries,
             children: [
-              AnsibleSettingsRow(
-                glyph: '⌷',
-                label: text.backupRestore,
-                en: 'RECOVERY',
-                sub: text.backupRestoreSubtitle,
-                value: text.notSet,
-                valueColor: AnsibleDesign.ember,
+              _RecoveryReadinessRow(
+                text: text,
+                did: did,
+                store: recoveryReadinessStore,
+                identityPrivateKeyProvider: identityPrivateKeyProvider,
               ),
               _BlockedListSettingsRow(db: db, text: text, last: true),
             ],
@@ -929,6 +950,72 @@ class _NotificationSettingsRowState extends State<_NotificationSettingsRow> {
           sub: widget.text.notificationsSubtitle,
           value: '${snapshot.data ?? total}/$total',
           onTap: _openNotificationSettings,
+        );
+      },
+    );
+  }
+}
+
+/// Recovery-readiness indicator + entry point to the backup flow (recovery
+/// design D5-b; Constitution must-have: readiness is user-visible). Shows
+/// 「可復原：已備份」when a backup exists, 「⚠ 尚未備份」otherwise.
+class _RecoveryReadinessRow extends StatefulWidget {
+  const _RecoveryReadinessRow({
+    required this.text,
+    required this.did,
+    required this.store,
+    required this.identityPrivateKeyProvider,
+  });
+
+  final _SettingsText text;
+  final String did;
+  final RecoveryReadinessStore store;
+  final Future<String?> Function() identityPrivateKeyProvider;
+
+  @override
+  State<_RecoveryReadinessRow> createState() => _RecoveryReadinessRowState();
+}
+
+class _RecoveryReadinessRowState extends State<_RecoveryReadinessRow> {
+  late Future<bool> _hasBackup;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasBackup = widget.store.hasBackup();
+  }
+
+  Future<void> _openBackup() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IdentityBackupScreen(
+          did: widget.did,
+          identityPrivateKeyHex: widget.identityPrivateKeyProvider,
+          readinessStore: widget.store,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _hasBackup = widget.store.hasBackup());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _hasBackup,
+      builder: (context, snapshot) {
+        final hasBackup = snapshot.data ?? false;
+        return AnsibleSettingsRow(
+          key: const Key('settings_recovery_row'),
+          glyph: '⌷',
+          label: widget.text.backupRestore,
+          en: 'RECOVERY',
+          sub: widget.text.backupRestoreSubtitle,
+          value: hasBackup
+              ? context.uiCopy(zh: '可復原：已備份', en: 'Recoverable: backed up')
+              : context.uiCopy(zh: '⚠ 尚未備份', en: '⚠ No backup'),
+          valueColor: hasBackup ? AnsibleDesign.spore : AnsibleDesign.ember,
+          onTap: _openBackup,
         );
       },
     );

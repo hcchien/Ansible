@@ -9,6 +9,11 @@ dependencies:
   drift: ^2.4.0
   sqlite3: ^2.9.4
   uuid: ^4.0.0
+  crypto: ^3.0.0
+  # Pure-Dart KDF + AEAD for the passphrase-encrypted identity-key backup
+  # (design D5-b). PBKDF2-HMAC-SHA256 + AES-GCM. No native deps, so `dart test`
+  # in this package keeps working.
+  cryptography: ^2.7.0
 
 dev_dependencies:
   drift_dev: ^2.4.0

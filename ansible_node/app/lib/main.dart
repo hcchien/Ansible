@@ -263,6 +263,12 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _handleRegistered(String did) {
+    // TODO(Task 2, recovery design): offer encrypted-backup creation at first
+    // run here (and nag-once afterwards), per design "Single-device users
+    // without a backup remain unrecoverable". This slice ships the backup
+    // entry point + user-visible readiness indicator in Settings
+    // (IdentityBackupScreen via the RECOVERY row); the first-run onboarding
+    // offer is deferred so the onboarding routing/baseline stays untouched.
     setState(() => _anchoredDid = did);
   }
 

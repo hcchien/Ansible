@@ -25,6 +25,7 @@ import '../schema/forum_hosts.dart';
 import '../schema/host_moderation_states.dart';
 import '../schema/hosted_board_projections.dart';
 import '../schema/identities.dart';
+import '../schema/identity_anchors.dart';
 import '../schema/identity_bindings.dart';
 import '../schema/local_collections.dart';
 import '../schema/messenger_conversations.dart';
@@ -107,13 +108,14 @@ part 'app_database.g.dart';
     DidReputations,
     Notifications,
     HostModerationStates,
+    IdentityAnchors,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -212,6 +214,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 23) {
         await _createTableIfMissing(m, hostModerationStates);
+      }
+      if (from < 24) {
+        await _createTableIfMissing(m, identityAnchors);
       }
       await _addColumnIfMissing(
         m,
