@@ -68,7 +68,8 @@ User creates public/unlisted content or a forum intent
 | Relay / Forum Host Phoenix service | ✅ MVP / partial | Discovery, Forum Host metadata/boards, signed intents, web sessions, ActivityPub/XRPC compatibility |
 | Distribution frontend | ✅ MVP / partial | Public Forum Host views and app-approved DID web-session flow |
 | Nostr adapter | ✅ partial | App-side publication/settings/retry surfaces; production key custody remains incomplete |
-| ActivityPub adapter | ✅ partial | Relay-side actor/WebFinger/outbox/projection/retry; full federation behavior remains incomplete |
+| ActivityPub adapter | ✅ partial | Relay-side actor/WebFinger/outbox/projection/retry (outbound); full federation behavior remains incomplete |
+| Inbound federation (curated AP ingest) | ✅ MVP | Pull-based ingest of an admin-curated actor allowlist into an isolated external lane (`source=activitypub`, never `sig_verified`); surfaces only on boards with `external_inclusion` (mutually exclusive with 真人版) AND per-user opt-in, badged with origin + compliance level; never on verified surfaces (regression-tested) |
 | AT Protocol / PLC bridge | ✅ partial / legacy | XRPC `createRecord` and `resolveHandle`; PLC genesis/local CID paths are compatibility stubs |
 | AppView Aggregator | ✅ MVP | `ansible_appview/phoenix` folds the relay op firehose into a PostgreSQL read model (follow graph, feed items) and serves the following/home feed; ETS by default, Redis + read replica for scale-out |
 | Following / home feed | ✅ MVP | Fan-out-on-read over the federated follow set, plus Phase C fan-out-on-write home timelines (Redis ZSET + per-item object cache) with celebrity hybrid and cold-reader fallback |

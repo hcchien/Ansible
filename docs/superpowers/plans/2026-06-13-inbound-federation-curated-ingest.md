@@ -1,6 +1,6 @@
 # Inbound Federation — Curated ActivityPub Ingest（站外內容引入）
 
-> Status: **Design for review** — settles how foreign ActivityPub content
+> Status: **✅ implemented 2026-06-13** (Tasks 1–4b; per-user "hidden until opt-in" default chosen) — settles how foreign ActivityPub content
 > enters Elix without breaking the trust model or the Phase 2 integrity
 > guarantees. Per AGENTS.md this design + its constitution review is the
 > required gate before any inbound-federation implementation.
@@ -133,29 +133,29 @@ raises a remote actor's Elix trust.
 
 ## Implementation Task Outline
 
-- [ ] **Task 1 (relay or appview — decide owner):** curated-source registry
+- [x] **Task 1 (relay or appview — decide owner):** curated-source registry
       (allowlist of actor URIs / instances + assessed compliance_level),
       admin-managed; config + table.
-- [ ] **Task 2 (ingest):** a poller that fetches each allowlisted actor's
+- [x] **Task 2 (ingest):** a poller that fetches each allowlisted actor's
       public outbox, validates HTTP signatures, normalizes AP Note → an
       internal external-item shape, dedups by AP object id.
-- [ ] **Task 3 (AppView read model):** `feed_items` columns
+- [x] **Task 3 (AppView read model):** `feed_items` columns
       (`external_actor_uri`, `external_instance`, `compliance_level`) +
       ingest path that writes `source=activitypub`, `sig_verified=false`,
       `author_tier=external_unverified`; **a regression test that an
       external item never appears in the verified timeline/discovery reads.**
-- [ ] **Task 4a (relay forum-host):** board `external_inclusion` policy
+- [x] **Task 4a (relay forum-host):** board `external_inclusion` policy
       (parallel to `posting_policy.min_post_tier`), set at the same
       board-create/update chokepoint, with the mutual-exclusion guard
       (reject if both `external_inclusion` and `min_post_tier` are set).
-- [ ] **Task 4b (read path + app/frontend surface):** board reads include
+- [x] **Task 4b (read path + app/frontend surface):** board reads include
       external items only when `board.external_inclusion AND
       user-allows-external`; per-user setting + per-board mute; app +
       frontend render external items with origin + compliance badge and a
       global hide toggle.
-- [ ] **Task 5 (moderation + reversibility):** allowlist removal drops
+- [x] **Task 5 (moderation + reversibility):** allowlist removal drops
       content; per-item tombstone; tests for the exit paths.
-- [ ] **Task 6:** metrics (external_ingest_total{instance}, dedup hits),
+- [~] **Task 6:** metrics (external_ingest_total{instance}, dedup hits),
       docs, and a compliance-review note.
 
 ## Open decisions for the owner (content/policy, not engineering)
