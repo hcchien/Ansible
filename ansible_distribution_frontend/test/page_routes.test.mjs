@@ -20,6 +20,10 @@ assert.deepEqual(parseRoute('#/sessions'), {
   params: {},
 });
 assert.deepEqual(parseRoute('#/login'), { pageId: PAGE_IDS.login, params: {} });
+assert.deepEqual(parseRoute('#/moderation'), {
+  pageId: PAGE_IDS.moderation,
+  params: {},
+});
 assert.deepEqual(parseRoute('#/unknown/path'), {
   pageId: PAGE_IDS.home,
   params: { recoveredFrom: '/unknown/path' },
@@ -31,6 +35,7 @@ assert.equal(routeToHash({ pageId: PAGE_IDS.boards }), '#/boards');
 assert.equal(routeToHash({ pageId: PAGE_IDS.board, params: { boardId: 'general' } }), '#/boards/general');
 assert.equal(routeToHash({ pageId: PAGE_IDS.sessions }), '#/sessions');
 assert.equal(routeToHash({ pageId: PAGE_IDS.login }), '#/login');
+assert.equal(routeToHash({ pageId: PAGE_IDS.moderation }), '#/moderation');
 console.log('ok - serializes route hashes');
 
 const calls = [];
@@ -75,6 +80,35 @@ assert.equal(boardState.route.pageId, PAGE_IDS.board);
 assert.equal(boardState.viewModel.page.title, 'General');
 assert.equal(boardState.viewModel.actions.canCreateThread, true);
 console.log('ok - loads board page skeleton data');
+
+const moderationCalls = [];
+const moderationController = createPageController({
+  getCurrentHash: () => '#/moderation',
+  sessionLifecycle: {
+    async restore() {
+      return { status: 'authenticated', viewModel: authenticatedSession };
+    },
+  },
+  forumDataAdapter: {
+    async loadModerationConsole({ sessionViewModel }) {
+      moderationCalls.push(sessionViewModel.trustTier);
+      return {
+        moderation: {
+          status: 'moderator',
+          reportGroups: [],
+          auditActions: [],
+          error: null,
+        },
+      };
+    },
+  },
+});
+const moderationState = await moderationController.loadCurrentRoute();
+assert.deepEqual(moderationCalls, ['self_custody_did']);
+assert.equal(moderationState.route.pageId, PAGE_IDS.moderation);
+assert.equal(moderationState.viewModel.page.id, PAGE_IDS.moderation);
+assert.equal(moderationState.viewModel.moderation.status, 'moderator');
+console.log('ok - loads the moderation console route');
 
 const loginController = createPageController({
   getCurrentHash: () => '#/login',

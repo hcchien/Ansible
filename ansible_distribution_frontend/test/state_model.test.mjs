@@ -69,6 +69,7 @@ assert.deepEqual(deriveNavigationItems(DEFAULT_SESSION_VIEW_MODEL), [
 assert.deepEqual(deriveNavigationItems(authenticatedSession), [
   { id: PAGE_IDS.home, label: '動態', href: '#/' },
   { id: PAGE_IDS.boards, label: '看板', href: '#/boards' },
+  { id: PAGE_IDS.moderation, label: '板務', href: '#/moderation' },
   { id: PAGE_IDS.sessions, label: '你', href: '#/sessions' },
 ]);
 console.log('ok - derives navigation from session mode');

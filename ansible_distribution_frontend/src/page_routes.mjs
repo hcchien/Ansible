@@ -25,6 +25,10 @@ export function parseRoute(hash) {
     return { pageId: PAGE_IDS.login, params: {} };
   }
 
+  if (segments.length === 1 && segments[0] === 'moderation') {
+    return { pageId: PAGE_IDS.moderation, params: {} };
+  }
+
   return { pageId: PAGE_IDS.home, params: { recoveredFrom: path } };
 }
 
@@ -44,6 +48,9 @@ export function routeToHash(route) {
 
     case PAGE_IDS.login:
       return '#/login';
+
+    case PAGE_IDS.moderation:
+      return '#/moderation';
 
     default:
       return '#/404';
@@ -79,6 +86,13 @@ export function createPageController({
     if (route.pageId === PAGE_IDS.board) {
       const forum = await forumDataAdapter.loadBoardPage({
         boardId: route.params.boardId,
+        sessionViewModel: session,
+      });
+      return setState(route, session, forum);
+    }
+
+    if (route.pageId === PAGE_IDS.moderation) {
+      const forum = await forumDataAdapter.loadModerationConsole({
         sessionViewModel: session,
       });
       return setState(route, session, forum);

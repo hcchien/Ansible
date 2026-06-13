@@ -17,6 +17,29 @@ const TRUST_TIER_LABELS = Object.freeze({
   verified_human: 'trust.verifiedHuman',
 });
 
+// Localized labels for the relay report-reason enum. The codes themselves are
+// the relay contract; only the labels are frontend concerns.
+const REASON_CODE_LABELS = Object.freeze({
+  spam: 'reason.spam',
+  harassment: 'reason.harassment',
+  illegal_content: 'reason.illegalContent',
+  off_topic: 'reason.offTopic',
+  impersonation: 'reason.impersonation',
+  other: 'reason.other',
+});
+
+const MODERATION_ACTION_LABELS = Object.freeze({
+  dismiss_report: 'moderation.action.dismissReport',
+  remove_post_from_board: 'moderation.action.removePostFromBoard',
+  lock_thread: 'moderation.action.lockThread',
+  unlock_thread: 'moderation.action.unlockThread',
+});
+
+const TARGET_KIND_LABELS = Object.freeze({
+  post: 'moderation.target.post',
+  thread: 'moderation.target.thread',
+});
+
 export function shortIdentity(value) {
   if (!value) return t('common.anonymous');
   if (value.length <= 16) return value;
@@ -31,6 +54,21 @@ export function trustTierLabel(value) {
 export function formatScope(scope) {
   const key = SCOPE_LABEL_KEYS[scope];
   return key ? t(key) : scope;
+}
+
+export function reasonCodeLabel(reasonCode) {
+  const key = REASON_CODE_LABELS[reasonCode];
+  return key ? t(key) : reasonCode ?? '';
+}
+
+export function moderationActionLabel(action) {
+  const key = MODERATION_ACTION_LABELS[action];
+  return key ? t(key) : action ?? '';
+}
+
+export function targetKindLabel(targetKind) {
+  const key = TARGET_KIND_LABELS[targetKind];
+  return key ? t(key) : targetKind ?? '';
 }
 
 export function formatExpiry(value) {
@@ -89,6 +127,40 @@ export function describeError(error) {
       tone: 'warning',
       title: t('error.rateLimited.title'),
       message: t('error.rateLimited.message'),
+    };
+  }
+
+  if (error.type === ERROR_TYPES.notBoardModerator) {
+    return {
+      tone: 'warning',
+      title: t('error.notBoardModerator.title'),
+      message: t('error.notBoardModerator.message'),
+    };
+  }
+
+  if (error.type === ERROR_TYPES.threadLocked) {
+    return {
+      tone: 'warning',
+      title: t('error.threadLocked.title'),
+      message: t('error.threadLocked.message', {
+        reason: reasonCodeLabel(error.detail?.reasonCode ?? ''),
+      }),
+    };
+  }
+
+  if (
+    error.type === ERROR_TYPES.invalidRequest &&
+    ['invalid_reason_code', 'note_required', 'unknown_target'].includes(error.code)
+  ) {
+    return {
+      tone: 'warning',
+      title: t('error.invalidReport.title'),
+      message:
+        error.code === 'note_required'
+          ? t('error.noteRequired.message')
+          : error.code === 'unknown_target'
+            ? t('error.unknownTarget.message')
+            : t('error.invalidReport.message'),
     };
   }
 

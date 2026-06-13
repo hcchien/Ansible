@@ -3,10 +3,17 @@ import {
   describeError,
   formatExpiry,
   formatScope,
+  moderationActionLabel,
+  reasonCodeLabel,
   shortIdentity,
+  targetKindLabel,
   trustTierLabel,
 } from './forum_ui_text.mjs';
 import { escapeHtml } from './forum_shell_renderer.mjs';
+import {
+  REPORT_REASON_CODES,
+  actionsForTargetKind,
+} from './moderation_model.mjs';
 import { renderQrCodeSvg } from './qr_code.mjs';
 import { t } from './web_i18n.mjs';
 import { TRUST_TIERS, meetsMinPostTier } from './web_session_client.mjs';
@@ -20,11 +27,13 @@ export function renderPageBody(viewModel, uiState = {}) {
     case PAGE_IDS.boards:
       return renderBoards(viewModel);
     case PAGE_IDS.board:
-      return renderBoard(viewModel);
+      return renderBoard(viewModel, uiState);
     case PAGE_IDS.login:
       return renderLogin(viewModel, uiState.login ?? {});
     case PAGE_IDS.sessions:
       return renderSessions(viewModel, uiState);
+    case PAGE_IDS.moderation:
+      return renderModeration(viewModel, uiState);
     default:
       return renderNotFound(viewModel);
   }
@@ -78,7 +87,7 @@ function renderBoards(viewModel) {
   `;
 }
 
-function renderBoard(viewModel) {
+function renderBoard(viewModel, uiState = {}) {
   const board = viewModel.board ?? {};
   if (board.missing) {
     return renderMissingBoard(viewModel, board);
@@ -88,8 +97,14 @@ function renderBoard(viewModel) {
   const threads = viewModel.threads ?? [];
   const gate = boardPostingGate(board, viewModel.session);
   const postAction = renderBoardPostAction(viewModel, gate);
+  const threadContext = {
+    session: viewModel.session,
+    boardId: board.id ?? '',
+    canReply: Boolean(viewModel.actions?.canReply),
+  };
 
   return `
+    ${renderNotice(uiState.notice)}
     ${renderError(viewModel.error)}
     <section class="cols" aria-labelledby="board-title">
       ${renderLeftRail(viewModel, 'boards')}
@@ -115,7 +130,7 @@ function renderBoard(viewModel) {
             <h3 id="thread-list-title">${escapeHtml(t('board.threadListTitle', { count: threads.length }))}</h3>
             <span class="label-mono">${escapeHtml(t('board.activity'))}</span>
           </div>
-          ${renderThreadList(threads)}
+          ${renderThreadList(threads, threadContext)}
         </section>
       </section>
       ${renderRightRail(viewModel, viewModel.boards ?? [])}
@@ -532,6 +547,22 @@ function renderNotFound(viewModel) {
   `;
 }
 
+// Transient UI notices (report submitted, action recorded) share the
+// info-banner shell used by semantic errors.
+function renderNotice(notice) {
+  if (!notice) return '';
+
+  return `
+    <aside class="info-banner is-${escapeAttribute(notice.tone ?? 'success')}" role="status">
+      <span class="icon"></span>
+      <div>
+        <strong>${escapeHtml(notice.title ?? '')}</strong>
+        <span>${escapeHtml(notice.message ?? '')}</span>
+      </div>
+    </aside>
+  `;
+}
+
 function renderError(error) {
   const description = describeError(error);
   if (!description) return '';
@@ -575,6 +606,14 @@ function renderLeftRail(viewModel, active) {
     { id: 'feed', label: t('common.feed'), href: '#/' },
     { id: 'boards', label: t('common.boards'), href: '#/boards' },
   ];
+
+  if (viewModel.session?.authenticated) {
+    navItems.push({
+      id: 'moderation',
+      label: t('common.moderation'),
+      href: '#/moderation',
+    });
+  }
   const upcomingItems = [t('home.discover'), t('home.notifications'), t('home.circleTab')];
 
   return `
@@ -690,35 +729,295 @@ function renderBoardDirectoryItem(board) {
   `;
 }
 
-function renderThreadList(threads) {
+function renderThreadList(threads, context = {}) {
   if (!threads.length) {
     return `<p class="empty-state">${escapeHtml(t('board.noThreads'))}</p>`;
   }
 
   return `
     <ul>
-      ${threads.map(renderThreadItem).join('')}
+      ${threads.map((thread) => renderThreadItem(thread, context)).join('')}
     </ul>
   `;
 }
 
-function renderThreadItem(thread) {
+function renderThreadItem(thread, context = {}) {
   const title = thread.title || thread.subject || t('common.threadFallback');
   const author = thread.authorDid || thread.subjectDid || thread.author || null;
   const signed = Boolean(author);
   const initial = title.trim().charAt(0).toUpperCase() || 'T';
+  const locked = Boolean(thread.locked);
+  const posts = thread.posts ?? [];
+  const threadId = thread.id ?? '';
+  const authenticated = Boolean(context.session?.authenticated);
 
   return `
-    <li${signed ? ' class="signed"' : ''}>
+    <li${signed ? ' class="signed"' : ''}${locked ? ' data-locked="true"' : ''}>
       <div class="av">${escapeHtml(initial)}</div>
       <div>
-        <h4 class="ttl">${escapeHtml(title)}</h4>
+        <h4 class="ttl">${escapeHtml(title)}${locked ? ` ${renderLockedBadge()}` : ''}</h4>
         <p class="author">${escapeHtml(shortIdentity(author))}${signed ? ` ${renderSignedPill(t('focus.passkeyCompact'))}` : ''}</p>
+        ${locked ? renderLockedBanner(thread.lockReasonCode) : ''}
+        ${posts.length ? renderThreadPosts(posts, context) : ''}
+        ${renderThreadActions({ thread, context, locked, authenticated, threadId })}
       </div>
       <div class="meta">
         <span class="replies">${escapeHtml(t('board.replyCount', { count: thread.replyCount ?? thread.replies ?? 0 }))}</span>
         <span class="ago">${escapeHtml(thread.updatedAt ? formatExpiry(thread.updatedAt) : t('common.recent'))}</span>
       </div>
+    </li>
+  `;
+}
+
+function renderThreadActions({ context, locked, authenticated, threadId }) {
+  // Constitution Base Rule 6: lock state is visible and reason-coded; a
+  // locked thread accepts no new replies, so the reply affordance disappears.
+  const reply = locked
+    ? `<span class="locked-no-reply">${escapeHtml(t('moderation.lockedNoReply'))}</span>`
+    : context.canReply
+      ? `<button type="button" class="thread-reply">${escapeHtml(t('common.reply'))}</button>`
+      : '';
+  const report = authenticated
+    ? renderReportControl({
+        targetKind: 'thread',
+        targetRef: threadId,
+        boardId: context.boardId ?? '',
+      })
+    : '';
+
+  if (!reply && !report) return '';
+
+  return `<div class="thread-actions">${reply}${report}</div>`;
+}
+
+function renderThreadPosts(posts, context = {}) {
+  return `
+    <ul class="thread-posts">
+      ${posts.map((post) => renderThreadPost(post, context)).join('')}
+    </ul>
+  `;
+}
+
+function renderThreadPost(post, context = {}) {
+  if (post.removed) {
+    return `
+      <li class="thread-post is-removed">
+        ${renderRemovedTombstone(post.reasonCode)}
+      </li>
+    `;
+  }
+
+  const authenticated = Boolean(context.session?.authenticated);
+
+  return `
+    <li class="thread-post">
+      <p class="post-body">${escapeHtml(post.body ?? '')}</p>
+      ${
+        authenticated
+          ? renderReportControl({
+              targetKind: 'post',
+              targetRef: post.id ?? '',
+              boardId: context.boardId ?? '',
+            })
+          : ''
+      }
+    </li>
+  `;
+}
+
+// Tombstone for a post removed from this board projection: the content is
+// stripped, only the reason code remains visible (to everyone, including the
+// author — constitution-mandated visibility).
+function renderRemovedTombstone(reasonCode) {
+  return `
+    <p class="post-tombstone" role="note">
+      ${escapeHtml(t('moderation.removedTombstone', { reason: reasonCodeLabel(reasonCode) }))}
+    </p>
+  `;
+}
+
+function renderLockedBadge() {
+  return `<span class="locked-badge">${escapeHtml(t('moderation.target.thread'))} · ${escapeHtml(t('error.threadLocked.title'))}</span>`;
+}
+
+function renderLockedBanner(lockReasonCode) {
+  return `
+    <p class="locked-banner" role="note">
+      ${escapeHtml(t('moderation.lockedBanner', { reason: reasonCodeLabel(lockReasonCode) }))}
+    </p>
+  `;
+}
+
+// Inline report picker (signed-in sessions only). The reason enum mirrors the
+// relay contract; "other" requires a note, enforced again relay-side.
+function renderReportControl({ targetKind, targetRef, boardId }) {
+  const targetData = `data-target-kind="${escapeAttribute(targetKind)}" data-target-ref="${escapeAttribute(targetRef)}" data-board-id="${escapeAttribute(boardId)}"`;
+
+  return `
+    <details class="report-control">
+      <summary class="report-trigger">${escapeHtml(t('report.action'))}</summary>
+      <form class="report-form" aria-label="${escapeAttribute(t('report.formAria'))}" data-report-form ${targetData}>
+        <label class="report-field">
+          <span>${escapeHtml(t('report.reasonLabel'))}</span>
+          <select data-report-reason>
+            ${REPORT_REASON_CODES.map(
+              (code) =>
+                `<option value="${escapeAttribute(code)}">${escapeHtml(reasonCodeLabel(code))}</option>`,
+            ).join('')}
+          </select>
+        </label>
+        <label class="report-field">
+          <span>${escapeHtml(t('report.noteLabel'))}</span>
+          <textarea data-report-note rows="2"></textarea>
+        </label>
+        <p class="report-note-hint">${escapeHtml(t('report.noteRequiredHint'))}</p>
+        <button type="button" class="primary-action" data-action="submit-report" ${targetData}>${escapeHtml(t('report.submit'))}</button>
+      </form>
+    </details>
+  `;
+}
+
+function renderModeration(viewModel, uiState = {}) {
+  const moderation = viewModel.moderation ?? {
+    status: 'signed_out',
+    reportGroups: [],
+    auditActions: [],
+    error: null,
+  };
+
+  return `
+    ${renderNotice(uiState.notice)}
+    ${renderError(viewModel.error)}
+    <section class="cols" aria-labelledby="moderation-title">
+      ${renderLeftRail(viewModel, 'moderation')}
+      <section class="feed moderation-console" aria-labelledby="moderation-title">
+        <div class="feed-head">
+          <div>
+            <p class="section-label">${escapeHtml(t('moderation.kicker'))}</p>
+            <h1 id="moderation-title">${escapeHtml(t('moderation.title'))}</h1>
+            <p>${escapeHtml(t('moderation.subtitle'))}</p>
+          </div>
+          <a class="primary-action" href="#/">${escapeHtml(t('common.backToFeed'))}</a>
+        </div>
+        ${renderModerationBody(moderation)}
+      </section>
+      ${renderRightRail(viewModel, viewModel.boards ?? [])}
+    </section>
+  `;
+}
+
+function renderModerationBody(moderation) {
+  if (moderation.status === 'signed_out') {
+    return `
+      <section class="card moderation-state" aria-labelledby="moderation-signed-out-title">
+        <h3 id="moderation-signed-out-title">${escapeHtml(t('moderation.signedOut.title'))}</h3>
+        <p>${escapeHtml(t('moderation.signedOut.body'))}</p>
+        <a class="primary-action" href="#/login">${escapeHtml(t('common.login'))}</a>
+      </section>
+    `;
+  }
+
+  if (moderation.status === 'not_moderator') {
+    return `
+      <section class="card moderation-state moderation-forbidden" aria-labelledby="moderation-forbidden-title">
+        <p class="section-label">${escapeHtml(t('moderation.notModerator.kicker'))}</p>
+        <h3 id="moderation-forbidden-title">${escapeHtml(t('moderation.notModerator.title'))}</h3>
+        <p>${escapeHtml(t('moderation.notModerator.body'))}</p>
+      </section>
+    `;
+  }
+
+  return `
+    ${renderModerationQueue(moderation.reportGroups ?? [])}
+    ${renderModerationAudit(moderation.auditActions ?? [])}
+  `;
+}
+
+function renderModerationQueue(reportGroups) {
+  const reportCount = reportGroups.reduce(
+    (total, group) => total + group.reports.length,
+    0,
+  );
+
+  if (!reportCount) {
+    return `
+      <section class="card moderation-queue" aria-labelledby="moderation-queue-title">
+        <h3 id="moderation-queue-title">${escapeHtml(t('moderation.queueTitle', { count: 0 }))}</h3>
+        <p class="empty-state">${escapeHtml(t('moderation.queueEmpty'))}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="card moderation-queue" aria-labelledby="moderation-queue-title">
+      <h3 id="moderation-queue-title">${escapeHtml(t('moderation.queueTitle', { count: reportCount }))}</h3>
+      ${reportGroups.map(renderModerationBoardGroup).join('')}
+    </section>
+  `;
+}
+
+function renderModerationBoardGroup(group) {
+  return `
+    <section class="moderation-board-group" data-board-id="${escapeAttribute(group.boardId)}">
+      <p class="label-mono">${escapeHtml(t('moderation.boardGroup', { board: group.boardId }))}</p>
+      ${group.reports.map(renderModerationReport).join('')}
+    </section>
+  `;
+}
+
+function renderModerationReport(report) {
+  return `
+    <article class="moderation-report" data-report-id="${escapeAttribute(report.id ?? '')}">
+      <div class="moderation-report-meta">
+        <span class="target-kind">${escapeHtml(targetKindLabel(report.targetKind))}</span>
+        <code>${escapeHtml(report.targetRef)}</code>
+        <span class="reason-chip">${escapeHtml(reasonCodeLabel(report.reasonCode))}</span>
+        <span class="ago">${escapeHtml(report.insertedAt ? formatExpiry(report.insertedAt) : t('common.recent'))}</span>
+      </div>
+      ${report.note ? `<p class="moderation-note">${escapeHtml(t('moderation.note'))} · ${escapeHtml(report.note)}</p>` : ''}
+      <p class="moderation-reporter">${escapeHtml(t('moderation.reporter'))} · ${escapeHtml(shortIdentity(report.reporterDid))}</p>
+      <div class="moderation-actions">
+        ${actionsForTargetKind(report.targetKind)
+          .map((action) => renderModerationActionButton(action, report))
+          .join('')}
+      </div>
+    </article>
+  `;
+}
+
+function renderModerationActionButton(action, report) {
+  return `<button type="button" class="moderation-action-btn${action === 'dismiss_report' ? '' : ' is-primary'}" data-action="moderation-action" data-mod-action="${escapeAttribute(action)}" data-report-id="${escapeAttribute(report.id ?? '')}" data-target-ref="${escapeAttribute(report.targetRef)}" data-board-id="${escapeAttribute(report.boardId)}" data-reason-code="${escapeAttribute(report.reasonCode ?? '')}">${escapeHtml(moderationActionLabel(action))}</button>`;
+}
+
+function renderModerationAudit(auditActions) {
+  if (!auditActions.length) {
+    return `
+      <section class="card moderation-audit" aria-labelledby="moderation-audit-title">
+        <h3 id="moderation-audit-title">${escapeHtml(t('moderation.auditTitle'))}</h3>
+        <p class="empty-state">${escapeHtml(t('moderation.auditEmpty'))}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="card moderation-audit" aria-labelledby="moderation-audit-title">
+      <h3 id="moderation-audit-title">${escapeHtml(t('moderation.auditTitle'))}</h3>
+      <ul>
+        ${auditActions.map(renderModerationAuditEntry).join('')}
+      </ul>
+    </section>
+  `;
+}
+
+function renderModerationAuditEntry(action) {
+  return `
+    <li class="moderation-audit-entry">
+      <strong>${escapeHtml(moderationActionLabel(action.action))}</strong>
+      <code>${escapeHtml(action.targetRef)}</code>
+      <span class="reason-chip">${escapeHtml(reasonCodeLabel(action.reasonCode))}</span>
+      <span>#${escapeHtml(action.boardId)}</span>
+      <span>${escapeHtml(shortIdentity(action.moderatorDid))}</span>
+      <span class="ago">${escapeHtml(action.insertedAt ? formatExpiry(action.insertedAt) : t('common.recent'))}</span>
     </li>
   `;
 }

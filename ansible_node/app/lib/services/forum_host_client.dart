@@ -79,6 +79,114 @@ class CreateHostedBoardIntent {
   }
 }
 
+/// Signed `report_content` intent — the app rail for reporting hosted
+/// board content to its Forum Host (`POST /api/v1/forum-host/reports`).
+///
+/// Reports are accountable (signed by the reporter DID) and reason-coded;
+/// the host's moderators act on them host-side. See
+/// docs/superpowers/plans/2026-06-12-content-reporting-moderation.md.
+class ReportContentIntent {
+  static const type = 'io.trisaura.forum.reportContent';
+  static const version = 1;
+
+  /// Reason codes accepted by the relay (one module relay-side).
+  static const reasonCodes = [
+    'spam',
+    'harassment',
+    'illegal_content',
+    'off_topic',
+    'impersonation',
+    'other',
+  ];
+
+  final String intentId;
+  final String authorDid;
+  final String targetForumHost;
+  final String signature;
+  final String targetKind; // "post" | "thread"
+  final String targetRef;
+  final String boardId; // hosted board id (host-side identity)
+  final String reasonCode;
+  final String? note;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+
+  const ReportContentIntent({
+    required this.intentId,
+    required this.authorDid,
+    required this.targetForumHost,
+    required this.signature,
+    required this.targetKind,
+    required this.targetRef,
+    required this.boardId,
+    required this.reasonCode,
+    required this.createdAt,
+    required this.expiresAt,
+    this.note,
+  });
+
+  /// Keys are listed alphabetically (nested map included) so the encoded
+  /// JSON matches the relay's canonical sorted-key encoding for signature
+  /// verification — same convention as [CreateHostedBoardIntent].
+  static Map<String, Object?> canonicalPayload({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String targetKind,
+    required String targetRef,
+    required String boardId,
+    required String reasonCode,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+    String? note,
+  }) {
+    return {
+      'action': 'report_content',
+      'author_did': authorDid,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'expires_at': expiresAt.toUtc().toIso8601String(),
+      'intent_id': intentId,
+      'report': {
+        'board_id': boardId,
+        if (note != null && note.isNotEmpty) 'note': note,
+        'reason_code': reasonCode,
+        'target_kind': targetKind,
+        'target_ref': targetRef,
+      },
+      'target_forum_host': targetForumHost,
+      'type': type,
+      'version': version,
+    };
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      ...canonicalPayload(
+        intentId: intentId,
+        authorDid: authorDid,
+        targetForumHost: targetForumHost,
+        targetKind: targetKind,
+        targetRef: targetRef,
+        boardId: boardId,
+        reasonCode: reasonCode,
+        note: note,
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+      ),
+      'signature': signature,
+    };
+  }
+}
+
+/// Outcome of submitting a report: created, or collapsed into an existing
+/// open report (the relay returns 200 instead of 201 for duplicates).
+class ReportSubmission {
+  final bool duplicate;
+  final Map<String, dynamic> report;
+
+  const ReportSubmission({required this.duplicate, required this.report});
+}
+
 class ForumHostException implements Exception {
   final int statusCode;
   final String? error;
@@ -135,6 +243,29 @@ class ForumHostClient {
       '/api/v1/forum-host/boards',
       intent.toJson(),
       expectedStatus: 201,
+    );
+  }
+
+  /// Submits a signed content report. 201 = created, 200 = collapsed into
+  /// the reporter's existing open report for the same target.
+  Future<ReportSubmission> submitReport(ReportContentIntent intent) async {
+    final response = await _client
+        .post(
+          _endpoint('/api/v1/forum-host/reports'),
+          headers: const {'content-type': 'application/json'},
+          body: jsonEncode(intent.toJson()),
+        )
+        .timeout(timeout);
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw _toException(
+        response.statusCode,
+        _decodeObjectOrEmpty(response.body),
+      );
+    }
+    final body = _decodeObject(response.body);
+    return ReportSubmission(
+      duplicate: response.statusCode == 200,
+      report: Map<String, dynamic>.from(body['report'] as Map? ?? body),
     );
   }
 

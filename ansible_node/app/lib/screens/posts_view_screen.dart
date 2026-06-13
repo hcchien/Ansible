@@ -1,14 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:ansible_did/ansible_did.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
+import '../l10n/user_facing_error.dart';
+import '../services/forum_host_client.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/post_form_dialog.dart';
 import '../widgets/posting_gate_notice.dart';
+import '../widgets/report_dialog.dart';
 
 class PostsViewScreen extends StatefulWidget {
   final AppDatabase db;
@@ -39,6 +44,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   /// Client-side UX only — the relay re-checks at intent acceptance.
   bool _postingBlocked = false;
 
+  /// Set when this thread's board is hosted by a Forum Host; reporting is
+  /// only possible for hosted content (local-only boards have no moderator).
+  HostedBoardProjection? _hostedProjection;
+
   String get _authorDid => widget.authorDid ?? widget.thread.authorId;
 
   @override
@@ -51,23 +60,102 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
     final posts = await _postRepo.list(threadId: widget.thread.id);
-    final postingBlocked = await _checkPostingGate();
+    final projection = await DriftHostedBoardRepository(
+      widget.db,
+    ).getProjectionByLocalBoardId(widget.thread.boardId);
+    final postingBlocked = await _checkPostingGate(projection);
     setState(() {
       _posts = posts;
+      _hostedProjection = projection;
       _postingBlocked = postingBlocked;
       _isLoading = false;
     });
   }
 
-  Future<bool> _checkPostingGate() async {
-    final projection = await DriftHostedBoardRepository(widget.db)
-        .getProjectionByLocalBoardId(widget.thread.boardId);
+  Future<bool> _checkPostingGate(HostedBoardProjection? projection) async {
     final requiredTier = projection?.minPostTier;
     if (requiredTier == null) return false;
     final tier = await DriftDidReputationRepository(
       widget.db,
     ).tierFor(_authorDid);
     return !PostingGate.satisfies(tier, requiredTier);
+  }
+
+  /// Reports a post (or, with [post] null, the thread itself) to the Forum
+  /// Host that owns this board, as a signed `report_content` intent.
+  Future<void> _reportContent({Post? post}) async {
+    final projection = _hostedProjection;
+    if (projection == null) return;
+    final host = await DriftRemoteNodeRepository(
+      widget.db,
+    ).getById(projection.forumHostId);
+    if (host == null || !mounted) return;
+
+    final draft = await showReportDialog(context);
+    if (draft == null || !mounted) return;
+
+    final intentId = const Uuid().v4();
+    final createdAt = DateTime.now().toUtc();
+    final expiresAt = createdAt.add(const Duration(minutes: 5));
+    final canonicalPayload = ReportContentIntent.canonicalPayload(
+      intentId: intentId,
+      authorDid: _authorDid,
+      targetForumHost: host.url,
+      targetKind: post == null ? 'thread' : 'post',
+      targetRef: post?.id ?? widget.thread.id,
+      boardId: projection.hostedBoardId,
+      reasonCode: draft.reasonCode,
+      note: draft.note,
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+    );
+    try {
+      final signature = await DidSignerImpl()
+          .sign(utf8.encode(jsonEncode(canonicalPayload)))
+          .then((signature) => signature.hex);
+      final client = ForumHostClient(baseUrl: host.url);
+      final ReportSubmission submission;
+      try {
+        submission = await client.submitReport(
+          ReportContentIntent(
+            intentId: intentId,
+            authorDid: _authorDid,
+            targetForumHost: host.url,
+            signature: signature,
+            targetKind: post == null ? 'thread' : 'post',
+            targetRef: post?.id ?? widget.thread.id,
+            boardId: projection.hostedBoardId,
+            reasonCode: draft.reasonCode,
+            note: draft.note,
+            createdAt: createdAt,
+            expiresAt: expiresAt,
+          ),
+        );
+      } finally {
+        client.close();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            submission.duplicate
+                ? context.uiCopy(
+                    zh: '你已檢舉過這則內容，板務處理中',
+                    en: 'Already reported; the moderators are on it',
+                  )
+                : context.uiCopy(
+                    zh: '已送出檢舉，將由板務依板規處理',
+                    en: 'Report submitted to the board moderators',
+                  ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
+    }
   }
 
   Future<void> _createPost() async {
@@ -183,6 +271,16 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         title: Text(widget.thread.title),
         backgroundColor: AnsibleDesign.paper,
         foregroundColor: AnsibleDesign.ink,
+        actions: [
+          if (_hostedProjection != null &&
+              widget.thread.authorId != _authorDid)
+            IconButton(
+              key: const Key('report_thread_button'),
+              icon: const Icon(Icons.outlined_flag, size: 21),
+              tooltip: context.uiCopy(zh: '檢舉討論串', en: 'Report thread'),
+              onPressed: () => _reportContent(),
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -296,12 +394,33 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                                 ],
                                               ),
                                             ),
+                                            if (_hostedProjection != null &&
+                                                post.authorId != _authorDid)
+                                              PopupMenuItem(
+                                                value: 'report',
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.outlined_flag,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      context.uiCopy(
+                                                        zh: '檢舉',
+                                                        en: 'Report',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                           ],
                                           onSelected: (value) {
                                             if (value == 'edit') {
                                               _editPost(post);
                                             } else if (value == 'delete') {
                                               _deletePost(post);
+                                            } else if (value == 'report') {
+                                              _reportContent(post: post);
                                             }
                                           },
                                         ),

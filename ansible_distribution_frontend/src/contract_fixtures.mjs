@@ -82,6 +82,88 @@ export const CONTRACT_FIXTURES = Object.freeze({
       trust_tier: 'self_custody_did',
     }),
   }),
+  moderation: Object.freeze({
+    report: Object.freeze({
+      id: 41,
+      target_kind: 'post',
+      target_ref: 'post-201',
+      board_id: 'general',
+      reporter_did: 'did:plc:reporter',
+      reason_code: 'spam',
+      note: null,
+      status: 'open',
+      inserted_at: '2026-06-13T01:00:00Z',
+    }),
+    openReports: Object.freeze([
+      Object.freeze({
+        id: 41,
+        target_kind: 'post',
+        target_ref: 'post-201',
+        board_id: 'general',
+        reporter_did: 'did:plc:reporter',
+        reason_code: 'spam',
+        note: null,
+        status: 'open',
+        inserted_at: '2026-06-13T01:00:00Z',
+      }),
+      Object.freeze({
+        id: 42,
+        target_kind: 'thread',
+        target_ref: 'thread-9',
+        board_id: 'general',
+        reporter_did: 'did:plc:reporter',
+        reason_code: 'harassment',
+        note: null,
+        status: 'open',
+        inserted_at: '2026-06-13T01:05:00Z',
+      }),
+      Object.freeze({
+        id: 43,
+        target_kind: 'post',
+        target_ref: 'post-300',
+        board_id: 'verified-humans',
+        reporter_did: 'did:plc:other-reporter',
+        reason_code: 'other',
+        note: '冒充板主發言',
+        status: 'open',
+        inserted_at: '2026-06-13T01:10:00Z',
+      }),
+    ]),
+    auditActions: Object.freeze([
+      Object.freeze({
+        id: 7,
+        action: 'remove_post_from_board',
+        target_ref: 'post-101',
+        board_id: 'general',
+        moderator_did: 'did:plc:fixture',
+        reason_code: 'spam',
+        report_id: 40,
+        inserted_at: '2026-06-12T09:00:00Z',
+      }),
+    ]),
+    actionAccepted: Object.freeze({
+      id: 8,
+      action: 'lock_thread',
+      target_ref: 'thread-9',
+      board_id: 'general',
+      moderator_did: 'did:plc:fixture',
+      reason_code: 'harassment',
+      report_id: 42,
+      inserted_at: '2026-06-13T02:00:00Z',
+    }),
+    boardState: Object.freeze({
+      removed_posts: Object.freeze([
+        Object.freeze({ target_ref: 'post-101', reason_code: 'spam' }),
+      ]),
+      locked_threads: Object.freeze([
+        Object.freeze({ thread_id: 'thread-9', reason_code: 'harassment' }),
+      ]),
+    }),
+    emptyBoardState: Object.freeze({
+      removed_posts: Object.freeze([]),
+      locked_threads: Object.freeze([]),
+    }),
+  }),
   errors: Object.freeze({
     missingScope: Object.freeze({
       type: ERROR_TYPES.missingScope,
@@ -115,6 +197,30 @@ export const CONTRACT_FIXTURES = Object.freeze({
       retryable: false,
       code: 'not_found',
       detail: Object.freeze({ boardId: 'missing' }),
+    }),
+    notBoardModerator: Object.freeze({
+      type: ERROR_TYPES.notBoardModerator,
+      message: 'not_board_moderator',
+      retryable: false,
+      status: 403,
+      code: 'not_board_moderator',
+      detail: undefined,
+    }),
+    invalidReasonCode: Object.freeze({
+      type: ERROR_TYPES.invalidRequest,
+      message: 'invalid_reason_code',
+      retryable: false,
+      status: 422,
+      code: 'invalid_reason_code',
+      detail: undefined,
+    }),
+    unknownTarget: Object.freeze({
+      type: ERROR_TYPES.invalidRequest,
+      message: 'unknown_target',
+      retryable: false,
+      status: 422,
+      code: 'unknown_target',
+      detail: undefined,
     }),
   }),
 });
@@ -178,7 +284,10 @@ export function createFixtureWebSessionClient({
   };
 }
 
-export function createFixtureForumHostClient() {
+export function createFixtureForumHostClient({
+  moderator = true,
+  reportOutcome = 'created',
+} = {}) {
   return {
     async fetchForumHostInfo() {
       return CONTRACT_FIXTURES.forum.host;
@@ -189,5 +298,64 @@ export function createFixtureForumHostClient() {
     async createHostedWebThread() {
       return CONTRACT_FIXTURES.forum.threadAccepted;
     },
+    async submitWebReport() {
+      if (reportOutcome === 'rate_limited') {
+        throw new RelayApiError('rate_limited', { status: 429, code: 'rate_limited' });
+      }
+
+      if (reportOutcome === 'invalid_reason') {
+        throw new RelayApiError('invalid_reason_code', {
+          status: 422,
+          code: 'invalid_reason_code',
+        });
+      }
+
+      if (reportOutcome === 'unknown_target') {
+        throw new RelayApiError('unknown_target', {
+          status: 422,
+          code: 'unknown_target',
+        });
+      }
+
+      return {
+        report: CONTRACT_FIXTURES.moderation.report,
+        duplicate: reportOutcome === 'duplicate',
+      };
+    },
+    async fetchWebModerationReports() {
+      assertModerator(moderator);
+      return { reports: CONTRACT_FIXTURES.moderation.openReports };
+    },
+    async fetchWebModerationActions() {
+      assertModerator(moderator);
+      return { actions: CONTRACT_FIXTURES.moderation.auditActions };
+    },
+    async submitWebModerationAction({ action, targetRef, boardId, reasonCode, reportId }) {
+      assertModerator(moderator);
+      return {
+        action: {
+          ...CONTRACT_FIXTURES.moderation.actionAccepted,
+          action,
+          target_ref: targetRef,
+          board_id: boardId,
+          reason_code: reasonCode,
+          report_id: reportId ?? null,
+        },
+      };
+    },
+    async fetchBoardModerationState({ boardId } = {}) {
+      return boardId === 'general'
+        ? CONTRACT_FIXTURES.moderation.boardState
+        : CONTRACT_FIXTURES.moderation.emptyBoardState;
+    },
   };
+}
+
+function assertModerator(moderator) {
+  if (!moderator) {
+    throw new RelayApiError('not_board_moderator', {
+      status: 403,
+      code: 'not_board_moderator',
+    });
+  }
 }

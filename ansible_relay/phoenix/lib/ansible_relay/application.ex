@@ -17,6 +17,7 @@ defmodule AnsibleRelay.Application do
           AnsibleRelay.WebSessionStore,
           AnsibleRelay.MessengerStore,
           AnsibleRelay.AbuseDetector,
+          AnsibleRelay.ForumHost.ReportRateLimiter,
           AnsibleRelay.OpStore,
           {Bandit, plug: AnsibleRelay.Web.Router, port: port}
         ]

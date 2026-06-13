@@ -37,6 +37,7 @@ createForumUiApp({
   root,
   pageController,
   sessionLifecycle,
+  forumDataAdapter,
   storage: localStorage,
   windowLike: window,
 }).start();

@@ -14,6 +14,18 @@ import 'app_l10n.dart';
 /// Falls back to a generic message with a trimmed one-line detail so the user
 /// never sees a bare `Exception: ...` stack string.
 String userFacingError(BuildContext context, Object error) {
+  if (error is ForumHostException && error.error == 'rate_limited') {
+    return context.uiCopy(
+      zh: '操作太頻繁，請稍後再試。',
+      en: 'Too many requests; please try again later.',
+    );
+  }
+  if (error is ForumHostException && error.error == 'thread_locked') {
+    return context.uiCopy(
+      zh: '這個討論串已被板務鎖定，無法新增回覆。',
+      en: 'This thread has been locked by the moderators.',
+    );
+  }
   if (_isPostingRequiresTier(error)) {
     return context.uiCopy(
       zh: '此看板僅限通過真人驗證的成員發文。請先完成真人驗證（升級驗證），再試一次。',

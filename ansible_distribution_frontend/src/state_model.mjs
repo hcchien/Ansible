@@ -7,6 +7,7 @@ export const PAGE_IDS = Object.freeze({
   board: 'board',
   sessions: 'sessions',
   login: 'login',
+  moderation: 'moderation',
   notFound: 'not_found',
 });
 
@@ -40,6 +41,8 @@ export function buildAppViewModel({
     boards: forum?.boards ?? [],
     board: forum?.board ?? null,
     threads: forum?.threads ?? [],
+    moderation: forum?.moderation ?? null,
+    moderationState: forum?.moderationState ?? null,
     loading,
     error: error ?? forum?.error ?? session?.error ?? null,
     navigation: deriveNavigationItems(session),
@@ -59,6 +62,11 @@ export function deriveNavigationItems(session = DEFAULT_SESSION_VIEW_MODEL) {
   ];
 
   if (session?.authenticated) {
+    items.push({
+      id: PAGE_IDS.moderation,
+      label: t('common.moderation'),
+      href: '#/moderation',
+    });
     items.push({ id: PAGE_IDS.sessions, label: t('common.you'), href: '#/sessions' });
   } else {
     items.push({ id: PAGE_IDS.login, label: t('common.login'), href: '#/login' });
@@ -89,6 +97,9 @@ function pageDescriptor(route, forum) {
 
     case PAGE_IDS.login:
       return { id: PAGE_IDS.login, title: t('common.login') };
+
+    case PAGE_IDS.moderation:
+      return { id: PAGE_IDS.moderation, title: t('common.moderation') };
 
     default:
       return { id: PAGE_IDS.notFound, title: t('common.notFound') };

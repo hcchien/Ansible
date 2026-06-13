@@ -7,6 +7,10 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @create_board_type "io.trisaura.forum.createBoard"
   @create_board_action "create_board"
   @create_board_version 1
+  @report_content_type "io.trisaura.forum.reportContent"
+  @report_content_action "report_content"
+  @report_content_version 1
+  @report_required_fields ~w(target_kind target_ref board_id reason_code)
   @default_clock_skew_seconds 0
   @default_max_age_seconds 600
 
@@ -38,6 +42,40 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   def verify_create_board(_params), do: {:error, :invalid_intent}
+
+  @doc """
+  Verifies a `report_content` intent (the app rail for content reports).
+  Same envelope as `create_board`: audience-bound, time-windowed, and
+  Ed25519-signed over the canonical JSON by the reporter's anchored DID.
+  """
+  def verify_report_content(params) when is_map(params) do
+    with :ok <- require_string(params, "signature", :missing_signature),
+         :ok <- require_string(params, "author_did", :missing_author_did),
+         :ok <- require_string(params, "intent_id", :missing_intent_id),
+         :ok <- require_string(params, "target_forum_host", :missing_target_forum_host),
+         :ok <- require_string(params, "action", :missing_action),
+         :ok <- require_string(params, "created_at", :missing_created_at),
+         :ok <- require_report_payload(params),
+         :ok <- require_type(params, @report_content_type),
+         :ok <- require_version(params, @report_content_version),
+         :ok <- require_action(params, @report_content_action),
+         :ok <- require_target_host(params["target_forum_host"]),
+         :ok <- require_timestamp_window(params),
+         {:ok, public_key_hex} <- public_key(params["author_did"]),
+         true <-
+           SigVerifier.verify_ed25519(
+             public_key_hex,
+             canonical_json(params),
+             params["signature"]
+           ) do
+      {:ok, report_content_attrs(params)}
+    else
+      false -> {:error, :invalid_signature}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def verify_report_content(_params), do: {:error, :invalid_intent}
 
   def canonical_json(value) when is_map(value) do
     value
@@ -74,6 +112,32 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
       end
     )
   end
+
+  defp report_content_attrs(params) do
+    report = params["report"]
+
+    %{
+      intent_id: params["intent_id"],
+      reporter_did: params["author_did"],
+      target_kind: report["target_kind"],
+      target_ref: report["target_ref"],
+      board_id: report["board_id"],
+      reason_code: report["reason_code"],
+      note: report["note"]
+    }
+  end
+
+  defp require_report_payload(%{"report" => %{} = report}) do
+    if Enum.all?(@report_required_fields, fn field ->
+         is_binary(report[field]) and String.trim(report[field]) != ""
+       end) do
+      :ok
+    else
+      {:error, :invalid_report}
+    end
+  end
+
+  defp require_report_payload(_params), do: {:error, :invalid_report}
 
   defp encode_canonical(value) when is_map(value) do
     value

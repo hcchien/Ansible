@@ -191,6 +191,70 @@ await scopedRoot.listeners.get('click')({
 assert.equal(outsideStarted, false);
 scopedApp.stop();
 
+const moderationRoot = createFakeRoot();
+const moderationWindow = createFakeWindow('#/moderation', { dispatchesHashchange: false });
+const moderationHarness = createFrontendFlowHarness({
+  routeHash: '#/moderation',
+  sessionMode: 'approvedDid',
+});
+const moderationPageController = createPageController({
+  getCurrentHash: () => moderationWindow.location.hash,
+  sessionLifecycle: moderationHarness.sessionLifecycle,
+  forumDataAdapter: moderationHarness.forumDataAdapter,
+});
+const moderationApp = createForumUiApp({
+  root: moderationRoot,
+  pageController: moderationPageController,
+  sessionLifecycle: moderationHarness.sessionLifecycle,
+  forumDataAdapter: moderationHarness.forumDataAdapter,
+  storage: moderationHarness.storage,
+  windowLike: moderationWindow,
+});
+
+await moderationApp.start();
+assert.match(moderationRoot.innerHTML, /板務主控台/);
+assert.match(moderationRoot.innerHTML, /待處理檢舉 · 3/);
+assert.match(moderationRoot.innerHTML, /data-mod-action="dismiss_report"/);
+assert.match(moderationRoot.innerHTML, /處理紀錄/);
+
+await moderationRoot.listeners.get('click')({
+  target: createContainedActionElement(moderationRoot, 'moderation-action', {
+    modAction: 'lock_thread',
+    reportId: '42',
+    targetRef: 'thread-9',
+    boardId: 'general',
+    reasonCode: 'harassment',
+  }),
+  preventDefault() {},
+});
+assert.match(moderationRoot.innerHTML, /已記錄板務動作/);
+assert.match(moderationRoot.innerHTML, /鎖定討論串/);
+
+await moderationApp.navigate('#/boards/general');
+await moderationRoot.listeners.get('click')({
+  target: createContainedActionElement(moderationRoot, 'submit-report', {
+    targetKind: 'thread',
+    targetRef: 'thread-9',
+    boardId: 'general',
+    reasonCode: 'spam',
+  }),
+  preventDefault() {},
+});
+assert.match(moderationRoot.innerHTML, /已送出檢舉/);
+
+await moderationRoot.listeners.get('click')({
+  target: createContainedActionElement(moderationRoot, 'submit-report', {
+    targetKind: 'thread',
+    targetRef: 'thread-9',
+    boardId: 'general',
+    reasonCode: 'other',
+    note: '',
+  }),
+  preventDefault() {},
+});
+assert.match(moderationRoot.innerHTML, /檢舉未送出|選擇「其他」時/);
+moderationApp.stop();
+
 console.log('ok - forum UI app controller');
 
 function createFakeRoot() {

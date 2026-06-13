@@ -96,6 +96,42 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ForumHostController.create_web_thread(conn, conn.body_params)
   end
 
+  # Forum Host — content reporting (signed-intent and web-session rails)
+  post "/api/v1/forum-host/reports" do
+    AnsibleRelay.Web.Controllers.ForumHostController.create_report(conn, conn.body_params)
+  end
+
+  post "/api/v1/forum-host/web/reports" do
+    AnsibleRelay.Web.Controllers.ForumHostController.create_web_report(conn, conn.body_params)
+  end
+
+  # Forum Host — moderation console (board moderators only)
+  get "/api/v1/forum-host/web/moderation/reports" do
+    AnsibleRelay.Web.Controllers.ForumHostController.list_web_moderation_reports(
+      conn,
+      conn.query_params
+    )
+  end
+
+  post "/api/v1/forum-host/web/moderation/actions" do
+    AnsibleRelay.Web.Controllers.ForumHostController.create_web_moderation_action(
+      conn,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/forum-host/web/moderation/actions" do
+    AnsibleRelay.Web.Controllers.ForumHostController.list_web_moderation_actions(
+      conn,
+      conn.query_params
+    )
+  end
+
+  # Forum Host — public, reason-coded moderation state for a board
+  get "/api/v1/forum-host/boards/:board_id/moderation-state" do
+    AnsibleRelay.Web.Controllers.ForumHostController.board_moderation_state(conn, board_id)
+  end
+
   # App-mediated web sessions
   post "/api/v1/web-sessions/challenges" do
     AnsibleRelay.Web.Controllers.WebSessionController.create_challenge(conn, conn.body_params)

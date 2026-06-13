@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 
 import {
   createHostedWebThread,
+  fetchBoardModerationState,
   fetchForumHostInfo,
   fetchHostedBoards,
+  fetchWebModerationActions,
+  fetchWebModerationReports,
+  submitWebModerationAction,
+  submitWebReport,
 } from '../src/forum_host_client.mjs';
 import { WEB_SESSION_TOKEN_KEY } from '../src/web_session_client.mjs';
 
@@ -97,6 +102,133 @@ test('creates hosted web threads with the httpOnly session cookie', async () => 
   assert.equal(headerValue(requests[0].init.headers, 'authorization'), undefined);
   assert.equal(requests[0].init.credentials, 'same-origin');
   assert.equal(requests[0].init.body, '{"title":"Hello Forum"}');
+});
+
+test('submits web reports with the relay contract payload (201 created)', async () => {
+  const requests = [];
+  const result = await submitWebReport({
+    relayBaseUrl: 'http://localhost:4001',
+    targetKind: 'post',
+    targetRef: 'post-201',
+    boardId: 'general',
+    reasonCode: 'spam',
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(201, {
+        report: { id: 41, status: 'open', reason_code: 'spam' },
+      });
+    },
+  });
+
+  assert.equal(requests[0].url, 'http://localhost:4001/api/v1/forum-host/web/reports');
+  assert.equal(requests[0].init.credentials, 'same-origin');
+  assert.deepEqual(JSON.parse(requests[0].init.body), {
+    target_kind: 'post',
+    target_ref: 'post-201',
+    board_id: 'general',
+    reason_code: 'spam',
+    note: null,
+  });
+  assert.deepEqual(result, {
+    report: { id: 41, status: 'open', reason_code: 'spam' },
+    duplicate: false,
+  });
+});
+
+test('marks an HTTP 200 report response as a duplicate collapse', async () => {
+  const result = await submitWebReport({
+    relayBaseUrl: 'http://localhost:4001',
+    targetKind: 'thread',
+    targetRef: 'thread-9',
+    boardId: 'general',
+    reasonCode: 'other',
+    note: '需要附註',
+    fetchImpl: async () =>
+      jsonResponse(200, { report: { id: 41, status: 'open' } }),
+  });
+
+  assert.deepEqual(result, {
+    report: { id: 41, status: 'open' },
+    duplicate: true,
+  });
+});
+
+test('fetches the moderation queue and audit trail with cookie auth', async () => {
+  const requests = [];
+  const fetchImpl = async (url, init) => {
+    requests.push({ url, init });
+    return url.includes('/reports')
+      ? jsonResponse(200, { reports: [] })
+      : jsonResponse(200, { actions: [] });
+  };
+
+  await fetchWebModerationReports({
+    relayBaseUrl: 'http://localhost:4001',
+    fetchImpl,
+  });
+  await fetchWebModerationActions({
+    relayBaseUrl: 'http://localhost:4001',
+    fetchImpl,
+  });
+
+  assert.deepEqual(
+    requests.map((request) => request.url),
+    [
+      'http://localhost:4001/api/v1/forum-host/web/moderation/reports?status=open',
+      'http://localhost:4001/api/v1/forum-host/web/moderation/actions',
+    ],
+  );
+  for (const request of requests) {
+    assert.equal(request.init.credentials, 'same-origin');
+  }
+});
+
+test('submits moderation actions with the relay contract payload', async () => {
+  const requests = [];
+  await submitWebModerationAction({
+    relayBaseUrl: 'http://localhost:4001',
+    action: 'lock_thread',
+    targetRef: 'thread-9',
+    boardId: 'general',
+    reasonCode: 'harassment',
+    reportId: 42,
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(201, { action: { id: 8 } });
+    },
+  });
+
+  assert.equal(
+    requests[0].url,
+    'http://localhost:4001/api/v1/forum-host/web/moderation/actions',
+  );
+  assert.equal(requests[0].init.credentials, 'same-origin');
+  assert.deepEqual(JSON.parse(requests[0].init.body), {
+    action: 'lock_thread',
+    target_ref: 'thread-9',
+    board_id: 'general',
+    reason_code: 'harassment',
+    report_id: 42,
+  });
+});
+
+test('reads the public board moderation state without credentials', async () => {
+  const requests = [];
+  const state = await fetchBoardModerationState({
+    relayBaseUrl: 'http://localhost:4001',
+    boardId: 'general',
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(200, { removed_posts: [], locked_threads: [] });
+    },
+  });
+
+  assert.equal(
+    requests[0].url,
+    'http://localhost:4001/api/v1/forum-host/boards/general/moderation-state',
+  );
+  assert.equal(requests[0].init.credentials, 'omit');
+  assert.deepEqual(state, { removed_posts: [], locked_threads: [] });
 });
 
 function jsonResponse(status, body) {

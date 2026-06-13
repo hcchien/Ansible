@@ -4,6 +4,8 @@ export const ERROR_TYPES = Object.freeze({
   unauthenticated: 'unauthenticated',
   missingScope: 'missing_scope',
   postingRequiresTier: 'posting_requires_tier',
+  notBoardModerator: 'not_board_moderator',
+  threadLocked: 'thread_locked',
   rateLimited: 'rate_limited',
   challengeExpired: 'challenge_expired',
   sessionExpired: 'session_expired',
@@ -75,6 +77,11 @@ function detailForRelayFailure(type, error) {
     };
   }
 
+  if (type === ERROR_TYPES.threadLocked) {
+    // Relay 403 contract: {"error": "thread_locked", "reason_code": ...}
+    return { reasonCode: error.body?.reason_code ?? null };
+  }
+
   return error.detail;
 }
 
@@ -90,6 +97,14 @@ function errorTypeForRelayFailure(error) {
   if (error.status === 403) {
     if (error.code === 'posting_requires_tier') {
       return ERROR_TYPES.postingRequiresTier;
+    }
+
+    if (error.code === 'not_board_moderator') {
+      return ERROR_TYPES.notBoardModerator;
+    }
+
+    if (error.code === 'thread_locked') {
+      return ERROR_TYPES.threadLocked;
     }
 
     return ERROR_TYPES.missingScope;
@@ -118,6 +133,9 @@ function errorTypeForRelayFailure(error) {
       'invalid_thread',
       'invalid_board',
       'missing_required_fields',
+      'invalid_reason_code',
+      'unknown_target',
+      'invalid_action',
     ].includes(error.code)
   ) {
     return ERROR_TYPES.invalidRequest;

@@ -3,7 +3,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   import Plug.Conn
   alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SigVerifier}
-  alias AnsibleRelay.ForumHost.PostingGate
+  alias AnsibleRelay.ForumHost.{Moderation, PostingGate}
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
   @valid_entity_types ~w(board thread post reaction murmur note follow profile)
@@ -35,7 +35,11 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
              params["op_type"],
              params["payload"],
              author_did
-           ) do
+           ),
+         # Lock gate: a locked thread accepts no new post intents. Runs at
+         # the same chokepoint as the posting gate so signed ops and
+         # web-session writes share the reason-coded 403 contract.
+         :ok <- check_thread_lock(params["entity_type"], params["op_type"], params["payload"]) do
       op = %{
         op_id: params["op_id"],
         author_did: author_did,
@@ -85,6 +89,9 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
           required_tier: required_tier,
           current_tier: current_tier
         })
+
+      {:error, :thread_locked, reason_code} ->
+        send_json(conn, 403, %{error: "thread_locked", reason_code: reason_code})
     end
   end
 
@@ -105,8 +112,16 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
         list -> List.last(list).log_id
       end
 
+    # Moderation overlay: removed posts are served as content-stripped,
+    # reason-coded tombstones and locked threads carry their lock state. Only
+    # this host's projection changes — the stored op rows are untouched.
+    ops_with_overlay =
+      visible
+      |> Enum.map(&attach_public_key/1)
+      |> Moderation.overlay_ops()
+
     send_json(conn, 200, %{
-      ops: Enum.map(visible, &attach_public_key/1),
+      ops: ops_with_overlay,
       next_cursor: next_cursor,
       has_more: has_more
     })
@@ -208,6 +223,20 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   end
 
   defp check_posting_gate(_entity_type, _op_type, _payload, _author_did), do: :ok
+
+  # New post inserts into a locked thread are rejected with the lock's reason
+  # code. Thread inserts are new threads, which cannot be locked yet.
+  defp check_thread_lock("post", "insert", payload) do
+    thread_id =
+      case decode_payload(payload) do
+        {:ok, %{} = decoded} -> decoded["threadId"] || decoded["thread_id"]
+        _ -> nil
+      end
+
+    Moderation.authorize_thread_post(thread_id)
+  end
+
+  defp check_thread_lock(_entity_type, _op_type, _payload), do: :ok
 
   defp check_signature(public_key, message, sig_hex) do
     if SigVerifier.verify_ed25519(public_key, message, sig_hex),

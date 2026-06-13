@@ -58,6 +58,12 @@ export function createRelayApiClient({
       );
     }
 
+    // Some relay contracts encode meaning in the success status code
+    // (e.g. report duplicate collapse: 201 created vs 200 existing).
+    if (options.withStatus === true) {
+      return { status: response.status, body: responseBody };
+    }
+
     return responseBody;
   }
 

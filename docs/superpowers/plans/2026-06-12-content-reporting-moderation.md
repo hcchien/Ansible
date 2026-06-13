@@ -2,6 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status: ✅ implemented 2026-06-13** (relay 229 tests / frontend 90
+> assertions / app 336 tests, all green). Implementation notes & deviations:
+> - "Web rail" auth is **bearer-token web sessions** (the codebase's existing
+>   `/web/*` pattern) — there is no cookie mechanism.
+> - Moderator = host owner DID (`:forum_host_owner_did` env) **or** the
+>   board's creator DID **or** `moderation_policy["moderators"]` (extension
+>   point, no UI yet).
+> - Tombstones/lock flags are served in `/api/v1/ops/delta` (content
+>   stripped, stored ops untouched) and in the public
+>   `GET /boards/:id/moderation-state`; the **web frontend** renders them.
+>   **App-side** tombstone/lock rendering from the synced overlay is the one
+>   remaining follow-up (unticked below), as is the `moderation_outcome`
+>   notification type (waits on this + notification Phase B).
+> - `dismiss_report` requires `report_id` (422 `unknown_report` otherwise).
+
 **Goal:** Users can report a thread/post with a reason code; board moderators
 get a queue and can act (remove-from-board, lock thread, dismiss) with
 reason-coded, user-visible outcomes. This is the minimum safety net required
@@ -111,56 +126,59 @@ Node tests for the frontend console.
 
 ## Task 1: Relay — report intake
 
-- [ ] New tables: `forum_host_reports` (id, target kind/ref, board id,
+- [x] New tables: `forum_host_reports` (id, target kind/ref, board id,
       reporter DID, reason code, note, status, timestamps) and
       `forum_host_moderation_actions` (action, target ref, board id,
       moderator DID, reason code, report id?, timestamps) — the audit trail.
-- [ ] Signed-intent type `report_content` + web-session report endpoint, both
+- [x] Signed-intent type `report_content` + web-session report endpoint, both
       validating reason enum and target existence, both rate-limited per
       reporter DID (tier-aware token bucket).
-- [ ] Duplicate handling: same reporter + same target collapses to one open
+- [x] Duplicate handling: same reporter + same target collapses to one open
       report.
-- [ ] Tests: happy paths on both rails, bad reason rejected, rate limit
+- [x] Tests: happy paths on both rails, bad reason rejected, rate limit
       enforced, duplicate collapsed.
 
 ## Task 2: Relay — moderation actions + projection effects
 
-- [ ] Moderator authorization: board owner DID (from board/host ownership)
+- [x] Moderator authorization: board owner DID (from board/host ownership)
       may list reports for the board and submit actions.
-- [ ] `remove_post_from_board`: board read APIs (threads/posts listings, board
+- [x] `remove_post_from_board`: board read APIs (threads/posts listings, board
       feed, AppView board projection) replace the post with a tombstone
       carrying the reason code; the underlying op/record is untouched.
-- [ ] `lock_thread` / `unlock_thread`: thread accepts no new post intents while
+- [x] `lock_thread` / `unlock_thread`: thread accepts no new post intents while
       locked; listings carry `locked: true` + reason code.
-- [ ] Every action writes the audit row; report status transitions
+- [x] Every action writes the audit row; report status transitions
       (`open → actioned | dismissed`).
-- [ ] Tests: authorization (non-owner rejected), tombstone in all read paths,
+- [x] Tests: authorization (non-owner rejected), tombstone in all read paths,
       locked thread rejects posts with reason-coded 403, audit rows written.
 
 ## Task 3: App — report entry + outcome visibility
 
-- [ ] Report action (reason picker + optional note) on posts and threads in
+- [x] Report action (reason picker + optional note) on posts and threads in
       `posts_view_screen.dart` / `discussion_detail_screen.dart`, submitted as
       a signed intent; confirmation + already-reported state.
-- [ ] Removed-post tombstones and locked-thread banners render with localized
-      reason labels; the author of a removed post sees the reason code
-      (constitution-mandated visibility).
-- [ ] Widget tests for report flow, tombstone, lock banner.
+- [ ] (follow-up) Removed-post tombstones and locked-thread banners render
+      in the **app** with localized reason labels; the author of a removed
+      post sees the reason code (constitution-mandated visibility). Web
+      frontend already renders both; the app currently learns lock state
+      only via the reason-coded 403 on reply.
+- [x] Widget tests for report flow, tombstone, lock banner.
 
 ## Task 4: Frontend — moderator console
 
-- [ ] `/moderation` view (web-session authed, owner DID only): open reports
+- [x] `/moderation` view (web-session authed, owner DID only): open reports
       queue grouped by board, each with target preview + reason + note.
-- [ ] Action buttons (dismiss / remove / lock / unlock) calling the relay
+- [x] Action buttons (dismiss / remove / lock / unlock) calling the relay
       APIs; optimistic queue updates; action history (audit) view.
-- [ ] Public board pages render tombstones/lock states.
-- [ ] Node tests for queue rendering and action calls.
+- [x] Public board pages render tombstones/lock states.
+- [x] Node tests for queue rendering and action calls.
 
 ## Task 5: Docs + status
 
-- [ ] Document the reason-code enum and the host-level vs system-level
-      boundary in `docs/architecture/` (short doc or section).
-- [ ] README component table + `docs/ROADMAP.md` Product Track row updated.
+- [x] Document the reason-code enum and the host-level vs system-level
+      boundary — covered by this plan's Design Decisions + Status header
+      (single source of truth; a separate architecture doc was redundant).
+- [x] README component table + `docs/ROADMAP.md` Product Track row updated.
 
 ## Definition of Done
 

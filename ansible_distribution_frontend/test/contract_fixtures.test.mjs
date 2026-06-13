@@ -37,6 +37,43 @@ assert.deepEqual(await webSessionClient.fetchChallengeStatus(), CONTRACT_FIXTURE
 assert.deepEqual(await webSessionClient.fetchCurrentWebSession(), CONTRACT_FIXTURES.sessions.approvedDid);
 console.log('ok - creates fixture web session client');
 
+assert.equal(CONTRACT_FIXTURES.moderation.report.reason_code, 'spam');
+assert.equal(CONTRACT_FIXTURES.moderation.openReports.length, 3);
+assert.equal(
+  CONTRACT_FIXTURES.errors.notBoardModerator.type,
+  ERROR_TYPES.notBoardModerator,
+);
+assert.equal(CONTRACT_FIXTURES.errors.invalidReasonCode.status, 422);
+assert.equal(CONTRACT_FIXTURES.errors.unknownTarget.status, 422);
+assert.deepEqual(CONTRACT_FIXTURES.moderation.boardState.locked_threads, [
+  { thread_id: 'thread-9', reason_code: 'harassment' },
+]);
+console.log('ok - exposes moderation contract fixtures');
+
+const moderatorClient = createFixtureForumHostClient();
+assert.deepEqual(await moderatorClient.fetchWebModerationReports(), {
+  reports: CONTRACT_FIXTURES.moderation.openReports,
+});
+assert.deepEqual(await moderatorClient.fetchWebModerationActions(), {
+  actions: CONTRACT_FIXTURES.moderation.auditActions,
+});
+assert.deepEqual(await moderatorClient.fetchBoardModerationState({ boardId: 'general' }), CONTRACT_FIXTURES.moderation.boardState);
+assert.deepEqual(
+  await moderatorClient.fetchBoardModerationState({ boardId: 'other' }),
+  CONTRACT_FIXTURES.moderation.emptyBoardState,
+);
+
+const nonModeratorClient = createFixtureForumHostClient({ moderator: false });
+await assert.rejects(
+  () => nonModeratorClient.fetchWebModerationReports(),
+  (error) => {
+    assert.equal(error.status, 403);
+    assert.equal(error.code, 'not_board_moderator');
+    return true;
+  },
+);
+console.log('ok - fixture forum host client enforces the moderator gate');
+
 const forumHostClient = createFixtureForumHostClient();
 assert.deepEqual(await forumHostClient.fetchForumHostInfo(), CONTRACT_FIXTURES.forum.host);
 assert.deepEqual(await forumHostClient.fetchHostedBoards(), {

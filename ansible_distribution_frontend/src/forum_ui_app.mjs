@@ -1,7 +1,9 @@
 import { normalizeFrontendError } from './error_taxonomy.mjs';
 import { renderPageBody } from './forum_page_renderers.mjs';
 import { renderAppShell } from './forum_shell_renderer.mjs';
+import { moderationActionLabel, reasonCodeLabel } from './forum_ui_text.mjs';
 import { buildAppViewModel } from './state_model.mjs';
+import { t } from './web_i18n.mjs';
 import { WEB_SESSION_TOKEN_KEY } from './web_session_client.mjs';
 
 const UI_STORAGE_KEYS = Object.freeze({
@@ -24,12 +26,14 @@ export function createForumUiApp({
   root,
   pageController,
   sessionLifecycle,
+  forumDataAdapter = null,
   storage,
   windowLike = globalThis.window,
 }) {
   let state = null;
   let loginState = null;
   let uiError = null;
+  let uiNotice = null;
   let uiPreferences = readUiPreferences(storage);
   let pollTimer = null;
   let bound = false;
@@ -62,6 +66,10 @@ export function createForumUiApp({
         setMotionMode(actionElement.dataset.motion);
       } else if (action === 'dismiss-swipe-coachmark') {
         dismissSwipeCoachmark();
+      } else if (action === 'submit-report') {
+        await submitReport(actionElement);
+      } else if (action === 'moderation-action') {
+        await submitModerationAction(actionElement);
       }
     } catch (error) {
       renderUiError(error);
@@ -189,13 +197,99 @@ export function createForumUiApp({
     }
   }
 
+  // Submits a report from an inline report form. The target travels on the
+  // action element's dataset; reason/note come from the form fields (with a
+  // dataset fallback so non-DOM hosts can drive the same action).
+  async function submitReport(actionElement) {
+    if (!forumDataAdapter?.submitReport) return;
+
+    try {
+      const form = findReportForm(actionElement, root);
+      const dataset = { ...(form?.dataset ?? {}), ...(actionElement.dataset ?? {}) };
+      const reasonCode =
+        form?.querySelector?.('[data-report-reason]')?.value ?? dataset.reasonCode;
+      const note =
+        form?.querySelector?.('[data-report-note]')?.value ?? dataset.note ?? '';
+
+      const { duplicate } = await forumDataAdapter.submitReport({
+        targetKind: dataset.targetKind,
+        targetRef: dataset.targetRef,
+        boardId: dataset.boardId,
+        reasonCode,
+        note,
+        sessionViewModel: currentSessionViewModel(),
+      });
+
+      uiError = null;
+      uiNotice = duplicate
+        ? {
+            tone: 'warning',
+            title: t('report.duplicate.title'),
+            message: t('report.duplicate.message'),
+          }
+        : {
+            tone: 'success',
+            title: t('report.submitted.title'),
+            message: t('report.submitted.message'),
+          };
+      render();
+    } catch (error) {
+      renderUiError(error);
+    }
+  }
+
+  // Runs a moderation action from the console queue, then reloads the route
+  // so the open-report queue and audit history reflect the relay state.
+  async function submitModerationAction(actionElement) {
+    if (!forumDataAdapter?.submitModerationAction) return;
+
+    try {
+      const dataset = actionElement.dataset ?? {};
+      const recorded = await forumDataAdapter.submitModerationAction({
+        action: dataset.modAction,
+        targetRef: dataset.targetRef,
+        boardId: dataset.boardId,
+        reasonCode: dataset.reasonCode,
+        reportId: dataset.reportId || null,
+      });
+
+      uiError = null;
+      uiNotice = {
+        tone: 'success',
+        title: t('moderation.actionDone.title'),
+        message: t('moderation.actionDone.message', {
+          action: moderationActionLabel(recorded?.action ?? dataset.modAction),
+          board: recorded?.boardId ?? dataset.boardId ?? '',
+          reason: reasonCodeLabel(recorded?.reasonCode ?? dataset.reasonCode),
+        }),
+      };
+      state = await pageController.loadCurrentRoute();
+      render();
+    } catch (error) {
+      renderUiError(error);
+    }
+  }
+
+  function currentSessionViewModel() {
+    if (loginState?.viewModel?.authenticated) {
+      return loginState.viewModel;
+    }
+
+    return state?.session ?? null;
+  }
+
   function render() {
     if (!root || !state?.viewModel) return;
 
     const viewModel = viewModelForRender();
     const login = loginStateForRender();
-    const bodyHtml = renderPageBody(viewModel, { login, preferences: uiPreferences });
+    const bodyHtml = renderPageBody(viewModel, {
+      login,
+      preferences: uiPreferences,
+      notice: uiNotice,
+    });
     root.innerHTML = renderAppShell({ viewModel, bodyHtml, uiPreferences });
+    uiNotice = null;
   }
 
   function stop() {
@@ -254,6 +348,7 @@ export function createForumUiApp({
 
   function renderUiError(error) {
     uiError = normalizeFrontendError(error);
+    uiNotice = null;
     state = state ?? pageController.getState?.() ?? null;
     render();
   }
@@ -341,6 +436,25 @@ function findActionElement(target, root) {
   let node = target;
   while (node) {
     if (node.dataset?.action) {
+      return isWithinRoot(node, root) ? node : null;
+    }
+    node = node.parentElement;
+  }
+
+  return null;
+}
+
+function findReportForm(element, root) {
+  if (!element) return null;
+
+  if (typeof element.closest === 'function') {
+    const form = element.closest('[data-report-form]');
+    return isWithinRoot(form, root) ? form : null;
+  }
+
+  let node = element;
+  while (node) {
+    if (node.dataset && 'reportForm' in node.dataset) {
       return isWithinRoot(node, root) ? node : null;
     }
     node = node.parentElement;

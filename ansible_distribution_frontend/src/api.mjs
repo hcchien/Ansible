@@ -3,6 +3,7 @@ export * from './error_taxonomy.mjs';
 export * from './web_session_client.mjs';
 export * from './forum_host_client.mjs';
 export * from './forum_data_adapter.mjs';
+export * from './moderation_model.mjs';
 export * from './session_lifecycle.mjs';
 export * from './state_model.mjs';
 export * from './page_routes.mjs';
