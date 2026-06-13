@@ -76,10 +76,54 @@ export const CONTRACT_FIXTURES = Object.freeze({
       permissions: Object.freeze({ read: true, write: true }),
       posting_policy: Object.freeze({ min_post_tier: 'verified_human' }),
     }),
+    externalBoard: Object.freeze({
+      hosted_board_id: 'fediverse-watch',
+      canonical_board_uri: 'http://localhost:4001/boards/fediverse-watch',
+      slug: 'fediverse-watch',
+      title: 'Fediverse Watch',
+      description: 'Includes curated content from the wider fediverse',
+      permissions: Object.freeze({ read: true, write: true }),
+      posting_policy: Object.freeze({ external_inclusion: true }),
+    }),
     threadAccepted: Object.freeze({
       accepted: true,
       subject_did: 'did:plc:fixture',
       trust_tier: 'self_custody_did',
+    }),
+    // AppView GET /api/v1/boards/:id/external response shape (the committed
+    // contract). External items are never-verified, carry a fixed
+    // external_unverified tier, a visible origin, and a compliance level.
+    externalResponse: Object.freeze({
+      items: Object.freeze([
+        Object.freeze({
+          log_id: 'log-ext-1',
+          op_id: 'op-ext-1',
+          board_id: 'fediverse-watch',
+          content: 'Hello from the fediverse <script>alert(1)</script>',
+          created_at: '2026-06-13T03:00:00Z',
+          external_actor_uri: 'https://g0v.social/users/alice',
+          external_instance: 'g0v.social',
+          compliance_level: 'compatible',
+          reputation_tier: 'external_unverified',
+          external: true,
+          origin: 'activitypub',
+        }),
+        Object.freeze({
+          log_id: 'log-ext-2',
+          op_id: 'op-ext-2',
+          board_id: 'fediverse-watch',
+          content: 'A post from an un-assessed instance',
+          created_at: '2026-06-13T03:05:00Z',
+          external_actor_uri: 'https://example.social/users/bob',
+          external_instance: 'example.social',
+          compliance_level: 'unknown',
+          reputation_tier: 'external_unverified',
+          external: true,
+          origin: 'activitypub',
+        }),
+      ]),
+      next_cursor: null,
+      has_more: false,
     }),
   }),
   moderation: Object.freeze({
@@ -287,13 +331,17 @@ export function createFixtureWebSessionClient({
 export function createFixtureForumHostClient({
   moderator = true,
   reportOutcome = 'created',
+  includeExternalBoard = false,
 } = {}) {
   return {
     async fetchForumHostInfo() {
       return CONTRACT_FIXTURES.forum.host;
     },
     async fetchHostedBoards() {
-      return { boards: CONTRACT_FIXTURES.forum.boards };
+      const boards = includeExternalBoard
+        ? [...CONTRACT_FIXTURES.forum.boards, CONTRACT_FIXTURES.forum.externalBoard]
+        : CONTRACT_FIXTURES.forum.boards;
+      return { boards };
     },
     async createHostedWebThread() {
       return CONTRACT_FIXTURES.forum.threadAccepted;
@@ -358,4 +406,32 @@ function assertModerator(moderator) {
       code: 'not_board_moderator',
     });
   }
+}
+
+// Fixture AppView client for the curated external-content read path.
+// outcome: 'ok' returns the committed external response; 'unavailable' throws
+// (simulating an AppView outage); 'empty' returns no items.
+export function createFixtureAppViewClient({ outcome = 'ok' } = {}) {
+  return {
+    async fetchBoardExternalContent({ boardId } = {}) {
+      if (outcome === 'unavailable') {
+        throw new RelayApiError('appview_unavailable', {
+          status: 502,
+          code: 'appview_unavailable',
+        });
+      }
+
+      if (outcome === 'empty') {
+        return { items: [], next_cursor: null, has_more: false };
+      }
+
+      return {
+        ...CONTRACT_FIXTURES.forum.externalResponse,
+        items: CONTRACT_FIXTURES.forum.externalResponse.items.map((item) => ({
+          ...item,
+          board_id: boardId ?? item.board_id,
+        })),
+      };
+    },
+  };
 }

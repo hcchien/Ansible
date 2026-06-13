@@ -603,6 +603,106 @@ button.header-action.is-danger:hover:not(:disabled) {
   font-style: italic;
 }
 
+/* Curated federated (站外 / fediverse) content — visually distinct from the
+   native, verified post stack: a marked-off section with a dashed border, a
+   muted surface, and an explicit "External" origin badge so it is never
+   mistaken for verified Elix content (constitution Base Rules 6/7). */
+
+.external-section {
+  border: 1px dashed var(--border);
+  background: var(--muted-fill);
+}
+
+.external-origin-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 0.5px solid var(--accent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--accent);
+  background: var(--surface-raised);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.external-disclaimer {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.external-list {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.external-item {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--surface-raised);
+}
+
+.external-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.external-origin {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+
+.external-body {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.external-actor {
+  margin: 6px 0 0;
+  color: var(--faint);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.compliance-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.compliance-badge.is-compatible {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.compliance-badge.is-unknown {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
 .report-control {
   display: inline-block;
 }

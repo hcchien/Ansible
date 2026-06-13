@@ -23,8 +23,19 @@ const relay = createHttpServer((request, response) => {
 
 await listen(relay);
 
+// Separate AppView upstream: curated external content must route here, not the
+// relay (the contract path is GET /api/v1/boards/:id/external).
+const appViewRequests = [];
+const appView = createHttpServer((request, response) => {
+  appViewRequests.push({ method: request.method, url: request.url });
+  response.writeHead(200, { 'content-type': 'application/json' });
+  response.end(JSON.stringify({ items: [], next_cursor: null, has_more: false }));
+});
+await listen(appView);
+
 const frontend = createFrontendServer({
   relayBaseUrl: `http://127.0.0.1:${relay.address().port}`,
+  appViewBaseUrl: `http://127.0.0.1:${appView.address().port}`,
   logger: null,
 });
 await listen(frontend);
@@ -62,8 +73,20 @@ try {
     url: '/api/v1/forum-host',
     authorization: 'Bearer wst_test',
   });
+
+  // External content path routes to the AppView upstream, not the relay.
+  const relayCountBefore = relayRequests.length;
+  const external = await request(`${baseUrl}/api/v1/boards/fediverse-watch/external?limit=20`);
+  assert.equal(external.status, 200);
+  assert.deepEqual(JSON.parse(external.body).items, []);
+  assert.deepEqual(appViewRequests.at(-1), {
+    method: 'GET',
+    url: '/api/v1/boards/fediverse-watch/external?limit=20',
+  });
+  assert.equal(relayRequests.length, relayCountBefore, 'external path must not hit the relay');
 } finally {
   await close(frontend);
+  await close(appView);
   await close(relay);
 }
 

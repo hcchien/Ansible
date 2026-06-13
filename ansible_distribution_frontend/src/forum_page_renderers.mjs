@@ -132,6 +132,7 @@ function renderBoard(viewModel, uiState = {}) {
           </div>
           ${renderThreadList(threads, threadContext)}
         </section>
+        ${renderExternalSection(board, viewModel.externalContent)}
       </section>
       ${renderRightRail(viewModel, viewModel.boards ?? [])}
     </section>
@@ -834,6 +835,67 @@ function renderRemovedTombstone(reasonCode) {
       ${escapeHtml(t('moderation.removedTombstone', { reason: reasonCodeLabel(reasonCode) }))}
     </p>
   `;
+}
+
+// Curated federated ("站外 / fediverse") content. Constitution invariants:
+// it renders ONLY on boards the host opted into (external_inclusion), is always
+// labeled with its origin (instance + actor) and compliance level, is visually
+// distinct from native posts, and is NEVER presented as verified. When the
+// board did not opt in, nothing renders (and the data layer made no fetch).
+function renderExternalSection(board, externalContent) {
+  if (board?.postingPolicy?.externalInclusion !== true) {
+    return '';
+  }
+
+  const items = externalContent?.items ?? [];
+  const unavailable = Boolean(externalContent?.unavailable);
+
+  const body = unavailable
+    ? `<p class="empty-state">${escapeHtml(t('board.external.unavailable'))}</p>`
+    : items.length
+      ? `<ul class="external-list">${items.map(renderExternalItem).join('')}</ul>`
+      : `<p class="empty-state">${escapeHtml(t('board.external.empty'))}</p>`;
+
+  return `
+    <section class="card external-section" aria-labelledby="external-section-title" data-external-section>
+      <div class="head">
+        <h3 id="external-section-title">${escapeHtml(t('board.external.title'))}</h3>
+        <span class="external-origin-badge">${escapeHtml(t('board.external.badge'))}</span>
+      </div>
+      <p class="external-disclaimer" role="note">${escapeHtml(t('board.external.disclaimer'))}</p>
+      ${body}
+    </section>
+  `;
+}
+
+function renderExternalItem(item) {
+  const origin = item.instance || item.actorUri || t('board.external.unknownOrigin');
+  const actor = item.actorUri || t('board.external.unknownActor');
+
+  return `
+    <li class="external-item" data-external-item>
+      <div class="external-item-head">
+        <span class="external-origin">${escapeHtml(
+          t('board.external.from', { instance: origin }),
+        )}</span>
+        ${renderComplianceBadge(item.complianceLevel)}
+      </div>
+      <p class="external-body">${escapeHtml(item.content ?? '')}</p>
+      <p class="external-actor">${escapeHtml(
+        t('board.external.actor', { actor }),
+      )}</p>
+    </li>
+  `;
+}
+
+// compatible = instance we assessed; unknown = un-assessed / lower-ranked.
+function renderComplianceBadge(level) {
+  const compatible = level === 'compatible';
+  const label = compatible
+    ? t('board.external.compliance.compatible')
+    : t('board.external.compliance.unknown');
+
+  return `<span class="compliance-badge is-${compatible ? 'compatible' : 'unknown'}">${escapeHtml(label)}</span>`;
 }
 
 function renderLockedBadge() {

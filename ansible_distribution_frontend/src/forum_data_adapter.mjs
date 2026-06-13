@@ -8,6 +8,7 @@ import {
   submitWebModerationAction,
   submitWebReport,
 } from './forum_host_client.mjs';
+import { fetchBoardExternalContent } from './appview_client.mjs';
 import { ERROR_TYPES, normalizeFrontendError, notFoundError, scopeError } from './error_taxonomy.mjs';
 import {
   applyModerationStateToThreads,
@@ -20,6 +21,10 @@ import {
 
 export function createForumDataAdapter({
   relayBaseUrl,
+  // The AppView is a separate read service; external/federated content is
+  // surfaced only through it. Defaults to the relay base URL so dev works
+  // out of the box, but production points it at the AppView origin.
+  appViewBaseUrl = relayBaseUrl,
   storage = globalThis.localStorage,
   fetchImpl = globalThis.fetch,
   forumHostClient = {
@@ -32,6 +37,7 @@ export function createForumDataAdapter({
     submitWebModerationAction,
     fetchBoardModerationState,
   },
+  appViewClient = { fetchBoardExternalContent },
 }) {
   async function loadForumHome({ sessionViewModel } = {}) {
     const [host, boardsResponse] = await Promise.all([
@@ -68,15 +74,51 @@ export function createForumDataAdapter({
       };
     }
 
-    const moderationState = await loadPublicModerationState(board.id);
+    const [moderationState, externalContent] = await Promise.all([
+      loadPublicModerationState(board.id),
+      loadBoardExternalContent(board),
+    ]);
 
     return {
       ...home,
       board,
       threads: applyModerationStateToThreads([], moderationState),
       moderationState,
+      externalContent,
       error: null,
     };
+  }
+
+  // External (federated) content is fetched ONLY when the board host opted in
+  // via posting_policy.external_inclusion. Anonymous public web has no per-user
+  // opt-in, so the board opt-in is the sole gate here. The AppView is a separate
+  // service and may be down — a failure degrades to an empty external section
+  // and must never take the board page down (constitution Base Rule 6 spirit:
+  // a public read failing closed-but-renderable, never a hard error).
+  async function loadBoardExternalContent(board) {
+    if (board?.postingPolicy?.externalInclusion !== true) {
+      return null;
+    }
+
+    if (typeof appViewClient.fetchBoardExternalContent !== 'function') {
+      return { items: [], unavailable: true };
+    }
+
+    try {
+      const response = await appViewClient.fetchBoardExternalContent({
+        appViewBaseUrl,
+        fetchImpl,
+        boardId: board.id,
+      });
+      return {
+        items: (response?.items ?? []).map(normalizeExternalItem),
+        nextCursor: response?.next_cursor ?? null,
+        hasMore: Boolean(response?.has_more),
+        unavailable: false,
+      };
+    } catch {
+      return { items: [], unavailable: true };
+    }
   }
 
   // The moderation-state endpoint is public and reason-coded by design
@@ -297,7 +339,33 @@ export function normalizeHostedBoard(board) {
     },
     postingPolicy: {
       minPostTier: postingPolicy.min_post_tier ?? null,
+      // 4a placed the host's external-content opt-in inside posting_policy.
+      // Mutually exclusive with min_post_tier (enforced relay-side); this flag
+      // is the public-web gate for surfacing curated federated content.
+      externalInclusion: postingPolicy.external_inclusion === true,
     },
+  };
+}
+
+// Normalizes an AppView external item into a UI-ready record. External content
+// is NEVER verified Elix content: it carries a fixed external_unverified tier,
+// a visible origin (instance + actor), and a compliance level. We coerce the
+// compliance level to the known enum (compatible/unknown) and default unknown.
+export function normalizeExternalItem(item) {
+  const compliance = item?.compliance_level === 'compatible' ? 'compatible' : 'unknown';
+
+  return {
+    id: item?.log_id ?? item?.op_id ?? '',
+    opId: item?.op_id ?? null,
+    boardId: item?.board_id ?? '',
+    content: item?.content ?? '',
+    createdAt: item?.created_at ?? null,
+    actorUri: item?.external_actor_uri ?? '',
+    instance: item?.external_instance ?? '',
+    complianceLevel: compliance,
+    reputationTier: item?.reputation_tier ?? 'external_unverified',
+    origin: item?.origin ?? 'activitypub',
+    external: true,
   };
 }
 

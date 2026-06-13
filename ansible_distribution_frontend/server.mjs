@@ -16,6 +16,13 @@ import {
 const DEFAULT_PORT = 5173;
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_RELAY_BASE_URL = 'http://localhost:4001';
+// The AppView is a separate read service. External/federated content is fetched
+// only from it (GET /api/v1/boards/:id/external), so it gets its own upstream.
+// Defaults to the relay base URL so single-process dev works out of the box.
+const DEFAULT_APPVIEW_BASE_URL = process.env.APPVIEW_URL ?? DEFAULT_RELAY_BASE_URL;
+// Requests on this path are curated external content and route to the AppView
+// rather than the relay.
+const EXTERNAL_CONTENT_PATH = /^\/api\/v1\/boards\/[^/]+\/external$/;
 const SERVER_ROOT = dirname(fileURLToPath(import.meta.url));
 
 // Observability baseline (service architecture plan, Phase 0 — closes G17).
@@ -135,15 +142,18 @@ const HOP_BY_HOP_HEADERS = new Set([
 export function createFrontendServer({
   rootDir = SERVER_ROOT,
   relayBaseUrl = process.env.RELAY_BASE_URL ?? DEFAULT_RELAY_BASE_URL,
+  appViewBaseUrl = DEFAULT_APPVIEW_BASE_URL,
   logger = console,
 } = {}) {
   const resolvedRoot = resolve(rootDir);
   const resolvedRelayBaseUrl = normalizeRelayProxyBaseUrl(relayBaseUrl);
+  const resolvedAppViewBaseUrl = normalizeRelayProxyBaseUrl(appViewBaseUrl);
 
   return createHttpServer((request, response) => {
     handleRequest(request, response, {
       rootDir: resolvedRoot,
       relayBaseUrl: resolvedRelayBaseUrl,
+      appViewBaseUrl: resolvedAppViewBaseUrl,
       logger,
     }).catch((error) => {
       logger?.error?.(error);
@@ -156,10 +166,11 @@ export function startFrontendServer({
   host = process.env.HOST ?? DEFAULT_HOST,
   port = Number(process.env.PORT ?? DEFAULT_PORT),
   relayBaseUrl = process.env.RELAY_BASE_URL ?? DEFAULT_RELAY_BASE_URL,
+  appViewBaseUrl = DEFAULT_APPVIEW_BASE_URL,
   rootDir = SERVER_ROOT,
   logger = console,
 } = {}) {
-  const server = createFrontendServer({ rootDir, relayBaseUrl, logger });
+  const server = createFrontendServer({ rootDir, relayBaseUrl, appViewBaseUrl, logger });
 
   return new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -201,7 +212,12 @@ async function handleRequest(request, response, context) {
 
   if (url.pathname.startsWith('/api/')) {
     metrics.inc('frontend_requests_total', 'proxy');
-    await proxyRelayRequest(request, response, url, context);
+    // Curated external content lives on the AppView, a separate read service;
+    // everything else proxies to the relay (where the session cookie lives).
+    const upstreamBaseUrl = EXTERNAL_CONTENT_PATH.test(url.pathname)
+      ? context.appViewBaseUrl
+      : context.relayBaseUrl;
+    await proxyRelayRequest(request, response, url, { relayBaseUrl: upstreamBaseUrl });
     return;
   }
 
