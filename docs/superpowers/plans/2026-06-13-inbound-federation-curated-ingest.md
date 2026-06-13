@@ -99,11 +99,24 @@ of scope.
   verified feed by construction — they surface ONLY through an explicit
   external query path (see D4). HTTP-signature validity is recorded but is
   transport auth, never Elix identity.
-- **D4 — Surfaced behind an explicit, labeled boundary.** Not in the
-  default following/home feed. A distinct「站外 / External」surface (a tab or
-  an opt-in per-board inclusion) renders external items with an unmistakable
-  origin badge (instance + actor) and compliance label. Default is
-  off/separate; the user opts in to seeing external content.
+- **D4 — Surfaced via per-board AND/OR per-user opt-in (owner decision
+  2026-06-13).** External content is never in the default verified/home
+  feed. It surfaces only where it is opted into, by two independent knobs:
+  - **Per board (host choice):** a board owner may enable
+    `external_inclusion` on a board, inviting curated external content into
+    that board's view. **Mutually exclusive with trust-gating** — a board
+    with `min_post_tier` (真人版) MUST NOT enable external inclusion, and
+    vice versa (a verified-humans board cannot carry unverified external
+    content; enforced at the policy-set chokepoint). External items in an
+    included board render with an unmistakable origin badge (instance +
+    actor) + compliance label, visually distinct from native posts.
+  - **Per user (personal filter):** a user-level setting gates whether they
+    see external content at all; default conservative (external hidden until
+    the user opts in), plus a global "hide all external" override and
+    per-board mute. Effective visibility = board.external_inclusion AND
+    user-allows-external.
+  No separate global「站外」tab — inclusion is contextual to a board the
+  host curated and a user opted into.
 - **D5 — Moderation + reversibility.** Allowlist is the primary filter;
   per-actor/per-instance removal drops content; the existing host
   moderation can tombstone individual external items. A global "hide all
@@ -131,9 +144,15 @@ raises a remote actor's Elix trust.
       ingest path that writes `source=activitypub`, `sig_verified=false`,
       `author_tier=external_unverified`; **a regression test that an
       external item never appears in the verified timeline/discovery reads.**
-- [ ] **Task 4 (external read API + app/frontend surface):** an explicit
-      external-content query; app + frontend「站外」surface with origin +
-      compliance badge and the global hide toggle.
+- [ ] **Task 4a (relay forum-host):** board `external_inclusion` policy
+      (parallel to `posting_policy.min_post_tier`), set at the same
+      board-create/update chokepoint, with the mutual-exclusion guard
+      (reject if both `external_inclusion` and `min_post_tier` are set).
+- [ ] **Task 4b (read path + app/frontend surface):** board reads include
+      external items only when `board.external_inclusion AND
+      user-allows-external`; per-user setting + per-board mute; app +
+      frontend render external items with origin + compliance badge and a
+      global hide toggle.
 - [ ] **Task 5 (moderation + reversibility):** allowlist removal drops
       content; per-item tombstone; tests for the exit paths.
 - [ ] **Task 6:** metrics (external_ingest_total{instance}, dedup hits),
@@ -144,9 +163,11 @@ raises a remote actor's Elix trust.
 1. **Allowlist scope:** which instances/actors seed v1? (On-wedge Taiwanese
    fediverse accounts give the most value; generic global content gives the
    least and the most noise.)
-2. **Surfacing default:** is external content a separate「站外」tab the user
-   visits, or opt-in inclusion per board? (Recommend: separate tab, off by
-   default in the main feed — keeps the wedge clean.)
+2. **Surfacing default:** ✅ DECIDED 2026-06-13 — per-board opt-in (host
+   enables `external_inclusion`, mutually exclusive with 真人版) AND/OR
+   per-user opt-in (personal filter, conservative default). No global tab.
+   Sub-decision remaining: is the per-user default "hidden until opt-in"
+   (recommended, wedge-protective) or "visible where the board included it"?
 3. **Compliance assessment:** who assesses an instance's compliance level
    before it's allowlisted as `compatible` vs left `unknown`?
 
