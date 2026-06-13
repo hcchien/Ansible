@@ -29,6 +29,10 @@ defmodule AnsibleRelay.Metrics do
     * `relay_reports_total{rail}` — report intake (signed-intent / web-session)
     * `relay_snapshot_generated_total` — signed op-snapshots generated (Phase 2.3)
     * `relay_snapshot_cursor` (gauge) — cursor (log_id) of the latest snapshot
+    * `identity_reanchor_total{reason}` — accepted identity re-anchors (Task 4)
+    * `identity_recovery_pending_total` — recovery anchors entering the grace window
+    * `identity_veto_total` — pending recovery anchors vetoed (account frozen)
+    * `identity_alert_sends_total{reason}` — identity-alert wake pushes sent
   """
 
   use GenServer
@@ -56,7 +60,13 @@ defmodule AnsibleRelay.Metrics do
     "relay_wake_sends_total" => {:counter, "Push wake-scheduler sends by category."},
     "relay_reports_total" => {:counter, "Forum-host report intakes by rail."},
     "relay_snapshot_generated_total" => {:counter, "Signed op-snapshots generated (Phase 2.3)."},
-    "relay_snapshot_cursor" => {:gauge, "Cursor (log_id) of the latest published op-snapshot."}
+    "relay_snapshot_cursor" => {:gauge, "Cursor (log_id) of the latest published op-snapshot."},
+    "identity_reanchor_total" => {:counter, "Identity re-anchors accepted, by reason."},
+    "identity_recovery_pending_total" =>
+      {:counter, "Recovery re-anchors entering the grace window (pending)."},
+    "identity_veto_total" => {:counter, "Pending recovery anchors vetoed (account frozen)."},
+    "identity_alert_sends_total" =>
+      {:counter, "Identity-alert wake pushes sent to enrolled devices, by reason."}
   }
 
   # --- Public API ---

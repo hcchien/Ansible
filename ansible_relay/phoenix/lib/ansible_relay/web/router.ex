@@ -67,8 +67,26 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityController.challenge(conn, conn.body_params)
   end
 
+  # Self-certifying anchor object (Task 4) and the legacy ZKP anchor share the
+  # path; dispatch by the object `type` so existing ZKP clients keep working.
   post "/api/v1/identity/anchor" do
-    AnsibleRelay.Web.Controllers.IdentityController.anchor(conn, conn.body_params)
+    if conn.body_params["type"] == "io.trisaura.identity.anchor" do
+      AnsibleRelay.Web.Controllers.IdentityAnchorController.submit(conn, conn.body_params)
+    else
+      AnsibleRelay.Web.Controllers.IdentityController.anchor(conn, conn.body_params)
+    end
+  end
+
+  post "/api/v1/identity/anchor/promote" do
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.promote(conn, conn.body_params)
+  end
+
+  post "/api/v1/identity/anchor/veto" do
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.veto(conn, conn.body_params)
+  end
+
+  get "/api/v1/identity/anchor/:did" do
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.show(conn, %{"did" => did})
   end
 
   get "/api/v1/identity/public-key/:did" do

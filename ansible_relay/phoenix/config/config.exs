@@ -15,6 +15,10 @@ config :ansible_relay, AnsibleRelay.Repo,
 config :ansible_relay, :did_cache_ttl_seconds, 7_776_000
 # 10 minutes
 config :ansible_relay, :identity_challenge_ttl_seconds, 600
+# Recovery re-anchor grace window (hijack resistance). 72h default — a
+# recovery anchor is held `pending` for this long and any previously-enrolled
+# key may veto-to-freeze before it promotes to active.
+config :ansible_relay, :identity_recovery_grace_seconds, 259_200
 config :ansible_relay, :port, 4000
 
 # Phase 2.3 — op snapshot lifecycle.
