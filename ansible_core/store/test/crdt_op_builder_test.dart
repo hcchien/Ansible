@@ -94,6 +94,52 @@ void main() {
     });
   });
 
+  group('CrdtOpBuilder schema version (Phase 0 — API versioning)', () {
+    test('builders stamp opSchemaVersion 1 on every authored op', () {
+      expect(CrdtOpBuilder.opSchemaVersion, 1);
+
+      final ops = [
+        CrdtOpBuilder.createPost(
+          authorDid: 'did:key:alice',
+          entityId: 'post-1',
+          boardId: 'board-1',
+          threadId: 'thread-1',
+          content: 'hello',
+        ),
+        CrdtOpBuilder.createMurmur(
+          authorDid: 'did:key:alice',
+          entityId: 'murmur-1',
+          text: 'hi',
+        ),
+        CrdtOpBuilder.updatePost(
+          authorDid: 'did:key:alice',
+          entityId: 'post-1',
+          newContent: 'edited',
+        ),
+        CrdtOpBuilder.deletePost(authorDid: 'did:key:alice', entityId: 'p1'),
+      ];
+
+      for (final op in ops) {
+        expect(op.schemaVersion, CrdtOpBuilder.opSchemaVersion);
+      }
+    });
+
+    test('OpsQueueEntry JSON round-trips schemaVersion and defaults to 1', () {
+      final op = CrdtOpBuilder.createMurmur(
+        authorDid: 'did:key:alice',
+        entityId: 'murmur-1',
+        text: 'hi',
+      );
+
+      final restored = OpsQueueEntry.fromJson(op.toJson());
+      expect(restored.schemaVersion, 1);
+
+      // Entries persisted before the field existed deserialize as version 1.
+      final legacyJson = op.toJson()..remove('schemaVersion');
+      expect(OpsQueueEntry.fromJson(legacyJson).schemaVersion, 1);
+    });
+  });
+
   group('CrdtOpBuilder profile', () {
     test('createProfile builds a public profile op keyed by author DID', () {
       final op = CrdtOpBuilder.createProfile(

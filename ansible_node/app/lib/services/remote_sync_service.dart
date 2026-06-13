@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/protocol.dart';
 import 'notification_projector.dart';
 import 'op_signature_payload.dart';
 import 'relay_identity_client.dart';
@@ -36,7 +38,10 @@ class RelayApiClient {
   Future<Map<String, dynamic>> login(String username, String password) async {
     final response = await _client.post(
       Uri.parse('$baseUrl/api/v1/auth/login'),
-      headers: const {'content-type': 'application/json'},
+      headers: const {
+        'content-type': 'application/json',
+        ...AnsibleProtocol.headers,
+      },
       body: jsonEncode({'username': username, 'password': password}),
     );
 
@@ -68,6 +73,7 @@ class RelayApiClient {
   Map<String, String> get authHeaders {
     final token = _accessToken;
     return {
+      ...AnsibleProtocol.headers,
       if (token != null && token.isNotEmpty) 'authorization': 'Bearer $token',
     };
   }
@@ -78,13 +84,32 @@ class RelayApiClient {
 
     return {
       'activities': ops
-          .map(
-            (op) => _opToActivityLogEntry(Map<String, dynamic>.from(op as Map)),
-          )
+          .whereType<Map>()
+          .map((op) => Map<String, dynamic>.from(op))
+          .where(_isKnownSchemaVersion)
+          .map(_opToActivityLogEntry)
           .toList(),
       'nextCursor': body['next_cursor'] ?? body['nextCursor'] ?? 0,
       'hasMore': body['has_more'] ?? body['hasMore'] ?? false,
     };
+  }
+
+  /// Phase 0 — API versioning: ops authored with a newer payload format than
+  /// this build understands are skipped (with a log) instead of being
+  /// misparsed into corrupt local rows. Absent/odd values mean version 1
+  /// (legacy relays).
+  bool _isKnownSchemaVersion(Map<String, dynamic> op) {
+    final schemaVersion = op['schema_version'] ?? op['schemaVersion'];
+    if (schemaVersion is num &&
+        schemaVersion > AnsibleProtocol.currentVersion) {
+      developer.log(
+        'Skipping op ${op['op_id']} with unknown schema_version '
+        '$schemaVersion (this app speaks ${AnsibleProtocol.currentVersion})',
+        name: 'RelayApiClient',
+      );
+      return false;
+    }
+    return true;
   }
 
   Map<String, dynamic> _opToActivityLogEntry(Map<String, dynamic> op) {

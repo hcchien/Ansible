@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/protocol.dart';
 import 'relay_identity_client.dart';
 
 class RelayOpsException implements Exception {
@@ -47,7 +48,10 @@ class RelayOpsClient {
     final response = await _client
         .post(
           _endpoint('/api/v1/ops'),
-          headers: const {'content-type': 'application/json'},
+          headers: const {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+          },
           body: jsonEncode(_entryToRelayJson(entry)),
         )
         .timeout(timeout);
@@ -74,6 +78,9 @@ class RelayOpsClient {
       'op_type': entry.opType,
       'payload': entry.payload,
       'signature': entry.signature,
+      // Op payload format version (Phase 0 — API versioning). Outside the
+      // signing payload by design, so the signature stays valid.
+      'schema_version': entry.schemaVersion,
     };
   }
 

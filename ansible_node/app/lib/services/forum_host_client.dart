@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/protocol.dart';
 import 'relay_identity_client.dart';
 
 class CreateHostedBoardIntent {
@@ -279,7 +280,10 @@ class ForumHostClient {
     final response = await _client
         .post(
           _endpoint('/api/v1/forum-host/reports'),
-          headers: const {'content-type': 'application/json'},
+          headers: const {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+          },
           body: jsonEncode(intent.toJson()),
         )
         .timeout(timeout);
@@ -331,7 +335,9 @@ class ForumHostClient {
   }
 
   Future<Map<String, dynamic>> _getJson(String path) async {
-    final response = await _client.get(_endpoint(path)).timeout(timeout);
+    final response = await _client
+        .get(_endpoint(path), headers: AnsibleProtocol.headers)
+        .timeout(timeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _toException(
         response.statusCode,
@@ -350,7 +356,10 @@ class ForumHostClient {
     final response = await _client
         .post(
           _endpoint(path),
-          headers: const {'content-type': 'application/json'},
+          headers: const {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+          },
           body: jsonEncode(body),
         )
         .timeout(timeout);

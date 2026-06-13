@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/app_environment.dart';
+import '../config/protocol.dart';
 
 /// AT Protocol XRPC client for Tris-Aura V2.0.
 ///
@@ -200,7 +201,9 @@ class AtProtoClient {
       '/xrpc/com.atproto.identity.resolveHandle',
     ).replace(queryParameters: {'handle': handle});
 
-    final response = await _client.get(uri).timeout(timeout);
+    final response = await _client
+        .get(uri, headers: AnsibleProtocol.headers)
+        .timeout(timeout);
 
     final decoded = _decodeObject(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -218,7 +221,10 @@ class AtProtoClient {
     final response = await _client
         .post(
           _endpoint(path),
-          headers: const {'content-type': 'application/json'},
+          headers: const {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+          },
           body: jsonEncode(body),
         )
         .timeout(timeout);

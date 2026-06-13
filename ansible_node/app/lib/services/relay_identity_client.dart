@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/app_environment.dart';
+import '../config/protocol.dart';
 
 const kDefaultRelayBaseUrl = AppEnvironment.defaultRelayBaseUrl;
 
@@ -135,7 +136,10 @@ class RelayIdentityClient {
   Future<String?> fetchPublicKey(String did) async {
     try {
       final response = await _client
-          .get(_endpoint('/api/v1/identity/public-key/${Uri.encodeComponent(did)}'))
+          .get(
+            _endpoint('/api/v1/identity/public-key/${Uri.encodeComponent(did)}'),
+            headers: AnsibleProtocol.headers,
+          )
           .timeout(timeout);
       if (response.statusCode == 404) return null;
       if (response.statusCode != 200) {
@@ -166,7 +170,10 @@ class RelayIdentityClient {
     final response = await _client
         .post(
           _endpoint(path),
-          headers: const {'content-type': 'application/json'},
+          headers: const {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+          },
           body: jsonEncode(body),
         )
         .timeout(timeout);

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/protocol.dart';
 import 'relay_identity_client.dart';
 
 class MessengerPreKeyBundleResponse {
@@ -340,7 +341,9 @@ class MessengerRelayClient {
     String path, {
     Map<String, String>? query,
   }) async {
-    final response = await _client.get(_endpoint(path, query)).timeout(timeout);
+    final response = await _client
+        .get(_endpoint(path, query), headers: AnsibleProtocol.headers)
+        .timeout(timeout);
     final body = _decodeObject(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _toException(response.statusCode, body);
@@ -355,7 +358,10 @@ class MessengerRelayClient {
     final response = await _client
         .post(
           _endpoint(path),
-          headers: const {'content-type': 'application/json'},
+          headers: const {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+          },
           body: jsonEncode(body),
         )
         .timeout(timeout);

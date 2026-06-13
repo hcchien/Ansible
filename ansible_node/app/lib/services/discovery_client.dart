@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/protocol.dart';
+
 /// An actor surfaced by discovery (suggestions or people search).
 class DiscoveredActor {
   final String did;
@@ -162,18 +164,26 @@ class DiscoveryClient {
     int limit = 20,
   }) async {
     if (!appViewEnabled) return const [];
-    final res = await _client
-        .get(_appView('/api/v1/suggest/follows', {'reader': readerDid, 'limit': '$limit'}));
+    final res = await _client.get(
+      _appView('/api/v1/suggest/follows', {
+        'reader': readerDid,
+        'limit': '$limit',
+      }),
+      headers: AnsibleProtocol.headers,
+    );
     return _actorList(_decode(res, 'suggest/follows')['items']);
   }
 
   /// Global newest-first public feed.
   Future<List<DiscoveredPost>> explore({int? cursor, int limit = 50}) async {
     if (!appViewEnabled) return const [];
-    final res = await _client.get(_appView('/api/v1/explore', {
-      if (cursor != null) 'cursor': '$cursor',
-      'limit': '$limit',
-    }));
+    final res = await _client.get(
+      _appView('/api/v1/explore', {
+        if (cursor != null) 'cursor': '$cursor',
+        'limit': '$limit',
+      }),
+      headers: AnsibleProtocol.headers,
+    );
     return _postList(_decode(res, 'explore')['items']);
   }
 
@@ -198,8 +208,10 @@ class DiscoveryClient {
 
   Future<SearchResults> _searchPeopleAndPosts(String q, int limit) async {
     if (!appViewEnabled) return const SearchResults();
-    final res =
-        await _client.get(_appView('/api/v1/search', {'q': q, 'limit': '$limit'}));
+    final res = await _client.get(
+      _appView('/api/v1/search', {'q': q, 'limit': '$limit'}),
+      headers: AnsibleProtocol.headers,
+    );
     final body = _decode(res, 'search');
     return SearchResults(
       actors: _actorList(body['actors']),
@@ -212,10 +224,10 @@ class DiscoveryClient {
     required String query,
     int limit = 20,
   }) async {
-    final res = await _client.get(_relay('/api/v1/discover/boards', {
-      'q': query.trim(),
-      'limit': '$limit',
-    }));
+    final res = await _client.get(
+      _relay('/api/v1/discover/boards', {'q': query.trim(), 'limit': '$limit'}),
+      headers: AnsibleProtocol.headers,
+    );
     final body = _decode(res, 'discover/boards');
     return (body['boards'] as List<dynamic>? ?? const [])
         .whereType<Map>()

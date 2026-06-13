@@ -16,6 +16,8 @@
 /// - [opType]     — CRDT operation type: "insert" | "update" | "delete" | "crdt_merge"
 /// - [payload]    — JSON-encoded CRDT delta (Yrs binary encoded as base64)
 /// - [signature]  — Ed25519 signature over (opId + payload), hex-encoded
+/// - [schemaVersion] — op payload format version (Phase 0 — API versioning);
+///   1 is the only format that exists today, so it doubles as the default
 /// - [status]     — "pending" | "sent" | "synced" | "rejected"
 /// - [createdAt]  — local wall-clock time
 /// - [sentAt]     — null until first transmission attempt
@@ -27,6 +29,7 @@ class OpsQueueEntry {
   final String opType;
   final String payload; // base64-encoded Yrs binary delta
   final String signature; // Ed25519 over opId+payload, hex-encoded
+  final int schemaVersion; // op payload format version (currently always 1)
   final String status; // pending | sent | synced | rejected
   final DateTime createdAt;
   final DateTime? sentAt;
@@ -39,6 +42,7 @@ class OpsQueueEntry {
     required this.opType,
     required this.payload,
     required this.signature,
+    this.schemaVersion = 1,
     this.status = 'pending',
     required this.createdAt,
     this.sentAt,
@@ -52,6 +56,7 @@ class OpsQueueEntry {
     'opType': opType,
     'payload': payload,
     'signature': signature,
+    'schemaVersion': schemaVersion,
     'status': status,
     'createdAt': createdAt.toIso8601String(),
     'sentAt': sentAt?.toIso8601String(),
@@ -65,6 +70,7 @@ class OpsQueueEntry {
     opType: json['opType'] as String,
     payload: json['payload'] as String,
     signature: json['signature'] as String,
+    schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
     status: json['status'] as String? ?? 'pending',
     createdAt: DateTime.parse(json['createdAt'] as String),
     sentAt: json['sentAt'] != null
@@ -80,6 +86,7 @@ class OpsQueueEntry {
     String? opType,
     String? payload,
     String? signature,
+    int? schemaVersion,
     String? status,
     DateTime? createdAt,
     DateTime? sentAt,
@@ -92,6 +99,7 @@ class OpsQueueEntry {
       opType: opType ?? this.opType,
       payload: payload ?? this.payload,
       signature: signature ?? this.signature,
+      schemaVersion: schemaVersion ?? this.schemaVersion,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       sentAt: sentAt ?? this.sentAt,

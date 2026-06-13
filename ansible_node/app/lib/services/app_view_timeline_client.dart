@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/protocol.dart';
+
 /// HTTP client for the AppView timeline API. Its [fetch] matches the
 /// `AppViewTimelineFetcher` typedef, so it plugs straight into
 /// `AppViewTimelineSource`. (Client-side Ed25519 re-verification is a follow-up:
@@ -26,7 +28,10 @@ class AppViewTimelineClient {
     );
     final response = await _client.post(
       uri,
-      headers: const {'content-type': 'application/json'},
+      headers: const {
+        'content-type': 'application/json',
+        ...AnsibleProtocol.headers,
+      },
       body: jsonEncode({
         'dids': dids,
         if (cursor != null) 'cursor': cursor,
@@ -53,7 +58,7 @@ class AppViewTimelineClient {
         'limit': '$limit',
       },
     );
-    final response = await _client.get(uri);
+    final response = await _client.get(uri, headers: AnsibleProtocol.headers);
     return _parse('home', response);
   }
 

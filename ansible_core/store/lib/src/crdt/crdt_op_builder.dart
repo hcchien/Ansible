@@ -10,6 +10,11 @@ import '../entities/ops_queue.dart';
 class CrdtOpBuilder {
   static const _uuid = Uuid();
 
+  /// Op payload format version stamped on every locally authored op
+  /// (service architecture plan, Phase 0 — API versioning). Mirrors the
+  /// relay's `AnsibleRelay.Protocol.current_version()`.
+  static const int opSchemaVersion = 1;
+
   static OpsQueueEntry createBoard({
     required String authorDid,
     required String entityId,
@@ -34,6 +39,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -64,6 +70,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -93,6 +100,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -130,6 +138,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -164,6 +173,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -184,6 +194,7 @@ class CrdtOpBuilder {
       opType: 'update',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: DateTime.now(),
     );
   }
@@ -204,6 +215,7 @@ class CrdtOpBuilder {
       opType: 'delete',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: DateTime.now(),
     );
   }
@@ -226,6 +238,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -250,6 +263,7 @@ class CrdtOpBuilder {
       opType: 'delete',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: DateTime.now(),
     );
   }
@@ -280,6 +294,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -305,6 +320,7 @@ class CrdtOpBuilder {
       opType: 'delete',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }
@@ -338,6 +354,7 @@ class CrdtOpBuilder {
       opType: 'insert',
       payload: payload,
       signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
       createdAt: createdAt,
     );
   }

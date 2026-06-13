@@ -3,9 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 
+import '../config/protocol.dart';
 import '../services/atproto_client.dart';
 import '../services/forum_host_client.dart';
+import '../services/messenger_relay_client.dart';
 import '../services/posting_gate.dart';
+import '../services/relay_identity_client.dart';
+import '../services/relay_ops_client.dart';
 import 'app_l10n.dart';
 
 /// Maps low-level exceptions to short, localized copy that is safe to show
@@ -14,6 +18,12 @@ import 'app_l10n.dart';
 /// Falls back to a generic message with a trimmed one-line detail so the user
 /// never sees a bare `Exception: ...` stack string.
 String userFacingError(BuildContext context, Object error) {
+  if (_isUpgradeRequired(error)) {
+    return context.uiCopy(
+      zh: '請更新 App 以繼續同步。',
+      en: 'Update the app to keep syncing.',
+    );
+  }
   if (error is ForumHostException && error.error == 'rate_limited') {
     return context.uiCopy(
       zh: '操作太頻繁，請稍後再試。',
@@ -59,6 +69,27 @@ String userFacingError(BuildContext context, Object error) {
     en: 'Something went wrong. Please try again.',
   );
   return detail.isEmpty ? generic : '$generic\n($detail)';
+}
+
+/// Whether [error] is a relay/appview protocol-version rejection (HTTP 426
+/// `{"error": "upgrade_required"}`): this build is older than the server's
+/// minimum supported protocol version and must be updated (Phase 0 — API
+/// versioning).
+bool _isUpgradeRequired(Object error) {
+  const code = AnsibleProtocol.upgradeRequiredCode;
+  return switch (error) {
+    ForumHostException(:final statusCode, :final error) =>
+      statusCode == 426 || error == code,
+    AtProtoException(:final statusCode, :final error) =>
+      statusCode == 426 || error == code,
+    RelayOpsException(:final statusCode, :final error) =>
+      statusCode == 426 || error == code,
+    MessengerRelayException(:final statusCode, :final error) =>
+      statusCode == 426 || error == code,
+    RelayIdentityException(:final statusCode, :final error) =>
+      statusCode == 426 || error == code,
+    _ => false,
+  };
 }
 
 /// Whether [error] is the relay's reason-coded posting-gate rejection
