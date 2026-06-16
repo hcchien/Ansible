@@ -23,6 +23,39 @@ void main() {
       expect(restored, keyHex);
     });
 
+    test('round-trips did + handle alongside the key', () async {
+      final blob = await IdentityKeyBackup.encrypt(
+        passphrase: 'correct horse battery staple',
+        identityPrivateKeyHex: keyHex,
+        did: 'did:plc:alice',
+        handle: 'alice.elix.cool',
+      );
+      // did + handle readable from the blob WITHOUT the key being exposed.
+      final parsed = IdentityKeyBackup.parse(blob);
+      expect(parsed.did, 'did:plc:alice');
+      expect(parsed.handle, 'alice.elix.cool');
+      expect(blob.contains(keyHex), isFalse);
+
+      // The key itself only comes back with the passphrase.
+      final restored = await IdentityKeyBackup.decrypt(
+        passphrase: 'correct horse battery staple',
+        blobJson: blob,
+      );
+      expect(restored, keyHex);
+    });
+
+    test('handle is cleartext metadata, not part of the ciphertext', () async {
+      final blob = await IdentityKeyBackup.encrypt(
+        passphrase: 'pw',
+        identityPrivateKeyHex: keyHex,
+        did: 'did:plc:alice',
+        handle: 'alice.elix.cool',
+      );
+      final map = jsonDecode(blob) as Map<String, Object?>;
+      expect(map['did'], 'did:plc:alice');
+      expect(map['handle'], 'alice.elix.cool');
+    });
+
     test('wrong passphrase fails cleanly', () async {
       final blob = await IdentityKeyBackup.encrypt(
         passphrase: 'right-passphrase',

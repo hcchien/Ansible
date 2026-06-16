@@ -7,6 +7,7 @@ import 'package:app_links/app_links.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -15,10 +16,17 @@ import 'l10n/app_l10n.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_shell.dart';
 // import 'screens/identity_anchor_screen.dart'; // V1: DID anchoring via NFC passport (replaced by PasskeysRegistrationScreen in V2.0)
+import 'screens/identity_backup_screen.dart'; // Backup blob creation (nag-once)
+import 'screens/onboarding_backup_step_screen.dart'; // Post-registration backup + initial anchor
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
 import 'screens/posts_view_screen.dart';
+import 'screens/recovery_wizard_screen.dart'; // Restore-from-backup recovery
 import 'screens/threads_list_screen.dart';
 import 'screens/web_session_approval_screen.dart';
+import 'services/identity_anchor_service.dart';
+import 'services/recovery_readiness_store.dart';
+import 'services/relay_anchor_client.dart';
+import 'services/secure_device_key_store.dart';
 import 'services/app_locale_controller.dart';
 import 'services/backup_policy_service.dart';
 import 'services/elix_content_link.dart';
@@ -313,6 +321,10 @@ class _MyAppState extends State<MyApp> {
         _anchoredPublicKeyHex = plcDid?.publicKeyHex ?? ownedDid?.publicKeyHex;
         _loadingIdentity = false;
       });
+      // recovery design Task 2 "nag-once": a user who skipped the at-creation
+      // backup gets re-prompted on a later launch (exactly once). Never blocks
+      // the app — it is a soft prompt opened over the home shell.
+      unawaited(_maybeNagForBackup());
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -323,14 +335,84 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void _handleRegistered(String did) {
-    // TODO(Task 2, recovery design): offer encrypted-backup creation at first
-    // run here (and nag-once afterwards), per design "Single-device users
-    // without a backup remain unrecoverable". This slice ships the backup
-    // entry point + user-visible readiness indicator in Settings
-    // (IdentityBackupScreen via the RECOVERY row); the first-run onboarding
-    // offer is deferred so the onboarding routing/baseline stays untouched.
+  // After the v2 challenge-anchor succeeds (handle claimed), route through the
+  // onboarding backup step rather than straight into the app. The backup step
+  // (a) publishes the initial self-certifying anchor and (b) strongly offers a
+  // skippable backup, then completes into the app via [_completeOnboarding].
+  IdentityAnchorService _buildAnchorService() {
+    return IdentityAnchorService(
+      relayClient: RelayAnchorClient(),
+      anchorRepository: DriftIdentityAnchorRepository(widget.db),
+      deviceKeyStore: const SecureDeviceKeyStore(),
+      readinessStore: const SharedPreferencesRecoveryReadinessStore(),
+    );
+  }
+
+  void _handleRegistered(String did, String handle) {
+    // recovery design Task 2 + 3: present the onboarding backup step (which
+    // publishes the initial anchor + offers the backup) before entering the app.
+    _navigatorKey.currentState?.push(
+      MaterialPageRoute<void>(
+        builder: (_) => OnboardingBackupStepScreen(
+          did: did,
+          handle: handle,
+          anchorService: _buildAnchorService(),
+          onComplete: _completeOnboarding,
+        ),
+      ),
+    );
+  }
+
+  void _completeOnboarding(String did) {
+    // Pop the onboarding backup step (if still on the stack) and enter the app.
+    _navigatorKey.currentState?.popUntil((route) => route.isFirst);
     setState(() => _anchoredDid = did);
+  }
+
+  /// Nag-once: if the user skipped the at-creation backup, open the backup
+  /// screen once over the home shell on this launch (then never again).
+  Future<void> _maybeNagForBackup() async {
+    final did = _anchoredDid;
+    if (did == null) return;
+    const store = SharedPreferencesRecoveryReadinessStore();
+    if (!await store.shouldNagForBackup()) return;
+    await store.markNagShown();
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) return;
+    await navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => IdentityBackupScreen(
+          did: did,
+          identityPrivateKeyHex: () =>
+              const FlutterSecureStorage().read(key: 'ansible_did_private_key'),
+          readinessStore: store,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _installRecoveredKey(String privateKeyHex) {
+    return const FlutterSecureStorage().write(
+      key: 'ansible_did_private_key',
+      value: privateKeyHex,
+    );
+  }
+
+  void _openRecoveryWizard() {
+    _navigatorKey.currentState?.push(
+      MaterialPageRoute<void>(
+        builder: (_) => RecoveryWizardScreen(
+          service: _buildAnchorService(),
+          installRecoveredKey: _installRecoveredKey,
+          // Recover INTO the recovered account (same DID, same handle): enter
+          // the app exactly as a fresh registration would, no new account.
+          onRecovered: (did) {
+            _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+            setState(() => _anchoredDid = did);
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -375,7 +457,10 @@ class _MyAppState extends State<MyApp> {
                   readingPreferencesController: _readingPreferencesController,
                   onClearIdentity: () => setState(() => _anchoredDid = null),
                 )
-              : PasskeysRegistrationScreen(onRegistered: _handleRegistered),
+              : PasskeysRegistrationScreen(
+                  onRegistered: _handleRegistered,
+                  onRecoverExistingAccount: _openRecoveryWizard,
+                ),
         );
       },
     );

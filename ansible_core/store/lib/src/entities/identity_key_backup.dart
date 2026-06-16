@@ -41,13 +41,17 @@ class IdentityKeyBackup {
   /// key derived from [passphrase] and returns a self-describing JSON blob
   /// (the only form the key leaves the device in).
   ///
-  /// [did] is stored in the blob (cleartext) purely so a restore UI can show
-  /// which identity a blob belongs to — it is NOT secret. No raw legal
-  /// identity is ever included (Constitution item 4).
+  /// [did] and [handle] are stored in the blob (cleartext) purely so a restore
+  /// UI / the recovery flow can tell which account a blob belongs to WITHOUT
+  /// the passphrase — they are NOT secret. This is what makes the backup
+  /// self-describing: blob + passphrase is enough to recover, no separate note
+  /// of "which account". No raw legal identity is ever included (Constitution
+  /// item 4): did + handle are public identifiers, never legal identity.
   static Future<String> encrypt({
     required String passphrase,
     required String identityPrivateKeyHex,
     String? did,
+    String? handle,
   }) async {
     if (passphrase.isEmpty) {
       throw ArgumentError.value(passphrase, 'passphrase', 'must not be empty');
@@ -68,6 +72,7 @@ class IdentityKeyBackup {
       'kdf_iterations': pbkdf2Iterations,
       'cipher': cipherAesGcm,
       if (did != null) 'did': did,
+      if (handle != null) 'handle': handle,
       'salt': base64.encode(salt),
       'nonce': base64.encode(secretBox.nonce),
       'ciphertext': base64.encode(secretBox.cipherText),
@@ -153,6 +158,7 @@ class IdentityKeyBackup {
       kdfIterations:
           (map['kdf_iterations'] as num?)?.toInt() ?? pbkdf2Iterations,
       did: map['did'] as String?,
+      handle: map['handle'] as String?,
       salt: field('salt'),
       nonce: field('nonce'),
       ciphertext: field('ciphertext'),
@@ -180,6 +186,7 @@ class ParsedKeyBackup {
   final int formatVersion;
   final int kdfIterations;
   final String? did;
+  final String? handle;
   final Uint8List salt;
   final Uint8List nonce;
   final Uint8List ciphertext;
@@ -189,6 +196,7 @@ class ParsedKeyBackup {
     required this.formatVersion,
     required this.kdfIterations,
     required this.did,
+    required this.handle,
     required this.salt,
     required this.nonce,
     required this.ciphertext,

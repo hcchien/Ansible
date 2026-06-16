@@ -210,7 +210,7 @@ void main() {
   ) async {
     await _pumpLocalizedScreen(
       tester,
-      PasskeysRegistrationScreen(onRegistered: (_) {}),
+      PasskeysRegistrationScreen(onRegistered: (did, handle) {}),
       locale: const Locale('en'),
     );
     expect(_cjkUiStrings(tester), isEmpty);

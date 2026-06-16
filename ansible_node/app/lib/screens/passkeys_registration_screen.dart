@@ -21,8 +21,14 @@ import '../theme/ansible_design.dart';
 enum _Phase { idle, generatingKey, creatingDid, anchoring, done }
 
 class PasskeysRegistrationScreen extends StatefulWidget {
-  /// Called with the anchored DID string when registration completes.
-  final void Function(String did) onRegistered;
+  /// Called with the anchored DID + handle when registration completes (the v2
+  /// challenge-anchor has claimed the handle). Carries the handle so the
+  /// onboarding backup step can build a self-describing backup blob.
+  final void Function(String did, String handle) onRegistered;
+
+  /// Opens the "recover an existing account" flow (the [RecoveryWizardScreen]).
+  /// Wired by the host (main.dart) so this screen stays routing-agnostic.
+  final VoidCallback? onRecoverExistingAccount;
 
   // Testable injections — if null, default implementations are used.
   final PasskeysManager? passkeysManager;
@@ -34,6 +40,7 @@ class PasskeysRegistrationScreen extends StatefulWidget {
   const PasskeysRegistrationScreen({
     super.key,
     required this.onRegistered,
+    this.onRecoverExistingAccount,
     this.passkeysManager,
     this.didPlcManager,
     this.atProtoClient,
@@ -145,13 +152,16 @@ class _PasskeysRegistrationScreenState
 
         // ── Step 4: Done ─────────────────────────────────────────────────────
         setState(() => _phase = _Phase.done);
-        widget.onRegistered(result.did);
+        widget.onRegistered(result.did, handle);
       } catch (e) {
         if (!_canCompleteLocalOnly(e)) rethrow;
         setState(() => _phase = _Phase.done);
-        widget.onRegistered(didResult.did);
+        widget.onRegistered(didResult.did, handle);
       }
-    } catch (e) {
+    } catch (e, st) {
+      // Keep the on-device diagnostic in the logs for triage; do NOT leak the
+      // raw exception into the user-facing message.
+      debugPrint('[REGISTRATION ERROR] ${e.runtimeType}: $e\n$st');
       await _cleanupPartialRegistration();
       if (!mounted) return;
       setState(() {
@@ -504,6 +514,25 @@ class _PasskeysRegistrationScreenState
                           ),
                         ),
                       ),
+                      if (widget.onRecoverExistingAccount != null) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          key: const Key('recover_existing_account_button'),
+                          onPressed: _phase == _Phase.idle
+                              ? widget.onRecoverExistingAccount
+                              : null,
+                          child: Text(
+                            _copy(
+                              zh: '已經有帳號？從備份復原',
+                              en: 'Recover an existing account',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AnsibleDesign.inkMuted,
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       Text(
                         _copy(

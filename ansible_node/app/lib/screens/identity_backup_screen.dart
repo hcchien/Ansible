@@ -31,12 +31,17 @@ class IdentityBackupScreen extends StatefulWidget {
     super.key,
     required this.did,
     required this.identityPrivateKeyHex,
+    this.handle,
     this.readinessStore = const SharedPreferencesRecoveryReadinessStore(),
     this.onBackupCreated,
     this.encryptBackup = IdentityKeyBackup.encrypt,
   });
 
   final String did;
+
+  /// The account handle, embedded as cleartext metadata in the blob so the
+  /// backup is fully self-describing (blob + passphrase → which account).
+  final String? handle;
 
   /// Provides the raw Ed25519 identity private key (hex). Injected for
   /// testability; production wiring reads it from secure storage.
@@ -51,6 +56,7 @@ class IdentityBackupScreen extends StatefulWidget {
     required String passphrase,
     required String identityPrivateKeyHex,
     String? did,
+    String? handle,
   }) encryptBackup;
 
   /// Called after a backup blob is successfully created (e.g. to refresh the
@@ -105,6 +111,7 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
         passphrase: pass,
         identityPrivateKeyHex: keyHex,
         did: widget.did,
+        handle: widget.handle,
       );
       await widget.readinessStore.markBackupCreated();
       widget.onBackupCreated?.call();

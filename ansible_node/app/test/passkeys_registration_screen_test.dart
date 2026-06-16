@@ -28,7 +28,7 @@ void main() {
               signingPublicKey = publicKeyHex;
               return 'sig-for-$nonce';
             },
-            onRegistered: (did) => registeredDid = did,
+            onRegistered: (did, handle) => registeredDid = did,
           ),
         ),
       );
@@ -70,7 +70,7 @@ void main() {
           didPlcManager: didPlc,
           atProtoClient: atProto,
           nonceSigner: (nonce, publicKeyHex) async => 'unused',
-          onRegistered: (did) => registeredDid = did,
+          onRegistered: (did, handle) => registeredDid = did,
         ),
       ),
     );
@@ -103,7 +103,7 @@ void main() {
           didPlcManager: didPlc,
           atProtoClient: atProto,
           allowInsecureDevFallback: true,
-          onRegistered: (did) => registeredDid = did,
+          onRegistered: (did, handle) => registeredDid = did,
         ),
       ),
     );
@@ -132,7 +132,7 @@ void main() {
           didPlcManager: didPlc,
           atProtoClient: atProto,
           allowInsecureDevFallback: true,
-          onRegistered: (did) => registeredDid = did,
+          onRegistered: (did, handle) => registeredDid = did,
         ),
       ),
     );
@@ -169,7 +169,7 @@ void main() {
           atProtoClient: atProto,
           allowInsecureDevFallback: true,
           nonceSigner: (nonce, publicKeyHex) async => 'unused',
-          onRegistered: (did) => registeredDid = did,
+          onRegistered: (did, handle) => registeredDid = did,
         ),
       ),
     );
@@ -180,6 +180,53 @@ void main() {
     expect(find.text('此帳號名稱已被使用，請嘗試不同的名稱。'), findsOneWidget);
     expect(registeredDid, isNull);
   });
+
+  testWidgets(
+    'registration shows the recover-existing-account affordance and opens it',
+    (tester) async {
+      var recoverTapped = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PasskeysRegistrationScreen(
+            passkeysManager: _FakePasskeysManager('ab' * 32),
+            didPlcManager: _FakeDidPlcManager(),
+            atProtoClient: _FakeAtProtoClient(),
+            nonceSigner: (nonce, publicKeyHex) async => 'unused',
+            onRegistered: (did, handle) {},
+            onRecoverExistingAccount: () => recoverTapped = true,
+          ),
+        ),
+      );
+
+      // zh-Hant copy (test locale falls back to zh-Hant).
+      expect(find.text('已經有帳號？從備份復原'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const Key('recover_existing_account_button')),
+      );
+      await tester.pump();
+      expect(recoverTapped, isTrue);
+    },
+  );
+
+  testWidgets(
+    'recover affordance is hidden when no handler is wired',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PasskeysRegistrationScreen(
+            passkeysManager: _FakePasskeysManager('ab' * 32),
+            didPlcManager: _FakeDidPlcManager(),
+            atProtoClient: _FakeAtProtoClient(),
+            onRegistered: (did, handle) {},
+          ),
+        ),
+      );
+      expect(
+        find.byKey(const Key('recover_existing_account_button')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('registration validates handle suffix before generating keys', (
     tester,
@@ -194,7 +241,7 @@ void main() {
           didPlcManager: _FakeDidPlcManager(),
           atProtoClient: atProto,
           nonceSigner: (nonce, publicKeyHex) async => 'unused',
-          onRegistered: (_) {},
+          onRegistered: (did, handle) {},
         ),
       ),
     );

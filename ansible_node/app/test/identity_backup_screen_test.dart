@@ -32,6 +32,7 @@ void main() {
               required String passphrase,
               required String identityPrivateKeyHex,
               String? did,
+              String? handle,
             }) async {
               seenPassphrase = passphrase;
               seenKey = identityPrivateKeyHex;

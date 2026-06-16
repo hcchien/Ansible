@@ -26,6 +26,19 @@ abstract class RecoveryReadinessStore {
   /// Clears the backup flag (Constitution exit element: user can delete the
   /// backup; the readiness indicator must reflect that).
   Future<void> clearBackup();
+
+  /// The user skipped the at-creation backup offer. Backup is opt-in /
+  /// skippable (Constitution must-have), so we remember the skip in order to
+  /// re-prompt ("nag once") on a subsequent launch — but only once, so we never
+  /// nag relentlessly.
+  Future<void> markBackupSkipped();
+
+  /// True when the user skipped the offer AND has not yet been re-prompted (so
+  /// the app should nag once now). Returns false if a backup already exists.
+  Future<bool> shouldNagForBackup();
+
+  /// Records that the one-time nag has now been shown, so we don't nag again.
+  Future<void> markNagShown();
 }
 
 class SharedPreferencesRecoveryReadinessStore
@@ -33,6 +46,8 @@ class SharedPreferencesRecoveryReadinessStore
   const SharedPreferencesRecoveryReadinessStore();
 
   static const String backupCreatedAtKey = 'elix-recovery-backup-created-at';
+  static const String backupSkippedKey = 'elix-recovery-backup-skipped';
+  static const String nagShownKey = 'elix-recovery-backup-nag-shown';
 
   @override
   Future<bool> hasBackup() async {
@@ -61,12 +76,35 @@ class SharedPreferencesRecoveryReadinessStore
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(backupCreatedAtKey);
   }
+
+  @override
+  Future<void> markBackupSkipped() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(backupSkippedKey, true);
+  }
+
+  @override
+  Future<bool> shouldNagForBackup() async {
+    if (await hasBackup()) return false;
+    final prefs = await SharedPreferences.getInstance();
+    final skipped = prefs.getBool(backupSkippedKey) ?? false;
+    final nagged = prefs.getBool(nagShownKey) ?? false;
+    return skipped && !nagged;
+  }
+
+  @override
+  Future<void> markNagShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(nagShownKey, true);
+  }
 }
 
 class InMemoryRecoveryReadinessStore implements RecoveryReadinessStore {
   InMemoryRecoveryReadinessStore({DateTime? backupAt}) : _backupAt = backupAt;
 
   DateTime? _backupAt;
+  bool _skipped = false;
+  bool _nagShown = false;
 
   @override
   Future<bool> hasBackup() async => _backupAt != null;
@@ -82,5 +120,21 @@ class InMemoryRecoveryReadinessStore implements RecoveryReadinessStore {
   @override
   Future<void> clearBackup() async {
     _backupAt = null;
+  }
+
+  @override
+  Future<void> markBackupSkipped() async {
+    _skipped = true;
+  }
+
+  @override
+  Future<bool> shouldNagForBackup() async {
+    if (await hasBackup()) return false;
+    return _skipped && !_nagShown;
+  }
+
+  @override
+  Future<void> markNagShown() async {
+    _nagShown = true;
   }
 }
