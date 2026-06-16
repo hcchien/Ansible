@@ -91,7 +91,9 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           elixir-version: '1.19'
-          otp-version: '27'
+          # OTP 27.0–27.2 rejects hex.pm's cert chain (key_usage_mismatch in
+          # :ssl); 28.x relaxes it. Matches the Dockerfiles' OTP 28 pin.
+          otp-version: '28'
 
       - name: Cache mix deps and build
         if: ${{ env.skip != 'true' }}
