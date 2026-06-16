@@ -220,13 +220,38 @@ defmodule AnsibleRelay.VpVerifierTest do
     assert {:error, :holder_not_found} = VpVerifier.verify(@holder_did, vp)
   end
 
-  test "rejects VC with untrusted issuer", %{issuer_priv: issuer_priv} do
+  test "rejects VC whose issuer is not in the trust registry", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
     DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
+    # Signed by the (real) issuer key but claiming an issuer DID nobody trusts.
     vc = build_humanity_vc(@holder_did, issuer_priv, issuer: "did:web:evil.example")
     vp = build_vp(@holder_did, priv, [vc])
 
-    assert {:error, :invalid_vc_proof} = VpVerifier.verify(@holder_did, vp)
+    assert {:error, :untrusted_issuer} = VpVerifier.verify(@holder_did, vp)
+  end
+
+  test "rejects a credential type the issuer is not registered to issue", %{
+    issuer_priv: issuer_priv
+  } do
+    {pub_hex, priv} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
+
+    # Pin the registry entry to EmailCredential only; the VP carries a
+    # TrisAuraHumanityCredential, so the governed registry must reject it even
+    # though the signature is valid.
+    issuer_pub_hex =
+      Application.get_env(:ansible_relay, :trusted_vc_issuers)
+      |> hd()
+      |> Map.get(:public_key_hex)
+
+    Application.put_env(:ansible_relay, :trusted_vc_issuers, [
+      %{did: @issuer_did, public_key_hex: issuer_pub_hex, credential_types: ["EmailCredential"]}
+    ])
+
+    vc = build_humanity_vc(@holder_did, issuer_priv)
+    vp = build_vp(@holder_did, priv, [vc])
+
+    assert {:error, :untrusted_issuer} = VpVerifier.verify(@holder_did, vp)
   end
 end

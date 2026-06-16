@@ -58,11 +58,19 @@ config :ansible_relay, :abuse_detector, %{
   }
 }
 
-# Trusted VC issuers for VP verification.
-# Each entry: %{did: string, public_key_hex: string}.
-# Dev/test fixtures are configured in their environment files; production
-# issuers are required in runtime.exs so a release cannot silently trust a
-# public test-vector key.
+# Issuer Trust Registry for VP verification (layered identity Phase B).
+# Each entry: %{
+#   did: string,                # issuer did:web (never did:key — must be nameable)
+#   public_key_hex: string,     # issuer assertion key
+#   credential_types: [string]  # OPTIONAL — restrict which VC types this issuer
+#                               # is trusted to issue; omit = any recognised type
+# }
+# A valid issuer signature is necessary but NOT sufficient: an issuer absent
+# from this list (or not registered for the presented credential type) is
+# rejected with `:untrusted_issuer`, distinct from a bad-signature
+# `:invalid_vc_proof`. Dev/test fixtures live in their environment files;
+# production issuers are required in runtime.exs so a release cannot silently
+# trust a public test-vector key.
 config :ansible_relay, :trusted_vc_issuers, []
 
 import_config "#{config_env()}.exs"

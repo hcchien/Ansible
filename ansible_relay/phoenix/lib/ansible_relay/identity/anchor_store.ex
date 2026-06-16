@@ -47,12 +47,16 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
   import Ecto.Query
 
-  alias AnsibleRelay.{Repo, SigVerifier}
+  alias AnsibleRelay.{DidElix, Repo, SigVerifier}
   alias AnsibleRelay.Db.{IdentityAnchor, IdentityAccountFreeze}
 
   @reasons ~w(initial rotation recovery device_change)
-  @body_keys ~w(type schema_version did handle identity_key custody_class
-                devices prev_anchor_cid reason created_at)
+  # v2 (2026-06-16): `also_known_as` joins the signed body, positioned right
+  # after `identity_key` to match `IdentityAnchor.toCanonicalBody()` in
+  # `ansible_core/store/lib/src/entities/identity_anchor.dart`. The relay MUST
+  # re-emit it in this exact slot or the CID/signature will not verify.
+  @body_keys ~w(type schema_version did handle identity_key also_known_as
+                custody_class devices prev_anchor_cid reason created_at)
   @device_keys ~w(device_id device_key custody_class enrolled_at attestation_sig)
   # The fields an enrolled device's `attestation_sig` actually signs: the
   # device record MINUS `attestation_sig`, in the same order (design
@@ -74,8 +78,18 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
   defp body_value("type", _anchor), do: @anchor_type
   defp body_value("schema_version", anchor), do: schema_version(anchor)
+  defp body_value("also_known_as", anchor), do: also_known_as(anchor)
   defp body_value("devices", anchor), do: {:devices, devices(anchor)}
   defp body_value(key, anchor), do: fetch(anchor, key)
+
+  # A JSON array of alias strings; defaults to [] so the canonical body matches
+  # the Dart `also_known_as: const []` default (never `null`).
+  defp also_known_as(anchor) do
+    case fetch(anchor, "also_known_as") do
+      list when is_list(list) -> list
+      _ -> []
+    end
+  end
 
   defp schema_version(anchor) do
     case fetch(anchor, "schema_version") do
@@ -232,10 +246,17 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   # --- Reason dispatch ---
 
   # initial: genesis. null prev, sig by identity_key, no active anchor exists.
+  # For a did:elix the genesis is self-certifying: the DID MUST be the hash of
+  # this anchor's own identity_key + handle (DidElix.matches?), so the canonical
+  # identifier can never be claimed for a key that didn't generate it. This is
+  # what makes a genesis anchor verifiable by any relay without trusting us.
   defp dispatch("initial", anchor, did, body, cid, _proof) do
     cond do
       not is_nil(fetch(anchor, "prev_anchor_cid")) ->
         {:error, :chain_mismatch}
+
+      not genesis_did_self_certifies?(anchor, did) ->
+        {:error, :did_mismatch}
 
       active_anchor(did) != nil ->
         {:error, :conflict}
@@ -247,6 +268,19 @@ defmodule AnsibleRelay.Identity.AnchorStore do
         insert_active(anchor, did, body, cid, "initial")
     end
   end
+
+  # did:elix genesis must hash to its own (identity_key, handle, custody_class).
+  # Non-elix DIDs (e.g. a did:plc bridge alias anchoring) are not gated here.
+  defp genesis_did_self_certifies?(anchor, "did:elix:" <> _ = did) do
+    DidElix.matches?(
+      did,
+      fetch(anchor, "identity_key"),
+      fetch(anchor, "handle"),
+      fetch(anchor, "custody_class") || "software"
+    )
+  end
+
+  defp genesis_did_self_certifies?(_anchor, _did), do: true
 
   # rotation: new anchor signed by BOTH the prior active identity_key AND the
   # new identity_key. Possession of the old key is full authority → swap now.
@@ -394,6 +428,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       reason: reason,
       identity_key: fetch(anchor, "identity_key"),
       handle: fetch(anchor, "handle"),
+      also_known_as: also_known_as(anchor),
       custody_class: fetch(anchor, "custody_class") || "software",
       schema_version: schema_version(anchor),
       devices: %{"records" => devices(anchor)},
@@ -595,6 +630,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       "did" => a.did,
       "handle" => a.handle,
       "identity_key" => a.identity_key,
+      "also_known_as" => a.also_known_as || [],
       "custody_class" => a.custody_class,
       "devices" => device_records(a),
       "prev_anchor_cid" => a.prev_anchor_cid,

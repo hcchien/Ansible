@@ -1,4 +1,5 @@
 import 'package:ansible_did/ansible_did.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/settings_home_screen.dart';
 import 'package:ansible_node/services/app_locale_controller.dart';
@@ -137,6 +138,7 @@ void main() {
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
         localeController: localeController,
       ),
     );

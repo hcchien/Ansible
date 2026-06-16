@@ -196,8 +196,9 @@ relay *stores and serves* but does not own:
 {
   "type": "io.trisaura.identity.anchor",
   "schema_version": 1,
-  "did": "did:plc:…",
+  "did": "did:elix:…",
   "handle": "alice.elix.cool",
+  "also_known_as": ["at://alice.elix.cool", "did:key:…"],
   "identity_key": "<ed25519 pubkey hex>",
   "custody_class": "hardware" | "software",
   "devices": [
@@ -217,8 +218,13 @@ auditable chain; self-certifying (anyone can verify the chain without
 trusting the relay); carries `schema_version` from day one (Phase 0
 convention); the relay's `did_accounts` row becomes a *cache* of the
 latest anchor. The chain is intentionally `did:plc`-shaped (operation log
-with rotation) without depending on PLC infrastructure — a future
-compatibility export stays possible.
+with rotation) without depending on PLC infrastructure.
+
+> **2026-06-16 update:** this chain *is* the operation log of the
+> canonical `did:elix` method (the user's `did` is `did:elix:<genesis
+> anchor CID>`, not the old `did:plc` stub). A `did:plc` is minted only
+> as an **opt-in Bluesky alias** and bound via `also_known_as` + shared
+> key. See the [layered identity & `did:elix` method plan](2026-06-16-layered-identity-did-method-plan.md).
 
 ## Re-Anchor Protocol
 

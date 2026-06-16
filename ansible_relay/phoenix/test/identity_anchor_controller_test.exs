@@ -67,6 +67,7 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
       {"did", Jason.encode!(anchor.did)},
       {"handle", Jason.encode!(anchor.handle)},
       {"identity_key", Jason.encode!(anchor.identity_key)},
+      {"also_known_as", Jason.encode!(anchor.also_known_as || [])},
       {"custody_class", Jason.encode!(anchor.custody_class)},
       {"devices", devices_json},
       {"prev_anchor_cid", Jason.encode!(anchor.prev_anchor_cid)},
@@ -86,6 +87,7 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
         %{
           schema_version: 1,
           custody_class: "software",
+          also_known_as: [],
           devices: [],
           prev_anchor_cid: nil,
           created_at: "2026-06-13T09:00:00.000Z"
@@ -104,6 +106,7 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
       "did" => anchor.did,
       "handle" => anchor.handle,
       "identity_key" => anchor.identity_key,
+      "also_known_as" => anchor.also_known_as,
       "custody_class" => anchor.custody_class,
       "devices" =>
         Enum.map(anchor.devices, fn d ->
@@ -216,10 +219,11 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
   test "canonical body + CID match the Dart foundation byte-for-byte" do
     anchor = %{
       "type" => @anchor_type,
-      "schema_version" => 1,
-      "did" => "did:plc:alice123",
+      "schema_version" => 2,
+      "did" => "did:elix:alice123",
       "handle" => "alice.elix.cool",
       "identity_key" => String.duplicate("aa", 32),
+      "also_known_as" => ["at://alice.elix.cool", "did:key:zABC"],
       "custody_class" => "software",
       "devices" => [
         %{
@@ -236,9 +240,11 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     }
 
     expected_body =
-      ~s({"type":"io.trisaura.identity.anchor","schema_version":1,) <>
-        ~s("did":"did:plc:alice123","handle":"alice.elix.cool",) <>
-        ~s("identity_key":"#{String.duplicate("aa", 32)}","custody_class":"software",) <>
+      ~s({"type":"io.trisaura.identity.anchor","schema_version":2,) <>
+        ~s("did":"did:elix:alice123","handle":"alice.elix.cool",) <>
+        ~s("identity_key":"#{String.duplicate("aa", 32)}",) <>
+        ~s("also_known_as":["at://alice.elix.cool","did:key:zABC"],) <>
+        ~s("custody_class":"software",) <>
         ~s("devices":[{"device_id":"dev-1","device_key":"#{String.duplicate("bb", 32)}",) <>
         ~s("custody_class":"software","enrolled_at":"2026-06-13T10:00:00.000Z",) <>
         ~s("attestation_sig":"#{String.duplicate("cc", 64)}"}],) <>
@@ -263,6 +269,40 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     assert object["anchor_cid"] == ctx.anchor_cid
     assert object["reason"] == "initial"
     assert object["state"] == "active"
+  end
+
+  test "resolve_did projects a W3C DID document from the active anchor" do
+    {id_pub, id_priv} = ed25519_keypair()
+    # Genesis did:elix must self-certify (hash of identity_key + handle).
+    did = AnsibleRelay.DidElix.derive(id_pub, "res.elix.cool")
+    aka = ["at://res.elix.cool", "did:key:zRESOLVEKEY"]
+
+    {anchor, _cid, _body} =
+      build_anchor(
+        %{
+          did: did,
+          handle: "res.elix.cool",
+          identity_key: id_pub,
+          reason: "initial",
+          also_known_as: aka
+        },
+        id_priv
+      )
+
+    assert post_json("/api/v1/identity/anchor", anchor).status == 201
+
+    resp = get_req("/api/v1/identity/did/#{did}")
+    assert resp.status == 200
+    doc = Jason.decode!(resp.resp_body)
+
+    assert doc["id"] == did
+    assert doc["alsoKnownAs"] == aka
+    assert [vm] = doc["verificationMethod"]
+    assert vm["controller"] == did
+    assert vm["type"] == "Ed25519VerificationKey2020"
+    assert vm["publicKeyMultibase"] == "zRESOLVEKEY"
+    assert [svc] = doc["service"]
+    assert svc["type"] == "AnsibleRelay"
   end
 
   test "initial: duplicate active anchor for the same DID conflicts (409)" do

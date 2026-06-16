@@ -1,4 +1,5 @@
 import 'package:ansible_did/ansible_did.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -24,6 +25,7 @@ void main() {
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
       ),
     );
     for (var i = 0; i < 8; i += 1) {

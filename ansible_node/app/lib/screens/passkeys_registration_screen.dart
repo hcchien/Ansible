@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ansible_did/ansible_did.dart';
+import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -8,13 +9,16 @@ import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/atproto_client.dart';
+import '../services/canonical_identity_store.dart';
 import '../theme/ansible_design.dart';
 
 /// Passkeys Registration Screen — Phase 1 V2.0
 ///
 /// Guides the user through:
 ///   1. Biometric / Passkeys key generation (Secure Enclave / StrongBox)
-///   2. did:plc creation via Rust FFI
+///   2. Canonical `did:elix` derivation from the identity key + handle
+///      (domain-independent, self-certifying; NOT did:plc — that is only an
+///      opt-in Bluesky alias added later)
 ///   3. DID registration + anchoring with Relay
 ///   4. → HomeShell
 
@@ -32,7 +36,7 @@ class PasskeysRegistrationScreen extends StatefulWidget {
 
   // Testable injections — if null, default implementations are used.
   final PasskeysManager? passkeysManager;
-  final DidPlcManager? didPlcManager;
+  final CanonicalIdentityStore? canonicalIdentityStore;
   final AtProtoClient? atProtoClient;
   final Future<String> Function(String nonce, String publicKeyHex)? nonceSigner;
   final bool allowInsecureDevFallback;
@@ -42,7 +46,7 @@ class PasskeysRegistrationScreen extends StatefulWidget {
     required this.onRegistered,
     this.onRecoverExistingAccount,
     this.passkeysManager,
-    this.didPlcManager,
+    this.canonicalIdentityStore,
     this.atProtoClient,
     this.nonceSigner,
     this.allowInsecureDevFallback =
@@ -63,7 +67,7 @@ class _PasskeysRegistrationScreenState
   );
 
   late final PasskeysManager _passkeysManager;
-  late final DidPlcManager _didPlcManager;
+  late final CanonicalIdentityStore _canonicalIdentityStore;
   late final AtProtoClient _atProtoClient;
 
   @override
@@ -74,11 +78,8 @@ class _PasskeysRegistrationScreenState
         PasskeysManagerImpl(
           allowInsecureFallback: widget.allowInsecureDevFallback,
         );
-    _didPlcManager =
-        widget.didPlcManager ??
-        DidPlcManagerImpl(
-          allowInsecureFallback: widget.allowInsecureDevFallback,
-        );
+    _canonicalIdentityStore =
+        widget.canonicalIdentityStore ?? const SecureCanonicalIdentityStore();
     _atProtoClient = widget.atProtoClient ?? AtProtoClient();
   }
 
@@ -112,11 +113,21 @@ class _PasskeysRegistrationScreenState
         username: handleSuffix,
       );
 
-      // ── Step 2: did:plc creation via Rust FFI ───────────────────────────
+      // ── Step 2: Canonical did:elix derivation (pure-Dart, no FFI) ────────
+      // Domain-independent, self-certifying: did:elix = hash(identity_key +
+      // handle). The same key is also the wallet did:key (an alias); did:plc is
+      // only minted later if the user opts into the Bluesky bridge.
       setState(() => _phase = _Phase.creatingDid);
-      final didResult = await _didPlcManager.createDid(
+      final did = deriveDidElix(
+        identityKey: credential.publicKeyHex,
         handle: handle,
-        signingKeyHex: credential.publicKeyHex,
+      );
+      await _canonicalIdentityStore.save(
+        CanonicalIdentity(
+          did: did,
+          handle: handle,
+          publicKeyHex: credential.publicKeyHex,
+        ),
       );
 
       // ── Step 3: Register + anchor with Relay ────────────────────────────
@@ -142,7 +153,7 @@ class _PasskeysRegistrationScreenState
 
         final result = await _atProtoClient.anchor(
           AnchorRequest(
-            did: didResult.did,
+            did: did,
             publicKeyHex: credential.publicKeyHex,
             handle: handle,
             registrationSig: registrationSig,
@@ -156,7 +167,7 @@ class _PasskeysRegistrationScreenState
       } catch (e) {
         if (!_canCompleteLocalOnly(e)) rethrow;
         setState(() => _phase = _Phase.done);
-        widget.onRegistered(didResult.did, handle);
+        widget.onRegistered(did, handle);
       }
     } catch (e, st) {
       // Keep the on-device diagnostic in the logs for triage; do NOT leak the
@@ -178,7 +189,7 @@ class _PasskeysRegistrationScreenState
 
   Future<void> _cleanupPartialRegistration() async {
     try {
-      await _didPlcManager.deleteDid();
+      await _canonicalIdentityStore.delete();
     } catch (_) {
       // Keep the original registration error visible.
     }

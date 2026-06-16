@@ -5,7 +5,7 @@
 > is parked, and what already landed, with links to the underlying specs and
 > plans.
 >
-> **Last updated:** 2026-06-12
+> **Last updated:** 2026-06-16
 >
 > **Keep it current:** when a plan lands, is paused, or a new spec/plan is
 > added under `docs/superpowers/`, update this file in the same change.
@@ -71,7 +71,7 @@ already underway (architecture Phase 1 / Phase 0).
 
 | Item | Decision |
 |---|---|
-| AT Protocol / PLC bridge | **Freeze**: no further investment, remove from marketing surface; keep code as-is (removal costs more than keeping) |
+| AT Protocol / PLC bridge | **Reframed 2026-06-16 → opt-in alias, not canonical.** The user identity is `did:elix` (canonical); `did:plc` is minted **only when a user opts into the Bluesky bridge** and published to `plc.directory`. No background investment, but it is now a defined opt-in path (Phase 1.5 / Phase D of the [layered identity plan](superpowers/plans/2026-06-16-layered-identity-did-method-plan.md)), not frozen legacy. Today's `did:plc` *stub* as the canonical user DID is being replaced by `did:elix` |
 | Extra app locales (de/es/fr/ja/ko/pt) | **Cut to zh-Hant + en**: maintenance liability — most screens bypass ARB via `uiCopy(zh:, en:)` anyway; re-add with real international users |
 | Messenger expansion | **Contain**: 1:1 MVP stays, but no further scope (groups/media/read-receipts) — E2E messaging is a separate product and not this one's wedge |
 
@@ -100,6 +100,7 @@ already underway (architecture Phase 1 / Phase 0).
 | Android release readiness (beta build → Play Store) | P2 | [Plan](superpowers/plans/2026-05-10-android-release-readiness-checklist.md) | **In progress, stalled** — Task 1 (DID plugin packaging, build unblocked) done; identity/assets/signing, platform verification, and release checklist remain. Recent release effort has gone to iOS |
 | External host compliance level — local persistence + policy use | P2 | [Architecture plan — Phase 1.4](architecture/service_architecture_plan.md) · [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | Discovery exposes compliance labels already; local `ForumHost`/`RemoteNode` records don't persist them and ranking/sync/trust policy don't consume them yet |
 | Data-plane integrity — AppView independent signature re-verification, relay signed snapshots + retention, relay schema separation | P2 — **verification ✅ + snapshots/retention ✅ done 2026-06-13**; ops partitioning + schema separation deferred | [Architecture plan — Phase 2](architecture/service_architecture_plan.md) | AppView now independently Ed25519-verifies every fold and excludes unverified rows from public reads; relay serves content-addressed signed snapshots (`/api/v1/ops/snapshot`) + guarded retention so consumers rebuild from snapshot+delta. Remaining: physical `ops` partitioning (risky live migration) + identity/forum/federation schema separation |
+| **Canonical identity method (`did:elix`) & trust** — `did:elix` canonical + `did:key` wallet holder + opt-in `did:plc` bridge + Issuer Trust Registry + cross-relay resolution v0 | P1 — **store/relay A ✅ + B ✅ + C ✅ done + tested 2026-06-16**; app registration swap + `did:plc` bridge (D) remaining | [Layered identity plan](superpowers/plans/2026-06-16-layered-identity-did-method-plan.md) · [Architecture plan — Phase 1.5](architecture/service_architecture_plan.md) | Shipped: `did:elix` derivation + `did:key` encoder (cross-verified vs rust), `also_known_as` on anchors, relay DID-document resolution, Issuer Trust Registry (`untrusted_issuer` + per-type gating), cross-relay `FederatedResolver` with self-certifying peer verification (relay + app, lying-peer rejection proven). Remaining: on-device registration→`did:elix` swap (runtime-test pass) and the real DAG-CBOR `did:plc` Bluesky bridge (D). Global directory governance + atproto content interop are separate follow-up specs |
 
 ## Later（未來）
 

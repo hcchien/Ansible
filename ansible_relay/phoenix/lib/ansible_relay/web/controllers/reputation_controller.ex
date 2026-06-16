@@ -41,6 +41,9 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
         {:error, :no_credentials} ->
           send_json(conn, 422, %{error: "no_credentials"})
 
+        {:error, :untrusted_issuer} ->
+          send_json(conn, 403, %{error: "untrusted_issuer"})
+
         {:error, :invalid_vc_proof} ->
           send_json(conn, 401, %{error: "invalid_vc"})
 

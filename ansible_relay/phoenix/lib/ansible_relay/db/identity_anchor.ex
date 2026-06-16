@@ -20,6 +20,10 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
     field(:reason, :string)
     field(:identity_key, :string)
     field(:handle, :string)
+    # v2: verifiable aliases (at://handle, did:key, optional did:plc). Part of
+    # the signed body, so stored to keep `to_object` consistent with
+    # `canonical_body`.
+    field(:also_known_as, {:array, :string}, default: [])
     field(:custody_class, :string, default: "software")
     field(:schema_version, :integer, default: 1)
     field(:devices, :map, default: %{})
@@ -34,7 +38,7 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
   end
 
   @castable ~w(did anchor_cid prev_anchor_cid reason identity_key handle
-               custody_class schema_version devices sig device_sig
+               also_known_as custody_class schema_version devices sig device_sig
                canonical_body state grace_until created_at)a
 
   def changeset(struct, attrs) do

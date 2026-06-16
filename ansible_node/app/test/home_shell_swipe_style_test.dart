@@ -1,4 +1,5 @@
 import 'package:ansible_did/ansible_did.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/home_shell.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
@@ -234,6 +235,7 @@ Future<void> _pumpHomeShell(
       db: db,
       didManager: _EmptyDidManager(),
       didPlcManager: _ExistingDidPlcManager(),
+      canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
     ),
   );
   for (var i = 0; i < 8; i++) {

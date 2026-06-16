@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/main.dart';
@@ -22,6 +23,7 @@ void main() {
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _EmptyDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
       ),
     );
     await tester.pump();
@@ -52,6 +54,7 @@ void main() {
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
       ),
     );
     for (var i = 0; i < 8; i++) {
@@ -104,6 +107,7 @@ void main() {
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
         localeController: localeController,
       ),
     );
@@ -130,6 +134,7 @@ void main() {
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
       ),
     );
     for (var i = 0; i < 8; i++) {
@@ -155,6 +160,7 @@ void main() {
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
         webSessionLinks: links.stream,
       ),
     );

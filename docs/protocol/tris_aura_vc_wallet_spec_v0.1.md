@@ -44,6 +44,56 @@ The Issuer server must:
 Self-issued VCs are out of scope for Verified Human. They may be introduced later
 for profile claims, but verifiers must not treat them as identity assurance.
 
+## 1.2 Identity Roles & Issuer Trust Registry
+
+This spec uses two DID methods in two distinct roles, per the
+[layered identity & `did:elix` method plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md):
+
+- **Issuer = `did:web:issuer.<domain>`.** Accepting a credential is a
+  decision about *who issued it and whether you trust them* — a real-world
+  accountability question. `did:web` anchors the issuer to a nameable,
+  evaluable domain/org. A `did:key` issuer would be an opaque key that
+  cannot be governed, so issuers MUST NOT use `did:key`.
+- **Holder = `did:key:<mb>`.** The holder is *not* who the verifier decides
+  to trust — the verifier only checks that the presenter controls the
+  subject. `did:key` is universally resolvable with zero infrastructure, so
+  any external verifier (TW gov / OID4VP) can verify a holder proof. The
+  holder `did:key` is the wallet-role encoding of the user's root key; their
+  canonical social identity is `did:elix`, but credentials bind to the
+  `did:key` for interop.
+
+**`did:web` is necessary but not sufficient** — anyone can run an issuer on
+any domain. The accept/reject gate is an **Issuer Trust Registry**: a
+signed list of accepted entries that the verifier consults before trusting
+an issuer proof.
+
+```json
+{
+  "type": "io.trisaura.trust.IssuerRegistry",
+  "version": "2026-06-16",
+  "entries": [
+    {
+      "issuer": "did:web:issuer.elix.cool",
+      "credential_types": ["TrisAuraHumanityCredential"],
+      "assurance_level": "tw_natural_person_certificate"
+    }
+  ],
+  "proof": { "type": "DataIntegrityProof", "...": "signed by the registry maintainer" }
+}
+```
+
+Rules:
+
+- An app/relay ships with an inspectable **default registry**; relays and
+  users MAY override (add/remove issuers). No silent allow-listing.
+- A credential whose `issuer` (+ type) is not in the verifier's effective
+  registry is rejected with reason `untrusted_issuer`, regardless of a
+  valid issuer signature.
+- `credential_subject.id` rotation: device loss restores the *same*
+  `did:key` (credentials survive); a key *compromise* requiring a new
+  `did:key` is an explicit re-issuance event (see the layered-identity plan
+  decision D-ROT), never a silent breakage.
+
 ## 2. Credential Offer
 
 ### Request
@@ -301,8 +351,10 @@ MVP constraints:
 Verifier checks:
 
 1. `holder` matches `credentialSubject.id`.
-2. Holder proof verifies against holder DID key.
-3. Issuer proof verifies against trusted issuer DID key.
+2. Holder proof verifies against holder DID key (`did:key`).
+3. Issuer proof verifies against the issuer DID key (`did:web`), **and** the
+   issuer + credential type is present in the verifier's effective Issuer
+   Trust Registry (§1.2) — otherwise reject `untrusted_issuer`.
 4. `challenge` equals request nonce.
 5. `domain` equals request audience.
 6. Credential type is accepted.

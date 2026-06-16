@@ -2,6 +2,121 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+/// Base32 lowercase (RFC 4648), no padding — byte-for-byte identical to the
+/// rust core `base32_encode_nopad` (alphabet `abcdefghijklmnopqrstuvwxyz234567`)
+/// so a `did:elix` suffix derived here matches a future rust implementation.
+String _base32NoPad(List<int> data) {
+  const alpha = 'abcdefghijklmnopqrstuvwxyz234567';
+  final out = StringBuffer();
+  var bits = 0;
+  var bitCount = 0;
+  for (final byte in data) {
+    bits = (bits << 8) | (byte & 0xff);
+    bitCount += 8;
+    while (bitCount >= 5) {
+      bitCount -= 5;
+      out.writeCharCode(alpha.codeUnitAt((bits >> bitCount) & 0x1f));
+    }
+  }
+  if (bitCount > 0) {
+    out.writeCharCode(alpha.codeUnitAt((bits << (5 - bitCount)) & 0x1f));
+  }
+  return out.toString();
+}
+
+/// Derive the canonical `did:elix` identifier. `did:elix:<suffix>` where
+/// `<suffix>` is base32(SHA-256(stable-fingerprint)[..16]).
+///
+/// Bound to the **stable** identity fields only — `identity_key`, `handle`,
+/// `custody_class` — deliberately NOT timestamps, device records, or the `did`
+/// itself. This makes the identifier:
+///   - derivable at registration time *and* at genesis-anchor build time to the
+///     same value (no chicken-and-egg, no timestamp coupling);
+///   - stable across key rotation/recovery (later anchors keep this `did:elix`
+///     because it is derived once from these fields);
+///   - domain-independent (no operator domain, unlike `did:web`).
+///
+/// Mirrors `did:plc` in spirit (an opaque hash of identity-defining data) while
+/// depending on no external directory. `identity_key` alone guarantees
+/// uniqueness; `handle`/`custody_class` are folded in for self-description.
+String deriveDidElix({
+  required String identityKey,
+  required String handle,
+  CustodyClass custodyClass = CustodyClass.software,
+}) {
+  final fingerprint = <String, Object?>{
+    'method': 'did:elix',
+    'v': 1,
+    'identity_key': identityKey,
+    'handle': handle,
+    'custody_class': custodyClass.storageValue,
+  };
+  final digest = sha256.convert(utf8.encode(jsonEncode(fingerprint)));
+  return 'did:elix:${_base32NoPad(digest.bytes.sublist(0, 16))}';
+}
+
+/// Bitcoin/IPFS base58btc alphabet.
+const String _base58Alphabet =
+    '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+String _base58btc(List<int> input) {
+  var zeros = 0;
+  while (zeros < input.length && input[zeros] == 0) {
+    zeros++;
+  }
+  var num = BigInt.zero;
+  for (final b in input) {
+    num = (num << 8) | BigInt.from(b & 0xff);
+  }
+  final out = StringBuffer();
+  final base = BigInt.from(58);
+  while (num > BigInt.zero) {
+    final rem = (num % base).toInt();
+    out.writeCharCode(_base58Alphabet.codeUnitAt(rem));
+    num = num ~/ base;
+  }
+  final encoded = out.toString().split('').reversed.join();
+  return '${'1' * zeros}$encoded';
+}
+
+List<int> _hexToBytes(String hex) {
+  if (hex.length.isOdd) {
+    throw ArgumentError('hex string must have an even length');
+  }
+  final out = List<int>.filled(hex.length ~/ 2, 0);
+  for (var i = 0; i < out.length; i++) {
+    out[i] = int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16);
+  }
+  return out;
+}
+
+/// Encode a hex Ed25519 public key as a `did:key` (multibase base58btc of
+/// `0xed01 || pubkey`, multibase prefix `z`). Pure-Dart twin of the rust
+/// `encode_did_key` so the wallet holder DID matches byte-for-byte.
+String encodeDidKeyEd25519(String publicKeyHex) {
+  final bytes = _hexToBytes(publicKeyHex);
+  if (bytes.length != 32) {
+    throw ArgumentError('Ed25519 public key must be 32 bytes');
+  }
+  final prefixed = <int>[0xed, 0x01, ...bytes];
+  return 'did:key:z${_base58btc(prefixed)}';
+}
+
+/// Build the `also_known_as` list for an anchor: the AT-style handle, the
+/// wallet `did:key` (same root key), and — only after the opt-in Bluesky
+/// bridge — a `did:plc`. Never a `did:web`.
+List<String> buildAlsoKnownAs({
+  required String handle,
+  required String identityKeyHex,
+  String? didPlc,
+}) {
+  return [
+    'at://$handle',
+    encodeDidKeyEd25519(identityKeyHex),
+    if (didPlc != null) didPlc,
+  ];
+}
+
 /// Self-certifying identity anchor object (design §"Anchor as a
 /// Self-Certifying Object", schema_version 1).
 ///
@@ -111,14 +226,28 @@ class AnchorDeviceRecord {
 /// history is an auditable, self-certifying chain (design properties).
 class IdentityAnchor {
   static const String typeName = 'io.trisaura.identity.anchor';
-  static const int currentSchemaVersion = 1;
+
+  /// v2 (2026-06-16): adds `also_known_as` and makes `did` a `did:elix`
+  /// (was the `did:plc` stub). Bumped together with the layered-identity work.
+  static const int currentSchemaVersion = 2;
 
   final int schemaVersion;
+
+  /// Canonical identity — a `did:elix` (see [deriveDidElix]). Never a
+  /// `did:web` (operator-coupled) and never the wallet `did:key`; those live
+  /// in [alsoKnownAs].
   final String did;
   final String handle;
 
   /// Ed25519 identity (content) public key, hex-encoded.
   final String identityKey;
+
+  /// Verifiable aliases of this same identity, bound by being inside the
+  /// signed anchor body: `at://<handle>`, the wallet `did:key:…` (the same
+  /// root key encoded), and — only after the opt-in Bluesky bridge — a
+  /// `did:plc:…`. Bidirectional binding: the alias targets reference back to
+  /// this `did:elix`. Never contains a `did:web`.
+  final List<String> alsoKnownAs;
 
   final CustodyClass custodyClass;
   final List<AnchorDeviceRecord> devices;
@@ -143,6 +272,7 @@ class IdentityAnchor {
     required this.did,
     required this.handle,
     required this.identityKey,
+    this.alsoKnownAs = const [],
     required this.custodyClass,
     this.devices = const [],
     this.prevAnchorCid,
@@ -161,6 +291,7 @@ class IdentityAnchor {
         'did': did,
         'handle': handle,
         'identity_key': identityKey,
+        'also_known_as': alsoKnownAs,
         'custody_class': custodyClass.storageValue,
         'devices': devices.map((d) => d.toCanonicalMap()).toList(),
         'prev_anchor_cid': prevAnchorCid,
@@ -213,6 +344,8 @@ class IdentityAnchor {
       did: map['did']! as String,
       handle: map['handle']! as String,
       identityKey: map['identity_key']! as String,
+      alsoKnownAs:
+          ((map['also_known_as'] as List?) ?? const []).cast<String>(),
       custodyClass: CustodyClass.parse(map['custody_class']! as String),
       devices: rawDevices
           .map((d) => AnchorDeviceRecord.fromMap(

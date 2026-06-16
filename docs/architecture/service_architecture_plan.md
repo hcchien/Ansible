@@ -73,9 +73,12 @@ federation, and ranking. Checklist answers:
 
 ⚠ = known architectural debt addressed by this plan.
 
-Identity is protocol-neutral per the federation strategy: AT Protocol/`did:plc`
-is a compatibility context; Nostr and ActivityPub are first-class projection
-adapters; the app signs intents, the relay distributes.
+Identity is protocol-neutral per the federation strategy, with a single
+canonical method: the user identity is `did:elix` (Phase 1.5), `did:key` is
+the wallet-holder role of the same root key, and AT Protocol/`did:plc` is an
+**opt-in** Bluesky alias (not the canonical and not required). Nostr and
+ActivityPub are first-class projection adapters; the app signs intents, the
+relay distributes.
 
 ## 2. Gap Inventory（缺口清單）
 
@@ -98,6 +101,8 @@ adapters; the app signs intents, the relay distributes.
 | G15 | Relay is the de facto identity authority: anchors are relay DB rows, not user-signed portable objects; identity/forum/federation data not schema-separated | Base Rule 1; this review | High |
 | G16 | No app↔relay API versioning/negotiation — op format evolution (Phase 2) will break long-tail clients | This review | High |
 | G17 | No observability baseline — phase exit criteria (signature rejection rate, op growth, ingest lag) have no metrics to stand on | SOSP C-1 (partial); this review | High |
+| G18 | Canonical user DID is the `did:plc` **local stub** — domain/relay-coupled and not independently resolvable; no portable method and **no cross-relay resolution** (a third party can't resolve a user hosted on another relay). Wrong shape for an open, multi-operator federation | [Layered identity plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md); Base Rule 1 | High |
+| G19 | No Issuer Trust Registry — "anyone can run an issuer" means a valid issuer signature is not enough; verifiers have no governed accept/reject list | [Layered identity plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md) | Medium |
 
 ## 3. Target Architecture（目標架構）
 
@@ -184,6 +189,49 @@ Exit criteria: compliance review G14 flips to compliant and G1 to
 device-loss recovery walkthrough** (lose device A, recover identity on
 device B via backup or second device, relay accepts the re-anchor;
 remaining enrolled devices receive the identity alert and can veto).
+
+### Phase 1.5 — Canonical identity method (`did:elix`) & trust
+
+Closes G18, G19. Builds directly on Phase 1's self-certifying anchor chain
+(that chain *is* the method's operation log). Full design + tasks in the
+[layered identity & `did:elix` method plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md).
+
+**Status (2026-06-16):** items 1 (relay), 2, 3 ✅ done + tested (relay suite
+317 green; store 37 green; app resolver green). Item 1's **app registration →
+`did:elix` swap** deferred to an on-device pass; item 4 (`did:plc` bridge)
+scoped but not started — see the [layered identity plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md).
+
+Direction (from the 2026-06-16 identity-model decision): **one root key,
+role-specific DID representations, one canonical** — `did:elix` (canonical
+social/federation), `did:key` (wallet/VC holder, same key), opt-in
+`did:plc` (Bluesky alias only), `did:web` reserved for issuer/org. `did:web`
+is never a user identity (relay-domain coupling breaks portability); `did:key`
+is never the social identity (can't carry a `service` endpoint or rotate).
+
+1. **`did:elix` canonical + alias binding** (core/app/relay): identifier from
+   the genesis anchor CID; DID-document projection from the latest anchor
+   (keys + `service` endpoint + `alsoKnownAs`); swap the canonical off the
+   `did:plc` stub; wallet `holderDid` becomes the `did:key`.
+2. **Issuer Trust Registry** (issuer/relay/app): signed default list of
+   `(issuer did:web, credential type)` + user/relay override; VP verify
+   consults it (`untrusted_issuer` reason).
+3. **Cross-relay resolution protocol v0** (relay/app): federated lookup +
+   replicated verifiable index over a configured relay set; resolver verifies
+   the returned anchor chain locally (no single authority — answers are
+   self-certifying).
+4. **Opt-in Bluesky bridge** (core/relay/app): replace the `did_plc.rs`
+   JSON-hash stub with spec-compliant DAG-CBOR genesis; mint + `alsoKnownAs`
+   bind + publish to `plc.directory` only on explicit opt-in. Identity bridge
+   only — atproto **content** interop stays out of scope.
+
+Exit criteria: a new account is `did:elix` canonical with a linked `did:key`;
+a user on relay A is resolvable+verifiable via relay B when they federate; a
+VP from an unlisted issuer is rejected reason-coded; opt-in users get a
+`did:plc` on `plc.directory` while non-opt-in users publish nothing external.
+
+Sequencing note: Phase 1.5 item 1 should align with Phase 1.0's anchor
+object and Phase 2's ops/snapshot schema before any freeze — the `did:elix`
+operation log and the anchor chain are the same objects.
 
 ### Phase 2 — Data-plane integrity & durability
 
@@ -275,17 +323,21 @@ Closes G13. Only after Phases 2–3 are stable in production.
 | D3 | Standalone labeler timing | Extract only when a second consumer (external AppView or moderation tooling) exists |
 | D4 | Oban vs hand-rolled queue for delivery workers | Oban (battle-tested, Postgres-native, no new infra) |
 | D5 | Recovery mechanism mix: multi-device attestation, passphrase-encrypted content-key backup, recovery credential — which are launch-required vs later | **Settled (pending owner review):** multi-device attestation + encrypted backup at launch (no new server trust); issuer-assisted recovery credential later behind its own constitution review; social recovery out of scope — see the [Phase 1.0 design](../superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) |
-| D6 | Issuer trust anchor: relay pins a single `ISSUER_DID`/pubkey via env — needs a rotation/multi-key story before first issuer key rotation | Move to a small signed issuer-key document (did:web already serves one) consumed by relay; low urgency, schedule with Phase 4 |
+| D6 | Issuer trust anchor: relay pins a single `ISSUER_DID`/pubkey via env — needs a rotation/multi-key story before first issuer key rotation | Move to a small signed issuer-key document (did:web already serves one) consumed by relay; **superseded/absorbed by the Phase 1.5 Issuer Trust Registry (G19)** which generalizes the single pinned issuer to a governed list |
+| D7 | Canonical user DID method | **`did:elix`** (domain-independent, portable, resolved over the anchor chain). `did:plc` demoted to opt-in Bluesky alias; `did:web` reserved for issuer/org; `did:key` is the wallet role of the same root key. See the [layered identity plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md) |
+| D8 | Cross-relay resolution beyond a known relay set | v0 = federated lookup + replicated verifiable index (Phase 1.5); global open-membership directory + anti-squat governance = own follow-up spec |
 
 ## 6. Sequencing & Ownership（順序與依賴）
 
 ```
-Phase 0 (cross-cutting)  ── starts now, runs alongside everything
-Phase 1 (app/rust/core)  ── 1.0 recovery design gates 1.1–1.2 ──►  launch gate
-Phase 2 (relay/appview)  ──────────►  needed before meaningful external traffic
-Phase 3 (relay/appview)  ── after 2 (snapshots make push restart-safe)
-Phase 4 (federation)     ── 4.1 after Phase 1; 4.2–4.4 independent
-Phase 5 (infra)          ── after 2+3 stable in prod
+Phase 0   (cross-cutting)  ── starts now, runs alongside everything
+Phase 1   (app/rust/core)  ── 1.0 recovery design gates 1.1–1.2 ──►  launch gate
+Phase 1.5 (identity method)── builds on Phase 1 anchor chain; item 1 before
+                              Phase 2 schema freeze; items 3–4 can follow launch
+Phase 2   (relay/appview)  ──────────►  needed before meaningful external traffic
+Phase 3   (relay/appview)  ── after 2 (snapshots make push restart-safe)
+Phase 4   (federation)     ── 4.1 after Phase 1; 4.2–4.4 independent
+Phase 5   (infra)          ── after 2+3 stable in prod
 ```
 
 Phases 1 and 2 can run in parallel (different services), but Phase 1.0's

@@ -18,7 +18,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.Identity.AnchorStore
+  alias AnsibleRelay.Identity.{AnchorStore, FederatedResolver}
 
   # POST /api/v1/identity/anchor
   def submit(conn, params) do
@@ -43,6 +43,9 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
 
       {:error, :unknown_reason} ->
         send_json(conn, 422, %{error: "unknown_reason"})
+
+      {:error, :did_mismatch} ->
+        send_json(conn, 422, %{error: "did_mismatch"})
 
       {:error, :invalid_signature} ->
         send_json(conn, 401, %{error: "invalid_signature"})
@@ -83,6 +86,30 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
     end
   end
 
+  # GET /api/v1/identity/did/:did — resolve a did:elix to a W3C DID document,
+  # projected from the active anchor (the `did:elix` method's resolution
+  # output): the identity key as the verification method, this relay as the
+  # service endpoint, and the verifiable aliases (handle, did:key, optional
+  # did:plc). Self-certifying: the underlying anchor at
+  # GET /api/v1/identity/anchor/:did lets any party re-verify independently.
+  def resolve_did(conn, %{"did" => did}) do
+    case FederatedResolver.resolve(did) do
+      {:ok, object, source} ->
+        conn
+        |> put_resp_header("x-ansible-resolved-via", resolved_via(source))
+        |> send_json(200, did_document(conn, object))
+
+      {:error, :not_found} ->
+        send_json(conn, 404, %{error: "did_not_found"})
+
+      {:error, :locked} ->
+        send_json(conn, 423, %{error: "account_frozen"})
+    end
+  end
+
+  defp resolved_via(:local), do: "local"
+  defp resolved_via({:peer, peer}), do: "peer:#{peer}"
+
   # POST /api/v1/identity/anchor/promote — internal/cron-able.
   def promote(conn, _params) do
     {:ok, promoted} = AnchorStore.promote_due()
@@ -122,6 +149,65 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
   # `recovery_proof`. Strip it so it never pollutes the canonical body.
   defp split_anchor(params) when is_map(params) do
     {Map.delete(params, "recovery_proof"), params["recovery_proof"]}
+  end
+
+  # Project a W3C DID document from the active-anchor object map.
+  defp did_document(conn, object) do
+    did = object["did"]
+    aka = object["also_known_as"] || []
+    vm_id = "#{did}#identity"
+
+    verification_method =
+      case did_key_multibase(aka) do
+        nil ->
+          []
+
+        multibase ->
+          [
+            %{
+              "id" => vm_id,
+              "type" => "Ed25519VerificationKey2020",
+              "controller" => did,
+              "publicKeyMultibase" => multibase
+            }
+          ]
+      end
+
+    %{
+      "@context" => ["https://www.w3.org/ns/did/v1"],
+      "id" => did,
+      "alsoKnownAs" => aka,
+      "verificationMethod" => verification_method,
+      "authentication" => Enum.map(verification_method, & &1["id"]),
+      "assertionMethod" => Enum.map(verification_method, & &1["id"]),
+      "service" => [
+        %{
+          "id" => "#{did}#ansible_relay",
+          "type" => "AnsibleRelay",
+          "serviceEndpoint" => relay_endpoint(conn)
+        }
+      ]
+    }
+  end
+
+  # The `did:key` alias carries the multibase form of the identity key; the
+  # DID document's `publicKeyMultibase` is exactly that suffix.
+  defp did_key_multibase(also_known_as) do
+    Enum.find_value(also_known_as, fn
+      "did:key:" <> multibase -> multibase
+      _ -> nil
+    end)
+  end
+
+  defp relay_endpoint(conn) do
+    case Application.get_env(:ansible_relay, :public_url) do
+      url when is_binary(url) and url != "" ->
+        url
+
+      _ ->
+        port = if conn.port in [80, 443], do: "", else: ":#{conn.port}"
+        "#{conn.scheme}://#{conn.host}#{port}"
+    end
   end
 
   defp send_json(conn, status, body) do

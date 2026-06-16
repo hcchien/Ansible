@@ -29,6 +29,7 @@ import 'services/relay_anchor_client.dart';
 import 'services/secure_device_key_store.dart';
 import 'services/app_locale_controller.dart';
 import 'services/backup_policy_service.dart';
+import 'services/canonical_identity_store.dart';
 import 'services/elix_content_link.dart';
 import 'services/elix_content_router.dart';
 import 'services/reading_preferences_controller.dart';
@@ -129,6 +130,7 @@ Future<void> _resetLocalIdentityIfRequested() async {
   const reset = AppEnvironment.resetLocalIdentityOnStart;
   if (!reset) return;
 
+  await const SecureCanonicalIdentityStore().delete();
   await DidPlcManagerImpl().deleteDid();
   await PasskeysManagerImpl().delete();
   await DidManagerImpl().delete();
@@ -138,6 +140,7 @@ class MyApp extends StatefulWidget {
   final AppDatabase db;
   final DidManager? didManager;
   final DidPlcManager? didPlcManager;
+  final CanonicalIdentityStore? canonicalIdentityStore;
   final DidSigner? didSigner;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
@@ -150,6 +153,7 @@ class MyApp extends StatefulWidget {
     required this.db,
     this.didManager,
     this.didPlcManager,
+    this.canonicalIdentityStore,
     this.didSigner,
     this.localeController,
     this.readingPreferencesController,
@@ -168,6 +172,7 @@ class _MyAppState extends State<MyApp> {
   bool _loadingIdentity = true;
   late final DidManager _didManager;
   late final DidPlcManager _didPlcManager;
+  late final CanonicalIdentityStore _canonicalIdentityStore;
   late final AppLocaleController _localeController;
   late final bool _ownsLocaleController;
   late final ReadingPreferencesController _readingPreferencesController;
@@ -181,6 +186,8 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _didManager = widget.didManager ?? DidManagerImpl();
     _didPlcManager = widget.didPlcManager ?? DidPlcManagerImpl();
+    _canonicalIdentityStore =
+        widget.canonicalIdentityStore ?? const SecureCanonicalIdentityStore();
     _localeController = widget.localeController ?? AppLocaleController();
     _ownsLocaleController = widget.localeController == null;
     _readingPreferencesController =
@@ -313,6 +320,28 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _loadPersistedIdentity() async {
     try {
+      // Canonical did:elix is the source of truth. Guard its own load so a
+      // missing/unavailable store falls through to the legacy DID managers
+      // rather than aborting the whole identity load.
+      CanonicalIdentity? canonical;
+      try {
+        canonical = await _canonicalIdentityStore.load();
+      } catch (_) {
+        canonical = null;
+      }
+      if (canonical != null) {
+        final c = canonical;
+        if (!mounted) return;
+        setState(() {
+          _anchoredDid = c.did;
+          _anchoredPublicKeyHex = c.publicKeyHex;
+          _loadingIdentity = false;
+        });
+        unawaited(_maybeNagForBackup());
+        return;
+      }
+
+      // Legacy fallback: pre-did:elix accounts (did:plc stub / did:key).
       final plcDid = await _didPlcManager.loadDid();
       final ownedDid = plcDid == null ? await _didManager.load() : null;
       if (!mounted) return;

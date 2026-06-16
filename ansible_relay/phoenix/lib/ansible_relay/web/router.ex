@@ -89,6 +89,11 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.show(conn, %{"did" => did})
   end
 
+  # did:elix resolution → projected W3C DID document (layered identity).
+  get "/api/v1/identity/did/:did" do
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.resolve_did(conn, %{"did" => did})
+  end
+
   get "/api/v1/identity/public-key/:did" do
     AnsibleRelay.Web.Controllers.IdentityController.public_key(conn, %{"did" => did})
   end

@@ -40,23 +40,36 @@ the only persisted representation of user content.
 
 ## Identity Model
 
-The app may maintain multiple identity bindings for a single local account:
+A single local account runs **one root Ed25519 key with role-specific DID
+representations**, with exactly **one canonical** identity. The full design,
+the `did:elix` method sketch, the cross-relay resolution protocol, and the
+issuer trust model live in the
+[layered identity & `did:elix` method plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md).
+Summary:
 
-| Layer | Identity | Role |
+| Identifier | Role | Canonical? |
 |---|---|---|
-| Local app | Local account id and current DID-backed app identity | Local ownership, signing intents, compatibility with current code |
-| Nostr | `did:nostr:<pubkey>` / `npub` | Public Nostr author identity and event signing key |
-| ActivityPub | `https://relay.example/users/<actor>` | Relay-owned federated actor endpoint |
-| AT Protocol | `did:plc` / handle | Optional alias, discovery bridge, or legacy compatibility path |
-| Human identifier | NIP-05, e.g. `alice@elix.cool` | Verifiable display and search identifier |
+| `did:elix:<id>` | Social / federation identity (the identity itself); domain-independent, portable across relays, resolved via the cross-relay resolution protocol over the self-certifying anchor chain | **Yes — the only canonical** |
+| `did:key:<mb>` | Wallet / VC holder (same root key, encoded); universal verifier interop | No — role alias |
+| `did:plc:<hash>` | atproto / Bluesky face, **minted only on opt-in bridge**, published to `plc.directory`, bound by `alsoKnownAs` + shared key | No — opt-in alias |
+| `did:web:issuer.<domain>` | **Issuer / org** identity (a different actor, not a user) | n/a |
+| `did:nostr:<pubkey>` / `npub` | Public Nostr author identity and event signing key | Nostr-facing alias |
+| NIP-05, e.g. `alice@elix.cool` | Human-readable display/search identifier | — |
 
 Rules:
 
+- The user's identity *is* `did:elix`. `did:web` is **never** used for user
+  identity (it would bind users to one operator's domain and break portability
+  across relays — Base Rule 1); it is reserved for issuer/org identity.
+- `did:key` is the wallet/VC holder role of the **same** root key; verifiers
+  resolve it with zero infrastructure.
+- `did:plc` is an **opt-in** atproto alias, not the canonical identity and not
+  required for the network to operate; it is bound to `did:elix` via
+  bidirectional `alsoKnownAs` + shared/cross-signed key (one-directional
+  claims are never trusted).
 - Nostr clients follow public keys, not NIP-05 names or AT Protocol handles.
 - ActivityPub actors are canonicalized by the relay domain, e.g.
   `@alice@relay.elix.cool`.
-- `did:plc` and AT Protocol handles may be advertised as aliases, but they are
-  not the primary Nostr author key and do not define the ActivityPub Actor URL.
 - `did:nostr` is the public DID method for Nostr-facing identity.
 
 ## Distribution Topology

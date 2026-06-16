@@ -1,17 +1,21 @@
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/screens/passkeys_registration_screen.dart';
 import 'package:ansible_node/services/atproto_client.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
+import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'registration reuses the passkeys public key across did:plc and relay anchor',
+    'registration mints a self-certifying did:elix and anchors it with the relay',
     (tester) async {
       final passkeyPublicKey = 'ab' * 32;
+      final expectedDid =
+          deriveDidElix(identityKey: passkeyPublicKey, handle: 'user.elix.cool');
       final passkeys = _FakePasskeysManager(passkeyPublicKey);
-      final didPlc = _FakeDidPlcManager();
+      final store = InMemoryCanonicalIdentityStore();
       final atProto = _FakeAtProtoClient();
       String? registeredDid;
       String? signedNonce;
@@ -21,7 +25,7 @@ void main() {
         MaterialApp(
           home: PasskeysRegistrationScreen(
             passkeysManager: passkeys,
-            didPlcManager: didPlc,
+            canonicalIdentityStore: store,
             atProtoClient: atProto,
             nonceSigner: (nonce, publicKeyHex) async {
               signedNonce = nonce;
@@ -38,15 +42,21 @@ void main() {
         await tester.pump(const Duration(milliseconds: 10));
       }
 
-      expect(didPlc.signingKeyHex, passkeyPublicKey);
+      expect(expectedDid, startsWith('did:elix:'));
       expect(atProto.registeredPublicKeyHex, passkeyPublicKey);
-      expect(atProto.anchorRequest?.did, 'did:plc:test');
+      expect(atProto.anchorRequest?.did, expectedDid);
       expect(atProto.anchorRequest?.publicKeyHex, passkeyPublicKey);
       expect(atProto.anchorRequest?.registrationSig, 'sig-for-nonce-1');
       expect(atProto.anchorRequest?.nonce, 'nonce-1');
       expect(signedNonce, 'nonce-1');
       expect(signingPublicKey, passkeyPublicKey);
-      expect(registeredDid, 'did:plc:test');
+      expect(registeredDid, expectedDid);
+
+      // The canonical identity is persisted for subsequent launches.
+      final persisted = await store.load();
+      expect(persisted?.did, expectedDid);
+      expect(persisted?.handle, 'user.elix.cool');
+      expect(persisted?.publicKeyHex, passkeyPublicKey);
     },
   );
 
@@ -54,7 +64,7 @@ void main() {
     tester,
   ) async {
     final passkeys = _FakePasskeysManager('cd' * 32);
-    final didPlc = _FakeDidPlcManager();
+    final store = InMemoryCanonicalIdentityStore();
     final atProto = _FakeAtProtoClient(
       registerError: const AtProtoException(
         statusCode: 409,
@@ -67,7 +77,7 @@ void main() {
       MaterialApp(
         home: PasskeysRegistrationScreen(
           passkeysManager: passkeys,
-          didPlcManager: didPlc,
+          canonicalIdentityStore: store,
           atProtoClient: atProto,
           nonceSigner: (nonce, publicKeyHex) async => 'unused',
           onRegistered: (did, handle) => registeredDid = did,
@@ -80,7 +90,7 @@ void main() {
 
     expect(find.text('此帳號名稱已被使用，請嘗試不同的名稱。'), findsOneWidget);
     expect(registeredDid, isNull);
-    expect(didPlc.deleteCalled, isTrue);
+    expect(await store.load(), isNull);
     expect(passkeys.deleteCalled, isTrue);
   });
 
@@ -92,7 +102,7 @@ void main() {
     });
 
     final passkeys = _FakePasskeysManager('cd' * 32);
-    final didPlc = _FakeDidPlcManager();
+    final store = InMemoryCanonicalIdentityStore();
     final atProto = _FakeAtProtoClient();
     String? registeredDid;
 
@@ -100,7 +110,7 @@ void main() {
       MaterialApp(
         home: PasskeysRegistrationScreen(
           passkeysManager: passkeys,
-          didPlcManager: didPlc,
+          canonicalIdentityStore: store,
           atProtoClient: atProto,
           allowInsecureDevFallback: true,
           onRegistered: (did, handle) => registeredDid = did,
@@ -114,14 +124,14 @@ void main() {
     }
 
     expect(atProto.anchorRequest?.registrationSig, startsWith('dev-sig-'));
-    expect(registeredDid, 'did:plc:test');
+    expect(registeredDid, deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'));
   });
 
   testWidgets('registration can complete locally when dev relay is offline', (
     tester,
   ) async {
     final passkeys = _FakePasskeysManager('cd' * 32);
-    final didPlc = _FakeDidPlcManager();
+    final store = InMemoryCanonicalIdentityStore();
     final atProto = _OfflineAtProtoClient();
     String? registeredDid;
 
@@ -129,7 +139,7 @@ void main() {
       MaterialApp(
         home: PasskeysRegistrationScreen(
           passkeysManager: passkeys,
-          didPlcManager: didPlc,
+          canonicalIdentityStore: store,
           atProtoClient: atProto,
           allowInsecureDevFallback: true,
           onRegistered: (did, handle) => registeredDid = did,
@@ -143,8 +153,8 @@ void main() {
     }
 
     expect(atProto.registerCalled, isTrue);
-    expect(registeredDid, 'did:plc:test');
-    expect(didPlc.deleteCalled, isFalse);
+    expect(registeredDid, deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'));
+    expect(await store.load(), isNotNull);
     expect(passkeys.deleteCalled, isFalse);
   });
 
@@ -152,7 +162,7 @@ void main() {
     tester,
   ) async {
     final passkeys = _FakePasskeysManager('cd' * 32);
-    final didPlc = _FakeDidPlcManager();
+    final store = InMemoryCanonicalIdentityStore();
     final atProto = _FakeAtProtoClient(
       registerError: const AtProtoException(
         statusCode: 409,
@@ -165,7 +175,7 @@ void main() {
       MaterialApp(
         home: PasskeysRegistrationScreen(
           passkeysManager: passkeys,
-          didPlcManager: didPlc,
+          canonicalIdentityStore: store,
           atProtoClient: atProto,
           allowInsecureDevFallback: true,
           nonceSigner: (nonce, publicKeyHex) async => 'unused',
@@ -189,7 +199,7 @@ void main() {
         MaterialApp(
           home: PasskeysRegistrationScreen(
             passkeysManager: _FakePasskeysManager('ab' * 32),
-            didPlcManager: _FakeDidPlcManager(),
+            canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
             atProtoClient: _FakeAtProtoClient(),
             nonceSigner: (nonce, publicKeyHex) async => 'unused',
             onRegistered: (did, handle) {},
@@ -215,7 +225,7 @@ void main() {
         MaterialApp(
           home: PasskeysRegistrationScreen(
             passkeysManager: _FakePasskeysManager('ab' * 32),
-            didPlcManager: _FakeDidPlcManager(),
+            canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
             atProtoClient: _FakeAtProtoClient(),
             onRegistered: (did, handle) {},
           ),
@@ -238,7 +248,7 @@ void main() {
       MaterialApp(
         home: PasskeysRegistrationScreen(
           passkeysManager: passkeys,
-          didPlcManager: _FakeDidPlcManager(),
+          canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
           atProtoClient: atProto,
           nonceSigner: (nonce, publicKeyHex) async => 'unused',
           onRegistered: (did, handle) {},
@@ -283,33 +293,6 @@ class _FakePasskeysManager implements PasskeysManager {
       handle: username,
     );
   }
-}
-
-class _FakeDidPlcManager implements DidPlcManager {
-  String? signingKeyHex;
-  bool deleteCalled = false;
-
-  @override
-  Future<DidPlcResult> createDid({
-    required String handle,
-    String pdsEndpoint = 'https://elix.cool',
-    String? signingKeyHex,
-  }) async {
-    this.signingKeyHex = signingKeyHex;
-    return DidPlcResult(
-      did: 'did:plc:test',
-      genesisJson: '{"type":"plc_genesis"}',
-      publicKeyHex: signingKeyHex ?? '00' * 32,
-    );
-  }
-
-  @override
-  Future<void> deleteDid() async {
-    deleteCalled = true;
-  }
-
-  @override
-  Future<DidPlcResult?> loadDid() async => null;
 }
 
 class _FakeAtProtoClient extends AtProtoClient {

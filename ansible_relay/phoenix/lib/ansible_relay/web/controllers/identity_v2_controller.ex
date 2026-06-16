@@ -148,8 +148,11 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
   defp validate_handle_suffix(_), do: {:error, :invalid_handle_suffix}
 
+  # Canonical user identity is `did:elix` (layered identity, 2026-06-16).
+  # `did:plc` is still accepted so an opt-in Bluesky-bridge alias can anchor;
+  # both use a base32 (`[a-z2-7]`) suffix.
   defp validate_did(did) when is_binary(did) do
-    if String.match?(did, ~r/\Adid:plc:[a-z2-7]{10,}\z/) do
+    if String.match?(did, ~r/\Adid:(elix|plc):[a-z2-7]{10,}\z/) do
       :ok
     else
       {:error, :invalid_did}

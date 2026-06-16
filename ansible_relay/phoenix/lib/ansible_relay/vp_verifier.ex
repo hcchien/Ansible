@@ -29,6 +29,7 @@ defmodule AnsibleRelay.VpVerifier do
           | :wrong_nonce
           | :wrong_audience
           | :no_credentials
+          | :untrusted_issuer
           | :invalid_vc_proof
           | :vc_subject_mismatch
           | :vc_expired
@@ -175,32 +176,55 @@ defmodule AnsibleRelay.VpVerifier do
     end
   end
 
+  # Issuer Trust Registry gate (layered identity Phase B): a valid issuer
+  # signature is NOT enough — in an "anyone can run an issuer" world the
+  # verifier must consult a governed registry of accepted
+  # `(issuer did:web, credential types)`. Resolution order:
+  #   1. issuer not in the registry           → :untrusted_issuer
+  #   2. issuer present, type not permitted    → :untrusted_issuer
+  #   3. type permitted, signature invalid     → :invalid_vc_proof
+  # `:untrusted_issuer` is deliberately distinct from `:invalid_vc_proof` so a
+  # governance rejection is never confused with a cryptographic one.
   defp verify_vc_issuer_proof(vc) do
     issuer_did = Map.get(vc, "issuer")
     proof = Map.get(vc, "proof", %{})
     proof_value = Map.get(proof, "proofValue", "")
 
-    case find_trusted_issuer(issuer_did) do
-      nil ->
-        {:error, :invalid_vc_proof}
+    with {:ok, entry} <- registry_entry(issuer_did),
+         :ok <- issuer_permits_type(entry, vc) do
+      vc_without_proof = Map.delete(vc, "proof")
+      canonical = vc_without_proof |> deep_sort_keys() |> Jason.encode!()
 
-      %{public_key_hex: pub_key_hex} ->
-        vc_without_proof = Map.delete(vc, "proof")
-        canonical = vc_without_proof |> deep_sort_keys() |> Jason.encode!()
-
-        if SigVerifier.verify_ed25519(pub_key_hex, canonical, proof_value),
-          do: :ok,
-          else: {:error, :invalid_vc_proof}
+      if SigVerifier.verify_ed25519(entry.public_key_hex, canonical, proof_value),
+        do: :ok,
+        else: {:error, :invalid_vc_proof}
     end
   end
 
-  defp find_trusted_issuer(issuer_did) when is_binary(issuer_did) do
-    :ansible_relay
-    |> Application.get_env(:trusted_vc_issuers, [])
-    |> Enum.find(&(&1.did == issuer_did))
+  defp registry_entry(issuer_did) when is_binary(issuer_did) do
+    case Enum.find(trust_registry(), &(&1.did == issuer_did)) do
+      nil -> {:error, :untrusted_issuer}
+      entry -> {:ok, entry}
+    end
   end
 
-  defp find_trusted_issuer(_), do: nil
+  defp registry_entry(_), do: {:error, :untrusted_issuer}
+
+  # An entry MAY pin `credential_types: [...]` to restrict which VC types it is
+  # trusted to issue. Omitting the key means "any recognised type" (backward
+  # compatible with the original flat `%{did, public_key_hex}` entries).
+  defp issuer_permits_type(entry, vc) do
+    case Map.get(entry, :credential_types) do
+      nil ->
+        :ok
+
+      allowed when is_list(allowed) ->
+        vc_types = Map.get(vc, "type", [])
+        if Enum.any?(vc_types, &(&1 in allowed)), do: :ok, else: {:error, :untrusted_issuer}
+    end
+  end
+
+  defp trust_registry, do: Application.get_env(:ansible_relay, :trusted_vc_issuers, [])
 
   defp verify_binding_event(holder_did, vp, %{"event" => event}, opts) when is_map(event) do
     with :ok <- check_binding_event_shape(event),
