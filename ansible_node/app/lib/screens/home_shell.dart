@@ -27,6 +27,7 @@ import '../services/app_locale_controller.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/app_sync_service.dart';
 import '../services/contact_resolver.dart';
+import '../services/discovery_client.dart';
 import '../services/contact_source_sync_service.dart';
 import '../services/messenger_contact_resolver.dart';
 import '../services/messenger_device_service.dart';
@@ -51,6 +52,7 @@ import 'sync_settings_screen.dart';
 import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
+import 'discover_screen.dart';
 import 'home/circle_full_screen.dart';
 import 'home/compose_action_item.dart';
 import 'home/home_types.dart';
@@ -1332,6 +1334,27 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
   }
 
+  /// Opens the network DiscoverScreen so the user can find + subscribe to
+  /// boards (討論區). Constructed exactly like the top-bar / Timeline entries
+  /// (same deps, no onOpenBoard → board rows use DiscoverScreen's built-in
+  /// subscribe flow). Reloads on return so newly-followed boards show up.
+  Future<void> _openDiscover() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DiscoverScreen(
+          db: widget.db,
+          localDid: widget.did,
+          client: DiscoveryClient(
+            appViewBaseUrl: AppEnvironment.appViewBaseUrl,
+            relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadData();
+  }
+
   Future<void> _openManageBoards() async {
     await showDialog<void>(
       context: context,
@@ -1544,6 +1567,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onCreateThread: _createThread,
                 onCreateBoard: _createBoard,
                 onManageBoards: _openManageBoards,
+                onDiscoverBoards: _openDiscover,
                 onOpenBoards: compact ? () => _openBoardsSheet(context) : null,
                 feedFilter: _feedFilter,
                 onFeedFilterChanged: _selectFeedFilter,

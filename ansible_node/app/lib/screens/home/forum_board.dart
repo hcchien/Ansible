@@ -28,6 +28,7 @@ class ForumBoardView extends StatelessWidget {
     required this.onCreateThread,
     required this.onCreateBoard,
     required this.onManageBoards,
+    required this.onDiscoverBoards,
   });
 
   final bool compact;
@@ -45,6 +46,11 @@ class ForumBoardView extends StatelessWidget {
   final Future<void> Function() onCreateBoard;
   final Future<void> Function() onManageBoards;
 
+  /// Opens the network DiscoverScreen so the user can find + subscribe to
+  /// boards (討論區). Surfaced both in the no-boards empty state and as an
+  /// always-available action in the board-actions row / bottom bar.
+  final VoidCallback onDiscoverBoards;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -57,10 +63,21 @@ class ForumBoardView extends StatelessWidget {
         if (compact)
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: onManageBoards,
-              icon: const Icon(Icons.tune, size: 16),
-              label: Text(l10n.manageBoardsShort),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: onDiscoverBoards,
+                  icon: const Icon(Icons.explore_outlined, size: 18),
+                  tooltip: context.uiCopy(zh: '探索', en: 'Discover'),
+                  visualDensity: VisualDensity.compact,
+                ),
+                TextButton.icon(
+                  onPressed: onManageBoards,
+                  icon: const Icon(Icons.tune, size: 16),
+                  label: Text(l10n.manageBoardsShort),
+                ),
+              ],
             ),
           ),
         if (!compact) ...[
@@ -104,6 +121,15 @@ class ForumBoardView extends StatelessWidget {
                   ),
                   action(
                     OutlinedButton.icon(
+                      onPressed: onDiscoverBoards,
+                      icon: const Icon(Icons.explore_outlined),
+                      label: _ActionLabel(
+                        context.uiCopy(zh: '探索', en: 'Discover'),
+                      ),
+                    ),
+                  ),
+                  action(
+                    OutlinedButton.icon(
                       onPressed: () {
                         if (hasSelectedBoard && selectedBoardId != null) {
                           Navigator.of(context).push(
@@ -138,14 +164,15 @@ class ForumBoardView extends StatelessWidget {
           child: loading
               ? const Center(child: CircularProgressIndicator())
               : posts.isEmpty
-              ? Center(
-                  child: Text(
-                    l10n.noPostsYet,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AnsibleDesign.inkMuted,
-                    ),
-                  ),
-                )
+              ? (boards.isEmpty
+                    ? _noBoardsEmptyState(context)
+                    : Center(
+                        child: Text(
+                          l10n.noPostsYet,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: AnsibleDesign.inkMuted),
+                        ),
+                      ))
               : ListView.separated(
                   itemCount: posts.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 16),
@@ -205,6 +232,61 @@ class ForumBoardView extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// Shown when the user hasn't subscribed to any board (討論區). The bare
+  /// "no posts" message gave no path to board discovery; this surfaces a clear
+  /// CTA into the DiscoverScreen plus the existing create-board affordance.
+  Widget _noBoardsEmptyState(BuildContext context) {
+    final l10n = context.l10n;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.uiCopy(
+                zh: '還沒有訂閱任何討論區',
+                en: "You haven't followed any boards yet",
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AnsibleDesign.ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.uiCopy(
+                zh: '到「探索」尋找討論區追蹤，貼文就會出現在這裡。',
+                en: 'Find boards to follow in Discover — their posts will '
+                    'appear here.',
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.6,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onDiscoverBoards,
+              icon: const Icon(Icons.explore_outlined, size: 18),
+              label: Text(context.uiCopy(zh: '尋找討論區', en: 'Find boards to follow')),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: onCreateBoard,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(l10n.addBoardTooltip),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
