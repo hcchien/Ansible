@@ -47,6 +47,9 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
       {:error, :invalid_signature} ->
         send_json(conn, 401, %{error: "invalid_signature"})
 
+      {:error, :invalid_attestation} ->
+        send_json(conn, 401, %{error: "invalid_attestation"})
+
       {:error, :invalid_recovery_proof} ->
         send_json(conn, 401, %{error: "invalid_recovery_proof"})
 

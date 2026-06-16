@@ -54,6 +54,12 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   @body_keys ~w(type schema_version did handle identity_key custody_class
                 devices prev_anchor_cid reason created_at)
   @device_keys ~w(device_id device_key custody_class enrolled_at attestation_sig)
+  # The fields an enrolled device's `attestation_sig` actually signs: the
+  # device record MINUS `attestation_sig`, in the same order (design
+  # §"Anchor as a Self-Certifying Object"; the leading keys of the Dart
+  # `AnchorDeviceRecord.toCanonicalMap`, with the trailing `attestation_sig`
+  # dropped from the signed message).
+  @device_attestation_keys ~w(device_id device_key custody_class enrolled_at)
   @anchor_type "io.trisaura.identity.anchor"
   @default_grace_seconds 259_200
 
@@ -101,6 +107,21 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     |> wrap_object()
   end
 
+  @doc """
+  Canonical bytes an enrolled device's `attestation_sig` covers: the device
+  record minus `attestation_sig`, fixed key order, no whitespace. The identity
+  key signs THIS message to attest the device key.
+
+  Mirrors the Dart `AnchorDeviceRecord.toCanonicalMap`
+  (`ansible_core/store/lib/src/entities/identity_anchor.dart`) with the
+  trailing `attestation_sig` field excluded from the signed message.
+  """
+  def device_attestation_message(device) when is_map(device) do
+    @device_attestation_keys
+    |> Enum.map(fn key -> Jason.encode!(key) <> ":" <> Jason.encode!(fetch(device, key)) end)
+    |> wrap_object()
+  end
+
   defp wrap_object(entries), do: "{" <> Enum.join(entries, ",") <> "}"
 
   @doc "Content identifier of an anchor object: `sha256:<lowercase hex>`."
@@ -131,18 +152,46 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     * `{:ok, :pending, anchor}` — recovery held in the grace window
     * `{:error, reason}` where reason is one of
       `:malformed | :unknown_reason | :invalid_signature |
-       :invalid_recovery_proof | :conflict | :chain_mismatch | :locked`
+       :invalid_attestation | :invalid_recovery_proof | :conflict |
+       :chain_mismatch | :locked`
   """
   def submit(anchor, opts \\ []) when is_map(anchor) do
     recovery_proof = opts[:recovery_proof] || fetch(anchor, "recovery_proof")
 
     with {:ok, did, reason} <- validate_shape(anchor),
          :ok <- ensure_not_frozen(did),
+         :ok <- verify_device_attestations(anchor),
          body = canonical_body(anchor),
          cid = cid_of_body(body) do
       dispatch(reason, anchor, did, body, cid, recovery_proof)
     end
   end
+
+  # Every enrolled device record must carry an `attestation_sig` that is a
+  # valid Ed25519 signature, BY THIS ANCHOR'S `identity_key`, over the device's
+  # canonical record bytes (the record minus `attestation_sig`). This makes the
+  # anchor self-certifying for its device set: a rotation / recovery /
+  # device_change cannot smuggle in a device key the identity key never
+  # attested (design §"Anchor as a Self-Certifying Object"). An anchor with no
+  # devices trivially passes.
+  defp verify_device_attestations(anchor) do
+    identity_key = fetch(anchor, "identity_key")
+
+    if Enum.all?(devices(anchor), &device_attested?(&1, identity_key)) do
+      :ok
+    else
+      {:error, :invalid_attestation}
+    end
+  end
+
+  defp device_attested?(device, identity_key) when is_map(device) do
+    sig = fetch(device, "attestation_sig")
+
+    is_binary(sig) and sig != "" and
+      verify(identity_key, device_attestation_message(device), sig)
+  end
+
+  defp device_attested?(_device, _identity_key), do: false
 
   defp ensure_not_frozen(did) do
     if frozen?(did), do: {:error, :locked}, else: :ok

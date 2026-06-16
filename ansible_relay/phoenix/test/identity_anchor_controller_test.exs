@@ -141,14 +141,35 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     |> Router.call(@router_opts)
   end
 
-  defp device_record(device_pub, attestation_sig \\ "00") do
-    %{
+  # Canonical bytes a device's attestation_sig signs: the device record MINUS
+  # attestation_sig, fixed order, no whitespace. Re-derived here independently
+  # (matching the Dart AnchorDeviceRecord.toCanonicalMap leading keys) so the
+  # test locks the exact signed bytes rather than trusting the store helper.
+  defp device_attestation_message(d) do
+    [
+      {"device_id", d.device_id},
+      {"device_key", d.device_key},
+      {"custody_class", d.custody_class},
+      {"enrolled_at", d.enrolled_at}
+    ]
+    |> Enum.map_join(",", fn {k, v} -> Jason.encode!(k) <> ":" <> Jason.encode!(v) end)
+    |> then(&("{" <> &1 <> "}"))
+  end
+
+  # An enrolled device record whose attestation_sig is a valid signature by the
+  # anchor's identity key (id_priv) over the device record. Pass `attest_priv`
+  # to forge an attestation by a DIFFERENT key (the smuggled-device case).
+  defp device_record(device_pub, id_priv, opts \\ []) do
+    attest_priv = opts[:attest_priv] || id_priv
+
+    base = %{
       device_id: "dev-#{System.unique_integer([:positive])}",
       device_key: device_pub,
       custody_class: "software",
-      enrolled_at: "2026-06-13T08:00:00.000Z",
-      attestation_sig: attestation_sig
+      enrolled_at: "2026-06-13T08:00:00.000Z"
     }
+
+    Map.put(base, :attestation_sig, sign(attest_priv, device_attestation_message(base)))
   end
 
   # Helper: create an initial anchor with one enrolled device. Returns the
@@ -159,7 +180,7 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     {id_pub, id_priv} = ed25519_keypair()
     {dev_pub, dev_priv} = ed25519_keypair()
 
-    devices = if opts[:with_device], do: [device_record(dev_pub)], else: []
+    devices = if opts[:with_device], do: [device_record(dev_pub, id_priv)], else: []
 
     {anchor, anchor_cid, _body} =
       build_anchor(
@@ -547,6 +568,139 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
       })
 
     assert resp.status == 401
+  end
+
+  # =========================================================================
+  # device attestation — every enrolled device key must be signed by the
+  # anchor's identity key (no smuggling unattested device keys)
+  # =========================================================================
+
+  test "initial: a device whose attestation_sig is by the identity key is accepted (201)" do
+    did = "did:plc:attest_ok_#{System.unique_integer([:positive])}"
+    {id_pub, id_priv} = ed25519_keypair()
+    {dev_pub, _dev_priv} = ed25519_keypair()
+
+    {anchor, anchor_cid, _body} =
+      build_anchor(
+        %{
+          did: did,
+          handle: "attestok.elix.cool",
+          identity_key: id_pub,
+          reason: "initial",
+          devices: [device_record(dev_pub, id_priv)]
+        },
+        id_priv
+      )
+
+    assert post_json("/api/v1/identity/anchor", anchor).status == 201
+    assert {:ok, object} = AnchorStore.get_active(did)
+    assert object["anchor_cid"] == anchor_cid
+    assert [%{"device_key" => ^dev_pub}] = object["devices"]
+  end
+
+  test "initial: a device key NOT attested by the identity key is rejected (401)" do
+    did = "did:plc:smuggle_#{System.unique_integer([:positive])}"
+    {id_pub, id_priv} = ed25519_keypair()
+    {dev_pub, _dev_priv} = ed25519_keypair()
+    # Attest the device with a DIFFERENT key — a smuggled-in, unattested device.
+    {_other_pub, other_priv} = ed25519_keypair()
+
+    {anchor, _cid, _body} =
+      build_anchor(
+        %{
+          did: did,
+          handle: "smuggle.elix.cool",
+          identity_key: id_pub,
+          reason: "initial",
+          devices: [device_record(dev_pub, id_priv, attest_priv: other_priv)]
+        },
+        id_priv
+      )
+
+    resp = post_json("/api/v1/identity/anchor", anchor)
+    assert resp.status == 401
+    assert Jason.decode!(resp.resp_body)["error"] == "invalid_attestation"
+    # Nothing was persisted for the DID.
+    assert {:error, :not_found} = AnchorStore.get_active(did)
+  end
+
+  test "initial: a placeholder (non-signature) attestation_sig is rejected (401)" do
+    did = "did:plc:placeholder_#{System.unique_integer([:positive])}"
+    {id_pub, id_priv} = ed25519_keypair()
+    {dev_pub, _dev_priv} = ed25519_keypair()
+
+    device =
+      device_record(dev_pub, id_priv)
+      |> Map.put(:attestation_sig, "00")
+
+    {anchor, _cid, _body} =
+      build_anchor(
+        %{
+          did: did,
+          handle: "placeholder.elix.cool",
+          identity_key: id_pub,
+          reason: "initial",
+          devices: [device]
+        },
+        id_priv
+      )
+
+    resp = post_json("/api/v1/identity/anchor", anchor)
+    assert resp.status == 401
+    assert Jason.decode!(resp.resp_body)["error"] == "invalid_attestation"
+  end
+
+  test "device_change: re-attesting a device under the same identity key is accepted (200)" do
+    # The carried-forward device must be attested by THIS anchor's identity key.
+    ctx = seed_initial(with_device: true)
+
+    fields = %{
+      did: ctx.did,
+      handle: ctx.handle,
+      identity_key: ctx.id_pub,
+      reason: "device_change",
+      prev_anchor_cid: ctx.anchor_cid,
+      created_at: "2026-06-14T09:00:00.000Z",
+      devices: [device_record(ctx.dev_pub, ctx.id_priv)]
+    }
+
+    {anchor, new_cid, body} = build_anchor(fields, ctx.id_priv)
+    anchor = Map.put(anchor, "device_sig", sign(ctx.dev_priv, body))
+
+    resp = post_json("/api/v1/identity/anchor", anchor)
+    assert resp.status == 200
+    assert Jason.decode!(resp.resp_body)["anchor_cid"] == new_cid
+  end
+
+  test "device_change: a device key not attested by the identity key is rejected (401)" do
+    ctx = seed_initial(with_device: true)
+    {smuggled_pub, _smuggled_priv} = ed25519_keypair()
+    {_other_pub, other_priv} = ed25519_keypair()
+
+    fields = %{
+      did: ctx.did,
+      handle: ctx.handle,
+      identity_key: ctx.id_pub,
+      reason: "device_change",
+      prev_anchor_cid: ctx.anchor_cid,
+      created_at: "2026-06-14T09:00:00.000Z",
+      # A new device the identity key never signed (attested by a stranger key).
+      devices: [
+        device_record(ctx.dev_pub, ctx.id_priv),
+        device_record(smuggled_pub, ctx.id_priv, attest_priv: other_priv)
+      ]
+    }
+
+    {anchor, _cid, body} = build_anchor(fields, ctx.id_priv)
+    anchor = Map.put(anchor, "device_sig", sign(ctx.dev_priv, body))
+
+    resp = post_json("/api/v1/identity/anchor", anchor)
+    assert resp.status == 401
+    assert Jason.decode!(resp.resp_body)["error"] == "invalid_attestation"
+
+    # The active anchor is unchanged (the smuggle attempt did not take effect).
+    assert {:ok, object} = AnchorStore.get_active(ctx.did)
+    assert object["anchor_cid"] == ctx.anchor_cid
   end
 
   # =========================================================================
