@@ -22,7 +22,21 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
     | sh -s -- -y --default-toolchain stable --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-RUN mix local.hex --force && mix local.rebar --force
+# hex.pm's CDN (builds.hex.pm / repo.hex.pm, Fastly) intermittently serves a
+# cert chain whose intermediate has keyUsage[keyCertSign] + EKU[serverAuth],
+# which OTP's :ssl correctly rejects as key_usage_mismatch (erlang/otp
+# GHSA-qw6r-qh9v-638v). This is NOT OTP-version-fixable. So:
+#  - install hex over git (system TLS, not OTP :ssl → unaffected),
+#  - install rebar3 from its GitHub release via curl (system TLS),
+#  - fetch deps with HEX_UNSAFE_HTTPS: this only relaxes TRANSPORT cert
+#    verification to repo.hex.pm; package integrity is still enforced by the
+#    cryptographic checksums pinned in mix.lock.
+RUN mix archive.install github hexpm/hex branch latest --force
+RUN curl -fsSL https://github.com/erlang/rebar3/releases/latest/download/rebar3 \
+      -o /usr/local/bin/rebar3 \
+    && chmod +x /usr/local/bin/rebar3 \
+    && mix local.rebar rebar3 /usr/local/bin/rebar3 --force
+ENV HEX_UNSAFE_HTTPS=1
 
 COPY mix.exs mix.lock ./
 COPY config ./config

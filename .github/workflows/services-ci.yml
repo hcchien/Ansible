@@ -54,6 +54,11 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.relay == 'true' || needs.changes.outputs.appview == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    # hex.pm's CDN intermittently serves a cert chain OTP's :ssl rejects
+    # (key_usage_mismatch; erlang/otp GHSA-qw6r-qh9v-638v). Relax the transport
+    # check for mix deps fetches — mix.lock checksums still guarantee integrity.
+    env:
+      HEX_UNSAFE_HTTPS: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -91,8 +96,6 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           elixir-version: '1.19'
-          # OTP 27.0–27.2 rejects hex.pm's cert chain (key_usage_mismatch in
-          # :ssl); 28.x relaxes it. Matches the Dockerfiles' OTP 28 pin.
           otp-version: '28'
 
       - name: Cache mix deps and build
