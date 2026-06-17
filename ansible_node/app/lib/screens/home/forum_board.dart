@@ -29,6 +29,7 @@ class ForumBoardView extends StatelessWidget {
     required this.onCreateBoard,
     required this.onManageBoards,
     required this.onDiscoverBoards,
+    required this.onOpenBoard,
   });
 
   final bool compact;
@@ -51,6 +52,11 @@ class ForumBoardView extends StatelessWidget {
   /// always-available action in the board-actions row / bottom bar.
   final VoidCallback onDiscoverBoards;
 
+  /// Enters a board's own page (its thread list) by local board id. Wired to
+  /// the tappable board row so users can jump into a board straight from the
+  /// forum tab instead of digging through the sidebar / board sheet.
+  final ValueChanged<String> onOpenBoard;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -58,6 +64,9 @@ class ForumBoardView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Subscribed boards, tappable to enter each board's thread list — so the
+        // forum tab itself offers a way into boards (not just the sidebar/sheet).
+        if (boards.isNotEmpty) _BoardStrip(boards: boards, onOpenBoard: onOpenBoard),
         // Compact (phone): a clear entry to manage subscribed boards. On wide
         // layouts the same action lives in the board-actions row below.
         if (compact)
@@ -346,5 +355,42 @@ class _ActionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+  }
+}
+
+/// Horizontal row of the user's subscribed boards; tapping one enters its
+/// thread list. Gives the forum tab a direct path into boards.
+class _BoardStrip extends StatelessWidget {
+  const _BoardStrip({required this.boards, required this.onOpenBoard});
+
+  final List<Board> boards;
+  final ValueChanged<String> onOpenBoard;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SizedBox(
+        height: 34,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: boards.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final board = boards[index];
+            return ActionChip(
+              label: Text(
+                board.title,
+                style: const TextStyle(fontSize: 12.5),
+              ),
+              avatar: const Icon(Icons.forum_outlined, size: 15),
+              onPressed: () => onOpenBoard(board.id),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            );
+          },
+        ),
+      ),
+    );
   }
 }

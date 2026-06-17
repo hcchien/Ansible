@@ -55,6 +55,7 @@ class MainPanel extends StatelessWidget {
     required this.onCreateBoard,
     required this.onManageBoards,
     required this.onDiscoverBoards,
+    required this.onOpenBoard,
     this.onOpenBoards,
     required this.feedFilter,
     required this.onFeedFilterChanged,
@@ -124,6 +125,7 @@ class MainPanel extends StatelessWidget {
   final Future<void> Function() onCreateBoard;
   final Future<void> Function() onManageBoards;
   final VoidCallback onDiscoverBoards;
+  final ValueChanged<String> onOpenBoard;
   final VoidCallback? onOpenBoards;
   final FeedFilter feedFilter;
   final ValueChanged<FeedFilter> onFeedFilterChanged;
@@ -276,6 +278,7 @@ class MainPanel extends StatelessWidget {
                     onCreateBoard: onCreateBoard,
                     onManageBoards: onManageBoards,
                     onDiscoverBoards: onDiscoverBoards,
+                    onOpenBoard: onOpenBoard,
                   ),
                 ),
               ),

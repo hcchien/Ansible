@@ -913,13 +913,37 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _ensureDefaultRelayNode() async {
     if (!widget.autoSeedDefaultRelay) return;
     try {
-      final existing = await _remoteNodeRepo.list();
-      if (existing.isNotEmpty) return;
       final url = AppEnvironment.defaultRelayBaseUrl.trim();
       if (url.isEmpty) return;
+      final defaultOrigin = _relayOrigin(url);
       final host = Uri.tryParse(url)?.host ?? '';
       final name = host.isNotEmpty ? host.split('.').first : 'Elix Relay';
       final now = DateTime.now();
+
+      final existing = await _remoteNodeRepo.list();
+      // Already pointed at this build's relay → nothing to do.
+      if (existing.any((n) => _relayOrigin(n.url) == defaultOrigin)) return;
+
+      // Self-heal: an earlier build auto-seeded the relay's Cloud Run native
+      // URL (*.run.app). Re-point that node at this build's relay rather than
+      // leaving a stale/duplicate. Only rewrites run.app hosts — never a user's
+      // custom forum host.
+      final stale = existing.where((n) {
+        final h = Uri.tryParse(n.url)?.host ?? '';
+        return h.endsWith('.run.app');
+      }).toList();
+      if (stale.isNotEmpty) {
+        for (final node in stale) {
+          await _remoteNodeRepo.update(
+            node.copyWith(url: url, name: name, updatedAt: now),
+          );
+        }
+        return;
+      }
+
+      // Non-empty with no default and no run.app node → leave the user's setup
+      // alone. Only seed on a truly fresh install.
+      if (existing.isNotEmpty) return;
       await _remoteNodeRepo.create(
         RemoteNode(
           id: now.millisecondsSinceEpoch.toString(),
@@ -933,6 +957,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     } catch (_) {
       // Best-effort; the user can still add a relay manually in Sync settings.
     }
+  }
+
+  /// scheme://host:port for comparing relay URLs regardless of path/trailing
+  /// slash. Returns the lowercased input on parse failure.
+  String _relayOrigin(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.host.isEmpty) return url.trim().toLowerCase();
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port';
   }
 
   /// Best-effort: re-list the boards this DID created on each active forum host
@@ -1698,6 +1731,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onCreateBoard: _createBoard,
                 onManageBoards: _openManageBoards,
                 onDiscoverBoards: _openDiscover,
+                onOpenBoard: _openBoard,
                 onOpenBoards: compact ? () => _openBoardsSheet(context) : null,
                 feedFilter: _feedFilter,
                 onFeedFilterChanged: _selectFeedFilter,

@@ -218,8 +218,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       onChanged: () => setState(() {}),
                     ),
                     const SizedBox(height: 10),
-                    const _VisibilityRow(),
-                    const SizedBox(height: 6),
                     _BodyField(
                       controller: _contentController,
                       enabled: !_isSending,
@@ -230,7 +228,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 ),
               ),
             ),
-            const _FormatToolbar(),
             _EditorFooter(
               did: _truncatedDid,
               characterCount: _composedContent.length,
@@ -385,62 +382,6 @@ class _TitleField extends StatelessWidget {
   }
 }
 
-class _VisibilityRow extends StatelessWidget {
-  const _VisibilityRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const _VisibilityChip(),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            context.uiCopy(zh: '還沒讓任何人看見', en: 'Not visible to anyone yet'),
-            style: const TextStyle(
-              fontSize: 11.5,
-              height: 1.4,
-              color: AnsibleDesign.inkFaint,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _VisibilityChip extends StatelessWidget {
-  const _VisibilityChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(7, 4, 8, 4),
-      decoration: BoxDecoration(
-        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Dot(color: AnsibleDesign.inkMuted, size: 4),
-          SizedBox(width: 5),
-          Text(
-            'private',
-            style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 9,
-              color: AnsibleDesign.inkMuted,
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BodyField extends StatelessWidget {
   const _BodyField({
     required this.controller,
@@ -504,90 +445,6 @@ class _ContinuationHint extends StatelessWidget {
       ),
     );
   }
-}
-
-class _FormatToolbar extends StatelessWidget {
-  const _FormatToolbar();
-
-  static const _tools = [
-    _FormatTool('B', FontWeight.w700, FontStyle.normal, TextDecoration.none),
-    _FormatTool('I', FontWeight.w400, FontStyle.italic, TextDecoration.none),
-    _FormatTool(
-      'U',
-      FontWeight.w400,
-      FontStyle.normal,
-      TextDecoration.underline,
-    ),
-    _FormatTool('""', FontWeight.w400, FontStyle.normal, TextDecoration.none),
-    _FormatTool('§', FontWeight.w400, FontStyle.normal, TextDecoration.none),
-    _FormatTool('↗', FontWeight.w400, FontStyle.normal, TextDecoration.none),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.fromLTRB(22, 0, 22, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: AnsibleDesign.ink,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: AnsibleDesign.ink.withValues(alpha: 0.18),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          for (var i = 0; i < _tools.length; i++) ...[
-            Expanded(child: _FormatButton(tool: _tools[i])),
-            if (i < _tools.length - 1)
-              Container(
-                width: 0.5,
-                height: 18,
-                color: AnsibleDesign.paper.withValues(alpha: 0.16),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _FormatButton extends StatelessWidget {
-  const _FormatButton({required this.tool});
-
-  final _FormatTool tool;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        tool.label,
-        style: TextStyle(
-          color: AnsibleDesign.paper,
-          fontSize: 14,
-          fontWeight: tool.weight,
-          fontStyle: tool.style,
-          decoration: tool.decoration,
-          decorationColor: AnsibleDesign.paper,
-        ),
-      ),
-    );
-  }
-}
-
-class _FormatTool {
-  const _FormatTool(this.label, this.weight, this.style, this.decoration);
-
-  final String label;
-  final FontWeight weight;
-  final FontStyle style;
-  final TextDecoration decoration;
 }
 
 class _EditorFooter extends StatelessWidget {
