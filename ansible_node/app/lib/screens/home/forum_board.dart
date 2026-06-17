@@ -200,7 +200,9 @@ class ForumBoardView extends StatelessWidget {
               ),
               const Spacer(),
               FilledButton.icon(
-                onPressed: hasSelectedBoard ? onCreateThread : onCreateBoard,
+                onPressed: boards.isNotEmpty
+                    ? () => _composeNewPost(context)
+                    : onCreateBoard,
                 icon: const Icon(Icons.add, size: 16),
                 label: Text(l10n.newPost),
                 style: FilledButton.styleFrom(

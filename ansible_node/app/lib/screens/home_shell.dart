@@ -253,6 +253,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       unawaited(_loadScreenStyles());
       unawaited(_loadBoardMotion());
       unawaited(_loadData());
+      // Re-list boards this DID created on its forum hosts and rebuild any
+      // missing local subscriptions (e.g. after a reinstall wiped the local
+      // DB), then refresh so they appear without a manual re-subscribe.
+      unawaited(
+        _reconcileCreatedBoards().whenComplete(() {
+          if (mounted) unawaited(_loadData());
+        }),
+      );
       // Make sure our DID is anchored on the relay before publishing anything,
       // otherwise the relay rejects boards/follows/profile/content as unknown_did.
       unawaited(
@@ -925,6 +933,101 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     } catch (_) {
       // Best-effort; the user can still add a relay manually in Sync settings.
     }
+  }
+
+  /// Best-effort: re-list the boards this DID created on each active forum host
+  /// and rebuild the local board + projection + subscription for any that are
+  /// missing. Board authorship is recorded host-side, but subscriptions are
+  /// client-local — so after a reinstall the user would otherwise lose their own
+  /// boards until manually re-subscribing via Discover.
+  Future<void> _reconcileCreatedBoards() async {
+    final did = widget.did;
+    if (did.isEmpty) return;
+    try {
+      final hosts = (await _remoteNodeRepo.list())
+          .where((node) => node.isActive)
+          .toList();
+      if (hosts.isEmpty) return;
+      final existingLocalIds = (await _hostedBoardRepo.listProjections())
+          .map((projection) => projection.localBoardId)
+          .toSet();
+      for (final host in hosts) {
+        final client = ForumHostClient(baseUrl: host.url);
+        try {
+          final boards = await client.listBoardsCreatedBy(did);
+          for (final board in boards) {
+            final hostedBoardId = board['hosted_board_id'] as String?;
+            if (hostedBoardId == null || hostedBoardId.isEmpty) continue;
+            final localBoardId = '${host.id}_$hostedBoardId';
+            if (existingLocalIds.contains(localBoardId)) continue;
+            await _restoreHostedBoard(host.id, hostedBoardId, board);
+            existingLocalIds.add(localBoardId);
+          }
+        } catch (_) {
+          // Per-host best-effort; a relay-only node 404s here — ignore.
+        } finally {
+          client.close();
+        }
+      }
+    } catch (_) {
+      // Best-effort; the user can still re-subscribe via Discover.
+    }
+  }
+
+  Future<void> _restoreHostedBoard(
+    String forumHostId,
+    String hostedBoardId,
+    Map<String, dynamic> board,
+  ) async {
+    final now = DateTime.now();
+    final localBoardId = '${forumHostId}_$hostedBoardId';
+    final title = board['title'] as String? ?? hostedBoardId;
+    final description = board['description'] as String?;
+    final localBoard = Board(
+      id: localBoardId,
+      slug: localBoardId,
+      title: title,
+      description: description,
+      createdAt: now,
+      updatedAt: now,
+    );
+    try {
+      await _boardRepo.create(localBoard);
+    } catch (_) {
+      // Board row may already exist from a partial restore; continue.
+    }
+    await _hostedBoardRepo.upsertProjection(
+      HostedBoardProjection(
+        localBoardId: localBoardId,
+        forumHostId: forumHostId,
+        hostedBoardId: hostedBoardId,
+        canonicalBoardUri: board['canonical_board_uri'] as String? ?? '',
+        remoteSlug: board['slug'] as String? ?? hostedBoardId,
+        localSlug: localBoard.slug,
+        title: title,
+        description: description,
+        permissions: Map<String, Object?>.from(
+          board['permissions'] as Map? ?? const {'read': true, 'write': true},
+        ),
+        postingPolicy: Map<String, Object?>.from(
+          board['posting_policy'] as Map? ?? const {},
+        ),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await _hostedBoardRepo.upsertSubscription(
+      BoardSubscription(
+        subscriptionId: localBoardId,
+        forumHostId: forumHostId,
+        hostedBoardId: hostedBoardId,
+        localBoardId: localBoardId,
+        readEnabled: true,
+        writeEnabled: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
   }
 
   /// Idempotently anchors the local DID + public key with the active relay so

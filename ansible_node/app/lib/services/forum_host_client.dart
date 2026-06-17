@@ -254,6 +254,20 @@ class ForumHostClient {
 
   Future<List<Map<String, dynamic>>> listHostedBoards() async {
     final body = await _getJson('/api/v1/forum-host/boards');
+    return _boardsFrom(body);
+  }
+
+  /// Boards authored by [did] on this Forum Host. Lets a freshly-installed
+  /// client re-list the boards it created (subscriptions are client-local and
+  /// don't survive a reinstall, but board authorship is recorded host-side).
+  Future<List<Map<String, dynamic>>> listBoardsCreatedBy(String did) async {
+    final body = await _getJson(
+      '/api/v1/forum-host/boards/created-by/${Uri.encodeComponent(did)}',
+    );
+    return _boardsFrom(body);
+  }
+
+  List<Map<String, dynamic>> _boardsFrom(Map<String, dynamic> body) {
     final boards = body['boards'];
     if (boards is! List) {
       throw const FormatException('Expected boards list from Forum Host');

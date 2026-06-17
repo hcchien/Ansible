@@ -10,6 +10,7 @@ import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/board_gate_badge.dart';
+import 'threads_list_screen.dart';
 import 'user_profile_screen.dart';
 
 /// Network discovery: find people and boards to follow, and explore public
@@ -115,7 +116,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
-  Future<void> _subscribeToBoard(BoardSearchResult board) async {
+  /// Subscribes to a hosted board (idempotent) and returns the local [Board] so
+  /// the caller can navigate into it. Returns null only when there's no forum
+  /// host to attach the subscription to.
+  Future<Board?> _subscribeToBoard(BoardSearchResult board) async {
     // Capture localized strings before any await (no BuildContext across gaps).
     final addHostMsg =
         context.uiCopy(zh: '請先新增 Forum Host', en: 'Add a forum host first');
@@ -133,18 +137,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         .toList();
     if (hosts.isEmpty) {
       _toast(addHostMsg);
-      return;
+      return null;
     }
     final host = hosts.first;
     final hostedRepo = DriftHostedBoardRepository(widget.db);
     final subscriptionId = '${host.id}_${board.hostedBoardId}';
-
-    final subs = await hostedRepo.listSubscriptions();
-    if (subs.any((s) => s.subscriptionId == subscriptionId)) {
-      _toast(alreadyMsg);
-      return;
-    }
-
     final now = DateTime.now();
     final localBoardId = subscriptionId; // also used as slug → guaranteed unique
     final localBoard = Board(
@@ -155,10 +152,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       createdAt: now,
       updatedAt: now,
     );
+
+    final subs = await hostedRepo.listSubscriptions();
+    final alreadySubscribed =
+        subs.any((s) => s.subscriptionId == subscriptionId);
+
     try {
       await DriftBoardRepository(widget.db).create(localBoard);
     } catch (_) {
-      // Board row may already exist from a prior partial subscribe; continue.
+      // Board row may already exist from a prior subscribe; continue.
     }
     await hostedRepo.upsertProjection(
       HostedBoardProjection(
@@ -188,7 +190,28 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         updatedAt: now,
       ),
     );
-    _toast(followingMsg);
+    _toast(alreadySubscribed ? alreadyMsg : followingMsg);
+    return localBoard;
+  }
+
+  /// Tapping a discovered board subscribes (if needed) and opens it, so the
+  /// user lands directly in the board's thread list and can read/post.
+  Future<void> _openDiscoveredBoard(BoardSearchResult board) async {
+    if (widget.onOpenBoard != null) {
+      widget.onOpenBoard!(board);
+      return;
+    }
+    final local = await _subscribeToBoard(board);
+    if (local == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ThreadsListScreen(
+          db: widget.db,
+          board: local,
+          localDid: widget.localDid,
+        ),
+      ),
+    );
   }
 
   void _toast(String message) {
@@ -457,9 +480,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _boardRow(BuildContext context, BoardSearchResult board) {
     return InkWell(
-      onTap: () => widget.onOpenBoard != null
-          ? widget.onOpenBoard!(board)
-          : _subscribeToBoard(board),
+      onTap: () => _openDiscoveredBoard(board),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         decoration: const BoxDecoration(

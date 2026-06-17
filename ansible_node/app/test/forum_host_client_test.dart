@@ -172,6 +172,40 @@ void main() {
     );
   });
 
+  test('listBoardsCreatedBy hits the created-by endpoint with an encoded DID',
+      () async {
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        expect(request.method, 'GET');
+        // The DID's colons must be percent-encoded into the path segment.
+        expect(
+          request.url.path,
+          '/api/v1/forum-host/boards/created-by/did%3Aplc%3Aalice',
+        );
+
+        return http.Response(
+          jsonEncode({
+            'boards': [
+              {
+                'hosted_board_id': 'fifa2026',
+                'canonical_board_uri': 'https://forum.example/boards/fifa2026',
+                'slug': 'fifa2026',
+                'title': 'FIFA2026',
+              },
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+
+    final boards = await client.listBoardsCreatedBy('did:plc:alice');
+
+    expect(boards, hasLength(1));
+    expect(boards.single['hosted_board_id'], 'fifa2026');
+  });
+
   test('getHostInfo throws status exception for malformed non-2xx body', () {
     final client = ForumHostClient(
       baseUrl: 'http://relay.local',
