@@ -62,19 +62,10 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ActivityPubController.outbox(conn, %{"actor" => actor})
   end
 
-  # Phase 1 — Identity Anchoring
-  post "/api/v1/identity/challenge" do
-    AnsibleRelay.Web.Controllers.IdentityController.challenge(conn, conn.body_params)
-  end
-
-  # Self-certifying anchor object (Task 4) and the legacy ZKP anchor share the
-  # path; dispatch by the object `type` so existing ZKP clients keep working.
+  # Self-certifying identity anchor (the legacy ZKP challenge/anchor flow was
+  # retired in favour of did:elix + this self-certifying object).
   post "/api/v1/identity/anchor" do
-    if conn.body_params["type"] == "io.trisaura.identity.anchor" do
-      AnsibleRelay.Web.Controllers.IdentityAnchorController.submit(conn, conn.body_params)
-    else
-      AnsibleRelay.Web.Controllers.IdentityController.anchor(conn, conn.body_params)
-    end
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.submit(conn, conn.body_params)
   end
 
   post "/api/v1/identity/anchor/promote" do

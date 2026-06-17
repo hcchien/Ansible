@@ -86,7 +86,7 @@ void main() {
     expect(find.text('清除身份 (Clear Identity)'), findsNothing);
   });
 
-  testWidgets('swipe shell controls do not overflow on phone width in German', (
+  testWidgets('swipe shell controls do not overflow on phone width in English', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -100,7 +100,7 @@ void main() {
       store: InMemoryAppLocalePreferenceStore(),
     );
     addTearDown(() => db.close());
-    await localeController.setPreference(AppLocalePreference.de);
+    await localeController.setPreference(AppLocalePreference.en);
 
     await tester.pumpWidget(
       MyApp(
@@ -192,15 +192,6 @@ class _EmptyDidManager implements DidManager {
 
 class _EmptyDidPlcManager implements DidPlcManager {
   @override
-  Future<DidPlcResult> createDid({
-    required String handle,
-    String pdsEndpoint = 'https://elix.cool',
-    String? signingKeyHex,
-  }) {
-    throw UnimplementedError('Not used by this test.');
-  }
-
-  @override
   Future<void> deleteDid() async {}
 
   @override
@@ -208,15 +199,6 @@ class _EmptyDidPlcManager implements DidPlcManager {
 }
 
 class _ExistingDidPlcManager implements DidPlcManager {
-  @override
-  Future<DidPlcResult> createDid({
-    required String handle,
-    String pdsEndpoint = 'https://elix.cool',
-    String? signingKeyHex,
-  }) {
-    throw UnimplementedError('Not used by this test.');
-  }
-
   @override
   Future<void> deleteDid() async {}
 

@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+// Supported app languages. Scoped to zh-Hant + en: the UI is authored with the
+// `uiCopy(zh:, en:)` pattern (~400 call sites) rather than ARB, so the extra
+// ja/de/ko/es/fr/pt locales were unused fallbacks and a maintenance liability
+// (ROADMAP "Remove/Freeze"). Re-add with real international users.
 enum AppLocalePreference {
   system('system'),
   zhHant('zh-Hant'),
-  en('en'),
-  ja('ja'),
-  de('de'),
-  ko('ko'),
-  es('es'),
-  fr('fr'),
-  pt('pt');
+  en('en');
 
   const AppLocalePreference(this.storageValue);
 
@@ -24,12 +22,6 @@ enum AppLocalePreference {
         scriptCode: 'Hant',
       ),
       AppLocalePreference.en => const Locale('en'),
-      AppLocalePreference.ja => const Locale('ja'),
-      AppLocalePreference.de => const Locale('de'),
-      AppLocalePreference.ko => const Locale('ko'),
-      AppLocalePreference.es => const Locale('es'),
-      AppLocalePreference.fr => const Locale('fr'),
-      AppLocalePreference.pt => const Locale('pt'),
     };
   }
 
@@ -38,12 +30,6 @@ enum AppLocalePreference {
       AppLocalePreference.system => 'System',
       AppLocalePreference.zhHant => '繁體中文',
       AppLocalePreference.en => 'English',
-      AppLocalePreference.ja => '日本語',
-      AppLocalePreference.de => 'Deutsch',
-      AppLocalePreference.ko => '한국어',
-      AppLocalePreference.es => 'Español',
-      AppLocalePreference.fr => 'Français',
-      AppLocalePreference.pt => 'Português',
     };
   }
 
@@ -93,17 +79,6 @@ class InMemoryAppLocalePreferenceStore implements AppLocalePreferenceStore {
 class AppLocaleController extends ChangeNotifier {
   AppLocaleController({AppLocalePreferenceStore? store})
     : _store = store ?? const SecureStorageAppLocalePreferenceStore();
-
-  static const supportedLocales = [
-    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
-    Locale('en'),
-    Locale('ja'),
-    Locale('de'),
-    Locale('ko'),
-    Locale('es'),
-    Locale('fr'),
-    Locale('pt'),
-  ];
 
   final AppLocalePreferenceStore _store;
 

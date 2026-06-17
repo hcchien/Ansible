@@ -151,25 +151,3 @@ export function resolveChallengePollResult(challenge, _storage) {
       throw new Error(`unknown web-session challenge status: ${challenge.status}`);
   }
 }
-
-/**
- * @deprecated Session tokens are now managed via httpOnly cookies. This function is a no-op.
- */
-export function storeWebSessionToken(_storage, _sessionToken) {
-  // no-op: session tokens are now set as httpOnly cookies by the relay server
-}
-
-/**
- * @deprecated Session tokens are now managed via httpOnly cookies. Always returns null.
- */
-export function readWebSessionToken(_storage) {
-  return null;
-}
-
-/**
- * @deprecated Session tokens are now managed via httpOnly cookies. This function is a no-op.
- * Use revokeWebSession() to clear the session, which causes the relay to clear the cookie.
- */
-export function clearWebSessionToken(_storage) {
-  // no-op: the relay clears the httpOnly cookie on revocation
-}

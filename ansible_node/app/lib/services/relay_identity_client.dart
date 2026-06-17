@@ -7,68 +7,6 @@ import '../config/protocol.dart';
 
 const kDefaultRelayBaseUrl = AppEnvironment.defaultRelayBaseUrl;
 
-const kDevZkpCircuitVersion = 'passport_v1_dev';
-const kDevVerificationKeyHash = 'sha256:dev-passport-v1-placeholder';
-
-class IdentityChallenge {
-  final String did;
-  final String challenge;
-  final String expiresAt;
-
-  const IdentityChallenge({
-    required this.did,
-    required this.challenge,
-    required this.expiresAt,
-  });
-}
-
-class IdentityAnchorResult {
-  final bool verified;
-  final String did;
-  final String expiresAt;
-
-  const IdentityAnchorResult({
-    required this.verified,
-    required this.did,
-    required this.expiresAt,
-  });
-}
-
-class IdentityAnchorRequest {
-  final String did;
-  final String zkpProof;
-  final String zkpCircuitVersion;
-  final String verificationKeyHash;
-  final String nullifier;
-  final String publicKeyHex;
-  final String challenge;
-  final String challengeSignatureHex;
-
-  const IdentityAnchorRequest({
-    required this.did,
-    required this.zkpProof,
-    required this.zkpCircuitVersion,
-    required this.verificationKeyHash,
-    required this.nullifier,
-    required this.publicKeyHex,
-    required this.challenge,
-    required this.challengeSignatureHex,
-  });
-
-  Map<String, Object?> toJson() {
-    return {
-      'did': did,
-      'zkp_proof': zkpProof,
-      'zkp_circuit_version': zkpCircuitVersion,
-      'verification_key_hash': verificationKeyHash,
-      'nullifier': nullifier,
-      'public_key': publicKeyHex,
-      'challenge': challenge,
-      'challenge_signature': challengeSignatureHex,
-    };
-  }
-}
-
 class RelayIdentityException implements Exception {
   final int statusCode;
   final String? error;
@@ -93,6 +31,12 @@ class RelayIdentityException implements Exception {
   }
 }
 
+/// Reads a registered DID's verification key from the relay.
+///
+/// The Phase 1 ZKP challenge/anchor methods this client used to host were
+/// retired with the V1 identity flow (did:elix + the self-certifying anchor
+/// replaced them). Only the public-key lookup remains, used for signature
+/// verification during sync.
 class RelayIdentityClient {
   final Uri baseUri;
   final http.Client _client;
@@ -104,32 +48,6 @@ class RelayIdentityClient {
     this.timeout = const Duration(seconds: 10),
   }) : baseUri = Uri.parse(baseUrl),
        _client = client ?? http.Client();
-
-  Future<IdentityChallenge> issueChallenge(String did) async {
-    final body = await _postJson('/api/v1/identity/challenge', {
-      'did': did,
-    }, expectedStatus: 200);
-
-    return IdentityChallenge(
-      did: body['did'] as String,
-      challenge: body['challenge'] as String,
-      expiresAt: body['expires_at'] as String,
-    );
-  }
-
-  Future<IdentityAnchorResult> anchor(IdentityAnchorRequest request) async {
-    final body = await _postJson(
-      '/api/v1/identity/anchor',
-      request.toJson(),
-      expectedStatus: 200,
-    );
-
-    return IdentityAnchorResult(
-      verified: body['verified'] as bool,
-      did: body['did'] as String,
-      expiresAt: body['expires_at'] as String,
-    );
-  }
 
   /// Fetch the verified public key hex for a registered DID from the relay.
   /// Returns null if the DID is not registered (404).
@@ -162,50 +80,10 @@ class RelayIdentityClient {
     }
   }
 
-  Future<Map<String, dynamic>> _postJson(
-    String path,
-    Map<String, Object?> body, {
-    required int expectedStatus,
-  }) async {
-    final response = await _client
-        .post(
-          _endpoint(path),
-          headers: const {
-            'content-type': 'application/json',
-            ...AnsibleProtocol.headers,
-          },
-          body: jsonEncode(body),
-        )
-        .timeout(timeout);
-
-    final decoded = _decodeObject(response.body);
-    if (response.statusCode != expectedStatus) {
-      throw _toRelayException(response.statusCode, response.body, decoded);
-    }
-    return decoded;
-  }
-
   Map<String, dynamic> _decodeObject(String responseBody) {
     final decoded = jsonDecode(responseBody);
     if (decoded is Map<String, dynamic>) return decoded;
     throw FormatException('Expected JSON object from Relay: $responseBody');
-  }
-
-  RelayIdentityException _toRelayException(
-    int statusCode,
-    String responseBody,
-    Map<String, dynamic> decoded,
-  ) {
-    final rawFields = decoded['fields'];
-    return RelayIdentityException(
-      statusCode: statusCode,
-      responseBody: responseBody,
-      error: decoded['error'] as String?,
-      message: decoded['message'] as String?,
-      fields: rawFields is List
-          ? rawFields.whereType<String>().toList()
-          : const [],
-    );
   }
 
   Uri _endpoint(String path) {

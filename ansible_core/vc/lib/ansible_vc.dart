@@ -17,9 +17,7 @@ export 'src/verifiable_credential.dart';
 export 'src/lexicon_record.dart';
 export 'src/lexicon_signer.dart';
 
-// V1.1 — NFC + ZKP (superseded, kept for reference)
+// V1.1 — NFC + ZKP (superseded; passport/zkp still used by the credential wizard)
 export 'src/passport_data.dart';
 export 'src/nfc_passport_reader.dart';
-export 'src/self_issued_vc.dart';
 export 'src/zkp_proof.dart';
-export 'src/nullifier.dart';

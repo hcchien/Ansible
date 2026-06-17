@@ -16,27 +16,24 @@ void main() {
     final store = InMemoryAppLocalePreferenceStore();
     final controller = AppLocaleController(store: store);
 
-    await controller.setPreference(AppLocalePreference.ja);
+    await controller.setPreference(AppLocalePreference.en);
 
-    expect(controller.preference, AppLocalePreference.ja);
-    expect(controller.locale?.languageCode, 'ja');
+    expect(controller.preference, AppLocalePreference.en);
+    expect(controller.locale?.languageCode, 'en');
 
     final restored = AppLocaleController(store: store);
     await restored.load();
 
-    expect(restored.preference, AppLocalePreference.ja);
-    expect(restored.locale?.languageCode, 'ja');
+    expect(restored.preference, AppLocalePreference.en);
+    expect(restored.locale?.languageCode, 'en');
   });
 
-  test('maps first phase locale preferences', () {
+  test('maps supported locale preferences', () {
     expect(AppLocalePreference.zhHant.locale?.languageCode, 'zh');
     expect(AppLocalePreference.zhHant.locale?.scriptCode, 'Hant');
     expect(AppLocalePreference.en.locale?.languageCode, 'en');
-    expect(AppLocalePreference.ja.locale?.languageCode, 'ja');
-    expect(AppLocalePreference.de.locale?.languageCode, 'de');
-    expect(AppLocalePreference.ko.locale?.languageCode, 'ko');
-    expect(AppLocalePreference.es.locale?.languageCode, 'es');
-    expect(AppLocalePreference.fr.locale?.languageCode, 'fr');
-    expect(AppLocalePreference.pt.locale?.languageCode, 'pt');
+    expect(AppLocalePreference.system.locale, isNull);
+    // Only zh-Hant + en are supported (extra locales removed).
+    expect(AppLocalePreference.values.length, 3);
   });
 }

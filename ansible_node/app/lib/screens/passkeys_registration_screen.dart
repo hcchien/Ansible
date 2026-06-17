@@ -311,12 +311,6 @@ class _PasskeysRegistrationScreenState
         en: 'Device authentication was not completed. Enable Face ID, Touch ID, or device passcode.',
       );
     }
-    if (error is DidPlcException) {
-      return _copy(
-        zh: 'DID 建立尚未完成 production 設定，請確認原生 Rust bridge 已正確打包。',
-        en: 'DID creation is not production-ready yet. Confirm that the native Rust bridge is bundled correctly.',
-      );
-    }
     if (error is FormatException) {
       return _copy(
         zh: '簽章格式無效，請重新嘗試。',

@@ -4,7 +4,6 @@ import 'package:ansible_node/l10n/app_localizations.dart';
 import 'package:ansible_node/screens/credential_admin_screen.dart';
 import 'package:ansible_node/screens/credential_issuance_wizard.dart';
 import 'package:ansible_node/screens/home_shell.dart';
-import 'package:ansible_node/screens/identity_anchor_screen.dart';
 import 'package:ansible_node/screens/inbox_screen.dart';
 import 'package:ansible_node/screens/murmur_detail_screen.dart';
 import 'package:ansible_node/screens/murmur_screen.dart';
@@ -211,13 +210,6 @@ void main() {
     await _pumpLocalizedScreen(
       tester,
       PasskeysRegistrationScreen(onRegistered: (did, handle) {}),
-      locale: const Locale('en'),
-    );
-    expect(_cjkUiStrings(tester), isEmpty);
-
-    await _pumpLocalizedScreen(
-      tester,
-      IdentityAnchorScreen(onAnchored: (_) {}),
       locale: const Locale('en'),
     );
     expect(_cjkUiStrings(tester), isEmpty);

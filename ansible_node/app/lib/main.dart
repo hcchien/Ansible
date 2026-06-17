@@ -15,7 +15,6 @@ import 'config/app_environment.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_shell.dart';
-// import 'screens/identity_anchor_screen.dart'; // V1: DID anchoring via NFC passport (replaced by PasskeysRegistrationScreen in V2.0)
 import 'screens/identity_backup_screen.dart'; // Backup blob creation (nag-once)
 import 'screens/onboarding_backup_step_screen.dart'; // Post-registration backup + initial anchor
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
