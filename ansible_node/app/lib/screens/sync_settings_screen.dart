@@ -378,11 +378,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       await _loadData();
 
       if (mounted && showSnackBar) {
+        final text = SubpageL10n.of(context);
         if (result.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '${node.name}: pull ${result.activitiesProcessed} activities；${_publishSummaryMessage(publishSummary)}',
+                text.f('syncNodePullSummary', {
+                  'name': node.name,
+                  'count': result.activitiesProcessed,
+                  'publish': _publishSummaryMessage(publishSummary),
+                }),
               ),
             ),
           );
@@ -390,7 +395,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '${node.name}: Sync failed - ${result.errorMessage}',
+                text.f('syncNodeFailed', {
+                  'name': node.name,
+                  'error': result.errorMessage ?? '',
+                }),
               ),
               backgroundColor: Colors.red,
             ),
@@ -406,7 +414,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       if (mounted && showSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${node.name}: Sync error - $e'),
+            content: Text(
+              SubpageL10n.of(context).f('syncNodeError', {
+                'name': node.name,
+                'error': '$e',
+              }),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -516,17 +529,46 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     required List<String> pullErrors,
     required PublicPublishSummary publishSummary,
   }) {
-    return appSyncSummaryMessage(
-      AppSyncResult(
-        pulledActivities: pulledActivities,
-        pullErrors: pullErrors,
-        publishSummary: publishSummary,
-      ),
-    );
+    final text = SubpageL10n.of(context);
+    var message = text.f('syncAllComplete', {
+      'count': pulledActivities,
+      'publish': _publishSummaryMessage(publishSummary),
+    });
+    if (pullErrors.isNotEmpty) {
+      message += text.f('syncAllPullErrors', {'errors': pullErrors.join('; ')});
+    }
+    return message;
   }
 
   String _publishSummaryMessage(PublicPublishSummary summary) {
-    return publicPublishSummaryMessage(summary);
+    final text = SubpageL10n.of(context);
+    if (summary.errorMessage != null) {
+      return text.f('publishFailed', {'error': summary.errorMessage!});
+    }
+    if (summary.publicItems == 0) {
+      return text.t('publishNoPublic');
+    }
+    if (summary.enqueued == 0 &&
+        summary.published == 0 &&
+        summary.failed == 0) {
+      final reasons = summary.skippedReasons.isEmpty
+          ? text.t('publishNoNewTargetsReason')
+          : summary.skippedReasons.join(', ');
+      return text.f('publishNoNewTargets', {'reasons': reasons});
+    }
+    if (summary.failed > 0 && summary.failureReasons.isNotEmpty) {
+      return text.f('publishResultReason', {
+        'published': summary.published,
+        'enqueued': summary.enqueued,
+        'failed': summary.failed,
+        'reason': summary.failureReasons.first,
+      });
+    }
+    return text.f('publishResult', {
+      'published': summary.published,
+      'enqueued': summary.enqueued,
+      'failed': summary.failed,
+    });
   }
 
   DistributionPreference _configuredDistributionPreference() {

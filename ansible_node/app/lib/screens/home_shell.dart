@@ -13,7 +13,6 @@ import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../widgets/agent_sheet.dart';
 import '../widgets/board_form_dialog.dart';
-import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_provider_config_store.dart';
@@ -53,6 +52,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import 'discover_screen.dart';
 import 'threads_list_screen.dart';
+import 'thread_composer_screen.dart';
 import 'home/circle_full_screen.dart';
 import 'home/compose_action_item.dart';
 import 'home/home_types.dart';
@@ -1247,10 +1247,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _createThread() async {
-    final dialogResult = await showDialog<Map<String, String?>>(
-      context: context,
-      builder: (context) =>
-          ThreadFormDialog(boards: _boards, initialBoardId: _selectedBoardId),
+    final dialogResult = await Navigator.of(context).push<Map<String, String?>>(
+      MaterialPageRoute(
+        builder: (_) => ThreadComposerScreen(
+          boards: _boards,
+          initialBoardId: _selectedBoardId,
+          authorDid: widget.did,
+        ),
+      ),
     );
     if (dialogResult == null) return;
     final threadTitle = dialogResult['title']?.trim();

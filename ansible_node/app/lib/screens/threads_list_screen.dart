@@ -11,7 +11,7 @@ import '../services/external_content_preferences_controller.dart';
 import '../services/posting_gate.dart';
 import '../widgets/external_content_section.dart';
 import '../widgets/posting_gate_notice.dart';
-import '../widgets/thread_form_dialog.dart';
+import 'thread_composer_screen.dart';
 import 'posts_view_screen.dart';
 
 /// Fetches a board's curated external items. Mirrors the AppView client method
@@ -179,11 +179,13 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   }
 
   Future<void> _createThread() async {
-    final dialogResult = await showDialog<Map<String, String?>>(
-      context: context,
-      builder: (context) => ThreadFormDialog(
-        boards: [widget.board],
-        initialBoardId: widget.board.id,
+    final dialogResult = await Navigator.of(context).push<Map<String, String?>>(
+      MaterialPageRoute(
+        builder: (_) => ThreadComposerScreen(
+          boards: [widget.board],
+          initialBoardId: widget.board.id,
+          authorDid: widget.localDid,
+        ),
       ),
     );
 

@@ -22,7 +22,7 @@ import 'package:ansible_node/widgets/ai_provider_setup_sheet.dart';
 import 'package:ansible_node/widgets/content_visibility_sheet.dart';
 import 'package:ansible_node/widgets/feed_filter_tabs.dart';
 import 'package:ansible_node/widgets/summary_review_sheet.dart';
-import 'package:ansible_node/widgets/thread_form_dialog.dart';
+import 'package:ansible_node/screens/thread_composer_screen.dart';
 import 'package:ansible_node/widgets/transformation_review_sheet.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -79,7 +79,7 @@ void main() {
     expect(find.text('還沒有筆記'), findsNothing);
   });
 
-  testWidgets('discussion creation dialog uses selected English locale', (
+  testWidgets('discussion composer uses selected English locale', (
     tester,
   ) async {
     final board = Board(
@@ -93,30 +93,20 @@ void main() {
 
     await _pumpLocalized(
       tester,
-      Builder(
-        builder: (context) => TextButton(
-          onPressed: () => showDialog<void>(
-            context: context,
-            builder: (_) => ThreadFormDialog(boards: [board]),
-          ),
-          child: const Text('Open'),
-        ),
-      ),
+      ThreadComposerScreen(boards: [board]),
       locale: const Locale('en'),
     );
-
-    await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Create Discussion'), findsOneWidget);
-    expect(find.text('Choose board'), findsOneWidget);
-    expect(find.text('Title'), findsOneWidget);
-    expect(find.text('Content'), findsOneWidget);
+    expect(find.text('NEW DISCUSSION'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);
     expect(find.text('Create'), findsOneWidget);
+    expect(find.text('General'), findsOneWidget);
 
-    expect(find.text('建立討論'), findsNothing);
-    expect(find.text('選擇託管看板'), findsNothing);
+    // No Chinese leakage under the English locale.
+    expect(find.text('取消'), findsNothing);
+    expect(find.text('建立'), findsNothing);
+    expect(find.textContaining('新討論'), findsNothing);
   });
 
   testWidgets('settings subpages use selected English locale', (tester) async {
