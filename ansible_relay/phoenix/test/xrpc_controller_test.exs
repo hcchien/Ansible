@@ -98,6 +98,26 @@ defmodule AnsibleRelay.Web.XrpcControllerTest do
     assert String.starts_with?(resp["cid"], "bafyreistub")
   end
 
+  test "createRecord still works after an in-memory cache reset (redeploy)" do
+    # Persistence is off by default in test; turn it on so put/4 writes the
+    # `did_accounts` row that the redeploy rehydration relies on.
+    original = Application.get_env(:ansible_relay, :persist_did_accounts)
+    Application.put_env(:ansible_relay, :persist_did_accounts, true)
+    on_exit(fn -> Application.put_env(:ansible_relay, :persist_did_accounts, original) end)
+
+    {pub_hex, priv_key} = ed25519_keypair()
+    did = "did:plc:redeploy#{System.unique_integer([:positive])}"
+    body = valid_create_record(did, pub_hex, priv_key)
+
+    # Simulate a relay redeploy: ETS is wiped but the write-through `did_accounts`
+    # row persists. get/1 must rehydrate from the DB rather than 401.
+    DidAccountCache.reset()
+    assert DidAccountCache.get(did) != :not_found
+
+    response = post_json("/xrpc/com.atproto.repo.createRecord", body)
+    assert response.status == 200
+  end
+
   test "returns 401 for unknown / unregistered DID" do
     {pub_hex, priv_key} = ed25519_keypair()
     did = "did:plc:unknown#{System.unique_integer([:positive])}"

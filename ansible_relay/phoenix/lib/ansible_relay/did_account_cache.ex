@@ -78,8 +78,42 @@ defmodule AnsibleRelay.DidAccountCache do
   def get(did) do
     case :ets.lookup(@table, did) do
       [{^did, entry}] -> {:ok, entry}
-      [] -> :not_found
+      [] -> get_from_db(did)
     end
+  end
+
+  # ETS is in-memory and empty after a restart/redeploy, but `put/4` writes the
+  # account through to `did_accounts`. Rehydrate from that row on an ETS miss
+  # (and repopulate ETS) so anchored DIDs survive a redeploy — otherwise every
+  # createRecord/op would 401 unregistered_did until the client re-anchors.
+  # Mirrors IdentityCache's DB fallback.
+  defp get_from_db(did) do
+    case Repo.get(DidAccount, did) do
+      nil ->
+        :not_found
+
+      %DidAccount{} = account ->
+        entry = %{
+          public_key_hex: account.public_key_hex,
+          handle: account.handle,
+          pds_endpoint: account.pds_endpoint,
+          reputation_tier: account.reputation_tier,
+          registered_at: account.registered_at,
+          expires_at: account.expires_at
+        }
+
+        :ets.insert(@table, {did, entry})
+
+        if is_binary(account.handle) do
+          :ets.insert(@handle_table, {account.handle, did})
+        end
+
+        {:ok, entry}
+    end
+  rescue
+    # A cache lookup must never crash request handling: if the DB is
+    # unreachable, treat it as a miss (same as the pre-rehydration behavior).
+    _ -> :not_found
   end
 
   @doc "Returns true if the DID is registered and not expired."
@@ -96,8 +130,19 @@ defmodule AnsibleRelay.DidAccountCache do
   @doc "Look up a DID by handle. Returns {:ok, did} or :not_found."
   def get_by_handle(handle) do
     case :ets.lookup(@handle_table, handle) do
-      [{^handle, did}] -> {:ok, did}
-      [] -> :not_found
+      [{^handle, did}] ->
+        {:ok, did}
+
+      [] ->
+        # Same redeploy rehydration as get/1: fall back to the persisted row.
+        try do
+          case Repo.get_by(DidAccount, handle: handle) do
+            nil -> :not_found
+            %DidAccount{did: did} -> get_from_db(did) |> then(fn _ -> {:ok, did} end)
+          end
+        rescue
+          _ -> :not_found
+        end
     end
   end
 
