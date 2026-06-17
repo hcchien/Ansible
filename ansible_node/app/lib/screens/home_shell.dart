@@ -15,7 +15,6 @@ import '../widgets/agent_sheet.dart';
 import '../widgets/board_form_dialog.dart';
 import '../widgets/thread_form_dialog.dart';
 import '../services/atproto_client.dart';
-import '../services/relay_identity_client.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_provider_config_store.dart';
 import '../services/ai/apple_nl_embedding_service.dart';
@@ -1073,10 +1072,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (did.isEmpty) return;
     final relayUrl = AppEnvironment.atProtoBaseUrl;
     try {
-      final identityClient = RelayIdentityClient(baseUrl: relayUrl);
-      if (await identityClient.fetchPublicKey(did) != null) {
-        return; // already anchored on this relay
-      }
+      // Always attempt register+anchor rather than short-circuiting on a known
+      // public key: a DID can be *verified* (public key on file, enough to
+      // create a board) yet not *anchored* into the account store that
+      // createRecord checks — so publishing 401s with unregistered_did. The
+      // relay's anchor is idempotent (409 duplicate_did / handle_taken for an
+      // already-anchored DID), so re-running is safe and heals that gap.
       final pubKeyHex =
           widget.publicKeyHex ?? (await DidManagerImpl().load())?.publicKeyHex;
       if (pubKeyHex == null || pubKeyHex.isEmpty) return;
