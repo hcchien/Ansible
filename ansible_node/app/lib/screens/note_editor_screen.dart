@@ -78,6 +78,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         text: content,
         createdAt: DateTime.now().toUtc().toIso8601String(),
         threadId: widget.threadId.isNotEmpty ? widget.threadId : null,
+        boardId: widget.boardId.isNotEmpty ? widget.boardId : null,
       ).toJson();
 
       // 2. Sign with Ed25519 over DAG-CBOR (or dev stub if Rust unavailable).

@@ -53,6 +53,7 @@ import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import 'discover_screen.dart';
+import 'threads_list_screen.dart';
 import 'home/circle_full_screen.dart';
 import 'home/compose_action_item.dart';
 import 'home/home_types.dart';
@@ -460,6 +461,32 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _feedFilter = boardId == null ? FeedFilter.all : FeedFilter.boards;
     });
     _loadData();
+  }
+
+  /// Opens a board's own page (its thread list, with in-board posting) instead
+  /// of merely filtering the aggregate feed. Tapping a board in the sidebar /
+  /// board sheet routes here; "All Activity" (a null id) still falls back to
+  /// the filtered feed via [_selectBoard].
+  Future<void> _openBoard(String boardId) async {
+    Board? board;
+    for (final b in _boards) {
+      if (b.id == boardId) {
+        board = b;
+        break;
+      }
+    }
+    if (board == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ThreadsListScreen(
+          db: widget.db,
+          board: board!,
+          localDid: widget.did,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadData();
   }
 
   void _selectFeedFilter(FeedFilter filter) {
@@ -1625,7 +1652,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     child: HomeSidebar(
                       boards: _boards,
                       selectedBoardId: _selectedBoardId,
-                      onSelectBoard: _selectBoard,
+                      onSelectBoard: (boardId) {
+                        if (boardId == null) {
+                          _selectBoard(null);
+                        } else {
+                          _openBoard(boardId);
+                        }
+                      },
                       onManageBoards: _loadData,
                     ),
                   ),
@@ -1654,7 +1687,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               selectedBoardId: _selectedBoardId,
               onSelectBoard: (boardId) {
                 Navigator.of(sheetContext).pop();
-                _selectBoard(boardId);
+                if (boardId == null) {
+                  _selectBoard(null);
+                } else {
+                  _openBoard(boardId);
+                }
               },
               onManageBoards: () {
                 Navigator.of(sheetContext).pop();

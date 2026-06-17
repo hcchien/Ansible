@@ -130,26 +130,9 @@ class ForumBoardView extends StatelessWidget {
                   ),
                   action(
                     OutlinedButton.icon(
-                      onPressed: () {
-                        if (hasSelectedBoard && selectedBoardId != null) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => NoteEditorScreen(
-                                authorDid: did,
-                                boardId: selectedBoardId!,
-                                threadId: '',
-                                threadTitle:
-                                    boards
-                                        .where((b) => b.id == selectedBoardId)
-                                        .map((b) => b.title)
-                                        .firstOrNull ??
-                                    l10n.newDiscussion,
-                                atProtoClient: atProtoClient,
-                              ),
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: boards.isNotEmpty
+                          ? () => _composeNewPost(context)
+                          : null,
                       icon: const Icon(Icons.edit_outlined),
                       label: _ActionLabel(l10n.newPost),
                     ),
@@ -232,6 +215,68 @@ class ForumBoardView extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// Composes a standalone post (新文章) and lets the user choose which board
+  /// it belongs to, defaulting to the currently selected board. The chosen
+  /// board is carried into the published record via [NoteEditorScreen]'s
+  /// boardId, so the post is attributed to a board even when none is filtered.
+  Future<void> _composeNewPost(BuildContext context) async {
+    if (boards.isEmpty) return;
+    final validSelected =
+        selectedBoardId != null && boards.any((b) => b.id == selectedBoardId);
+    final initialId = validSelected ? selectedBoardId : boards.first.id;
+
+    Board? target;
+    if (boards.length == 1) {
+      target = boards.first;
+    } else {
+      final chosenId = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => SimpleDialog(
+          title: Text(context.uiCopy(zh: '選擇討論區', en: 'Choose a board')),
+          children: [
+            for (final b in boards)
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(dialogContext).pop(b.id),
+                child: Row(
+                  children: [
+                    Icon(
+                      b.id == initialId
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: AnsibleDesign.inkMuted,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(b.title)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+      if (chosenId == null) return;
+      for (final b in boards) {
+        if (b.id == chosenId) {
+          target = b;
+          break;
+        }
+      }
+    }
+    final selectedBoard = target;
+    if (selectedBoard == null || !context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NoteEditorScreen(
+          authorDid: did,
+          boardId: selectedBoard.id,
+          threadId: '',
+          threadTitle: selectedBoard.title,
+          atProtoClient: atProtoClient,
+        ),
+      ),
     );
   }
 

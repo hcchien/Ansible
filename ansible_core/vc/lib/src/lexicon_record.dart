@@ -11,12 +11,14 @@ class LexiconPost {
   final String createdAt;
   final String? replyTo;
   final String? threadId;
+  final String? boardId;
 
   const LexiconPost({
     required this.text,
     required this.createdAt,
     this.replyTo,
     this.threadId,
+    this.boardId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +27,7 @@ class LexiconPost {
     'createdAt': createdAt,
     if (replyTo != null) 'replyTo': replyTo,
     if (threadId != null) 'threadId': threadId,
+    if (boardId != null) 'boardId': boardId,
   };
 }
 
