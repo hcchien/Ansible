@@ -20,6 +20,12 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     send_json(conn, 200, %{boards: Store.list_boards()})
   end
 
+  # GET /api/v1/forum-host/boards/created-by/:did — boards this DID authored, so
+  # a reinstalled client can re-list its own boards (subscriptions are local).
+  def boards_created_by(conn, did) do
+    send_json(conn, 200, %{boards: Store.list_boards_created_by(did)})
+  end
+
   # GET /api/v1/discover/boards?q=&limit=  (empty q -> browse all)
   def discover_boards(conn, params) do
     q = params["q"] || ""

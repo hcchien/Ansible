@@ -119,6 +119,10 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ForumHostController.boards(conn, conn.query_params)
   end
 
+  get "/api/v1/forum-host/boards/created-by/:did" do
+    AnsibleRelay.Web.Controllers.ForumHostController.boards_created_by(conn, did)
+  end
+
   get "/api/v1/discover/boards" do
     AnsibleRelay.Web.Controllers.ForumHostController.discover_boards(conn, conn.query_params)
   end

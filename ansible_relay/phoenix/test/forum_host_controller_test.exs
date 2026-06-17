@@ -406,6 +406,39 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert response.status == 201
   end
 
+  test "GET /api/v1/forum-host/boards/created-by/:did lists only that DID's boards" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:creatorboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    created =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "board" => %{"title" => "Creator Owned #{System.unique_integer([:positive])}"}
+        }),
+        []
+      )
+
+    assert created.status == 201
+    hosted_board_id = Jason.decode!(created.resp_body)["hosted_board_id"]
+
+    response = get_json("/api/v1/forum-host/boards/created-by/#{did}")
+    assert response.status == 200
+
+    boards = Jason.decode!(response.resp_body)["boards"]
+    ids = Enum.map(boards, & &1["hosted_board_id"])
+    assert hosted_board_id in ids
+    # Seed board "general" was not created by this DID, so it must not appear.
+    refute "general" in ids
+  end
+
+  test "GET /api/v1/forum-host/boards/created-by/:did is empty for an unknown DID" do
+    response = get_json("/api/v1/forum-host/boards/created-by/did:plc:nobody#{System.unique_integer([:positive])}")
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["boards"] == []
+  end
+
   test "POST /api/v1/forum-host/boards rejects changed duplicate intent" do
     {public_key_hex, private_key} = ed25519_keypair()
     did = "did:plc:duplicateboard#{System.unique_integer([:positive])}"

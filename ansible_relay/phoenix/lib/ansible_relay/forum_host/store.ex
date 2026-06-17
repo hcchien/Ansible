@@ -47,6 +47,36 @@ defmodule AnsibleRelay.ForumHost.Store do
   end
 
   @doc """
+  Boards created by `did`, derived from the accepted create_board intents
+  (subscriptions are client-local, but board authorship is recorded host-side).
+  Lets a freshly-installed client re-list the boards it created without a
+  manual re-subscribe. Same serialized shape as `list_boards/0`.
+  """
+  def list_boards_created_by(did) when is_binary(did) do
+    ensure_seeded!()
+
+    created_ids =
+      from(i in ForumHostAcceptedIntent,
+        where:
+          i.author_did == ^did and i.action == "create_board" and
+            i.result_kind == "forum_host_board",
+        select: i.result_id
+      )
+      |> Repo.all()
+
+    if created_ids == [] do
+      []
+    else
+      ForumHostBoard
+      |> where([board], board.hosted_board_id in ^created_ids)
+      |> order_by([board], asc: board.title)
+      |> Repo.all()
+    end
+  end
+
+  def list_boards_created_by(_did), do: []
+
+  @doc """
   Searches boards by title/description/tag substring (case-insensitive). Boards
   are host-owned, so board discovery lives here rather than in the AppView. An
   empty query falls back to the full ordered list (browse).
