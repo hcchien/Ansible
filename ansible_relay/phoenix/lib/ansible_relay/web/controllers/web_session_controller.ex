@@ -390,9 +390,19 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
 
   defp normalize_origin(uri) do
     scheme = String.downcase(uri.scheme)
-    host = authority_host(uri.host)
+    host = canonical_loopback(authority_host(uri.host))
     port = if uri.port && uri.port != URI.default_port(scheme), do: ":#{uri.port}", else: ""
     "#{scheme}://#{host}#{port}"
+  end
+
+  # Loopback aliases all resolve to the local machine, so collapse them to one
+  # identity for origin/audience comparison. Applied only here, not in
+  # valid_authority?/1, so the strict Origin-header check keeps the literal host.
+  # The IPv6 form is bracketed because authority_host/1 already wrapped it.
+  @loopback_hosts ~w(localhost 127.0.0.1 [::1])
+
+  defp canonical_loopback(host) do
+    if host in @loopback_hosts, do: "localhost", else: host
   end
 
   defp session_id(session_token) do

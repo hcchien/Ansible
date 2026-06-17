@@ -74,7 +74,7 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
 
     if valid_origin_uri?(uri) do
       scheme = String.downcase(uri.scheme)
-      host = authority_host(uri.host)
+      host = canonical_loopback(authority_host(uri.host))
       port = if uri.port && uri.port != URI.default_port(scheme), do: ":#{uri.port}", else: ""
       {:ok, "#{scheme}://#{host}#{port}"}
     else
@@ -83,6 +83,17 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
   end
 
   defp normalize_origin(_value), do: {:error, :invalid_origin}
+
+  # Loopback aliases all resolve to the local machine, so collapse them to one
+  # identity for audience comparison — an app on 127.0.0.1 and a relay reporting
+  # localhost still agree. Applied only here, not in valid_authority?/1, so the
+  # strict Origin-header check keeps comparing the literal host. The IPv6 form
+  # is bracketed because authority_host/1 already wrapped it.
+  @loopback_hosts ~w(localhost 127.0.0.1 [::1])
+
+  defp canonical_loopback(host) do
+    if host in @loopback_hosts, do: "localhost", else: host
+  end
 
   defp valid_origin_uri?(uri) do
     uri.scheme in ["http", "https"] && is_binary(uri.host) && uri.host != "" &&

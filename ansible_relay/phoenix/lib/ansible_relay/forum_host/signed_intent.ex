@@ -265,11 +265,24 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
     end
   end
 
+  # Loopback hosts are treated as one identity so that an app pointed at
+  # `127.0.0.1` and a relay self-reporting `localhost` (or `::1`) still agree
+  # on the audience. Loopback only resolves to the local machine, so collapsing
+  # these aliases doesn't widen the audience check beyond a single host.
+  @loopback_hosts ~w(localhost 127.0.0.1 ::1)
+
   defp normalize_origin(value) when is_binary(value) do
     uri = URI.parse(value)
     port = if uri.port, do: ":#{uri.port}", else: ""
-    "#{String.downcase(uri.scheme || "")}://#{String.downcase(uri.host || "")}#{port}"
+    "#{String.downcase(uri.scheme || "")}://#{normalize_host(uri.host)}#{port}"
   end
 
   defp normalize_origin(_value), do: ""
+
+  defp normalize_host(host) when is_binary(host) do
+    downcased = String.downcase(host)
+    if downcased in @loopback_hosts, do: "localhost", else: downcased
+  end
+
+  defp normalize_host(_host), do: ""
 end

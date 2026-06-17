@@ -386,6 +386,26 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "audience_mismatch"
   end
 
+  test "POST /api/v1/forum-host/boards accepts a loopback-alias target host" do
+    # Relay base_url is http://localhost:4001; an app pointed at the 127.0.0.1
+    # alias must still pass the audience check (loopback resolves to one host).
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:loopbackboard#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "target_forum_host" => "http://127.0.0.1:4001",
+          "board" => %{"title" => "Loopback Board #{System.unique_integer([:positive])}"}
+        }),
+        []
+      )
+
+    assert response.status == 201
+  end
+
   test "POST /api/v1/forum-host/boards rejects changed duplicate intent" do
     {public_key_hex, private_key} = ed25519_keypair()
     did = "did:plc:duplicateboard#{System.unique_integer([:positive])}"
@@ -465,6 +485,29 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
 
     assert response.status == 403
     assert Jason.decode!(response.resp_body)["error"] == "audience_mismatch"
+  end
+
+  test "web thread creation accepts a web session with a loopback-alias audience" do
+    # Relay audience is http://localhost:4001; a session bound to the 127.0.0.1
+    # alias must still pass the audience check.
+    did = "did:plc:loopbackaudience23456789"
+
+    token =
+      approved_session_token(
+        ["forum:read", "forum:post"],
+        did,
+        "http://127.0.0.1:4001"
+      )
+
+    response =
+      post_json(
+        "/api/v1/forum-host/web/threads",
+        %{"title" => "Hello"},
+        [{"authorization", "Bearer #{token}"}]
+      )
+
+    assert response.status == 202
+    assert Jason.decode!(response.resp_body)["accepted"] == true
   end
 
   test "web thread creation is rate limited across sessions for the same DID" do
