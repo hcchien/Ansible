@@ -3,10 +3,12 @@
 A local-first, multi-protocol forum and identity stack. Participants are
 pseudonymous but Sybil-resistant through layered trust: base-level accounts use
 app-held DID keys, while higher trust tiers come from accepted credentials or
-other explicit verification paths. AT Protocol / PLC is currently a
-compatibility path, not the only public federation identity. Nostr publication,
-Relay-side ActivityPub projection, Forum Host APIs, and app-mediated web
-sessions exist as partial MVP slices.
+other explicit verification paths. The canonical user identity is `did:elix`
+(domain-independent, self-certifying, portable across relays); `did:key` is the
+wallet/credential holder and `did:web` is reserved for issuers. AT Protocol /
+`did:plc` is an **opt-in Bluesky bridge**, not the canonical identity. Nostr
+publication, Relay-side ActivityPub projection, Forum Host APIs, and
+app-mediated web sessions exist as partial MVP slices.
 
 ## Architecture
 
@@ -15,7 +17,8 @@ ansible_node/app          Flutter mobile/desktop node — UI, local Repo, Passke
 ansible_core/
   domain/                 Business logic, auth contracts, sync interfaces
   store/                  Drift (SQLite) — atproto Repo, MST, Op queue
-  did/                    DID key management: did:plc / did:web (flutter_rust_bridge FFI)
+  did/                    DID key management: did:elix (canonical) + did:key (wallet);
+                          did:plc bridge / did:web (flutter_rust_bridge FFI)
   vc/                     Lexicon record models, MST engine (Rust FFI)
 ansible_rust_core/        Rust crate — Ed25519, MST, Lexicon signing, atproto repo
 ansible_relay/phoenix/    Elixir/Phoenix — co-located Relay, Forum Host, web sessions,
@@ -39,8 +42,9 @@ docs/
 
 ```
 User taps "建立帳號"
-  → app creates/loads a local DID signing key
-  → optional compatibility paths can create local-shaped did:plc / did:web context
+  → app creates/loads a local Ed25519 identity key
+  → derives the canonical did:elix (+ a did:key wallet alias) and publishes a
+    self-certifying anchor; a did:plc bridge alias is minted only on opt-in
   → Relay marks DID as "Active"; Reputation Labeler tier = Basic
 ```
 
@@ -70,7 +74,7 @@ User creates public/unlisted content or a forum intent
 | Nostr adapter | ✅ partial | App-side publication/settings/retry surfaces; production key custody remains incomplete |
 | ActivityPub adapter | ✅ partial | Relay-side actor/WebFinger/outbox/projection/retry (outbound); full federation behavior remains incomplete |
 | Inbound federation (curated AP ingest) | ✅ MVP | Pull-based ingest of an admin-curated actor allowlist into an isolated external lane (`source=activitypub`, never `sig_verified`); surfaces only on boards with `external_inclusion` (mutually exclusive with 真人版) AND per-user opt-in, badged with origin + compliance level; never on verified surfaces (regression-tested) |
-| AT Protocol / PLC bridge | ✅ partial / legacy | XRPC `createRecord` and `resolveHandle`; PLC genesis/local CID paths are compatibility stubs |
+| `did:elix` identity + AT Protocol bridge | ✅ did:elix canonical; bridge pending | Canonical `did:elix` (self-certifying anchor chain + cross-relay resolution v0 at `GET /api/v1/identity/did/:did`) with a `did:key` wallet alias; Issuer Trust Registry gates VC issuers. XRPC `createRecord`/`resolveHandle` remain. The `did:plc` *creation* path has been retired; the real DAG-CBOR opt-in Bluesky bridge is future work (Phase D) |
 | AppView Aggregator | ✅ MVP | `ansible_appview/phoenix` folds the relay op firehose into a PostgreSQL read model (follow graph, feed items) and serves the following/home feed; ETS by default, Redis + read replica for scale-out |
 | Following / home feed | ✅ MVP | Fan-out-on-read over the federated follow set, plus Phase C fan-out-on-write home timelines (Redis ZSET + per-item object cache) with celebrity hybrid and cold-reader fallback |
 | Discovery | ✅ MVP | Who-to-follow + explore + unified people/post search (AppView), board search (relay), in-app Discover screen; public-only, reputation-tier ranked; bilingual trigram search |
@@ -193,9 +197,14 @@ ordinary onboarding to app-held DID keys and progressive trust. Hardware-held
 signing keys are still a known gap until platform-backed custody and explicit
 reduced-trust mode are implemented.
 
-**AT Protocol / PLC is a compatibility context.** The repo has XRPC and PLC
-primitives, but current federation direction keeps local data canonical and
-treats AT/PLC as one bridge beside Nostr, ActivityPub, and Forum Host.
+**`did:elix` is the canonical identity; AT Protocol / `did:plc` is an opt-in
+bridge.** Users are `did:elix` (domain-independent, self-certifying, portable
+across relays), with a `did:key` wallet alias and `did:web` reserved for
+issuers. The repo keeps XRPC primitives, but `did:plc` is now only an opt-in
+Bluesky-bridge alias (its creation path retired; real DAG-CBOR genesis is
+Phase D) — one bridge beside Nostr, ActivityPub, and Forum Host, never the
+canonical identity. See the
+[layered identity & `did:elix` method plan](docs/superpowers/plans/2026-06-16-layered-identity-did-method-plan.md).
 
 **Forum Hosts own forum state.** Hosted boards, rules, moderation policy, and
 distribution-facing forum state belong to a Forum Host. The current Phoenix
