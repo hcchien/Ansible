@@ -14,6 +14,7 @@ import '../services/forum_host_client.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
+import '../widgets/author_label.dart';
 import '../widgets/post_form_dialog.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
@@ -433,8 +434,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                post.authorId,
+                                              AuthorLabel(
+                                                did: post.authorId,
                                                 style: Theme.of(
                                                   context,
                                                 ).textTheme.titleSmall,

@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../l10n/app_l10n.dart';
 import '../../services/ops_dispatch_service.dart';
 import '../../theme/ansible_design.dart';
+import '../../widgets/author_label.dart';
 import '../posts_view_screen.dart';
 
 class PostCardData {
@@ -233,8 +234,8 @@ class _PostCardState extends State<PostCard> {
                     onTap: widget.onOpenAuthor == null
                         ? null
                         : () => widget.onOpenAuthor!(data.author),
-                    child: Text(
-                      data.author,
+                    child: AuthorLabel(
+                      did: data.author,
                       style: const TextStyle(color: AnsibleDesign.inkMuted),
                     ),
                   ),
