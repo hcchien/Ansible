@@ -15,7 +15,7 @@ import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/author_label.dart';
-import '../widgets/post_form_dialog.dart';
+import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
 
@@ -219,9 +219,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   }
 
   Future<void> _createPost() async {
-    final content = await showDialog<String>(
-      context: context,
-      builder: (context) => const PostFormDialog(),
+    final content = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => PostComposerScreen(authorDid: _authorDid),
+      ),
     );
 
     if (content != null) {
@@ -252,9 +253,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   }
 
   Future<void> _editPost(Post post) async {
-    final content = await showDialog<String>(
-      context: context,
-      builder: (context) => PostFormDialog(initialContent: post.content),
+    final content = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => PostComposerScreen(
+          initialContent: post.content,
+          authorDid: _authorDid,
+        ),
+      ),
     );
 
     if (content != null) {
