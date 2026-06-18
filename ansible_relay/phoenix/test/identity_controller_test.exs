@@ -45,4 +45,29 @@ defmodule AnsibleRelay.Web.IdentityControllerTest do
     assert response.status == 404
     assert Jason.decode!(response.resp_body)["error"] == "did_not_found"
   end
+
+  test "handle returns the registered handle for a DID" do
+    case AnsibleRelay.DidAccountCache.start_link([]) do
+      {:ok, _} -> :ok
+      {:error, {:already_started, _}} -> :ok
+    end
+
+    did = "did:plc:handle#{System.unique_integer([:positive])}"
+    handle = "alice#{System.unique_integer([:positive])}.elix.cool"
+    :ok = AnsibleRelay.DidAccountCache.put(did, "abcdef0123456789", handle)
+
+    response = get_req("/api/v1/identity/handle/#{did}")
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["did"] == did
+    assert body["handle"] == handle
+  end
+
+  test "handle returns 404 for an unknown DID" do
+    response = get_req("/api/v1/identity/handle/did:plc:nohandle")
+
+    assert response.status == 404
+    assert Jason.decode!(response.resp_body)["error"] == "handle_not_found"
+  end
 end

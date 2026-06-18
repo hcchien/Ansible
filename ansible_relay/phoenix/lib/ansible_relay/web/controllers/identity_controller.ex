@@ -10,7 +10,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
   """
 
   import Plug.Conn
-  alias AnsibleRelay.IdentityCache
+  alias AnsibleRelay.{DidAccountCache, IdentityCache}
 
   # GET /api/v1/identity/public-key/:did
   def public_key(conn, %{"did" => did}) do
@@ -20,6 +20,18 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
 
       hex ->
         send_json(conn, 200, %{did: did, public_key_hex: hex})
+    end
+  end
+
+  # GET /api/v1/identity/handle/:did — resolve a DID to its registered handle so
+  # clients can show a friendly author name instead of the raw DID.
+  def handle(conn, %{"did" => did}) do
+    case DidAccountCache.get(did) do
+      {:ok, %{handle: handle}} when is_binary(handle) and handle != "" ->
+        send_json(conn, 200, %{did: did, handle: handle})
+
+      _ ->
+        send_json(conn, 404, %{error: "handle_not_found"})
     end
   end
 
