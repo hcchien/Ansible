@@ -489,6 +489,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           db: widget.db,
           board: board!,
           localDid: widget.did,
+          opsDispatchService: _opsDispatchService,
+          onFlushPendingOps: _flushPendingOps,
         ),
       ),
     );

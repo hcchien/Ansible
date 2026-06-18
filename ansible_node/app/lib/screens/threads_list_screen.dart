@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../config/app_environment.dart';
+import '../services/ops_dispatch_service.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
 import '../services/app_view_timeline_client.dart';
@@ -43,6 +46,11 @@ class ThreadsListScreen extends StatefulWidget {
   /// screen uses the AppView client (only when the AppView base URL is set).
   final BoardExternalFetcher? externalFetcher;
 
+  /// Signs + enqueues CRDT ops for new threads/posts so they reach the relay
+  /// (not just local state). When null, in-board composing stays local-only.
+  final OpsDispatchService? opsDispatchService;
+  final Future<void> Function()? onFlushPendingOps;
+
   const ThreadsListScreen({
     super.key,
     required this.db,
@@ -51,6 +59,8 @@ class ThreadsListScreen extends StatefulWidget {
     this.shareSheet = _defaultBoardShareSheet,
     this.externalContentPreferences,
     this.externalFetcher,
+    this.opsDispatchService,
+    this.onFlushPendingOps,
   });
 
   @override
@@ -189,42 +199,73 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       ),
     );
 
-    if (dialogResult != null) {
-      final title = dialogResult['title']?.trim();
-      final boardId = dialogResult['boardId'];
-      final content = dialogResult['content']?.trim() ?? '';
-      if (title == null ||
-          title.isEmpty ||
-          boardId == null ||
-          boardId.isEmpty) {
-        return;
-      }
-      final now = DateTime.now();
-      final thread = Thread(
-        id: const Uuid().v4(),
+    if (dialogResult == null) return;
+    final title = dialogResult['title']?.trim();
+    final boardId = dialogResult['boardId'];
+    final content = dialogResult['content']?.trim() ?? '';
+    final authorDid = widget.localDid;
+    if (title == null ||
+        title.isEmpty ||
+        boardId == null ||
+        boardId.isEmpty ||
+        authorDid == null ||
+        authorDid.isEmpty) {
+      return;
+    }
+    final now = DateTime.now();
+    final thread = Thread(
+      id: const Uuid().v4(),
+      boardId: boardId,
+      title: title,
+      authorId: authorDid,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _threadRepo.create(thread);
+    await _enqueueAndFlush(
+      CrdtOpBuilder.createThread(
+        authorDid: authorDid,
+        entityId: thread.id,
         boardId: boardId,
-        title: title,
-        authorId: 'user-local', // Placeholder for now
+        title: thread.title,
+      ),
+    );
+    if (content.isNotEmpty) {
+      final post = Post(
+        id: const Uuid().v4(),
+        threadId: thread.id,
+        boardId: boardId,
+        authorId: authorDid,
+        content: content,
         createdAt: now,
         updatedAt: now,
+        lastEditAt: now,
+        parentPostId: null,
       );
-      await _threadRepo.create(thread);
-      if (content.isNotEmpty) {
-        await _postRepo.create(
-          Post(
-            id: const Uuid().v4(),
-            threadId: thread.id,
-            boardId: boardId,
-            authorId: 'user-local', // Placeholder for now
-            content: content,
-            createdAt: now,
-            updatedAt: now,
-            lastEditAt: now,
-            parentPostId: null,
-          ),
-        );
-      }
-      await _loadThreads();
+      await _postRepo.create(post);
+      await _enqueueAndFlush(
+        CrdtOpBuilder.createPost(
+          authorDid: authorDid,
+          entityId: post.id,
+          boardId: boardId,
+          threadId: thread.id,
+          content: post.content,
+          parentPostId: null,
+        ),
+      );
+    }
+    await _loadThreads();
+  }
+
+  Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
+    final dispatchService = widget.opsDispatchService;
+    if (dispatchService == null) return;
+    await dispatchService.signAndEnqueue(entry);
+    final flushPendingOps = widget.onFlushPendingOps;
+    if (flushPendingOps == null) {
+      unawaited(dispatchService.flushPending());
+    } else {
+      unawaited(flushPendingOps());
     }
   }
 
@@ -354,6 +395,8 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 db: widget.db,
                 thread: thread,
                 authorDid: widget.localDid,
+                opsDispatchService: widget.opsDispatchService,
+                onFlushPendingOps: widget.onFlushPendingOps,
               ),
             ),
           );
