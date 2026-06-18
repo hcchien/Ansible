@@ -657,6 +657,98 @@ void main() {
   );
 
   test(
+    'pull routes a thread whose boardId has a foreign install prefix to the '
+    'local board via the hosted_board_id suffix',
+    () async {
+      final boardRepo = InMemoryBoardRepository();
+      final threadRepo = InMemoryThreadRepository();
+      final postRepo = InMemoryPostRepository();
+      final hostedBoards = InMemoryHostedBoardRepository();
+      final remoteNodeRepo = _FakeRemoteNodeRepository();
+      final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(configs: const []);
+      final now = DateTime.utc(2026, 5, 10);
+      await boardRepo.create(
+        Board(
+          id: 'local-fifa',
+          slug: 'fifa2026',
+          title: 'FIFA2026',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await hostedBoards.upsertProjection(
+        HostedBoardProjection(
+          localBoardId: 'local-fifa',
+          forumHostId: 'remote-1',
+          hostedBoardId: 'fifa2026',
+          canonicalBoardUri: 'https://relay.example/boards/fifa2026',
+          remoteSlug: 'fifa2026',
+          localSlug: 'fifa2026',
+          title: 'FIFA2026',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await hostedBoards.upsertSubscription(
+        BoardSubscription(
+          subscriptionId: 'remote-1_fifa2026',
+          forumHostId: 'remote-1',
+          hostedBoardId: 'fifa2026',
+          localBoardId: 'local-fifa',
+          readEnabled: true,
+          writeEnabled: true,
+          syncCursor: 0,
+          retentionDays: 45,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final client = _FakeRelayApiClient(
+        activities: [
+          {
+            'logId': 1,
+            'activity': {
+              'activityId': 'a-thread',
+              'type': 'create',
+              'entityType': 'thread',
+              'entityId': 'thread-x',
+              // Composite boardId minted by a *different* install (its forum-host
+              // node id is a timestamp); only the hosted_board_id suffix is stable.
+              'boardId': '1781793146433_fifa2026',
+              'authorId': 'did:plc:remote',
+              'createdAt': '2026-05-10T00:01:00Z',
+              'payload': {'title': '不見了'},
+            },
+          },
+        ],
+      );
+      final remoteNode = RemoteNode(
+        id: 'remote-1',
+        name: 'Remote',
+        url: 'https://relay.example',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final result = await RemoteSyncService(
+        remoteNodeRepo: remoteNodeRepo,
+        boardSyncConfigRepo: boardSyncConfigRepo,
+        hostedBoardRepo: hostedBoards,
+        boardRepo: boardRepo,
+        threadRepo: threadRepo,
+        postRepo: postRepo,
+        opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+        now: () => now,
+      ).syncFromNode(client, remoteNode);
+
+      final threads = await threadRepo.list();
+      expect(result.success, isTrue);
+      expect(threads.single.boardId, 'local-fifa');
+      expect(threads.single.title, '不見了');
+    },
+  );
+
+  test(
     'remote board slug conflict keeps both boards with unique slugs',
     () async {
       final boardRepo = InMemoryBoardRepository();

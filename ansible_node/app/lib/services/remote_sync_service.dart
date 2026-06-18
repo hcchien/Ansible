@@ -531,10 +531,23 @@ class RemoteSyncService {
   }
 
   String? _hostedBoardIdFor(Activity activity) {
-    if (activity.entityType.toLowerCase() == 'board') {
-      return activity.boardId ?? activity.entityId;
-    }
-    return activity.boardId;
+    final raw = activity.entityType.toLowerCase() == 'board'
+        ? (activity.boardId ?? activity.entityId)
+        : activity.boardId;
+    return _hostedBoardIdSuffix(raw);
+  }
+
+  /// Op boardIds are `<creator's ephemeral forum-host node id>_<hostedBoardId>`
+  /// — the prefix is a per-install/per-device timestamp, so it differs across
+  /// reinstalls and devices. Match hosted activities on the stable
+  /// hosted_board_id suffix instead, so a pulled thread/post routes to the local
+  /// board for the same hosted board regardless of who/which install created it.
+  String? _hostedBoardIdSuffix(String? boardId) {
+    if (boardId == null || boardId.isEmpty) return boardId;
+    final underscore = boardId.indexOf('_');
+    if (underscore < 0) return boardId;
+    final suffix = boardId.substring(underscore + 1);
+    return suffix.isEmpty ? boardId : suffix;
   }
 
   Activity _localProjectionActivity(
