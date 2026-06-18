@@ -8,6 +8,7 @@ import '../config/app_environment.dart';
 import '../services/ops_dispatch_service.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
+import '../theme/ansible_design.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
@@ -272,9 +273,19 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AnsibleDesign.paper,
       appBar: AppBar(
-        title: Text(widget.board.title),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(
+          widget.board.title,
+          style: const TextStyle(
+            color: AnsibleDesign.ink,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: AnsibleDesign.paper,
+        foregroundColor: AnsibleDesign.ink,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           if (_boardShareUrl != null)
             IconButton(
@@ -318,7 +329,13 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 en: 'Verified humans only',
               )
             : context.uiCopy(zh: '建立討論串', en: 'Create thread'),
-        backgroundColor: _postingBlocked ? Colors.grey[400] : null,
+        backgroundColor: _postingBlocked
+            ? AnsibleDesign.paperDeep
+            : AnsibleDesign.ink,
+        foregroundColor: _postingBlocked
+            ? AnsibleDesign.inkFaint
+            : AnsibleDesign.paper,
+        elevation: 1,
         child: const Icon(Icons.add),
       ),
     );
@@ -330,23 +347,36 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.forum_outlined, size: 64, color: Colors.grey[400]),
+                const Icon(
+                  Icons.forum_outlined,
+                  size: 56,
+                  color: AnsibleDesign.inkFaint,
+                ),
                 const SizedBox(height: 16),
                 Text(
-                  'No threads yet',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
+                  context.uiCopy(zh: '還沒有討論串', en: 'No threads yet'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AnsibleDesign.inkMuted,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  'Start a new discussion',
-                  style: TextStyle(color: Colors.grey[600]),
+                  context.uiCopy(
+                    zh: '點右下角 + 開始一個新討論',
+                    en: 'Tap + to start a discussion',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AnsibleDesign.inkFaint,
+                  ),
                 ),
               ],
             ),
           )
         : ListView.builder(
+            padding: const EdgeInsets.only(top: 12, bottom: 96),
             itemCount: _threads.length,
             itemBuilder: (context, index) =>
                 _threadCard(context, _threads[index]),
@@ -355,70 +385,128 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
 
   Widget _threadCard(BuildContext context, Thread thread) {
     final lock = _lockedByThreadId[thread.id];
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: const Icon(Icons.chat_bubble_outline),
-        title: Row(
-          children: [
-            Flexible(child: Text(thread.title)),
-            if (lock != null) ...[
-              const SizedBox(width: 6),
-              Tooltip(
-                message: context.uiCopy(
-                  zh:
-                      '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
-                  en:
-                      'Locked by the board moderators '
-                      '(${moderationReasonLabel(context, lock.reasonCode)})',
-                ),
-                child: Icon(
-                  Icons.lock_outline,
-                  key: Key('thread_lock_icon_${thread.id}'),
-                  size: 15,
-                  color: Colors.grey[600],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Material(
+        color: AnsibleDesign.paperElev,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PostsViewScreen(
+                  db: widget.db,
+                  thread: thread,
+                  authorDid: widget.localDid,
+                  opsDispatchService: widget.opsDispatchService,
+                  onFlushPendingOps: widget.onFlushPendingOps,
                 ),
               ),
-            ],
-          ],
-        ),
-        subtitle: Text(
-          'Created ${_formatDate(thread.createdAt)}',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PostsViewScreen(
-                db: widget.db,
-                thread: thread,
-                authorDid: widget.localDid,
-                opsDispatchService: widget.opsDispatchService,
-                onFlushPendingOps: widget.onFlushPendingOps,
-              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+              borderRadius: BorderRadius.circular(10),
             ),
-          );
-        },
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.forum_outlined,
+                  size: 18,
+                  color: AnsibleDesign.inkMuted,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              thread.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AnsibleDesign.ink,
+                              ),
+                            ),
+                          ),
+                          if (lock != null) ...[
+                            const SizedBox(width: 6),
+                            Tooltip(
+                              message: context.uiCopy(
+                                zh:
+                                    '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
+                                en:
+                                    'Locked by the board moderators '
+                                    '(${moderationReasonLabel(context, lock.reasonCode)})',
+                              ),
+                              child: Icon(
+                                Icons.lock_outline,
+                                key: Key('thread_lock_icon_${thread.id}'),
+                                size: 15,
+                                color: AnsibleDesign.inkFaint,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _createdLabel(context, thread.createdAt),
+                        style: const TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 10.5,
+                          color: AnsibleDesign.inkFaint,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AnsibleDesign.inkFaint,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays > 7) {
-      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
-    } else {
-      return 'Just now';
+  /// Localized "created N ago" label for a thread row.
+  String _createdLabel(BuildContext context, DateTime date) {
+    final d = DateTime.now().difference(date);
+    if (d.inDays > 7) {
+      final ymd =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      return context.uiCopy(zh: '建立於 $ymd', en: 'Created $ymd');
+    } else if (d.inDays > 0) {
+      return context.uiCopy(
+        zh: '${d.inDays} 天前建立',
+        en: 'Created ${d.inDays} day${d.inDays > 1 ? 's' : ''} ago',
+      );
+    } else if (d.inHours > 0) {
+      return context.uiCopy(
+        zh: '${d.inHours} 小時前建立',
+        en: 'Created ${d.inHours} hour${d.inHours > 1 ? 's' : ''} ago',
+      );
+    } else if (d.inMinutes > 0) {
+      return context.uiCopy(
+        zh: '${d.inMinutes} 分鐘前建立',
+        en: 'Created ${d.inMinutes} minute${d.inMinutes > 1 ? 's' : ''} ago',
+      );
     }
+    return context.uiCopy(zh: '剛剛建立', en: 'Created just now');
   }
 }
