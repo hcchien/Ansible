@@ -24,6 +24,7 @@ class DriftPostRepository implements PostRepository {
             lastEditAt: post.lastEditAt,
             parentPostId: Value(post.parentPostId),
             isDeleted: Value(post.isDeleted),
+            signatureVerified: Value(post.signatureVerified),
           ),
           mode: InsertMode.insertOrReplace,
         );
@@ -61,6 +62,7 @@ class DriftPostRepository implements PostRepository {
         lastEditAt: Value(post.lastEditAt),
         parentPostId: Value(post.parentPostId),
         isDeleted: Value(post.isDeleted),
+        signatureVerified: Value(post.signatureVerified),
       ),
     );
   }
@@ -107,6 +109,7 @@ class DriftPostRepository implements PostRepository {
       lastEditAt: row.lastEditAt,
       parentPostId: row.parentPostId,
       isDeleted: row.isDeleted,
+      signatureVerified: row.signatureVerified,
     );
   }
 }

@@ -10,6 +10,10 @@ class Post {
   final String? parentPostId;
   final bool isDeleted;
 
+  /// True when this post's authoring op carried a valid Ed25519 signature
+  /// (signed locally on create, or verified on sync).
+  final bool signatureVerified;
+
   Post({
     required this.id,
     required this.threadId,
@@ -21,6 +25,7 @@ class Post {
     required this.lastEditAt,
     this.parentPostId,
     this.isDeleted = false,
+    this.signatureVerified = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -35,6 +40,7 @@ class Post {
       'lastEditAt': lastEditAt.toIso8601String(),
       'parentPostId': parentPostId,
       'isDeleted': isDeleted,
+      'signatureVerified': signatureVerified,
     };
   }
 
@@ -60,6 +66,7 @@ class Post {
       lastEditAt: _parseDate(json['lastEditAt'] ?? json['updatedAt'] ?? json['createdAt']),
       parentPostId: json['parentPostId'] as String?,
       isDeleted: json['isDeleted'] as bool? ?? false,
+      signatureVerified: json['signatureVerified'] as bool? ?? false,
     );
   }
 

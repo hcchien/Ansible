@@ -236,6 +236,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         createdAt: now,
         updatedAt: now,
         lastEditAt: now,
+        signatureVerified: true, // signed locally via the ops dispatch below
       );
       await _postRepo.create(post);
       await _enqueueAndFlush(
@@ -275,6 +276,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         lastEditAt: now,
         parentPostId: post.parentPostId,
         isDeleted: post.isDeleted,
+        signatureVerified: true, // re-signed via the update op below
       );
       await _postRepo.update(updatedPost);
       await _enqueueAndFlush(
@@ -439,11 +441,32 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              AuthorLabel(
-                                                did: post.authorId,
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.titleSmall,
+                                              Row(
+                                                children: [
+                                                  Flexible(
+                                                    child: AuthorLabel(
+                                                      did: post.authorId,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleSmall,
+                                                    ),
+                                                  ),
+                                                  if (post.signatureVerified) ...[
+                                                    const SizedBox(width: 5),
+                                                    Tooltip(
+                                                      message: context.uiCopy(
+                                                        zh: '簽章已驗證',
+                                                        en: 'Signature verified',
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.verified_user,
+                                                        size: 13,
+                                                        color:
+                                                            AnsibleDesign.spore,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
                                               ),
                                               Text(
                                                 _formatDate(

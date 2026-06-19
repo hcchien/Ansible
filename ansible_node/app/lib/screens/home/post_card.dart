@@ -24,6 +24,7 @@ class PostCardData {
     required this.comments,
     required this.reacted,
     this.authorTier = 'basic',
+    this.signatureVerified = false,
   });
 
   final Thread thread;
@@ -38,6 +39,10 @@ class PostCardData {
   final bool reacted;
   final String authorTier;
 
+  /// True when the post's authoring op is signature-verified — drives the
+  /// "signed" badge.
+  final bool signatureVerified;
+
   PostCardData copyWith({String? authorTier}) => PostCardData(
     thread: thread,
     category: category,
@@ -50,6 +55,7 @@ class PostCardData {
     comments: comments,
     reacted: reacted,
     authorTier: authorTier ?? this.authorTier,
+    signatureVerified: signatureVerified,
   );
 }
 
@@ -239,6 +245,20 @@ class _PostCardState extends State<PostCard> {
                       style: const TextStyle(color: AnsibleDesign.inkMuted),
                     ),
                   ),
+                  if (data.signatureVerified) ...[
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: context.uiCopy(
+                        zh: '簽章已驗證',
+                        en: 'Signature verified',
+                      ),
+                      child: const Icon(
+                        Icons.verified_user,
+                        size: 13,
+                        color: AnsibleDesign.spore,
+                      ),
+                    ),
+                  ],
                   if (data.authorTier == 'verified_human') ...[
                     const SizedBox(width: 4),
                     const Icon(Icons.verified, size: 14, color: _accent),

@@ -242,6 +242,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         updatedAt: now,
         lastEditAt: now,
         parentPostId: null,
+        signatureVerified: true, // signed locally via the ops dispatch below
       );
       await _postRepo.create(post);
       await _enqueueAndFlush(

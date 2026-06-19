@@ -367,6 +367,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
         comments: comments,
         reacted: userReacted[t.id] ?? false,
+        signatureVerified: firstPosts[t.id]?.signatureVerified ?? false,
       );
     }).toList();
 
@@ -873,6 +874,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           reactions: {'👍': countMap[store.ReactionType.thumbsUp.name] ?? 0},
           comments: posts.length,
           reacted: reacted,
+          signatureVerified: entry.post.signatureVerified,
         ),
       );
     }
@@ -1297,6 +1299,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       updatedAt: now,
       lastEditAt: now,
       parentPostId: null,
+      signatureVerified: true, // signed locally via the ops dispatch below
     );
     await _postRepo.create(post);
     await _enqueueAndFlush(

@@ -115,7 +115,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -217,6 +217,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 24) {
         await _createTableIfMissing(m, identityAnchors);
+      }
+      if (from < 25) {
+        await _addColumnIfMissing(m, posts, posts.signatureVerified);
+        // Backfill: posts authored by a real DID were signed/verified (synced
+        // ops pass signature verification; locally-signed posts use the user's
+        // DID). Legacy 'user-local' placeholders stay false.
+        await customStatement(
+          "UPDATE posts SET signature_verified = 1 WHERE author_id LIKE 'did:%'",
+        );
       }
       await _addColumnIfMissing(
         m,

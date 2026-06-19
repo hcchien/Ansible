@@ -886,6 +886,8 @@ class RemoteSyncService {
         updatedAt: now,
         lastEditAt: lastEditAt ?? now,
         isDeleted: payload['isDeleted'] as bool? ?? false,
+        // Only signature-verified (trusted) ops reach _applyActivity.
+        signatureVerified: true,
       );
 
       final existing = await _postRepo.getById(activity.entityId);

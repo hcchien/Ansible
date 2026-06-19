@@ -14,6 +14,12 @@ class Posts extends Table {
   DateTimeColumn get lastEditAt => dateTime()();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// True once the post's authoring op carried a valid Ed25519 signature —
+  /// signed locally on create, or verified on sync (the relay only admits
+  /// signature-verified ops). Surfaces a "signed" badge in the UI.
+  BoolColumn get signatureVerified =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {postId};
 }

@@ -3884,6 +3884,21 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _signatureVerifiedMeta = const VerificationMeta(
+    'signatureVerified',
+  );
+  @override
+  late final GeneratedColumn<bool> signatureVerified = GeneratedColumn<bool>(
+    'signature_verified',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("signature_verified" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     postId,
@@ -3896,6 +3911,7 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
     updatedAt,
     lastEditAt,
     isDeleted,
+    signatureVerified,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3991,6 +4007,15 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
         isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
+    if (data.containsKey('signature_verified')) {
+      context.handle(
+        _signatureVerifiedMeta,
+        signatureVerified.isAcceptableOrUnknown(
+          data['signature_verified']!,
+          _signatureVerifiedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4040,6 +4065,10 @@ class $PostsTable extends Posts with TableInfo<$PostsTable, Post> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
       )!,
+      signatureVerified: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}signature_verified'],
+      )!,
     );
   }
 
@@ -4060,6 +4089,11 @@ class Post extends DataClass implements Insertable<Post> {
   final DateTime updatedAt;
   final DateTime lastEditAt;
   final bool isDeleted;
+
+  /// True once the post's authoring op carried a valid Ed25519 signature —
+  /// signed locally on create, or verified on sync (the relay only admits
+  /// signature-verified ops). Surfaces a "signed" badge in the UI.
+  final bool signatureVerified;
   const Post({
     required this.postId,
     required this.threadId,
@@ -4071,6 +4105,7 @@ class Post extends DataClass implements Insertable<Post> {
     required this.updatedAt,
     required this.lastEditAt,
     required this.isDeleted,
+    required this.signatureVerified,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4087,6 +4122,7 @@ class Post extends DataClass implements Insertable<Post> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['last_edit_at'] = Variable<DateTime>(lastEditAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    map['signature_verified'] = Variable<bool>(signatureVerified);
     return map;
   }
 
@@ -4104,6 +4140,7 @@ class Post extends DataClass implements Insertable<Post> {
       updatedAt: Value(updatedAt),
       lastEditAt: Value(lastEditAt),
       isDeleted: Value(isDeleted),
+      signatureVerified: Value(signatureVerified),
     );
   }
 
@@ -4123,6 +4160,7 @@ class Post extends DataClass implements Insertable<Post> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       lastEditAt: serializer.fromJson<DateTime>(json['lastEditAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      signatureVerified: serializer.fromJson<bool>(json['signatureVerified']),
     );
   }
   @override
@@ -4139,6 +4177,7 @@ class Post extends DataClass implements Insertable<Post> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'lastEditAt': serializer.toJson<DateTime>(lastEditAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'signatureVerified': serializer.toJson<bool>(signatureVerified),
     };
   }
 
@@ -4153,6 +4192,7 @@ class Post extends DataClass implements Insertable<Post> {
     DateTime? updatedAt,
     DateTime? lastEditAt,
     bool? isDeleted,
+    bool? signatureVerified,
   }) => Post(
     postId: postId ?? this.postId,
     threadId: threadId ?? this.threadId,
@@ -4164,6 +4204,7 @@ class Post extends DataClass implements Insertable<Post> {
     updatedAt: updatedAt ?? this.updatedAt,
     lastEditAt: lastEditAt ?? this.lastEditAt,
     isDeleted: isDeleted ?? this.isDeleted,
+    signatureVerified: signatureVerified ?? this.signatureVerified,
   );
   Post copyWithCompanion(PostsCompanion data) {
     return Post(
@@ -4181,6 +4222,9 @@ class Post extends DataClass implements Insertable<Post> {
           ? data.lastEditAt.value
           : this.lastEditAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      signatureVerified: data.signatureVerified.present
+          ? data.signatureVerified.value
+          : this.signatureVerified,
     );
   }
 
@@ -4196,7 +4240,8 @@ class Post extends DataClass implements Insertable<Post> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('lastEditAt: $lastEditAt, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('signatureVerified: $signatureVerified')
           ..write(')'))
         .toString();
   }
@@ -4213,6 +4258,7 @@ class Post extends DataClass implements Insertable<Post> {
     updatedAt,
     lastEditAt,
     isDeleted,
+    signatureVerified,
   );
   @override
   bool operator ==(Object other) =>
@@ -4227,7 +4273,8 @@ class Post extends DataClass implements Insertable<Post> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.lastEditAt == this.lastEditAt &&
-          other.isDeleted == this.isDeleted);
+          other.isDeleted == this.isDeleted &&
+          other.signatureVerified == this.signatureVerified);
 }
 
 class PostsCompanion extends UpdateCompanion<Post> {
@@ -4241,6 +4288,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
   final Value<DateTime> updatedAt;
   final Value<DateTime> lastEditAt;
   final Value<bool> isDeleted;
+  final Value<bool> signatureVerified;
   final Value<int> rowid;
   const PostsCompanion({
     this.postId = const Value.absent(),
@@ -4253,6 +4301,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     this.updatedAt = const Value.absent(),
     this.lastEditAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.signatureVerified = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PostsCompanion.insert({
@@ -4266,6 +4315,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     required DateTime updatedAt,
     required DateTime lastEditAt,
     this.isDeleted = const Value.absent(),
+    this.signatureVerified = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : postId = Value(postId),
        threadId = Value(threadId),
@@ -4286,6 +4336,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? lastEditAt,
     Expression<bool>? isDeleted,
+    Expression<bool>? signatureVerified,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4299,6 +4350,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (lastEditAt != null) 'last_edit_at': lastEditAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (signatureVerified != null) 'signature_verified': signatureVerified,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4314,6 +4366,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
     Value<DateTime>? updatedAt,
     Value<DateTime>? lastEditAt,
     Value<bool>? isDeleted,
+    Value<bool>? signatureVerified,
     Value<int>? rowid,
   }) {
     return PostsCompanion(
@@ -4327,6 +4380,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
       updatedAt: updatedAt ?? this.updatedAt,
       lastEditAt: lastEditAt ?? this.lastEditAt,
       isDeleted: isDeleted ?? this.isDeleted,
+      signatureVerified: signatureVerified ?? this.signatureVerified,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4364,6 +4418,9 @@ class PostsCompanion extends UpdateCompanion<Post> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (signatureVerified.present) {
+      map['signature_verified'] = Variable<bool>(signatureVerified.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4383,6 +4440,7 @@ class PostsCompanion extends UpdateCompanion<Post> {
           ..write('updatedAt: $updatedAt, ')
           ..write('lastEditAt: $lastEditAt, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('signatureVerified: $signatureVerified, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -31806,6 +31864,7 @@ typedef $$PostsTableCreateCompanionBuilder =
       required DateTime updatedAt,
       required DateTime lastEditAt,
       Value<bool> isDeleted,
+      Value<bool> signatureVerified,
       Value<int> rowid,
     });
 typedef $$PostsTableUpdateCompanionBuilder =
@@ -31820,6 +31879,7 @@ typedef $$PostsTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<DateTime> lastEditAt,
       Value<bool> isDeleted,
+      Value<bool> signatureVerified,
       Value<int> rowid,
     });
 
@@ -31946,6 +32006,11 @@ class $$PostsTableFilterComposer extends Composer<_$AppDatabase, $PostsTable> {
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
     column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get signatureVerified => $composableBuilder(
+    column: $table.signatureVerified,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -32088,6 +32153,11 @@ class $$PostsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get signatureVerified => $composableBuilder(
+    column: $table.signatureVerified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ThreadsTableOrderingComposer get threadId {
     final $$ThreadsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -32189,6 +32259,11 @@ class $$PostsTableAnnotationComposer
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get signatureVerified => $composableBuilder(
+    column: $table.signatureVerified,
+    builder: (column) => column,
+  );
 
   $$ThreadsTableAnnotationComposer get threadId {
     final $$ThreadsTableAnnotationComposer composer = $composerBuilder(
@@ -32328,6 +32403,7 @@ class $$PostsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime> lastEditAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
+                Value<bool> signatureVerified = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PostsCompanion(
                 postId: postId,
@@ -32340,6 +32416,7 @@ class $$PostsTableTableManager
                 updatedAt: updatedAt,
                 lastEditAt: lastEditAt,
                 isDeleted: isDeleted,
+                signatureVerified: signatureVerified,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -32354,6 +32431,7 @@ class $$PostsTableTableManager
                 required DateTime updatedAt,
                 required DateTime lastEditAt,
                 Value<bool> isDeleted = const Value.absent(),
+                Value<bool> signatureVerified = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PostsCompanion.insert(
                 postId: postId,
@@ -32366,6 +32444,7 @@ class $$PostsTableTableManager
                 updatedAt: updatedAt,
                 lastEditAt: lastEditAt,
                 isDeleted: isDeleted,
+                signatureVerified: signatureVerified,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
