@@ -358,7 +358,7 @@ void main() {
     expect(await threadRepo.getById('thread-x'), isNotNull);
   });
 
-  test('captures author reputation tier from delta into the repo', () async {
+  test('does NOT trust a peer-asserted reputation tier (fail closed)', () async {
     final boardRepo = InMemoryBoardRepository();
     final threadRepo = InMemoryThreadRepository();
     final postRepo = InMemoryPostRepository();
@@ -415,7 +415,9 @@ void main() {
       opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
     ).syncFromNode(client, remoteNode, requireBoardSyncConfig: false);
 
-    expect(await reputationRepo.tierFor('did:key:alice'), 'verified_human');
+    // The op claims verified_human, but that field is unsigned and relay-
+    // stamped — it must never elevate the author. Fail closed.
+    expect(await reputationRepo.tierFor('did:key:alice'), isNot('verified_human'));
   });
 
   test('skips unsigned relay delta entries before applying them', () async {

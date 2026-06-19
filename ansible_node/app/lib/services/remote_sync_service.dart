@@ -642,21 +642,26 @@ class RemoteSyncService {
     }
   }
 
-  /// Caches each op author's relay-reported reputation tier so the UI can badge
-  /// verified authors. Reads from the trusted (signature-verified) entries.
+  /// Reputation tiers are NOT trusted from federated ops.
+  ///
+  /// The `reputationTier` field travels OUTSIDE the op's signed payload
+  /// (op_signature_payload covers author_did/entity_*/op_type/payload only) and
+  /// is stamped by whichever relay serves the op. A modified or malicious
+  /// self-hosted relay could therefore label any DID `verified_human` and have
+  /// it sync in — forging "verified" humans. So we fail closed: a peer relay's
+  /// tier claim never elevates a DID here.
+  ///
+  /// Verified status must instead be established by re-verifying an
+  /// issuer-signed humanity attestation against a local issuer trust registry
+  /// (trust flows from the issuer, not the relay). That re-verification path is
+  /// the only thing allowed to write an elevated tier into the reputation repo.
   Future<void> _captureAuthorTiers(List<dynamic> trusted) async {
     final repo = _didReputationRepo;
     if (repo == null) return;
-    for (final raw in trusted) {
-      if (raw is! Map) continue;
-      final signed = raw['signedOp'];
-      if (signed is! Map) continue;
-      final did = signed['authorDid'];
-      final tier = signed['reputationTier'];
-      if (did is String && did.isNotEmpty && tier is String && tier.isNotEmpty) {
-        await repo.put(did, tier);
-      }
-    }
+    // Fail closed: never write a peer-asserted tier (it's unsigned). Leaving the
+    // repo untouched also avoids clobbering tiers that the issuer-attestation
+    // re-verification path will set. No writes here by design.
+    return;
   }
 
   Future<Set<String>> _resolveFollowedAuthorDids() async {
