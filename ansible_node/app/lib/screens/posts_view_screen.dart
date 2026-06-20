@@ -398,7 +398,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.only(bottom: 8),
                           itemCount: _posts.length,
                           itemBuilder: (context, index) {
                             final post = _posts[index];
@@ -415,81 +415,100 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                 removal,
                               );
                             }
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
+                            final edited = post.lastEditAt.isAfter(
+                              post.createdAt,
+                            );
+                            return Container(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: AnsibleDesign.ruleSoft,
+                                    width: 0.5,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 38,
+                                    height: 38,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      color: AnsibleDesign.paperDeep,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.person_outline,
+                                      size: 20,
+                                      color: AnsibleDesign.inkMuted,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        CircleAvatar(
-                                          backgroundColor:
-                                              AnsibleDesign.paperDeep,
-                                          foregroundColor:
-                                              AnsibleDesign.inkMuted,
-                                          child: Text(
-                                            post.authorId
-                                                .substring(0, 1)
-                                                .toUpperCase(),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Flexible(
-                                                    child: AuthorLabel(
-                                                      did: post.authorId,
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .titleSmall,
-                                                    ),
-                                                  ),
-                                                  if (post.signatureVerified) ...[
-                                                    const SizedBox(width: 5),
-                                                    Tooltip(
-                                                      message: context.uiCopy(
-                                                        zh: '簽章已驗證',
-                                                        en: 'Signature verified',
-                                                      ),
-                                                      child: const Icon(
-                                                        Icons.verified_user,
-                                                        size: 13,
-                                                        color:
-                                                            AnsibleDesign.spore,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: AuthorLabel(
+                                                did: post.authorId,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AnsibleDesign.ink,
+                                                ),
                                               ),
-                                              Text(
+                                            ),
+                                            if (post.signatureVerified) ...[
+                                              const SizedBox(width: 4),
+                                              Tooltip(
+                                                message: context.uiCopy(
+                                                  zh: '簽章已驗證',
+                                                  en: 'Signature verified',
+                                                ),
+                                                child: const Icon(
+                                                  Icons.verified_user,
+                                                  size: 12,
+                                                  color: AnsibleDesign.spore,
+                                                ),
+                                              ),
+                                            ],
+                                            const SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
                                                 _formatDate(
                                                       context,
                                                       post.createdAt,
                                                     ) +
-                                                    (post.lastEditAt.isAfter(
-                                                          post.createdAt,
-                                                        )
+                                                    (edited
                                                         ? context.uiCopy(
                                                             zh: '（已編輯）',
                                                             en: ' (edited)',
                                                           )
                                                         : ''),
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.bodySmall,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AnsibleDesign.inkFaint,
+                                                ),
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                        PopupMenuButton(
-                                          itemBuilder: (context) => [
+                                            ),
+                                            const Spacer(),
+                                            SizedBox(
+                                              height: 22,
+                                              child: PopupMenuButton<String>(
+                                                padding: EdgeInsets.zero,
+                                                icon: const Icon(
+                                                  Icons.more_horiz,
+                                                  size: 18,
+                                                  color: AnsibleDesign.inkFaint,
+                                                ),
+                                                itemBuilder: (context) => [
                                             PopupMenuItem(
                                               value: 'edit',
                                               child: Row(
@@ -556,16 +575,29 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                             }
                                           },
                                         ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (removal != null) ...[
+                                          const SizedBox(height: 8),
+                                          _ownPostRemovalNotice(
+                                            context,
+                                            removal,
+                                          ),
+                                        ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          post.content,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            height: 1.45,
+                                            color: AnsibleDesign.ink,
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                    const SizedBox(height: 12),
-                                    if (removal != null) ...[
-                                      _ownPostRemovalNotice(context, removal),
-                                      const SizedBox(height: 12),
-                                    ],
-                                    Text(post.content),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             );
                           },
