@@ -59,7 +59,13 @@ class SettingsHomeScreen extends StatelessWidget {
         const SharedPreferencesRecoveryReadinessStore(),
     this.identityPrivateKeyProvider = _defaultIdentityPrivateKey,
     this.onOpenRecoveryWizard,
+    this.onOpenPersonalBoard,
   });
+
+  /// Jumps to the user's 個人版 (personal board) in the home pager. Surfaced as
+  /// the top entry here because the personal board no longer has its own cell in
+  /// the bottom navigation. When null the entry is hidden.
+  final VoidCallback? onOpenPersonalBoard;
 
   final AppDatabase db;
   final String did;
@@ -196,6 +202,26 @@ class SettingsHomeScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (onOpenPersonalBoard != null)
+            _SettingsSection(
+              label: context.uiCopy(zh: '我的內容', en: 'MY CONTENT'),
+              children: [
+                AnsibleSettingsRow(
+                  key: const Key('settings_open_personal_board'),
+                  glyph: '▤',
+                  label: context.uiCopy(zh: '個人版', en: 'My board'),
+                  en: 'PERSONAL BOARD',
+                  sub: context.uiCopy(
+                    zh: '你自己的貼文與筆記',
+                    en: 'Your own posts and notes',
+                  ),
+                  onTap: () {
+                    Navigator.of(context).maybePop();
+                    onOpenPersonalBoard!();
+                  },
+                ),
+              ],
+            ),
           _SettingsSection(
             label: text.identityAndDevice,
             children: [

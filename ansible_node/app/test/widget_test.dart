@@ -64,7 +64,10 @@ void main() {
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
     expect(find.byKey(const Key('screen_style_button')), findsNothing);
     expect(find.byKey(const Key('settings_button')), findsOneWidget);
-    expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
+    // 個人版 moved out of the bottom bar into 我/Settings; 時間軸 + 討論區 remain
+    // the two on-bar board affordances.
+    expect(find.byKey(const Key('board_switch_personal')), findsNothing);
+    expect(find.byKey(const Key('board_switch_timeline')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
     expect(find.text('PAPER · LIGHT'), findsNothing);
     expect(find.text('INK · DARK'), findsNothing);
@@ -118,7 +121,8 @@ void main() {
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
     expect(find.byKey(const Key('screen_style_button')), findsNothing);
     expect(find.byKey(const Key('settings_button')), findsOneWidget);
-    expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
+    expect(find.byKey(const Key('board_switch_personal')), findsNothing);
+    expect(find.byKey(const Key('board_switch_timeline')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
   });
 

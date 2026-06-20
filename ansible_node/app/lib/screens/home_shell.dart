@@ -1432,6 +1432,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               unawaited(_setScreenStyle(ElixTab.circle, style)),
           onBoardMotionChanged: (motion) =>
               unawaited(_setBoardMotion(motion)),
+          onOpenPersonalBoard: () => _selectBoardSwipe(HomeBoard.personal),
         ),
       ),
     );

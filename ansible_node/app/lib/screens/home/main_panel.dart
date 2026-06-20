@@ -309,7 +309,9 @@ class MainPanel extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!compact)
+            // The bottom nav (compact/phone) replaces the top header entirely;
+            // gate on bottomNav too so the 640–720 band doesn't show both.
+            if (!compact && !bottomNav)
               HomeTopBar(
                 onClearIdentity: onClearIdentity,
                 db: db,

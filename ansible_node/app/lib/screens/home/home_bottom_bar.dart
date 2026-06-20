@@ -4,10 +4,12 @@ import '../../l10n/app_l10n.dart';
 import '../../theme/ansible_design.dart';
 import 'home_types.dart';
 
-/// Threads-style bottom navigation: the three boards + a prominent central
-/// compose button + notifications and profile. Replaces the top board-swipe tab
-/// row on compact (phone) layouts. Only the boards carry a persistent selected
-/// state (driven by [selectedBoard]); notifications/profile are momentary pushes.
+/// Threads-style bottom navigation: 時間軸 + 討論區 + a prominent central compose
+/// button + 通知 + 我. Replaces the top board-swipe tab row on compact (phone)
+/// layouts. 個人版 is reached from 我 (settings) instead of a dedicated cell, so
+/// the ＋ sits dead-center in a symmetric five-cell bar. Only the two board cells
+/// carry a persistent selected state (driven by [selectedBoard]); the ＋,
+/// notifications and 我 are momentary actions.
 class HomeBottomBar extends StatelessWidget {
   const HomeBottomBar({
     super.key,
@@ -42,13 +44,6 @@ class HomeBottomBar extends StatelessWidget {
             children: [
               _board(
                 context,
-                HomeBoard.personal,
-                Icons.article_outlined,
-                Icons.article,
-                context.uiCopy(zh: '個人版', en: 'Personal'),
-              ),
-              _board(
-                context,
                 HomeBoard.timeline,
                 Icons.dynamic_feed_outlined,
                 Icons.dynamic_feed,
@@ -74,6 +69,7 @@ class HomeBottomBar extends StatelessWidget {
                 Icons.person_outline,
                 context.uiCopy(zh: '我', en: 'Me'),
                 onProfile,
+                cellKey: const Key('settings_button'),
               ),
             ],
           ),
@@ -111,12 +107,14 @@ class HomeBottomBar extends StatelessWidget {
     String label,
     VoidCallback onTap, {
     int badgeCount = 0,
+    Key? cellKey,
   }) {
     return Expanded(
       child: Semantics(
         button: true,
         label: label,
         child: InkWell(
+          key: cellKey,
           onTap: onTap,
           child: _cell(
             icon,

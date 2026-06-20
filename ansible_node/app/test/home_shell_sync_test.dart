@@ -193,7 +193,8 @@ void main() {
     }
 
     expect(find.byTooltip('已連線 · WiFi'), findsNothing);
-    expect(find.byKey(const Key('board_switch_personal')), findsOneWidget);
+    expect(find.byKey(const Key('board_switch_personal')), findsNothing);
+    expect(find.byKey(const Key('board_switch_timeline')), findsOneWidget);
     expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
   });
 
