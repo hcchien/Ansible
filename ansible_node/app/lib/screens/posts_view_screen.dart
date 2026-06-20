@@ -955,29 +955,36 @@ class _PostReactionBarState extends State<_PostReactionBar> {
   @override
   Widget build(BuildContext context) {
     final color = _reacted ? AnsibleDesign.spore : AnsibleDesign.inkFaint;
+    // Match the thread-listing footer (icon 14 + mono count), icon-only — no
+    // "讚" label. Sits at the same 8px gap below the content as the list cards.
     return Padding(
-      padding: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
-          TextButton.icon(
-            onPressed: (_canReact && !_busy && !_loading) ? _toggle : null,
-            icon: Icon(
-              _reacted ? Icons.thumb_up : Icons.thumb_up_outlined,
-              size: 16,
-              color: color,
-            ),
-            label: Text(
-              _likeCount > 0
-                  ? '$_likeCount'
-                  : context.uiCopy(zh: '讚', en: 'Like'),
-              style: TextStyle(fontSize: 13, color: color),
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: const Size(0, 30),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: color,
-              disabledForegroundColor: AnsibleDesign.inkFaint,
+          InkWell(
+            onTap: (_canReact && !_busy && !_loading) ? _toggle : null,
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _reacted ? Icons.thumb_up : Icons.thumb_up_outlined,
+                    size: 14,
+                    color: color,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '$_likeCount',
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 11,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
