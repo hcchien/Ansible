@@ -170,156 +170,146 @@ class _PostCardState extends State<PostCard> {
           );
         },
         child: Container(
-          decoration: BoxDecoration(
-            color: AnsibleDesign.paperElev,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+            ),
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AnsibleDesign.paperDeep,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      data.category,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.more_horiz),
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                data.title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: _hover ? _accent : AnsibleDesign.ink,
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AnsibleDesign.paperDeep,
+                  shape: BoxShape.circle,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                data.content.isEmpty ? context.l10n.noContentYet : data.content,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                child: const Icon(
+                  Icons.person_outline,
+                  size: 20,
                   color: AnsibleDesign.inkMuted,
-                  height: 1.5,
-                  fontSize: AnsibleDesign.previewTextSize,
-                  fontWeight: FontWeight.w400,
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.person_outline,
-                    size: 16,
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: widget.onOpenAuthor == null
-                        ? null
-                        : () => widget.onOpenAuthor!(data.author),
-                    child: AuthorLabel(
-                      did: data.author,
-                      style: const TextStyle(color: AnsibleDesign.inkMuted),
-                    ),
-                  ),
-                  if (data.signatureVerified) ...[
-                    const SizedBox(width: 4),
-                    Tooltip(
-                      message: context.uiCopy(
-                        zh: '簽章已驗證',
-                        en: 'Signature verified',
-                      ),
-                      child: const Icon(
-                        Icons.verified_user,
-                        size: 13,
-                        color: AnsibleDesign.spore,
-                      ),
-                    ),
-                  ],
-                  if (data.authorTier == 'verified_human') ...[
-                    const SizedBox(width: 4),
-                    const Icon(Icons.verified, size: 14, color: _accent),
-                  ],
-                  const SizedBox(width: 12),
-                  const Icon(
-                    Icons.forum_outlined,
-                    size: 16,
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    data.board,
-                    style: const TextStyle(color: AnsibleDesign.inkMuted),
-                  ),
-                  const SizedBox(width: 12),
-                  const Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    data.timeAgo,
-                    style: const TextStyle(color: AnsibleDesign.inkMuted),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: _ReactionChip(
-                      label: '👍',
-                      count: _likeCount,
-                      active: _reacted,
-                      onTap: _isReacting
-                          ? null
-                          : () async {
-                              setState(() => _isReacting = true);
-                              try {
-                                await _toggleThumbsUp(thread.id, _reacted);
-                              } finally {
-                                setState(() => _isReacting = false);
-                              }
-                            },
-                    ),
-                  ),
-                  _CommentChip(
-                    count: data.comments,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              PostsViewScreen(db: widget.db, thread: thread),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: GestureDetector(
+                            onTap: widget.onOpenAuthor == null
+                                ? null
+                                : () => widget.onOpenAuthor!(data.author),
+                            child: AuthorLabel(
+                              did: data.author,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AnsibleDesign.ink,
+                              ),
+                            ),
+                          ),
                         ),
-                      );
-                    },
-                  ),
-                ],
+                        if (data.signatureVerified) ...[
+                          const SizedBox(width: 4),
+                          Tooltip(
+                            message: context.uiCopy(
+                              zh: '簽章已驗證',
+                              en: 'Signature verified',
+                            ),
+                            child: const Icon(
+                              Icons.verified_user,
+                              size: 12,
+                              color: AnsibleDesign.spore,
+                            ),
+                          ),
+                        ],
+                        if (data.authorTier == 'verified_human') ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.verified, size: 13, color: _accent),
+                        ],
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            '· ${data.board} · ${data.timeAgo}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AnsibleDesign.inkFaint,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (data.title.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        data.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.3,
+                          fontWeight: FontWeight.w700,
+                          color: _hover ? _accent : AnsibleDesign.ink,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 2),
+                    Text(
+                      data.content.isEmpty
+                          ? context.l10n.noContentYet
+                          : data.content,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AnsibleDesign.inkMuted,
+                        height: 1.4,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _ReactionChip(
+                          label: '👍',
+                          count: _likeCount,
+                          active: _reacted,
+                          onTap: _isReacting
+                              ? null
+                              : () async {
+                                  setState(() => _isReacting = true);
+                                  try {
+                                    await _toggleThumbsUp(thread.id, _reacted);
+                                  } finally {
+                                    setState(() => _isReacting = false);
+                                  }
+                                },
+                        ),
+                        const SizedBox(width: 8),
+                        _CommentChip(
+                          count: data.comments,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => PostsViewScreen(
+                                  db: widget.db,
+                                  thread: thread,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -347,10 +337,13 @@ class _ReactionChip extends StatelessWidget {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(
-        foregroundColor: active ? AnsibleDesign.paper : AnsibleDesign.ink,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        backgroundColor: active ? AnsibleDesign.ink : AnsibleDesign.paperDeep,
+        foregroundColor: active ? AnsibleDesign.spore : AnsibleDesign.inkMuted,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: const Size(0, 30),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor: Colors.transparent,
         shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 13),
       ),
       child: Text('$label $count'),
     );
@@ -367,13 +360,16 @@ class _CommentChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton.icon(
       onPressed: onTap,
-      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+      icon: const Icon(Icons.chat_bubble_outline, size: 16),
       label: Text(context.l10n.commentsCount(count)),
       style: TextButton.styleFrom(
-        foregroundColor: AnsibleDesign.ink,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        backgroundColor: AnsibleDesign.paperDeep,
+        foregroundColor: AnsibleDesign.inkMuted,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: const Size(0, 30),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor: Colors.transparent,
         shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 13),
       ),
     );
   }

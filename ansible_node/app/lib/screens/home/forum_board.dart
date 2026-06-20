@@ -164,7 +164,7 @@ class ForumBoardView extends StatelessWidget {
                       ))
               : ListView.separated(
                   itemCount: posts.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  separatorBuilder: (_, _) => const SizedBox.shrink(),
                   itemBuilder: (context, index) => PostCard(
                     db: db,
                     data: posts[index],
