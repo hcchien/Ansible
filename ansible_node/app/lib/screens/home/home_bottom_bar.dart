@@ -1,0 +1,214 @@
+import 'package:flutter/material.dart';
+
+import '../../l10n/app_l10n.dart';
+import '../../theme/ansible_design.dart';
+import 'home_types.dart';
+
+/// Threads-style bottom navigation: the three boards + a prominent central
+/// compose button + notifications and profile. Replaces the top board-swipe tab
+/// row on compact (phone) layouts. Only the boards carry a persistent selected
+/// state (driven by [selectedBoard]); notifications/profile are momentary pushes.
+class HomeBottomBar extends StatelessWidget {
+  const HomeBottomBar({
+    super.key,
+    required this.selectedBoard,
+    required this.onSelectBoard,
+    required this.onCompose,
+    required this.onNotifications,
+    required this.onProfile,
+    this.unreadCount = 0,
+  });
+
+  final HomeBoard selectedBoard;
+  final ValueChanged<HomeBoard> onSelectBoard;
+  final VoidCallback onCompose;
+  final VoidCallback onNotifications;
+  final VoidCallback onProfile;
+  final int unreadCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AnsibleDesign.paper,
+        border: Border(top: BorderSide(color: AnsibleDesign.rule, width: 0.5)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _board(
+                context,
+                HomeBoard.personal,
+                Icons.article_outlined,
+                Icons.article,
+                context.uiCopy(zh: '個人版', en: 'Personal'),
+              ),
+              _board(
+                context,
+                HomeBoard.timeline,
+                Icons.dynamic_feed_outlined,
+                Icons.dynamic_feed,
+                context.uiCopy(zh: '時間軸', en: 'Timeline'),
+              ),
+              _board(
+                context,
+                HomeBoard.forum,
+                Icons.forum_outlined,
+                Icons.forum,
+                context.uiCopy(zh: '討論區', en: 'Forum'),
+              ),
+              _compose(context),
+              _action(
+                context,
+                Icons.notifications_outlined,
+                context.uiCopy(zh: '通知', en: 'Alerts'),
+                onNotifications,
+                badgeCount: unreadCount,
+              ),
+              _action(
+                context,
+                Icons.person_outline,
+                context.uiCopy(zh: '我', en: 'Me'),
+                onProfile,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _board(
+    BuildContext context,
+    HomeBoard board,
+    IconData icon,
+    IconData activeIcon,
+    String label,
+  ) {
+    final active = selectedBoard == board;
+    final color = active ? AnsibleDesign.ink : AnsibleDesign.inkFaint;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: active,
+        label: label,
+        child: InkWell(
+          key: Key('board_switch_${board.name}'),
+          onTap: () => onSelectBoard(board),
+          child: _cell(active ? activeIcon : icon, label, color, active),
+        ),
+      ),
+    );
+  }
+
+  Widget _action(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    int badgeCount = 0,
+  }) {
+    return Expanded(
+      child: Semantics(
+        button: true,
+        label: label,
+        child: InkWell(
+          onTap: onTap,
+          child: _cell(
+            icon,
+            label,
+            AnsibleDesign.inkFaint,
+            false,
+            badgeCount: badgeCount,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cell(
+    IconData icon,
+    String label,
+    Color color,
+    bool active, {
+    int badgeCount = 0,
+  }) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          height: 24,
+          width: 28,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Icon(icon, size: 23, color: color),
+              if (badgeCount > 0)
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                    decoration: const BoxDecoration(
+                      color: AnsibleDesign.danger,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      badgeCount > 99 ? '99+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: AnsibleDesign.paper,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            height: 1,
+            color: color,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _compose(BuildContext context) {
+    return Expanded(
+      child: Semantics(
+        button: true,
+        label: context.uiCopy(zh: '發表貼文', en: 'New post'),
+        child: InkWell(
+          onTap: onCompose,
+          customBorder: const CircleBorder(),
+          child: Center(
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: AnsibleDesign.ink,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add, size: 24, color: AnsibleDesign.paper),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

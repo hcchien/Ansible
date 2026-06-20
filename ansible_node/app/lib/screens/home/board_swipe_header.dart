@@ -26,7 +26,12 @@ class BoardSwipeHeader extends StatelessWidget {
     this.onOpenSettings,
     this.onOpenNotifications,
     this.notificationUnreadCount = 0,
+    this.showTabs = true,
   });
+
+  /// When false, the board-switch tab row (and its icon cluster) is hidden —
+  /// navigation lives in the bottom bar instead. The per-board meta row is kept.
+  final bool showTabs;
 
   final PageController pageController;
   final HomeBoard selectedBoard;
@@ -86,9 +91,10 @@ class BoardSwipeHeader extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Builder(
-                builder: (context) {
-                  Widget btn(
+              if (showTabs)
+                Builder(
+                  builder: (context) {
+                    Widget btn(
                     HomeBoard board,
                     String label,
                     String tooltip, {
@@ -204,11 +210,15 @@ class BoardSwipeHeader extends StatelessWidget {
                 },
               ),
               Container(
-                margin: const EdgeInsets.only(top: 8),
+                margin: EdgeInsets.only(top: showTabs ? 8 : 0),
                 padding: const EdgeInsets.only(top: 6, bottom: 6),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: ruleColor, width: 0.5)),
-                ),
+                decoration: showTabs
+                    ? BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: ruleColor, width: 0.5),
+                        ),
+                      )
+                    : null,
                 child: activeIndex == HomeBoard.personal.index
                     ? _personalMetaRow(
                         context: context,

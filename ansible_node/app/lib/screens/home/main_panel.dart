@@ -57,6 +57,7 @@ class MainPanel extends StatelessWidget {
     required this.onDiscoverBoards,
     required this.onOpenBoard,
     this.onOpenBoards,
+    this.bottomNav = false,
     required this.feedFilter,
     required this.onFeedFilterChanged,
     required this.personalFilter,
@@ -127,6 +128,10 @@ class MainPanel extends StatelessWidget {
   final VoidCallback onDiscoverBoards;
   final ValueChanged<String> onOpenBoard;
   final VoidCallback? onOpenBoards;
+
+  /// When true, the top board-switch tab row is hidden (navigation lives in the
+  /// Scaffold's bottom bar instead).
+  final bool bottomNav;
   final FeedFilter feedFilter;
   final ValueChanged<FeedFilter> onFeedFilterChanged;
   final PersonalFilter personalFilter;
@@ -279,6 +284,7 @@ class MainPanel extends StatelessWidget {
                     onManageBoards: onManageBoards,
                     onDiscoverBoards: onDiscoverBoards,
                     onOpenBoard: onOpenBoard,
+                    showBottomActionBar: !bottomNav,
                   ),
                 ),
               ),
@@ -333,6 +339,7 @@ class MainPanel extends StatelessWidget {
                 onBoardMotionChanged: onBoardMotionChanged,
               ),
             BoardSwipeHeader(
+              showTabs: !bottomNav,
               pageController: pageController,
               selectedBoard: selectedBoard,
               onTapBoard: onBoardChanged,

@@ -29,7 +29,13 @@ class ForumBoardView extends StatelessWidget {
     required this.onManageBoards,
     required this.onDiscoverBoards,
     required this.onOpenBoard,
+    this.showBottomActionBar = true,
   });
+
+  /// When false, the in-board bottom action bar is hidden — the global bottom
+  /// navigation (with its compose ＋) is showing instead, so it would otherwise
+  /// stack a second bar.
+  final bool showBottomActionBar;
 
   final bool compact;
   final AppDatabase db;
@@ -186,40 +192,42 @@ class ForumBoardView extends StatelessWidget {
                   ),
                 ),
         ),
-        // Bottom action bar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: styleData.rule, width: 0.5)),
-            color: styleData.background,
-          ),
-          child: Row(
-            children: [
-              Text(
-                context.uiCopy(zh: '在討論區', en: 'In forum'),
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 11,
-                  color: AnsibleDesign.inkFaint,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed: boards.isNotEmpty ? onCreateThread : onCreateBoard,
-                icon: const Icon(Icons.add, size: 16),
-                label: Text(l10n.newPost),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+        // Bottom action bar — suppressed when the global bottom nav is showing
+        // (its compose ＋ already covers new-post), to avoid stacking two bars.
+        if (showBottomActionBar)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: styleData.rule, width: 0.5)),
+              color: styleData.background,
+            ),
+            child: Row(
+              children: [
+                Text(
+                  context.uiCopy(zh: '在討論區', en: 'In forum'),
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 11,
+                    color: AnsibleDesign.inkFaint,
+                    letterSpacing: 0.8,
                   ),
-                  textStyle: const TextStyle(fontSize: 13),
                 ),
-              ),
-            ],
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: boards.isNotEmpty ? onCreateThread : onCreateBoard,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: Text(l10n.newPost),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    textStyle: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

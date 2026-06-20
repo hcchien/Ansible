@@ -51,10 +51,12 @@ import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import 'discover_screen.dart';
+import 'settings_home_screen.dart';
 import 'threads_list_screen.dart';
 import 'thread_composer_screen.dart';
 import 'home/circle_full_screen.dart';
 import 'home/compose_action_item.dart';
+import 'home/home_bottom_bar.dart';
 import 'home/home_types.dart';
 import 'home/main_panel.dart';
 import 'home/post_card.dart';
@@ -1408,6 +1410,33 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     await _refreshNotificationUnread();
   }
 
+  /// Opens Settings (the bottom bar's 我 destination on compact layouts).
+  /// Mirrors the push the board-swipe header used in wide layouts.
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SettingsHomeScreen(
+          db: widget.db,
+          did: widget.did,
+          localeController: widget.localeController,
+          readingPreferencesController: widget.readingPreferencesController,
+          onClearIdentity: widget.onClearIdentity,
+          personalScreenStyle:
+              _screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
+          forumScreenStyle:
+              _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
+          boardMotion: _boardMotion,
+          onPersonalScreenStyleChanged: (style) =>
+              unawaited(_setScreenStyle(ElixTab.feed, style)),
+          onForumScreenStyleChanged: (style) =>
+              unawaited(_setScreenStyle(ElixTab.circle, style)),
+          onBoardMotionChanged: (motion) =>
+              unawaited(_setBoardMotion(motion)),
+        ),
+      ),
+    );
+  }
+
   void _handleNetworkStatusChanged() {
     final current = _networkStatusService.status;
     final wasOnline = _lastNetworkStatus == NetworkStatus.online;
@@ -1702,7 +1731,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         (_screenStyles[_selectedTab] ?? ElixScreenStyle.paper).dataFor(
           Theme.of(context).brightness,
         );
+    // Phone layout uses the bottom icon nav (Threads-style); wide keeps the
+    // sidebar + top header.
+    final compactShell = MediaQuery.sizeOf(context).width < 720;
     return Scaffold(
+      bottomNavigationBar: compactShell
+          ? HomeBottomBar(
+              selectedBoard: _selectedBoard,
+              onSelectBoard: _selectBoardSwipe,
+              onCompose: () => _selectedBoard == HomeBoard.forum
+                  ? _createThread()
+                  : _openCompose(context),
+              onNotifications: _openNotifications,
+              onProfile: _openSettings,
+              unreadCount: _notificationUnreadCount,
+            )
+          : null,
       body: SafeArea(
         child: Container(
           color: currentScreenStyle.background,
@@ -1742,6 +1786,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 onManageBoards: _openManageBoards,
                 onDiscoverBoards: _openDiscover,
                 onOpenBoard: _openBoard,
+                bottomNav: compactShell,
                 onOpenBoards: compact ? () => _openBoardsSheet(context) : null,
                 feedFilter: _feedFilter,
                 onFeedFilterChanged: _selectFeedFilter,
