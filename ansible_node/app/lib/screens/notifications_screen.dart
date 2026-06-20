@@ -253,7 +253,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final hasUnread = _notifications.any((n) => !n.isRead);
     return AnsibleScreenScaffold(
       title: 'NOTIFICATIONS',
-      leadingLabel: '',
+      leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
       trailing: hasUnread
           ? TextButton(
               key: const Key('notifications_mark_all_read'),
