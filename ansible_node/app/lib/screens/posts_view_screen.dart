@@ -594,6 +594,19 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                             color: AnsibleDesign.ink,
                                           ),
                                         ),
+                                        if (removal == null)
+                                          _PostReactionBar(
+                                            key: ValueKey(
+                                              'post_reactions_${post.id}',
+                                            ),
+                                            db: widget.db,
+                                            postId: post.id,
+                                            localDid: widget.authorDid,
+                                            opsDispatchService:
+                                                widget.opsDispatchService,
+                                            onFlushPendingOps:
+                                                widget.onFlushPendingOps,
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -809,5 +822,166 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     } else {
       return context.uiCopy(zh: '剛剛', en: 'Just now');
     }
+  }
+}
+
+/// Per-post reaction footer (👍). Reuses the same drift reaction store + CRDT
+/// `create/deleteReaction` ops as the feed [PostCard], but targets the
+/// individual post ([TargetType.post]) rather than the whole thread. Reacting
+/// requires a known local DID and an ops dispatcher; without them the bar is a
+/// read-only count. The action row is intentionally a [Row] so a share / reply
+/// affordance can be appended here later.
+class _PostReactionBar extends StatefulWidget {
+  const _PostReactionBar({
+    super.key,
+    required this.db,
+    required this.postId,
+    required this.localDid,
+    required this.opsDispatchService,
+    required this.onFlushPendingOps,
+  });
+
+  final AppDatabase db;
+  final String postId;
+  final String? localDid;
+  final OpsDispatchService? opsDispatchService;
+  final Future<void> Function()? onFlushPendingOps;
+
+  @override
+  State<_PostReactionBar> createState() => _PostReactionBarState();
+}
+
+class _PostReactionBarState extends State<_PostReactionBar> {
+  late final DriftReactionRepository _reactionRepo;
+  bool _loading = true;
+  bool _busy = false;
+  bool _reacted = false;
+  int _likeCount = 0;
+
+  bool get _canReact =>
+      widget.localDid != null && widget.opsDispatchService != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _reactionRepo = DriftReactionRepository(widget.db);
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final reactions = await _reactionRepo.listByTarget(
+      TargetType.post.name,
+      widget.postId,
+    );
+    final likes = reactions
+        .where((r) => r.reactionType == ReactionType.thumbsUp)
+        .toList();
+    if (!mounted) return;
+    setState(() {
+      _likeCount = likes.length;
+      _reacted =
+          widget.localDid != null &&
+          likes.any((r) => r.userId == widget.localDid);
+      _loading = false;
+    });
+  }
+
+  Future<void> _toggle() async {
+    final localDid = widget.localDid;
+    final ops = widget.opsDispatchService;
+    if (localDid == null || ops == null) return;
+    setState(() => _busy = true);
+    try {
+      if (_reacted) {
+        final existing = await _reactionRepo.getByUserAndTarget(
+          localDid,
+          TargetType.post.name,
+          widget.postId,
+        );
+        if (existing != null) {
+          await _reactionRepo.delete(existing.id);
+          await ops.signAndEnqueue(
+            CrdtOpBuilder.deleteReaction(
+              authorDid: localDid,
+              entityId: existing.id,
+              targetType: TargetType.post.name,
+              targetId: widget.postId,
+            ),
+          );
+          if (widget.onFlushPendingOps != null) {
+            unawaited(widget.onFlushPendingOps!());
+          }
+          if (mounted) {
+            setState(() {
+              _reacted = false;
+              _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
+            });
+          }
+        }
+      } else {
+        final reaction = Reaction(
+          id: const Uuid().v4(),
+          userId: localDid,
+          targetType: TargetType.post,
+          targetId: widget.postId,
+          reactionType: ReactionType.thumbsUp,
+          createdAt: DateTime.now(),
+        );
+        await _reactionRepo.create(reaction);
+        await ops.signAndEnqueue(
+          CrdtOpBuilder.createReaction(
+            authorDid: localDid,
+            entityId: reaction.id,
+            targetType: reaction.targetType.name,
+            targetId: reaction.targetId,
+            reactionType: reaction.reactionType.name,
+          ),
+        );
+        if (widget.onFlushPendingOps != null) {
+          unawaited(widget.onFlushPendingOps!());
+        }
+        if (mounted) {
+          setState(() {
+            _reacted = true;
+            _likeCount += 1;
+          });
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _reacted ? AnsibleDesign.spore : AnsibleDesign.inkFaint;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          TextButton.icon(
+            onPressed: (_canReact && !_busy && !_loading) ? _toggle : null,
+            icon: Icon(
+              _reacted ? Icons.thumb_up : Icons.thumb_up_outlined,
+              size: 16,
+              color: color,
+            ),
+            label: Text(
+              _likeCount > 0
+                  ? '$_likeCount'
+                  : context.uiCopy(zh: '讚', en: 'Like'),
+              style: TextStyle(fontSize: 13, color: color),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: const Size(0, 30),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              foregroundColor: color,
+              disabledForegroundColor: AnsibleDesign.inkFaint,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
