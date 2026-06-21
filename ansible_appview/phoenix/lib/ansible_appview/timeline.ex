@@ -167,6 +167,16 @@ defmodule AnsibleAppview.Timeline do
     page(from(f in FeedItem, where: f.board_id == ^board_id), cursor, limit)
   end
 
+  @doc """
+  Items belonging to a thread id. Used to read comments on standalone content
+  (murmur/note): a comment is a `post` op whose `thread_id` is the content's
+  entity id, so it threads under the content even though it has no board.
+  """
+  @spec for_thread(String.t(), integer() | nil, pos_integer()) :: map()
+  def for_thread(thread_id, cursor, limit) do
+    page(from(f in FeedItem, where: f.thread_id == ^thread_id), cursor, limit)
+  end
+
   defp page(query, cursor, limit) do
     limit = limit |> min(200) |> max(1)
 

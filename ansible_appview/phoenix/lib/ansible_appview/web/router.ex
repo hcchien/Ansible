@@ -54,6 +54,12 @@ defmodule AnsibleAppview.Web.Router do
     AnsibleAppview.Web.Controllers.TimelineController.home(conn, conn.query_params)
   end
 
+  # Comments on a content/thread id (murmur/note get a board-less thread keyed by
+  # their entity id). `conn.params` carries the `:thread_id` path segment.
+  get "/api/v1/thread/:thread_id" do
+    AnsibleAppview.Web.Controllers.TimelineController.thread_feed(conn, conn.params)
+  end
+
   get "/api/v1/suggest/follows" do
     AnsibleAppview.Web.Controllers.DiscoveryController.suggest_follows(conn, conn.query_params)
   end

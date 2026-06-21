@@ -96,6 +96,11 @@ defmodule AnsibleAppview.IngestTimelineTest do
     board = Timeline.for_board("board-1", nil, 50)
     assert Enum.map(board.items, & &1.entity_id) == ["e-4"]
 
+    # Thread feed returns the post threaded under t-1 (the comments-by-content-id
+    # read path for murmur/note discussions).
+    thread = Timeline.for_thread("t-1", nil, 50)
+    assert Enum.map(thread.items, & &1.entity_id) == ["e-4"]
+
     # (follow-graph folding is covered by the dedicated test below)
 
     # Re-folding the same ops is idempotent.

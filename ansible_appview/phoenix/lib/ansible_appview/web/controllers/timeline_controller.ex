@@ -84,6 +84,32 @@ defmodule AnsibleAppview.Web.Controllers.TimelineController do
     end
   end
 
+  @doc "GET /api/v1/thread/:thread_id — comments threaded under a content/thread id."
+  def thread_feed(conn, params) do
+    Metrics.inc("appview_timeline_requests_total", %{kind: "thread"})
+
+    Metrics.time("appview_timeline_request_duration_seconds", %{kind: "thread"}, fn ->
+      do_thread_feed(conn, params)
+    end)
+  end
+
+  defp do_thread_feed(conn, params) do
+    thread_id = params["thread_id"]
+
+    if is_binary(thread_id) and thread_id != "" do
+      result =
+        Timeline.for_thread(
+          thread_id,
+          parse_int(params["cursor"]),
+          parse_int(params["limit"]) || 50
+        )
+
+      send_json(conn, 200, result)
+    else
+      send_json(conn, 422, %{error: "thread_id_required"})
+    end
+  end
+
   defp parse_int(nil), do: nil
   defp parse_int(value) when is_integer(value), do: value
 
