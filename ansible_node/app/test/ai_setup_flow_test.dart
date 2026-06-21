@@ -13,7 +13,11 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: HomeShell(db: db, did: 'did:plc:alice'),
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          initialBoard: HomeBoard.personal,
+        ),
       ),
     );
     for (var i = 0; i < 8; i += 1) {

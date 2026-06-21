@@ -236,6 +236,9 @@ Future<void> _pumpHomeShell(
       didManager: _EmptyDidManager(),
       didPlcManager: _ExistingDidPlcManager(),
       canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+      // These cases exercise the personal board; land there explicitly now that
+      // the app defaults to the Timeline.
+      initialBoard: HomeBoard.personal,
     ),
   );
   for (var i = 0; i < 8; i++) {

@@ -29,6 +29,7 @@ void main() {
           networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
           relayDiscoveryLoader: () async => _starterDiscovery(),
           autoSeedDefaultRelay: false,
+          initialBoard: HomeBoard.personal,
         ),
       ),
     );

@@ -55,6 +55,7 @@ void main() {
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
         canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+        initialBoard: HomeBoard.personal,
       ),
     );
     for (var i = 0; i < 8; i++) {
@@ -112,6 +113,7 @@ void main() {
         didPlcManager: _ExistingDidPlcManager(),
         canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
         localeController: localeController,
+        initialBoard: HomeBoard.personal,
       ),
     );
     for (var i = 0; i < 8; i++) {
@@ -139,6 +141,7 @@ void main() {
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
         canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+        initialBoard: HomeBoard.personal,
       ),
     );
     for (var i = 0; i < 8; i++) {

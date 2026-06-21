@@ -80,7 +80,12 @@ class HomeShell extends StatefulWidget {
     this.localeController,
     this.readingPreferencesController,
     this.autoSeedDefaultRelay = true,
+    this.initialBoard = HomeBoard.timeline,
   });
+
+  /// Board shown on launch. Defaults to the Timeline (時間軸); overridable so
+  /// tests can land on a specific board.
+  final HomeBoard initialBoard;
 
   final AppDatabase db;
   final String did;
@@ -161,7 +166,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   FeedFilter _feedFilter = FeedFilter.all;
   PersonalFilter _personalFilter = PersonalFilter.all;
   ElixTab _selectedTab = ElixTab.feed;
-  HomeBoard _selectedBoard = HomeBoard.personal;
+  late HomeBoard _selectedBoard;
   ElixBoardMotion _boardMotion = ElixBoardMotion.book;
   bool _showCoachmark = false;
   CircleTab _selectedCircleTab = CircleTab.murmur;
@@ -175,7 +180,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    // Default landing screen is the Timeline (時間軸), not the personal board.
+    _selectedBoard = widget.initialBoard;
+    _pageController = PageController(initialPage: widget.initialBoard.index);
     _boardRepo = DriftBoardRepository(widget.db);
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);

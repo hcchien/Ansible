@@ -147,6 +147,9 @@ class MyApp extends StatefulWidget {
   // ignore: unused_field — kept for V1 test-injection compatibility; V2.0 uses AtProtoClient
   final RelayIdentityClient? relayIdentityClient;
 
+  /// Board shown on launch (forwarded to [HomeShell]). Defaults to the Timeline.
+  final HomeBoard initialBoard;
+
   const MyApp({
     super.key,
     required this.db,
@@ -158,6 +161,7 @@ class MyApp extends StatefulWidget {
     this.readingPreferencesController,
     this.webSessionLinks,
     this.relayIdentityClient,
+    this.initialBoard = HomeBoard.timeline,
   });
 
   @override
@@ -484,6 +488,7 @@ class _MyAppState extends State<MyApp> {
                   localeController: _localeController,
                   readingPreferencesController: _readingPreferencesController,
                   onClearIdentity: () => setState(() => _anchoredDid = null),
+                  initialBoard: widget.initialBoard,
                 )
               : PasskeysRegistrationScreen(
                   onRegistered: _handleRegistered,
