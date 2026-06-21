@@ -100,6 +100,11 @@ class DiscoveredPost {
   final String authorDid;
   final String? visibility;
   final String? reputationTier;
+
+  /// Forum routing context (present for `post` entities; null for note/murmur),
+  /// so a discovered post can deep-link to its thread instead of just the author.
+  final String? boardId;
+  final String? threadId;
   final Map<String, dynamic> payload;
 
   const DiscoveredPost({
@@ -109,19 +114,37 @@ class DiscoveredPost {
     required this.payload,
     this.visibility,
     this.reputationTier,
+    this.boardId,
+    this.threadId,
   });
 
   String get body =>
       (payload['body'] ?? payload['content'] ?? '').toString();
 
-  factory DiscoveredPost.fromJson(Map<String, dynamic> m) => DiscoveredPost(
-        entityType: m['entity_type'] as String? ?? '',
-        entityId: m['entity_id'] as String? ?? '',
-        authorDid: m['author_did'] as String? ?? '',
-        visibility: m['visibility'] as String?,
-        reputationTier: m['reputation_tier'] as String?,
-        payload: Map<String, dynamic>.from((m['payload'] as Map?) ?? const {}),
-      );
+  /// True when this is a forum post that can be opened as a thread.
+  bool get isThreadPost =>
+      (threadId != null && threadId!.isNotEmpty) &&
+      (boardId != null && boardId!.isNotEmpty);
+
+  factory DiscoveredPost.fromJson(Map<String, dynamic> m) {
+    final payload = Map<String, dynamic>.from((m['payload'] as Map?) ?? const {});
+    String? str(Object? v) {
+      final s = v?.toString();
+      return (s == null || s.isEmpty) ? null : s;
+    }
+
+    return DiscoveredPost(
+      entityType: m['entity_type'] as String? ?? '',
+      entityId: m['entity_id'] as String? ?? '',
+      authorDid: m['author_did'] as String? ?? '',
+      visibility: m['visibility'] as String?,
+      reputationTier: m['reputation_tier'] as String?,
+      // Top-level board_id/thread_id, falling back to the payload's camelCase.
+      boardId: str(m['board_id']) ?? str(payload['boardId']),
+      threadId: str(m['thread_id']) ?? str(payload['threadId']),
+      payload: payload,
+    );
+  }
 }
 
 /// Result of a unified search.

@@ -6,12 +6,20 @@ import 'package:flutter/material.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/discovery_client.dart';
+import '../services/elix_content_link.dart';
+import '../services/elix_content_router.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import '../widgets/author_label.dart';
 import '../widgets/board_gate_badge.dart';
+import 'posts_view_screen.dart';
 import 'threads_list_screen.dart';
 import 'user_profile_screen.dart';
+
+/// The three Discover categories, each shown as a tab so users / boards / posts
+/// are always cleanly separated (both while browsing and while searching).
+enum _DiscoverTab { people, boards, posts }
 
 /// Network discovery: find people and boards to follow, and explore public
 /// content — the antidote to the local-first "island" problem. People + posts
@@ -40,12 +48,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   List<DiscoveredActor> _suggestions = const [];
   List<DiscoveredPost> _explore = const [];
+  List<BoardSearchResult> _browseBoards = const [];
   SearchResults _results = const SearchResults();
   bool _loadingFeed = true;
   bool _searching = false;
   String _query = '';
   String? _feedError;
   String? _searchError;
+  _DiscoverTab _tab = _DiscoverTab.people;
 
   @override
   void initState() {
@@ -69,10 +79,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       final suggestions = await widget.client
           .suggestFollows(readerDid: widget.localDid, limit: 20);
       final explore = await widget.client.explore(limit: 30);
+      // Empty query => browse popular boards for the 看板 tab.
+      final boards = await widget.client.searchBoards(query: '', limit: 30);
       if (!mounted) return;
       setState(() {
         _suggestions = suggestions;
         _explore = explore;
+        _browseBoards = boards;
         _loadingFeed = false;
       });
     } catch (error) {
@@ -237,18 +250,145 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return AnsibleScreenScaffold(
       title: context.uiCopy(zh: '探索', en: 'DISCOVER'),
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
-      child: ListView(
+      child: Column(
         children: [
           _searchField(context),
-          if (_query.isNotEmpty)
-            ..._searchSections(context)
-          else
-            ..._feedSections(context),
-          const SizedBox(height: 24),
+          _tabBar(context),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 24),
+              children: _tabContent(context),
+            ),
+          ),
         ],
       ),
     );
   }
+
+  Widget _tabBar(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Row(
+        children: [
+          _tabChip(context, _DiscoverTab.people, zh: '使用者', en: 'PEOPLE'),
+          _tabChip(context, _DiscoverTab.boards, zh: '看板', en: 'BOARDS'),
+          _tabChip(context, _DiscoverTab.posts, zh: '貼文', en: 'POSTS'),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabChip(
+    BuildContext context,
+    _DiscoverTab tab, {
+    required String zh,
+    required String en,
+  }) {
+    final active = _tab == tab;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _tab = tab),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? AnsibleDesign.ink : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              context.uiCopy(zh: zh, en: en),
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 11,
+                letterSpacing: 1.2,
+                color: active ? AnsibleDesign.ink : AnsibleDesign.inkFaint,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _tabContent(BuildContext context) {
+    final searching = _query.isNotEmpty;
+    // Loading / error states (shared across tabs).
+    if (searching && _searching) return [_loader()];
+    if (searching && _searchError != null) {
+      return [_errorPane(context, _searchError!, () => _runSearch(_query))];
+    }
+    if (!searching && _loadingFeed) return [_loader()];
+    if (!searching && _feedError != null) {
+      return [_errorPane(context, _feedError!, _loadFeed)];
+    }
+
+    switch (_tab) {
+      case _DiscoverTab.people:
+        final actors = searching ? _results.actors : _suggestions;
+        return actors.isEmpty
+            ? [
+                _empty(
+                  context,
+                  searching
+                      ? context.uiCopy(zh: '找不到使用者', en: 'No people found')
+                      : context.uiCopy(zh: '暫無推薦', en: 'No suggestions yet'),
+                ),
+              ]
+            : [
+                AnsibleRuleGroup(
+                  children: [for (final a in actors) _actorRow(context, a)],
+                ),
+              ];
+      case _DiscoverTab.boards:
+        final boards = searching ? _results.boards : _browseBoards;
+        return boards.isEmpty
+            ? [
+                _empty(
+                  context,
+                  searching
+                      ? context.uiCopy(zh: '找不到看板', en: 'No boards found')
+                      : context.uiCopy(zh: '暫無看板', en: 'No boards yet'),
+                ),
+              ]
+            : [
+                AnsibleRuleGroup(
+                  children: [for (final b in boards) _boardRow(context, b)],
+                ),
+              ];
+      case _DiscoverTab.posts:
+        final posts = searching ? _results.posts : _explore;
+        return posts.isEmpty
+            ? [
+                _empty(
+                  context,
+                  searching
+                      ? context.uiCopy(zh: '找不到貼文', en: 'No posts found')
+                      : context.uiCopy(zh: '暫無內容', en: 'Nothing here yet'),
+                ),
+              ]
+            : [
+                AnsibleRuleGroup(
+                  children: [for (final p in posts) _postRow(context, p)],
+                ),
+              ];
+    }
+  }
+
+  Widget _loader() => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
 
   Widget _searchField(BuildContext context) {
     return Padding(
@@ -289,83 +429,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  List<Widget> _feedSections(BuildContext context) {
-    if (_loadingFeed) {
-      return [
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 40),
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-      ];
-    }
-    if (_feedError != null) {
-      return [_errorPane(context, _feedError!, _loadFeed)];
-    }
-    return [
-      _section(
-        context,
-        context.uiCopy(zh: '推薦追蹤', en: 'WHO TO FOLLOW'),
-        _suggestions.isEmpty
-            ? [_empty(context, context.uiCopy(zh: '暫無推薦', en: 'No suggestions yet'))]
-            : [for (final a in _suggestions) _actorRow(context, a)],
-      ),
-      _section(
-        context,
-        context.uiCopy(zh: '探索', en: 'EXPLORE'),
-        _explore.isEmpty
-            ? [_empty(context, context.uiCopy(zh: '暫無內容', en: 'Nothing here yet'))]
-            : [for (final p in _explore) _postRow(context, p)],
-      ),
-    ];
-  }
-
-  List<Widget> _searchSections(BuildContext context) {
-    if (_searching) {
-      return [
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 40),
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-      ];
-    }
-    if (_searchError != null) {
-      return [_errorPane(context, _searchError!, () => _runSearch(_query))];
-    }
-    return [
-      _section(
-        context,
-        context.uiCopy(zh: '使用者', en: 'PEOPLE'),
-        _results.actors.isEmpty
-            ? [_empty(context, context.uiCopy(zh: '找不到使用者', en: 'No people found'))]
-            : [for (final a in _results.actors) _actorRow(context, a)],
-      ),
-      _section(
-        context,
-        context.uiCopy(zh: '看板', en: 'BOARDS'),
-        _results.boards.isEmpty
-            ? [_empty(context, context.uiCopy(zh: '找不到看板', en: 'No boards found'))]
-            : [for (final b in _results.boards) _boardRow(context, b)],
-      ),
-      _section(
-        context,
-        context.uiCopy(zh: '貼文', en: 'POSTS'),
-        _results.posts.isEmpty
-            ? [_empty(context, context.uiCopy(zh: '找不到貼文', en: 'No posts found'))]
-            : [for (final p in _results.posts) _postRow(context, p)],
-      ),
-    ];
-  }
-
-  Widget _section(BuildContext context, String label, List<Widget> rows) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnsibleMonoLabel(label, padding: const EdgeInsets.fromLTRB(22, 20, 22, 8)),
-        AnsibleRuleGroup(children: rows),
-      ],
     );
   }
 
@@ -540,8 +603,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _postRow(BuildContext context, DiscoveredPost post) {
+    // Thread posts open the thread; personal note/murmur have no thread, so a
+    // tap falls back to the author's profile.
     return InkWell(
-      onTap: () => _openActor(post.authorDid),
+      onTap: () => _openPost(post),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
         decoration: const BoxDecoration(
@@ -552,14 +617,29 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              post.entityType.toUpperCase(),
-              style: const TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 8.5,
-                letterSpacing: 1.4,
-                color: AnsibleDesign.inkFaint,
-              ),
+            Row(
+              children: [
+                Text(
+                  post.entityType.toUpperCase(),
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 8.5,
+                    letterSpacing: 1.4,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: AuthorLabel(
+                    did: post.authorDid,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AnsibleDesign.inkMuted,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
@@ -573,6 +653,44 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Opens a discovered post. Forum posts route to their thread when it's
+  /// available locally; otherwise (or for note/murmur with no thread) falls
+  /// back to the author's profile so the tap is never a dead end.
+  Future<void> _openPost(DiscoveredPost post) async {
+    if (!post.isThreadPost) {
+      _openActor(post.authorDid);
+      return;
+    }
+    final resolution = await ElixContentRouter(widget.db).resolve(
+      ElixContentRef.thread(boardId: post.boardId!, thread: post.threadId!),
+    );
+    if (!mounted) return;
+    if (resolution is ResolvedThread) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PostsViewScreen(
+            db: widget.db,
+            thread: resolution.thread,
+            authorDid: widget.localDid,
+          ),
+        ),
+      );
+      return;
+    }
+    // Thread not synced locally yet — guide the user to the board.
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.uiCopy(
+            zh: '請先在「看板」分頁訂閱該看板才能閱讀這篇貼文',
+            en: 'Follow this board (Boards tab) to read this post',
+          ),
         ),
       ),
     );
