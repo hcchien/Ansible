@@ -335,7 +335,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
     switch (_tab) {
       case _DiscoverTab.people:
-        final actors = searching ? _results.actors : _suggestions;
+        // Never surface yourself (or an unopenable empty DID) in a
+        // who-to-follow list — tapping those was a silent no-op.
+        final actors = (searching ? _results.actors : _suggestions)
+            .where((a) => a.did.isNotEmpty && a.did != widget.localDid)
+            .toList();
         return actors.isEmpty
             ? [
                 _empty(
