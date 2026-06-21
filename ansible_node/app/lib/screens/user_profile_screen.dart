@@ -2,12 +2,20 @@ import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
+import '../services/handle_resolver.dart';
+import '../theme/ansible_design.dart';
+import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/follow_button.dart';
 
-/// Minimal profile surface for *another* user, with a working follow/unfollow
-/// control wired to [FollowService]. Following a user makes their public posts
-/// and murmur/note appear in the local Following feed; unfollowing purges that
+/// Profile surface for *another* user, with a working follow/unfollow control
+/// wired to [FollowService]. Following a user makes their public posts and
+/// murmur/note appear in the local Following feed; unfollowing purges that
 /// author's follow-only synced content.
+///
+/// Styled after Threads/IG: avatar + display name + @handle, so a viewer can
+/// tell who this is before following. The handle is resolved from the DID via
+/// [HandleResolver]; the raw DID is kept as a small, copyable secondary line.
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({
     super.key,
@@ -15,12 +23,16 @@ class UserProfileScreen extends StatefulWidget {
     required this.followerDid,
     required this.did,
     this.displayName,
+    this.resolver,
   });
 
   final AppDatabase db;
   final String followerDid;
   final String did;
   final String? displayName;
+
+  /// Overridable for tests; defaults to the shared process-wide resolver.
+  final HandleResolver? resolver;
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -30,9 +42,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   late final FollowRepository _followRepo;
   late final DidReputationRepository _reputationRepo;
   late final FollowService _followService;
+  late final HandleResolver _resolver;
   FollowButtonStatus _status = FollowButtonStatus.notFollowing;
   String? _targetId;
   String _tier = 'basic';
+  String? _handle;
   bool _busy = false;
 
   @override
@@ -40,6 +54,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.initState();
     _followRepo = DriftFollowRepository(widget.db);
     _reputationRepo = DriftDidReputationRepository(widget.db);
+    _resolver = widget.resolver ?? HandleResolver.shared;
+    _handle = _resolver.cached(widget.did);
     _followService = FollowService(
       followRepository: _followRepo,
       outboxRepository: DriftFollowActivityOutboxRepository(widget.db),
@@ -48,6 +64,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       contentItemRepository: DriftContentItemRepository(widget.db),
     );
     _loadStatus();
+    _loadHandle();
+  }
+
+  Future<void> _loadHandle() async {
+    final handle = await _resolver.handleFor(widget.did);
+    if (!mounted || handle == null || handle.isEmpty) return;
+    setState(() => _handle = handle);
   }
 
   Future<void> _loadStatus() async {
@@ -115,43 +138,153 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final name = (widget.displayName != null &&
-            widget.displayName!.trim().isNotEmpty)
-        ? widget.displayName!
-        : widget.did;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(name, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 6),
-            SelectableText(
-              widget.did,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            if (_tier == 'verified_human') ...[
-              const SizedBox(height: 10),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.verified, size: 16, color: Colors.blue),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Verified Human',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ],
+    final passedName = widget.displayName?.trim();
+    final hasHandle = _handle != null && _handle!.isNotEmpty;
+    // Prefer an explicit display name, else the resolved handle, else a short
+    // DID — never show the bare DID as the primary identity.
+    final displayName = (passedName != null && passedName.isNotEmpty)
+        ? passedName
+        : (hasHandle ? _handle! : shortenDid(widget.did));
+    final handleLine = hasHandle ? '@${_handle!}' : null;
+    final verified = _tier == 'verified_human';
+
+    return AnsibleScreenScaffold(
+      title: context.uiCopy(zh: '個人檔案', en: 'PROFILE'),
+      leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            displayName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AnsibleDesign.ink,
+                            ),
+                          ),
+                        ),
+                        if (verified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified,
+                            size: 18,
+                            color: AnsibleDesign.accent,
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (handleLine != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        handleLine,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AnsibleDesign.inkMuted,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 14),
+              _Avatar(seed: displayName),
             ],
-            const SizedBox(height: 20),
-            FollowButton(
+          ),
+          if (verified) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.verified,
+                  size: 15,
+                  color: AnsibleDesign.accent,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  context.uiCopy(zh: '已驗證真人', en: 'Verified Human'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AnsibleDesign.inkMuted,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FollowButton(
               status: _status,
               onPressed: _busy ? null : _onPressed,
             ),
-          ],
+          ),
+          const SizedBox(height: 24),
+          // Raw DID kept as a small, copyable secondary identifier.
+          Text(
+            'DID',
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9,
+              letterSpacing: 1.4,
+              color: AnsibleDesign.inkFaint,
+            ),
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            widget.did,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 12,
+              color: AnsibleDesign.inkFaint,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Circular avatar placeholder showing the first character of the display
+/// identity (handle/name). Mirrors the listing/feed avatar treatment.
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.seed});
+
+  final String seed;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = seed.replaceFirst('@', '').trim();
+    final initial =
+        trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
+    return Container(
+      width: 64,
+      height: 64,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: AnsibleDesign.paperDeep,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          color: AnsibleDesign.inkMuted,
         ),
       ),
     );
