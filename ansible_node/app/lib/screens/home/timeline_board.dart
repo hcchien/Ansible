@@ -5,7 +5,7 @@ import '../../config/app_environment.dart';
 import '../../l10n/app_l10n.dart';
 import '../../services/discovery_client.dart';
 import '../../services/ops_dispatch_service.dart';
-import '../../theme/ansible_design.dart';
+import '../../theme/elix_screen_style.dart';
 import '../discover_screen.dart';
 import '../user_profile_screen.dart';
 import 'post_card.dart';
@@ -68,6 +68,7 @@ class TimelineBoardView extends StatelessWidget {
   }
 
   Widget _timelineEmptyState(BuildContext context) {
+    final style = ElixScreenStyleScope.dataOf(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -80,10 +81,10 @@ class TimelineBoardView extends StatelessWidget {
                 en: 'You are not following anyone yet',
               ),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AnsibleDesign.ink,
+                color: style.foreground,
               ),
             ),
             const SizedBox(height: 8),
@@ -93,10 +94,10 @@ class TimelineBoardView extends StatelessWidget {
                 en: 'Find people in Discover — their posts will appear here.',
               ),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 height: 1.6,
-                color: AnsibleDesign.inkMuted,
+                color: style.muted,
               ),
             ),
             const SizedBox(height: 16),

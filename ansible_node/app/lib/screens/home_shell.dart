@@ -909,6 +909,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       reactions: const {'👍': 0},
       comments: 0,
       reacted: false,
+      // Murmur/note have no thread — tapping must not open an empty thread view.
+      openableThread: false,
     );
   }
 

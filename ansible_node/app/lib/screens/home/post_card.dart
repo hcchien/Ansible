@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../l10n/app_l10n.dart';
 import '../../services/ops_dispatch_service.dart';
 import '../../theme/ansible_design.dart';
+import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
 import '../posts_view_screen.dart';
 
@@ -25,6 +26,7 @@ class PostCardData {
     required this.reacted,
     this.authorTier = 'basic',
     this.signatureVerified = false,
+    this.openableThread = true,
   });
 
   final Thread thread;
@@ -43,6 +45,12 @@ class PostCardData {
   /// "signed" badge.
   final bool signatureVerified;
 
+  /// Whether this card backs a real thread that can be opened. Forum posts set
+  /// this true; standalone murmur/note feed items have only a synthetic thread,
+  /// so tapping must NOT push an (empty) thread view — it falls back to the
+  /// author. Also hides the per-thread comment chip.
+  final bool openableThread;
+
   PostCardData copyWith({String? authorTier}) => PostCardData(
     thread: thread,
     category: category,
@@ -56,6 +64,7 @@ class PostCardData {
     reacted: reacted,
     authorTier: authorTier ?? this.authorTier,
     signatureVerified: signatureVerified,
+    openableThread: openableThread,
   );
 }
 
@@ -83,7 +92,6 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> {
   bool _hover = false;
-  static const _accent = AnsibleDesign.accent;
   late final store.DriftReactionRepository _reactionRepo;
   bool _isReacting = false;
   bool _reacted = false;
@@ -148,31 +156,40 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
+  void _openThread(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PostsViewScreen(
+          db: widget.db,
+          thread: widget.data.thread,
+          authorDid: widget.authorDid,
+          opsDispatchService: widget.opsDispatchService,
+          onFlushPendingOps: widget.onFlushPendingOps,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
     final thread = data.thread;
+    // Theme-aware: the timeline/personal boards render on a dark screen style,
+    // so colours must come from the active screen style, not hardcoded ink.
+    final style = ElixScreenStyleScope.dataOf(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => PostsViewScreen(
-                db: widget.db,
-                thread: thread,
-                authorDid: widget.authorDid,
-                opsDispatchService: widget.opsDispatchService,
-                onFlushPendingOps: widget.onFlushPendingOps,
-              ),
-            ),
-          );
-        },
+        // Murmur/note items have only a synthetic thread — open the author
+        // instead of an empty thread view.
+        onTap: () => data.openableThread
+            ? _openThread(context)
+            : widget.onOpenAuthor?.call(data.author),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+              bottom: BorderSide(color: style.rule, width: 0.5),
             ),
           ),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -183,14 +200,14 @@ class _PostCardState extends State<PostCard> {
                 width: 38,
                 height: 38,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: AnsibleDesign.paperDeep,
+                decoration: BoxDecoration(
+                  color: style.surface,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_outline,
                   size: 20,
-                  color: AnsibleDesign.inkMuted,
+                  color: style.muted,
                 ),
               ),
               const SizedBox(width: 12),
@@ -207,10 +224,10 @@ class _PostCardState extends State<PostCard> {
                                 : () => widget.onOpenAuthor!(data.author),
                             child: AuthorLabel(
                               did: data.author,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: AnsibleDesign.ink,
+                                color: style.foreground,
                               ),
                             ),
                           ),
@@ -231,7 +248,7 @@ class _PostCardState extends State<PostCard> {
                         ],
                         if (data.authorTier == 'verified_human') ...[
                           const SizedBox(width: 4),
-                          const Icon(Icons.verified, size: 13, color: _accent),
+                          Icon(Icons.verified, size: 13, color: style.accent),
                         ],
                         const SizedBox(width: 6),
                         Flexible(
@@ -239,9 +256,9 @@ class _PostCardState extends State<PostCard> {
                             '· ${data.board} · ${data.timeAgo}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AnsibleDesign.inkFaint,
+                              color: style.faint,
                             ),
                           ),
                         ),
@@ -257,7 +274,7 @@ class _PostCardState extends State<PostCard> {
                           fontSize: 15,
                           height: 1.3,
                           fontWeight: FontWeight.w700,
-                          color: _hover ? _accent : AnsibleDesign.ink,
+                          color: _hover ? style.accent : style.foreground,
                         ),
                       ),
                     ],
@@ -268,8 +285,8 @@ class _PostCardState extends State<PostCard> {
                           : data.content,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AnsibleDesign.inkMuted,
+                      style: TextStyle(
+                        color: style.muted,
                         height: 1.4,
                         fontSize: 14,
                       ),
@@ -281,6 +298,7 @@ class _PostCardState extends State<PostCard> {
                           label: '👍',
                           count: _likeCount,
                           active: _reacted,
+                          mutedColor: style.muted,
                           onTap: _isReacting
                               ? null
                               : () async {
@@ -292,20 +310,15 @@ class _PostCardState extends State<PostCard> {
                                   }
                                 },
                         ),
-                        const SizedBox(width: 8),
-                        _CommentChip(
-                          count: data.comments,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => PostsViewScreen(
-                                  db: widget.db,
-                                  thread: thread,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                        // Comments belong to threads only — hide on murmur/note.
+                        if (data.openableThread) ...[
+                          const SizedBox(width: 8),
+                          _CommentChip(
+                            count: data.comments,
+                            mutedColor: style.muted,
+                            onTap: () => _openThread(context),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -323,12 +336,14 @@ class _ReactionChip extends StatelessWidget {
   const _ReactionChip({
     required this.label,
     required this.count,
+    required this.mutedColor,
     this.active = false,
     this.onTap,
   });
 
   final String label;
   final int count;
+  final Color mutedColor;
   final bool active;
   final VoidCallback? onTap;
 
@@ -337,7 +352,7 @@ class _ReactionChip extends StatelessWidget {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(
-        foregroundColor: active ? AnsibleDesign.spore : AnsibleDesign.inkMuted,
+        foregroundColor: active ? AnsibleDesign.spore : mutedColor,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         minimumSize: const Size(0, 30),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -351,9 +366,14 @@ class _ReactionChip extends StatelessWidget {
 }
 
 class _CommentChip extends StatelessWidget {
-  const _CommentChip({required this.count, this.onTap});
+  const _CommentChip({
+    required this.count,
+    required this.mutedColor,
+    this.onTap,
+  });
 
   final int count;
+  final Color mutedColor;
   final VoidCallback? onTap;
 
   @override
@@ -363,7 +383,7 @@ class _CommentChip extends StatelessWidget {
       icon: const Icon(Icons.chat_bubble_outline, size: 16),
       label: Text(context.l10n.commentsCount(count)),
       style: TextButton.styleFrom(
-        foregroundColor: AnsibleDesign.inkMuted,
+        foregroundColor: mutedColor,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         minimumSize: const Size(0, 30),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
