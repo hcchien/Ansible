@@ -77,6 +77,7 @@ class PostCard extends StatefulWidget {
     required this.opsDispatchService,
     required this.onFlushPendingOps,
     this.onOpenAuthor,
+    this.onOpenContent,
   });
 
   final AppDatabase db;
@@ -85,6 +86,11 @@ class PostCard extends StatefulWidget {
   final OpsDispatchService opsDispatchService;
   final Future<void> Function() onFlushPendingOps;
   final void Function(String authorDid)? onOpenAuthor;
+
+  /// Opens the content-detail/comments view for a standalone murmur/note
+  /// (an item with [PostCardData.openableThread] == false). When null, such a
+  /// tap falls back to the author profile.
+  final void Function(PostCardData data)? onOpenContent;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -181,11 +187,17 @@ class _PostCardState extends State<PostCard> {
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
-        // Murmur/note items have only a synthetic thread — open the author
-        // instead of an empty thread view.
-        onTap: () => data.openableThread
-            ? _openThread(context)
-            : widget.onOpenAuthor?.call(data.author),
+        // Murmur/note items have only a synthetic thread — open their
+        // content-detail/comments view (or fall back to the author).
+        onTap: () {
+          if (data.openableThread) {
+            _openThread(context);
+          } else if (widget.onOpenContent != null) {
+            widget.onOpenContent!(data);
+          } else {
+            widget.onOpenAuthor?.call(data.author);
+          }
+        },
         child: Container(
           decoration: BoxDecoration(
             border: Border(

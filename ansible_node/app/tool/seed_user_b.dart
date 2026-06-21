@@ -60,11 +60,17 @@ Future<void> main(List<String> args) async {
   final positional = <String>[];
   String? seedHex;
   String? murmurText;
+  String? commentText;
+  String? commentOn;
   for (final a in args) {
     if (a.startsWith('--seed=')) {
       seedHex = a.substring('--seed='.length).trim();
     } else if (a.startsWith('--murmur=')) {
       murmurText = a.substring('--murmur='.length);
+    } else if (a.startsWith('--comment=')) {
+      commentText = a.substring('--comment='.length);
+    } else if (a.startsWith('--on=')) {
+      commentOn = a.substring('--on='.length).trim();
     } else {
       positional.add(a);
     }
@@ -172,11 +178,12 @@ Future<void> main(List<String> args) async {
     stdout.writeln('  $label published: ${ops.body}');
   }
 
-  if (boardId == null && murmurText == null) {
+  if (boardId == null && murmurText == null && commentText == null) {
     stdout.writeln(
       '\n✓ B registered. Add content, e.g.:'
       '\n  dart run tool/seed_user_b.dart $suffix <boardId> "$title" --seed=${_hex(seed)}'
-      '\n  dart run tool/seed_user_b.dart $suffix --murmur="hello" --seed=${_hex(seed)}',
+      '\n  dart run tool/seed_user_b.dart $suffix --murmur="hello" --seed=${_hex(seed)}'
+      '\n  dart run tool/seed_user_b.dart $suffix --comment="nice!" --on=<contentId> --seed=${_hex(seed)}',
     );
     client.close();
     return;
@@ -203,6 +210,25 @@ Future<void> main(List<String> args) async {
         text: murmurText,
       ),
       'murmur',
+    );
+  }
+  if (commentText != null) {
+    if (commentOn == null || commentOn.isEmpty) {
+      stderr.writeln('--comment requires --on=<contentId>');
+      exit(64);
+    }
+    stdout.writeln('→ publish comment on $commentOn …');
+    // A comment is a post op whose threadId is the target content's entity id
+    // and whose board is empty (board-less content discussion).
+    await publishOp(
+      CrdtOpBuilder.createPost(
+        authorDid: did,
+        entityId: const Uuid().v4(),
+        boardId: '',
+        threadId: commentOn,
+        content: commentText,
+      ),
+      'comment',
     );
   }
   stdout.writeln('\n✓ Done. B=$did');

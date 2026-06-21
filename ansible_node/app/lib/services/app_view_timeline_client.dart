@@ -122,6 +122,27 @@ class AppViewTimelineClient {
     return _parse('home', response);
   }
 
+  /// Fetches comments threaded under [threadId] (a content/thread entity id) via
+  /// `GET /api/v1/thread/:thread_id`. Used by the content-detail screen to show
+  /// replies on a standalone murmur/note.
+  Future<AppViewTimelinePage> fetchThread({
+    required String threadId,
+    int? cursor,
+    int limit = 100,
+  }) async {
+    final base = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse(
+      '$base/api/v1/thread/${Uri.encodeComponent(threadId)}',
+    ).replace(
+      queryParameters: {
+        if (cursor != null) 'cursor': '$cursor',
+        'limit': '$limit',
+      },
+    );
+    final response = await _client.get(uri, headers: AnsibleProtocol.headers);
+    return _parse('thread', response);
+  }
+
   AppViewTimelinePage _parse(String label, http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('AppView $label failed: ${response.statusCode}');

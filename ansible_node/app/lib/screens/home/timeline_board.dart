@@ -6,6 +6,7 @@ import '../../l10n/app_l10n.dart';
 import '../../services/discovery_client.dart';
 import '../../services/ops_dispatch_service.dart';
 import '../../theme/elix_screen_style.dart';
+import '../content_detail_screen.dart';
 import '../discover_screen.dart';
 import '../user_profile_screen.dart';
 import 'post_card.dart';
@@ -56,6 +57,23 @@ class TimelineBoardView extends StatelessWidget {
                             db: db,
                             followerDid: did,
                             did: authorDid,
+                          ),
+                        ),
+                      );
+                    },
+                    onOpenContent: (data) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ContentDetailScreen(
+                            db: db,
+                            localDid: did,
+                            contentId: data.thread.id,
+                            authorDid: data.author,
+                            body: data.content,
+                            title: data.title,
+                            timeAgo: data.timeAgo,
+                            opsDispatchService: opsDispatchService,
+                            onFlushPendingOps: onFlushPendingOps,
                           ),
                         ),
                       );
