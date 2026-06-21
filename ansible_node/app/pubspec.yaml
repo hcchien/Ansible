@@ -67,6 +67,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Standard Ed25519 for tool/seed_user_b.dart (dev/test seeding only).
+  cryptography: ^2.9.0
+
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
