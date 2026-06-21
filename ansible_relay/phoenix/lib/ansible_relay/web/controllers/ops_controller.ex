@@ -6,7 +6,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   alias AnsibleRelay.ForumHost.{Moderation, PostingGate}
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
-  @valid_entity_types ~w(board thread post reaction murmur note follow profile)
+  @valid_entity_types ~w(board thread post reaction murmur note follow profile comment)
   @valid_op_types ~w(insert update delete crdt_merge)
   # Entity kinds whose creation is gated by a hosted board's
   # posting_policy["min_post_tier"] (threads and replies alike).
