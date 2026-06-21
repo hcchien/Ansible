@@ -39,6 +39,54 @@ void main() {
       );
     }
 
+    // Native Elix follows (no ActivityPub inbox) are localOnly. They must still
+    // be queried against the AppView — regression guard for the empty-timeline
+    // bug where only federated follows were sent.
+    Future<void> followLocalOnly(String did) async {
+      await followRepo.upsertTarget(
+        FollowTarget(
+          targetId: 'target-$did',
+          targetType: FollowTargetType.user,
+          canonicalUri: did,
+          displayName: did,
+          did: did,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await followRepo.upsertEdge(
+        FollowEdge(
+          followId: 'follow-$did',
+          followerDid: 'did:key:local',
+          targetId: 'target-$did',
+          targetType: FollowTargetType.user,
+          direction: FollowDirection.outbound,
+          status: FollowStatus.accepted,
+          visibility: FollowVisibility.localOnly,
+          createdAt: now,
+          updatedAt: now,
+          acceptedAt: now,
+        ),
+      );
+    }
+
+    test('queries native localOnly follow DIDs too', () async {
+      await followLocalOnly('did:elix:bob');
+
+      List<String>? requestedDids;
+      final source = AppViewTimelineSource(
+        followRepository: followRepo,
+        fetcher: ({required dids, cursor, limit = 50}) async {
+          requestedDids = dids;
+          return const AppViewTimelinePage(items: []);
+        },
+      );
+
+      await source.fetch(followerDid: 'did:key:local');
+
+      expect(requestedDids, ['did:elix:bob']);
+    });
+
     test('queries federated follow DIDs and maps items', () async {
       await followFederated('did:key:alice');
 

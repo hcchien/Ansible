@@ -61,9 +61,9 @@ typedef AppViewHomeFetcher =
     });
 
 /// [FollowFeedSource] backed by the AppView timeline API (the scalable read
-/// path). Queries only **federated** user-follow DIDs; `localOnly` follows are
-/// resolved separately by [LocalDeltaFilterSource]. Drop-in replacement for the
-/// local source behind the same interface.
+/// path). Queries all accepted user-follow DIDs (federated + native localOnly) —
+/// the AppView serves content by DID regardless of how the follow federates.
+/// Drop-in replacement for the local source behind the same interface.
 class AppViewTimelineSource implements FollowFeedSource {
   final FollowRepository followRepository;
   final AppViewTimelineFetcher fetcher;
@@ -94,7 +94,7 @@ class AppViewTimelineSource implements FollowFeedSource {
         limit: limit,
       );
     } else {
-      final dids = await _federatedFollowDids(followerDid);
+      final dids = await _followDids(followerDid);
       if (dids.isEmpty) {
         return const FollowFeedPage(items: [], hasMore: false);
       }
@@ -113,16 +113,19 @@ class AppViewTimelineSource implements FollowFeedSource {
     );
   }
 
-  Future<List<String>> _federatedFollowDids(String followerDid) async {
+  Future<List<String>> _followDids(String followerDid) async {
     final edges = await followRepository.listFollowing(
       followerDid,
       targetType: FollowTargetType.user,
     );
     final dids = <String>[];
+    // Every accepted user follow, regardless of visibility. Native Elix follows
+    // are localOnly (the target has no ActivityPub inbox), but the AppView still
+    // serves their content by DID — restricting to `federated` here dropped them
+    // entirely (there is no separate local source in AppView mode), so a freshly
+    // followed native user produced an empty timeline.
     for (final edge in edges.where(
-      (edge) =>
-          edge.status == FollowStatus.accepted &&
-          edge.visibility == FollowVisibility.federated,
+      (edge) => edge.status == FollowStatus.accepted,
     )) {
       final target = await followRepository.getTarget(edge.targetId);
       final did = target?.did ?? target?.canonicalUri;
