@@ -176,6 +176,93 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     }
   }
 
+  Future<void> _editComment(_Comment c) async {
+    final controller = TextEditingController(text: c.body);
+    final newText = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.uiCopy(zh: '編輯留言', en: 'Edit comment')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 5,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: Text(context.uiCopy(zh: '儲存', en: 'Save')),
+          ),
+        ],
+      ),
+    );
+    if (newText == null || newText.isEmpty || newText == c.body) return;
+    final existing = await _postRepo.getById(c.id);
+    if (existing != null) {
+      final now = DateTime.now();
+      await _postRepo.update(
+        Post(
+          id: existing.id,
+          threadId: existing.threadId,
+          boardId: existing.boardId,
+          authorId: existing.authorId,
+          content: newText,
+          createdAt: existing.createdAt,
+          updatedAt: now,
+          lastEditAt: now,
+          signatureVerified: true,
+        ),
+      );
+    }
+    await widget.opsDispatchService.signAndEnqueue(
+      CrdtOpBuilder.updateComment(
+        authorDid: widget.localDid,
+        entityId: c.id,
+        newContent: newText,
+      ),
+    );
+    unawaited(widget.onFlushPendingOps());
+    await _load();
+  }
+
+  Future<void> _deleteComment(_Comment c) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.uiCopy(zh: '刪除留言', en: 'Delete comment')),
+        content: Text(
+          context.uiCopy(zh: '確定要刪除這則留言嗎？', en: 'Delete this comment?'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              context.uiCopy(zh: '刪除', en: 'Delete'),
+              style: const TextStyle(color: AnsibleDesign.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _postRepo.delete(c.id);
+    await widget.opsDispatchService.signAndEnqueue(
+      CrdtOpBuilder.deleteComment(authorDid: widget.localDid, entityId: c.id),
+    );
+    unawaited(widget.onFlushPendingOps());
+    if (mounted) {
+      setState(() => _comments = _comments.where((x) => x.id != c.id).toList());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnsibleScreenScaffold(
@@ -295,13 +382,49 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AuthorLabel(
-            did: c.authorDid,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AnsibleDesign.inkMuted,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: AuthorLabel(
+                  did: c.authorDid,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AnsibleDesign.inkMuted,
+                  ),
+                ),
+              ),
+              // Author can edit/delete their own comment.
+              if (c.authorDid == widget.localDid)
+                SizedBox(
+                  height: 22,
+                  child: PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(
+                      Icons.more_horiz,
+                      size: 18,
+                      color: AnsibleDesign.inkFaint,
+                    ),
+                    onSelected: (v) {
+                      if (v == 'edit') _editComment(c);
+                      if (v == 'delete') _deleteComment(c);
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Text(context.uiCopy(zh: '編輯', en: 'Edit')),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          context.uiCopy(zh: '刪除', en: 'Delete'),
+                          style: const TextStyle(color: AnsibleDesign.danger),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 3),
           Text(

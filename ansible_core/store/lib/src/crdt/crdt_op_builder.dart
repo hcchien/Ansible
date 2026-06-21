@@ -109,6 +109,49 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Build an Op for editing a comment (CRDT content delta on a `comment`).
+  static OpsQueueEntry updateComment({
+    required String authorDid,
+    required String entityId,
+    required String newContent,
+  }) {
+    final opId = _uuid.v4();
+    final payload = _encodeYrsDelta(entityId, 'content', newContent);
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'comment',
+      entityId: entityId,
+      opType: 'update',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  /// Build an Op for deleting a comment.
+  static OpsQueueEntry deleteComment({
+    required String authorDid,
+    required String entityId,
+  }) {
+    final opId = _uuid.v4();
+    final payload = _encodeJsonPayload({
+      'deletedAt': DateTime.now().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'comment',
+      entityId: entityId,
+      opType: 'delete',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: DateTime.now(),
+    );
+  }
+
   /// Build an Op for creating a new thread.
   static OpsQueueEntry createThread({
     required String authorDid,
