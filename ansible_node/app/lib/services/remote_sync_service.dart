@@ -690,7 +690,12 @@ class RemoteSyncService {
     if (type != 'post' && type != 'thread') return;
 
     final boardId = activity.boardId;
-    if (boardId != null && await _boardRepo.getById(boardId) == null) {
+    // Board-less posts are comments on standalone content (legacy comment ops
+    // before the dedicated `comment` entity type). Never materialize a phantom
+    // "Followed" board / "Untitled" thread for them — that leaked content
+    // comments into 討論區 as fake forum threads.
+    if (boardId == null || boardId.isEmpty) return;
+    if (await _boardRepo.getById(boardId) == null) {
       await _boardRepo.create(
         Board(
           id: boardId,
@@ -708,7 +713,7 @@ class RemoteSyncService {
         await _threadRepo.create(
           Thread(
             id: threadId,
-            boardId: boardId ?? threadId,
+            boardId: boardId,
             title: 'Untitled',
             authorId: activity.authorId,
             createdAt: activity.createdAt,

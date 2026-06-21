@@ -78,12 +78,21 @@ defmodule AnsibleAppview.IngestTimelineTest do
         pub: pub,
         priv: priv,
         payload: %{"boardId" => "board-1", "threadId" => "t-1", "content" => "hi"}
+      ),
+      # a comment on content -> indexed, but kept OUT of top-level feeds
+      signed_op(
+        log_id: 5,
+        author_did: "did:key:bob",
+        entity_type: "comment",
+        pub: pub,
+        priv: priv,
+        payload: %{"targetId" => "t-1", "threadId" => "t-1", "content" => "a comment"}
       )
     ]
 
     {indexed, max_log} = Folder.apply_ops(ops)
-    assert indexed == 2
-    assert max_log == 4
+    assert indexed == 3
+    assert max_log == 5
 
     # Timeline for alice returns only her public murmur.
     alice = Timeline.for_authors(["did:key:alice"], nil, 50)
@@ -92,20 +101,24 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert hd(alice.items).public_key_hex == pub
     assert hd(alice.items).reputation_tier == "verified_human"
 
-    # Board feed returns bob's post.
+    # Board feed returns bob's post — the comment is NOT a top-level feed item.
     board = Timeline.for_board("board-1", nil, 50)
     assert Enum.map(board.items, & &1.entity_id) == ["e-4"]
 
-    # Thread feed returns the post threaded under t-1 (the comments-by-content-id
-    # read path for murmur/note discussions).
+    # The comment never leaks into a followed user's timeline either.
+    bob = Timeline.for_authors(["did:key:bob"], nil, 50)
+    assert Enum.map(bob.items, & &1.entity_id) == ["e-4"]
+
+    # Thread feed DOES include the comment (it is the comments read path), plus
+    # any forum post sharing the thread id.
     thread = Timeline.for_thread("t-1", nil, 50)
-    assert Enum.map(thread.items, & &1.entity_id) == ["e-4"]
+    assert Enum.sort(Enum.map(thread.items, & &1.entity_id)) == ["e-4", "e-5"]
 
     # (follow-graph folding is covered by the dedicated test below)
 
     # Re-folding the same ops is idempotent.
     {reindexed, _} = Folder.apply_ops(ops)
-    assert reindexed == 2
+    assert reindexed == 3
     again = Timeline.for_authors(["did:key:alice"], nil, 50)
     assert length(again.items) == 1
   end

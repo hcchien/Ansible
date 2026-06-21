@@ -218,14 +218,13 @@ Future<void> main(List<String> args) async {
       exit(64);
     }
     stdout.writeln('→ publish comment on $commentOn …');
-    // A comment is a post op whose threadId is the target content's entity id
-    // and whose board is empty (board-less content discussion).
+    // A comment is a distinct `comment` op targeting the content's entity id —
+    // never a forum post, so it can't masquerade as a forum thread.
     await publishOp(
-      CrdtOpBuilder.createPost(
+      CrdtOpBuilder.createComment(
         authorDid: did,
         entityId: const Uuid().v4(),
-        boardId: '',
-        threadId: commentOn,
+        targetId: commentOn,
         content: commentText,
       ),
       'comment',

@@ -93,7 +93,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   List<_Comment> _toComments(List<AppViewTimelineItem> items) {
     final comments = items
-        .where((i) => i.entityType == 'post' && i.entityId != widget.contentId)
+        .where((i) => i.entityType == 'comment')
         .map(
           (i) => _Comment(
             authorDid: i.authorDid,
@@ -116,11 +116,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     if (text.isEmpty || _posting) return;
     setState(() => _posting = true);
     try {
-      final entry = CrdtOpBuilder.createPost(
+      final entry = CrdtOpBuilder.createComment(
         authorDid: widget.localDid,
         entityId: const Uuid().v4(),
-        boardId: '',
-        threadId: widget.contentId,
+        targetId: widget.contentId,
         content: text,
       );
       await widget.opsDispatchService.signAndEnqueue(entry);

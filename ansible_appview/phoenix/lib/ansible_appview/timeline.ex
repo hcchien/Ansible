@@ -149,6 +149,7 @@ defmodule AnsibleAppview.Timeline do
             from(f in FeedItem,
               where:
                 f.author_did == ^did and f.deleted == false and f.sig_verified == true and
+                  f.entity_type != "comment" and
                   (is_nil(f.visibility) or f.visibility in ^@relayable),
               order_by: [desc: f.log_id],
               limit: ^cap
@@ -174,7 +175,37 @@ defmodule AnsibleAppview.Timeline do
   """
   @spec for_thread(String.t(), integer() | nil, pos_integer()) :: map()
   def for_thread(thread_id, cursor, limit) do
-    page(from(f in FeedItem, where: f.thread_id == ^thread_id), cursor, limit)
+    # Own query (not `page`): `page` excludes entity_type "comment" from the
+    # top-level feeds, but a thread/content view is exactly where comments belong.
+    limit = limit |> min(200) |> max(1)
+
+    base =
+      from(f in FeedItem,
+        where:
+          f.thread_id == ^thread_id and f.deleted == false and
+            f.sig_verified == true and
+            (is_nil(f.visibility) or f.visibility in ^@relayable),
+        order_by: [asc: f.log_id],
+        limit: ^(limit + 1)
+      )
+
+    scoped =
+      if is_integer(cursor) and cursor > 0 do
+        from(f in base, where: f.log_id > ^cursor)
+      else
+        base
+      end
+
+    rows = read_repo().all(scoped)
+    has_more = length(rows) > limit
+    visible = Enum.take(rows, limit)
+    next_cursor =
+      case visible do
+        [] -> nil
+        list -> List.last(list).log_id
+      end
+
+    %{items: Enum.map(visible, &to_map/1), next_cursor: next_cursor, has_more: has_more}
   end
 
   defp page(query, cursor, limit) do
@@ -184,6 +215,7 @@ defmodule AnsibleAppview.Timeline do
       from(f in query,
         where:
           f.deleted == false and f.sig_verified == true and
+            f.entity_type != "comment" and
             (is_nil(f.visibility) or f.visibility in ^@relayable),
         order_by: [desc: f.log_id],
         limit: ^(limit + 1)

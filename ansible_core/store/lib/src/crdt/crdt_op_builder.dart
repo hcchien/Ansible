@@ -75,6 +75,40 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Build an Op for a comment on standalone content (murmur/note).
+  ///
+  /// A distinct `comment` entity type — NOT a `post` — so comments never collide
+  /// with the forum thread/post model (board-less posts were being mis-synced as
+  /// phantom forum threads). [targetId] is the commented content's entity id;
+  /// it is also mirrored to `threadId` so the AppView can index/serve comments
+  /// via `GET /api/v1/thread/:thread_id`.
+  static OpsQueueEntry createComment({
+    required String authorDid,
+    required String entityId,
+    required String targetId,
+    required String content,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'targetId': targetId,
+      'threadId': targetId,
+      'content': content,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'comment',
+      entityId: entityId,
+      opType: 'insert',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: createdAt,
+    );
+  }
+
   /// Build an Op for creating a new thread.
   static OpsQueueEntry createThread({
     required String authorDid,
