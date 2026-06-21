@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -52,6 +51,7 @@ class ContentDetailScreen extends StatefulWidget {
 
 class _ContentDetailScreenState extends State<ContentDetailScreen> {
   final _composer = TextEditingController();
+  late final DriftPostRepository _postRepo;
   List<_Comment> _comments = const [];
   bool _loading = true;
   bool _posting = false;
@@ -62,6 +62,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _postRepo = DriftPostRepository(widget.db);
     _load();
   }
 
@@ -72,43 +73,57 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   }
 
   Future<void> _load() async {
-    if (_appViewBaseUrl.isEmpty) {
-      setState(() => _loading = false);
-      return;
+    // Local-first: comments are stored as local posts keyed by the content id
+    // (own comments + any synced from followed users), so they show and persist
+    // regardless of the relay/AppView. The AppView is a best-effort merge for
+    // remote comments not yet synced locally.
+    final byId = <String, _Comment>{};
+    for (final p in await _postRepo.list(threadId: widget.contentId)) {
+      byId[p.id] = _Comment(
+        id: p.id,
+        authorDid: p.authorId,
+        body: p.content,
+        createdAt: p.createdAt,
+      );
     }
+    if (mounted) {
+      setState(() {
+        _comments = _sorted(byId.values);
+        _loading = false;
+      });
+    }
+
+    if (_appViewBaseUrl.isEmpty) return;
     try {
       final page = await AppViewTimelineClient(
         baseUrl: _appViewBaseUrl,
       ).fetchThread(threadId: widget.contentId);
-      if (!mounted) return;
-      setState(() {
-        _comments = _toComments(page.items);
-        _loading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-    }
-  }
-
-  List<_Comment> _toComments(List<AppViewTimelineItem> items) {
-    final comments = items
-        .where((i) => i.entityType == 'comment')
-        .map(
-          (i) => _Comment(
+      for (final i in page.items.where((i) => i.entityType == 'comment')) {
+        byId.putIfAbsent(
+          i.entityId,
+          () => _Comment(
+            id: i.entityId,
             authorDid: i.authorDid,
             body: (i.payload['content'] ?? i.payload['body'] ?? '').toString(),
             createdAt: i.createdAt,
           ),
-        )
-        .toList();
+        );
+      }
+      if (mounted) setState(() => _comments = _sorted(byId.values));
+    } catch (_) {
+      // AppView unavailable (e.g. endpoint not deployed) — local list stands.
+    }
+  }
+
+  List<_Comment> _sorted(Iterable<_Comment> comments) {
+    final list = comments.toList();
     // Oldest-first reads naturally as a conversation.
-    comments.sort((a, b) {
+    list.sort((a, b) {
       final at = a.createdAt, bt = b.createdAt;
       if (at == null || bt == null) return 0;
       return at.compareTo(bt);
     });
-    return comments;
+    return list;
   }
 
   Future<void> _send() async {
@@ -116,26 +131,43 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     if (text.isEmpty || _posting) return;
     setState(() => _posting = true);
     try {
-      final entry = CrdtOpBuilder.createComment(
-        authorDid: widget.localDid,
-        entityId: const Uuid().v4(),
-        targetId: widget.contentId,
-        content: text,
+      final commentId = const Uuid().v4();
+      final now = DateTime.now();
+      // Persist locally first (so it survives offline / a down relay), then
+      // enqueue the signed comment op for sync.
+      await _postRepo.create(
+        Post(
+          id: commentId,
+          threadId: widget.contentId,
+          boardId: '',
+          authorId: widget.localDid,
+          content: text,
+          createdAt: now,
+          updatedAt: now,
+          lastEditAt: now,
+          signatureVerified: true,
+        ),
       );
-      await widget.opsDispatchService.signAndEnqueue(entry);
+      await widget.opsDispatchService.signAndEnqueue(
+        CrdtOpBuilder.createComment(
+          authorDid: widget.localDid,
+          entityId: commentId,
+          targetId: widget.contentId,
+          content: text,
+        ),
+      );
       unawaited(widget.onFlushPendingOps());
       if (!mounted) return;
       setState(() {
-        // Optimistic: the AppView needs a beat to ingest before fetchThread
-        // returns it, so show the comment immediately.
-        _comments = [
+        _comments = _sorted([
           ..._comments,
           _Comment(
+            id: commentId,
             authorDid: widget.localDid,
             body: text,
-            createdAt: DateTime.now().toUtc(),
+            createdAt: now,
           ),
-        ];
+        ]);
         _composer.clear();
         _posting = false;
       });
@@ -332,11 +364,13 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
 class _Comment {
   const _Comment({
+    required this.id,
     required this.authorDid,
     required this.body,
     this.createdAt,
   });
 
+  final String id;
   final String authorDid;
   final String body;
   final DateTime? createdAt;

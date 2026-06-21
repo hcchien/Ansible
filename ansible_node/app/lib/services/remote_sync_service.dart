@@ -639,6 +639,42 @@ class RemoteSyncService {
       case 'note':
         await _applyContentItemActivity(activity);
         break;
+      case 'comment':
+        await _applyCommentActivity(activity);
+        break;
+    }
+  }
+
+  /// Ingests a comment on standalone content. Stored as a local post keyed by
+  /// the target content id ([Activity.threadId]) so the content-detail screen
+  /// reads it locally. Board-less, so it never surfaces as a forum thread.
+  Future<void> _applyCommentActivity(Activity activity) async {
+    final payload = activity.payload;
+    if (activity.type.toLowerCase() == 'delete') {
+      await _postRepo.delete(activity.entityId);
+      return;
+    }
+    final targetId =
+        (payload['threadId'] ?? payload['targetId'])?.toString() ??
+        activity.threadId;
+    if (targetId == null || targetId.isEmpty) return;
+    final now = DateTime.now();
+    final post = Post(
+      id: activity.entityId,
+      threadId: targetId,
+      boardId: '',
+      authorId: activity.authorId,
+      content: payload['content'] as String? ?? '',
+      createdAt: activity.createdAt,
+      updatedAt: now,
+      lastEditAt: now,
+      signatureVerified: true,
+    );
+    final existing = await _postRepo.getById(activity.entityId);
+    if (existing == null) {
+      await _postRepo.create(post);
+    } else {
+      await _postRepo.update(post);
     }
   }
 
