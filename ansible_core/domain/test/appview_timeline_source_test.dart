@@ -130,6 +130,45 @@ void main() {
       expect(page.hasMore, isTrue);
     });
 
+    test('skips board-less comment posts (comments on content)', () async {
+      await followFederated('did:key:alice');
+
+      final source = AppViewTimelineSource(
+        followRepository: followRepo,
+        fetcher: ({required dids, cursor, limit = 50}) async {
+          return AppViewTimelinePage(
+            items: [
+              // A comment on a murmur: post with empty board, threadId = content.
+              AppViewTimelineItem(
+                entityType: 'post',
+                entityId: 'c1',
+                authorDid: 'did:key:alice',
+                boardId: '',
+                threadId: 'murmur-1',
+                createdAt: now,
+                payload: const {'content': 'a comment'},
+              ),
+              // A real forum post: keeps showing.
+              AppViewTimelineItem(
+                entityType: 'post',
+                entityId: 'p1',
+                authorDid: 'did:key:alice',
+                boardId: 'b1',
+                threadId: 't1',
+                createdAt: now,
+                payload: const {'content': 'a post'},
+              ),
+            ],
+          );
+        },
+      );
+
+      final page = await source.fetch(followerDid: 'did:key:local');
+
+      // Only the board-backed forum post survives; the comment is excluded.
+      expect(page.items.whereType<PostTimelineItem>().length, 1);
+    });
+
     test('uses homeFetcher (fan-out-on-write) with reader DID, skips follow set', () async {
       var fetcherCalled = false;
       String? requestedReader;

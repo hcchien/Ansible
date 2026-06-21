@@ -138,7 +138,14 @@ class AppViewTimelineSource implements FollowFeedSource {
     final created = raw.createdAt ?? DateTime.now().toUtc();
     switch (raw.entityType) {
       case 'post':
-        if (raw.boardId == null || raw.threadId == null) return null;
+        // Board-less posts are comments on standalone content (threadId == the
+        // content's entity id); they belong in the content-detail view, not as
+        // top-level timeline cards — otherwise a comment shows as its own post.
+        if (raw.boardId == null ||
+            raw.boardId!.isEmpty ||
+            raw.threadId == null) {
+          return null;
+        }
         final post = Post(
           id: raw.entityId,
           threadId: raw.threadId!,
