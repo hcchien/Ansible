@@ -20,7 +20,8 @@ void main() {
     await _pumpHomeShell(tester, coachmarkSeen: true);
 
     expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
-    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.darkPaper);
+    // Feed now defaults to Paper (white) to match the Threads-style design.
+    expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
 
     // Three boards now: Personal │ Timeline │ Forum — two swipes to reach Forum.
     await tester.drag(

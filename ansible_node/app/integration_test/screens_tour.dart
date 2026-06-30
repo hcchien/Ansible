@@ -1,5 +1,7 @@
 import 'package:ansible_node/l10n/app_localizations.dart';
 import 'package:ansible_node/screens/content_detail_screen.dart';
+import 'package:ansible_node/screens/home/home_bottom_bar.dart';
+import 'package:ansible_node/screens/home/home_types.dart';
 import 'package:ansible_node/screens/home/post_card.dart';
 import 'package:ansible_node/screens/home/timeline_board.dart';
 import 'package:ansible_node/screens/notifications_screen.dart';
@@ -140,6 +142,51 @@ void main() {
       ),
     );
     await shoot(tester, 'b01_timeline_feed');
+  });
+
+  testWidgets('F · bottom nav', (tester) async {
+    final db = freshDb();
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      harness(
+        Scaffold(
+          backgroundColor: AnsibleDesign.paper,
+          body: SafeArea(
+            bottom: false,
+            child: TimelineBoardView(
+              db: db,
+              did: me,
+              loading: false,
+              followingPosts: [
+                feedCard(
+                  id: 'p1',
+                  author: mira,
+                  title: '我們在重建什麼樣的網路？',
+                  content: '關於默許可見、身分自主、社群健康的長對話。',
+                  timeAgo: '1 小時',
+                  reacts: 12,
+                  comments: 23,
+                  signed: true,
+                  tier: 'verified_human',
+                ),
+              ],
+              opsDispatchService: ops(db),
+              onFlushPendingOps: () async {},
+            ),
+          ),
+          bottomNavigationBar: HomeBottomBar(
+            selectedBoard: HomeBoard.timeline,
+            onSelectBoard: (_) {},
+            onCompose: () {},
+            onNotifications: () {},
+            onProfile: () {},
+            boardActive: true,
+            unreadCount: 3,
+          ),
+        ),
+      ),
+    );
+    await shoot(tester, 'f01_bottom_nav');
   });
 
   testWidgets('E15 · single board', (tester) async {

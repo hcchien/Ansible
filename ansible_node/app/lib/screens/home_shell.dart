@@ -180,8 +180,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   CircleTab _selectedCircleTab = CircleTab.murmur;
   late final PageController _pageController;
   Map<ElixTab, ElixScreenStyle> _screenStyles = {
-    for (final tab in ElixTab.values)
-      tab: tab == ElixTab.feed ? ElixScreenStyle.ink : ElixScreenStyle.paper,
+    for (final tab in ElixTab.values) tab: ElixScreenStyle.paper,
   };
   final _uuid = const Uuid();
 
@@ -543,8 +542,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               ? ElixScreenStyleUi.fromStorage(
                   prefs.getString(_screenStyleKey(tab)),
                 )
-              : tab == ElixTab.feed
-              ? ElixScreenStyle.ink
               : ElixScreenStyle.paper,
       };
     });
@@ -673,7 +670,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) => ScreenStyleSheet(
-        personalStyle: _screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
+        personalStyle: _screenStyles[ElixTab.feed] ?? ElixScreenStyle.paper,
         forumStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
         motion: _boardMotion,
         onPersonalStyleSelected: (style) =>
@@ -1459,7 +1456,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       localeController: widget.localeController,
       readingPreferencesController: widget.readingPreferencesController,
       onClearIdentity: widget.onClearIdentity,
-      personalScreenStyle: _screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
+      personalScreenStyle: _screenStyles[ElixTab.feed] ?? ElixScreenStyle.paper,
       forumScreenStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
       boardMotion: _boardMotion,
       onPersonalScreenStyleChanged: (style) =>

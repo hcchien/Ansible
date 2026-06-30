@@ -4,12 +4,11 @@ import '../../l10n/app_l10n.dart';
 import '../../theme/ansible_design.dart';
 import 'home_types.dart';
 
-/// Threads-style bottom navigation: 時間軸 + 討論區 + a prominent central compose
-/// button + 通知 + 我. Replaces the top board-swipe tab row on compact (phone)
-/// layouts. 個人版 is reached from 我 (settings) instead of a dedicated cell, so
-/// the ＋ sits dead-center in a symmetric five-cell bar. Only the two board cells
-/// carry a persistent selected state (driven by [selectedBoard]); the ＋,
-/// notifications and 我 are momentary actions.
+/// Elix "Threads-style" bottom tabbar: icon-only cells — home (時間軸) ·
+/// circle (討論區) · a bordered center ＋ · bell (通知) · eye (我). Active cells
+/// switch to ink; inactive stay faint (no labels, no filled variants). The
+/// center ＋ is a rounded-rect with a soft fill + hairline rule, not a solid
+/// disc. Replaces the top board-swipe tabs on compact (phone) layouts.
 class HomeBottomBar extends StatelessWidget {
   const HomeBottomBar({
     super.key,
@@ -42,43 +41,39 @@ class HomeBottomBar extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AnsibleDesign.paper,
-        border: Border(top: BorderSide(color: AnsibleDesign.rule, width: 0.5)),
+        border: Border(top: BorderSide(color: AnsibleDesign.ruleSoft, width: 1)),
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 56,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _board(
                 context,
                 HomeBoard.timeline,
-                Icons.dynamic_feed_outlined,
-                Icons.dynamic_feed,
+                Icons.home_outlined,
                 context.uiCopy(zh: '時間軸', en: 'Timeline'),
               ),
               _board(
                 context,
                 HomeBoard.forum,
-                Icons.forum_outlined,
-                Icons.forum,
+                Icons.radio_button_checked,
                 context.uiCopy(zh: '討論區', en: 'Forum'),
               ),
               _compose(context),
               _action(
                 context,
-                notificationsActive
-                    ? Icons.notifications
-                    : Icons.notifications_outlined,
+                Icons.notifications_none,
                 context.uiCopy(zh: '通知', en: 'Alerts'),
                 onNotifications,
-                badgeCount: unreadCount,
+                showDot: unreadCount > 0,
                 active: notificationsActive,
               ),
               _action(
                 context,
-                meActive ? Icons.person : Icons.person_outline,
+                Icons.visibility_outlined,
                 context.uiCopy(zh: '我', en: 'Me'),
                 onProfile,
                 cellKey: const Key('settings_button'),
@@ -95,11 +90,9 @@ class HomeBottomBar extends StatelessWidget {
     BuildContext context,
     HomeBoard board,
     IconData icon,
-    IconData activeIcon,
     String label,
   ) {
     final active = boardActive && selectedBoard == board;
-    final color = active ? AnsibleDesign.ink : AnsibleDesign.inkFaint;
     return Expanded(
       child: Semantics(
         button: true,
@@ -108,7 +101,8 @@ class HomeBottomBar extends StatelessWidget {
         child: InkWell(
           key: Key('board_switch_${board.name}'),
           onTap: () => onSelectBoard(board),
-          child: _cell(active ? activeIcon : icon, label, color, active),
+          customBorder: const StadiumBorder(),
+          child: _cell(icon, active),
         ),
       ),
     );
@@ -119,7 +113,7 @@ class HomeBottomBar extends StatelessWidget {
     IconData icon,
     String label,
     VoidCallback onTap, {
-    int badgeCount = 0,
+    bool showDot = false,
     Key? cellKey,
     bool active = false,
   }) {
@@ -131,94 +125,63 @@ class HomeBottomBar extends StatelessWidget {
         child: InkWell(
           key: cellKey,
           onTap: onTap,
-          child: _cell(
-            icon,
-            label,
-            active ? AnsibleDesign.ink : AnsibleDesign.inkFaint,
-            active,
-            badgeCount: badgeCount,
-          ),
+          customBorder: const StadiumBorder(),
+          child: _cell(icon, active, showDot: showDot),
         ),
       ),
     );
   }
 
-  Widget _cell(
-    IconData icon,
-    String label,
-    Color color,
-    bool active, {
-    int badgeCount = 0,
-  }) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-          height: 24,
-          width: 28,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Icon(icon, size: 23, color: color),
-              if (badgeCount > 0)
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
-                    decoration: const BoxDecoration(
-                      color: AnsibleDesign.danger,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      badgeCount > 99 ? '99+' : '$badgeCount',
-                      style: const TextStyle(
-                        color: AnsibleDesign.paper,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
-                    ),
-                  ),
+  Widget _cell(IconData icon, bool active, {bool showDot = false}) {
+    final color = active ? AnsibleDesign.ink : AnsibleDesign.inkFaint;
+    return SizedBox(
+      height: 46,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Icon(icon, size: 26, color: color),
+          if (showDot)
+            Positioned(
+              top: 6,
+              left: null,
+              right: 0,
+              child: Container(
+                margin: const EdgeInsets.only(right: 14),
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: AnsibleDesign.accent,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AnsibleDesign.paper, width: 1.5),
                 ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            height: 1,
-            color: color,
-            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
+  /// Center ＋ — a 52×40 rounded-rect with a soft fill and a hairline rule, ink
+  /// glyph. Deliberately not a solid disc (matches the Elix tabbar spec).
   Widget _compose(BuildContext context) {
-    return Expanded(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Semantics(
         button: true,
         label: context.uiCopy(zh: '發表貼文', en: 'New post'),
         child: InkWell(
           onTap: onCompose,
-          customBorder: const CircleBorder(),
-          child: Center(
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: AnsibleDesign.ink,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.add, size: 24, color: AnsibleDesign.paper),
+          borderRadius: BorderRadius.circular(13),
+          child: Container(
+            width: 52,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AnsibleDesign.paperElev,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AnsibleDesign.rule, width: 1),
             ),
+            child: const Icon(Icons.add, size: 23, color: AnsibleDesign.ink),
           ),
         ),
       ),
