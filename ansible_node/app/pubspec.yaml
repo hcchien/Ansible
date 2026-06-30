@@ -67,6 +67,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Drives the on-simulator screenshot harness (integration_test/screens_tour).
+  integration_test:
+    sdk: flutter
+
   # Standard Ed25519 for tool/seed_user_b.dart (dev/test seeding only).
   cryptography: ^2.9.0
 

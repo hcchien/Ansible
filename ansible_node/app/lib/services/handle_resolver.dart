@@ -28,6 +28,11 @@ class HandleResolver {
   /// first paint without flicker when the handle was already resolved.
   String? cached(String did) => _cache[did];
 
+  /// Pre-populates the cache with a known [did] → [handle] mapping, bypassing
+  /// the network. Used by the screenshot harness (and tests) to render friendly
+  /// bylines offline.
+  void seed(String did, String handle) => _cache[did] = handle;
+
   /// Returns the handle for [did], or null if unknown/unresolvable.
   Future<String?> handleFor(String did) async {
     if (did.isEmpty) return null;
