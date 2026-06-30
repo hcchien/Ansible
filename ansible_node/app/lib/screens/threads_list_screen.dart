@@ -81,6 +81,15 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   final Map<String, Post?> _firstPostByThread = {};
   final Map<String, int> _replyCountByThread = {};
 
+  /// Per-thread last activity: timestamp of the most recent post (the opening
+  /// post when there are no replies yet). Drives the "最後回應" byline.
+  final Map<String, DateTime> _lastActivityByThread = {};
+
+  /// The tier this board requires to post (null = open to anyone). Drives the
+  /// board header card's posting-policy chip; [_postingBlocked] says whether the
+  /// local user clears it.
+  String? _requiredTier;
+
   /// Host moderation overlay: lock entries keyed by thread id (reason-coded).
   Map<String, HostModerationState> _lockedByThreadId = const {};
 
@@ -128,16 +137,24 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final externalItems = await _loadExternalItems(projection);
     final firstPostByThread = <String, Post?>{};
     final replyCountByThread = <String, int>{};
+    final lastActivityByThread = <String, DateTime>{};
     for (final t in threads) {
       final posts = await _postRepo.list(threadId: t.id);
       firstPostByThread[t.id] = posts.isNotEmpty ? posts.first : null;
       // Replies = posts after the opening post.
       replyCountByThread[t.id] = posts.isEmpty ? 0 : posts.length - 1;
+      // Last activity = most recent post, else the thread's own timestamp.
+      lastActivityByThread[t.id] = posts.isEmpty
+          ? t.createdAt
+          : posts
+                .map((p) => p.createdAt)
+                .reduce((a, b) => a.isAfter(b) ? a : b);
     }
     setState(() {
       _threads = threads;
       _hostedProjection = projection;
       _postingBlocked = postingBlocked;
+      _requiredTier = projection?.minPostTier;
       _lockedByThreadId = lockedByThreadId;
       _externalItems = externalItems;
       _firstPostByThread
@@ -146,6 +163,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       _replyCountByThread
         ..clear()
         ..addAll(replyCountByThread);
+      _lastActivityByThread
+        ..clear()
+        ..addAll(lastActivityByThread);
       _isLoading = false;
     });
   }
@@ -298,8 +318,10 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       backgroundColor: AnsibleDesign.paper,
       appBar: AppBar(
         title: Text(
-          widget.board.title,
+          _boardHashtag,
           style: const TextStyle(
+            fontFamily: AnsibleDesign.serif,
+            fontSize: 16,
             color: AnsibleDesign.ink,
             fontWeight: FontWeight.w600,
           ),
@@ -330,17 +352,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                       onUpgradeCompleted: _loadThreads,
                     ),
                   ),
-                Expanded(
-                  child: _externalItems.isEmpty
-                      ? _threadsBody(context)
-                      : ListView(
-                          children: [
-                            for (final thread in _threads)
-                              _threadCard(context, thread),
-                            ExternalContentSection(items: _externalItems),
-                          ],
-                        ),
-                ),
+                Expanded(child: _threadsBody(context)),
               ],
             ),
       floatingActionButton: FloatingActionButton(
@@ -364,54 +376,156 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   }
 
   Widget _threadsBody(BuildContext context) {
-    return _threads.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 96),
+      children: [
+        _boardHeaderCard(context),
+        const SizedBox(height: 12),
+        if (_threads.isEmpty)
+          _emptyHint(context)
+        else
+          for (final thread in _threads) ...[
+            _threadCard(context, thread),
+            const SizedBox(height: 10),
+          ],
+        if (_externalItems.isNotEmpty)
+          ExternalContentSection(items: _externalItems),
+      ],
+    );
+  }
+
+  /// E·15 board header: a "section-block" carrying the board's kicker,
+  /// description, thread count, and posting policy.
+  Widget _boardHeaderCard(BuildContext context) {
+    final description = widget.board.description?.trim() ?? '';
+    final threadCount = _threads.length;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paper,
+        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${context.uiCopy(zh: '看板', en: 'Board')} · ${widget.board.title}',
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1.4,
+              color: AnsibleDesign.accent,
+            ),
+          ),
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 13,
+                height: 1.55,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.only(top: 8),
+            decoration: const BoxDecoration(
+              border: Border(
+                top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+              ),
+            ),
+            child: Row(
               children: [
-                const Icon(
-                  Icons.forum_outlined,
-                  size: 56,
-                  color: AnsibleDesign.inkFaint,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  context.uiCopy(zh: '還沒有討論串', en: 'No threads yet'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                ),
-                const SizedBox(height: 6),
                 Text(
                   context.uiCopy(
-                    zh: '點右下角 + 開始一個新討論',
-                    en: 'Tap + to start a discussion',
+                    zh: '$threadCount 串',
+                    en: '$threadCount ${threadCount == 1 ? 'thread' : 'threads'}',
                   ),
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    letterSpacing: 0.8,
                     color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  _postingPolicyLabel(context),
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    letterSpacing: 0.8,
+                    color: AnsibleDesign.accent,
                   ),
                 ),
               ],
             ),
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.only(bottom: 96),
-            itemCount: _threads.length,
-            itemBuilder: (context, index) =>
-                _threadCard(context, _threads[index]),
-          );
+          ),
+        ],
+      ),
+    );
   }
 
+  /// Mono policy chip for the header card, reflecting the real posting gate.
+  String _postingPolicyLabel(BuildContext context) {
+    if (_requiredTier == null) {
+      return context.uiCopy(zh: '公開 · 可發文', en: 'OPEN · POST FREELY');
+    }
+    if (_postingBlocked) {
+      return context.uiCopy(zh: '需真人驗證 · 暫不可發文', en: 'VERIFIED ONLY · LOCKED');
+    }
+    return context.uiCopy(zh: '需真人驗證 · 可發文', en: 'VERIFIED · CAN POST');
+  }
+
+  Widget _emptyHint(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.forum_outlined,
+            size: 48,
+            color: AnsibleDesign.inkFaint,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            context.uiCopy(zh: '還沒有討論串', en: 'No threads yet'),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: AnsibleDesign.inkMuted,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            context.uiCopy(
+              zh: '點右下角 + 開始一個新討論',
+              en: 'Tap + to start a discussion',
+            ),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AnsibleDesign.inkFaint,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// E·15 thread card: a "post" with a mono source strip, a serif title, and an
+  /// author row carrying the avatar, byline, and last-activity time.
   Widget _threadCard(BuildContext context, Thread thread) {
     final lock = _lockedByThreadId[thread.id];
     final firstPost = _firstPostByThread[thread.id];
-    final preview = firstPost?.content.trim() ?? '';
     final signed = firstPost?.signatureVerified ?? false;
     final replies = _replyCountByThread[thread.id] ?? 0;
     final title = thread.title.trim();
+    final lastActivity = _lastActivityByThread[thread.id] ?? thread.createdAt;
 
     return InkWell(
       onTap: () {
@@ -428,155 +542,185 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           ),
         );
       },
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-          ),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        decoration: BoxDecoration(
+          color: AnsibleDesign.paper,
+          border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            FutureBuilder<String?>(
-              initialData: HandleResolver.shared.cached(thread.authorId),
-              future: HandleResolver.shared.handleFor(thread.authorId),
-              builder: (context, snap) {
-                final h = (snap.data ?? '').replaceFirst('@', '').trim();
-                final initial =
-                    h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
-                return Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AnsibleDesign.paperDeep,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      fontFamily: AnsibleDesign.serif,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AnsibleDesign.inkMuted,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // post-source: pip + reply count + status.
+            Container(
+              padding: const EdgeInsets.only(bottom: 6),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+                ),
+              ),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: AuthorLabel(
-                          did: thread.authorId,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AnsibleDesign.ink,
-                          ),
-                        ),
-                      ),
-                      if (signed) ...[
-                        const SizedBox(width: 4),
-                        Tooltip(
-                          message: context.uiCopy(
-                            zh: '簽章已驗證',
-                            en: 'Signature verified',
-                          ),
-                          child: const Icon(
-                            Icons.verified_user,
-                            size: 12,
-                            color: AnsibleDesign.spore,
-                          ),
-                        ),
-                      ],
-                      if (lock != null) ...[
-                        const SizedBox(width: 4),
-                        Tooltip(
-                          message: context.uiCopy(
-                            zh:
-                                '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
-                            en:
-                                'Locked by the board moderators '
-                                '(${moderationReasonLabel(context, lock.reasonCode)})',
-                          ),
-                          child: Icon(
-                            Icons.lock_outline,
-                            key: Key('thread_lock_icon_${thread.id}'),
-                            size: 13,
-                            color: AnsibleDesign.inkFaint,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(width: 6),
-                      Text(
-                        '· ${_shortTime(context, thread.createdAt)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AnsibleDesign.inkFaint,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: 4,
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      color: AnsibleDesign.moss,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                  if (title.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
-                        color: AnsibleDesign.ink,
-                      ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$replies ${context.uiCopy(zh: '回應', en: replies == 1 ? 'REPLY' : 'REPLIES')}'
+                    ' · '
+                    '${replies > 0 ? context.uiCopy(zh: '進行中', en: 'ACTIVE') : context.uiCopy(zh: '新討論', en: 'NEW')}',
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 8.5,
+                      letterSpacing: 1.2,
+                      color: AnsibleDesign.inkFaint,
                     ),
-                  ],
-                  if (preview.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      preview,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.4,
-                        color: AnsibleDesign.inkMuted,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.mode_comment_outlined,
-                        size: 14,
-                        color: AnsibleDesign.inkFaint,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        '$replies',
-                        style: const TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 11,
-                          color: AnsibleDesign.inkFaint,
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
+            ),
+            if (title.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 17,
+                  height: 1.35,
+                  fontWeight: FontWeight.w500,
+                  color: AnsibleDesign.ink,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            // post-author: avatar + name (+ sig/lock) + last-activity byline.
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _authorAvatar(thread.authorId, signed),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: AuthorLabel(
+                              did: thread.authorId,
+                              style: const TextStyle(
+                                fontFamily: AnsibleDesign.serif,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AnsibleDesign.ink,
+                              ),
+                            ),
+                          ),
+                          if (signed) ...[
+                            const SizedBox(width: 5),
+                            Container(
+                              width: 4,
+                              height: 4,
+                              decoration: const BoxDecoration(
+                                color: AnsibleDesign.accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                          if (lock != null) ...[
+                            const SizedBox(width: 5),
+                            Tooltip(
+                              message: context.uiCopy(
+                                zh:
+                                    '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
+                                en:
+                                    'Locked by the board moderators '
+                                    '(${moderationReasonLabel(context, lock.reasonCode)})',
+                              ),
+                              child: Icon(
+                                Icons.lock_outline,
+                                key: Key('thread_lock_icon_${thread.id}'),
+                                size: 13,
+                                color: AnsibleDesign.inkFaint,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        replies > 0
+                            ? context.uiCopy(
+                                zh: '最後回應 · ${_shortTime(context, lastActivity)}',
+                                en: 'LAST REPLY · ${_shortTime(context, lastActivity)}',
+                              )
+                            : context.uiCopy(
+                                zh: '起頭 · ${_shortTime(context, lastActivity)}',
+                                en: 'STARTED · ${_shortTime(context, lastActivity)}',
+                              ),
+                        style: const TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 9,
+                          letterSpacing: 0.5,
+                          color: AnsibleDesign.inkFaint,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// 30px circular initial avatar — amber when the opening post is signed,
+  /// matching the feed and board-card treatment.
+  Widget _authorAvatar(String did, bool signed) {
+    return FutureBuilder<String?>(
+      initialData: HandleResolver.shared.cached(did),
+      future: HandleResolver.shared.handleFor(did),
+      builder: (context, snap) {
+        final h = (snap.data ?? '').replaceFirst('@', '').trim();
+        final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
+        return Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: signed ? AnsibleDesign.accent : AnsibleDesign.paperDeep,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            initial,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: signed ? AnsibleDesign.paper : AnsibleDesign.inkMuted,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// The board title rendered as a hashtag for the header (E·15 "# philosophy").
+  String get _boardHashtag {
+    final raw = widget.board.title.trim();
+    final stripped = raw.replaceFirst(RegExp(r'^[#＃]\s*'), '');
+    return '# $stripped';
   }
 
   /// Compact relative timestamp for the byline (Threads-style: "3 小時" / "3h").
