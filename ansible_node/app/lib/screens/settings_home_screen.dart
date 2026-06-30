@@ -60,7 +60,12 @@ class SettingsHomeScreen extends StatelessWidget {
     this.identityPrivateKeyProvider = _defaultIdentityPrivateKey,
     this.onOpenRecoveryWizard,
     this.onOpenPersonalBoard,
+    this.embedded = false,
   });
+
+  /// When true the screen is the bottom-nav 我 tab (not a pushed route), so it
+  /// drops the "Done" close button — the nav switches destinations.
+  final bool embedded;
 
   /// Jumps to the user's 個人版 (personal board) in the home pager. Surfaced as
   /// the top entry here because the personal board no longer has its own cell in
@@ -102,18 +107,20 @@ class SettingsHomeScreen extends StatelessWidget {
     return AnsibleScreenScaffold(
       title: text.settingsTitle,
       leadingLabel: '',
-      trailing: TextButton(
-        key: const Key('settings_done_button'),
-        onPressed: () => Navigator.of(context).maybePop(),
-        child: Text(
-          text.done,
-          style: const TextStyle(
-            fontFamily: AnsibleDesign.mono,
-            fontSize: 10,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ),
+      trailing: embedded
+          ? null
+          : TextButton(
+              key: const Key('settings_done_button'),
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: Text(
+                text.done,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 10,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
       child: ListView(
         children: [
           Padding(

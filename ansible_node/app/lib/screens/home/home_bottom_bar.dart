@@ -18,6 +18,9 @@ class HomeBottomBar extends StatelessWidget {
     required this.onCompose,
     required this.onNotifications,
     required this.onProfile,
+    this.boardActive = true,
+    this.notificationsActive = false,
+    this.meActive = false,
     this.unreadCount = 0,
   });
 
@@ -26,6 +29,12 @@ class HomeBottomBar extends StatelessWidget {
   final VoidCallback onCompose;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
+
+  /// Which destination is active. When a board is active, the matching board
+  /// cell highlights; otherwise 通知 or 我 highlights.
+  final bool boardActive;
+  final bool notificationsActive;
+  final bool meActive;
   final int unreadCount;
 
   @override
@@ -59,17 +68,21 @@ class HomeBottomBar extends StatelessWidget {
               _compose(context),
               _action(
                 context,
-                Icons.notifications_outlined,
+                notificationsActive
+                    ? Icons.notifications
+                    : Icons.notifications_outlined,
                 context.uiCopy(zh: '通知', en: 'Alerts'),
                 onNotifications,
                 badgeCount: unreadCount,
+                active: notificationsActive,
               ),
               _action(
                 context,
-                Icons.person_outline,
+                meActive ? Icons.person : Icons.person_outline,
                 context.uiCopy(zh: '我', en: 'Me'),
                 onProfile,
                 cellKey: const Key('settings_button'),
+                active: meActive,
               ),
             ],
           ),
@@ -85,7 +98,7 @@ class HomeBottomBar extends StatelessWidget {
     IconData activeIcon,
     String label,
   ) {
-    final active = selectedBoard == board;
+    final active = boardActive && selectedBoard == board;
     final color = active ? AnsibleDesign.ink : AnsibleDesign.inkFaint;
     return Expanded(
       child: Semantics(
@@ -108,10 +121,12 @@ class HomeBottomBar extends StatelessWidget {
     VoidCallback onTap, {
     int badgeCount = 0,
     Key? cellKey,
+    bool active = false,
   }) {
     return Expanded(
       child: Semantics(
         button: true,
+        selected: active,
         label: label,
         child: InkWell(
           key: cellKey,
@@ -119,8 +134,8 @@ class HomeBottomBar extends StatelessWidget {
           child: _cell(
             icon,
             label,
-            AnsibleDesign.inkFaint,
-            false,
+            active ? AnsibleDesign.ink : AnsibleDesign.inkFaint,
+            active,
             badgeCount: badgeCount,
           ),
         ),

@@ -20,7 +20,12 @@ class NotificationsScreen extends StatefulWidget {
     required this.did,
     this.repository,
     this.messengerService,
+    this.embedded = false,
   });
+
+  /// When true the screen is hosted as a bottom-nav tab (not a pushed route),
+  /// so it omits the back affordance — the nav switches destinations.
+  final bool embedded;
 
   final AppDatabase db;
 
@@ -253,7 +258,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final hasUnread = _notifications.any((n) => !n.isRead);
     return AnsibleScreenScaffold(
       title: 'NOTIFICATIONS',
-      leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
+      leadingLabel: widget.embedded
+          ? ''
+          : context.uiCopy(zh: '← 返回', en: '← Back'),
       trailing: hasUnread
           ? TextButton(
               key: const Key('notifications_mark_all_read'),

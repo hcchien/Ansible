@@ -66,6 +66,12 @@ import 'home/sidebar.dart';
 export 'home/home_types.dart';
 export 'home/post_card.dart' show PostCard, PostCardData;
 
+/// Bottom-nav destinations on the compact (phone) shell. Boards live in the
+/// swipe pager; notifications + me are sibling in-shell panels so the bottom
+/// nav stays mounted across all of them (Threads-style), instead of pushing a
+/// route that covers the bar.
+enum _ShellDest { board, notifications, me }
+
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
@@ -167,6 +173,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   PersonalFilter _personalFilter = PersonalFilter.all;
   ElixTab _selectedTab = ElixTab.feed;
   late HomeBoard _selectedBoard;
+  // Active compact bottom-nav destination (boards pager / notifications / me).
+  _ShellDest _dest = _ShellDest.board;
   ElixBoardMotion _boardMotion = ElixBoardMotion.book;
   bool _showCoachmark = false;
   CircleTab _selectedCircleTab = CircleTab.murmur;
@@ -597,6 +605,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         _selectedTab = board == HomeBoard.forum ? ElixTab.circle : ElixTab.feed;
       });
     }
+    _syncPagerToBoard(board);
+  }
+
+  /// Move the boards pager onto [board]. When the pager is already mounted we
+  /// animate; when it is not (e.g. returning to the boards from the in-shell
+  /// 通知/我 destinations, which un-mount it and reset the controller to its
+  /// initial page) we jump once it reattaches on the next frame.
+  void _syncPagerToBoard(HomeBoard board) {
     if (_pageController.hasClients) {
       unawaited(
         _pageController.animateToPage(
@@ -605,7 +621,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           curve: Curves.easeOutCubic,
         ),
       );
+      return;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) return;
+      _pageController.jumpToPage(board.index);
+    });
   }
 
   Future<void> _checkCoachmark() async {
@@ -1412,38 +1433,45 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   Future<void> _openNotifications() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => NotificationsScreen(db: widget.db, did: widget.did),
-      ),
+      MaterialPageRoute(builder: (_) => _buildNotifications(embedded: false)),
     );
     await _refreshNotificationUnread();
   }
 
-  /// Opens Settings (the bottom bar's 我 destination on compact layouts).
-  /// Mirrors the push the board-swipe header used in wide layouts.
-  void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SettingsHomeScreen(
-          db: widget.db,
-          did: widget.did,
-          localeController: widget.localeController,
-          readingPreferencesController: widget.readingPreferencesController,
-          onClearIdentity: widget.onClearIdentity,
-          personalScreenStyle:
-              _screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
-          forumScreenStyle:
-              _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
-          boardMotion: _boardMotion,
-          onPersonalScreenStyleChanged: (style) =>
-              unawaited(_setScreenStyle(ElixTab.feed, style)),
-          onForumScreenStyleChanged: (style) =>
-              unawaited(_setScreenStyle(ElixTab.circle, style)),
-          onBoardMotionChanged: (motion) =>
-              unawaited(_setBoardMotion(motion)),
-          onOpenPersonalBoard: () => _selectBoardSwipe(HomeBoard.personal),
-        ),
-      ),
+  /// Notifications content, reused by the wide push and the compact 通知
+  /// destination ([embedded] true — no back chrome, the bottom nav switches).
+  Widget _buildNotifications({required bool embedded}) {
+    return NotificationsScreen(
+      db: widget.db,
+      did: widget.did,
+      embedded: embedded,
+    );
+  }
+
+  /// Settings content. The compact 我 destination uses [embedded] true (no back
+  /// chrome — the bottom nav switches away); wide layouts that push it as a
+  /// route pass false.
+  Widget _buildSettings({required bool embedded}) {
+    return SettingsHomeScreen(
+      db: widget.db,
+      did: widget.did,
+      embedded: embedded,
+      localeController: widget.localeController,
+      readingPreferencesController: widget.readingPreferencesController,
+      onClearIdentity: widget.onClearIdentity,
+      personalScreenStyle: _screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
+      forumScreenStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
+      boardMotion: _boardMotion,
+      onPersonalScreenStyleChanged: (style) =>
+          unawaited(_setScreenStyle(ElixTab.feed, style)),
+      onForumScreenStyleChanged: (style) =>
+          unawaited(_setScreenStyle(ElixTab.circle, style)),
+      onBoardMotionChanged: (motion) => unawaited(_setBoardMotion(motion)),
+      onOpenPersonalBoard: () {
+        // Leave the in-shell settings panel for the boards pager.
+        setState(() => _dest = _ShellDest.board);
+        _selectBoardSwipe(HomeBoard.personal);
+      },
     );
   }
 
@@ -1748,12 +1776,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       bottomNavigationBar: compactShell
           ? HomeBottomBar(
               selectedBoard: _selectedBoard,
-              onSelectBoard: _selectBoardSwipe,
+              boardActive: _dest == _ShellDest.board,
+              notificationsActive: _dest == _ShellDest.notifications,
+              meActive: _dest == _ShellDest.me,
+              onSelectBoard: (board) {
+                setState(() => _dest = _ShellDest.board);
+                _selectBoardSwipe(board);
+              },
               onCompose: () => _selectedBoard == HomeBoard.forum
                   ? _createThread()
                   : _openCompose(context),
-              onNotifications: _openNotifications,
-              onProfile: _openSettings,
+              onNotifications: () {
+                setState(() => _dest = _ShellDest.notifications);
+                unawaited(_refreshNotificationUnread());
+              },
+              onProfile: () => setState(() => _dest = _ShellDest.me),
               unreadCount: _notificationUnreadCount,
             )
           : null,
@@ -1844,7 +1881,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               );
 
               if (compact) {
-                return mainPanel;
+                // In-shell destinations keep the bottom nav mounted.
+                switch (_dest) {
+                  case _ShellDest.notifications:
+                    return _buildNotifications(embedded: true);
+                  case _ShellDest.me:
+                    return _buildSettings(embedded: true);
+                  case _ShellDest.board:
+                    return mainPanel;
+                }
               }
 
               return Row(

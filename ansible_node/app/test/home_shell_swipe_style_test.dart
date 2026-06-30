@@ -130,6 +130,9 @@ void main() {
 
     await _pumpHomeShell(tester, coachmarkSeen: true);
 
+    // 我 (settings) and the boards are sibling bottom-nav destinations now.
+    // Personal is reached from the in-settings 個人版 entry; forum from its
+    // nav cell. (The bottom nav carries only 時間軸 + 討論區.)
     await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
     await tester.ensureVisible(
@@ -139,21 +142,16 @@ void main() {
       find.byKey(const Key('settings_style_choice_personal_paper')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('settings_done_button')));
+    // Scroll the settings list back to top so the (lazily-built) 個人版 entry
+    // is mounted, then tap it to return to the personal board.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 1200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings_open_personal_board')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
 
-    // Two swipes to cross Timeline and reach Forum.
-    await tester.drag(
-      find.byKey(const Key('board_swipe_page_view')),
-      const Offset(-340, 0),
-    );
-    await tester.pumpAndSettle();
-    await tester.drag(
-      find.byKey(const Key('board_swipe_page_view')),
-      const Offset(-340, 0),
-    );
+    await tester.tap(find.byKey(const Key('board_switch_forum')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.paper);
@@ -166,21 +164,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settings_style_choice_forum_ink')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('settings_done_button')));
+    await tester.tap(find.byKey(const Key('board_switch_forum')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'circle'), AnsibleDesign.darkPaper);
 
-    // Two swipes back across Timeline to the Personal board.
-    await tester.drag(
-      find.byKey(const Key('board_swipe_page_view')),
-      const Offset(340, 0),
-    );
+    await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
-    await tester.drag(
-      find.byKey(const Key('board_swipe_page_view')),
-      const Offset(340, 0),
-    );
+    // Scroll the settings list back to top so the (lazily-built) 個人版 entry
+    // is mounted, then tap it to return to the personal board.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 1200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings_open_personal_board')));
     await tester.pumpAndSettle();
 
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
