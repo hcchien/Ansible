@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8"/>
+<title>Elix · Forest Letter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=Noto+Serif+TC:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Forest Letter — Light (Bone Goose) */
+  --bg: #FBF7DC;            /* very pale warm paper */
+  --bg-soft: #F4EEC6;
+  --bg-deep: #E8DEAA;
+  --fg: #1F2E20;             /* deep forest ink */
+  --fg-muted: #3D4E3D;
+  --fg-faint: #88826E;
+  --rule: #D6CB94;
+  --rule-soft: #E3DAB0;
+  --ochre: #B88C2E;          /* accent · trust dot */
+  --ochre-soft: #D6B66B;
+  --moss: #5A6E3A;            /* secondary · sage replacement */
+  --ember: #7E4A1E;           /* burnt ochre for warnings */
+  --serif: 'Noto Serif TC', 'Newsreader', serif;
+  --serif-en: 'Newsreader', 'Noto Serif TC', serif;
+  --sans: 'Noto Sans TC', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+body.dark .surface {
+  --bg: #0E1A0F;
+  --bg-soft: #16221A;
+  --bg-deep: #1F2D24;
+  --fg: #E8E0BE;
+  --fg-muted: #B8B49A;
+  --fg-faint: #7C8071;
+  --rule: #2A3526;
+  --rule-soft: #1F291E;
+  --ochre: #D9AB4E;
+  --moss: #93A971;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; background:#E1D6A0; font-family:var(--sans); color:#1F2E20; }
+
+.page { padding: 44px 28px 80px; }
+.page-title-bar { max-width: 1280px; margin: 0 auto 28px; display:flex; align-items:baseline; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+.page-title-bar h1 { font-family: var(--serif); font-weight: 500; font-size: 30px; margin:0; }
+.page-title-bar .sub { font-family: var(--serif); font-style: italic; font-size: 13.5px; color:#4F4A2A; max-width: 72ch; line-height: 1.6; }
+.label-mono { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; color: var(--fg-faint); text-transform: uppercase; }
+
+.theme-toggle {
+  position: fixed; top: 14px; right: 16px; z-index: 9999;
+  display:inline-flex; align-items:center; gap:8px; padding:7px 13px 7px 8px;
+  border-radius:999px; background:#FBF7DC; border:0.5px solid #D6CB94; color:#1F2E20;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; cursor:pointer;
+}
+.theme-toggle .swatch { width:14px; height:14px; border-radius:50%; background:#FBF7DC; border:0.5px solid #D6CB94; }
+body.dark .theme-toggle { background:#0E1A0F; color:#E8E0BE; border-color:#2A3526; }
+body.dark .theme-toggle .swatch { background:#0E1A0F; border-color:#2A3526; }
+
+.frame-row { max-width: 1280px; margin: 0 auto; display:flex; flex-direction:column; gap:48px; }
+
+/* Section: palette */
+.palette-grid {
+  display:grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 0;
+  border: 0.5px solid #D6CB94; border-radius: 12px; overflow: hidden;
+}
+.swatch {
+  padding: 20px 18px; min-height: 160px; display:flex; flex-direction:column; justify-content:space-between;
+}
+.swatch .role { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; }
+.swatch .name { font-family: var(--serif); font-size: 17px; font-weight: 500; margin-top: 4px; }
+.swatch .hex { font-family: var(--mono); font-size: 10.5px; margin-top: 4px; letter-spacing: 0.04em; }
+
+/* Frame with chrome */
+.frame { display:flex; flex-direction:column; background:#FBF7DC; border:0.5px solid #D6CB94; border-radius:14px; overflow:hidden; box-shadow: 0 24px 60px rgba(50,60,40,0.12), 0 2px 6px rgba(50,60,40,0.05); }
+.frame-caption { display:flex; align-items:baseline; gap:12px; padding:0 0 14px; }
+.frame-caption .kind { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: #4F4A2A; text-transform: uppercase; }
+.frame-caption .name { font-family: var(--serif); font-size: 18px; font-weight: 500; }
+.frame-caption .w { font-family: var(--mono); font-size: 10px; color: #88826E; letter-spacing: 0.06em; margin-left: auto; }
+.frame .chrome { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#F0E8B8; border-bottom: 0.5px solid #D6CB94; }
+.frame .dots { display:flex; gap:6px; }
+.frame .dots i { width:10px; height:10px; border-radius:50%; background:#D6CB94; display:inline-block; }
+.frame .dots i:first-child { background:#B88C2E; }
+.frame .dots i:nth-child(2) { background:#C9A752; }
+.frame .dots i:last-child { background:#5A6E3A; }
+.frame .url { flex:1; background:#FBF7DC; border:0.5px solid #D6CB94; border-radius:6px; padding:5px 12px; font-family: var(--mono); font-size: 11px; color:#3D4E3D; letter-spacing:0.04em; display:flex; align-items:center; gap:8px; }
+.frame .url .lock { color:#5A6E3A; font-size:10px; }
+
+.surface { background: var(--bg); color: var(--fg); font-family: var(--sans); display:flex; flex-direction:column; min-height: 720px; }
+
+/* topbar */
+.topbar {
+  display:grid; grid-template-columns: 260px 1fr 280px;
+  align-items:center; gap: 22px;
+  padding: 14px 28px; border-bottom: 0.5px solid var(--rule); background: var(--bg);
+  position: sticky; top: 0; z-index: 5;
+}
+.topbar .brand { display:flex; align-items:center; gap:12px; }
+.topbar .brand .word { font-family: var(--serif); font-size: 17px; font-weight: 500; letter-spacing: 0.02em; }
+.search {
+  display:flex; align-items:center; gap:10px; padding: 8px 14px;
+  background: var(--bg-soft); border: 0.5px solid var(--rule-soft); border-radius: 999px;
+  width: min(420px, 100%); margin: 0 auto;
+  font-family: var(--serif); font-size: 13px; color: var(--fg-faint);
+}
+.search .lens { width: 12px; height:12px; border-radius:50%; border: 1.2px solid currentColor; position:relative; }
+.search .lens::after { content:''; position:absolute; right:-4px; bottom:-4px; width:5px; height:1.2px; background:currentColor; transform:rotate(45deg); transform-origin: left center; }
+.topbar .ctx { display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+.session-chip { display:inline-flex; align-items:center; gap:8px; border: 0.5px solid var(--rule); border-radius: 999px; padding: 5px 11px 5px 7px; background: var(--bg); }
+.session-chip .av { width:22px; height:22px; border-radius:50%; background: var(--ochre); color: var(--bg); display:inline-flex; align-items:center; justify-content:center; font-family:var(--serif); font-size:11px; }
+.session-chip .who { font-family: var(--serif); font-size: 13px; }
+.session-chip .tier { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--ochre); text-transform: uppercase; }
+.icon-btn { width:34px; height:34px; border-radius:50%; background: var(--bg-soft); border: 0.5px solid var(--rule-soft); display:inline-flex; align-items:center; justify-content:center; color: var(--fg); position:relative; }
+.icon-btn .badge { position:absolute; top:5px; right:5px; width:6px; height:6px; border-radius:50%; background: var(--ochre); }
+
+.cols { display:grid; grid-template-columns: 260px 1fr 280px; gap: 26px; width: min(1240px, 100%); margin: 0 auto; padding: 24px 26px 56px; align-items:start; }
+.rail { display:flex; flex-direction:column; gap: 22px; position: sticky; top: 78px; }
+.rail-section { display:flex; flex-direction:column; gap: 8px; }
+.rail-section h4 { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--fg-faint); text-transform: uppercase; padding-bottom: 6px; border-bottom: 0.5px solid var(--rule-soft); }
+.rail-item { display:flex; align-items:center; gap: 10px; padding: 6px 8px; border-radius: 8px; text-decoration:none; color: var(--fg); }
+.rail-item.on { background: var(--bg-soft); border: 0.5px solid var(--rule-soft); }
+.rail-item .ico { width: 22px; display:inline-flex; align-items:center; justify-content:center; color: var(--fg); }
+.rail-item .name { font-family: var(--serif); font-size: 14px; font-weight: 500; flex: 1; }
+.rail-item .dot-on { width:5px; height:5px; border-radius:50%; background: var(--ochre); }
+.follow-row { display:flex; align-items:center; gap:10px; padding: 6px 8px; border-radius: 8px; text-decoration: none; color: var(--fg); }
+.follow-row .av { width:28px; height:28px; border-radius:50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 12px; flex-shrink:0; }
+.follow-row.signed .av { background: var(--ochre); color: var(--bg); }
+.follow-row .meta { display:flex; flex-direction:column; gap:1px; min-width:0; flex:1; }
+.follow-row .name { font-family: var(--serif); font-size: 14px; font-weight: 500; }
+.follow-row .handle { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; color: var(--fg-faint); }
+.follow-row .ago { font-family: var(--mono); font-size: 9px; color: var(--fg-faint); }
+
+.feed { display:flex; flex-direction:column; gap: 14px; min-width: 0; }
+.compose { display:flex; flex-wrap:wrap; gap: 12px; align-items:center; padding: 16px 20px; background: var(--bg); border: 0.5px solid var(--rule); border-radius: 12px; }
+.compose .av { width: 36px; height: 36px; border-radius: 50%; background: var(--ochre); color: var(--bg); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 14px; }
+.compose .hint { flex: 1 1 200px; font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--fg-faint); }
+.btn-post { padding: 8px 16px; border-radius: 999px; background: var(--fg); color: var(--bg); border:none; font-family: var(--serif); font-size: 13px; cursor: pointer; }
+
+.feed-tabs {
+  display:flex; align-items:center; gap: 4px; padding: 4px;
+  background: var(--bg-soft); border: 0.5px solid var(--rule-soft); border-radius: 999px; align-self: flex-start;
+}
+.feed-tabs button {
+  padding: 7px 14px; border-radius: 999px; background: transparent; border:none;
+  font-family: var(--serif); font-size: 12.5px; color: var(--fg-muted); cursor: pointer;
+}
+.feed-tabs button.on { background: var(--bg); color: var(--fg); border: 0.5px solid var(--rule); }
+.feed-tabs button .num { font-family: var(--mono); font-size: 9.5px; color: var(--ochre); margin-left: 6px; }
+
+.post { display: flex; flex-direction: column; gap: 12px; padding: 22px 24px; background: var(--bg); border: 0.5px solid var(--rule); border-radius: 12px; }
+.post.anon { background: var(--bg-soft); }
+.post-source { display:flex; align-items:center; gap: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform: uppercase; padding-bottom: 4px; border-bottom: 0.5px dashed var(--rule-soft); }
+.post-source .pip { width:5px; height:5px; border-radius:50%; background: var(--moss); }
+.post-source.board .pip { background: var(--ochre); }
+.post-source .author-tip { color: var(--fg-muted); text-transform: none; letter-spacing: 0.02em; font-family: var(--serif); font-style: italic; font-size: 11.5px; }
+.post-author { display:grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items:center; }
+.post-author .av { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 15px; }
+.post-author.signed .av { background: var(--ochre); color: var(--bg); }
+.post-author .who { display:flex; flex-direction:column; gap: 1px; min-width: 0; }
+.post-author .who .name { font-family: var(--serif); font-size: 15.5px; font-weight: 500; display:inline-flex; align-items:center; gap:6px; }
+.post-author .who .name .sig {
+  display:inline-flex; align-items:center; gap:3px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em;
+  color: var(--ochre); text-transform: uppercase; line-height:1; padding: 2px 5px; border: 0.5px solid var(--ochre); border-radius: 999px;
+}
+.post-author .who .name .sig::before { content: '✓'; font-size: 9px; line-height:1; }
+.post-author .who .name .sig::after { content: 'PK'; }
+.post-author .who .handle { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--fg-faint); }
+.post-author .when { font-family: var(--mono); font-size: 10px; color: var(--fg-faint); align-self:start; padding-top:4px; }
+.post-body { font-family: var(--serif); font-size: 16px; line-height: 1.7; color: var(--fg); }
+.post-body p { margin: 0 0 12px; }
+.post-body p:last-child { margin-bottom: 0; }
+.post-body .tag { font-family: var(--mono); font-style: normal; font-size: 11.5px; letter-spacing: 0.08em; color: var(--ochre); text-transform: uppercase; }
+.post-body .quote { margin: 14px 0; padding: 6px 0 6px 18px; border-left: 2px solid var(--ochre); font-style: italic; color: var(--fg-muted); }
+.post-image {
+  margin-top: 4px; border-radius: 8px; overflow:hidden; aspect-ratio: 16 / 9; position:relative;
+  background: linear-gradient(135deg, #6F8C5A 0%, #4E6B3A 60%, #2E4622 100%);
+  border: 0.5px solid var(--rule);
+}
+.post-image .placeholder { position:absolute; left:14px; bottom:12px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color: rgba(255,255,255,0.9); text-transform: uppercase; }
+.post-actions { display:flex; align-items:center; gap: 22px; padding-top: 10px; border-top: 0.5px solid var(--rule-soft); }
+.post-action { display:inline-flex; align-items:center; gap: 7px; background: none; border: none; padding: 0; cursor: pointer; font-family: var(--serif); font-size: 13.5px; color: var(--fg-muted); }
+.post-action .ic { width: 16px; height: 16px; color: var(--fg-faint); }
+.post-action .n { font-family: var(--mono); font-size: 11px; color: var(--fg-faint); }
+.post-side { margin-left: auto; }
+.post-side .signed-mark { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--ochre); text-transform: uppercase; display:inline-flex; align-items:center; gap:4px; }
+.post-side .signed-mark .pip { width:5px; height:5px; border-radius:50%; background: var(--ochre); }
+
+.right-rail { display:flex; flex-direction:column; gap: 22px; position: sticky; top: 78px; }
+.rail-card { padding: 18px 18px 20px; border: 0.5px solid var(--rule); border-radius: 12px; background: var(--bg); display:flex; flex-direction:column; gap: 12px; }
+.rail-card h4 { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--ochre); text-transform: uppercase; padding-bottom: 6px; border-bottom: 0.5px solid var(--rule-soft); }
+.rail-card .item { display:flex; flex-direction:column; gap:3px; padding: 8px 0; border-bottom: 0.5px solid var(--rule-soft); }
+.rail-card .item:last-child { border-bottom: none; }
+.rail-card .item .title { font-family: var(--serif); font-size: 14px; font-weight: 500; line-height: 1.35; }
+.rail-card .item .meta { font-family: var(--mono); font-size: 9.5px; color: var(--fg-faint); }
+.rail-card .item .meta .b { color: var(--ochre); }
+.suggest-row { display:grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items:center; padding: 8px 0; border-bottom: 0.5px solid var(--rule-soft); }
+.suggest-row:last-child { border-bottom: none; }
+.suggest-row .av { width:30px; height:30px; border-radius:50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 13px; }
+.suggest-row.signed .av { background: var(--ochre); color: var(--bg); }
+.suggest-row .info .name { font-family: var(--serif); font-size: 13.5px; font-weight: 500; }
+.suggest-row .info .why { font-family: var(--mono); font-size: 9px; color: var(--fg-faint); }
+.btn-tiny { padding: 4px 10px; border-radius: 999px; background: transparent; border: 0.5px solid var(--rule); font-family: var(--serif); font-size: 11.5px; color: var(--fg); cursor:pointer; }
+.btn-tiny.solid { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.feed-section-head { display:flex; align-items:baseline; justify-content:space-between; padding: 6px 4px 0; }
+.feed-section-head .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; color: var(--fg-faint); text-transform: uppercase; }
+.feed-section-head .lbl .b { color: var(--ochre); }
+.feed-section-head a { font-family: var(--serif); font-size: 12px; color: var(--fg-muted); text-decoration:none; }
+
+.kicker-line { font-family: var(--serif); font-style: italic; font-size: 12px; color: var(--fg-faint); padding: 0 4px; line-height: 1.7; }
+
+/* App icon mini */
+.app-icons { display:flex; gap: 30px; align-items:flex-end; padding: 28px; background: var(--bg-soft); border: 0.5px solid var(--rule); border-radius: 14px; }
+.app-icon-cell { display:flex; flex-direction:column; gap:10px; align-items:center; }
+.app-icon-cell .icon-tile { width: 140px; height: 140px; border-radius: 32px; display:flex; align-items:center; justify-content:center; box-shadow: 0 14px 32px rgba(31,46,32,0.18), 0 2px 6px rgba(31,46,32,0.08); }
+.app-icon-cell .icon-tile.cream { background: #FBF7DC; }
+.app-icon-cell .icon-tile.forest { background: #1F2E20; }
+.app-icon-cell .icon-tile.ochre { background: #B88C2E; }
+.app-icon-cell .icon-tile.moss { background: #5A6E3A; }
+.app-icon-cell .label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color: #4F4A2A; text-transform: uppercase; }
+
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeToggle"><span class="swatch"></span><span id="themeLabel">CREAM · LIGHT</span></button>
+
+<script>
+(function() {
+  const KEY = 'elix-forest-theme';
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('themeToggle');
+    const label = document.getElementById('themeLabel');
+    const apply = (t) => { document.body.classList.toggle('dark', t === 'dark'); label.textContent = t === 'dark' ? 'PINE · DARK' : 'CREAM · LIGHT'; };
+    apply(localStorage.getItem(KEY) || 'light');
+    btn.addEventListener('click', () => { const next = document.body.classList.contains('dark') ? 'light' : 'dark'; localStorage.setItem(KEY, next); apply(next); });
+  });
+})();
+</script>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="elx-mark" viewBox="-100 -100 200 200">
+      <g transform="rotate(30)">
+        <g stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none">
+          <line x1="-60" y1="40" x2="60" y2="40"/><line x1="-60" y1="40" x2="0" y2="-60"/><line x1="60" y1="40" x2="0" y2="-60"/>
+        </g>
+        <g fill="currentColor"><circle cx="-60" cy="40" r="14"/><circle cx="60" cy="40" r="14"/><circle cx="0" cy="-60" r="14"/></g>
+        <circle cx="0" cy="6" r="8" fill="#B88C2E"/>
+      </g>
+    </symbol>
+    <symbol id="ic-resonate" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.5"/><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1" fill="none" opacity="0.25"/></symbol>
+    <symbol id="ic-reply" viewBox="0 0 20 20"><path d="M3 5 h12 a2 2 0 0 1 2 2 v5 a2 2 0 0 1 -2 2 h-7 l-4 3 v-3 h-1 a2 2 0 0 1 -2 -2 v-5 a2 2 0 0 1 2 -2 z" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+    <symbol id="ic-home" viewBox="0 0 20 20"><path d="M3 10 l7 -7 7 7 v7 h-5 v-5 h-4 v5 h-5 z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-bell" viewBox="0 0 20 20"><path d="M5 14 v-4 a5 5 0 0 1 10 0 v4 l1.5 2 h-13 z M8 17 a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M13 13 l4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+    <symbol id="ic-circle" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="10" cy="10" r="2" fill="currentColor"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M3 8 h14 M8 8 v9" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+    <symbol id="ic-image" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="7" cy="8.5" r="1.3" fill="currentColor"/><path d="M3 14 l4 -4 4 3 3 -2 3 3" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+
+  <div class="page-title-bar">
+    <div>
+      <h1>Elix · Forest Letter</h1>
+      <div class="sub">深森綠墨 + 奶油紙 + 赭黃 — 把「信任的地形」字面化。大地、林木、被讀過很多次的紙。</div>
+    </div>
+    <div class="label-mono">PALETTE · APP ICONS · FEED PREVIEW</div>
+  </div>
+
+<div class="frame-row">
+
+  <!-- ─── PALETTE ─── -->
+  <section>
+    <div class="frame-caption">
+      <span class="kind">01 · PALETTE</span>
+      <span class="name">色票 / Tokens</span>
+      <span class="w">FOREST LETTER</span>
+    </div>
+    <div class="palette-grid">
+      <div class="swatch" style="background:#FBF7DC; color:#1F2E20;">
+        <span class="role">01 · Surface</span>
+        <div><div class="name">Bone Goose</div><div class="hex">#FBF7DC</div></div>
+      </div>
+      <div class="swatch" style="background:#1F2E20; color:#FBF7DC;">
+        <span class="role">02 · Ink</span>
+        <div><div class="name">Forest</div><div class="hex">#1F2E20</div></div>
+      </div>
+      <div class="swatch" style="background:#B88C2E; color:#FBF7DC;">
+        <span class="role">03 · Trust Dot</span>
+        <div><div class="name">Ochre</div><div class="hex">#B88C2E</div></div>
+      </div>
+      <div class="swatch" style="background:#5A6E3A; color:#FBF7DC;">
+        <span class="role">04 · Secondary</span>
+        <div><div class="name">Moss</div><div class="hex">#5A6E3A</div></div>
+      </div>
+      <div class="swatch" style="background:#7E4A1E; color:#FBF7DC;">
+        <span class="role">05 · Warning</span>
+        <div><div class="name">Ember</div><div class="hex">#7E4A1E</div></div>
+      </div>
+      <div class="swatch" style="background:#F4EEC6; color:#1F2E20;">
+        <span class="role">06 · Soft</span>
+        <div><div class="name">Vellum</div><div class="hex">#F4EEC6</div></div>
+      </div>
+    </div>
+    <p style="margin: 14px 4px 0; font-family: var(--serif); font-style: italic; font-size: 13px; color: #4A4F38; line-height: 1.65; max-width: 72ch;">
+      Surface 推到接近骨白，仍保留一點鵝黃鬲。次表面 (Vellum / bg-deep) 也同步大幅拉淺，整張畫面呀吸更輕。Border 也轉淺，不再跳出來吃視線。
+    </p>
+  </section>
+
+  <!-- ─── APP ICONS ─── -->
+  <section>
+    <div class="frame-caption">
+      <span class="kind">02 · APP ICON</span>
+      <span class="name">放在四種底色上 / Mark on surfaces</span>
+      <span class="w">FOREST LETTER</span>
+    </div>
+    <div class="app-icons">
+      <div class="app-icon-cell">
+        <div class="icon-tile cream"><svg width="68" height="68" style="color:#1F2E20"><use href="#elx-mark"/></svg></div>
+        <span class="label">01 · CREAM</span>
+      </div>
+      <div class="app-icon-cell">
+        <div class="icon-tile forest"><svg width="68" height="68" style="color:#F1EAD0"><use href="#elx-mark"/></svg></div>
+        <span class="label">02 · FOREST</span>
+      </div>
+      <div class="app-icon-cell">
+        <div class="icon-tile ochre"><svg width="68" height="68" style="color:#F1EAD0"><use href="#elx-mark"/></svg></div>
+        <span class="label">03 · OCHRE</span>
+      </div>
+      <div class="app-icon-cell">
+        <div class="icon-tile moss"><svg width="68" height="68" style="color:#F1EAD0"><use href="#elx-mark"/></svg></div>
+        <span class="label">04 · MOSS</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FEED PREVIEW ─── -->
+  <section>
+    <div class="frame-caption">
+      <span class="kind">03 · FEED</span>
+      <span class="name">套用到動態頁 / Home feed</span>
+      <span class="w">DESKTOP · 1240</span>
+    </div>
+    <div class="frame">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url"><span class="lock">⌬</span>elix.social/#/</div></div>
+      <div class="surface">
+        <div class="topbar">
+          <div class="brand">
+            <svg width="22" height="22" style="color:var(--fg)"><use href="#elx-mark"/></svg>
+            <span class="word">Elix</span>
+          </div>
+          <div class="search"><span class="lens"></span>找人、找討論板、找關鍵字 …</div>
+          <div class="ctx">
+            <button class="icon-btn"><svg width="16" height="16"><use href="#ic-bell"/></svg><span class="badge"></span></button>
+            <span class="session-chip"><span class="av">T</span><span class="who">Tris</span><span class="tier">web · passkey</span></span>
+          </div>
+        </div>
+
+        <div class="cols">
+          <aside class="rail">
+            <div class="rail-section">
+              <h4>探索 · NAVIGATE</h4>
+              <a class="rail-item on" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-home"/></svg></span><span class="name">動態</span><span class="dot-on"></span></a>
+              <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-search"/></svg></span><span class="name">發現</span></a>
+              <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-bell"/></svg></span><span class="name">通知</span></a>
+              <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-circle"/></svg></span><span class="name">圈內</span></a>
+              <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-board"/></svg></span><span class="name">論壇板</span></a>
+            </div>
+            <div class="rail-section">
+              <h4>追蹤的人 · 8</h4>
+              <a class="follow-row signed" href="#"><span class="av">M</span><div class="meta"><span class="name">Mira</span><span class="handle">@mira · passkey</span></div><span class="ago">2h</span></a>
+              <a class="follow-row signed" href="#"><span class="av">k</span><div class="meta"><span class="name">Kr</span><span class="handle">@kr · passkey</span></div><span class="ago">5h</span></a>
+              <a class="follow-row signed" href="#"><span class="av">B</span><div class="meta"><span class="name">伯衡</span><span class="handle">@boheng · DID</span></div><span class="ago">3d</span></a>
+            </div>
+            <div class="rail-section">
+              <h4>訂閱的板 · 4</h4>
+              <a class="follow-row" href="#"><span class="av" style="background:transparent; border:0.5px solid var(--rule); color: var(--ochre); font-family: var(--mono); font-size: 11px;">#</span><div class="meta"><span class="name">philosophy</span><span class="handle">關於信任的地形</span></div><span class="ago">3 新</span></a>
+              <a class="follow-row" href="#"><span class="av" style="background:transparent; border:0.5px solid var(--rule); color: var(--ochre); font-family: var(--mono); font-size: 11px;">#</span><div class="meta"><span class="name">tools</span><span class="handle">passkey & 同步</span></div><span class="ago">12 新</span></a>
+            </div>
+          </aside>
+
+          <main class="feed">
+            <div class="compose">
+              <span class="av">T</span>
+              <span class="hint">說點什麼，Tris …</span>
+              <button class="btn-post">發布</button>
+            </div>
+
+            <div class="feed-tabs">
+              <button class="on">動態 <span class="num">最新</span></button>
+              <button>追蹤的人 <span class="num">8</span></button>
+              <button>訂閱的板</button>
+              <button>圈內</button>
+            </div>
+
+            <article class="post">
+              <div class="post-source">
+                <span class="pip"></span><span>FROM A FOLLOW</span>
+                <span class="author-tip">— 你在三月關注了 Mira</span>
+              </div>
+              <div class="post-author signed">
+                <div class="av">M</div>
+                <div class="who">
+                  <span class="name">Mira Lin<span class="sig"></span></span>
+                  <span class="handle">@mira · did:elix:m1ra…7a8</span>
+                </div>
+                <span class="when">2h</span>
+              </div>
+              <div class="post-body">
+                <p>今天搬家收拾舊筆記，翻到 2017 年寫的一段：「當演算法決定你看見什麼，沈默就會變成默許。」</p>
+                <p>八年後我們在 Elix 上重新打字。差別不是介面，是 — <em class="tag">#我決定誰看見</em></p>
+              </div>
+              <div class="post-image"><span class="placeholder">PHOTO · 舊筆記內頁</span></div>
+              <div class="post-actions">
+                <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">42</span></button>
+                <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">7</span></button>
+                <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED · PASSKEY</span></span>
+              </div>
+            </article>
+
+            <div class="feed-section-head">
+              <span class="lbl">FROM YOUR <span class="b">SUBSCRIBED BOARDS</span></span>
+              <a href="#">查看全部 →</a>
+            </div>
+
+            <article class="post">
+              <div class="post-source board">
+                <span class="pip"></span><span>BOARD · #PHILOSOPHY</span>
+                <span class="author-tip">— 你訂閱了這個板</span>
+              </div>
+              <div class="post-author signed">
+                <div class="av">k</div>
+                <div class="who">
+                  <span class="name">Kr<span class="sig"></span></span>
+                  <span class="handle">@kr · web · passkey</span>
+                </div>
+                <span class="when">5h</span>
+              </div>
+              <div class="post-body">
+                <p>passkey 在跨平台上還是不夠順。今天在 Linux 上重新登入花了我 40 分鐘——但這就是「不便」的成本，我們選擇承擔的那種。</p>
+                <p class="quote">便利往往是 surveillance 偽裝的禮物。</p>
+              </div>
+              <div class="post-actions">
+                <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">28</span></button>
+                <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">41</span></button>
+                <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED</span></span>
+              </div>
+            </article>
+
+            <article class="post anon">
+              <div class="post-source board">
+                <span class="pip"></span><span>BOARD · #PHILOSOPHY</span>
+                <span class="author-tip">— 匿名發文</span>
+              </div>
+              <div class="post-author">
+                <div class="av">·</div>
+                <div class="who">
+                  <span class="name" style="font-style:italic; color: var(--fg-muted);">匿名 · anonymous_x9b3</span>
+                  <span class="handle">無簽署 · 此身分僅本板可見</span>
+                </div>
+                <span class="when">昨日</span>
+              </div>
+              <div class="post-body">
+                <p>刪掉社群帳號的第 47 天。</p>
+                <p>第一個月最難 — 你會發現自己一天打開 18 次空白的桌面。第二個月開始，那 18 次變成 18 個小選擇。</p>
+              </div>
+              <div class="post-actions">
+                <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">156</span></button>
+                <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">23</span></button>
+              </div>
+            </article>
+          </main>
+
+          <aside class="right-rail">
+            <div class="rail-card">
+              <h4>圈內動態 · CIRCLE</h4>
+              <div class="suggest-row signed">
+                <span class="av">M</span>
+                <div class="info"><span class="name">Mira 正在回覆你</span><span class="why">「我也是這樣想的 …」</span></div>
+                <button class="btn-tiny">看</button>
+              </div>
+              <div class="suggest-row signed">
+                <span class="av">k</span>
+                <div class="info"><span class="name">Kr 共鳴了你的發文</span><span class="why">2h 前 · 關於慢一點</span></div>
+                <button class="btn-tiny">看</button>
+              </div>
+            </div>
+
+            <div class="rail-card">
+              <h4>你可能會關心 · BOARDS</h4>
+              <div class="item"><span class="title">介面如何邀請慢一點？</span><span class="meta"><span class="b">#design</span> · 14 回應 · @tris 起頭</span></div>
+              <div class="item"><span class="title">passkey 真的可以替代密碼嗎？</span><span class="meta"><span class="b">#tools</span> · 41 回應 · 進行中</span></div>
+            </div>
+
+            <div class="rail-card">
+              <h4>還可以追蹤 · PEOPLE</h4>
+              <div class="suggest-row signed"><span class="av">汐</span><div class="info"><span class="name">汐羽</span><span class="why">Mira 也追蹤了 · passkey</span></div><button class="btn-tiny solid">追蹤</button></div>
+              <div class="suggest-row signed"><span class="av">J</span><div class="info"><span class="name">Jorge</span><span class="why">圈內 3 人共同信任</span></div><button class="btn-tiny solid">追蹤</button></div>
+            </div>
+
+            <div class="kicker-line">動態是按時間排序的，沒有演算法決定你看見什麼。<br/>你看見的是你選擇看見的。</div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /frame-row -->
+</div><!-- /page -->
+
+</body>
+</html>

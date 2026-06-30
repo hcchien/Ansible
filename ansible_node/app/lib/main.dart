@@ -17,6 +17,7 @@ import 'l10n/app_localizations.dart';
 import 'screens/home_shell.dart';
 import 'screens/identity_backup_screen.dart'; // Backup blob creation (nag-once)
 import 'screens/onboarding_backup_step_screen.dart'; // Post-registration backup + initial anchor
+import 'screens/onboarding_intro_screen.dart';
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
 import 'screens/posts_view_screen.dart';
 import 'screens/recovery_wizard_screen.dart'; // Restore-from-backup recovery
@@ -173,6 +174,9 @@ class _MyAppState extends State<MyApp> {
   String? _anchoredDid;
   String? _anchoredPublicKeyHex;
   bool _loadingIdentity = true;
+  // First-run: show the onboarding intro (Welcome/Promise) before the passkey
+  // ("first key") screen.
+  bool _introDone = false;
   late final DidManager _didManager;
   late final DidPlcManager _didPlcManager;
   late final CanonicalIdentityStore _canonicalIdentityStore;
@@ -490,9 +494,13 @@ class _MyAppState extends State<MyApp> {
                   onClearIdentity: () => setState(() => _anchoredDid = null),
                   initialBoard: widget.initialBoard,
                 )
-              : PasskeysRegistrationScreen(
+              : _introDone
+              ? PasskeysRegistrationScreen(
                   onRegistered: _handleRegistered,
                   onRecoverExistingAccount: _openRecoveryWizard,
+                )
+              : OnboardingIntroScreen(
+                  onContinue: () => setState(() => _introDone = true),
                 ),
         );
       },

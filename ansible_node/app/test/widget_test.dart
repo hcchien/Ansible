@@ -28,6 +28,12 @@ void main() {
     );
     await tester.pump();
 
+    // First run now opens on the onboarding intro; skip through to the
+    // identity-creation (passkey) screen.
+    expect(find.text('Enter'), findsOneWidget);
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Elix'), findsOneWidget);
     expect(
       find.text('Create identity first,\nthen join the community.'),

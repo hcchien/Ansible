@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8"/>
+<title>Elix · Web (Feed)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=Noto+Serif+TC:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FAF6EC;
+  --bg-soft: #F0EBDA;
+  --bg-deep: #E8E1CF;
+  --fg: #1A1815;
+  --fg-muted: #3A3530;
+  --fg-faint: #8A847A;
+  --rule: #D9D2BE;
+  --rule-soft: #E4DDC8;
+  --amber: #B97A3C;
+  --sage: #4A6B5E;
+  --ember: #7A3E1E;
+  --serif: 'Noto Serif TC', 'Newsreader', serif;
+  --serif-en: 'Newsreader', 'Noto Serif TC', serif;
+  --sans: 'Noto Sans TC', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+body.dark .surface {
+  --bg: #14130F;
+  --bg-soft: #1E1C17;
+  --bg-deep: #26241E;
+  --fg: #F0EAD8;
+  --fg-muted: #B8B0A0;
+  --fg-faint: #6E665A;
+  --rule: #2E2B23;
+  --rule-soft: #24221C;
+  --amber: #D69968;
+  --sage: #7AA39B;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; background:#E3DECD; font-family:var(--sans); color:#1A1815; }
+.label-mono { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; color: var(--fg-faint); text-transform: uppercase; }
+
+.page { background:#E3DECD; padding: 40px 24px 60px; min-height:100vh; }
+.page-title-bar { max-width: 1320px; margin: 0 auto 14px; display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.page-title-bar h1 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin:0; }
+.page-title-bar .sub { font-family: var(--serif); font-style: italic; font-size: 13px; color: #5A554A; }
+.theme-toggle {
+  display:inline-flex; align-items:center; gap:8px; padding:7px 13px 7px 8px;
+  border-radius:999px; background:#FAF6EC; border:0.5px solid #D9D2BE; color:#1A1815;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; cursor:pointer;
+}
+.theme-toggle .swatch { width:14px; height:14px; border-radius:50%; background:#FAF6EC; border:0.5px solid #D9D2BE; }
+body.dark .theme-toggle { background:#14130F; color:#F0EAD8; border-color:#2E2B23; }
+body.dark .theme-toggle .swatch { background:#14130F; border-color:#2E2B23; }
+
+.frame-row { max-width: 1320px; margin: 0 auto; display:flex; flex-direction:column; gap:48px; }
+.frame { display:flex; flex-direction:column; background:#fff; border:0.5px solid #C9C1AE; border-radius:14px; overflow:hidden; box-shadow: 0 24px 60px rgba(60,40,20,0.10), 0 2px 6px rgba(60,40,20,0.05); }
+.frame-caption { display:flex; align-items:baseline; gap:12px; padding:0 0 14px; }
+.frame-caption .kind { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: #8A847A; text-transform: uppercase; }
+.frame-caption .name { font-family: var(--serif); font-size: 18px; font-weight: 500; }
+.frame-caption .w { font-family: var(--mono); font-size: 10px; color: #8A847A; letter-spacing: 0.06em; margin-left: auto; }
+.frame .chrome { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#F3EFE3; border-bottom: 0.5px solid #D9D2BE; }
+.frame .dots { display:flex; gap:6px; }
+.frame .dots i { width:10px; height:10px; border-radius:50%; background:#D9D2BE; display:inline-block; }
+.frame .dots i:first-child { background:#E8A77A; }
+.frame .dots i:nth-child(2) { background:#E0C77A; }
+.frame .dots i:last-child { background:#A8C49A; }
+.frame .url { flex:1; background:#FAF6EC; border:0.5px solid #D9D2BE; border-radius:6px; padding:5px 12px; font-family: var(--mono); font-size: 11px; color:#3A3530; letter-spacing:0.04em; display:flex; align-items:center; gap:8px; }
+.frame .url .lock { color:#4A6B5E; font-size:10px; }
+
+/* ── App surface ───────────────────────────────────── */
+.surface { background: var(--bg); color: var(--fg); font-family: var(--sans); display:flex; flex-direction:column; min-height: 800px; }
+
+/* Top bar — feed app style */
+.topbar {
+  display:grid; grid-template-columns: 280px 1fr 280px;
+  align-items:center; gap: 22px;
+  padding: 14px 28px; border-bottom: 0.5px solid var(--rule); background: var(--bg);
+  position: sticky; top: 0; z-index: 5;
+}
+.topbar .brand { display:flex; align-items:center; gap:12px; }
+.topbar .brand .word { font-family: var(--serif); font-size: 17px; font-weight: 500; letter-spacing: 0.02em; }
+.search {
+  display:flex; align-items:center; gap:10px; padding: 8px 14px;
+  background: var(--bg-soft); border: 0.5px solid var(--rule-soft); border-radius: 999px;
+  width: min(420px, 100%); margin: 0 auto;
+  font-family: var(--serif); font-size: 13px; color: var(--fg-faint);
+}
+.search .lens { width: 12px; height:12px; border-radius:50%; border: 1.2px solid currentColor; position:relative; }
+.search .lens::after { content:''; position:absolute; right:-4px; bottom:-4px; width:5px; height:1.2px; background:currentColor; transform:rotate(45deg); transform-origin: left center; }
+.topbar .ctx { display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+.session-chip { display:inline-flex; align-items:center; gap:8px; border: 0.5px solid var(--rule); border-radius: 999px; padding: 5px 11px 5px 7px; background: var(--bg); }
+.session-chip .av { width:20px; height:20px; border-radius:50%; background: var(--amber); color: var(--bg); display:inline-flex; align-items:center; justify-content:center; font-family:var(--serif); font-size:11px; }
+.session-chip .who { font-family: var(--serif); font-size: 13px; }
+.session-chip .tier { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--amber); text-transform: uppercase; }
+.icon-btn { width:34px; height:34px; border-radius:50%; background: var(--bg-soft); border: 0.5px solid var(--rule-soft); display:inline-flex; align-items:center; justify-content:center; color: var(--fg); cursor:pointer; position:relative; }
+.icon-btn .badge { position:absolute; top:5px; right:5px; width:6px; height:6px; border-radius:50%; background: var(--amber); }
+
+/* 3-column layout */
+.cols { display:grid; grid-template-columns: 280px 1fr 320px; gap: 28px; width: min(1280px, 100%); margin: 0 auto; padding: 24px 28px 56px; align-items:start; }
+
+/* Left rail */
+.rail { display:flex; flex-direction:column; gap: 22px; position: sticky; top: 78px; }
+.rail-section { display:flex; flex-direction:column; gap: 10px; }
+.rail-section h4 { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--fg-faint); text-transform: uppercase; padding-bottom: 6px; border-bottom: 0.5px solid var(--rule-soft); }
+.rail-item { display:flex; align-items:center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor:pointer; text-decoration:none; color: var(--fg); }
+.rail-item:hover { background: var(--bg-soft); }
+.rail-item.on { background: var(--bg-soft); border: 0.5px solid var(--rule-soft); }
+.rail-item .ico { width: 24px; height: 24px; display:inline-flex; align-items:center; justify-content:center; color: var(--fg); flex-shrink:0; }
+.rail-item .name { font-family: var(--serif); font-size: 14px; font-weight: 500; flex: 1; }
+.rail-item .count { font-family: var(--mono); font-size: 10px; color: var(--fg-faint); letter-spacing: 0.08em; }
+.rail-item.signed .ico { color: var(--amber); }
+.rail-item .dot-on { width:5px; height:5px; border-radius:50%; background: var(--amber); margin-left:auto; }
+
+.follow-row { display:flex; align-items:center; gap:10px; padding: 6px 8px; border-radius: 8px; text-decoration: none; color: var(--fg); }
+.follow-row:hover { background: var(--bg-soft); }
+.follow-row .av { width:28px; height:28px; border-radius:50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 12px; flex-shrink:0; }
+.follow-row.signed .av { background: var(--amber); color: var(--bg); }
+.follow-row .meta { display:flex; flex-direction:column; gap:1px; min-width:0; flex:1; }
+.follow-row .name { font-family: var(--serif); font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.follow-row .handle { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; color: var(--fg-faint); }
+.follow-row .ago { font-family: var(--mono); font-size: 9px; color: var(--fg-faint); letter-spacing: 0.06em; }
+
+/* Center: feed */
+.feed { display:flex; flex-direction:column; gap: 14px; min-width: 0; }
+
+/* Compose card */
+.compose {
+  display:flex; flex-wrap:wrap; gap: 12px; align-items:center;
+  padding: 18px 22px; background: var(--bg); border: 0.5px solid var(--rule); border-radius: 12px;
+}
+.compose .av { flex-shrink:0; }
+.compose .hint { flex: 1 1 200px; min-width: 0; }
+.compose .actions { flex-shrink: 0; margin-left: auto; }
+.compose .av { width: 36px; height: 36px; border-radius: 50%; background: var(--amber); color: var(--bg); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 14px; }
+.compose .hint { font-family: var(--serif); font-style: italic; font-size: 15.5px; color: var(--fg-faint); }
+.compose .actions { display:flex; gap:8px; }
+.compose-action { width: 32px; height:32px; border-radius: 8px; background: var(--bg-soft); border: 0.5px solid var(--rule-soft); display:inline-flex; align-items:center; justify-content:center; color: var(--fg-muted); cursor:pointer; }
+.btn-post {
+  padding: 8px 16px; border-radius: 999px; background: var(--fg); color: var(--bg); border:none;
+  font-family: var(--serif); font-size: 13px; letter-spacing: 0.04em; cursor: pointer;
+}
+
+/* Feed filter tabs */
+.feed-tabs {
+  display:flex; align-items:center; gap: 4px; padding: 4px;
+  background: var(--bg-soft); border: 0.5px solid var(--rule-soft); border-radius: 999px;
+  align-self: flex-start;
+}
+.feed-tabs button {
+  padding: 7px 14px; border-radius: 999px; background: transparent; border:none;
+  font-family: var(--serif); font-size: 12.5px; color: var(--fg-muted); cursor: pointer;
+}
+.feed-tabs button.on { background: var(--bg); color: var(--fg); border: 0.5px solid var(--rule); }
+.feed-tabs button .num { font-family: var(--mono); font-size: 9.5px; color: var(--amber); margin-left: 6px; letter-spacing: 0.08em; }
+
+/* Post card */
+.post {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 22px 24px; background: var(--bg); border: 0.5px solid var(--rule); border-radius: 12px;
+}
+.post.from-board { background: var(--bg); border-color: var(--rule); }
+.post.anon { background: var(--bg-soft); }
+.post-source {
+  display:flex; align-items:center; gap: 8px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform: uppercase;
+  padding-bottom: 4px; border-bottom: 0.5px dashed var(--rule-soft);
+}
+.post-source .pip { width:5px; height:5px; border-radius:50%; background: var(--sage); }
+.post-source.board .pip { background: var(--amber); }
+.post-source .author-tip { color: var(--fg-muted); text-transform: none; letter-spacing: 0.02em; font-family: var(--serif); font-style: italic; font-size: 11.5px; }
+
+.post-author {
+  display:grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items:center;
+}
+.post-author .av { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 15px; }
+.post-author.signed .av { background: var(--amber); color: var(--bg); }
+.post-author .who { display:flex; flex-direction:column; gap: 1px; min-width: 0; }
+.post-author .who .name { font-family: var(--serif); font-size: 15.5px; font-weight: 500; display:inline-flex; align-items:center; gap:6px; }
+.post-author .who .name .sig { display:inline-flex; align-items:center; gap:3px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; color: var(--amber); text-transform: uppercase; line-height:1; padding: 2px 5px; border: 0.5px solid var(--amber); border-radius: 999px; }
+.post-author .who .name .sig::before { content: '✓'; font-size: 9px; line-height:1; }
+.post-author .who .name .sig::after { content: 'PK'; }
+.post-author .who .handle { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--fg-faint); }
+.post-author .when { font-family: var(--mono); font-size: 10px; color: var(--fg-faint); letter-spacing: 0.06em; align-self:start; padding-top:4px; }
+.tier-chip {
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--amber); padding: 2px 7px; border-radius: 999px; border: 0.5px solid var(--amber);
+  background: transparent; align-self:center;
+}
+.tier-chip.web { color: var(--sage); border-color: var(--sage); }
+.tier-chip.basic { color: var(--fg-faint); border-color: var(--rule); }
+
+.post-body { font-family: var(--serif); font-size: 16px; line-height: 1.7; color: var(--fg); }
+.post-body p { margin: 0 0 12px; }
+.post-body p:last-child { margin-bottom: 0; }
+.post-body .quote { margin: 14px 0; padding: 6px 0 6px 18px; border-left: 2px solid var(--amber); font-style: italic; color: var(--fg-muted); }
+.post-body em.tag { font-family: var(--mono); font-style: normal; font-size: 11.5px; letter-spacing: 0.08em; color: var(--amber); text-transform: uppercase; padding: 0 4px; }
+
+.post-image {
+  margin-top: 4px;
+  border-radius: 8px; overflow:hidden; aspect-ratio: 16 / 9; position:relative;
+  background: linear-gradient(135deg, #C7B79A 0%, #A89880 50%, #847864 100%);
+  border: 0.5px solid var(--rule);
+}
+.post-image.alt { background: linear-gradient(135deg, #6B8A82 0%, #4A6B5E 60%, #2E4640 100%); }
+.post-image .placeholder { position:absolute; left:14px; bottom:12px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color: rgba(255,255,255,0.9); text-transform: uppercase; }
+
+.post-actions {
+  display:flex; align-items:center; gap: 22px;
+  padding-top: 10px; border-top: 0.5px solid var(--rule-soft);
+}
+.post-action {
+  display:inline-flex; align-items:center; gap: 7px;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--serif); font-size: 13.5px; color: var(--fg-muted);
+}
+.post-action .ic { width: 16px; height: 16px; color: var(--fg-faint); }
+.post-action.resonate:hover .ic { color: var(--amber); }
+.post-action .n { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--fg-faint); }
+.post-action.signed-by-me { color: var(--amber); }
+.post-action.signed-by-me .ic { color: var(--amber); }
+.post-side { margin-left: auto; display:flex; gap: 8px; align-items:center; }
+.post-side .signed-mark { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--amber); text-transform: uppercase; display:inline-flex; align-items:center; gap:4px; }
+.post-side .signed-mark .pip { width: 5px; height:5px; border-radius:50%; background: var(--amber); }
+
+/* Right rail */
+.right-rail { display:flex; flex-direction:column; gap: 22px; position: sticky; top: 78px; }
+.rail-card {
+  padding: 18px 18px 20px; border: 0.5px solid var(--rule); border-radius: 12px; background: var(--bg);
+  display:flex; flex-direction:column; gap: 12px;
+}
+.rail-card h4 { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--amber); text-transform: uppercase; padding-bottom: 6px; border-bottom: 0.5px solid var(--rule-soft); }
+.rail-card .item { display:flex; flex-direction:column; gap:3px; padding: 8px 0; border-bottom: 0.5px solid var(--rule-soft); }
+.rail-card .item:last-child { border-bottom: none; padding-bottom: 0; }
+.rail-card .item .title { font-family: var(--serif); font-size: 14px; font-weight: 500; line-height: 1.35; }
+.rail-card .item .meta { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em; color: var(--fg-faint); }
+.rail-card .item .meta .b { color: var(--amber); }
+
+.suggest-row { display:grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items:center; padding: 8px 0; border-bottom: 0.5px solid var(--rule-soft); }
+.suggest-row:last-child { border-bottom: none; }
+.suggest-row .av { width:30px; height:30px; border-radius:50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 13px; }
+.suggest-row.signed .av { background: var(--amber); color: var(--bg); }
+.suggest-row .info { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.suggest-row .info .name { font-family: var(--serif); font-size: 13.5px; font-weight: 500; }
+.suggest-row .info .why { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; color: var(--fg-faint); }
+.btn-tiny { padding: 4px 10px; border-radius: 999px; background: transparent; border: 0.5px solid var(--rule); font-family: var(--serif); font-size: 11.5px; color: var(--fg); cursor:pointer; }
+.btn-tiny.solid { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Section header in feed */
+.feed-section-head { display:flex; align-items:baseline; justify-content:space-between; padding: 6px 4px 0; }
+.feed-section-head .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; color: var(--fg-faint); text-transform: uppercase; }
+.feed-section-head .lbl .b { color: var(--amber); }
+.feed-section-head a { font-family: var(--serif); font-size: 12px; color: var(--fg-muted); text-decoration:none; }
+
+/* Mobile */
+.frame.mobile .topbar { display:flex; align-items:center; justify-content:space-between; padding: 12px 16px; gap: 10px; }
+.frame.mobile .topbar .brand .word { font-size: 15px; }
+.frame.mobile .search { display:none; }
+.frame.mobile .topbar .ctx { gap:8px; }
+.frame.mobile .session-chip .who { display:none; }
+.frame.mobile .session-chip .tier { display:none; }
+.frame.mobile .cols { grid-template-columns: 1fr; padding: 16px 16px 80px; gap: 14px; }
+.frame.mobile .rail, .frame.mobile .right-rail { display:none; }
+.frame.mobile .compose { padding: 14px 16px; gap: 10px; }
+.frame.mobile .compose .hint { font-size: 14.5px; }
+.frame.mobile .compose .actions .compose-action:nth-child(n+3) { display:none; }
+.frame.mobile .post { padding: 18px 16px; gap: 10px; }
+.frame.mobile .post-body { font-size: 15.5px; }
+.frame.mobile .feed-tabs { width: 100%; justify-content: space-between; }
+
+.mobile-tabbar {
+  display:none;
+  position: sticky; bottom: 0;
+  background: var(--bg); border-top: 0.5px solid var(--rule);
+  padding: 10px 16px 14px;
+  justify-content: space-around;
+  z-index: 5;
+}
+.frame.mobile .mobile-tabbar { display:flex; }
+.mobile-tabbar .tab { display:flex; flex-direction:column; align-items:center; gap:3px; color: var(--fg-faint); position:relative; cursor: pointer; }
+.mobile-tabbar .tab.on { color: var(--fg); }
+.mobile-tabbar .tab span { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; }
+.mobile-tabbar .tab .dot { position:absolute; top: 0; right: 12px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+.fab {
+  position: absolute; bottom: 80px; right: 16px;
+  width: 50px; height: 50px; border-radius: 50%; background: var(--fg); color: var(--bg);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+}
+
+/* Profile header */
+.profile-head {
+  padding: 28px 28px 22px; background: var(--bg);
+  border: 0.5px solid var(--rule); border-radius: 12px;
+  display:flex; flex-direction:column; gap: 16px;
+}
+.profile-head .row { display:flex; align-items:flex-start; gap: 18px; }
+.profile-head .av-big { width: 78px; height: 78px; border-radius: 50%; background: var(--amber); color: var(--bg); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 30px; flex-shrink:0; }
+.profile-head .info { flex:1; display:flex; flex-direction:column; gap: 4px; min-width:0; }
+.profile-head .info h1 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 26px; display:inline-flex; align-items:center; gap:8px; }
+.profile-head .info h1 .sig { display:inline-flex; align-items:center; gap:4px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--amber); text-transform: uppercase; line-height:1; padding: 4px 8px; border: 0.5px solid var(--amber); border-radius: 999px; font-weight:400; vertical-align: middle; }
+.profile-head .info h1 .sig::before { content: '✓'; font-size: 11px; line-height:1; }
+.profile-head .info h1 .sig::after { content: 'SIGNED · PASSKEY'; }
+.profile-head .info .handle { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; color: var(--fg-faint); }
+.profile-head .info .bio { font-family: var(--serif); font-size: 14.5px; line-height: 1.6; color: var(--fg-muted); margin-top: 6px; max-width: 60ch; }
+.profile-head .stats { display:flex; gap: 22px; padding-top: 14px; border-top: 0.5px solid var(--rule-soft); }
+.profile-head .stat { display:flex; flex-direction:column; gap: 2px; }
+.profile-head .stat .n { font-family: var(--serif); font-size: 18px; font-weight: 500; }
+.profile-head .stat .l { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform: uppercase; }
+.profile-head .actions-row { display:flex; gap:8px; }
+
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeToggle"><span class="swatch"></span><span id="themeLabel">PAPER · LIGHT</span></button>
+
+<script>
+(function() {
+  const KEY = 'elix-web-theme';
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('themeToggle');
+    const label = document.getElementById('themeLabel');
+    const apply = (t) => { document.body.classList.toggle('dark', t === 'dark'); label.textContent = t === 'dark' ? 'INK · DARK' : 'PAPER · LIGHT'; };
+    apply(localStorage.getItem(KEY) || 'light');
+    btn.addEventListener('click', () => { const next = document.body.classList.contains('dark') ? 'light' : 'dark'; localStorage.setItem(KEY, next); apply(next); });
+  });
+})();
+</script>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="elx-mark" viewBox="-100 -100 200 200">
+      <g transform="rotate(30)">
+        <g stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none">
+          <line x1="-60" y1="40" x2="60" y2="40"/>
+          <line x1="-60" y1="40" x2="0" y2="-60"/>
+          <line x1="60" y1="40" x2="0" y2="-60"/>
+        </g>
+        <g fill="currentColor"><circle cx="-60" cy="40" r="14"/><circle cx="60" cy="40" r="14"/><circle cx="0" cy="-60" r="14"/></g>
+        <circle cx="0" cy="6" r="8" fill="#B97A3C"/>
+      </g>
+    </symbol>
+    <symbol id="ic-resonate" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.5"/><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1" fill="none" opacity="0.25"/></symbol>
+    <symbol id="ic-reply" viewBox="0 0 20 20"><path d="M3 5 h12 a2 2 0 0 1 2 2 v5 a2 2 0 0 1 -2 2 h-7 l-4 3 v-3 h-1 a2 2 0 0 1 -2 -2 v-5 a2 2 0 0 1 2 -2 z" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+    <symbol id="ic-pass" viewBox="0 0 20 20"><path d="M4 10 h12 M11 5 l5 5 -5 5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-save" viewBox="0 0 20 20"><path d="M5 3 h10 v14 l-5 -3 -5 3 z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-home" viewBox="0 0 20 20"><path d="M3 10 l7 -7 7 7 v7 h-5 v-5 h-4 v5 h-5 z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M13 13 l4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+    <symbol id="ic-bell" viewBox="0 0 20 20"><path d="M5 14 v-4 a5 5 0 0 1 10 0 v4 l1.5 2 h-13 z M8 17 a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M3 8 h14 M8 8 v9" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+    <symbol id="ic-circle" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="10" cy="10" r="2" fill="currentColor"/></symbol>
+    <symbol id="ic-image" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="7" cy="8.5" r="1.3" fill="currentColor"/><path d="M3 14 l4 -4 4 3 3 -2 3 3" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+    <symbol id="ic-link" viewBox="0 0 20 20"><path d="M8 12 l-2 2 a3 3 0 0 1 -4 -4 l3 -3 a3 3 0 0 1 4 0 M12 8 l2 -2 a3 3 0 0 1 4 4 l-3 3 a3 3 0 0 1 -4 0" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="ic-quote" viewBox="0 0 20 20"><path d="M5 6 v5 a3 3 0 0 0 3 3 M12 6 v5 a3 3 0 0 0 3 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 20 20"><path d="M10 4 v12 M4 10 h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-pen" viewBox="0 0 20 20"><path d="M3 17 l3 -1 10 -10 -2 -2 -10 10 z M13 6 l2 2" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-mic" viewBox="0 0 20 20"><rect x="8" y="3" width="4" height="9" rx="2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M5 10 a5 5 0 0 0 10 0 M10 15 v3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="ic-key" viewBox="0 0 20 20"><circle cx="7" cy="10" r="3.5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M10 10 h7 M14 10 v3 M17 10 v2" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="ic-shield" viewBox="0 0 20 20"><path d="M10 3 l6 2 v5 c0 4 -3 6 -6 7 -3 -1 -6 -3 -6 -7 v-5 z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-sync" viewBox="0 0 20 20"><path d="M4 10 a6 6 0 0 1 10 -4 M16 4 v3 h-3 M16 10 a6 6 0 0 1 -10 4 M4 16 v-3 h3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M3 10 h14 M10 3 a9 7 0 0 1 0 14 M10 3 a9 7 0 0 0 0 14" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
+    <symbol id="ic-moon" viewBox="0 0 20 20"><path d="M15 11 a6 6 0 1 1 -6 -8 a5 5 0 0 0 6 8 z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-sig" viewBox="0 0 20 20"><path d="M3 14 c2 -8 5 -8 6 -2 s3 6 4 0 s3 -3 4 1" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+
+<div class="page-title-bar">
+  <div>
+    <h1>Elix · Web (v2)</h1>
+    <div class="sub">Feed-first redesign — subscribed posts + people you follow take the home, the forum becomes a section</div>
+  </div>
+  <div class="label-mono">7 views · HOME / PROFILE / COMPOSE / THREAD / SETTINGS / INTERFACE / MOBILE</div>
+</div>
+
+<div class="frame-row">
+
+<!-- ─────────── 01 · HOME FEED (DESKTOP) ─────────── -->
+<div>
+  <div class="frame-caption">
+    <span class="kind">01 · HOME</span>
+    <span class="name">你的動態 / Subscribed + follows feed</span>
+    <span class="w">DESKTOP · 1280</span>
+  </div>
+  <div class="frame">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url"><span class="lock">⌬</span>elix.social/#/</div></div>
+    <div class="surface">
+
+      <div class="topbar">
+        <div class="brand">
+          <svg width="22" height="22" style="color:var(--fg)"><use href="#elx-mark"/></svg>
+          <span class="word">Elix</span>
+        </div>
+        <div class="search"><span class="lens"></span>找人、找討論板、找關鍵字 …</div>
+        <div class="ctx">
+          <button class="icon-btn" aria-label="Notifications"><svg width="16" height="16"><use href="#ic-bell"/></svg><span class="badge"></span></button>
+          <span class="session-chip"><span class="av">T</span><span class="who">Tris</span><span class="tier">web · passkey</span></span>
+        </div>
+      </div>
+
+      <div class="cols">
+
+        <!-- LEFT RAIL -->
+        <aside class="rail">
+          <div class="rail-section">
+            <h4>探索 · NAVIGATE</h4>
+            <a class="rail-item on" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-home"/></svg></span><span class="name">動態</span><span class="dot-on"></span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-search"/></svg></span><span class="name">發現</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-bell"/></svg></span><span class="name">通知</span><span class="count">3</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-circle"/></svg></span><span class="name">圈內</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-board"/></svg></span><span class="name">論壇板</span></a>
+          </div>
+
+          <div class="rail-section">
+            <h4>追蹤的人 · 8</h4>
+            <a class="follow-row signed" href="#"><span class="av">M</span><div class="meta"><span class="name">Mira</span><span class="handle">@mira · passkey</span></div><span class="ago">2h</span></a>
+            <a class="follow-row signed" href="#"><span class="av">k</span><div class="meta"><span class="name">Kr</span><span class="handle">@kr · passkey</span></div><span class="ago">5h</span></a>
+            <a class="follow-row" href="#"><span class="av">N</span><div class="meta"><span class="name">Nadia 路人</span><span class="handle">@nadia · basic</span></div><span class="ago">1d</span></a>
+            <a class="follow-row signed" href="#"><span class="av">B</span><div class="meta"><span class="name">伯衡</span><span class="handle">@boheng · DID</span></div><span class="ago">3d</span></a>
+          </div>
+
+          <div class="rail-section">
+            <h4>訂閱的板 · 4</h4>
+            <a class="follow-row" href="#"><span class="av" style="background:transparent; border:0.5px solid var(--rule); color: var(--amber); font-family: var(--mono); font-size: 11px;">#</span><div class="meta"><span class="name">philosophy</span><span class="handle">關於信任的地形</span></div><span class="ago">3 新</span></a>
+            <a class="follow-row" href="#"><span class="av" style="background:transparent; border:0.5px solid var(--rule); color: var(--amber); font-family: var(--mono); font-size: 11px;">#</span><div class="meta"><span class="name">tools</span><span class="handle">passkey & 同步</span></div><span class="ago">12 新</span></a>
+            <a class="follow-row" href="#"><span class="av" style="background:transparent; border:0.5px solid var(--rule); color: var(--amber); font-family: var(--mono); font-size: 11px;">#</span><div class="meta"><span class="name">design</span><span class="handle">介面設計</span></div><span class="ago">1 新</span></a>
+          </div>
+        </aside>
+
+        <!-- CENTER FEED -->
+        <main class="feed">
+
+          <!-- Compose -->
+          <div class="compose">
+            <span class="av">T</span>
+            <span class="hint">說點什麼，Tris …</span>
+            <div class="actions">
+              <button class="compose-action" title="image"><svg width="16" height="16"><use href="#ic-image"/></svg></button>
+              <button class="compose-action" title="link"><svg width="16" height="16"><use href="#ic-link"/></svg></button>
+              <button class="compose-action" title="quote"><svg width="16" height="16"><use href="#ic-quote"/></svg></button>
+              <button class="btn-post">發布</button>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="feed-tabs">
+            <button class="on">動態 <span class="num">最新</span></button>
+            <button>追蹤的人 <span class="num">8</span></button>
+            <button>訂閱的板 <span class="num">3</span></button>
+            <button>圈內</button>
+          </div>
+
+          <!-- Post 1: direct follow, signed, with image -->
+          <article class="post">
+            <div class="post-source">
+              <span class="pip"></span>
+              <span>FROM A FOLLOW</span>
+              <span class="author-tip">— 你在三月關注了 Mira</span>
+            </div>
+            <div class="post-author signed">
+              <div class="av">M</div>
+              <div class="who">
+                <span class="name">Mira Lin<span class="sig"></span></span>
+                <span class="handle">@mira · did:elix:m1ra…7a8</span>
+              </div>
+              <span class="when">2h</span>
+            </div>
+            <div class="post-body">
+              <p>今天搬家收拾舊筆記，翻到 2017 年寫的一段：「當演算法決定你看見什麼，沈默就會變成默許。」</p>
+              <p>八年後我們在 Elix 上重新打字。差別不是介面，是 — <em class="tag">#我決定誰看見</em></p>
+            </div>
+            <div class="post-image">
+              <span class="placeholder">PHOTO · 舊筆記內頁</span>
+            </div>
+            <div class="post-actions">
+              <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">42</span></button>
+              <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">7</span></button>
+              <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED · PASSKEY</span></span>
+            </div>
+          </article>
+
+          <!-- Section break -->
+          <div class="feed-section-head">
+            <span class="lbl">FROM YOUR <span class="b">SUBSCRIBED BOARDS</span></span>
+            <a href="#">查看全部 →</a>
+          </div>
+
+          <!-- Post 2: from board, signed -->
+          <article class="post from-board">
+            <div class="post-source board">
+              <span class="pip"></span>
+              <span>BOARD · #PHILOSOPHY</span>
+              <span class="author-tip">— 你訂閱了這個板</span>
+            </div>
+            <div class="post-author signed">
+              <div class="av">k</div>
+              <div class="who">
+                <span class="name">Kr<span class="sig"></span></span>
+                <span class="handle">@kr · web · passkey</span>
+              </div>
+              <span class="tier-chip web">web · passkey</span>
+              <span class="when">5h</span>
+            </div>
+            <div class="post-body">
+              <p>passkey 在跨平台上還是不夠順。今天在 Linux 上重新登入花了我 40 分鐘——但這就是「不便」的成本，我們選擇承擔的那種。</p>
+              <p class="quote">便利往往是 surveillance 偽裝的禮物。</p>
+            </div>
+            <div class="post-actions">
+              <button class="post-action resonate signed-by-me"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">28</span></button>
+              <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">41</span></button>
+              <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED</span></span>
+            </div>
+          </article>
+
+          <!-- Post 3: anonymous from board -->
+          <article class="post anon">
+            <div class="post-source board">
+              <span class="pip"></span>
+              <span>BOARD · #PHILOSOPHY</span>
+              <span class="author-tip">— 匿名發文</span>
+            </div>
+            <div class="post-author">
+              <div class="av">·</div>
+              <div class="who">
+                <span class="name" style="font-style:italic; color: var(--fg-muted);">匿名 · anonymous_x9b3</span>
+                <span class="handle">無簽署 · 此身分僅本板可見</span>
+              </div>
+              <span class="tier-chip basic">basic · web</span>
+              <span class="when">昨日</span>
+            </div>
+            <div class="post-body">
+              <p>刪掉社群帳號的第 47 天。</p>
+              <p>第一個月最難 — 你會發現自己一天打開 18 次空白的桌面。第二個月開始，那 18 次變成 18 個小選擇：要不要散步、要不要打電話給媽。</p>
+              <p>Elix 是我重新開始的地方。但我這次想慢慢來，所以匿名。</p>
+            </div>
+            <div class="post-actions">
+              <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">156</span></button>
+              <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">23</span></button>
+            </div>
+          </article>
+
+          <!-- Post 4: direct follow short text -->
+          <article class="post">
+            <div class="post-source">
+              <span class="pip"></span>
+              <span>FROM A FOLLOW</span>
+              <span class="author-tip">— 伯衡剛剛發布</span>
+            </div>
+            <div class="post-author signed">
+              <div class="av">B</div>
+              <div class="who">
+                <span class="name">伯衡<span class="sig"></span></span>
+                <span class="handle">@boheng · did:elix · 自託管</span>
+              </div>
+              <span class="tier-chip">SELF-CUSTODY</span>
+              <span class="when">12m</span>
+            </div>
+            <div class="post-body">
+              <p>正在改變的不是社群網站，是我們對「線上」的期待。Elix 的賭注是：人們其實沒有要全世界看到自己 — 他們只是要某幾個人看到、聽到、回應。</p>
+            </div>
+            <div class="post-actions">
+              <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">19</span></button>
+              <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">4</span></button>
+              <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED · DID</span></span>
+            </div>
+          </article>
+
+        </main>
+
+        <!-- RIGHT RAIL -->
+        <aside class="right-rail">
+
+          <div class="rail-card">
+            <h4>圈內動態 · CIRCLE</h4>
+            <div class="suggest-row signed">
+              <span class="av">M</span>
+              <div class="info"><span class="name">Mira 正在回覆你</span><span class="why">「我也是這樣想的 …」</span></div>
+              <button class="btn-tiny">看</button>
+            </div>
+            <div class="suggest-row signed">
+              <span class="av">k</span>
+              <div class="info"><span class="name">Kr 共鳴了你的發文</span><span class="why">2h 前 · 關於慢一點</span></div>
+              <button class="btn-tiny">看</button>
+            </div>
+          </div>
+
+          <div class="rail-card">
+            <h4>你可能會關心 · BOARDS</h4>
+            <div class="item">
+              <span class="title">介面如何邀請慢一點？</span>
+              <span class="meta"><span class="b">#design</span> · 14 回應 · @tris 起頭 · 3d</span>
+            </div>
+            <div class="item">
+              <span class="title">passkey 真的可以替代密碼嗎？</span>
+              <span class="meta"><span class="b">#tools</span> · 41 回應 · 進行中</span>
+            </div>
+            <div class="item">
+              <span class="title">我們在重建什麼樣的網路？</span>
+              <span class="meta"><span class="b">#philosophy</span> · 23 回應</span>
+            </div>
+          </div>
+
+          <div class="rail-card">
+            <h4>還可以追蹤 · PEOPLE</h4>
+            <div class="suggest-row signed">
+              <span class="av">汐</span>
+              <div class="info"><span class="name">汐羽</span><span class="why">Mira 也追蹤了 · passkey</span></div>
+              <button class="btn-tiny solid">追蹤</button>
+            </div>
+            <div class="suggest-row signed">
+              <span class="av">J</span>
+              <div class="info"><span class="name">Jorge</span><span class="why">圈內 3 人共同信任</span></div>
+              <button class="btn-tiny solid">追蹤</button>
+            </div>
+            <div class="suggest-row">
+              <span class="av">·</span>
+              <div class="info"><span class="name" style="font-style:italic; color:var(--fg-muted)">匿名 觀察員</span><span class="why">basic · 只能在 #philosophy 顯示</span></div>
+              <button class="btn-tiny">看看</button>
+            </div>
+          </div>
+
+          <div style="font-family: var(--serif); font-style: italic; font-size: 12px; color: var(--fg-faint); padding: 0 4px; line-height: 1.7;">
+            動態是按時間排序的，沒有演算法決定你看見什麼。<br/>你看見的是你選擇看見的。
+          </div>
+
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── 02 · PROFILE (DESKTOP) ─────────── -->
+<div>
+  <div class="frame-caption">
+    <span class="kind">02 · PROFILE</span>
+    <span class="name">他人個人檔案 / @mira</span>
+    <span class="w">DESKTOP · 1280</span>
+  </div>
+  <div class="frame">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url"><span class="lock">⌬</span>elix.social/#/@mira</div></div>
+    <div class="surface">
+
+      <div class="topbar">
+        <div class="brand"><svg width="22" height="22" style="color:var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+        <div class="search"><span class="lens"></span>找人、找討論板、找關鍵字 …</div>
+        <div class="ctx">
+          <button class="icon-btn"><svg width="16" height="16"><use href="#ic-bell"/></svg></button>
+          <span class="session-chip"><span class="av">T</span><span class="who">Tris</span><span class="tier">web · passkey</span></span>
+        </div>
+      </div>
+
+      <div class="cols">
+
+        <aside class="rail">
+          <div class="rail-section">
+            <h4>探索</h4>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-home"/></svg></span><span class="name">動態</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-search"/></svg></span><span class="name">發現</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-circle"/></svg></span><span class="name">圈內</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-board"/></svg></span><span class="name">論壇板</span></a>
+          </div>
+          <div class="rail-section">
+            <h4>追蹤的人 · 8</h4>
+            <a class="follow-row signed" href="#"><span class="av">M</span><div class="meta"><span class="name">Mira</span><span class="handle">@mira</span></div><span class="ago">2h</span></a>
+            <a class="follow-row signed" href="#"><span class="av">k</span><div class="meta"><span class="name">Kr</span><span class="handle">@kr</span></div><span class="ago">5h</span></a>
+            <a class="follow-row signed" href="#"><span class="av">B</span><div class="meta"><span class="name">伯衡</span><span class="handle">@boheng</span></div><span class="ago">3d</span></a>
+          </div>
+        </aside>
+
+        <main class="feed">
+
+          <div class="profile-head">
+            <div class="row">
+              <div class="av-big">M</div>
+              <div class="info">
+                <h1>Mira Lin<span class="sig"></span></h1>
+                <span class="handle">@mira · did:elix:m1ra…7a8</span>
+                <p class="bio">寫字、收養老貓、相信網路還可以更好。在 Elix 寫得比較慢，那才是重點。</p>
+                <div class="actions-row" style="margin-top: 10px;">
+                  <button class="btn-tiny solid" style="padding: 6px 14px; font-size: 12.5px;">已追蹤</button>
+                  <button class="btn-tiny" style="padding: 6px 14px; font-size: 12.5px;">加入圈內</button>
+                  <button class="btn-tiny" style="padding: 6px 14px; font-size: 12.5px;">私訊</button>
+                </div>
+              </div>
+            </div>
+            <div class="stats">
+              <div class="stat"><span class="n">238</span><span class="l">發文</span></div>
+              <div class="stat"><span class="n">1.2K</span><span class="l">共鳴</span></div>
+              <div class="stat"><span class="n">142</span><span class="l">被信任</span></div>
+              <div class="stat"><span class="n">passkey</span><span class="l">signed since 2024</span></div>
+            </div>
+          </div>
+
+          <div class="feed-tabs">
+            <button class="on">發文 <span class="num">238</span></button>
+            <button>媒體</button>
+            <button>共鳴過</button>
+            <button>共同板</button>
+          </div>
+
+          <article class="post">
+            <div class="post-source">
+              <span class="pip"></span>
+              <span>POSTED · 2H AGO</span>
+            </div>
+            <div class="post-author signed">
+              <div class="av">M</div>
+              <div class="who"><span class="name">Mira Lin<span class="sig"></span></span><span class="handle">@mira · passkey</span></div>
+              <span class="when">2h</span>
+            </div>
+            <div class="post-body">
+              <p>今天搬家收拾舊筆記，翻到 2017 年寫的一段：「當演算法決定你看見什麼，沈默就會變成默許。」</p>
+              <p>八年後我們在 Elix 上重新打字。差別不是介面，是 <em class="tag">#我決定誰看見</em></p>
+            </div>
+            <div class="post-actions">
+              <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">42</span></button>
+              <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">7</span></button>
+              <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED</span></span>
+            </div>
+          </article>
+
+          <article class="post">
+            <div class="post-source">
+              <span class="pip"></span>
+              <span>POSTED · 1D AGO</span>
+            </div>
+            <div class="post-author signed">
+              <div class="av">M</div>
+              <div class="who"><span class="name">Mira Lin<span class="sig"></span></span><span class="handle">@mira · passkey</span></div>
+              <span class="when">1d</span>
+            </div>
+            <div class="post-body">
+              <p>讀者問我：為什麼不發 IG。我說因為 IG 不讓我決定誰看見。她說：「可是你可以鎖私人帳號啊。」</p>
+              <p>但鎖了之後，演算法還是知道我在裡面。私人，跟「我的」，不是同一件事。</p>
+            </div>
+            <div class="post-actions">
+              <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">89</span></button>
+              <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">22</span></button>
+              <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED</span></span>
+            </div>
+          </article>
+
+        </main>
+
+        <aside class="right-rail">
+          <div class="rail-card">
+            <h4>關於 MIRA · ABOUT</h4>
+            <div class="item"><span class="title">真實身分</span><span class="meta">未公開 · 由 4 個圈內成員共同見證</span></div>
+            <div class="item"><span class="title">信任等級</span><span class="meta"><span class="b">PASSKEY · 自簽署</span> · 從 2024 開始</span></div>
+            <div class="item"><span class="title">同板成員</span><span class="meta">#philosophy · #design · #tools</span></div>
+            <div class="item"><span class="title">圈內共同人</span><span class="meta">3 位：Kr · 伯衡 · 汐羽</span></div>
+          </div>
+
+          <div class="rail-card">
+            <h4>共同追蹤的人</h4>
+            <div class="suggest-row signed"><span class="av">k</span><div class="info"><span class="name">Kr</span><span class="why">@kr · passkey</span></div></div>
+            <div class="suggest-row signed"><span class="av">B</span><div class="info"><span class="name">伯衡</span><span class="why">@boheng · self-custody</span></div></div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── 04 · COMPOSE (DESKTOP) ─────────── -->
+<div>
+  <div class="frame-caption">
+    <span class="kind">04 · COMPOSE</span>
+    <span class="name">發文編輯 / Write a note</span>
+    <span class="w">DESKTOP · 1280</span>
+  </div>
+  <div class="frame">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url"><span class="lock">⌬</span>elix.social/#/compose</div></div>
+    <div class="surface">
+      <div class="topbar">
+        <div class="brand"><svg width="22" height="22" style="color:var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+        <div class="search"><span class="lens"></span>找人、找討論板、找關鍵字 …</div>
+        <div class="ctx"><span class="session-chip"><span class="av">T</span><span class="who">Tris</span><span class="tier">web · passkey</span></span></div>
+      </div>
+      <div class="cols">
+        <aside class="rail">
+          <div class="rail-section">
+            <h4>探索</h4>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-home"/></svg></span><span class="name">動態</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-search"/></svg></span><span class="name">發現</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-circle"/></svg></span><span class="name">圈內</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-board"/></svg></span><span class="name">論壇板</span></a>
+          </div>
+          <div class="rail-section">
+            <h4>正在編輯 · DRAFT</h4>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.08em;padding:4px 8px;">自動儲存 · 38s 前</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:0.08em;padding:0 8px;">NOTE · 草稿 #4</div>
+          </div>
+        </aside>
+        <main class="feed" style="max-width:680px;">
+          <div style="display:flex;gap:6px;padding:4px 0 10px;border-bottom:0.5px solid var(--rule);margin-bottom:18px;">
+            <button class="btn-tiny solid" style="display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13"><use href="#ic-pen"/></svg> Note</button>
+            <button class="btn-tiny" style="display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13"><use href="#ic-mic"/></svg> Murmur</button>
+            <button class="btn-tiny" style="display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13"><use href="#ic-board"/></svg> 到板上發言</button>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.1em;align-self:center;">編輯模式</span>
+          </div>
+          <input type="text" value="我們其實沒有要被全世界看見" style="width:100%;border:none;background:transparent;font-family:var(--serif);font-size:32px;font-weight:500;color:var(--fg);outline:none;padding:0 0 12px;line-height:1.25;"/>
+          <div style="font-family:var(--serif);font-size:17px;line-height:1.8;color:var(--fg);">
+            <p style="margin:0 0 12px;">網路最美的時候，是大家都還相信「按下發布」是一個慎重的動作。</p>
+            <p style="margin:0 0 12px;">後來變成 reflex。然後變成 metric。然後變成 anxiety。</p>
+            <p style="margin:0 0 12px;">Elix 的賭注是 —— 我們其實沒有要被全世界看見。<span style="color:var(--amber);">|</span></p>
+          </div>
+          <div style="margin-top:24px;padding:14px;border:0.5px solid var(--rule);border-radius:10px;background:var(--bg-soft);">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:var(--fg-faint);text-transform:uppercase;padding-bottom:8px;">受眾 · AUDIENCE</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <span style="padding:4px 10px;border-radius:999px;background:var(--bg);border:0.5px solid var(--amber);color:var(--amber);font-family:var(--serif);font-size:12px;">● 追蹤我的人 · 24</span>
+              <span style="padding:4px 10px;border-radius:999px;background:var(--bg);border:0.5px solid var(--sage);color:var(--sage);font-family:var(--serif);font-size:12px;">+ 板 #design</span>
+              <span style="padding:4px 10px;border-radius:999px;background:var(--bg);border:0.5px dashed var(--rule);color:var(--fg-faint);font-family:var(--serif);font-size:12px;">＋ 新增受眾</span>
+            </div>
+          </div>
+        </main>
+        <aside class="rail" style="max-width:280px;">
+          <div class="rail-section" style="padding:14px;border:0.5px solid var(--rule);border-radius:10px;background:var(--bg);">
+            <h4 style="color:var(--amber);">簽署 · SIGNATURE</h4>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;"><span style="width:6px;height:6px;border-radius:50%;background:var(--amber);"></span><span style="font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--amber);">WEB · PASSKEY</span></div>
+            <p style="margin:4px 0 0;font-family:var(--serif);font-style:italic;font-size:12px;color:var(--fg-muted);line-height:1.55;">公開你的 passkey 身分。讀者的瀏覽器會即時驗證這個簽名。</p>
+            <div style="display:flex;gap:6px;padding-top:10px;border-top:0.5px solid var(--rule-soft);margin-top:10px;">
+              <button class="btn-tiny">改 DID</button>
+              <button class="btn-tiny">匿名</button>
+            </div>
+          </div>
+          <div style="padding:6px 14px;font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.08em;">⌘ + ↵ 發布 · ⌘ + S 存草稿</div>
+          <button class="btn-tiny solid" style="padding:11px 18px;font-size:13px;">發布</button>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── 05 · THREAD (DESKTOP) ─────────── -->
+<div>
+  <div class="frame-caption">
+    <span class="kind">05 · THREAD</span>
+    <span class="name">發文細節 + 回覆 / Post & replies</span>
+    <span class="w">DESKTOP · 1280</span>
+  </div>
+  <div class="frame">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url"><span class="lock">⌬</span>elix.social/#/p/6f3a-9c1e</div></div>
+    <div class="surface">
+      <div class="topbar">
+        <div class="brand"><svg width="22" height="22" style="color:var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+        <div class="search"><span class="lens"></span>找關鍵字 …</div>
+        <div class="ctx"><span class="session-chip"><span class="av">T</span><span class="who">Tris</span><span class="tier">web · passkey</span></span></div>
+      </div>
+      <div class="cols">
+        <aside class="rail">
+          <div class="rail-section"><h4>探索</h4>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-home"/></svg></span><span class="name">動態</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-bell"/></svg></span><span class="name">通知</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-circle"/></svg></span><span class="name">圈內</span></a>
+          </div>
+        </aside>
+        <main class="feed" style="max-width:680px;">
+          <a href="#" style="font-family:var(--mono);font-size:11px;color:var(--fg-muted);text-decoration:none;display:inline-block;padding:0 0 14px;letter-spacing:0.08em;">← 回到動態</a>
+          <article class="post">
+            <div class="post-source"><span class="pip"></span><span>NOTE · BY @MIRA · 2H</span></div>
+            <div class="post-author signed"><div class="av">M</div><div class="who"><span class="name">Mira Lin<span class="sig"></span></span><span class="handle">@mira · passkey</span></div><span class="when">2h</span></div>
+            <h2 style="margin:0;font-family:var(--serif);font-size:24px;font-weight:500;line-height:1.3;">關於演算法跟沈默</h2>
+            <div class="post-body"><p>翻到 2017 年的舊筆記：「當演算法決定你看見什麼，沈默就會變成默許。」</p><p>八年後我們在 Elix 上重新打字。差別不是介面，是 —— <em class="tag">#我決定誰看見</em></p></div>
+            <div class="post-actions">
+              <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg> 共鳴 <span class="n">42</span></button>
+              <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg> 回覆 <span class="n">7</span></button>
+              <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED · PASSKEY</span></span>
+            </div>
+          </article>
+          <div style="margin:20px 0 10px;padding:14px;border:0.5px solid var(--rule);border-radius:10px;background:var(--bg-soft);">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:14px;">T</span>
+              <div style="flex:1;">
+                <div style="font-family:var(--serif);font-style:italic;font-size:14px;color:var(--fg-muted);padding:8px 0;">回應 @mira ——「默許」這個字我想了很久。它不只是允許，它在重塑你的記憶。<span style="color:var(--amber);">|</span></div>
+                <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:0.5px solid var(--rule-soft);">
+                  <span style="font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:0.1em;">● SIGNING AS @TRIS</span>
+                  <button class="btn-tiny" style="padding:3px 8px;font-size:10px;">匿名</button>
+                  <button class="btn-tiny solid" style="margin-left:auto;padding:6px 14px;font-size:12px;">送出</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.14em;text-transform:uppercase;padding:12px 4px 6px;border-bottom:0.5px solid var(--rule-soft);">7 個回覆 · 全部簽署</div>
+          <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;padding:14px 0;border-bottom:0.5px solid var(--rule-soft);"><span style="width:28px;height:28px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:12px;">k</span><div><div style="font-family:var(--serif);font-size:14px;line-height:1.6;">「沈默就會變成默許」這句太重了。我們是不是早就默許了某種版本的自己？</div><div style="font-family:var(--mono);font-size:10px;letter-spacing:0.06em;color:var(--fg-faint);margin-top:6px;">@kr · 1h · signed · passkey</div></div></div>
+          <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;padding:14px 0;border-bottom:0.5px solid var(--rule-soft);"><span style="width:28px;height:28px;border-radius:50%;background:var(--bg-deep);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;">·</span><div><div style="font-family:var(--serif);font-size:14px;line-height:1.6;">默許不只變成同意，還變成記憶——你會開始忘記自己原本怎麼想。</div><div style="font-family:var(--mono);font-size:10px;letter-spacing:0.06em;color:var(--fg-faint);margin-top:6px;">匿名 · 38m · 此 thread 可見</div></div></div>
+          <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;padding:14px 0;"><span style="width:28px;height:28px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:12px;">B</span><div><div style="font-family:var(--serif);font-size:14px;line-height:1.6;">想到 Bourdieu 的 doxa。要在它之前，就先說話。</div><div style="font-family:var(--mono);font-size:10px;letter-spacing:0.06em;color:var(--fg-faint);margin-top:6px;">@boheng · 22m · signed · DID</div></div></div>
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── 06 · SETTINGS (DESKTOP) ─────────── -->
+<div>
+  <div class="frame-caption">
+    <span class="kind">06 · SETTINGS</span>
+    <span class="name">帳號設定 / Account settings</span>
+    <span class="w">DESKTOP · 1280</span>
+  </div>
+  <div class="frame">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url"><span class="lock">⌬</span>elix.social/#/settings/identity</div></div>
+    <div class="surface">
+      <div class="topbar">
+        <div class="brand"><svg width="22" height="22" style="color:var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+        <div class="search"><span class="lens"></span>搜尋設定 …</div>
+        <div class="ctx"><span class="session-chip"><span class="av">T</span><span class="who">Tris</span><span class="tier">web · passkey</span></span></div>
+      </div>
+      <div class="cols">
+        <aside class="rail">
+          <div class="rail-section">
+            <h4>設定 · SETTINGS</h4>
+            <a class="rail-item on" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-key"/></svg></span><span class="name">身分與鑰匙</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-pen"/></svg></span><span class="name">動態與發文</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-shield"/></svg></span><span class="name">隱私與受眾</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-sync"/></svg></span><span class="name">裝置與 sessions</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-bell"/></svg></span><span class="name">通知</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-globe"/></svg></span><span class="name">介面與語言</span></a>
+            <a class="rail-item" href="#" style="color:var(--ember);"><span class="ico"><svg width="18" height="18"><use href="#ic-moon"/></svg></span><span class="name">封存或銷毀身分</span></a>
+          </div>
+        </aside>
+        <main class="feed" style="max-width:720px;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.14em;text-transform:uppercase;padding-bottom:4px;">設定 / 身分與鑰匙</div>
+          <h2 style="margin:0;font-family:var(--serif);font-size:28px;font-weight:500;color:var(--fg);padding-bottom:8px;">身分與鑰匙</h2>
+          <p style="margin:0 0 22px;font-family:var(--serif);font-style:italic;font-size:14px;color:var(--fg-muted);line-height:1.6;">Elix 不會替你保管身分。你的鑰匙住在你的裝置上 — 你可以加密備份，但沒有「忘記密碼」這條路。</p>
+
+          <div style="padding:18px;border:0.5px solid var(--amber);border-radius:12px;background:rgba(185,122,60,0.05);margin-bottom:16px;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:0.14em;text-transform:uppercase;padding-bottom:8px;">PRIMARY · 主身分</div>
+            <h3 style="margin:0;font-family:var(--serif);font-size:20px;font-weight:500;display:inline-flex;align-items:center;gap:8px;">Tris<span style="width:6px;height:6px;border-radius:50%;background:var(--amber);"></span></h3>
+            <div style="font-family:var(--mono);font-size:12px;color:var(--amber);padding:6px 0;word-break:break-all;">did:elix:6f3a · 9c1e · 4d88 · …</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding-top:14px;border-top:0.5px solid var(--rule-soft);">
+              <div><div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.12em;text-transform:uppercase;padding-bottom:3px;">指紋</div><div style="font-family:var(--mono);font-size:12px;color:var(--fg);">6F · 3A · 9C · 1E</div></div>
+              <div><div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.12em;text-transform:uppercase;padding-bottom:3px;">建立於</div><div style="font-family:var(--mono);font-size:12px;color:var(--fg);">2024 · 03 · 12</div></div>
+              <div><div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.12em;text-transform:uppercase;padding-bottom:3px;">同步</div><div style="font-family:var(--mono);font-size:12px;color:var(--sage);">● 3 台</div></div>
+            </div>
+          </div>
+
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.16em;text-transform:uppercase;padding:14px 0 8px;">其他身分 · ALTER IDENTITIES</div>
+          <div style="border:0.5px solid var(--rule);border-radius:10px;background:var(--bg);">
+            <div style="display:grid;grid-template-columns:24px 1fr auto auto;gap:14px;padding:14px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><svg width="18" height="18" style="color:var(--fg-muted)"><use href="#ic-sig"/></svg><div><div style="font-family:var(--serif);font-size:14.5px;">匿名 · #philosophy 用</div><div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.06em;">x9b3 · 18 次發文 · 無簽署</div></div><span style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.12em;text-transform:uppercase;">BASIC</span><button class="btn-tiny">管理</button></div>
+            <div style="display:grid;grid-template-columns:24px 1fr auto auto;gap:14px;padding:14px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><svg width="18" height="18" style="color:var(--fg-muted)"><use href="#ic-key"/></svg><div><div style="font-family:var(--serif);font-size:14.5px;">工作 DID</div><div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.06em;">did:elix:w0rk… · 7 篇</div></div><span style="font-family:var(--mono);font-size:9.5px;color:var(--amber);letter-spacing:0.12em;text-transform:uppercase;">PASSKEY</span><button class="btn-tiny">管理</button></div>
+            <div style="display:grid;grid-template-columns:24px 1fr auto;gap:14px;padding:14px 16px;align-items:center;color:var(--fg-muted);"><svg width="18" height="18" style="color:var(--fg-faint)"><use href="#ic-plus"/></svg><div style="font-family:var(--serif);font-size:14px;font-style:italic;">新增另一個身分</div><button class="btn-tiny">建立</button></div>
+          </div>
+
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.16em;text-transform:uppercase;padding:24px 0 8px;">加密備份 · ENCRYPTED BACKUP</div>
+          <div style="padding:16px;border:0.5px dashed var(--rule);border-radius:10px;background:var(--bg-soft);">
+            <div style="display:flex;align-items:center;gap:10px;padding-bottom:6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ember);"></span><span style="font-family:var(--mono);font-size:10px;color:var(--ember);letter-spacing:0.14em;text-transform:uppercase;">尚未備份</span></div>
+            <p style="margin:0 0 12px;font-family:var(--serif);font-size:13.5px;color:var(--fg-muted);line-height:1.6;">如果你弄丟所有授權的裝置，就會弄丟這個身分。我們建議至少設定一份用 passphrase 加密的備份。</p>
+            <button class="btn-tiny solid">設定加密備份</button>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── 07 · INTERFACE & LANGUAGE (DESKTOP) ─────────── -->
+<div>
+  <div class="frame-caption">
+    <span class="kind">07 · INTERFACE</span>
+    <span class="name">介面與語言 / Interface & language</span>
+    <span class="w">DESKTOP · 1280</span>
+  </div>
+  <div class="frame">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url"><span class="lock">⌬</span>elix.social/#/settings/interface</div></div>
+    <div class="surface">
+      <div class="topbar">
+        <div class="brand"><svg width="22" height="22" style="color:var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+        <div class="search"><span class="lens"></span>搜尋設定 …</div>
+        <div class="ctx"><span class="session-chip"><span class="av">T</span><span class="who">Tris</span><span class="tier">web · passkey</span></span></div>
+      </div>
+      <div class="cols">
+        <aside class="rail">
+          <div class="rail-section">
+            <h4>設定 · SETTINGS</h4>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-key"/></svg></span><span class="name">身分與鑰匙</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-pen"/></svg></span><span class="name">動態與發文</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-shield"/></svg></span><span class="name">隱私與受眾</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-sync"/></svg></span><span class="name">裝置與 sessions</span></a>
+            <a class="rail-item" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-bell"/></svg></span><span class="name">通知</span></a>
+            <a class="rail-item on" href="#"><span class="ico"><svg width="18" height="18"><use href="#ic-globe"/></svg></span><span class="name">介面與語言</span></a>
+            <a class="rail-item" href="#" style="color:var(--ember);"><span class="ico"><svg width="18" height="18"><use href="#ic-moon"/></svg></span><span class="name">封存或銷毀身分</span></a>
+          </div>
+        </aside>
+        <main class="feed" style="max-width:720px;">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.14em;text-transform:uppercase;padding-bottom:4px;">設定 / 介面與語言</div>
+          <h2 style="margin:0;font-family:var(--serif);font-size:28px;font-weight:500;color:var(--fg);padding-bottom:8px;">介面與語言</h2>
+          <p style="margin:0 0 24px;font-family:var(--serif);font-style:italic;font-size:14px;color:var(--fg-muted);line-height:1.6;">這些選擇只存在你的裝置上。Elix 伺服器不會記錄你用什麼主題、什麼字體，亦不會有「使用偏好」這類資料。</p>
+
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.16em;text-transform:uppercase;padding:6px 0 10px;">主題 · THEME</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+            <label style="display:block;padding:14px;border:0.5px solid var(--amber);border-radius:10px;background:rgba(185,122,60,0.05);cursor:pointer;">
+              <div style="width:100%;aspect-ratio:5/3;background:#F4EFE6;border:0.5px solid var(--rule);border-radius:6px;position:relative;"><span style="position:absolute;top:8px;left:8px;width:18px;height:2px;background:#1A1815;border-radius:1px;"></span><span style="position:absolute;top:14px;left:8px;width:32px;height:2px;background:#5C544A;border-radius:1px;"></span><span style="position:absolute;bottom:8px;right:8px;width:6px;height:6px;background:#B97A3C;border-radius:50%;"></span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding-top:10px;"><span style="width:10px;height:10px;border-radius:50%;border:1.5px solid var(--amber);background:radial-gradient(var(--amber) 45%,transparent 50%);"></span><span style="font-family:var(--serif);font-size:14px;color:var(--fg);">Paper</span></div>
+              <div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.1em;padding-top:2px;padding-left:16px;">LIGHT · DEFAULT</div>
+            </label>
+            <label style="display:block;padding:14px;border:0.5px solid var(--rule);border-radius:10px;cursor:pointer;">
+              <div style="width:100%;aspect-ratio:5/3;background:#1A1815;border:0.5px solid var(--rule);border-radius:6px;position:relative;"><span style="position:absolute;top:8px;left:8px;width:18px;height:2px;background:#F4EFE6;border-radius:1px;"></span><span style="position:absolute;top:14px;left:8px;width:32px;height:2px;background:#A8A095;border-radius:1px;"></span><span style="position:absolute;bottom:8px;right:8px;width:6px;height:6px;background:#D69968;border-radius:50%;"></span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding-top:10px;"><span style="width:10px;height:10px;border-radius:50%;border:1.5px solid var(--rule);"></span><span style="font-family:var(--serif);font-size:14px;color:var(--fg);">Ink</span></div>
+              <div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.1em;padding-top:2px;padding-left:16px;">DARK</div>
+            </label>
+            <label style="display:block;padding:14px;border:0.5px solid var(--rule);border-radius:10px;cursor:pointer;">
+              <div style="width:100%;aspect-ratio:5/3;border:0.5px solid var(--rule);border-radius:6px;background:linear-gradient(135deg,#F4EFE6 0% 50%,#1A1815 50% 100%);position:relative;"><span style="position:absolute;bottom:8px;right:8px;width:6px;height:6px;background:#D69968;border-radius:50%;"></span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding-top:10px;"><span style="width:10px;height:10px;border-radius:50%;border:1.5px solid var(--rule);"></span><span style="font-family:var(--serif);font-size:14px;color:var(--fg);">跟隨系統</span></div>
+              <div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.1em;padding-top:2px;padding-left:16px;">AUTO</div>
+            </label>
+          </div>
+
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.16em;text-transform:uppercase;padding:28px 0 10px;">語言 · LANGUAGE</div>
+          <div style="border:0.5px solid var(--rule);border-radius:10px;background:var(--bg);">
+            <div style="display:grid;grid-template-columns:24px 1fr auto;gap:14px;padding:13px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--amber);background:radial-gradient(var(--amber) 45%,transparent 50%);"></span><div><div style="font-family:var(--serif);font-size:14.5px;">繁體中文</div><div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.06em;">zh-Hant · 台灣</div></div><span style="font-family:var(--mono);font-size:9.5px;color:var(--amber);letter-spacing:0.12em;">CURRENT</span></div>
+            <div style="display:grid;grid-template-columns:24px 1fr auto;gap:14px;padding:13px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--rule);"></span><div><div style="font-family:var(--serif);font-size:14.5px;">簡體中文</div><div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.06em;">zh-Hans</div></div><span style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.12em;">100%</span></div>
+            <div style="display:grid;grid-template-columns:24px 1fr auto;gap:14px;padding:13px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--rule);"></span><div><div style="font-family:var(--serif);font-size:14.5px;">English</div><div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.06em;">en · Source language</div></div><span style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.12em;">100%</span></div>
+            <div style="display:grid;grid-template-columns:24px 1fr auto;gap:14px;padding:13px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--rule);"></span><div><div style="font-family:var(--serif);font-size:14.5px;">日本語</div><div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.06em;">ja</div></div><span style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.12em;">92%</span></div>
+            <div style="display:grid;grid-template-columns:24px 1fr auto;gap:14px;padding:13px 16px;align-items:center;"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--rule);"></span><div><div style="font-family:var(--serif);font-size:14.5px;">한국어</div><div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.06em;">ko · 社群翻譯中</div></div><span style="font-family:var(--mono);font-size:9.5px;color:var(--ember);letter-spacing:0.12em;">61%</span></div>
+          </div>
+          <p style="margin:8px 4px 0;font-family:var(--serif);font-style:italic;font-size:12.5px;color:var(--fg-faint);line-height:1.55;">翻譯由社群貢獻。為什麼這個語言還沒有完成？ <a href="#" style="color:var(--amber);">加入翻譯→</a></p>
+
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.16em;text-transform:uppercase;padding:28px 0 10px;">字型 · TYPOGRAPHY</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div style="padding:14px;border:0.5px solid var(--rule);border-radius:10px;">
+              <div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.14em;text-transform:uppercase;padding-bottom:8px;">內文字型</div>
+              <div style="font-family:var(--serif);font-size:18px;line-height:1.6;padding:8px 0;">寫下来，慢慢讀。</div>
+              <div style="display:flex;gap:6px;padding-top:8px;border-top:0.5px solid var(--rule-soft);">
+                <button class="btn-tiny solid" style="font-size:10.5px;padding:5px 10px;">Serif</button>
+                <button class="btn-tiny" style="font-size:10.5px;padding:5px 10px;">Sans</button>
+                <button class="btn-tiny" style="font-size:10.5px;padding:5px 10px;">明體</button>
+              </div>
+            </div>
+            <div style="padding:14px;border:0.5px solid var(--rule);border-radius:10px;">
+              <div style="font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.14em;text-transform:uppercase;padding-bottom:8px;">字級</div>
+              <div style="display:flex;align-items:flex-end;gap:8px;padding:4px 0 8px;">
+                <span style="font-family:var(--serif);font-size:13px;color:var(--fg-faint);">A</span>
+                <div style="flex:1;height:2px;background:var(--rule);border-radius:2px;position:relative;"><span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:var(--amber);"></span></div>
+                <span style="font-family:var(--serif);font-size:22px;color:var(--fg);">A</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--fg-faint);letter-spacing:0.08em;padding-top:8px;border-top:0.5px solid var(--rule-soft);"><span>14</span><span style="color:var(--amber);">16 · DEFAULT</span><span>18</span><span>20</span></div>
+            </div>
+          </div>
+
+          <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.16em;text-transform:uppercase;padding:28px 0 10px;">動態與密度 · MOTION & DENSITY</div>
+          <div style="border:0.5px solid var(--rule);border-radius:10px;background:var(--bg);">
+            <div style="display:grid;grid-template-columns:1fr auto;gap:14px;padding:14px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><div><div style="font-family:var(--serif);font-size:14.5px;">減少動態</div><div style="font-family:var(--serif);font-style:italic;font-size:12.5px;color:var(--fg-muted);margin-top:2px;">關掉頁面轉換、深沉動畫與狀態動畫。</div></div><span style="width:38px;height:22px;border-radius:999px;background:var(--rule);position:relative;display:inline-block;"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--bg);box-shadow:0 1px 2px rgba(0,0,0,0.1);"></span></span></div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:14px;padding:14px 16px;align-items:center;border-bottom:0.5px solid var(--rule-soft);"><div><div style="font-family:var(--serif);font-size:14.5px;">密度</div><div style="font-family:var(--serif);font-style:italic;font-size:12.5px;color:var(--fg-muted);margin-top:2px;">一個畫面該裝下多少東西。</div></div><div style="display:flex;gap:6px;"><button class="btn-tiny" style="font-size:10.5px;padding:5px 10px;">寬鬆</button><button class="btn-tiny solid" style="font-size:10.5px;padding:5px 10px;">舍適</button><button class="btn-tiny" style="font-size:10.5px;padding:5px 10px;">緊湊</button></div></div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:14px;padding:14px 16px;align-items:center;"><div><div style="font-family:var(--serif);font-size:14.5px;">現示「為何這篇出現」提示</div><div style="font-family:var(--serif);font-style:italic;font-size:12.5px;color:var(--fg-muted);margin-top:2px;">Elix 預設在每張卡上註明來源與關係。你可以關掉。</div></div><span style="width:38px;height:22px;border-radius:999px;background:var(--amber);position:relative;display:inline-block;"><span style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:var(--bg);box-shadow:0 1px 2px rgba(0,0,0,0.1);"></span></span></div>
+          </div>
+
+          <div style="padding:18px;margin-top:24px;border:0.5px dashed var(--rule);border-radius:10px;background:var(--bg-soft);">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--fg-faint);letter-spacing:0.14em;text-transform:uppercase;padding-bottom:6px;">在這台裝置上生效 · LOCAL ONLY</div>
+            <p style="margin:0;font-family:var(--serif);font-style:italic;font-size:13px;color:var(--fg-muted);line-height:1.55;">這些偏好不會同步到其他裝置。在手機上設「明體 · 14pt · 寬鬆」，不會影響你的筆記型電腦裡設的「Serif · 16pt · 緊湊」。</p>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── 08 · MOBILE FEED + COMPOSE + PROFILE ─────────── -->
+<div>
+  <div class="frame-caption">
+    <span class="kind">03 · MOBILE</span>
+    <span class="name">手機版 / Feed · Compose · Profile</span>
+    <span class="w">MOBILE · 375</span>
+  </div>
+  <div style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
+
+    <!-- Mobile Feed -->
+    <div class="frame mobile" style="width: 380px; flex-shrink:0;">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url" style="font-size:9.5px;"><span class="lock">⌬</span>elix.social/#/</div></div>
+      <div class="surface" style="position:relative;">
+        <div class="topbar">
+          <div class="brand"><svg width="20" height="20" style="color:var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+          <div class="ctx">
+            <button class="icon-btn"><svg width="16" height="16"><use href="#ic-search"/></svg></button>
+            <button class="icon-btn"><svg width="16" height="16"><use href="#ic-bell"/></svg><span class="badge"></span></button>
+            <span class="session-chip" style="padding: 3px 4px;"><span class="av" style="width:22px;height:22px;">T</span></span>
+          </div>
+        </div>
+        <div class="cols">
+
+          <main class="feed">
+            <div class="compose">
+              <span class="av" style="width:32px;height:32px;font-size:13px;">T</span>
+              <span class="hint">說點什麼 …</span>
+              <div class="actions">
+                <button class="compose-action"><svg width="14" height="14"><use href="#ic-image"/></svg></button>
+                <button class="btn-post" style="font-size:12px; padding: 6px 12px;">發布</button>
+              </div>
+            </div>
+
+            <div class="feed-tabs">
+              <button class="on">動態</button>
+              <button>追蹤</button>
+              <button>板</button>
+              <button>圈內</button>
+            </div>
+
+            <article class="post">
+              <div class="post-source"><span class="pip"></span><span>FROM A FOLLOW</span><span class="author-tip">— Mira</span></div>
+              <div class="post-author signed">
+                <div class="av">M</div>
+                <div class="who"><span class="name">Mira Lin<span class="sig"></span></span><span class="handle">@mira · passkey</span></div>
+                <span class="when">2h</span>
+              </div>
+              <div class="post-body">
+                <p>翻到 2017 年的舊筆記：「當演算法決定你看見什麼，沈默就會變成默許。」</p>
+                <p>八年後我們在 Elix 上重新打字 — <em class="tag">#我決定誰看見</em></p>
+              </div>
+              <div class="post-image" style="aspect-ratio: 4/3;"><span class="placeholder">PHOTO</span></div>
+              <div class="post-actions">
+                <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg><span class="n">42</span></button>
+                <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">7</span></button>
+                <button class="post-action"><svg class="ic"><use href="#ic-pass"/></svg></button>
+                <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED</span></span>
+              </div>
+            </article>
+
+            <div class="feed-section-head"><span class="lbl">FROM YOUR <span class="b">BOARDS</span></span></div>
+
+            <article class="post from-board">
+              <div class="post-source board"><span class="pip"></span><span>#PHILOSOPHY</span></div>
+              <div class="post-author signed">
+                <div class="av">k</div>
+                <div class="who"><span class="name">Kr<span class="sig"></span></span><span class="handle">@kr · passkey</span></div>
+                <span class="when">5h</span>
+              </div>
+              <div class="post-body">
+                <p>passkey 跨平台還是不夠順 — 但這是「不便」的成本，我們選擇承擔的那種。</p>
+                <p class="quote">便利往往是 surveillance 偽裝的禮物。</p>
+              </div>
+              <div class="post-actions">
+                <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg><span class="n">28</span></button>
+                <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">41</span></button>
+                <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED</span></span>
+              </div>
+            </article>
+
+          </main>
+        </div>
+
+        <button class="fab"><svg width="18" height="18"><use href="#ic-plus"/></svg></button>
+
+        <div class="mobile-tabbar">
+          <div class="tab on"><svg width="20" height="20"><use href="#ic-home"/></svg><span>HOME</span></div>
+          <div class="tab"><svg width="20" height="20"><use href="#ic-search"/></svg><span>FIND</span></div>
+          <div class="tab"><svg width="20" height="20"><use href="#ic-bell"/></svg><span>BELL</span><span class="dot"></span></div>
+          <div class="tab"><svg width="20" height="20"><use href="#ic-circle"/></svg><span>YOU</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Compose -->
+    <div class="frame mobile" style="width: 380px; flex-shrink:0;">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url" style="font-size:9.5px;"><span class="lock">⌬</span>elix.social/#/compose</div></div>
+      <div class="surface" style="position:relative;">
+        <div class="topbar">
+          <div class="brand"><span class="word" style="font-size:14px;">寫新發文</span></div>
+          <div class="ctx">
+            <button class="btn-post" style="font-size:12px; padding: 6px 14px;">發布</button>
+          </div>
+        </div>
+        <div class="cols">
+          <main class="feed">
+            <div style="display:flex; flex-direction:column; gap:14px; padding:18px 16px; border-bottom:0.5px solid var(--rule);">
+              <div style="display:flex; gap:12px; align-items:center;">
+                <span class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0;">T</span>
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <span style="font-family:var(--serif); font-size:15px; font-weight:500; color:var(--fg); line-height:1;">Tris</span>
+                  <span style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.1em; color:var(--amber); line-height:1; text-transform:uppercase;">@tris · 將以 web · passkey 簽署</span>
+                </div>
+              </div>
+              <div style="font-family:var(--serif); font-size:16.5px; line-height:1.7; color:var(--fg);">
+                <p style="margin:0 0 10px;">網路最美的時候，是大家都還相信「按下發布」是一個慎重的動作。</p>
+                <p style="margin:0 0 10px;">後來變成 reflex。然後變成 metric。然後變成 anxiety。</p>
+                <p style="margin:0; color:var(--fg-faint);">|</p>
+              </div>
+            </div>
+
+            <div class="rail-card" style="padding: 14px 16px; gap:8px;">
+              <h4 style="color: var(--fg-faint);">誰會看到 · AUDIENCE</h4>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <span class="tier-chip" style="font-size: 10px; padding: 4px 10px;">追蹤我的人 · 24</span>
+                <span class="tier-chip web" style="font-size: 10px; padding: 4px 10px;">+ 發到 #philosophy</span>
+                <button class="btn-tiny" style="font-size: 11px;">＋</button>
+              </div>
+            </div>
+
+            <div class="rail-card" style="padding: 14px 16px; gap:8px;">
+              <h4 style="color: var(--fg-faint);">簽署 · SIGNATURE</h4>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="signed-mark" style="font-size: 10px;"><span class="pip"></span>WEB · PASSKEY</span>
+                <span style="font-family: var(--serif); font-size: 12.5px; font-style: italic; color: var(--fg-muted);">這篇會公開掛上你的 passkey 簽名。</span>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top: 4px;">
+                <button class="btn-tiny" style="font-size: 11px;">改為匿名</button>
+                <button class="btn-tiny" style="font-size: 11px;">用 self-custody DID</button>
+              </div>
+            </div>
+
+          </main>
+        </div>
+        <div class="mobile-tabbar">
+          <div class="tab"><svg width="20" height="20"><use href="#ic-home"/></svg><span>HOME</span></div>
+          <div class="tab"><svg width="20" height="20"><use href="#ic-search"/></svg><span>FIND</span></div>
+          <div class="tab on"><svg width="20" height="20"><use href="#ic-plus"/></svg><span>WRITE</span></div>
+          <div class="tab"><svg width="20" height="20"><use href="#ic-circle"/></svg><span>YOU</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Profile -->
+    <div class="frame mobile" style="width: 380px; flex-shrink:0;">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url" style="font-size:9.5px;"><span class="lock">⌬</span>elix.social/#/@mira</div></div>
+      <div class="surface" style="position:relative;">
+        <div class="topbar">
+          <div class="brand"><span class="word" style="font-size:14px;">@mira</span></div>
+          <div class="ctx">
+            <button class="btn-tiny solid" style="font-size: 11px; padding: 5px 12px;">已追蹤</button>
+          </div>
+        </div>
+        <div class="cols">
+          <main class="feed">
+
+            <div class="profile-head" style="padding: 20px 16px 18px;">
+              <div class="row">
+                <div class="av-big" style="width:62px;height:62px;font-size:24px;">M</div>
+                <div class="info">
+                  <h1 style="font-size: 22px;">Mira Lin<span class="sig"></span></h1>
+                  <span class="handle">@mira · passkey</span>
+                  <p class="bio" style="font-size: 13.5px; margin-top: 4px;">寫字、收養老貓、相信網路還可以更好。</p>
+                </div>
+              </div>
+              <div class="stats">
+                <div class="stat"><span class="n" style="font-size: 16px;">238</span><span class="l">發文</span></div>
+                <div class="stat"><span class="n" style="font-size: 16px;">1.2K</span><span class="l">共鳴</span></div>
+                <div class="stat"><span class="n" style="font-size: 16px;">142</span><span class="l">信任</span></div>
+              </div>
+            </div>
+
+            <div class="feed-tabs"><button class="on">發文</button><button>媒體</button><button>共鳴</button></div>
+
+            <article class="post">
+              <div class="post-author signed">
+                <div class="av">M</div>
+                <div class="who"><span class="name">Mira Lin<span class="sig"></span></span><span class="handle">@mira</span></div>
+                <span class="when">2h</span>
+              </div>
+              <div class="post-body">
+                <p>翻到 2017 年的舊筆記：「當演算法決定你看見什麼，沈默就會變成默許。」</p>
+                <p>八年後我們在 Elix 重新打字 — <em class="tag">#我決定誰看見</em></p>
+              </div>
+              <div class="post-actions">
+                <button class="post-action resonate"><svg class="ic"><use href="#ic-resonate"/></svg><span class="n">42</span></button>
+                <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">7</span></button>
+                <span class="post-side"><span class="signed-mark"><span class="pip"></span>SIGNED</span></span>
+              </div>
+            </article>
+
+          </main>
+        </div>
+        <div class="mobile-tabbar">
+          <div class="tab"><svg width="20" height="20"><use href="#ic-home"/></svg><span>HOME</span></div>
+          <div class="tab"><svg width="20" height="20"><use href="#ic-search"/></svg><span>FIND</span></div>
+          <div class="tab"><svg width="20" height="20"><use href="#ic-bell"/></svg><span>BELL</span></div>
+          <div class="tab on"><svg width="20" height="20"><use href="#ic-circle"/></svg><span>YOU</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /frame-row -->
+</div><!-- /page -->
+
+</body>
+</html>

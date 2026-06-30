@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Elix — Brand System</title>
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: #1A1815; background: #f0eee9;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" data-presets="react">
+(() => {
+  // ─── Color tokens ──────────────────────────────────────────
+  const C = {
+    ink:    '#1A1815',  // primary text, marks
+    paper:  '#FAF6EC',  // primary surface
+    amber:  '#B97A3C',  // accent — the "trust dot"
+    sage:   '#4A6B5E',  // secondary
+    stone:  '#C9C1AE',  // muted/borders
+    fog:    '#E8E1CF',  // subtle surface
+    ember:  '#7A3E1E',  // amber dark
+    inkSoft:'#3A3530',  // softer ink
+    paperDk:'#21201D',  // dark mode surface
+    paperDk2:'#2C2A26', // dark mode raised
+  };
+  const sysSans = '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+  const sysMono = 'ui-monospace, "SF Mono", Menlo, monospace';
+
+  // ─── Custom wordmark (with tittle) ────────────────────────
+  function ElixMark({ height = 60, color = C.ink, sw = 14, accent = null }) {
+    const H = 100, W = 292;
+    const pad = sw;
+    const mid = (H-sw)/2, bot = H-sw;
+    const iTop = sw * 1.7;
+    const I = `M 176 ${iTop} L ${176+sw} ${iTop} L ${176+sw} ${H} L 176 ${H} Z`;
+    const E = `M 0 0 L 64 0 L 64 ${sw} L ${sw} ${sw} L ${sw} ${mid} L 50 ${mid} L 50 ${mid+sw} L ${sw} ${mid+sw} L ${sw} ${bot} L 64 ${bot} L 64 ${H} L 0 ${H} Z`;
+    const L = `M 88 0 L ${88+sw} 0 L ${88+sw} ${bot} L ${88+64} ${bot} L ${88+64} ${H} L 88 ${H} Z`;
+    const tittleR = sw * 0.62;
+    return (
+      <svg viewBox={`${-pad/2} ${-pad/2} ${W+pad} ${H+pad}`} height={height}
+           preserveAspectRatio="xMinYMid meet" style={{overflow:'visible', display:'block'}}>
+        <path d={E} fill={color}/>
+        <path d={L} fill={color}/>
+        <path d={I} fill={color}/>
+        <circle cx={176 + sw/2} cy={tittleR} r={tittleR} fill={accent || color}/>
+        <line x1="214" y1="0"   x2="246.7" y2="43" stroke={color} strokeWidth={sw}/>
+        <line x1="290" y1="0"   x2="257.3" y2="43" stroke={color} strokeWidth={sw}/>
+        <line x1="214" y1="100" x2="246.7" y2="57" stroke={color} strokeWidth={sw}/>
+        <line x1="290" y1="100" x2="257.3" y2="57" stroke={color} strokeWidth={sw}/>
+      </svg>
+    );
+  }
+
+  // ─── Chosen mark: Constellation rotated 30° ────────────────
+  function Constellation({ size = 96, color = C.ink, dot = C.amber, stroke = 2.5 }) {
+    return (
+      <svg viewBox="-100 -100 200 200" width={size} height={size} style={{display:'block'}}>
+        <g transform="rotate(30)">
+          <g stroke={color} strokeWidth={stroke} strokeLinecap="round">
+            <line x1="-60" y1="40" x2="60" y2="40"/>
+            <line x1="-60" y1="40" x2="0" y2="-60"/>
+            <line x1="60" y1="40" x2="0" y2="-60"/>
+          </g>
+          <g fill={color}>
+            <circle cx="-60" cy="40" r="11"/>
+            <circle cx="60" cy="40" r="11"/>
+            <circle cx="0" cy="-60" r="11"/>
+          </g>
+          <circle cx="0" cy="6" r="5" fill={dot}/>
+        </g>
+      </svg>
+    );
+  }
+
+  // ─── Section 1: Color System ───────────────────────────────
+  function Swatch({ name, role, hex, big = false, dark = false }) {
+    const fg = dark ? C.paper : C.ink;
+    const sub = dark ? 'rgba(250,246,236,0.55)' : 'rgba(26,24,21,0.55)';
+    return (
+      <div style={{
+        flex: big ? 2 : 1, minWidth: 0, background: hex, color: fg,
+        padding: '20px 18px', display:'flex', flexDirection:'column',
+        justifyContent:'space-between', minHeight: big ? 200 : 120,
+      }}>
+        <div style={{fontFamily:sysMono, fontSize:10, color:sub, textTransform:'uppercase', letterSpacing:'0.16em'}}>{role}</div>
+        <div>
+          <div style={{fontSize: big ? 22 : 15, fontWeight:500, lineHeight:1.1}}>{name}</div>
+          <div style={{fontFamily:sysMono, fontSize:11, color:sub, marginTop:4}}>{hex.toUpperCase()}</div>
+        </div>
+      </div>
+    );
+  }
+  function ColorPalette() {
+    return (
+      <div style={{width:'100%', height:'100%', background:C.paper, display:'flex', flexDirection:'column', padding:'40px 36px', boxSizing:'border-box'}}>
+        <div style={{fontFamily:sysMono, fontSize:10, color:'rgba(26,24,21,0.55)', textTransform:'uppercase', letterSpacing:'0.18em', marginBottom:8}}>Primary</div>
+        <div style={{display:'flex', gap:0, marginBottom:24, border:'1px solid rgba(26,24,21,0.08)'}}>
+          <Swatch big name="Paper" role="01 · Surface" hex={C.paper}/>
+          <Swatch big name="Ink" role="02 · Text & marks" hex={C.ink} dark/>
+          <Swatch big name="Amber" role="03 · Accent · trust dot" hex={C.amber} dark/>
+        </div>
+        <div style={{fontFamily:sysMono, fontSize:10, color:'rgba(26,24,21,0.55)', textTransform:'uppercase', letterSpacing:'0.18em', marginBottom:8}}>Supporting</div>
+        <div style={{display:'flex', gap:0, border:'1px solid rgba(26,24,21,0.08)'}}>
+          <Swatch name="Sage" role="04 · Secondary" hex={C.sage} dark/>
+          <Swatch name="Stone" role="05 · Borders" hex={C.stone}/>
+          <Swatch name="Fog" role="06 · Subtle" hex={C.fog}/>
+          <Swatch name="Ember" role="07 · Amber dark" hex={C.ember} dark/>
+          <Swatch name="Ink soft" role="08 · Body text" hex={C.inkSoft} dark/>
+        </div>
+        <div style={{marginTop:28, paddingTop:18, borderTop:`1px solid rgba(26,24,21,0.14)`, fontFamily:sysSans, fontSize:13, lineHeight:1.5, color:'rgba(26,24,21,0.7)'}}>
+          Paper + Ink carry 95% of the brand. Amber is the trust dot — used sparingly: the I-tittle, the constellation centre, single-state CTAs. Sage is for verified or signed-by-you elements. Nothing fluorescent, nothing tech-blue.
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Section 2: App icons ──────────────────────────────────
+  function AppIcon({ size = 220, bg = C.paper, fg = C.ink, dot = C.amber, label }) {
+    const r = size * 0.225; // iOS continuous-corner-ish
+    return (
+      <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:14}}>
+        <div style={{
+          width: size, height: size, background: bg, borderRadius: r,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow: '0 18px 40px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08)',
+          position:'relative', overflow:'hidden',
+        }}>
+          <Constellation size={size * 0.56} color={fg} dot={dot} stroke={3.2}/>
+        </div>
+        <div style={{fontFamily:sysMono, fontSize:10, color:'rgba(26,24,21,0.6)', textTransform:'uppercase', letterSpacing:'0.16em'}}>{label}</div>
+      </div>
+    );
+  }
+  function AppIcons() {
+    return (
+      <div style={{width:'100%', height:'100%', background:'#EDE7D8', display:'flex', flexDirection:'column', padding:'48px 40px', boxSizing:'border-box'}}>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:40, alignItems:'end', flex:1}}>
+          <AppIcon size={180} bg={C.paper} fg={C.ink}    dot={C.amber} label="01 · Paper"/>
+          <AppIcon size={180} bg={C.ink}   fg={C.paper}  dot={C.amber} label="02 · Ink"/>
+          <AppIcon size={180} bg={C.amber} fg={C.paper}  dot={C.paper} label="03 · Amber"/>
+          <AppIcon size={180} bg={C.sage}  fg={C.paper}  dot={C.amber} label="04 · Sage"/>
+        </div>
+        <div style={{marginTop:32, paddingTop:18, borderTop:`1px solid rgba(26,24,21,0.14)`, display:'flex', alignItems:'center', gap:32}}>
+          {/* Small sizes — how the mark holds up */}
+          {[64, 40, 24, 16].map(s => (
+            <div key={s} style={{display:'flex', alignItems:'end', gap:10}}>
+              <div style={{width:s, height:s, background:C.ink, borderRadius:s*0.225, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <Constellation size={s*0.6} color={C.paper} dot={C.amber} stroke={s>32?3.2:s>24?2.8:2.2}/>
+              </div>
+              <div style={{fontFamily:sysMono, fontSize:9.5, color:'rgba(26,24,21,0.55)'}}>{s}px</div>
+            </div>
+          ))}
+          <div style={{flex:1, fontFamily:sysSans, fontSize:12, color:'rgba(26,24,21,0.7)', textAlign:'right'}}>Mark holds shape down to 16×16. Below that, the inner amber dot drops out.</div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Section 3: Light + Dark theme cards ──────────────────
+  function PostCard({ dark = false }) {
+    const surface = dark ? C.paperDk2 : C.paper;
+    const surface2 = dark ? C.paperDk : '#F0EBDA';
+    const fg = dark ? C.paper : C.ink;
+    const sub = dark ? 'rgba(250,246,236,0.55)' : 'rgba(26,24,21,0.55)';
+    const body = dark ? 'rgba(250,246,236,0.82)' : 'rgba(26,24,21,0.82)';
+    const line = dark ? 'rgba(250,246,236,0.10)' : 'rgba(26,24,21,0.10)';
+    const chipBg = dark ? 'rgba(250,246,236,0.06)' : 'rgba(26,24,21,0.05)';
+    return (
+      <div style={{width:'100%', height:'100%', background:surface2, padding:'36px 32px', boxSizing:'border-box', display:'flex', flexDirection:'column'}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20}}>
+          <ElixMark height={28} color={fg} sw={14} accent={C.amber}/>
+          <div style={{fontFamily:sysMono, fontSize:10, color:sub, textTransform:'uppercase', letterSpacing:'0.18em'}}>{dark ? 'Dark · Ink' : 'Light · Paper'}</div>
+        </div>
+        <div style={{background:surface, borderRadius:14, padding:22, border:`1px solid ${line}`, flex:1, display:'flex', flexDirection:'column', gap:16}}>
+          <div style={{display:'flex', alignItems:'center', gap:12}}>
+            <div style={{width:38, height:38, borderRadius:'50%', background: dark ? '#5C6B5E' : C.stone, display:'flex', alignItems:'center', justifyContent:'center', color:fg, fontWeight:600, fontSize:14}}>HK</div>
+            <div style={{flex:1}}>
+              <div style={{display:'flex', alignItems:'center', gap:6}}>
+                <div style={{fontWeight:600, fontSize:14, color:fg}}>韓康</div>
+                <Constellation size={11} color={C.amber} dot={C.amber} stroke={2}/>
+                <div style={{fontFamily:sysMono, fontSize:10, color:sub}}>·verified by you</div>
+              </div>
+              <div style={{fontFamily:sysMono, fontSize:10.5, color:sub, marginTop:2, letterSpacing:'0.04em'}}>@hankang  ·  2h  ·  signed</div>
+            </div>
+            <div style={{fontFamily:sysMono, fontSize:9.5, color:sub, padding:'4px 8px', background:chipBg, borderRadius:6, letterSpacing:'0.08em'}}>TRUSTED · 3</div>
+          </div>
+          <div style={{fontSize:15, lineHeight:1.55, color:body}}>
+            搬到柏林的第二週。這個城市好像每個轉角都在跟你說「你不用解釋自己」。第一次覺得網路上不貼東西不是因為害怕，而是因為沒必要證明。
+          </div>
+          <div style={{height:1, background:line, margin:'4px 0'}}/>
+          <div style={{display:'flex', alignItems:'center', gap:18, fontFamily:sysMono, fontSize:11, color:sub, letterSpacing:'0.05em'}}>
+            <span>↗ pass on</span>
+            <span>✦ resonate · 12</span>
+            <span>✎ reply · 3</span>
+            <span style={{marginLeft:'auto', color:C.amber}}>● signed</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Section 4: Feed mockup (phone) ───────────────────────
+  function PhoneFrame({ children, dark = false }) {
+    const bezel = '#1B1A17';
+    return (
+      <div style={{width:'100%', height:'100%', background: dark ? '#0F0E0C' : '#E7E0CE', display:'flex', alignItems:'center', justifyContent:'center', padding:'32px 0', boxSizing:'border-box'}}>
+        <div style={{width:340, height:700, background:bezel, borderRadius:48, padding:9, boxShadow:'0 30px 60px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.15)', position:'relative'}}>
+          <div style={{width:'100%', height:'100%', background: dark ? C.paperDk : C.paper, borderRadius:40, overflow:'hidden', position:'relative'}}>
+            {/* Dynamic island */}
+            <div style={{position:'absolute', top:10, left:'50%', transform:'translateX(-50%)', width:100, height:28, background:'#000', borderRadius:14, zIndex:5}}/>
+            {/* Status bar */}
+            <div style={{position:'absolute', top:14, left:24, fontFamily:sysSans, fontSize:13, fontWeight:600, color: dark ? C.paper : C.ink, zIndex:4}}>9:41</div>
+            <div style={{position:'absolute', top:14, right:24, fontFamily:sysSans, fontSize:11, color: dark ? C.paper : C.ink, zIndex:4, display:'flex', gap:5, alignItems:'center'}}>
+              <span>●●●</span><span>◐</span>
+            </div>
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function FeedItem({ name, handle, time, body, resonates, trusted, dark, signed = false, isYou = false }) {
+    const fg = dark ? C.paper : C.ink;
+    const sub = dark ? 'rgba(250,246,236,0.55)' : 'rgba(26,24,21,0.55)';
+    const body2 = dark ? 'rgba(250,246,236,0.82)' : 'rgba(26,24,21,0.82)';
+    const line = dark ? 'rgba(250,246,236,0.10)' : 'rgba(26,24,21,0.10)';
+    return (
+      <div style={{padding:'18px 22px', borderBottom:`1px solid ${line}`}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:10}}>
+          <div style={{width:34, height:34, borderRadius:'50%', background: isYou ? C.amber : (dark ? '#4F5C52' : C.stone), color:dark?C.paper:C.ink, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:13}}>{name[0]}</div>
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{display:'flex', alignItems:'center', gap:5}}>
+              <div style={{fontSize:13.5, fontWeight:600, color:fg}}>{name}</div>
+              {trusted && <Constellation size={10} color={C.amber} dot={C.amber} stroke={2}/>}
+            </div>
+            <div style={{fontFamily:sysMono, fontSize:10, color:sub, letterSpacing:'0.04em'}}>@{handle} · {time}{signed && ' · signed'}</div>
+          </div>
+          {signed && <div style={{width:6, height:6, borderRadius:'50%', background:C.amber}}/>}
+        </div>
+        <div style={{fontSize:13.5, lineHeight:1.55, color:body2}}>{body}</div>
+        <div style={{display:'flex', gap:14, marginTop:10, fontFamily:sysMono, fontSize:10, color:sub, letterSpacing:'0.05em'}}>
+          <span>✦ {resonates}</span>
+          <span>✎ reply</span>
+          <span>↗ pass on</span>
+        </div>
+      </div>
+    );
+  }
+
+  function Feed({ dark = false }) {
+    const fg = dark ? C.paper : C.ink;
+    const sub = dark ? 'rgba(250,246,236,0.55)' : 'rgba(26,24,21,0.55)';
+    const line = dark ? 'rgba(250,246,236,0.10)' : 'rgba(26,24,21,0.10)';
+    const surface = dark ? C.paperDk : C.paper;
+    return (
+      <PhoneFrame dark={dark}>
+        <div style={{paddingTop:54, paddingBottom:64, height:'100%', boxSizing:'border-box', overflow:'hidden', background:surface}}>
+          {/* Header */}
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 22px 14px', borderBottom:`1px solid ${line}`}}>
+            <ElixMark height={22} color={fg} sw={14} accent={C.amber}/>
+            <div style={{display:'flex', alignItems:'center', gap:14, color:sub, fontFamily:sysMono, fontSize:11, letterSpacing:'0.1em'}}>
+              <span>● your circle</span>
+              <span style={{color:dark?'rgba(250,246,236,0.3)':'rgba(26,24,21,0.3)'}}>○ open</span>
+            </div>
+          </div>
+          {/* Feed */}
+          <div style={{overflow:'auto', height:'100%'}}>
+            <FeedItem dark={dark} name="韓康" handle="hankang" time="2h" trusted signed resonates={12}
+              body="搬到柏林的第二週。第一次覺得不貼東西不是因為害怕，而是沒必要證明。"/>
+            <FeedItem dark={dark} name="Mira O." handle="mira" time="5h" trusted resonates={4}
+              body="The opposite of an algorithm is a friend who tells you what they're reading."/>
+            <FeedItem dark={dark} name="You" handle="you" time="yesterday" isYou trusted signed resonates={2}
+              body="一個社群網站如果不需要每天打開，是不是更接近健康？"/>
+            <FeedItem dark={dark} name="Léa" handle="lea" time="2d" resonates={8}
+              body="My identity isn't a product. It's a key — and Elix is the door that recognizes it."/>
+          </div>
+          {/* Tabbar */}
+          <div style={{position:'absolute', bottom:0, left:0, right:0, height:60, background:surface, borderTop:`1px solid ${line}`, display:'flex', alignItems:'center', justifyContent:'space-around', padding:'0 30px'}}>
+            <Constellation size={22} color={fg} dot={C.amber} stroke={2.5}/>
+            <div style={{width:22, height:22, border:`2px solid ${sub}`, borderRadius:'50%'}}/>
+            <div style={{width:22, height:22, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, color:sub}}>✎</div>
+            <div style={{width:22, height:22, border:`2px solid ${sub}`, borderRadius:4}}/>
+          </div>
+        </div>
+      </PhoneFrame>
+    );
+  }
+
+  // ─── Profile screen ────────────────────────────────────────
+  function Profile({ dark = false }) {
+    const fg = dark ? C.paper : C.ink;
+    const sub = dark ? 'rgba(250,246,236,0.55)' : 'rgba(26,24,21,0.55)';
+    const body = dark ? 'rgba(250,246,236,0.82)' : 'rgba(26,24,21,0.82)';
+    const line = dark ? 'rgba(250,246,236,0.10)' : 'rgba(26,24,21,0.10)';
+    const chip = dark ? 'rgba(250,246,236,0.06)' : 'rgba(26,24,21,0.05)';
+    const surface = dark ? C.paperDk : C.paper;
+    return (
+      <PhoneFrame dark={dark}>
+        <div style={{paddingTop:54, paddingBottom:64, height:'100%', boxSizing:'border-box', background:surface}}>
+          <div style={{padding:'18px 22px', display:'flex', flexDirection:'column', gap:14}}>
+            <div style={{display:'flex', alignItems:'center', gap:14}}>
+              <div style={{width:62, height:62, borderRadius:'50%', background:C.amber, color:C.paper, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:22}}>Y</div>
+              <div>
+                <div style={{display:'flex', alignItems:'center', gap:6}}>
+                  <div style={{fontSize:18, fontWeight:600, color:fg}}>You</div>
+                  <Constellation size={14} color={C.amber} dot={C.amber} stroke={2.5}/>
+                </div>
+                <div style={{fontFamily:sysMono, fontSize:11, color:sub, marginTop:3}}>@you · key signed 11 may 2026</div>
+              </div>
+            </div>
+            <div style={{fontSize:14, lineHeight:1.55, color:body}}>Writing slowly, listening to mostly piano, learning German with a 9-year-old's stubbornness.</div>
+            <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+              <span style={{fontFamily:sysMono, fontSize:10, color:sub, padding:'6px 10px', background:chip, borderRadius:6, letterSpacing:'0.06em'}}>● 23 IN CIRCLE</span>
+              <span style={{fontFamily:sysMono, fontSize:10, color:sub, padding:'6px 10px', background:chip, borderRadius:6, letterSpacing:'0.06em'}}>◐ 7 PENDING</span>
+              <span style={{fontFamily:sysMono, fontSize:10, color:C.amber, padding:'6px 10px', background:chip, borderRadius:6, letterSpacing:'0.06em'}}>✦ KEY VERIFIED</span>
+            </div>
+            <div style={{borderTop:`1px solid ${line}`, paddingTop:14, marginTop:4}}>
+              <div style={{fontFamily:sysMono, fontSize:10, color:sub, textTransform:'uppercase', letterSpacing:'0.16em', marginBottom:10}}>Your data · your terms</div>
+              <RowItem dark={dark} label="Identity key" value="0x8a3e…f721" amber/>
+              <RowItem dark={dark} label="Storage" value="self-hosted"/>
+              <RowItem dark={dark} label="Discoverable to" value="circle only"/>
+              <RowItem dark={dark} label="Ads & profiling" value="off · permanently"/>
+            </div>
+          </div>
+          {/* Tabbar */}
+          <div style={{position:'absolute', bottom:0, left:0, right:0, height:60, background:surface, borderTop:`1px solid ${line}`, display:'flex', alignItems:'center', justifyContent:'space-around', padding:'0 30px'}}>
+            <Constellation size={22} color={sub} dot={C.stone} stroke={2.5}/>
+            <div style={{width:22, height:22, border:`2px solid ${sub}`, borderRadius:'50%'}}/>
+            <div style={{width:22, height:22, color:sub, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20}}>✎</div>
+            <div style={{width:22, height:22, border:`2px solid ${fg}`, borderRadius:4}}/>
+          </div>
+        </div>
+      </PhoneFrame>
+    );
+  }
+  function RowItem({ label, value, dark, amber }) {
+    const fg = dark ? C.paper : C.ink;
+    const sub = dark ? 'rgba(250,246,236,0.55)' : 'rgba(26,24,21,0.55)';
+    const line = dark ? 'rgba(250,246,236,0.08)' : 'rgba(26,24,21,0.08)';
+    return (
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:`1px solid ${line}`}}>
+        <span style={{fontSize:13, color:fg}}>{label}</span>
+        <span style={{fontFamily:sysMono, fontSize:11.5, color:amber?C.amber:sub, letterSpacing:'0.04em'}}>{value}</span>
+      </div>
+    );
+  }
+
+  // ─── App ──────────────────────────────────────────────────
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCPostIt top={-110} left={60} width={320} rotate={-1.5}>
+          <strong>Elix — brand system</strong>{'\n\n'}
+          J · Constellation locked in. Below: colors, app icon studies, light + dark cards, and the mark living inside a social feed and profile screen.{'\n\n'}
+          Each tile is editable — tell me what to keep, drop, or push further.
+        </DCPostIt>
+
+        <DCSection id="colors" title="Color system" subtitle="Paper + Ink carry the brand. Amber is rationed.">
+          <DCArtboard id="palette" label="Palette" width={820} height={520}>
+            <ColorPalette/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="icons" title="App icon" subtitle="Four backgrounds, plus size reduction down to 16px.">
+          <DCArtboard id="icons" label="Icon studies" width={980} height={460}>
+            <AppIcons/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="theme" title="Light + dark" subtitle="The same post, two surfaces. Body voice stays editorial.">
+          <DCArtboard id="light" label="Light · Paper" width={520} height={440}>
+            <PostCard/>
+          </DCArtboard>
+          <DCArtboard id="dark" label="Dark · Ink" width={520} height={440}>
+            <PostCard dark/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="ui" title="In the product" subtitle="Feed and profile — the brand restraint applied to a social surface.">
+          <DCArtboard id="feed-light" label="Feed · light" width={420} height={780}>
+            <Feed/>
+          </DCArtboard>
+          <DCArtboard id="feed-dark" label="Feed · dark" width={420} height={780}>
+            <Feed dark/>
+          </DCArtboard>
+          <DCArtboard id="profile-light" label="Profile · light" width={420} height={780}>
+            <Profile/>
+          </DCArtboard>
+          <DCArtboard id="profile-dark" label="Profile · dark" width={420} height={780}>
+            <Profile dark/>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(<App/>);
+})();
+</script>
+</body>
+</html>
