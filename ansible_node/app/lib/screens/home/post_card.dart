@@ -5,7 +5,10 @@ import 'package:ansible_store/ansible_store.dart' as store;
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:share_plus/share_plus.dart';
+
 import '../../l10n/app_l10n.dart';
+import '../../services/handle_resolver.dart';
 import '../../services/ops_dispatch_service.dart';
 import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
@@ -176,6 +179,78 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
+  /// Opens the post's detail: the thread for forum posts, the content-detail
+  /// (comments) view for murmur/note, else the author.
+  void _openDetail() {
+    if (widget.data.openableThread) {
+      _openThread(context);
+    } else if (widget.onOpenContent != null) {
+      widget.onOpenContent!(widget.data);
+    } else {
+      widget.onOpenAuthor?.call(widget.data.author);
+    }
+  }
+
+  /// "↗ pass on" — share the post's text via the platform share sheet.
+  void _share() {
+    final text = widget.data.content.isNotEmpty
+        ? widget.data.content
+        : widget.data.title;
+    if (text.isNotEmpty) Share.share(text);
+  }
+
+  /// Avatar: the author's initial (serif), amber-filled when it's the local user
+  /// — matches the Elix feed mockup. Resolves the handle for the initial.
+  Widget _avatar(ElixScreenStyleData style, bool isYou) {
+    return FutureBuilder<String?>(
+      initialData: HandleResolver.shared.cached(widget.data.author),
+      future: HandleResolver.shared.handleFor(widget.data.author),
+      builder: (context, snap) {
+        final h = (snap.data ?? '').replaceFirst('@', '').trim();
+        final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
+        return Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isYou ? style.accent : style.surface,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            initial,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isYou ? style.background : style.muted,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _feedAction(
+    String label, {
+    required ElixScreenStyleData color,
+    bool active = false,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: AnsibleDesign.mono,
+          fontSize: 10,
+          letterSpacing: 0.6,
+          color: active ? color.accent : color.faint,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
@@ -187,42 +262,19 @@ class _PostCardState extends State<PostCard> {
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
-        // Murmur/note items have only a synthetic thread — open their
-        // content-detail/comments view (or fall back to the author).
-        onTap: () {
-          if (data.openableThread) {
-            _openThread(context);
-          } else if (widget.onOpenContent != null) {
-            widget.onOpenContent!(data);
-          } else {
-            widget.onOpenAuthor?.call(data.author);
-          }
-        },
+        onTap: _openDetail,
         child: Container(
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(color: style.rule, width: 0.5),
             ),
           ),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: style.surface,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.person_outline,
-                  size: 20,
-                  color: style.muted,
-                ),
-              ),
-              const SizedBox(width: 12),
+              _avatar(style, data.author == widget.authorDid),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,80 +289,81 @@ class _PostCardState extends State<PostCard> {
                             child: AuthorLabel(
                               did: data.author,
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                                fontFamily: AnsibleDesign.serif,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
                                 color: style.foreground,
                               ),
                             ),
                           ),
                         ),
-                        if (data.signatureVerified) ...[
-                          const SizedBox(width: 4),
-                          Tooltip(
-                            message: context.uiCopy(
-                              zh: '簽章已驗證',
-                              en: 'Signature verified',
-                            ),
-                            child: const Icon(
-                              Icons.verified_user,
-                              size: 12,
-                              color: AnsibleDesign.spore,
-                            ),
-                          ),
-                        ],
+                        // Constellation trust mark for verified-human authors.
                         if (data.authorTier == 'verified_human') ...[
-                          const SizedBox(width: 4),
-                          Icon(Icons.verified, size: 13, color: style.accent),
+                          const SizedBox(width: 5),
+                          AnsibleMark(size: 10, color: style.accent),
                         ],
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            '· ${data.board} · ${data.timeAgo}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: style.faint,
+                        const Spacer(),
+                        // Signed-op amber dot.
+                        if (data.signatureVerified)
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: style.accent,
+                              shape: BoxShape.circle,
                             ),
                           ),
-                        ),
                       ],
                     ),
+                    const SizedBox(height: 1),
+                    Text(
+                      '${data.timeAgo}'
+                      '${data.signatureVerified ? ' · signed' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 9.5,
+                        letterSpacing: 0.6,
+                        color: style.faint,
+                      ),
+                    ),
                     if (data.title.isNotEmpty) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 8),
                       Text(
                         data.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          fontFamily: AnsibleDesign.serif,
                           fontSize: 15,
-                          height: 1.3,
-                          fontWeight: FontWeight.w700,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
                           color: _hover ? style.accent : style.foreground,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 8),
                     Text(
                       data.content.isEmpty
                           ? context.l10n.noContentYet
                           : data.content,
-                      maxLines: 3,
+                      maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: style.muted,
-                        height: 1.4,
-                        fontSize: 14,
+                        fontFamily: AnsibleDesign.serif,
+                        color: style.foreground,
+                        height: 1.6,
+                        fontSize: 14.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 11),
                     Row(
                       children: [
-                        _ReactionChip(
-                          label: '👍',
-                          count: _likeCount,
+                        _feedAction(
+                          '✦ $_likeCount',
                           active: _reacted,
-                          mutedColor: style.muted,
+                          color: style,
                           onTap: _isReacting
                               ? null
                               : () async {
@@ -322,15 +375,18 @@ class _PostCardState extends State<PostCard> {
                                   }
                                 },
                         ),
-                        // Comments belong to threads only — hide on murmur/note.
-                        if (data.openableThread) ...[
-                          const SizedBox(width: 8),
-                          _CommentChip(
-                            count: data.comments,
-                            mutedColor: style.muted,
-                            onTap: () => _openThread(context),
-                          ),
-                        ],
+                        const SizedBox(width: 18),
+                        _feedAction(
+                          context.uiCopy(zh: '✎ 回覆', en: '✎ reply'),
+                          color: style,
+                          onTap: _openDetail,
+                        ),
+                        const SizedBox(width: 18),
+                        _feedAction(
+                          context.uiCopy(zh: '↗ 轉傳', en: '↗ pass on'),
+                          color: style,
+                          onTap: _share,
+                        ),
                       ],
                     ),
                   ],
@@ -344,65 +400,3 @@ class _PostCardState extends State<PostCard> {
   }
 }
 
-class _ReactionChip extends StatelessWidget {
-  const _ReactionChip({
-    required this.label,
-    required this.count,
-    required this.mutedColor,
-    this.active = false,
-    this.onTap,
-  });
-
-  final String label;
-  final int count;
-  final Color mutedColor;
-  final bool active;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: active ? AnsibleDesign.spore : mutedColor,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: const Size(0, 30),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        backgroundColor: Colors.transparent,
-        shape: const StadiumBorder(),
-        textStyle: const TextStyle(fontSize: 13),
-      ),
-      child: Text('$label $count'),
-    );
-  }
-}
-
-class _CommentChip extends StatelessWidget {
-  const _CommentChip({
-    required this.count,
-    required this.mutedColor,
-    this.onTap,
-  });
-
-  final int count;
-  final Color mutedColor;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: const Icon(Icons.chat_bubble_outline, size: 16),
-      label: Text(context.l10n.commentsCount(count)),
-      style: TextButton.styleFrom(
-        foregroundColor: mutedColor,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: const Size(0, 30),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        backgroundColor: Colors.transparent,
-        shape: const StadiumBorder(),
-        textStyle: const TextStyle(fontSize: 13),
-      ),
-    );
-  }
-}
