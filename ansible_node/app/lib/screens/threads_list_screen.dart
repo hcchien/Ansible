@@ -13,6 +13,7 @@ import '../services/app_view_timeline_client.dart';
 import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
 import '../services/posting_gate.dart';
+import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
 import '../widgets/external_content_section.dart';
 import '../widgets/posting_gate_notice.dart';
@@ -437,19 +438,32 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AnsibleDesign.paperDeep,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.person_outline,
-                size: 20,
-                color: AnsibleDesign.inkMuted,
-              ),
+            FutureBuilder<String?>(
+              initialData: HandleResolver.shared.cached(thread.authorId),
+              future: HandleResolver.shared.handleFor(thread.authorId),
+              builder: (context, snap) {
+                final h = (snap.data ?? '').replaceFirst('@', '').trim();
+                final initial =
+                    h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
+                return Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AnsibleDesign.paperDeep,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AnsibleDesign.inkMuted,
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 12),
             Expanded(
