@@ -199,9 +199,10 @@ class _PostCardState extends State<PostCard> {
     if (text.isNotEmpty) Share.share(text);
   }
 
-  /// Avatar: the author's initial (serif), amber-filled when it's the local user
-  /// — matches the Elix feed mockup. Resolves the handle for the initial.
-  Widget _avatar(ElixScreenStyleData style, bool isYou) {
+  /// Avatar: the author's initial (serif), amber-filled when the opening op is
+  /// signed (or it's the local user) — matches the Elix feed mockup. Resolves
+  /// the handle for the initial.
+  Widget _avatar(ElixScreenStyleData style, bool amber) {
     return FutureBuilder<String?>(
       initialData: HandleResolver.shared.cached(widget.data.author),
       future: HandleResolver.shared.handleFor(widget.data.author),
@@ -209,20 +210,20 @@ class _PostCardState extends State<PostCard> {
         final h = (snap.data ?? '').replaceFirst('@', '').trim();
         final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
         return Container(
-          width: 34,
-          height: 34,
+          width: 38,
+          height: 38,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isYou ? style.accent : style.surface,
+            color: amber ? style.accent : style.surface,
             shape: BoxShape.circle,
           ),
           child: Text(
             initial,
             style: TextStyle(
               fontFamily: AnsibleDesign.serif,
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: FontWeight.w500,
-              color: isYou ? style.background : style.muted,
+              color: amber ? style.background : style.muted,
             ),
           ),
         );
@@ -230,23 +231,35 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
+  /// Threads-style action: an outline icon + optional count. Heart fills amber
+  /// when active.
   Widget _feedAction(
-    String label, {
+    IconData icon, {
     required ElixScreenStyleData color,
+    int? count,
     bool active = false,
     VoidCallback? onTap,
   }) {
+    final tint = active ? color.accent : color.muted;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: AnsibleDesign.mono,
-          fontSize: 10,
-          letterSpacing: 0.6,
-          color: active ? color.accent : color.faint,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 19, color: tint),
+          if (count != null && count > 0) ...[
+            const SizedBox(width: 6),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontFamily: AnsibleDesign.sans,
+                fontSize: 13,
+                color: color.muted,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -273,8 +286,9 @@ class _PostCardState extends State<PostCard> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _avatar(style, data.author == widget.authorDid),
-              const SizedBox(width: 10),
+              _avatar(style, data.signatureVerified ||
+                  data.author == widget.authorDid),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,25 +303,30 @@ class _PostCardState extends State<PostCard> {
                             child: AuthorLabel(
                               did: data.author,
                               style: TextStyle(
-                                fontFamily: AnsibleDesign.serif,
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w500,
+                                fontFamily: AnsibleDesign.sans,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                height: 1.2,
                                 color: style.foreground,
                               ),
                             ),
                           ),
                         ),
-                        // Constellation trust mark for verified-human authors.
+                        // Verified-human check (sage).
                         if (data.authorTier == 'verified_human') ...[
                           const SizedBox(width: 5),
-                          AnsibleMark(size: 10, color: style.accent),
+                          Icon(
+                            Icons.verified,
+                            size: 14,
+                            color: AnsibleDesign.spore,
+                          ),
                         ],
                         const Spacer(),
                         // Signed-op amber dot.
                         if (data.signatureVerified)
                           Container(
-                            width: 6,
-                            height: 6,
+                            width: 7,
+                            height: 7,
                             decoration: BoxDecoration(
                               color: style.accent,
                               shape: BoxShape.circle,
@@ -315,35 +334,34 @@ class _PostCardState extends State<PostCard> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 2),
                     Text(
                       '${data.timeAgo}'
-                      '${data.signatureVerified ? ' · signed' : ''}',
+                      '${data.signatureVerified ? context.uiCopy(zh: ' · 已簽署', en: ' · signed') : ''}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: AnsibleDesign.mono,
-                        fontSize: 9.5,
-                        letterSpacing: 0.6,
+                        fontFamily: AnsibleDesign.sans,
+                        fontSize: 12,
                         color: style.faint,
                       ),
                     ),
                     if (data.title.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 9),
                       Text(
                         data.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: AnsibleDesign.serif,
-                          fontSize: 15,
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 16.5,
+                          height: 1.4,
+                          fontWeight: FontWeight.w700,
                           color: _hover ? style.accent : style.foreground,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       data.content.isEmpty
                           ? context.l10n.noContentYet
@@ -353,15 +371,16 @@ class _PostCardState extends State<PostCard> {
                       style: TextStyle(
                         fontFamily: AnsibleDesign.serif,
                         color: style.foreground,
-                        height: 1.6,
-                        fontSize: 14.5,
+                        height: 1.72,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: 11),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         _feedAction(
-                          '✦ $_likeCount',
+                          _reacted ? Icons.favorite : Icons.favorite_border,
+                          count: _likeCount,
                           active: _reacted,
                           color: style,
                           onTap: _isReacting
@@ -375,15 +394,22 @@ class _PostCardState extends State<PostCard> {
                                   }
                                 },
                         ),
-                        const SizedBox(width: 18),
+                        const SizedBox(width: 26),
                         _feedAction(
-                          context.uiCopy(zh: '✎ 回覆', en: '✎ reply'),
+                          Icons.mode_comment_outlined,
+                          count: data.comments,
                           color: style,
                           onTap: _openDetail,
                         ),
-                        const SizedBox(width: 18),
+                        const SizedBox(width: 26),
                         _feedAction(
-                          context.uiCopy(zh: '↗ 轉傳', en: '↗ pass on'),
+                          Icons.repeat,
+                          color: style,
+                          onTap: _share,
+                        ),
+                        const Spacer(),
+                        _feedAction(
+                          Icons.send_outlined,
                           color: style,
                           onTap: _share,
                         ),

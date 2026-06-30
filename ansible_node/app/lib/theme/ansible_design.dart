@@ -4,43 +4,46 @@ import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Elix Forest Letter Design System
-// Light theme: Bone Goose  ·  Dark theme: Pine
+// Elix Design System — "Threads-style"
+// Near-white / pure-black surface, serif content + sans UI, amber·sage·ember.
+// Light: Paper White  ·  Dark: True Black
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
   static const brandName = 'Elix';
 
-  // ── Light (Bone Goose) ────────────────────────────────────────────────────
-  static const paper = Color(0xFFFBF7DC);
-  static const paperElev = Color(0xFFF4EEC6);
-  static const paperDeep = Color(0xFFE8DEAA);
-  static const ink = Color(0xFF1F2E20);
-  static const inkMuted = Color(0xFF3D4E3D);
-  static const inkFaint = Color(0xFF88826E);
-  static const rule = Color(0xFFD6CB94);
-  static const ruleSoft = Color(0xFFE3DAB0);
-  static const accent = Color(0xFFB88C2E); // ochre (trust dot)
-  static const accentSoft = Color(0xFFD6B66B); // lighter ochre
-  static const spore = Color(0xFF5A6E3A); // Moss
-  static const moss = Color(0xFF5A6E3A); // alias — Forest Letter "moss"
-  static const danger = Color(0xFF7E4A1E); // ember
-  static const ember = Color(0xFF7E4A1E); // alias — Forest Letter "ember"
-  static const ochre = Color(0xFFB88C2E); // alias — Forest Letter "ochre"
+  // ── Light (Paper White) ───────────────────────────────────────────────────
+  static const paper = Color(0xFFFFFFFF);
+  static const paperElev = Color(0xFFF6F6F6);
+  static const paperDeep = Color(0xFFECECEC);
+  static const ink = Color(0xFF0A0A0A);
+  static const inkMuted = Color(0xFF5C5C5C);
+  static const inkFaint = Color(0xFF9A9A9A);
+  static const rule = Color(0xFFE6E6E6);
+  static const ruleSoft = Color(0xFFF0F0F0);
+  static const accent = Color(0xFFB97A3C); // amber (trust dot · accents)
+  static const accentSoft = Color(0xFFE8D2BA); // lighter amber
+  static const spore = Color(0xFF4A6B5E); // sage
+  static const moss = Color(0xFF4A6B5E); // alias — "sage"
+  static const danger = Color(0xFF9A4A24); // ember
+  static const ember = Color(0xFF9A4A24); // alias — "ember"
+  static const ochre = Color(0xFFB97A3C); // alias — "amber"
 
-  // ── Dark (Pine) ───────────────────────────────────────────────────────────
-  static const darkPaper = Color(0xFF0E1A0F);
-  static const darkPaperElev = Color(0xFF16221A);
-  static const darkPaperDeep = Color(0xFF1F2D24);
-  static const darkInk = Color(0xFFE8E0BE);
-  static const darkInkMuted = Color(0xFFB8B49A);
-  static const darkInkFaint = Color(0xFF7C8071);
-  static const darkRule = Color(0xFF2A3526);
-  static const darkRuleSoft = Color(0xFF1F291E);
-  static const darkOchre = Color(0xFFD9AB4E);
-  static const darkMoss = Color(0xFF93A971);
+  // ── Dark (True Black) ─────────────────────────────────────────────────────
+  static const darkPaper = Color(0xFF000000);
+  static const darkPaperElev = Color(0xFF0E0E0E);
+  static const darkPaperDeep = Color(0xFF1A1A1A);
+  static const darkInk = Color(0xFFF4F4F4);
+  static const darkInkMuted = Color(0xFFA4A4A4);
+  static const darkInkFaint = Color(0xFF606060);
+  static const darkRule = Color(0xFF242424);
+  static const darkRuleSoft = Color(0xFF161616);
+  static const darkOchre = Color(0xFFD69968); // amber (dark)
+  static const darkMoss = Color(0xFF7AA39B); // sage (dark)
+  static const darkEmber = Color(0xFFC97B52); // ember (dark)
 
   // ── Typography ────────────────────────────────────────────────────────────
+  // UI chrome rides on sans; long-form content and headings ride on serif.
   static const serif = 'Noto Serif TC';
   static const serifEn = 'Newsreader';
   static const sans = 'Noto Sans TC';
@@ -50,8 +53,8 @@ class AnsibleDesign {
   static const readingTextSize = 17.0;
   static const previewTextSize = 16.5;
   static const fallback = [
-    'Noto Serif TC',
     'Noto Sans TC',
+    'Noto Serif TC',
     'PingFang TC',
     'Songti TC',
     'PMingLiU',
@@ -78,7 +81,7 @@ class AnsibleDesign {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: paper,
-      fontFamily: serif,
+      fontFamily: sans,
       fontFamilyFallback: fallback,
     );
 
@@ -86,7 +89,7 @@ class AnsibleDesign {
       textTheme: base.textTheme.apply(
         bodyColor: ink,
         displayColor: ink,
-        fontFamily: serif,
+        fontFamily: sans,
         fontFamilyFallback: fallback,
       ),
       appBarTheme: const AppBarTheme(
@@ -124,9 +127,9 @@ class AnsibleDesign {
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
-            fontFamily: serif,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.6,
+            fontFamily: sans,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
           ),
         ),
       ),
@@ -180,7 +183,7 @@ class AnsibleDesign {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: darkPaper,
-      fontFamily: serif,
+      fontFamily: sans,
       fontFamilyFallback: fallback,
     );
 
@@ -188,7 +191,7 @@ class AnsibleDesign {
       textTheme: base.textTheme.apply(
         bodyColor: darkInk,
         displayColor: darkInk,
-        fontFamily: serif,
+        fontFamily: sans,
         fontFamilyFallback: fallback,
       ),
       appBarTheme: const AppBarTheme(
@@ -226,9 +229,9 @@ class AnsibleDesign {
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
-            fontFamily: serif,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.6,
+            fontFamily: sans,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
           ),
         ),
       ),

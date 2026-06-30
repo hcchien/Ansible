@@ -15,13 +15,13 @@ seeded zh-Hant data — these are real widgets rendering real layout/color/spaci
 | `e01_me_settings.png` | Me / Settings |
 | `e15_single_board.png` | Single board — #philosophy (E·15) |
 
-## Known fidelity note
+## Design system
 
-The app does **not** bundle the design fonts (`Noto Serif TC`, `Newsreader`,
-`JetBrains Mono`) — pubspec `fonts:` is commented out and there is no
-`google_fonts` dependency. So these screenshots render with **system fallback
-fonts**, not the design's serif/mono typography. Bundle the fonts if you want
-the screenshots (and the app) to match the design's type.
+These render the **white Threads-style** Elix system: near-white surface,
+pure-black text, serif content (`Noto Serif TC` / `Newsreader`) + sans UI
+(`Noto Sans TC`), mono labels (`JetBrains Mono`), amber·sage·ember accents.
+The fonts are bundled (`assets/fonts/`), so the screenshots match the app's
+actual typography.
 
 Relative timestamps (e.g. "13 小時") reflect the simulator's real clock against
 the fixed seed times — cosmetic only.

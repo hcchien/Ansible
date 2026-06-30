@@ -93,6 +93,26 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Elix design fonts (bundled for offline fidelity). The CJK families are
+  # variable fonts — a single asset drives every weight via fontWeight.
+  fonts:
+    - family: Noto Serif TC
+      fonts:
+        - asset: assets/fonts/NotoSerifTC.ttf
+    - family: Noto Sans TC
+      fonts:
+        - asset: assets/fonts/NotoSansTC.ttf
+    - family: Newsreader
+      fonts:
+        - asset: assets/fonts/Newsreader.ttf
+        - asset: assets/fonts/Newsreader-Italic.ttf
+          style: italic
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
