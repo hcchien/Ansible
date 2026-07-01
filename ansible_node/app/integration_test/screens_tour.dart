@@ -277,11 +277,12 @@ void main() {
       now.subtract(const Duration(days: 2)),
     );
 
+    final board = (await DriftBoardRepository(db).list()).first;
     await tester.pumpWidget(
       harness(
         ThreadsListScreen(
           db: db,
-          board: (await DriftBoardRepository(db).list()).first,
+          board: board,
           localDid: me,
           opsDispatchService: ops(db),
           onFlushPendingOps: () async {},
@@ -289,6 +290,21 @@ void main() {
       ),
     );
     await shoot(tester, 'e15_single_board');
+
+    // Dark (Ink) variant — verifies E15 follows the board's Paper/Ink choice.
+    await tester.pumpWidget(
+      harness(
+        ThreadsListScreen(
+          db: db,
+          board: board,
+          localDid: me,
+          opsDispatchService: ops(db),
+          onFlushPendingOps: () async {},
+          screenStyle: ElixScreenStyle.ink,
+        ),
+      ),
+    );
+    await shoot(tester, 'e15_single_board_dark');
   });
 
   testWidgets('content detail', (tester) async {

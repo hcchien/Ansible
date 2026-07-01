@@ -9,6 +9,7 @@ import '../services/ops_dispatch_service.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
@@ -54,6 +55,10 @@ class ThreadsListScreen extends StatefulWidget {
   final OpsDispatchService? opsDispatchService;
   final Future<void> Function()? onFlushPendingOps;
 
+  /// The board's screen style (Paper/Ink) so a pushed board follows the
+  /// dark/light choice made for the Forum board.
+  final ElixScreenStyle screenStyle;
+
   const ThreadsListScreen({
     super.key,
     required this.db,
@@ -64,6 +69,7 @@ class ThreadsListScreen extends StatefulWidget {
     this.externalFetcher,
     this.opsDispatchService,
     this.onFlushPendingOps,
+    this.screenStyle = ElixScreenStyle.paper,
   });
 
   @override
@@ -106,6 +112,30 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   List<AppViewExternalItem> _externalItems = const [];
 
   late final ExternalContentPreferencesController _externalPrefs;
+
+  // Brightness-aware palette derived from the board's screen style, so E15
+  // follows the Forum board's Paper/Ink choice.
+  bool get _dark {
+    switch (widget.screenStyle) {
+      case ElixScreenStyle.ink:
+        return true;
+      case ElixScreenStyle.paper:
+        return false;
+      case ElixScreenStyle.system:
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+    }
+  }
+
+  Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+  Color get _deep => _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+  Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+  Color get _muted => _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint => _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+  Color get _ruleSoft => _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
+  Color get _moss => _dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
 
   @override
   void initState() {
@@ -315,26 +345,26 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AnsibleDesign.paper,
+      backgroundColor: _bg,
       appBar: AppBar(
         title: Text(
           _boardHashtag,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AnsibleDesign.serif,
             fontSize: 16,
-            color: AnsibleDesign.ink,
+            color: _fg,
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: AnsibleDesign.paper,
-        foregroundColor: AnsibleDesign.ink,
+        backgroundColor: _bg,
+        foregroundColor: _fg,
         elevation: 0,
         scrolledUnderElevation: 0,
         actions: [
           if (_boardShareUrl != null)
             IconButton(
               key: const Key('share_board_button'),
-              icon: const Icon(Icons.ios_share, size: 21),
+              icon: Icon(Icons.ios_share, size: 21),
               tooltip: context.uiCopy(zh: '分享看板', en: 'Share board'),
               onPressed: _shareBoard,
             ),
@@ -364,13 +394,13 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               )
             : context.uiCopy(zh: '建立討論串', en: 'Create thread'),
         backgroundColor: _postingBlocked
-            ? AnsibleDesign.paperDeep
-            : AnsibleDesign.ink,
+            ? _deep
+            : _fg,
         foregroundColor: _postingBlocked
-            ? AnsibleDesign.inkFaint
-            : AnsibleDesign.paper,
+            ? _faint
+            : _bg,
         elevation: 1,
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }
@@ -402,8 +432,8 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: AnsibleDesign.paper,
-        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        color: _bg,
+        border: Border.all(color: _rule, width: 0.5),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -411,31 +441,31 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         children: [
           Text(
             '${context.uiCopy(zh: '看板', en: 'Board')} · ${widget.board.title}',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 9.5,
               letterSpacing: 1.4,
-              color: AnsibleDesign.accent,
+              color: _accent,
             ),
           ),
           if (description.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               description,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AnsibleDesign.serif,
                 fontSize: 13,
                 height: 1.55,
-                color: AnsibleDesign.inkMuted,
+                color: _muted,
               ),
             ),
           ],
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.only(top: 8),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+                top: BorderSide(color: _ruleSoft, width: 0.5),
               ),
             ),
             child: Row(
@@ -445,21 +475,21 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                     zh: '$threadCount 串',
                     en: '$threadCount ${threadCount == 1 ? 'thread' : 'threads'}',
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 9,
                     letterSpacing: 0.8,
-                    color: AnsibleDesign.inkFaint,
+                    color: _faint,
                   ),
                 ),
                 const SizedBox(width: 14),
                 Text(
                   _postingPolicyLabel(context),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 9,
                     letterSpacing: 0.8,
-                    color: AnsibleDesign.accent,
+                    color: _accent,
                   ),
                 ),
               ],
@@ -486,19 +516,19 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       padding: const EdgeInsets.symmetric(vertical: 48),
       child: Column(
         children: [
-          const Icon(
+          Icon(
             Icons.forum_outlined,
             size: 48,
-            color: AnsibleDesign.inkFaint,
+            color: _faint,
           ),
           const SizedBox(height: 14),
           Text(
             context.uiCopy(zh: '還沒有討論串', en: 'No threads yet'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.serif,
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: AnsibleDesign.inkMuted,
+              color: _muted,
             ),
           ),
           const SizedBox(height: 6),
@@ -507,9 +537,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               zh: '點右下角 + 開始一個新討論',
               en: 'Tap + to start a discussion',
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AnsibleDesign.inkFaint,
+              color: _faint,
             ),
           ),
         ],
@@ -546,8 +576,8 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
         decoration: BoxDecoration(
-          color: AnsibleDesign.paper,
-          border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+          color: _bg,
+          border: Border.all(color: _rule, width: 0.5),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -556,9 +586,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             // post-source: pip + reply count + status.
             Container(
               padding: const EdgeInsets.only(bottom: 6),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+                  bottom: BorderSide(color: _ruleSoft, width: 0.5),
                 ),
               ),
               child: Row(
@@ -566,8 +596,8 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                   Container(
                     width: 4,
                     height: 4,
-                    decoration: const BoxDecoration(
-                      color: AnsibleDesign.moss,
+                    decoration: BoxDecoration(
+                      color: _moss,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -576,11 +606,11 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                     '$replies ${context.uiCopy(zh: '回應', en: replies == 1 ? 'REPLY' : 'REPLIES')}'
                     ' · '
                     '${replies > 0 ? context.uiCopy(zh: '進行中', en: 'ACTIVE') : context.uiCopy(zh: '新討論', en: 'NEW')}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AnsibleDesign.mono,
                       fontSize: 8.5,
                       letterSpacing: 1.2,
-                      color: AnsibleDesign.inkFaint,
+                      color: _faint,
                     ),
                   ),
                 ],
@@ -592,12 +622,12 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 title,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AnsibleDesign.serif,
                   fontSize: 17,
                   height: 1.35,
                   fontWeight: FontWeight.w500,
-                  color: AnsibleDesign.ink,
+                  color: _fg,
                 ),
               ),
             ],
@@ -617,11 +647,11 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                           Flexible(
                             child: AuthorLabel(
                               did: thread.authorId,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: AnsibleDesign.serif,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: AnsibleDesign.ink,
+                                color: _fg,
                               ),
                             ),
                           ),
@@ -630,8 +660,8 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                             Container(
                               width: 4,
                               height: 4,
-                              decoration: const BoxDecoration(
-                                color: AnsibleDesign.accent,
+                              decoration: BoxDecoration(
+                                color: _accent,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -650,7 +680,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                                 Icons.lock_outline,
                                 key: Key('thread_lock_icon_${thread.id}'),
                                 size: 13,
-                                color: AnsibleDesign.inkFaint,
+                                color: _faint,
                               ),
                             ),
                           ],
@@ -667,11 +697,11 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                                 zh: '起頭 · ${_shortTime(context, lastActivity)}',
                                 en: 'STARTED · ${_shortTime(context, lastActivity)}',
                               ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 9,
                           letterSpacing: 0.5,
-                          color: AnsibleDesign.inkFaint,
+                          color: _faint,
                         ),
                       ),
                     ],
@@ -699,7 +729,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: signed ? AnsibleDesign.accent : AnsibleDesign.paperDeep,
+            color: signed ? _accent : _deep,
             shape: BoxShape.circle,
           ),
           child: Text(
@@ -708,7 +738,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               fontFamily: AnsibleDesign.serif,
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: signed ? AnsibleDesign.paper : AnsibleDesign.inkMuted,
+              color: signed ? _bg : _muted,
             ),
           ),
         );

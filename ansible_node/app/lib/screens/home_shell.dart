@@ -508,6 +508,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           localDid: widget.did,
           opsDispatchService: _opsDispatchService,
           onFlushPendingOps: _flushPendingOps,
+          // Follow the Forum board's Paper/Ink choice into the board detail.
+          screenStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
         ),
       ),
     );
