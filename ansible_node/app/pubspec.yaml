@@ -93,15 +93,29 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Elix design fonts (bundled for offline fidelity). The CJK families are
-  # variable fonts — a single asset drives every weight via fontWeight.
+  # Elix design fonts (bundled for offline fidelity). The CJK families ship as
+  # STATIC per-weight files — Flutter only varies a variable font via
+  # fontVariations, so fontWeight silently no-ops on a variable CJK asset
+  # (everything renders at ~400). Static weights make fontWeight work everywhere.
   fonts:
     - family: Noto Serif TC
       fonts:
-        - asset: assets/fonts/NotoSerifTC.ttf
+        - asset: assets/fonts/NotoSerifTC-400.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSerifTC-500.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSerifTC-600.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSerifTC-700.ttf
+          weight: 700
     - family: Noto Sans TC
       fonts:
-        - asset: assets/fonts/NotoSansTC.ttf
+        - asset: assets/fonts/NotoSansTC-400.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansTC-500.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansTC-600.ttf
+          weight: 600
     - family: Newsreader
       fonts:
         - asset: assets/fonts/Newsreader.ttf
