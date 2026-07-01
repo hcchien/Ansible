@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../services/app_view_timeline_client.dart';
+import '../services/handle_resolver.dart';
 import '../services/ops_dispatch_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -51,10 +53,15 @@ class ContentDetailScreen extends StatefulWidget {
 
 class _ContentDetailScreenState extends State<ContentDetailScreen> {
   final _composer = TextEditingController();
+  final _composerFocus = FocusNode();
   late final DriftPostRepository _postRepo;
+  late final DriftReactionRepository _reactionRepo;
   List<_Comment> _comments = const [];
   bool _loading = true;
   bool _posting = false;
+  bool _reacted = false;
+  bool _isReacting = false;
+  int _likeCount = 0;
 
   String get _appViewBaseUrl =>
       widget.appViewBaseUrl ?? AppEnvironment.appViewBaseUrl;
@@ -63,13 +70,93 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   void initState() {
     super.initState();
     _postRepo = DriftPostRepository(widget.db);
+    _reactionRepo = DriftReactionRepository(widget.db);
     _load();
+    unawaited(_loadReactions());
   }
 
   @override
   void dispose() {
     _composer.dispose();
+    _composerFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadReactions() async {
+    final reactions = await _reactionRepo.listByTarget(
+      TargetType.thread.name,
+      widget.contentId,
+    );
+    var reacted = false;
+    var count = 0;
+    for (final r in reactions) {
+      if (r.reactionType == ReactionType.thumbsUp) {
+        count++;
+        if (r.userId == widget.localDid) reacted = true;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _likeCount = count;
+        _reacted = reacted;
+      });
+    }
+  }
+
+  Future<void> _toggleReaction() async {
+    if (_isReacting) return;
+    setState(() => _isReacting = true);
+    try {
+      if (_reacted) {
+        final existing = await _reactionRepo.getByUserAndTarget(
+          widget.localDid,
+          TargetType.thread.name,
+          widget.contentId,
+        );
+        if (existing != null) {
+          await _reactionRepo.delete(existing.id);
+          await widget.opsDispatchService.signAndEnqueue(
+            CrdtOpBuilder.deleteReaction(
+              authorDid: widget.localDid,
+              entityId: existing.id,
+              targetType: TargetType.thread.name,
+              targetId: widget.contentId,
+            ),
+          );
+          unawaited(widget.onFlushPendingOps());
+          setState(() {
+            _reacted = false;
+            _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
+          });
+        }
+      } else {
+        final reaction = Reaction(
+          id: const Uuid().v4(),
+          userId: widget.localDid,
+          targetType: TargetType.thread,
+          targetId: widget.contentId,
+          reactionType: ReactionType.thumbsUp,
+          createdAt: DateTime.now(),
+        );
+        await _reactionRepo.create(reaction);
+        await widget.opsDispatchService.signAndEnqueue(
+          CrdtOpBuilder.createReaction(
+            authorDid: widget.localDid,
+            entityId: reaction.id,
+            targetType: reaction.targetType.name,
+            targetId: reaction.targetId,
+            reactionType: reaction.reactionType.name,
+          ),
+        );
+        unawaited(widget.onFlushPendingOps());
+        setState(() {
+          _reacted = true;
+          _likeCount += 1;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isReacting = false);
+    }
   }
 
   Future<void> _load() async {
@@ -312,8 +399,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   }
 
   Widget _head(BuildContext context) {
+    final title = (widget.title ?? '').trim();
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(color: AnsibleDesign.rule, width: 0.5),
@@ -322,50 +410,152 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // post-top: avatar + handle + signed byline.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(
-                child: AuthorLabel(
-                  did: widget.authorDid,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AnsibleDesign.ink,
-                  ),
+              _detailAvatar(widget.authorDid),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AuthorLabel(
+                      did: widget.authorDid,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.sans,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                        color: AnsibleDesign.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (widget.timeAgo != null) widget.timeAgo!,
+                        context.uiCopy(zh: '已簽署', en: 'signed'),
+                      ].join(' · '),
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.sans,
+                        fontSize: 12,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (widget.timeAgo != null) ...[
-                const SizedBox(width: 6),
-                Text(
-                  '· ${widget.timeAgo}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AnsibleDesign.inkFaint,
-                  ),
-                ),
-              ],
             ],
           ),
-          if ((widget.title ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 6),
+          if (title.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Text(
-              widget.title!,
+              title,
               style: const TextStyle(
-                fontSize: 16,
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 16.5,
+                height: 1.4,
                 fontWeight: FontWeight.w700,
                 color: AnsibleDesign.ink,
               ),
             ),
           ],
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             widget.body.isEmpty ? context.l10n.noContentYet : widget.body,
             style: const TextStyle(
+              fontFamily: AnsibleDesign.serif,
               fontSize: 15,
-              height: 1.5,
+              height: 1.72,
               color: AnsibleDesign.ink,
             ),
           ),
+          const SizedBox(height: 14),
+          // Threads-style actions.
+          Row(
+            children: [
+              _detailAction(
+                _reacted ? Icons.favorite : Icons.favorite_border,
+                count: _likeCount,
+                active: _reacted,
+                onTap: _toggleReaction,
+              ),
+              const SizedBox(width: 26),
+              _detailAction(
+                Icons.mode_comment_outlined,
+                count: _comments.length,
+                onTap: () => _composerFocus.requestFocus(),
+              ),
+              const SizedBox(width: 26),
+              _detailAction(Icons.repeat, onTap: _share),
+              const Spacer(),
+              _detailAction(Icons.send_outlined, onTap: _share),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _share() {
+    final text = widget.body.isNotEmpty ? widget.body : (widget.title ?? '');
+    if (text.isNotEmpty) Share.share(text);
+  }
+
+  Widget _detailAvatar(String did) {
+    return FutureBuilder<String?>(
+      initialData: HandleResolver.shared.cached(did),
+      future: HandleResolver.shared.handleFor(did),
+      builder: (context, snap) {
+        final h = (snap.data ?? '').replaceFirst('@', '').trim();
+        final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
+        return Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: AnsibleDesign.accent,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            initial,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: AnsibleDesign.paper,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailAction(
+    IconData icon, {
+    int? count,
+    bool active = false,
+    VoidCallback? onTap,
+  }) {
+    final tint = active ? AnsibleDesign.accent : AnsibleDesign.inkMuted;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 19, color: tint),
+          if (count != null && count > 0) ...[
+            const SizedBox(width: 6),
+            Text(
+              '$count',
+              style: const TextStyle(
+                fontFamily: AnsibleDesign.sans,
+                fontSize: 13,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -430,8 +620,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           Text(
             c.body,
             style: const TextStyle(
-              fontSize: 14,
-              height: 1.45,
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 14.5,
+              height: 1.6,
               color: AnsibleDesign.ink,
             ),
           ),
@@ -455,6 +646,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             Expanded(
               child: TextField(
                 controller: _composer,
+                focusNode: _composerFocus,
                 minLines: 1,
                 maxLines: 4,
                 style: const TextStyle(fontSize: 14, color: AnsibleDesign.ink),

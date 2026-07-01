@@ -6,12 +6,16 @@ import '../../services/atproto_client.dart';
 import '../../services/messenger_sync_service.dart';
 import '../../services/network_status_service.dart';
 import '../../services/ops_dispatch_service.dart';
+import '../../services/handle_resolver.dart';
 import '../../services/reading_preferences_controller.dart';
 import '../../services/relay_discovery_client.dart';
+import '../../l10n/app_l10n.dart';
+import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../../widgets/feed_filter_tabs.dart';
 import '../contact_picker_screen.dart' show ContactInputResolver;
 import '../inbox_screen.dart' show ContactAvailabilityResolver;
+import '../search_screen.dart';
 import '../settings_home_screen.dart';
 import 'board_swipe.dart';
 import 'board_swipe_header.dart';
@@ -300,6 +304,87 @@ class MainPanel extends StatelessWidget {
     );
   }
 
+  /// The Elix brand header shown on phone (b01 design): constellation mark +
+  /// "Elix" wordmark on the left, search + passkey identity chip on the right.
+  Widget _compactBrandHeader(BuildContext context) {
+    final s = (screenStyles[selectedTab] ?? ElixScreenStyle.paper)
+        .dataFor(Theme.of(context).brightness);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: s.background,
+        border: Border(bottom: BorderSide(color: s.rule, width: 0.5)),
+      ),
+      child: Row(
+        children: [
+          AnsibleMark(size: 20, color: s.foreground),
+          const SizedBox(width: 9),
+          ElixWordmark(fontSize: 21, color: s.foreground),
+          const Spacer(),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SearchScreen(contentItems: contentItems),
+              ),
+            ),
+            icon: const Icon(Icons.search, size: 23),
+            color: s.muted,
+            tooltip: context.uiCopy(zh: '搜尋', en: 'Search'),
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 2),
+          _sessionChip(s),
+        ],
+      ),
+    );
+  }
+
+  Widget _sessionChip(ElixScreenStyleData s) {
+    return FutureBuilder<String?>(
+      initialData: HandleResolver.shared.cached(did),
+      future: HandleResolver.shared.handleFor(did),
+      builder: (context, snap) {
+        final h = (snap.data ?? '').replaceFirst('@', '').trim();
+        final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: s.accent,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                initial,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: s.background,
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'PK',
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 10,
+                letterSpacing: 1,
+                fontWeight: FontWeight.w600,
+                color: s.accent,
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -309,6 +394,10 @@ class MainPanel extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Phone: the design's clean "Elix" brand header (mark + wordmark +
+            // search + identity chip) sits above the boards; navigation lives in
+            // the bottom bar.
+            if (compact) _compactBrandHeader(context),
             // The bottom nav (compact/phone) replaces the top header entirely;
             // gate on bottomNav too so the 640–720 band doesn't show both.
             if (!compact && !bottomNav)
