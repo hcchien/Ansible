@@ -15,6 +15,7 @@ import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
+import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
@@ -80,7 +81,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Color get _faint => _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
   Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
   Color get _ruleSoft => _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
-  Color get _spore => _dark ? AnsibleDesign.darkMoss : AnsibleDesign.spore;
+  Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
 
   /// True when the board requires a higher tier than the local user has.
   /// Client-side UX only — the relay re-checks at intent acceptance.
@@ -89,6 +90,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   /// Set when this thread's board is hosted by a Forum Host; reporting is
   /// only possible for hosted content (local-only boards have no moderator).
   HostedBoardProjection? _hostedProjection;
+  Board? _board;
 
   /// Host moderation overlay (synced snapshot): the lock entry for this
   /// thread, if any, and removal entries keyed by post id. Host-scoped
@@ -108,6 +110,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
     final posts = await _postRepo.list(threadId: widget.thread.id);
+    final board = await DriftBoardRepository(widget.db).getById(widget.thread.boardId);
     final projection = await DriftHostedBoardRepository(
       widget.db,
     ).getProjectionByLocalBoardId(widget.thread.boardId);
@@ -129,6 +132,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     }
     setState(() {
       _posts = posts;
+      _board = board;
       _hostedProjection = projection;
       _postingBlocked = postingBlocked;
       _threadLock = threadLock;
@@ -365,10 +369,22 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _bg,
       appBar: AppBar(
-        title: Text(widget.thread.title),
         backgroundColor: _bg,
         foregroundColor: _fg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        title: Text(
+          context.uiCopy(zh: '討論串', en: 'THREAD'),
+          style: TextStyle(
+            fontFamily: AnsibleDesign.mono,
+            fontSize: 12,
+            letterSpacing: 2,
+            color: _muted,
+          ),
+        ),
         actions: [
           if (_threadShareUrl != null)
             IconButton(
@@ -394,287 +410,491 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 if (_threadLock != null)
                   _threadLockedBanner(context, _threadLock!),
                 Expanded(
-                  child: _posts.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.message_outlined,
-                                size: 64,
-                                color: _faint,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                context.uiCopy(zh: '還沒有貼文', en: 'No posts yet'),
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(color: _muted),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                context.uiCopy(
-                                  zh: '搶先發表第一則貼文',
-                                  en: 'Be the first to post',
-                                ),
-                                style: TextStyle(
-                                  color: _muted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          itemCount: _posts.length,
-                          itemBuilder: (context, index) {
-                            final post = _posts[index];
-                            final removal = _removedByPostId[post.id];
-                            // Removed on the host: others see a reason-coded
-                            // tombstone; the author keeps their content and
-                            // sees why (constitution Base Rule 6 — the local
-                            // copy is never deleted).
-                            if (removal != null &&
-                                post.authorId != _authorDid) {
-                              return _removedPostTombstone(
-                                context,
-                                post,
-                                removal,
-                              );
-                            }
-                            final edited = post.lastEditAt.isAfter(
-                              post.createdAt,
-                            );
-                            return Container(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  bottom: BorderSide(
-                                    color: _ruleSoft,
-                                    width: 0.5,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 38,
-                                    height: 38,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: _deep,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.person_outline,
-                                      size: 20,
-                                      color: _muted,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Flexible(
-                                              child: AuthorLabel(
-                                                did: post.authorId,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: _fg,
-                                                ),
-                                              ),
-                                            ),
-                                            if (post.signatureVerified) ...[
-                                              const SizedBox(width: 4),
-                                              Tooltip(
-                                                message: context.uiCopy(
-                                                  zh: '簽章已驗證',
-                                                  en: 'Signature verified',
-                                                ),
-                                                child: Icon(
-                                                  Icons.verified_user,
-                                                  size: 12,
-                                                  color: _spore,
-                                                ),
-                                              ),
-                                            ],
-                                            const SizedBox(width: 6),
-                                            Flexible(
-                                              child: Text(
-                                                _formatDate(
-                                                      context,
-                                                      post.createdAt,
-                                                    ) +
-                                                    (edited
-                                                        ? context.uiCopy(
-                                                            zh: '（已編輯）',
-                                                            en: ' (edited)',
-                                                          )
-                                                        : ''),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: _faint,
-                                                ),
-                                              ),
-                                            ),
-                                            const Spacer(),
-                                            SizedBox(
-                                              height: 22,
-                                              child: PopupMenuButton<String>(
-                                                padding: EdgeInsets.zero,
-                                                icon: Icon(
-                                                  Icons.more_horiz,
-                                                  size: 18,
-                                                  color: _faint,
-                                                ),
-                                                itemBuilder: (context) => [
-                                            PopupMenuItem(
-                                              value: 'edit',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.edit),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    context.uiCopy(
-                                                      zh: '編輯',
-                                                      en: 'Edit',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'delete',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.delete,
-                                                    color: Colors.red,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    context.uiCopy(
-                                                      zh: '刪除',
-                                                      en: 'Delete',
-                                                    ),
-                                                    style: TextStyle(
-                                                      color: Colors.red,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            if (_hostedProjection != null &&
-                                                post.authorId != _authorDid)
-                                              PopupMenuItem(
-                                                value: 'report',
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.outlined_flag,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      context.uiCopy(
-                                                        zh: '檢舉',
-                                                        en: 'Report',
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                          ],
-                                          onSelected: (value) {
-                                            if (value == 'edit') {
-                                              _editPost(post);
-                                            } else if (value == 'delete') {
-                                              _deletePost(post);
-                                            } else if (value == 'report') {
-                                              _reportContent(post: post);
-                                            }
-                                          },
-                                        ),
-                                            ),
-                                          ],
-                                        ),
-                                        if (removal != null) ...[
-                                          const SizedBox(height: 8),
-                                          _ownPostRemovalNotice(
-                                            context,
-                                            removal,
-                                          ),
-                                        ],
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          post.content,
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            height: 1.45,
-                                            color: _fg,
-                                          ),
-                                        ),
-                                        if (removal == null)
-                                          _PostReactionBar(
-                                            key: ValueKey(
-                                              'post_reactions_${post.id}',
-                                            ),
-                                            db: widget.db,
-                                            postId: post.id,
-                                            localDid: widget.authorDid,
-                                            opsDispatchService:
-                                                widget.opsDispatchService,
-                                            onFlushPendingOps:
-                                                widget.onFlushPendingOps,
-                                            dark: _dark,
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: _bg,
-                    border: Border(
-                      top: BorderSide(color: _rule, width: 0.5),
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: SafeArea(
-                    // A host lock wins over the tier gate: no reply UI at
-                    // all while the thread is locked.
-                    child: _threadLock != null
-                        ? _lockedComposerNotice(context, _threadLock!)
-                        : _postingBlocked
-                        ? PostingGateNotice(
-                            localDid: _authorDid,
-                            onUpgradeCompleted: _loadPosts,
-                          )
-                        : ElevatedButton.icon(
-                            onPressed: _createPost,
-                            icon: Icon(Icons.add),
-                            label: Text(
-                              context.uiCopy(zh: '發表貼文', en: 'New Post'),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                            ),
-                          ),
+                  child: ListView(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    children: _threadItems(context),
                   ),
                 ),
+                _composerBar(context),
               ],
             ),
+    );
+  }
+
+  List<Widget> _threadItems(BuildContext context) {
+    final items = <Widget>[_threadHeader(context)];
+    if (_posts.isEmpty) {
+      items.add(_emptyState(context));
+      return items;
+    }
+    items.add(_opPost(context, _posts.first));
+    final replies = _posts.skip(1).toList();
+    items.add(_replyHead(context, replies.length));
+    for (final r in replies) {
+      items.add(_replyRow(context, r));
+    }
+    return items;
+  }
+
+  /// e16 thread header: board crumb + serif thread title.
+  Widget _threadHeader(BuildContext context) {
+    final crumb = (_board?.slug ?? _board?.title ?? '').trim();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: _ruleSoft, width: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (crumb.isNotEmpty)
+            Text(
+              '# $crumb',
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 10,
+                letterSpacing: 1.3,
+                color: _accent,
+              ),
+            ),
+          const SizedBox(height: 3),
+          Text(
+            widget.thread.title,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 20,
+              height: 1.3,
+              fontWeight: FontWeight.w700,
+              color: _fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Column(
+        children: [
+          Icon(Icons.message_outlined, size: 48, color: _faint),
+          const SizedBox(height: 14),
+          Text(
+            context.uiCopy(zh: '還沒有貼文', en: 'No posts yet'),
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: _muted,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            context.uiCopy(zh: '搶先發表第一則貼文', en: 'Be the first to post'),
+            style: TextStyle(fontSize: 13, color: _faint),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Initial-letter avatar; amber when the post's op is signed.
+  Widget _avatar(String did, {required double size, required bool signed}) {
+    return FutureBuilder<String?>(
+      initialData: HandleResolver.shared.cached(did),
+      future: HandleResolver.shared.handleFor(did),
+      builder: (context, snap) {
+        final h = (snap.data ?? '').replaceFirst('@', '').trim();
+        final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
+        return Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: signed ? _accent : _deep,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            initial,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: size * 0.4,
+              fontWeight: FontWeight.w500,
+              color: signed ? _bg : _muted,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Opening post (posts.first): large body + full action row.
+  Widget _opPost(BuildContext context, Post post) {
+    final removal = _removedByPostId[post.id];
+    if (removal != null && post.authorId != _authorDid) {
+      return _removedPostTombstone(context, post, removal);
+    }
+    final edited = post.lastEditAt.isAfter(post.createdAt);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: _rule, width: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _avatar(post.authorId, size: 40, signed: post.signatureVerified),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: AuthorLabel(
+                            did: post.authorId,
+                            style: TextStyle(
+                              fontFamily: AnsibleDesign.sans,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.2,
+                              color: _fg,
+                            ),
+                          ),
+                        ),
+                        if (post.signatureVerified) ...[
+                          const SizedBox(width: 5),
+                          Icon(Icons.verified, size: 14, color: _accent),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    _opSub(context, post, edited),
+                  ],
+                ),
+              ),
+              _postMenu(context, post),
+            ],
+          ),
+          if (removal != null) ...[
+            const SizedBox(height: 8),
+            _ownPostRemovalNotice(context, removal),
+          ],
+          const SizedBox(height: 11),
+          Text(
+            post.content,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 16,
+              height: 1.78,
+              color: _fg,
+            ),
+          ),
+          if (removal == null) ...[
+            const SizedBox(height: 6),
+            _opActions(context, post),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// "13 小時 · signed · 起頭" byline for the opening post.
+  Widget _opSub(BuildContext context, Post post, bool edited) {
+    final base = TextStyle(
+      fontFamily: AnsibleDesign.sans,
+      fontSize: 12,
+      color: _faint,
+    );
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: [
+          TextSpan(text: _formatDate(context, post.createdAt)),
+          if (post.signatureVerified) ...[
+            const TextSpan(text: ' · '),
+            TextSpan(
+              text: context.uiCopy(zh: '已簽署', en: 'signed'),
+              style: TextStyle(color: _accent),
+            ),
+          ],
+          TextSpan(text: ' · ${context.uiCopy(zh: '起頭', en: 'OP')}'),
+          if (edited)
+            TextSpan(text: context.uiCopy(zh: '（已編輯）', en: ' (edited)')),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  /// Threads-style OP action row: heart · comment · repost · share.
+  Widget _opActions(BuildContext context, Post post) {
+    final replyCount = (_posts.length - 1).clamp(0, 1 << 30);
+    return Row(
+      children: [
+        _PostReactionBar(
+          key: ValueKey('post_reactions_${post.id}'),
+          db: widget.db,
+          postId: post.id,
+          localDid: widget.authorDid,
+          opsDispatchService: widget.opsDispatchService,
+          onFlushPendingOps: widget.onFlushPendingOps,
+          dark: _dark,
+        ),
+        const SizedBox(width: 22),
+        _actionIcon(
+          Icons.mode_comment_outlined,
+          count: replyCount,
+          onTap: _createPost,
+        ),
+        const SizedBox(width: 22),
+        _actionIcon(Icons.repeat, onTap: _shareThread),
+        const Spacer(),
+        _actionIcon(Icons.send_outlined, onTap: _shareThread),
+      ],
+    );
+  }
+
+  Widget _actionIcon(IconData icon, {int? count, VoidCallback? onTap}) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: _muted),
+          if (count != null && count > 0) ...[
+            const SizedBox(width: 6),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontFamily: AnsibleDesign.sans,
+                fontSize: 13,
+                color: _muted,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// "N 則回應 · 依時間" divider above the reply list.
+  Widget _replyHead(BuildContext context, int replyCount) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 13, 16, 4),
+      child: Row(
+        children: [
+          Text(
+            context.uiCopy(zh: '$replyCount 則回應', en: '$replyCount replies'),
+            style: TextStyle(
+              fontFamily: AnsibleDesign.sans,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _fg,
+            ),
+          ),
+          Text(
+            ' · ${context.uiCopy(zh: '依時間', en: 'by time')}',
+            style: TextStyle(
+              fontFamily: AnsibleDesign.sans,
+              fontSize: 13,
+              color: _muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A single reply row.
+  Widget _replyRow(BuildContext context, Post post) {
+    final removal = _removedByPostId[post.id];
+    if (removal != null && post.authorId != _authorDid) {
+      return _removedPostTombstone(context, post, removal);
+    }
+    final edited = post.lastEditAt.isAfter(post.createdAt);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _avatar(post.authorId, size: 34, signed: post.signatureVerified),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: AuthorLabel(
+                        did: post.authorId,
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.sans,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: _fg,
+                        ),
+                      ),
+                    ),
+                    if (post.signatureVerified) ...[
+                      const SizedBox(width: 4),
+                      Icon(Icons.verified, size: 13, color: _accent),
+                    ],
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatDate(context, post.createdAt) +
+                          (edited
+                              ? context.uiCopy(zh: '（已編輯）', en: ' (edited)')
+                              : ''),
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.sans,
+                        fontSize: 12,
+                        color: _faint,
+                      ),
+                    ),
+                    const Spacer(),
+                    _postMenu(context, post),
+                  ],
+                ),
+                if (removal != null) ...[
+                  const SizedBox(height: 6),
+                  _ownPostRemovalNotice(context, removal),
+                ],
+                const SizedBox(height: 5),
+                Text(
+                  post.content,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 14.5,
+                    height: 1.68,
+                    color: _fg,
+                  ),
+                ),
+                if (removal == null) ...[
+                  const SizedBox(height: 8),
+                  _PostReactionBar(
+                    key: ValueKey('post_reactions_${post.id}'),
+                    db: widget.db,
+                    postId: post.id,
+                    localDid: widget.authorDid,
+                    opsDispatchService: widget.opsDispatchService,
+                    onFlushPendingOps: widget.onFlushPendingOps,
+                    dark: _dark,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Per-post overflow menu (edit / delete / report).
+  Widget _postMenu(BuildContext context, Post post) {
+    return SizedBox(
+      height: 22,
+      width: 28,
+      child: PopupMenuButton<String>(
+        padding: EdgeInsets.zero,
+        icon: Icon(Icons.more_horiz, size: 18, color: _faint),
+        itemBuilder: (context) => [
+          if (post.authorId == _authorDid) ...[
+            PopupMenuItem(
+              value: 'edit',
+              child: Text(context.uiCopy(zh: '編輯', en: 'Edit')),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: Text(
+                context.uiCopy(zh: '刪除', en: 'Delete'),
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+          if (_hostedProjection != null && post.authorId != _authorDid)
+            PopupMenuItem(
+              value: 'report',
+              child: Text(context.uiCopy(zh: '檢舉', en: 'Report')),
+            ),
+        ],
+        onSelected: (value) {
+          if (value == 'edit') {
+            _editPost(post);
+          } else if (value == 'delete') {
+            _deletePost(post);
+          } else if (value == 'report') {
+            _reportContent(post: post);
+          }
+        },
+      ),
+    );
+  }
+
+  /// e16 reply composer bar: your avatar + a tap-to-reply field + send.
+  Widget _composerBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _bg,
+        border: Border(top: BorderSide(color: _ruleSoft, width: 1)),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+      child: SafeArea(
+        top: false,
+        child: _threadLock != null
+            ? _lockedComposerNotice(context, _threadLock!)
+            : _postingBlocked
+            ? PostingGateNotice(
+                localDid: _authorDid,
+                onUpgradeCompleted: _loadPosts,
+              )
+            : Row(
+                children: [
+                  _avatar(_authorDid, size: 32, signed: true),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _createPost,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: _rule, width: 1),
+                        ),
+                        child: Text(
+                          context.uiCopy(
+                            zh: '回覆這則討論…',
+                            en: 'Reply to this thread…',
+                          ),
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.serif,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 14,
+                            color: _faint,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    key: const Key('new_post_button'),
+                    onPressed: _createPost,
+                    icon: Icon(Icons.send, size: 20, color: _fg),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -983,41 +1203,34 @@ class _PostReactionBarState extends State<_PostReactionBar> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _reacted
-        ? (widget.dark ? AnsibleDesign.darkMoss : AnsibleDesign.spore)
-        : (widget.dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint);
-    // Match the thread-listing footer (icon 14 + mono count), icon-only — no
-    // "讚" label. Sits at the same 8px gap below the content as the list cards.
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
+    // Threads-style heart: ember when reacted, muted otherwise.
+    final heartColor = _reacted
+        ? (widget.dark ? AnsibleDesign.darkEmber : AnsibleDesign.ember)
+        : (widget.dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted);
+    final countColor =
+        widget.dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: (_canReact && !_busy && !_loading) ? _toggle : null,
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          InkWell(
-            onTap: (_canReact && !_busy && !_loading) ? _toggle : null,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _reacted ? Icons.thumb_up : Icons.thumb_up_outlined,
-                    size: 14,
-                    color: color,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '$_likeCount',
-                    style: TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 11,
-                      color: color,
-                    ),
-                  ),
-                ],
+          Icon(
+            _reacted ? Icons.favorite : Icons.favorite_border,
+            size: 20,
+            color: heartColor,
+          ),
+          if (_likeCount > 0) ...[
+            const SizedBox(width: 6),
+            Text(
+              '$_likeCount',
+              style: TextStyle(
+                fontFamily: AnsibleDesign.sans,
+                fontSize: 13,
+                color: countColor,
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

@@ -184,7 +184,8 @@ void main() {
     expect(find.byKey(const Key('thread_locked_banner')), findsNothing);
     expect(find.byKey(const Key('thread_locked_composer')), findsNothing);
     expect(find.text('fine post'), findsOneWidget);
-    expect(find.text('發表貼文'), findsOneWidget);
+    // The reply composer bar is present (replaces the old New Post button).
+    expect(find.byKey(const Key('new_post_button')), findsOneWidget);
   });
 
   testWidgets('threads list shows a lock icon with a reason tooltip', (

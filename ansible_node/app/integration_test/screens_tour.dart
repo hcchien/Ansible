@@ -8,6 +8,7 @@ import 'package:ansible_node/screens/notifications_screen.dart';
 import 'package:ansible_node/screens/onboarding_intro_screen.dart';
 import 'package:ansible_node/screens/post_composer_screen.dart';
 import 'package:ansible_node/screens/settings_home_screen.dart';
+import 'package:ansible_node/screens/posts_view_screen.dart';
 import 'package:ansible_node/screens/threads_list_screen.dart';
 import 'package:ansible_node/services/handle_resolver.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
@@ -305,6 +306,81 @@ void main() {
       ),
     );
     await shoot(tester, 'e15_single_board_dark');
+  });
+
+  testWidgets('E16 · thread', (tester) async {
+    final db = freshDb();
+    addTearDown(db.close);
+    final now2 = DateTime(2026, 6, 30, 9, 41);
+    await DriftBoardRepository(db).create(
+      Board(
+        id: 'board-philosophy',
+        slug: 'philosophy',
+        title: 'philosophy',
+        createdAt: now2,
+        updatedAt: now2,
+      ),
+    );
+    final thread = Thread(
+      id: 't1',
+      boardId: 'board-philosophy',
+      title: '我們在重建什麼樣的網路？',
+      authorId: mira,
+      createdAt: now2,
+      updatedAt: now2,
+    );
+    await DriftThreadRepository(db).create(thread);
+    final postRepo = DriftPostRepository(db);
+    Future<void> seedPost(String id, String author, String body, int mins) {
+      final t = now2.subtract(Duration(minutes: mins));
+      return postRepo.create(
+        Post(
+          id: id,
+          threadId: 't1',
+          boardId: 'board-philosophy',
+          authorId: author,
+          content: body,
+          createdAt: t,
+          updatedAt: t,
+          lastEditAt: t,
+          signatureVerified: true,
+        ),
+      );
+    }
+
+    await seedPost('op', mira,
+        '關於默許可見、身分自主、社群健康的長對話。我們把座標交出去，換回了推薦——但那真的划算嗎？如果一個網路預設「先問過你」，它會長成什麼樣子？', 780);
+    await seedPost('r1', kr,
+        '便利往往是監控偽裝成的禮物。願意慢下來的人，才留得住自己的座標。', 660);
+    await seedPost('r2', me,
+        '刪掉社群帳號的第 47 天，第一次聽見自己的想法。這裡的安靜，是設計出來的。', 42);
+
+    await tester.pumpWidget(
+      harness(
+        PostsViewScreen(
+          db: db,
+          thread: thread,
+          authorDid: me,
+          opsDispatchService: ops(db),
+          onFlushPendingOps: () async {},
+        ),
+      ),
+    );
+    await shoot(tester, 'f02_thread');
+
+    await tester.pumpWidget(
+      harness(
+        PostsViewScreen(
+          db: db,
+          thread: thread,
+          authorDid: me,
+          opsDispatchService: ops(db),
+          onFlushPendingOps: () async {},
+          screenStyle: ElixScreenStyle.ink,
+        ),
+      ),
+    );
+    await shoot(tester, 'f02_thread_dark');
   });
 
   testWidgets('content detail', (tester) async {
