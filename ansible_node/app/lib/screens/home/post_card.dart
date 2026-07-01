@@ -174,6 +174,7 @@ class _PostCardState extends State<PostCard> {
           authorDid: widget.authorDid,
           opsDispatchService: widget.opsDispatchService,
           onFlushPendingOps: widget.onFlushPendingOps,
+          screenStyle: ElixScreenStyleScope.styleOf(context),
         ),
       ),
     );

@@ -11,6 +11,7 @@ import '../services/app_view_timeline_client.dart';
 import '../services/handle_resolver.dart';
 import '../services/ops_dispatch_service.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 
@@ -32,6 +33,7 @@ class ContentDetailScreen extends StatefulWidget {
     this.title,
     this.timeAgo,
     this.appViewBaseUrl,
+    this.screenStyle = ElixScreenStyle.paper,
   });
 
   final AppDatabase db;
@@ -46,6 +48,9 @@ class ContentDetailScreen extends StatefulWidget {
 
   /// Defaults to the build's configured AppView; injectable for tests.
   final String? appViewBaseUrl;
+
+  /// Follows the originating board/feed's Paper/Ink choice.
+  final ElixScreenStyle screenStyle;
 
   @override
   State<ContentDetailScreen> createState() => _ContentDetailScreenState();
@@ -62,6 +67,28 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   bool _reacted = false;
   bool _isReacting = false;
   int _likeCount = 0;
+
+  bool get _dark {
+    switch (widget.screenStyle) {
+      case ElixScreenStyle.ink:
+        return true;
+      case ElixScreenStyle.paper:
+        return false;
+      case ElixScreenStyle.system:
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+    }
+  }
+
+  Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+  Color get _deep => _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+  Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+  Color get _muted => _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint => _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+  Color get _ruleSoft => _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
+  Color get _danger => _dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
 
   String get _appViewBaseUrl =>
       widget.appViewBaseUrl ?? AppEnvironment.appViewBaseUrl;
@@ -333,7 +360,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
               context.uiCopy(zh: '刪除', en: 'Delete'),
-              style: const TextStyle(color: AnsibleDesign.danger),
+              style: TextStyle(color: _danger),
             ),
           ),
         ],
@@ -352,7 +379,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AnsibleScreenScaffold(
+    return ElixScreenStyleScope(
+      style: widget.screenStyle,
+      child: AnsibleScreenScaffold(
       title: context.uiCopy(zh: '貼文', en: 'POST'),
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
       child: Column(
@@ -381,9 +410,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                         zh: '還沒有留言，搶頭香！',
                         en: 'No comments yet — be the first.',
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AnsibleDesign.inkFaint,
+                        color: _faint,
                       ),
                     ),
                   )
@@ -395,6 +424,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           _composerBar(context),
         ],
       ),
+      ),
     );
   }
 
@@ -402,9 +432,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     final title = (widget.title ?? '').trim();
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+          bottom: BorderSide(color: _rule, width: 0.5),
         ),
       ),
       child: Column(
@@ -422,12 +452,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   children: [
                     AuthorLabel(
                       did: widget.authorDid,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AnsibleDesign.sans,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w600,
                         height: 1.2,
-                        color: AnsibleDesign.ink,
+                        color: _fg,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -436,10 +466,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                         if (widget.timeAgo != null) widget.timeAgo!,
                         context.uiCopy(zh: '已簽署', en: 'signed'),
                       ].join(' · '),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AnsibleDesign.sans,
                         fontSize: 12,
-                        color: AnsibleDesign.inkFaint,
+                        color: _faint,
                       ),
                     ),
                   ],
@@ -451,23 +481,23 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AnsibleDesign.serif,
                 fontSize: 16.5,
                 height: 1.4,
                 fontWeight: FontWeight.w700,
-                color: AnsibleDesign.ink,
+                color: _fg,
               ),
             ),
           ],
           const SizedBox(height: 8),
           Text(
             widget.body.isEmpty ? context.l10n.noContentYet : widget.body,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.serif,
               fontSize: 15,
               height: 1.72,
-              color: AnsibleDesign.ink,
+              color: _fg,
             ),
           ),
           const SizedBox(height: 14),
@@ -513,17 +543,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           width: 40,
           height: 40,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: AnsibleDesign.accent,
+          decoration: BoxDecoration(
+            color: _accent,
             shape: BoxShape.circle,
           ),
           child: Text(
             initial,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.serif,
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: AnsibleDesign.paper,
+              color: _bg,
             ),
           ),
         );
@@ -537,7 +567,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     bool active = false,
     VoidCallback? onTap,
   }) {
-    final tint = active ? AnsibleDesign.accent : AnsibleDesign.inkMuted;
+    final tint = active ? _accent : _muted;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -549,10 +579,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             const SizedBox(width: 6),
             Text(
               '$count',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AnsibleDesign.sans,
                 fontSize: 13,
-                color: AnsibleDesign.inkMuted,
+                color: _muted,
               ),
             ),
           ],
@@ -564,9 +594,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   Widget _commentRow(BuildContext context, _Comment c) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+          bottom: BorderSide(color: _ruleSoft, width: 0.5),
         ),
       ),
       child: Column(
@@ -577,10 +607,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               Expanded(
                 child: AuthorLabel(
                   did: c.authorDid,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AnsibleDesign.inkMuted,
+                    color: _muted,
                   ),
                 ),
               ),
@@ -590,10 +620,10 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   height: 22,
                   child: PopupMenuButton<String>(
                     padding: EdgeInsets.zero,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.more_horiz,
                       size: 18,
-                      color: AnsibleDesign.inkFaint,
+                      color: _faint,
                     ),
                     onSelected: (v) {
                       if (v == 'edit') _editComment(c);
@@ -608,7 +638,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                         value: 'delete',
                         child: Text(
                           context.uiCopy(zh: '刪除', en: 'Delete'),
-                          style: const TextStyle(color: AnsibleDesign.danger),
+                          style: TextStyle(color: _danger),
                         ),
                       ),
                     ],
@@ -619,11 +649,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           const SizedBox(height: 3),
           Text(
             c.body,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.serif,
               fontSize: 14.5,
               height: 1.6,
-              color: AnsibleDesign.ink,
+              color: _fg,
             ),
           ),
         ],
@@ -633,9 +663,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   Widget _composerBar(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paper,
-        border: Border(top: BorderSide(color: AnsibleDesign.rule, width: 0.5)),
+      decoration: BoxDecoration(
+        color: _bg,
+        border: Border(top: BorderSide(color: _rule, width: 0.5)),
       ),
       padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
       child: SafeArea(
@@ -649,12 +679,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 focusNode: _composerFocus,
                 minLines: 1,
                 maxLines: 4,
-                style: const TextStyle(fontSize: 14, color: AnsibleDesign.ink),
+                style: TextStyle(fontSize: 14, color: _fg),
                 decoration: InputDecoration(
                   hintText: context.uiCopy(zh: '寫留言…', en: 'Write a comment…'),
                   isDense: true,
                   filled: true,
-                  fillColor: AnsibleDesign.paperDeep.withValues(alpha: 0.45),
+                  fillColor: _deep.withValues(alpha: 0.45),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
@@ -668,7 +698,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             ),
             IconButton(
               onPressed: _posting ? null : _send,
-              icon: const Icon(Icons.send, size: 20, color: AnsibleDesign.ink),
+              icon: Icon(Icons.send, size: 20, color: _fg),
             ),
           ],
         ),

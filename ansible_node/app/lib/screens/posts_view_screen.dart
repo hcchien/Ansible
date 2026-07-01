@@ -14,6 +14,7 @@ import '../services/forum_host_client.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/author_label.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
@@ -37,6 +38,9 @@ class PostsViewScreen extends StatefulWidget {
   /// Platform share-sheet seam (overridable in tests).
   final ShareSheet shareSheet;
 
+  /// Follows the originating board's Paper/Ink choice.
+  final ElixScreenStyle screenStyle;
+
   const PostsViewScreen({
     super.key,
     required this.db,
@@ -45,6 +49,7 @@ class PostsViewScreen extends StatefulWidget {
     this.opsDispatchService,
     this.onFlushPendingOps,
     this.shareSheet = _defaultShareSheet,
+    this.screenStyle = ElixScreenStyle.paper,
   });
 
   @override
@@ -55,6 +60,27 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   late final DriftPostRepository _postRepo;
   List<Post> _posts = [];
   bool _isLoading = true;
+
+  bool get _dark {
+    switch (widget.screenStyle) {
+      case ElixScreenStyle.ink:
+        return true;
+      case ElixScreenStyle.paper:
+        return false;
+      case ElixScreenStyle.system:
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+    }
+  }
+
+  Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+  Color get _deep => _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+  Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+  Color get _muted => _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint => _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+  Color get _ruleSoft => _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _spore => _dark ? AnsibleDesign.darkMoss : AnsibleDesign.spore;
 
   /// True when the board requires a higher tier than the local user has.
   /// Client-side UX only — the relay re-checks at intent acceptance.
@@ -341,13 +367,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.thread.title),
-        backgroundColor: AnsibleDesign.paper,
-        foregroundColor: AnsibleDesign.ink,
+        backgroundColor: _bg,
+        foregroundColor: _fg,
         actions: [
           if (_threadShareUrl != null)
             IconButton(
               key: const Key('share_thread_button'),
-              icon: const Icon(Icons.ios_share, size: 21),
+              icon: Icon(Icons.ios_share, size: 21),
               tooltip: context.uiCopy(zh: '分享討論串', en: 'Share thread'),
               onPressed: _shareThread,
             ),
@@ -355,7 +381,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               widget.thread.authorId != _authorDid)
             IconButton(
               key: const Key('report_thread_button'),
-              icon: const Icon(Icons.outlined_flag, size: 21),
+              icon: Icon(Icons.outlined_flag, size: 21),
               tooltip: context.uiCopy(zh: '檢舉討論串', en: 'Report thread'),
               onPressed: () => _reportContent(),
             ),
@@ -373,16 +399,16 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.message_outlined,
                                 size: 64,
-                                color: AnsibleDesign.inkFaint,
+                                color: _faint,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 context.uiCopy(zh: '還沒有貼文', en: 'No posts yet'),
                                 style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(color: AnsibleDesign.inkMuted),
+                                    ?.copyWith(color: _muted),
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -390,8 +416,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                   zh: '搶先發表第一則貼文',
                                   en: 'Be the first to post',
                                 ),
-                                style: const TextStyle(
-                                  color: AnsibleDesign.inkMuted,
+                                style: TextStyle(
+                                  color: _muted,
                                 ),
                               ),
                             ],
@@ -420,10 +446,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                             );
                             return Container(
                               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 border: Border(
                                   bottom: BorderSide(
-                                    color: AnsibleDesign.ruleSoft,
+                                    color: _ruleSoft,
                                     width: 0.5,
                                   ),
                                 ),
@@ -435,14 +461,14 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                     width: 38,
                                     height: 38,
                                     alignment: Alignment.center,
-                                    decoration: const BoxDecoration(
-                                      color: AnsibleDesign.paperDeep,
+                                    decoration: BoxDecoration(
+                                      color: _deep,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.person_outline,
                                       size: 20,
-                                      color: AnsibleDesign.inkMuted,
+                                      color: _muted,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -456,10 +482,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                             Flexible(
                                               child: AuthorLabel(
                                                 did: post.authorId,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w600,
-                                                  color: AnsibleDesign.ink,
+                                                  color: _fg,
                                                 ),
                                               ),
                                             ),
@@ -470,10 +496,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                                   zh: '簽章已驗證',
                                                   en: 'Signature verified',
                                                 ),
-                                                child: const Icon(
+                                                child: Icon(
                                                   Icons.verified_user,
                                                   size: 12,
-                                                  color: AnsibleDesign.spore,
+                                                  color: _spore,
                                                 ),
                                               ),
                                             ],
@@ -492,9 +518,9 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                                         : ''),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 12,
-                                                  color: AnsibleDesign.inkFaint,
+                                                  color: _faint,
                                                 ),
                                               ),
                                             ),
@@ -503,17 +529,17 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                               height: 22,
                                               child: PopupMenuButton<String>(
                                                 padding: EdgeInsets.zero,
-                                                icon: const Icon(
+                                                icon: Icon(
                                                   Icons.more_horiz,
                                                   size: 18,
-                                                  color: AnsibleDesign.inkFaint,
+                                                  color: _faint,
                                                 ),
                                                 itemBuilder: (context) => [
                                             PopupMenuItem(
                                               value: 'edit',
                                               child: Row(
                                                 children: [
-                                                  const Icon(Icons.edit),
+                                                  Icon(Icons.edit),
                                                   const SizedBox(width: 8),
                                                   Text(
                                                     context.uiCopy(
@@ -528,7 +554,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                               value: 'delete',
                                               child: Row(
                                                 children: [
-                                                  const Icon(
+                                                  Icon(
                                                     Icons.delete,
                                                     color: Colors.red,
                                                   ),
@@ -538,7 +564,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                                       zh: '刪除',
                                                       en: 'Delete',
                                                     ),
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       color: Colors.red,
                                                     ),
                                                   ),
@@ -551,7 +577,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                                 value: 'report',
                                                 child: Row(
                                                   children: [
-                                                    const Icon(
+                                                    Icon(
                                                       Icons.outlined_flag,
                                                     ),
                                                     const SizedBox(width: 8),
@@ -588,10 +614,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                         const SizedBox(height: 4),
                                         Text(
                                           post.content,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 15,
                                             height: 1.45,
-                                            color: AnsibleDesign.ink,
+                                            color: _fg,
                                           ),
                                         ),
                                         if (removal == null)
@@ -606,6 +632,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                                                 widget.opsDispatchService,
                                             onFlushPendingOps:
                                                 widget.onFlushPendingOps,
+                                            dark: _dark,
                                           ),
                                       ],
                                     ),
@@ -617,10 +644,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                         ),
                 ),
                 Container(
-                  decoration: const BoxDecoration(
-                    color: AnsibleDesign.paper,
+                  decoration: BoxDecoration(
+                    color: _bg,
                     border: Border(
-                      top: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+                      top: BorderSide(color: _rule, width: 0.5),
                     ),
                   ),
                   padding: const EdgeInsets.all(16),
@@ -636,7 +663,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                           )
                         : ElevatedButton.icon(
                             onPressed: _createPost,
-                            icon: const Icon(Icons.add),
+                            icon: Icon(Icons.add),
                             label: Text(
                               context.uiCopy(zh: '發表貼文', en: 'New Post'),
                             ),
@@ -659,18 +686,18 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       key: const Key('thread_locked_banner'),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paperDeep,
+      decoration: BoxDecoration(
+        color: _deep,
         border: Border(
-          bottom: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+          bottom: BorderSide(color: _rule, width: 0.5),
         ),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.lock_outline,
             size: 16,
-            color: AnsibleDesign.inkMuted,
+            color: _muted,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -680,9 +707,9 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 en: 'This thread was locked by the board moderators '
                     '($reason); replies are paused',
               ),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
-                color: AnsibleDesign.inkMuted,
+                color: _muted,
               ),
             ),
           ),
@@ -702,16 +729,16 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: AnsibleDesign.paperDeep,
+        color: _deep,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.lock_outline,
             size: 16,
-            color: AnsibleDesign.inkMuted,
+            color: _muted,
           ),
           const SizedBox(width: 8),
           Flexible(
@@ -720,7 +747,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                 zh: '討論串已鎖定（$reason），無法發表新貼文',
                 en: 'Thread locked ($reason) — new posts are disabled',
               ),
-              style: const TextStyle(color: AnsibleDesign.inkMuted),
+              style: TextStyle(color: _muted),
             ),
           ),
         ],
@@ -743,10 +770,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.visibility_off_outlined,
               size: 18,
-              color: AnsibleDesign.inkFaint,
+              color: _faint,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -756,8 +783,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                   en: 'This post was removed by the board moderators '
                       '($reason)',
                 ),
-                style: const TextStyle(
-                  color: AnsibleDesign.inkMuted,
+                style: TextStyle(
+                  color: _muted,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -781,7 +808,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AnsibleDesign.paperDeep,
+        color: _deep,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -790,7 +817,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           en: 'Your post was removed by the board moderators ($reason). '
               'Others no longer see it; your local copy is untouched.',
         ),
-        style: const TextStyle(fontSize: 12.5, color: AnsibleDesign.inkMuted),
+        style: TextStyle(fontSize: 12.5, color: _muted),
       ),
     );
   }
@@ -839,6 +866,7 @@ class _PostReactionBar extends StatefulWidget {
     required this.localDid,
     required this.opsDispatchService,
     required this.onFlushPendingOps,
+    this.dark = false,
   });
 
   final AppDatabase db;
@@ -846,6 +874,7 @@ class _PostReactionBar extends StatefulWidget {
   final String? localDid;
   final OpsDispatchService? opsDispatchService;
   final Future<void> Function()? onFlushPendingOps;
+  final bool dark;
 
   @override
   State<_PostReactionBar> createState() => _PostReactionBarState();
@@ -954,7 +983,9 @@ class _PostReactionBarState extends State<_PostReactionBar> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _reacted ? AnsibleDesign.spore : AnsibleDesign.inkFaint;
+    final color = _reacted
+        ? (widget.dark ? AnsibleDesign.darkMoss : AnsibleDesign.spore)
+        : (widget.dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint);
     // Match the thread-listing footer (icon 14 + mono count), icon-only — no
     // "讚" label. Sits at the same 8px gap below the content as the list cards.
     return Padding(

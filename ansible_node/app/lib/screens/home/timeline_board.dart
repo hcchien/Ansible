@@ -74,6 +74,9 @@ class TimelineBoardView extends StatelessWidget {
                             timeAgo: data.timeAgo,
                             opsDispatchService: opsDispatchService,
                             onFlushPendingOps: onFlushPendingOps,
+                            // Carry the feed's Paper/Ink choice into the detail.
+                            screenStyle:
+                                ElixScreenStyleScope.styleOf(context),
                           ),
                         ),
                       );

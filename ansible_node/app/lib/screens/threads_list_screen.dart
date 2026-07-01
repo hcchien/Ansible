@@ -568,6 +568,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               authorDid: widget.localDid,
               opsDispatchService: widget.opsDispatchService,
               onFlushPendingOps: widget.onFlushPendingOps,
+              screenStyle: widget.screenStyle,
             ),
           ),
         );
