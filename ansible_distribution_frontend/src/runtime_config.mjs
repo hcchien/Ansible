@@ -11,7 +11,11 @@ export function resolveFrontendRuntimeConfig({
   const locationUrl = toLocationUrl(location);
   const storedRelayBaseUrl = storage?.getItem?.(RELAY_BASE_URL_KEY);
   const fallbackRelayOrigin = defaultRelayOrigin(locationUrl);
-  const relayOrigin = normalizeLocalRelayBaseUrl(storedRelayBaseUrl ?? fallbackRelayOrigin, fallbackRelayOrigin);
+  const relayOrigin = normalizeLocalRelayBaseUrl(
+    storedRelayBaseUrl ?? fallbackRelayOrigin,
+    fallbackRelayOrigin,
+    { pageOrigin: locationUrl.origin },
+  );
   const relayBaseUrl = shouldUseSameOriginRelayProxy(locationUrl, relayOrigin)
     ? locationUrl.origin
     : relayOrigin;
@@ -33,24 +37,59 @@ export function defaultRelayOrigin(location) {
   return locationUrl.origin;
 }
 
-export function normalizeLocalRelayBaseUrl(value, fallbackValue = 'http://localhost:4001') {
+// Optional build-time allowlist of extra HTTPS relay hosts (comma-separated).
+// Injected at build time via a global; empty in dev. Defense-in-depth: without
+// this, a stored `trisaura.relay_base_url` could point browser API traffic at
+// any HTTPS host an attacker controls.
+const ALLOWED_RELAY_HOSTS = String(globalThis.__ELIX_ALLOWED_RELAY_HOSTS__ ?? '')
+  .split(',')
+  .map((host) => host.trim().toLowerCase())
+  .filter(Boolean);
+
+export function normalizeLocalRelayBaseUrl(
+  value,
+  fallbackValue = 'http://localhost:4001',
+  { pageOrigin } = {},
+) {
   try {
     const url = new URL(value);
     if (!['http:', 'https:'].includes(url.protocol)) {
       return fallbackValue;
     }
-    // Only allow loopback addresses via plain HTTP (development) or any host
-    // via HTTPS (production). Plain HTTP to a non-loopback host would route
-    // browser API traffic over an untrusted cleartext channel and is rejected.
+    // Plain HTTP is only allowed to loopback (development). Plain HTTP to a
+    // non-loopback host would route browser API traffic over an untrusted
+    // cleartext channel and is rejected.
     if (url.protocol === 'http:' && !isLoopbackHost(url.hostname)) {
       return fallbackValue;
     }
     if (url.protocol === 'http:' && isLoopbackHost(url.hostname) && url.port === '4001') {
       return 'http://localhost:4001';
     }
+    // HTTPS is restricted to the page's own origin host (the common
+    // same-origin/subdomain proxy deployment) or an explicit build-time
+    // allowlist. Any other HTTPS host — e.g. an attacker-planted value in
+    // localStorage — falls back to the default rather than being trusted.
+    if (url.protocol === 'https:' && !isAllowedHttpsRelayHost(url.hostname, pageOrigin)) {
+      return fallbackValue;
+    }
     return trimTrailingSlash(url.toString());
   } catch {
     return fallbackValue;
+  }
+}
+
+function isAllowedHttpsRelayHost(hostname, pageOrigin) {
+  const host = hostname.toLowerCase();
+  if (ALLOWED_RELAY_HOSTS.includes(host)) return true;
+  if (!pageOrigin) return false;
+  try {
+    const pageHost = new URL(pageOrigin).hostname.toLowerCase();
+    // Same host, or a subdomain of the page host (e.g. relay.example under
+    // web.example is NOT matched, but api.web.example under web.example is;
+    // keep it strict — exact host or a subdomain of the page host).
+    return host === pageHost || host.endsWith(`.${pageHost}`);
+  } catch {
+    return false;
   }
 }
 

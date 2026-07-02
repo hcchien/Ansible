@@ -84,6 +84,26 @@ try {
     url: '/api/v1/boards/fediverse-watch/external?limit=20',
   });
   assert.equal(relayRequests.length, relayCountBefore, 'external path must not hit the relay');
+
+  // Security headers (incl. HSTS + Permissions-Policy) are applied to responses.
+  assert.equal(index.headers['strict-transport-security'], 'max-age=31536000; includeSubDomains; preload');
+  assert.match(index.headers['permissions-policy'] ?? '', /geolocation=\(\)/);
+  assert.equal(proxied.headers['strict-transport-security'], 'max-age=31536000; includeSubDomains; preload');
+
+  // Proxy rejects an oversized body up front (advertised content-length over the
+  // cap) with 413 and never forwards it to the relay.
+  const relayCountBeforeBig = relayRequests.length;
+  const tooBig = await request(`${baseUrl}/api/v1/forum-host`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/octet-stream',
+      'content-length': String(11 * 1024 * 1024), // over the 10 MiB default cap
+    },
+    body: 'x'.repeat(1024),
+  });
+  assert.equal(tooBig.status, 413);
+  assert.equal(JSON.parse(tooBig.body).error, 'payload_too_large');
+  assert.equal(relayRequests.length, relayCountBeforeBig, 'oversized body must not reach the relay');
 } finally {
   await close(frontend);
   await close(appView);

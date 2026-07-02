@@ -29,15 +29,23 @@ const invalidStoredRelayConfig = resolveFrontendRuntimeConfig({
 assert.equal(invalidStoredRelayConfig.relayOrigin, 'http://localhost:4001');
 assert.equal(invalidStoredRelayConfig.relayBaseUrl, 'http://127.0.0.1:5173');
 
-const customRelayConfig = resolveFrontendRuntimeConfig({
+// An HTTPS relay on the page's own host (or a subdomain of it) is trusted.
+const sameHostRelayConfig = resolveFrontendRuntimeConfig({
   location: new URL('https://web.elix.example/#/login'),
-  storage: createStorage([['trisaura.relay_base_url', 'https://relay.elix.example']]),
+  storage: createStorage([['trisaura.relay_base_url', 'https://web.elix.example']]),
   navigatorLike: { language: 'ja-JP' },
 });
-assert.equal(customRelayConfig.webOrigin, 'https://web.elix.example');
-assert.equal(customRelayConfig.relayOrigin, 'https://relay.elix.example');
-assert.equal(customRelayConfig.relayBaseUrl, 'https://web.elix.example');
-assert.equal(customRelayConfig.locale, 'zh-Hant');
+assert.equal(sameHostRelayConfig.webOrigin, 'https://web.elix.example');
+assert.equal(sameHostRelayConfig.relayOrigin, 'https://web.elix.example');
+assert.equal(sameHostRelayConfig.relayBaseUrl, 'https://web.elix.example');
+assert.equal(sameHostRelayConfig.locale, 'zh-Hant');
+
+const subdomainRelayConfig = resolveFrontendRuntimeConfig({
+  location: new URL('https://web.elix.example/#/login'),
+  storage: createStorage([['trisaura.relay_base_url', 'https://api.web.elix.example']]),
+  navigatorLike: { language: 'en-US' },
+});
+assert.equal(subdomainRelayConfig.relayOrigin, 'https://api.web.elix.example');
 
 // Security: plain HTTP to a non-loopback host must be rejected because browser
 // API traffic would cross an untrusted cleartext channel.
@@ -45,6 +53,23 @@ assert.equal(
   normalizeLocalRelayBaseUrl('http://attacker.example/evil'),
   'http://localhost:4001',
   'non-loopback HTTP relay URL must fall back to default',
+);
+
+// Security (defense-in-depth): an HTTPS relay host that is neither the page's
+// own host nor an allowlisted host must NOT be trusted from localStorage.
+assert.equal(
+  normalizeLocalRelayBaseUrl('https://attacker.example', 'http://localhost:4001', {
+    pageOrigin: 'https://web.elix.example',
+  }),
+  'http://localhost:4001',
+  'unrelated HTTPS relay host must fall back to default',
+);
+assert.equal(
+  normalizeLocalRelayBaseUrl('https://web.elix.example', 'http://localhost:4001', {
+    pageOrigin: 'https://web.elix.example',
+  }),
+  'https://web.elix.example',
+  'same-host HTTPS relay must be accepted',
 );
 
 console.log('ok - runtime config');
