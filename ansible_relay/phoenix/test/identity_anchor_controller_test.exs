@@ -557,6 +557,36 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     assert object["state"] == "active"
   end
 
+  test "pending endpoint exposes the grace-window recovery and clears after veto" do
+    ctx = seed_initial(with_device: true)
+
+    # No pending yet → 404 (and "pending" is not swallowed by the :did route).
+    assert get_req("/api/v1/identity/anchor/#{ctx.did}/pending").status == 404
+
+    {anchor, new_cid, _new_pub} = build_recovery(ctx)
+    assert post_json("/api/v1/identity/anchor", anchor).status == 202
+
+    resp = get_req("/api/v1/identity/anchor/#{ctx.did}/pending")
+    assert resp.status == 200
+    body = Jason.decode!(resp.resp_body)
+    assert body["anchor_cid"] == new_cid
+    assert body["reason"] == "recovery"
+    assert is_binary(body["grace_until"])
+    assert is_binary(body["canonical_body"])
+
+    # A veto signed over exactly the served canonical_body verifies — the veto
+    # UX signs these bytes without reconstructing the anchor locally.
+    veto_sig = sign(ctx.id_priv, body["canonical_body"])
+
+    assert post_json("/api/v1/identity/anchor/veto", %{
+             "did" => ctx.did,
+             "pending_anchor_cid" => new_cid,
+             "veto_sig" => veto_sig
+           }).status == 200
+
+    assert get_req("/api/v1/identity/anchor/#{ctx.did}/pending").status == 404
+  end
+
   test "veto before grace freezes the account and locks further re-anchors (423)" do
     ctx = seed_initial(with_device: true)
     register_device_for(ctx.did)

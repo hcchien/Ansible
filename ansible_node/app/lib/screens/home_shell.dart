@@ -14,6 +14,9 @@ import '../l10n/subpage_l10n.dart';
 import '../widgets/agent_sheet.dart';
 import '../widgets/board_form_dialog.dart';
 import '../services/atproto_client.dart';
+import '../services/recovery_veto_service.dart';
+import '../services/relay_anchor_client.dart';
+import '../widgets/recovery_veto_alert.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_provider_config_store.dart';
 import '../services/ai/apple_nl_embedding_service.dart';
@@ -285,7 +288,38 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
       unawaited(_murmurIndexingService.indexAllPending());
       unawaited(_checkCoachmark());
+      // Hijack resistance (recovery design, conflict-priority #1): if a
+      // recovery re-anchor for OUR DID is sitting in its grace window, alert
+      // immediately with a one-tap veto.
+      unawaited(_checkPendingRecovery());
     });
+  }
+
+  bool _vetoAlertShowing = false;
+
+  /// Polls the relay for a pending recovery re-anchor of this DID and, when
+  /// found, shows the veto alert. Failures are silent — this is a background
+  /// safety poll; the next launch/wake retries.
+  Future<void> _checkPendingRecovery() async {
+    if (_vetoAlertShowing) return;
+    final vetoService = RecoveryVetoService(
+      relayClient: RelayAnchorClient(
+        baseUrl: AppEnvironment.defaultRelayBaseUrl,
+      ),
+    );
+    final pending = await vetoService.checkPending(widget.did);
+    if (pending == null || !mounted || _vetoAlertShowing) return;
+    _vetoAlertShowing = true;
+    try {
+      await showRecoveryVetoAlert(
+        context,
+        did: widget.did,
+        pending: pending,
+        vetoService: vetoService,
+      );
+    } finally {
+      _vetoAlertShowing = false;
+    }
   }
 
   @override
@@ -304,6 +338,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_runForegroundPullIfConfigured());
+      // A content-free identity_alert wake resumes the app here — re-check
+      // for a pending recovery so the veto alert appears without a restart.
+      unawaited(_checkPendingRecovery());
     }
   }
 

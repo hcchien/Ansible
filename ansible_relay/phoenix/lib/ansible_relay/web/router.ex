@@ -105,6 +105,12 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.veto(conn, conn.body_params)
   end
 
+  # NOTE: declared before the :did route so "pending" is not captured as a DID
+  # path segment (Plug matches in definition order).
+  get "/api/v1/identity/anchor/:did/pending" do
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.pending(conn, %{"did" => did})
+  end
+
   get "/api/v1/identity/anchor/:did" do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.show(conn, %{"did" => did})
   end

@@ -66,6 +66,25 @@ class AnchorSubmitResult {
   bool get isPending => state == AnchorState.pending;
 }
 
+/// A recovery re-anchor held in its grace window (the hijack-resistance
+/// path): what the veto UX needs to alert the user and, on 否決, to sign.
+class PendingAnchor {
+  final String anchorCid;
+  final String reason;
+
+  /// Exactly the bytes a veto signature must cover (the relay's stored
+  /// canonical body — sign as-is, never re-serialize locally).
+  final String canonicalBody;
+  final DateTime? graceUntil;
+
+  const PendingAnchor({
+    required this.anchorCid,
+    required this.reason,
+    required this.canonicalBody,
+    this.graceUntil,
+  });
+}
+
 /// Typed exception for relay anchor failures (401/409/422/423 + network).
 class RelayAnchorException implements Exception {
   final int statusCode;
@@ -138,6 +157,33 @@ class RelayAnchorClient {
     if (response.statusCode == 200) {
       final decoded = _decodeObject(response);
       return IdentityAnchor.fromMap(decoded);
+    }
+    throw _toException(response, _tryDecode(response));
+  }
+
+  /// GET the pending recovery re-anchor for [did], or null when none is in
+  /// its grace window. `canonicalBody` is exactly the byte string a veto
+  /// signature must cover.
+  Future<PendingAnchor?> fetchPendingAnchor(String did) async {
+    final response = await _client
+        .get(
+          _endpoint(
+            '/api/v1/identity/anchor/${Uri.encodeComponent(did)}/pending',
+          ),
+          headers: AnsibleProtocol.headers,
+        )
+        .timeout(timeout);
+
+    if (response.statusCode == 404) return null;
+    if (response.statusCode == 200) {
+      final decoded = _decodeObject(response);
+      final graceRaw = decoded['grace_until'];
+      return PendingAnchor(
+        anchorCid: decoded['anchor_cid'] as String,
+        reason: decoded['reason'] as String? ?? 'recovery',
+        canonicalBody: decoded['canonical_body'] as String,
+        graceUntil: graceRaw is String ? DateTime.tryParse(graceRaw) : null,
+      );
     }
     throw _toException(response, _tryDecode(response));
   }

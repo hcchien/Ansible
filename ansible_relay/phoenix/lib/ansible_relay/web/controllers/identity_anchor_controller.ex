@@ -72,6 +72,16 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
   defp success_status("initial"), do: 201
   defp success_status(_), do: 200
 
+  # GET /api/v1/identity/anchor/:did/pending — the veto UX on enrolled
+  # devices polls this to learn a recovery re-anchor is in its grace window;
+  # `canonical_body` is exactly what a veto signature must sign.
+  def pending(conn, %{"did" => did}) do
+    case AnchorStore.get_pending(did) do
+      {:ok, pending} -> send_json(conn, 200, pending)
+      {:error, :not_found} -> send_json(conn, 404, %{error: "no_pending_anchor"})
+    end
+  end
+
   # GET /api/v1/identity/anchor/:did
   def show(conn, %{"did" => did}) do
     case AnchorStore.get_active(did) do

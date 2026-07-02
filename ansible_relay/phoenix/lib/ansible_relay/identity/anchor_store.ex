@@ -622,6 +622,41 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     end
   end
 
+  @doc """
+  The pending recovery re-anchor for a DID, if any — the veto UX on enrolled
+  devices polls this to learn a recovery is in its grace window. Returns the
+  public pending facts plus the stored `canonical_body`, which is exactly the
+  byte string a veto signature must cover (`veto_sig_valid?/3`).
+
+  Not gated on `frozen?`: after a veto the pending row is gone (state
+  `vetoed`), so this naturally 404s; serving it while frozen would only
+  confuse the poller.
+  """
+  def get_pending(did) when is_binary(did) do
+    row =
+      Repo.one(
+        from(a in IdentityAnchor,
+          where: a.did == ^did and a.state == "pending",
+          order_by: [desc: a.inserted_at],
+          limit: 1
+        )
+      )
+
+    case row do
+      nil ->
+        {:error, :not_found}
+
+      pending ->
+        {:ok,
+         %{
+           "anchor_cid" => pending.anchor_cid,
+           "reason" => pending.reason,
+           "grace_until" => pending.grace_until && DateTime.to_iso8601(pending.grace_until),
+           "canonical_body" => pending.canonical_body
+         }}
+    end
+  end
+
   @doc "Reconstruct the on-the-wire anchor object map from a stored row."
   def to_object(%IdentityAnchor{} = a) do
     base = %{
