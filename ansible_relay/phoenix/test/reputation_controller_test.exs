@@ -14,6 +14,10 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
   @nostr_private_key "0000000000000000000000000000000000000000000000000000000000000003"
   @nostr_pubkey "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
 
+  defp get_json(path) do
+    conn(:get, path) |> AnsibleRelay.Web.Router.call(AnsibleRelay.Web.Router.init([]))
+  end
+
   defp post_json(path, body) do
     conn(:post, path, Jason.encode!(body))
     |> put_req_header("content-type", "application/json")
@@ -237,12 +241,15 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
   end
 
   setup do
-    case DidAccountCache.start_link([]) do
-      {:ok, _} -> :ok
-      {:error, {:already_started, _}} -> :ok
+    for mod <- [DidAccountCache, AnsibleRelay.AbuseDetector] do
+      case mod.start_link([]) do
+        {:ok, _} -> :ok
+        {:error, {:already_started, _}} -> :ok
+      end
     end
 
     DidAccountCache.reset()
+    AnsibleRelay.AbuseDetector.reset()
 
     # Generate issuer keypair using OTP so sign/verify use the same key format.
     {issuer_pub, issuer_priv} = :crypto.generate_key(:eddsa, :ed25519)
@@ -270,6 +277,61 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     body = Jason.decode!(response.resp_body)
     assert body["reputation_tier"] == "verified_human"
     assert {:ok, %{reputation_tier: "verified_human"}} = DidAccountCache.get(@holder_did)
+  end
+
+  test "present persists the issuer-signed VC and serves it as the attestation",
+       %{issuer_priv: issuer_priv} do
+    {pub_hex, priv_key} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
+
+    # No attestation before any presentation.
+    assert get_json("/api/v1/identity/attestation/#{@holder_did}").status == 404
+
+    vc = build_vc(@holder_did, issuer_priv)
+    vp = build_vp(@holder_did, priv_key, [vc])
+
+    assert post_json("/api/v2/reputation/present", %{
+             "holder_did" => @holder_did,
+             "vp" => vp
+           }).status == 200
+
+    response = get_json("/api/v1/identity/attestation/#{@holder_did}")
+    assert response.status == 200
+
+    body = Jason.decode!(response.resp_body)
+    assert body["did"] == @holder_did
+    assert body["credential_type"] == "TrisAuraHumanityCredential"
+    assert body["reputation_tier"] == "verified_human"
+    assert is_binary(body["presented_at"])
+
+    # The served VC's issuer proof must re-verify byte-for-byte: strip the
+    # proof, canonicalize, and check the Ed25519 signature — exactly what a
+    # portable consumer (app / peer relay) does with its own pinned issuer key.
+    served_vc = body["vc"]
+    proof_value = served_vc["proof"]["proofValue"]
+    canonical_body = served_vc |> Map.delete("proof") |> canonical()
+
+    issuer_pub_hex =
+      Application.get_env(:ansible_relay, :trusted_vc_issuers)
+      |> List.first()
+      |> Map.fetch!(:public_key_hex)
+
+    assert AnsibleRelay.SigVerifier.verify_ed25519(issuer_pub_hex, canonical_body, proof_value)
+  end
+
+  test "present accepts a canonical did:elix holder", %{issuer_priv: issuer_priv} do
+    elix_did = "did:elix:abcdefghijklmnop"
+    {pub_hex, priv_key} = holder_keypair()
+    DidAccountCache.put(elix_did, pub_hex, "elix.elix.cool")
+
+    vc = build_vc(elix_did, issuer_priv)
+    vp = build_vp(elix_did, priv_key, [vc])
+
+    response =
+      post_json("/api/v2/reputation/present", %{"holder_did" => elix_did, "vp" => vp})
+
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["reputation_tier"] == "verified_human"
   end
 
   test "present binds a Nostr pubkey to the verified holder for local relay trust",
@@ -375,5 +437,36 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
 
     assert response.status == 404
     assert Jason.decode!(response.resp_body)["error"] == "holder_not_found"
+  end
+
+  test "present is peer rate-limited (guards the multi-Ed25519 verify path)",
+       %{issuer_priv: issuer_priv} do
+    # Tighten the peer bucket to a single token so one request drains it.
+    original = Application.get_env(:ansible_relay, :abuse_detector)
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :abuse_detector, original)
+      AnsibleRelay.AbuseDetector.reset()
+    end)
+
+    Application.put_env(:ansible_relay, :abuse_detector, %{
+      did: %{capacity: 5, refill_per_second: 5, suspension_ms: 60_000},
+      peer: %{capacity: 1, refill_per_second: 0, suspension_ms: 60_000}
+    })
+
+    AnsibleRelay.AbuseDetector.reset()
+
+    {pub_hex, priv_key} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
+    vc = build_vc(@holder_did, issuer_priv)
+    vp = build_vp(@holder_did, priv_key, [vc])
+    body = %{"holder_did" => @holder_did, "vp" => vp}
+
+    first = post_json("/api/v2/reputation/present", body)
+    assert first.status == 200
+
+    second = post_json("/api/v2/reputation/present", body)
+    assert second.status == 429
+    assert Jason.decode!(second.resp_body)["error"] == "rate_limited"
   end
 end

@@ -20,7 +20,13 @@ defmodule AnsibleRelay.Application do
           AnsibleRelay.AbuseDetector,
           AnsibleRelay.ForumHost.ReportRateLimiter,
           AnsibleRelay.OpStore,
+          # Supervises the wake-push send tasks so a slow push endpoint can't
+          # back up the WakeScheduler mailbox.
+          {Task.Supervisor, name: AnsibleRelay.Push.WakeTaskSupervisor},
           AnsibleRelay.Push.WakeScheduler,
+          # Drives outbound ActivityPub delivery. No-op unless
+          # :activity_pub_delivery_enabled is true (default off); see the module.
+          AnsibleRelay.ActivityPub.DeliveryPoller,
           {Bandit, plug: AnsibleRelay.Web.Router, port: port}
         ]
 

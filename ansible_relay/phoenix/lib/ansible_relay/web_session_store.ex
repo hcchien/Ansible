@@ -13,6 +13,14 @@ defmodule AnsibleRelay.WebSessionStore do
   @max_approvals_per_device_per_hour 3
   @approval_window_seconds 3_600
 
+  # Prune expired challenges and expired/revoked sessions on a timer so the
+  # in-memory maps stay bounded by the *active* set rather than every challenge
+  # and session ever created. Retention keeps recently-terminal entries around
+  # briefly so pollers still see the reason code (expired/rejected/revoked)
+  # before the entry disappears.
+  @default_sweep_interval_ms 300_000
+  @terminal_retention_seconds 3_600
+
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
@@ -41,12 +49,20 @@ defmodule AnsibleRelay.WebSessionStore do
 
   @impl true
   def init(_opts) do
+    schedule_sweep()
     {:ok, %{challenges: %{}, sessions: %{}}}
   end
+
+  @doc false
+  def sweep_now, do: GenServer.call(__MODULE__, :sweep_now)
 
   @impl true
   def handle_call(:reset, _from, _state) do
     {:reply, :ok, %{challenges: %{}, sessions: %{}}}
+  end
+
+  def handle_call(:sweep_now, _from, state) do
+    {:reply, :ok, sweep(state)}
   end
 
   def handle_call({:issue_challenge, attrs}, _from, state) do
@@ -164,6 +180,62 @@ defmodule AnsibleRelay.WebSessionStore do
 
     {:reply, {:ok, sessions}, state}
   end
+
+  @impl true
+  def handle_info(:sweep, state) do
+    state = sweep(state)
+    schedule_sweep()
+    {:noreply, state}
+  end
+
+  defp schedule_sweep do
+    interval =
+      Application.get_env(:ansible_relay, :web_session_sweep_ms, @default_sweep_interval_ms)
+
+    Process.send_after(self(), :sweep, interval)
+  end
+
+  # Drops challenges that are expired (by time or terminal status) and sessions
+  # that are expired or revoked, once past a short retention grace. Active
+  # entries and still-pending/recently-terminal ones are kept.
+  defp sweep(state) do
+    now = DateTime.utc_now()
+    cutoff = DateTime.add(now, -@terminal_retention_seconds, :second)
+
+    challenges =
+      state.challenges
+      |> Enum.reject(fn {_id, challenge} -> prunable_challenge?(challenge, now, cutoff) end)
+      |> Map.new()
+
+    sessions =
+      state.sessions
+      |> Enum.reject(fn {_token, session} -> prunable_session?(session, now, cutoff) end)
+      |> Map.new()
+
+    %{state | challenges: challenges, sessions: sessions}
+  end
+
+  defp prunable_challenge?(challenge, _now, cutoff) do
+    terminal? = challenge.status in ["approved", "rejected", "expired"]
+    expired_long_ago? = past?(challenge.expires_at, cutoff)
+
+    # An old terminal challenge, or one whose expiry is well behind us, is safe
+    # to drop; anything still pending inside its window stays.
+    (terminal? and past?(created_or_expiry(challenge), cutoff)) or
+      (not terminal? and expired?(challenge.expires_at) and expired_long_ago?)
+  end
+
+  defp prunable_session?(session, _now, cutoff) do
+    revoked_long_ago? = not is_nil(session.revoked_at) and past?(session.revoked_at, cutoff)
+    expired_long_ago? = expired?(session.expires_at) and past?(session.expires_at, cutoff)
+    revoked_long_ago? or expired_long_ago?
+  end
+
+  defp created_or_expiry(%{expires_at: %DateTime{} = e}), do: e
+  defp created_or_expiry(%{created_at: c}), do: c
+
+  defp past?(%DateTime{} = dt, cutoff), do: DateTime.compare(dt, cutoff) == :lt
+  defp past?(_dt, _cutoff), do: true
 
   defp get_pending_challenge(state, challenge_id) do
     case Map.get(state.challenges, challenge_id) do

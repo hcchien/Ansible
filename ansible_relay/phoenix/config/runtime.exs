@@ -44,23 +44,36 @@ if config_env() == :prod do
 
   config :ansible_relay, AnsibleRelay.Repo, repo_config
 
-  case System.get_env("WEB_ALLOWED_ORIGINS") do
-    nil ->
-      :ok
+  # These three drive CORS, the relay's self-advertised origin, and web-thread
+  # canonical URLs. Left unset in prod they silently fall back to localhost
+  # (relay_discovery_controller.ex, web_session_controller.ex, router.ex), which
+  # breaks CORS/audience checks and leaks localhost URLs. Fail closed at boot.
+  web_allowed_origins =
+    System.get_env("WEB_ALLOWED_ORIGINS") ||
+      raise """
+      environment variable WEB_ALLOWED_ORIGINS is missing.
+      Set WEB_ALLOWED_ORIGINS to a comma-separated list of allowed web origins.
+      """
 
-    value ->
-      config :ansible_relay, :web_allowed_origins, split_csv.(value)
-  end
+  config :ansible_relay, :web_allowed_origins, split_csv.(web_allowed_origins)
 
-  case System.get_env("RELAY_ORIGIN") do
-    nil -> :ok
-    value -> config :ansible_relay, :relay_origin, value
-  end
+  relay_origin =
+    System.get_env("RELAY_ORIGIN") ||
+      raise """
+      environment variable RELAY_ORIGIN is missing.
+      Set RELAY_ORIGIN to this relay's public origin (e.g. https://relay.elix.cool).
+      """
 
-  case System.get_env("FORUM_HOST_BASE_URL") do
-    nil -> :ok
-    value -> config :ansible_relay, :forum_host_base_url, value
-  end
+  config :ansible_relay, :relay_origin, relay_origin
+
+  forum_host_base_url =
+    System.get_env("FORUM_HOST_BASE_URL") ||
+      raise """
+      environment variable FORUM_HOST_BASE_URL is missing.
+      Set FORUM_HOST_BASE_URL to the public base URL for hosted forum content.
+      """
+
+  config :ansible_relay, :forum_host_base_url, forum_host_base_url
 
   issuer_did =
     System.get_env("ISSUER_DID") ||
@@ -82,26 +95,69 @@ if config_env() == :prod do
     """
   end
 
+  normalized_issuer_key = String.downcase(issuer_public_key_hex)
+
+  # Reject known dev/placeholder sentinels: an all-zeros or all-ones key passes
+  # the hex format check but is never a real trust anchor. Also decode-validate
+  # it as a 32-byte Ed25519 public key (OTP has no cheap curve-point check
+  # without a NIF; rejecting the sentinels + confirming a 32-byte decode is the
+  # least we can do to stop a release trusting a dev key).
+  all_zeros = String.duplicate("0", 64)
+  all_ones = String.duplicate("f", 64)
+
+  if normalized_issuer_key in [all_zeros, all_ones] do
+    raise """
+    environment variable ISSUER_PUBLIC_KEY_HEX is a known dev/placeholder sentinel
+    (all-zeros or all-ones). Set it to the real production VC issuer public key.
+    """
+  end
+
+  case Base.decode16(normalized_issuer_key, case: :lower) do
+    {:ok, raw} when byte_size(raw) == 32 ->
+      :ok
+
+    _ ->
+      raise """
+      environment variable ISSUER_PUBLIC_KEY_HEX must decode to a 32-byte Ed25519 public key.
+      """
+  end
+
   config :ansible_relay, :trusted_vc_issuers, [
     %{did: issuer_did, public_key_hex: String.downcase(issuer_public_key_hex)}
   ]
 
   # Phase 2.3 — op snapshot signing key (32-byte Ed25519 seed, 64 hex chars).
-  # If unset, the relay derives a per-node dev key and logs a warning; set this
-  # in production so snapshots are signed by a stable, operator-controlled key.
-  case System.get_env("ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX") do
-    nil ->
-      :ok
+  # Required in prod: if unset the relay would derive a per-node dev key (see
+  # SnapshotSigner.derived_dev_keypair/0) that is neither stable nor operator-
+  # controlled, so published snapshots could not be verified across nodes or a
+  # redeploy. Raise at boot rather than warn.
+  snapshot_signing_key_hex =
+    System.get_env("ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX") ||
+      raise """
+      environment variable ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX is missing.
+      Set it to a 32-byte Ed25519 snapshot signing seed in hex (64 chars) so
+      snapshots are signed by a stable, operator-controlled key.
+      """
 
-    hex ->
-      unless Regex.match?(~r/\A[0-9a-fA-F]{64}\z/, hex) do
-        raise """
-        environment variable ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX must be a
-        64-character Ed25519 seed in hex (32 bytes).
-        """
-      end
+  unless Regex.match?(~r/\A[0-9a-fA-F]{64}\z/, snapshot_signing_key_hex) do
+    raise """
+    environment variable ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX must be a
+    64-character Ed25519 seed in hex (32 bytes).
+    """
+  end
 
-      config :ansible_relay, :snapshot_signing_key_hex, String.downcase(hex)
+  config :ansible_relay, :snapshot_signing_key_hex, String.downcase(snapshot_signing_key_hex)
+
+  # Finding 4 — dev-signature bypass must never be reachable in prod. These
+  # flags are false in config.exs and true in dev.exs; a config regression that
+  # left either true would let "dev-signature-"/dev identity signatures through.
+  # Fail loudly at boot rather than run with the bypass latent.
+  if Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false) do
+    raise "allow_dev_publication_signatures must be false in production"
+  end
+
+  if Application.get_env(:ansible_relay, :allow_dev_identity_signatures, false) do
+    raise "allow_dev_identity_signatures must be false in production"
   end
 
   # Phase 2.3 — op retention window in days. Unset = :infinity (never prune).

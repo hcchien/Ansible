@@ -35,6 +35,27 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
     end
   end
 
+  # GET /api/v1/identity/attestation/:did — the issuer-signed VC that earned
+  # this DID's reputation tier (portable re-verification layer). The VC is
+  # served exactly as presented; the consumer re-verifies the issuer proof
+  # against its own pinned issuer registry and must treat a missing/invalid
+  # attestation as `basic` (fail closed).
+  def attestation(conn, %{"did" => did}) do
+    case AnsibleRelay.Identity.AttestationStore.get(did) do
+      nil ->
+        send_json(conn, 404, %{error: "attestation_not_found"})
+
+      row ->
+        send_json(conn, 200, %{
+          did: row.did,
+          credential_type: row.credential_type,
+          reputation_tier: row.reputation_tier,
+          vc: row.vc,
+          presented_at: DateTime.to_iso8601(row.presented_at)
+        })
+    end
+  end
+
   defp send_json(conn, status, body) do
     conn
     |> put_resp_content_type("application/json")

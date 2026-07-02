@@ -151,6 +151,32 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert body["error"] == "duplicate_op_id"
   end
 
+  test "a JSON-object payload returns 422 (not a 500) since the store expects a string" do
+    did = "did:key:z6MkMapPayload#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    # A map payload passes validation and signature (canonical_json handles maps)
+    # but the store's payload column is a string, so the changeset cast fails.
+    # The controller must translate that to a 422, not raise CaseClauseError → 500.
+    op = %{
+      "op_id" => "op-#{System.unique_integer()}",
+      "author_did" => did,
+      "entity_type" => "post",
+      "entity_id" => "entity-#{System.unique_integer()}",
+      "op_type" => "insert",
+      "payload" => %{"body" => "a map, not a string"}
+    }
+
+    op = Map.put(op, "signature", sign(private_key, signing_payload(op)))
+
+    response = post_json("/api/v1/ops", op)
+    assert response.status == 422
+
+    body = Jason.decode!(response.resp_body)
+    assert body["error"] == "invalid_op_payload"
+  end
+
   test "missing required fields returns 422" do
     did = "did:key:z6MkMissing#{System.unique_integer()}"
     seed_did(did)

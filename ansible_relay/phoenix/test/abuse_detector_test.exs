@@ -73,6 +73,33 @@ defmodule AnsibleRelay.AbuseDetectorTest do
     assert detail.reason == "peer_rate_limited"
   end
 
+  test "sweep_now drops idle (fully-refilled, not-suspended) buckets" do
+    # A fast-refilling policy so a spent token is back to full almost immediately.
+    Application.put_env(:ansible_relay, :abuse_detector, %{
+      did: %{capacity: 5, refill_per_second: 1_000_000, suspension_ms: 500},
+      peer: %{capacity: 1, refill_per_second: 0, suspension_ms: 500}
+    })
+
+    AbuseDetector.reset()
+
+    idle_did = "did:key:z6MkIdle#{System.unique_integer()}"
+    suspended_peer = "peer-suspended-#{System.unique_integer()}"
+
+    # Touch an idle DID bucket (refills to full instantly), and suspend a peer.
+    assert :ok = AbuseDetector.check_did(idle_did)
+    assert :ok = AbuseDetector.check_peer(suspended_peer)
+    assert {:error, :rate_limited, _} = AbuseDetector.check_peer(suspended_peer)
+    assert AbuseDetector.suspended?(:peer, suspended_peer)
+
+    Process.sleep(5)
+    :ok = AbuseDetector.sweep_now()
+
+    # Idle bucket is gone (a fresh lookup behaves like a new bucket)...
+    refute :ets.member(:ansible_relay_abuse_detector, {:did, idle_did})
+    # ...but the still-suspended peer bucket is retained.
+    assert AbuseDetector.suspended?(:peer, suspended_peer)
+  end
+
   test "rate-limit logs separate raw DID and IP metadata behind hashes" do
     did = "did:plc:raw-log-test"
     ip = "203.0.113.55"

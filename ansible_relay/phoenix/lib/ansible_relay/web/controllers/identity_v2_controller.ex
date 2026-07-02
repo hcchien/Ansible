@@ -115,6 +115,11 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
           handle: handle,
           expires_at: DateTime.to_iso8601(entry.expires_at)
         })
+
+      # A DB outage during the uniqueness lookup must not be mistaken for a
+      # free/duplicate slot — 503 (retryable) rather than a wrong 409/200.
+      {{:error, :unavailable}, _} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
     end
   end
 

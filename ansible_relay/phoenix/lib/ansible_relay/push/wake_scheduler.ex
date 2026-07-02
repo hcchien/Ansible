@@ -32,7 +32,12 @@ defmodule AnsibleRelay.Push.WakeScheduler do
 
   @wake_payload %{"hint" => "sync"}
   @default_debounce_ms 30_000
+  @default_send_timeout_ms 10_000
   @table :push_wake_debounce
+
+  # Supervises the fire-and-forget push-send tasks so a slow push endpoint can
+  # never back up the scheduler mailbox.
+  @task_supervisor AnsibleRelay.Push.WakeTaskSupervisor
 
   # --- Public API (fire-and-forget) ---
 
@@ -53,6 +58,31 @@ defmodule AnsibleRelay.Push.WakeScheduler do
   @doc false
   def reset do
     GenServer.call(__MODULE__, :reset)
+  end
+
+  @doc """
+  Wait for all in-flight wake-send tasks to finish. Test-only: sends now run in
+  supervised tasks, so a test must drain them before asserting on the sender.
+  """
+  def drain(timeout_ms \\ 2_000) do
+    deadline = System.monotonic_time(:millisecond) + timeout_ms
+    do_drain(deadline)
+  end
+
+  defp do_drain(deadline) do
+    children =
+      case Process.whereis(@task_supervisor) do
+        nil -> []
+        _pid -> Task.Supervisor.children(@task_supervisor)
+      end
+
+    cond do
+      children == [] -> :ok
+      System.monotonic_time(:millisecond) >= deadline -> :timeout
+      true ->
+        Process.sleep(10)
+        do_drain(deadline)
+    end
   end
 
   # --- GenServer ---
@@ -147,20 +177,50 @@ defmodule AnsibleRelay.Push.WakeScheduler do
         :ok
 
       device ->
-        case PushSender.impl().send_wake(device.push_token, device.platform, @wake_payload) do
-          :ok ->
-            AnsibleRelay.Metrics.inc("relay_wake_sends_total", %{category: category})
-            :ok
-
-          {:error, reason} ->
-            Logger.warning(
-              "Push.WakeScheduler: send_wake failed platform=#{device.platform} " <>
-                "reason=#{inspect(reason)}"
-            )
-
-            :ok
-        end
+        # The actual push HTTP call runs in a supervised, bounded-timeout task so
+        # a slow/hung push endpoint cannot back up the scheduler mailbox. The
+        # debounce/coalesce bookkeeping above still runs on the GenServer, so
+        # per-(DID, device) coalescing is unchanged.
+        dispatch_send(device, category)
+        :ok
     end
+  end
+
+  defp dispatch_send(device, category) do
+    Task.Supervisor.start_child(@task_supervisor, fn ->
+      task =
+        Task.Supervisor.async_nolink(@task_supervisor, fn ->
+          PushSender.impl().send_wake(device.push_token, device.platform, @wake_payload)
+        end)
+
+      case Task.yield(task, send_timeout_ms()) || Task.shutdown(task, :brutal_kill) do
+        {:ok, :ok} ->
+          AnsibleRelay.Metrics.inc("relay_wake_sends_total", %{category: category})
+
+        {:ok, {:error, reason}} ->
+          Logger.warning(
+            "Push.WakeScheduler: send_wake failed platform=#{device.platform} " <>
+              "reason=#{inspect(reason)}"
+          )
+
+        nil ->
+          Logger.warning(
+            "Push.WakeScheduler: send_wake timed out platform=#{device.platform}"
+          )
+
+        {:exit, reason} ->
+          Logger.warning(
+            "Push.WakeScheduler: send_wake crashed platform=#{device.platform} " <>
+              "reason=#{inspect(reason)}"
+          )
+      end
+    end)
+
+    :ok
+  end
+
+  defp send_timeout_ms do
+    Application.get_env(:ansible_relay, :push_wake_send_timeout_ms, @default_send_timeout_ms)
   end
 
   # Payloads may arrive as raw JSON or, per the app's CrdtOpBuilder convention,

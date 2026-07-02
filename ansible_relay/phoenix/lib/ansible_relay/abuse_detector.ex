@@ -103,10 +103,62 @@ defmodule AnsibleRelay.AbuseDetector do
 
   # --- GenServer: owns the ETS table; not on the hot path ---
 
+  # An idle bucket becomes indistinguishable from a fresh one once it has fully
+  # refilled and its suspension (if any) has elapsed, so it can be dropped to
+  # bound table size. Swept periodically; the timer is the only reason this
+  # GenServer holds state beyond owning the table.
+  @default_sweep_interval_ms 600_000
+
   @impl true
   def init(_opts) do
     ensure_table()
+    schedule_sweep()
     {:ok, %{}}
+  end
+
+  @impl true
+  def handle_info(:sweep, state) do
+    sweep_idle()
+    schedule_sweep()
+    {:noreply, state}
+  end
+
+  @doc false
+  def sweep_now do
+    sweep_idle()
+  end
+
+  defp schedule_sweep do
+    interval = Application.get_env(@app, :abuse_detector_sweep_ms, @default_sweep_interval_ms)
+    Process.send_after(self(), :sweep, interval)
+  end
+
+  # Remove buckets that are idle: not currently suspended and last touched long
+  # enough ago that they would refill to full capacity anyway. Dropping them is
+  # observationally equivalent to a fresh bucket.
+  defp sweep_idle do
+    ensure_table()
+    now = now_ms()
+
+    :ets.foldl(
+      fn {{type, _subject} = key, tokens, updated_at, until}, acc ->
+        policy = policy(type)
+        suspended? = is_integer(until) and until > now
+        full? = refill(tokens, updated_at, policy, now) >= policy.capacity * 1.0
+
+        if not suspended? and full? do
+          :ets.delete(@table, key)
+        end
+
+        acc
+      end,
+      :ok,
+      @table
+    )
+
+    :ok
+  rescue
+    ArgumentError -> :ok
   end
 
   defp ensure_table do

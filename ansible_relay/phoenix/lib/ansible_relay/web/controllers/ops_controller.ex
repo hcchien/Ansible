@@ -67,6 +67,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
         {:error, :duplicate} ->
           send_json(conn, 409, %{error: "duplicate_op_id"})
+
+        # A malformed payload shape (e.g. a JSON object where the store expects
+        # a string column) fails the changeset cast. Treat it as bad input, not
+        # a server error — otherwise the unmatched tuple raises CaseClauseError.
+        {:error, :insert_failed} ->
+          send_json(conn, 422, %{error: "invalid_op_payload"})
       end
     else
       {:error, :missing_fields, fields} ->
@@ -89,6 +95,16 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
         send_json(conn, 401, %{
           error: "unverified_did",
           message: "DID not anchored. Complete Phase 1 identity anchoring first."
+        })
+
+      # DB/infrastructure outage during the verification lookup: this is NOT an
+      # unverified DID. Return a retryable 503 so clients back off rather than
+      # (destructively) re-anchoring on a transient Postgres blip.
+      {:error, :verification_unavailable} ->
+        send_json(conn, 503, %{
+          error: "verification_unavailable",
+          message: "Identity verification is temporarily unavailable. Retry shortly.",
+          retryable: true
         })
 
       {:error, :duplicate_op} ->
@@ -252,8 +268,24 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   defp decode_payload(_payload), do: :error
 
+  # Distinguishes three outcomes so a DB outage never masquerades as an
+  # unverified DID: a live verified DID (:ok), a genuine unknown/expired DID
+  # (401 unverified_did), and a DB/infrastructure outage (503, retryable).
   defp check_did_verified(did) do
-    if IdentityCache.verified?(did), do: :ok, else: {:error, :unverified_did}
+    case IdentityCache.get(did) do
+      {:ok, %{expires_at: expires_at}} ->
+        if DateTime.compare(DateTime.utc_now(), expires_at) == :lt do
+          :ok
+        else
+          {:error, :unverified_did}
+        end
+
+      :not_found ->
+        {:error, :unverified_did}
+
+      {:error, :unavailable} ->
+        {:error, :verification_unavailable}
+    end
   end
 
   defp check_abuse_limit(did) do

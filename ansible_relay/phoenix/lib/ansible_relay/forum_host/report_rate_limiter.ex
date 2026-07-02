@@ -82,10 +82,55 @@ defmodule AnsibleRelay.ForumHost.ReportRateLimiter do
 
   # --- GenServer: owns the ETS table; not on the hot path ---
 
+  # Idle buckets (fully refilled, not suspended) are dropped periodically so the
+  # table stays bounded by active reporters rather than every DID that ever
+  # reported. See AnsibleRelay.AbuseDetector for the same pattern.
+  @default_sweep_interval_ms 600_000
+
   @impl true
   def init(_opts) do
     ensure_table()
+    schedule_sweep()
     {:ok, %{}}
+  end
+
+  @impl true
+  def handle_info(:sweep, state) do
+    sweep_idle()
+    schedule_sweep()
+    {:noreply, state}
+  end
+
+  @doc false
+  def sweep_now, do: sweep_idle()
+
+  defp schedule_sweep do
+    interval =
+      Application.get_env(@app, :forum_host_report_limiter_sweep_ms, @default_sweep_interval_ms)
+
+    Process.send_after(self(), :sweep, interval)
+  end
+
+  defp sweep_idle do
+    ensure_table()
+    now = now_ms()
+
+    :ets.foldl(
+      fn {{:report, did} = key, tokens, updated_at, until}, acc ->
+        policy = policy(DidAccountCache.reputation_tier(did))
+        suspended? = is_integer(until) and until > now
+        full? = refill(tokens, updated_at, policy, now) >= policy.capacity * 1.0
+
+        if not suspended? and full?, do: :ets.delete(@table, key)
+        acc
+      end,
+      :ok,
+      @table
+    )
+
+    :ok
+  rescue
+    ArgumentError -> :ok
   end
 
   defp ensure_table do

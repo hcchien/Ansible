@@ -141,6 +141,8 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
     :sys.get_state(WakeScheduler)
     Process.sleep(Application.fetch_env!(:ansible_relay, :push_wake_debounce_ms) + 50)
     :sys.get_state(WakeScheduler)
+    # Sends now run in supervised tasks; wait for them before asserting.
+    WakeScheduler.drain()
   end
 
   test "a reply op wakes the parent thread author's registered device" do

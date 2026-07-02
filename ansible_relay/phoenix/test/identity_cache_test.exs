@@ -125,4 +125,20 @@ defmodule AnsibleRelay.IdentityCacheTest do
     assert {:error, :expired_challenge} =
              AnsibleRelay.IdentityCache.consume_challenge(did, entry.challenge)
   end
+
+  test "sweep prunes expired challenges but keeps fresh ones" do
+    fresh_did = "did:key:z6MkFreshChallenge#{System.unique_integer()}"
+    stale_did = "did:key:z6MkStaleChallenge#{System.unique_integer()}"
+
+    {:ok, _} = AnsibleRelay.IdentityCache.issue_challenge(fresh_did)
+
+    past = DateTime.add(DateTime.utc_now(), -1, :second)
+    {:ok, _} = AnsibleRelay.IdentityCache.issue_challenge(stale_did, past)
+
+    # An abandoned (never-consumed) expired challenge otherwise lingers forever.
+    AnsibleRelay.IdentityCache.sweep_now()
+
+    assert :ets.member(:identity_challenges, fresh_did)
+    refute :ets.member(:identity_challenges, stale_did)
+  end
 end

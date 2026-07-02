@@ -17,7 +17,7 @@ defmodule AnsibleRelay.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :runtime_tools],
+      extra_applications: [:logger, :runtime_tools, :inets, :ssl],
       mod: {AnsibleRelay.Application, []}
     ]
   end

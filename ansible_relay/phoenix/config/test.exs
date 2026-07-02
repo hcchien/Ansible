@@ -18,6 +18,13 @@ config :ansible_relay, :push_wake_debounce_ms, 100
 config :ansible_relay, :persist_did_accounts, false
 config :ansible_relay, :allow_dev_zkp_proofs, true
 
+# The OpStore firehose settle guard keys off transaction xids, but the Ecto SQL
+# sandbox wraps each statement in a savepoint (subtransaction), so an inserted
+# row's xmin never matches the reader's snapshot the way it does across real
+# committed transactions. Disable the guard for sandboxed tests; the raw-
+# connection op_store_gap_test.exs exercises the real guarded SQL directly.
+config :ansible_relay, :op_store_settle_guard, false
+
 config :ansible_relay, :trusted_vc_issuers, [
   %{
     did: System.get_env("ISSUER_DID") || "did:web:issuer.elix.cool",

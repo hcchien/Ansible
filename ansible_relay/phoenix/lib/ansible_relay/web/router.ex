@@ -128,6 +128,13 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityController.handle(conn, %{"did" => did})
   end
 
+  # Portable issuer re-verification: the issuer-signed VC that earned this
+  # DID's tier. Consumers re-verify the issuer proof themselves — the relay
+  # is availability, not the trust root.
+  get "/api/v1/identity/attestation/:did" do
+    AnsibleRelay.Web.Controllers.IdentityController.attestation(conn, %{"did" => did})
+  end
+
   # Phase 2 — Op ingestion
   post "/api/v1/ops" do
     AnsibleRelay.Web.Controllers.OpsController.ingest(conn, conn.body_params)

@@ -16,7 +16,8 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     EmailCredential → "basic"
   """
 
-  alias AnsibleRelay.{DidAccountCache, ReputationTier, VpVerifier}
+  alias AnsibleRelay.{AbuseDetector, DidAccountCache, ReputationTier, VpVerifier}
+  alias AnsibleRelay.Identity.AttestationStore
 
   @tier_for_credential %{
     "TrisAuraHumanityCredential" => "verified_human",
@@ -24,12 +25,14 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
   }
 
   def present(conn, params) do
-    with {:ok, holder_did} <- require_field(params, "holder_did"),
+    with :ok <- check_rate_limit(conn),
+         {:ok, holder_did} <- require_field(params, "holder_did"),
          {:ok, vp} <- require_map(params, "vp"),
          :ok <- validate_did(holder_did) do
       case verify_presentation(holder_did, vp, Map.get(params, "nostr_binding")) do
         {:ok, credential_type, nostr_pubkey} ->
           tier = Map.get(@tier_for_credential, credential_type, "basic")
+          persist_attestation(holder_did, credential_type, tier, vp)
           upgrade_tier(conn, holder_did, tier, nostr_pubkey)
 
         {:error, :holder_not_found} ->
@@ -66,6 +69,9 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
           send_json(conn, 401, %{error: "nostr_binding_expired"})
       end
     else
+      {:error, :rate_limited, detail} ->
+        send_json(conn, 429, %{error: "rate_limited", detail: detail})
+
       {:error, {:missing_field, field}} ->
         send_json(conn, 422, %{error: "missing_field", field: field})
 
@@ -78,6 +84,23 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
   end
 
   # --- Helpers ---
+
+  # VP presentation runs multiple Ed25519 verifications; without a peer-level
+  # limit an unauthenticated caller can spend the relay's CPU. Mirrors the
+  # per-peer AbuseDetector guard used by /api/v1/ops and the web-session
+  # challenge path (keyed by a hashed remote IP so raw IPs are never logged).
+  defp check_rate_limit(conn) do
+    AbuseDetector.check_peer("reputation_present:" <> peer_hash(conn))
+  end
+
+  defp peer_hash(conn) do
+    conn.remote_ip
+    |> :inet.ntoa()
+    |> to_string()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 16)
+  end
 
   defp verify_presentation(holder_did, vp, nil) do
     with {:ok, credential_type} <- VpVerifier.verify(holder_did, vp) do
@@ -119,6 +142,9 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
 
       :not_found ->
         send_json(conn, 404, %{error: "holder_not_found"})
+
+      {:error, :unavailable} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
     end
   end
 
@@ -138,8 +164,34 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     end
   end
 
+  # Persist the accepted issuer-signed VC (portable re-verification layer):
+  # consumers fetch it at GET /api/v1/identity/attestation/:did and re-verify
+  # the issuer proof themselves. Best-effort — a storage failure must not
+  # fail the presentation the verifier already accepted.
+  defp persist_attestation(holder_did, credential_type, tier, vp) do
+    case matched_credential(vp, credential_type) do
+      nil -> :ok
+      vc -> AttestationStore.put(holder_did, credential_type, tier, vc)
+    end
+  rescue
+    _ -> :ok
+  end
+
+  # The VC inside the VP whose type earned the tier — stored exactly as
+  # presented (proof included) so its issuer signature stays verifiable.
+  defp matched_credential(vp, credential_type) do
+    vp
+    |> Map.get("verifiableCredential", [])
+    |> Enum.find(fn
+      vc when is_map(vc) -> credential_type in List.wrap(vc["type"])
+      _ -> false
+    end)
+  end
+
   defp validate_did(did) when is_binary(did) do
-    if Regex.match?(~r/\Adid:(plc:[a-z2-7]{10,}|web:.+)\z/, did),
+    # `did:elix` is the canonical identity; plc/web remain for the bridge and
+    # issuer-side holders.
+    if Regex.match?(~r/\Adid:(elix:[a-z2-7]{10,}|plc:[a-z2-7]{10,}|web:.+)\z/, did),
       do: :ok,
       else: {:error, :invalid_did}
   end

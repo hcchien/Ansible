@@ -74,7 +74,14 @@ defmodule AnsibleRelay.DidAccountCache do
     :ok
   end
 
-  @doc "Look up a DID. Returns {:ok, entry} or :not_found."
+  @doc """
+  Look up a DID. Returns `{:ok, entry}`, `:not_found`, or `{:error, :unavailable}`.
+
+  A genuine "no such DID" is `:not_found`. A DB/infrastructure outage is
+  `{:error, :unavailable}` — distinct so request paths that would otherwise 401
+  an authenticated write (e.g. XRPC createRecord) can return a retryable 503
+  instead of prompting a destructive client re-anchor during a Postgres blip.
+  """
   def get(did) do
     case :ets.lookup(@table, did) do
       [{^did, entry}] -> {:ok, entry}
@@ -111,9 +118,10 @@ defmodule AnsibleRelay.DidAccountCache do
         {:ok, entry}
     end
   rescue
-    # A cache lookup must never crash request handling: if the DB is
-    # unreachable, treat it as a miss (same as the pre-rehydration behavior).
-    _ -> :not_found
+    # A cache lookup must never crash request handling, but a DB error is an
+    # outage — not a missing row. Surface it as :unavailable so callers on a
+    # destructive write path can 503 rather than falsely 401 "unregistered_did".
+    _ -> {:error, :unavailable}
   end
 
   @doc "Returns true if the DID is registered and not expired."
@@ -122,7 +130,7 @@ defmodule AnsibleRelay.DidAccountCache do
       {:ok, %{expires_at: expires_at}} ->
         DateTime.compare(DateTime.utc_now(), expires_at) == :lt
 
-      :not_found ->
+      _ ->
         false
     end
   end

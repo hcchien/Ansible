@@ -62,12 +62,16 @@ defmodule AnsibleRelay.IdentityCache do
   end
 
   @doc """
-  Look up a DID. Returns {:ok, entry} or :not_found.
+  Look up a DID. Returns `{:ok, entry}`, `:not_found`, or `{:error, :unavailable}`.
 
   On an ETS miss, reads through to PostgreSQL and repopulates the local cache, so
   any relay instance can serve a DID anchored on another instance (shared-DB
-  horizontal scaling). DB errors degrade to :not_found rather than crashing the
-  ingest path.
+  horizontal scaling).
+
+  A genuine "no such DID" is `:not_found`. A DB/infrastructure outage is
+  `{:error, :unavailable}` — distinct so callers on the ingest path can return a
+  retryable 503 instead of a 401 that would prompt a client to (destructively)
+  re-anchor during a transient Postgres blip.
   """
   def get(did) do
     case :ets.lookup(@table, did) do
@@ -102,19 +106,28 @@ defmodule AnsibleRelay.IdentityCache do
         end
     end
   rescue
-    _ -> :not_found
+    # A DB error is an outage, not a missing row — surface it as :unavailable so
+    # the ingest path can 503 rather than falsely 401 "unverified_did".
+    _ -> {:error, :unavailable}
   end
 
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value
 
-  @doc "Returns true if the DID is verified and not expired."
+  @doc """
+  Returns true if the DID is verified and not expired.
+
+  Boolean by contract for its many callers (auth plugs, signed intents): both a
+  true miss and a DB outage return `false`, unchanged from before. Callers that
+  must distinguish an outage (the op ingest path) use `get/1` directly and check
+  for `{:error, :unavailable}`.
+  """
   def verified?(did) do
     case get(did) do
       {:ok, %{expires_at: expires_at}} ->
         DateTime.compare(DateTime.utc_now(), expires_at) == :lt
 
-      :not_found ->
+      _ ->
         false
     end
   end
@@ -223,8 +236,14 @@ defmodule AnsibleRelay.IdentityCache do
   @impl true
   def handle_info(:sweep, state) do
     sweep_expired()
+    sweep_expired_challenges()
     schedule_sweep()
     {:noreply, state}
+  end
+
+  @doc false
+  def sweep_now do
+    {sweep_expired(), sweep_expired_challenges()}
   end
 
   defp schedule_sweep do
@@ -252,6 +271,29 @@ defmodule AnsibleRelay.IdentityCache do
       )
 
     Enum.each(expired, &:ets.delete(@table, &1))
+    length(expired)
+  end
+
+  # Phase 1 challenges are consumed exactly once, but an issued-then-abandoned
+  # challenge otherwise lingers in the table forever. Sweep expired ones so the
+  # replay-protection table stays bounded by in-flight anchoring flows.
+  defp sweep_expired_challenges do
+    now = DateTime.utc_now()
+
+    expired =
+      :ets.foldl(
+        fn {did, entry}, acc ->
+          if DateTime.compare(entry.expires_at, now) != :gt do
+            [did | acc]
+          else
+            acc
+          end
+        end,
+        [],
+        @challenge_table
+      )
+
+    Enum.each(expired, &:ets.delete(@challenge_table, &1))
     length(expired)
   end
 

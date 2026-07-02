@@ -20,6 +20,11 @@ defmodule AnsibleRelay.Web.Controllers.XrpcController do
         :not_found ->
           send_json(conn, 401, %{error: "unregistered_did"})
 
+        # DB/infrastructure outage — not an unregistered DID. Return a retryable
+        # 503 so a client doesn't (destructively) re-anchor on a transient blip.
+        {:error, :unavailable} ->
+          send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
+
         {:ok, %{expires_at: exp} = entry} ->
           if DateTime.compare(DateTime.utc_now(), exp) == :lt do
             create_record_for_active_did(conn, repo, collection, record, commit_sig, entry)
