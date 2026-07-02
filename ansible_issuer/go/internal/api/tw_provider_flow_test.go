@@ -19,6 +19,18 @@ func signProviderAssertion(secret, payload string) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// contractCallbackBody builds a signed contract callback map for the given
+// assertion. The signature covers the canonical payload binding every
+// security-relevant field, so the callback cannot be replayed with altered
+// unsigned fields.
+func contractCallbackBody(secret, audience string, a provider.ProviderAssertion) map[string]any {
+	payload := provider.ContractAssertionPayload(a, audience)
+	return map[string]any{
+		"assertion": payload,
+		"signature": signProviderAssertion(secret, payload),
+	}
+}
+
 func newTWHandler(t *testing.T, now time.Time) *api.Handler {
 	t.Helper()
 	store := provider.NewMemorySessionStore(func() time.Time { return now })
@@ -62,15 +74,11 @@ func TestTWProviderFlowWorksWithFileBackedStore(t *testing.T) {
 	offerID := startBody["offer_id"].(string)
 	state := startBody["state"].(string)
 
-	payload := state + "|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
-	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", map[string]any{
-		"state":            state,
-		"provider_subject": "subject-1",
-		"audience":         "trisaura-issuer",
-		"expires_at":       "2026-05-05T12:05:00Z",
-		"assertion":        payload,
-		"signature":        signProviderAssertion("provider-secret", payload),
-	})
+	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", contractCallbackBody("provider-secret", "trisaura-issuer", provider.ProviderAssertion{
+		State:           state,
+		ProviderSubject: "subject-1",
+		ExpiresAt:       now.Add(5 * time.Minute),
+	}))
 	if callback.Code != http.StatusOK {
 		t.Fatalf("callback failed: %d %s", callback.Code, callback.Body)
 	}
@@ -97,15 +105,11 @@ func TestTWProviderFlowIssuesCredentialAfterVerifiedCallback(t *testing.T) {
 	offerID := startBody["offer_id"].(string)
 	state := startBody["state"].(string)
 
-	payload := state + "|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
-	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", map[string]any{
-		"state":            state,
-		"provider_subject": "subject-1",
-		"audience":         "trisaura-issuer",
-		"expires_at":       "2026-05-05T12:05:00Z",
-		"assertion":        payload,
-		"signature":        signProviderAssertion("provider-secret", payload),
-	})
+	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", contractCallbackBody("provider-secret", "trisaura-issuer", provider.ProviderAssertion{
+		State:           state,
+		ProviderSubject: "subject-1",
+		ExpiresAt:       now.Add(5 * time.Minute),
+	}))
 	if callback.Code != http.StatusOK {
 		t.Fatalf("callback failed: %d %s", callback.Code, callback.Body)
 	}
@@ -145,16 +149,12 @@ func TestTWProviderCallbackReplayRejected(t *testing.T) {
 		"did": testDID, "email": testEmail,
 	})
 	state := bodyJSON(t, start)["state"].(string)
-	payload := state + "|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
-	body := map[string]any{
-		"state":            state,
-		"replay_id":        "replay-1",
-		"provider_subject": "subject-1",
-		"audience":         "trisaura-issuer",
-		"expires_at":       "2026-05-05T12:05:00Z",
-		"assertion":        payload,
-		"signature":        signProviderAssertion("provider-secret", payload),
-	}
+	body := contractCallbackBody("provider-secret", "trisaura-issuer", provider.ProviderAssertion{
+		State:           state,
+		ReplayID:        "replay-1",
+		ProviderSubject: "subject-1",
+		ExpiresAt:       now.Add(5 * time.Minute),
+	})
 
 	first := call(h, http.MethodPost, "/api/v1/vc/tw/callback", body)
 	if first.Code != http.StatusOK {
@@ -192,15 +192,11 @@ func TestTWProviderCallbackStateMismatchRejected(t *testing.T) {
 		"did": testDID, "email": testEmail,
 	})
 
-	payload := "wrong-state|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
-	response := call(h, http.MethodPost, "/api/v1/vc/tw/callback", map[string]any{
-		"state":            "wrong-state",
-		"provider_subject": "subject-1",
-		"audience":         "trisaura-issuer",
-		"expires_at":       "2026-05-05T12:05:00Z",
-		"assertion":        payload,
-		"signature":        signProviderAssertion("provider-secret", payload),
-	})
+	response := call(h, http.MethodPost, "/api/v1/vc/tw/callback", contractCallbackBody("provider-secret", "trisaura-issuer", provider.ProviderAssertion{
+		State:           "wrong-state",
+		ProviderSubject: "subject-1",
+		ExpiresAt:       now.Add(5 * time.Minute),
+	}))
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d %s", response.Code, response.Body)
 	}

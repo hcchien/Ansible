@@ -11,7 +11,15 @@
 //
 //	issuer_requests_total{endpoint}          — HTTP requests by endpoint
 //	issuer_credentials_issued_total{type}    — credentials issued by type
+//	issuer_credentials_revoked_total         — credentials revoked
 //	issuer_errors_total{endpoint}            — handler error responses by endpoint
+//
+// Operator alerting seam: issuer_errors_total is the primary alerting signal —
+// wire a scrape-based alert (e.g. rate(issuer_errors_total[5m]) > 0 per
+// endpoint) in your monitoring stack. Genuine error conditions in the handlers
+// are additionally logged at "error:" level to stderr/stdout, which on Cloud
+// Run flows into Cloud Logging where a log-based alert can be attached — no
+// third-party SDK is added to this service.
 package metrics
 
 import (
@@ -64,6 +72,7 @@ func (c *counterVec) render(b *strings.Builder) {
 type Registry struct {
 	requests    *counterVec
 	credentials *counterVec
+	revoked     *counterVec
 	errors      *counterVec
 }
 
@@ -72,6 +81,7 @@ func NewRegistry() *Registry {
 	return &Registry{
 		requests:    newCounterVec("issuer_requests_total", "HTTP requests by endpoint.", "endpoint"),
 		credentials: newCounterVec("issuer_credentials_issued_total", "Credentials issued by type.", "type"),
+		revoked:     newCounterVec("issuer_credentials_revoked_total", "Credentials revoked.", "result"),
 		errors:      newCounterVec("issuer_errors_total", "Handler error responses by endpoint.", "endpoint"),
 	}
 }
@@ -92,6 +102,14 @@ func (r *Registry) IncCredentialIssued(credType string) {
 	r.credentials.inc(credType)
 }
 
+// IncCredentialRevoked records a successful credential revocation.
+func (r *Registry) IncCredentialRevoked() {
+	if r == nil {
+		return
+	}
+	r.revoked.inc("ok")
+}
+
 // IncError records an error response from the named endpoint.
 func (r *Registry) IncError(endpoint string) {
 	if r == nil {
@@ -105,6 +123,7 @@ func (r *Registry) Render() string {
 	var b strings.Builder
 	r.requests.render(&b)
 	r.credentials.render(&b)
+	r.revoked.render(&b)
 	r.errors.render(&b)
 	return b.String()
 }

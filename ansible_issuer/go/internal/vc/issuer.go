@@ -22,6 +22,10 @@ const (
 	mobileMoicaDisclosureModel = "explicit_rp"
 	jurisdiction               = "TW"
 	defaultTTLDays             = 90
+	// credentialStatusType names the issuer's status-endpoint check. The status
+	// URL in each credential's credentialStatus resolves via
+	// GET /api/v1/vc/status/{id}, which returns the live lifecycle state.
+	credentialStatusType = "TrisAuraStatusEndpoint2024"
 )
 
 // Config holds issuer configuration.
@@ -66,10 +70,18 @@ func NewIssuer(cfg Config, store CredentialStore) (*Issuer, error) {
 }
 
 // Issue builds, signs, and records a TrisAuraHumanityCredential.
+//
+// commitments must be non-empty; commitments[0] is the value written for this
+// credential (computed under the primary pepper) and every element is checked
+// for an existing active binding. Passing more than one element supports a
+// graceful pepper rotation: the same person is recognised whether their prior
+// credential was committed under the primary or a previous pepper.
+//
 // Returns ErrDuplicateActiveCredential if an active credential already exists
-// for the given subject commitment.
-func (iss *Issuer) Issue(holderDID, subjectCommitment string) (map[string]any, error) {
-	if err := iss.store.CheckDuplicate(subjectCommitment); err != nil {
+// under any supplied commitment.
+func (iss *Issuer) Issue(holderDID string, commitments []string) (map[string]any, error) {
+	primary := primaryCommitment(commitments)
+	if err := iss.store.CheckDuplicateAny(commitments); err != nil {
 		return nil, err
 	}
 
@@ -82,10 +94,20 @@ func (iss *Issuer) Issue(holderDID, subjectCommitment string) (map[string]any, e
 			AssuranceMethod: assuranceMethod,
 			Jurisdiction:    jurisdiction,
 		},
-		subjectCommitment,
-		subjectCommitment,
+		primary,
+		primary,
 		"",
 	)
+}
+
+// primaryCommitment returns the first non-empty commitment, or "" if none.
+func primaryCommitment(commitments []string) string {
+	for _, c := range commitments {
+		if c != "" {
+			return c
+		}
+	}
+	return ""
 }
 
 // IssueEmail builds and signs a contactability credential. Email OTP is not a
@@ -132,8 +154,9 @@ func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passpor
 // IssueMobileMoicaRP builds and signs a MobileMoica relying-party humanity
 // credential. Raw MobileMoica inputs are processed only before this method; the
 // issued VC contains only assurance metadata and the holder DID.
-func (iss *Issuer) IssueMobileMoicaRP(holderDID, subjectCommitment string) (map[string]any, error) {
-	if err := iss.store.CheckDuplicate(subjectCommitment); err != nil {
+func (iss *Issuer) IssueMobileMoicaRP(holderDID string, commitments []string) (map[string]any, error) {
+	primary := primaryCommitment(commitments)
+	if err := iss.store.CheckDuplicateAny(commitments); err != nil {
 		return nil, err
 	}
 
@@ -147,10 +170,37 @@ func (iss *Issuer) IssueMobileMoicaRP(holderDID, subjectCommitment string) (map[
 			Jurisdiction:    jurisdiction,
 			DisclosureModel: mobileMoicaDisclosureModel,
 		},
-		subjectCommitment,
-		subjectCommitment,
+		primary,
+		primary,
 		"",
 	)
+}
+
+// CheckDuplicate reports ErrDuplicateActiveCredential if an active credential
+// already exists under any of the supplied commitments. It lets callers reject
+// a duplicate at verify time (while the raw subject is still available for the
+// pepper-rotation dual-check) rather than only at issue time.
+func (iss *Issuer) CheckDuplicate(commitments []string) error {
+	return iss.store.CheckDuplicateAny(commitments)
+}
+
+// Revoke marks an issued credential as revoked so its status endpoint reports
+// revoked and its subject may re-enrol. Returns ErrCredentialNotFound when the
+// credential id is unknown.
+func (iss *Issuer) Revoke(credentialID string) error {
+	return iss.store.Revoke(credentialID)
+}
+
+// Status returns the lifecycle state of an issued credential.
+func (iss *Issuer) Status(credentialID string) (CredentialStatus, bool) {
+	return iss.store.Status(credentialID)
+}
+
+// CredentialIDFromSuffix reconstructs the full credential id from the hex suffix
+// exposed in the credential's id/credentialStatus URLs, so the status endpoint
+// (which receives only the suffix path segment) can look the record up.
+func (iss *Issuer) CredentialIDFromSuffix(suffix string) string {
+	return fmt.Sprintf("%s/vc/%s", iss.issuerURL, suffix)
 }
 
 // DIDDocument returns the did:web DID document so external W3C verifiers can
@@ -189,17 +239,22 @@ func (iss *Issuer) issue(
 	passportNumberHash string,
 ) (map[string]any, error) {
 	now := time.Now().UTC()
+	credHex := randomHex(16)
 	cred := &Credential{
 		Context: []string{
 			"https://www.w3.org/ns/credentials/v2",
 			"https://elix.cool/contexts/humanity/v1",
 		},
-		ID:                fmt.Sprintf("%s/vc/%s", iss.issuerURL, randomHex(16)),
+		ID:                fmt.Sprintf("%s/vc/%s", iss.issuerURL, credHex),
 		Type:              []string{"VerifiableCredential", credentialType},
 		Issuer:            iss.issuerDID,
 		ValidFrom:         now.Format(time.RFC3339),
 		ValidUntil:        now.AddDate(0, 0, iss.ttlDays).Format(time.RFC3339),
 		CredentialSubject: subject,
+		CredentialStatus: &CredentialStatus2{
+			ID:   fmt.Sprintf("%s/api/v1/vc/status/%s", iss.issuerURL, credHex),
+			Type: credentialStatusType,
+		},
 	}
 
 	proof, err := iss.createDataIntegrityProof(cred, now)

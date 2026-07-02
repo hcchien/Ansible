@@ -13,6 +13,7 @@ import (
 var (
 	ErrDuplicateActiveCredential  = errors.New("duplicate_active_credential")
 	ErrDuplicatePersonhoodBinding = errors.New("duplicate_personhood_binding")
+	ErrCredentialNotFound         = errors.New("credential_not_found")
 )
 
 const (
@@ -80,6 +81,20 @@ func (s *Store) CheckDuplicate(comm string) error {
 	return nil
 }
 
+// CheckDuplicateAny returns ErrDuplicateActiveCredential if an active credential
+// exists under any of the supplied commitments. Empty commitments are skipped.
+func (s *Store) CheckDuplicateAny(commitments []string) error {
+	for _, c := range commitments {
+		if c == "" {
+			continue
+		}
+		if err := s.CheckDuplicate(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CheckDuplicatePersonhoodBinding returns ErrDuplicatePersonhoodBinding when an
 // active credential already exists for either irreversible personhood hash.
 func (s *Store) CheckDuplicatePersonhoodBinding(nationalIDHash, passportNumberHash string) error {
@@ -138,6 +153,44 @@ func (s *Store) Status(credentialID string) (CredentialStatus, bool) {
 		return 0, false
 	}
 	return r.status, true
+}
+
+// Revoke marks a credential as revoked and drops it from the active-duplicate
+// indexes so the person may re-enrol. Returns ErrCredentialNotFound when the
+// credential is unknown. Revoking an already-revoked credential is a no-op.
+func (s *Store) Revoke(credentialID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	r, ok := s.byID[credentialID]
+	if !ok {
+		return ErrCredentialNotFound
+	}
+	if r.status == StatusRevoked {
+		return nil
+	}
+
+	prevStatus := r.status
+	// Drop from active-duplicate indexes so the binding no longer collides.
+	if r.commitment != "" && s.byComm[r.commitment] == r {
+		delete(s.byComm, r.commitment)
+	}
+	if r.nationalIDHash != "" && s.byNationalIDHash[r.nationalIDHash] == r {
+		delete(s.byNationalIDHash, r.nationalIDHash)
+	}
+	if r.passportNumberHash != "" && s.byPassportNumberHash[r.passportNumberHash] == r {
+		delete(s.byPassportNumberHash, r.passportNumberHash)
+	}
+	r.status = StatusRevoked
+
+	if err := s.saveLocked(); err != nil {
+		// Roll back the in-memory mutation so the store stays consistent with
+		// the on-disk state that failed to persist.
+		r.status = prevStatus
+		s.indexLocked(*r)
+		return err
+	}
+	return nil
 }
 
 type storeFile struct {

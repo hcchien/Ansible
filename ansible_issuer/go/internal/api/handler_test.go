@@ -65,7 +65,7 @@ func newTestHandler(t *testing.T) *api.Handler {
 		otp.NewStore(5*time.Minute),
 		provider.Mock{},
 		iss,
-		testPepper,
+		commitment.NewSet(testPepper, nil),
 		true,
 	)
 }
@@ -391,15 +391,11 @@ func TestPassportIssue_RejectsNationalIDAlreadyBoundByTWProvider(t *testing.T) {
 	startBody := bodyJSON(t, start)
 	offerID := startBody["offer_id"].(string)
 	state := startBody["state"].(string)
-	payload := state + "|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
-	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", map[string]any{
-		"state":            state,
-		"provider_subject": "subject-1",
-		"audience":         "trisaura-issuer",
-		"expires_at":       "2026-05-05T12:05:00Z",
-		"assertion":        payload,
-		"signature":        signProviderAssertion("provider-secret", payload),
-	})
+	callback := call(h, http.MethodPost, "/api/v1/vc/tw/callback", contractCallbackBody("provider-secret", "trisaura-issuer", provider.ProviderAssertion{
+		State:           state,
+		ProviderSubject: "subject-1",
+		ExpiresAt:       now.Add(5 * time.Minute),
+	}))
 	if callback.Code != http.StatusOK {
 		t.Fatalf("tw callback failed: %d %s", callback.Code, callback.Body)
 	}

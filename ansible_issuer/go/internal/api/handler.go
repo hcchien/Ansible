@@ -2,12 +2,15 @@ package api
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/trisaura/ansible_issuer/internal/commitment"
@@ -30,8 +33,12 @@ type Handler struct {
 	otpStore *otp.Store
 	provider provider.TwIdentityProvider
 	issuer   *vc.Issuer
-	pepper   string
+	peppers  commitment.Set
 	mockMode bool
+
+	// adminToken, when non-empty, guards the internal revoke endpoint via a
+	// bearer token. Empty means revocation is disabled (fail-closed).
+	adminToken string
 
 	twStore    provider.SessionStore
 	twVerifier provider.ProofVerifier
@@ -74,18 +81,24 @@ func NewHandler(
 	otpStore *otp.Store,
 	prov provider.TwIdentityProvider,
 	iss *vc.Issuer,
-	pepper string,
+	peppers commitment.Set,
 	mockMode bool,
 ) *Handler {
 	return &Handler{
 		otpStore: otpStore,
 		provider: prov,
 		issuer:   iss,
-		pepper:   pepper,
+		peppers:  peppers,
 		mockMode: mockMode,
 		now:      time.Now,
 		metrics:  metrics.NewRegistry(),
 	}
+}
+
+// ConfigureAdmin sets the bearer token that guards internal endpoints (revoke).
+// An empty token leaves those endpoints disabled (fail-closed).
+func (h *Handler) ConfigureAdmin(token string) {
+	h.adminToken = token
 }
 
 // Metrics exposes the issuer's metric registry (for the /metrics scrape target).
@@ -106,6 +119,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/vc/request", h.instrument("vc_request", h.request))
 	mux.HandleFunc("POST /api/v1/vc/issue", h.instrument("vc_issue", h.issue))
 	mux.HandleFunc("GET /api/v1/vc/status/{id}", h.instrument("vc_status", h.status))
+	mux.HandleFunc("POST /api/v1/internal/vc/revoke/{id}", h.instrument("vc_revoke", h.revoke))
 	mux.HandleFunc("POST /api/v1/vc/tw/start", h.instrument("vc_tw_start", h.twStart))
 	mux.HandleFunc("POST /api/v1/vc/tw/callback", h.instrument("vc_tw_callback", h.twCallback))
 	mux.HandleFunc("GET /api/v1/vc/tw/status/{offer_id}", h.instrument("vc_tw_status", h.twStatus))
@@ -225,6 +239,7 @@ func (h *Handler) request(w http.ResponseWriter, r *http.Request) {
 
 	code, err := h.otpStore.Issue(body.DID, body.Email)
 	if err != nil {
+		log.Printf("error: otp issue failed endpoint=vc_request err=%v", err)
 		writeError(w, http.StatusInternalServerError, "otp_store_error")
 		return
 	}
@@ -259,9 +274,12 @@ func (h *Handler) issue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.otpStore.VerifyAndConsume(body.DID, body.Email, body.OTP); err != nil {
-		if errors.Is(err, otp.ErrExpiredOTP) {
+		switch {
+		case errors.Is(err, otp.ErrExpiredOTP):
 			writeError(w, http.StatusUnauthorized, "expired_otp")
-		} else {
+		case errors.Is(err, otp.ErrTooManyAttempts):
+			writeError(w, http.StatusTooManyRequests, "too_many_attempts")
+		default:
 			writeError(w, http.StatusUnauthorized, "invalid_otp")
 		}
 		return
@@ -269,6 +287,7 @@ func (h *Handler) issue(w http.ResponseWriter, r *http.Request) {
 
 	credMap, err := h.issuer.IssueEmail(body.DID)
 	if err != nil {
+		log.Printf("error: email credential issuance failed endpoint=vc_issue err=%v", err)
 		writeError(w, http.StatusInternalServerError, "issuance_error")
 		return
 	}
@@ -277,14 +296,69 @@ func (h *Handler) issue(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"vc": credMap})
 }
 
-// GET /api/v1/vc/status/{id} — return credential status by hex ID suffix.
+// GET /api/v1/vc/status/{id} — return credential status by hex ID suffix. The
+// suffix is the last path segment of the credential id / credentialStatus URL.
 func (h *Handler) status(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "missing_id")
 		return
 	}
-	writeError(w, http.StatusNotFound, "not_found")
+	credentialID := h.issuer.CredentialIDFromSuffix(id)
+	status, ok := h.issuer.Status(credentialID)
+	if !ok {
+		writeError(w, http.StatusNotFound, "not_found")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":      id,
+		"status":  status.String(),
+		"revoked": status == vc.StatusRevoked,
+	})
+}
+
+// POST /api/v1/internal/vc/revoke/{id} — revoke a credential by hex ID suffix.
+// Internal/admin-only: guarded by a bearer token and fail-closed when the token
+// is unset. This is the operator-facing revocation path for compromised or
+// mis-issued credentials; a real deployment fronts it with network policy too.
+func (h *Handler) revoke(w http.ResponseWriter, r *http.Request) {
+	if h.adminToken == "" {
+		writeError(w, http.StatusServiceUnavailable, "revocation_unconfigured")
+		return
+	}
+	if !h.authorizedAdmin(r) {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing_id")
+		return
+	}
+	credentialID := h.issuer.CredentialIDFromSuffix(id)
+	if err := h.issuer.Revoke(credentialID); err != nil {
+		if errors.Is(err, vc.ErrCredentialNotFound) {
+			writeError(w, http.StatusNotFound, "not_found")
+			return
+		}
+		log.Printf("error: credential revoke failed id_suffix=%s err=%v", id, err)
+		writeError(w, http.StatusInternalServerError, "revoke_error")
+		return
+	}
+	h.metrics.IncCredentialRevoked()
+	writeJSON(w, http.StatusOK, map[string]any{"id": id, "status": "revoked"})
+}
+
+// authorizedAdmin checks the Authorization: Bearer <token> header against the
+// configured admin token in constant time.
+func (h *Handler) authorizedAdmin(r *http.Request) bool {
+	const prefix = "Bearer "
+	header := r.Header.Get("Authorization")
+	if !strings.HasPrefix(header, prefix) {
+		return false
+	}
+	got := header[len(prefix):]
+	return subtle.ConstantTimeCompare([]byte(got), []byte(h.adminToken)) == 1
 }
 
 func (h *Handler) twStart(w http.ResponseWriter, r *http.Request) {
@@ -359,7 +433,21 @@ func (h *Handler) twCallback(w http.ResponseWriter, r *http.Request) {
 	if assertion.ExpiresAt.Before(expiresAt) {
 		expiresAt = assertion.ExpiresAt
 	}
-	comm := commitment.Compute(h.pepper, assertion.ProviderSubject, assertion.AssuranceContext)
+	// Dual-check across the primary and any previous peppers while the raw
+	// provider subject is still available, so a graceful pepper rotation does
+	// not silently re-issue a second credential to an already-enrolled person.
+	// The verified session persists only the primary commitment (element 0).
+	comms := h.peppers.ComputeAll(assertion.ProviderSubject, assertion.AssuranceContext)
+	if err := h.issuer.CheckDuplicate(comms); err != nil {
+		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
+			writeError(w, http.StatusConflict, "duplicate_active_credential")
+			return
+		}
+		log.Printf("error: duplicate check failed endpoint=vc_tw_callback err=%v", err)
+		writeError(w, http.StatusInternalServerError, "issuance_error")
+		return
+	}
+	comm := comms[0]
 	if err := h.twStore.StoreVerifiedSession(provider.VerifiedSession{
 		OfferID:           session.OfferID,
 		DID:               session.DID,
@@ -436,12 +524,13 @@ func (h *Handler) twIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	credMap, err := h.issuer.Issue(body.DID, verified.SubjectCommitment)
+	credMap, err := h.issuer.Issue(body.DID, []string{verified.SubjectCommitment})
 	if err != nil {
 		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
 			writeError(w, http.StatusConflict, "duplicate_active_credential")
 			return
 		}
+		log.Printf("error: humanity credential issuance failed endpoint=vc_tw_issue err=%v", err)
 		writeError(w, http.StatusInternalServerError, "issuance_error")
 		return
 	}
@@ -517,6 +606,7 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, "personhood_already_bound")
 			return
 		}
+		log.Printf("error: passport credential issuance failed endpoint=vc_passport_issue err=%v", err)
 		writeError(w, http.StatusInternalServerError, "issuance_error")
 		return
 	}

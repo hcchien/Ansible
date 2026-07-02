@@ -20,15 +20,11 @@ func TestNewProofVerifierAdapterContractModeBuildsVerifier(t *testing.T) {
 		t.Fatalf("new contract adapter: %v", err)
 	}
 
-	payload := "state-1|subject-1|trisaura-issuer|2026-05-05T12:05:00Z"
-	assertion, err := verifier.Verify(map[string]string{
-		"state":            "state-1",
-		"provider_subject": "subject-1",
-		"audience":         "trisaura-issuer",
-		"expires_at":       "2026-05-05T12:05:00Z",
-		"assertion":        payload,
-		"signature":        signedAssertion("provider-secret", payload),
-	})
+	assertion, err := verifier.Verify(contractCallback("provider-secret", "trisaura-issuer", provider.ProviderAssertion{
+		State:           "state-1",
+		ProviderSubject: "subject-1",
+		ExpiresAt:       now.Add(5 * time.Minute),
+	}))
 	if err != nil {
 		t.Fatalf("verify contract callback: %v", err)
 	}

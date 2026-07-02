@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trisaura/ansible_issuer/internal/commitment"
 	"github.com/trisaura/ansible_issuer/internal/provider"
 	"github.com/trisaura/ansible_issuer/internal/vc"
 )
@@ -50,11 +49,25 @@ func (h *Handler) mobileMoicaStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	expiresAt := h.now().Add(h.mobileMoicaTTL)
-	subjectCommitment := commitment.Compute(
-		h.pepper,
+	// Dual-check the person under the primary and any previous peppers while the
+	// raw national ID is available (only at start), so a graceful pepper
+	// rotation cannot re-issue a second credential to an enrolled person. Only
+	// the primary commitment (element 0) is persisted for the write path.
+	comms := h.peppers.ComputeAll(
 		body.NationalID,
 		vc.PersonhoodBindingTWNationalIDContext,
 	)
+	if err := h.issuer.CheckDuplicate(comms); err != nil {
+		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
+			h.logMobileMoicaRP("mobilemoica_rp_start", "denied", offerID, "reason=duplicate_active_credential")
+			writeError(w, http.StatusConflict, "duplicate_active_credential")
+			return
+		}
+		h.logMobileMoicaRP("mobilemoica_rp_start", "issuance_error", offerID, "error=duplicate_check")
+		writeError(w, http.StatusInternalServerError, "issuance_error")
+		return
+	}
+	subjectCommitment := comms[0]
 	startResult, err := h.mobileMoicaBroker.Start(r.Context(), provider.MobileMoicaStartRequest{
 		OfferID:         offerID,
 		State:           state,
@@ -220,7 +233,7 @@ func (h *Handler) mobileMoicaIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	credMap, err := h.issuer.IssueMobileMoicaRP(body.HolderDID, verified.SubjectCommitment)
+	credMap, err := h.issuer.IssueMobileMoicaRP(body.HolderDID, []string{verified.SubjectCommitment})
 	if err != nil {
 		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
 			h.logMobileMoicaRP("mobilemoica_rp_issue", "denied", body.OfferID, "reason=duplicate_active_credential")

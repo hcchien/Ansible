@@ -10,6 +10,31 @@ import (
 	"github.com/trisaura/ansible_issuer/internal/provider"
 )
 
+func TestIsProdLikeEnvironment(t *testing.T) {
+	cases := []struct {
+		name      string
+		kService  string
+		issuerURL string
+		want      bool
+	}{
+		{"cloud run marker set", "ansible-issuer", "http://localhost:4002", true},
+		{"local http", "", "http://localhost:4002", false},
+		{"loopback https", "", "https://127.0.0.1:4002", false},
+		{"dotlocalhost https", "", "https://issuer.localhost", false},
+		{"private range https", "", "https://10.0.0.5", false},
+		{"public https url", "", "https://issuer.trisaura.example", true},
+		{"empty issuer url", "", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("K_SERVICE", tc.kService)
+			if got := isProdLikeEnvironment(tc.issuerURL); got != tc.want {
+				t.Fatalf("isProdLikeEnvironment(%q) with K_SERVICE=%q = %v, want %v", tc.issuerURL, tc.kService, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestBuildTWProviderConfigDefaultsMockModeToContractAdapter(t *testing.T) {
 	t.Setenv("TW_PROVIDER_SESSION_STORE_PATH", filepath.Join(t.TempDir(), "sessions.json"))
 
@@ -244,5 +269,59 @@ func TestBuildMobileMoicaRPConfigProductionModeFailsClosed(t *testing.T) {
 	_, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now, nil)
 	if !errors.Is(err, provider.ErrMobileMoicaProductionUnavailable) {
 		t.Fatalf("expected production unavailable error, got %v", err)
+	}
+}
+
+func TestValidateCommitmentPepper(t *testing.T) {
+	strong := "0123456789abcdef0123456789abcdef" // 32 bytes, no sentinel
+	cases := []struct {
+		name    string
+		pepper  string
+		wantErr bool
+	}{
+		{"strong 32-byte pepper", strong, false},
+		{"too short", "short-pepper", true},
+		{"dev sentinel full", "dev-pepper-not-for-production-000000000000", true},
+		{"dev- prefix sentinel", "dev-abcdefghijklmnopqrstuvwxyz0123", true},
+		{"changeme sentinel", "changeme-changeme-changeme-changeme", true},
+		{"placeholder sentinel", "placeholder-placeholder-placeholder", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateCommitmentPepper(tc.pepper)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected error for %q, got nil", tc.pepper)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error for %q: %v", tc.pepper, err)
+			}
+		})
+	}
+}
+
+func TestValidateIssuerPrivateKeyHex(t *testing.T) {
+	realKey := "61357fa541863df68f248a8c79244bf6652d96c1a43b42624c3f00988fd2d742"
+	cases := []struct {
+		name    string
+		key     string
+		wantErr bool
+	}{
+		{"valid 64-hex key", realKey, false},
+		{"wrong length", "abcd", true},
+		{"non-hex", "zz61b19deffe6a5f43e1a3b0e3f4c9b2a7d81f6e0c5b4a3928176554433221100", true},
+		{"all zero", "0000000000000000000000000000000000000000000000000000000000000000", true},
+		{"all ones (ff)", "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", true},
+		{"repeated nibble", "1111111111111111111111111111111111111111111111111111111111111111", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateIssuerPrivateKeyHex(tc.key)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected error for %q, got nil", tc.key)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error for %q: %v", tc.key, err)
+			}
+		})
 	}
 }

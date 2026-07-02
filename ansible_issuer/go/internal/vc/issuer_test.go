@@ -44,7 +44,7 @@ func newTestIssuerUsingStore(t *testing.T, store *vc.Store) *vc.Issuer {
 
 func TestIssuer_IssueSigns(t *testing.T) {
 	iss := newTestIssuer(t)
-	raw, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestIssuer_IssueSigns(t *testing.T) {
 
 func TestIssuer_IssueUsesDataIntegrityProof(t *testing.T) {
 	iss := newTestIssuer(t)
-	raw, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestIssuer_IssueUsesDataIntegrityProof(t *testing.T) {
 
 func TestIssuer_VerifyProofRejectsTamperedCredential(t *testing.T) {
 	iss := newTestIssuer(t)
-	raw, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestIssuer_VerifyProofRejectsTamperedCredential(t *testing.T) {
 
 func TestIssuer_VerifyProofRejectsTamperedProofValue(t *testing.T) {
 	iss := newTestIssuer(t)
-	raw, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestIssuer_VerifyProofRejectsTamperedProofValue(t *testing.T) {
 
 func TestIssuer_CredentialType(t *testing.T) {
 	iss := newTestIssuer(t)
-	raw, _ := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	raw, _ := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
 	types, _ := raw["type"].([]any)
 	found := false
 	for _, v := range types {
@@ -130,7 +130,7 @@ func TestIssuer_CredentialType(t *testing.T) {
 
 func TestIssuer_NoPIIInCredentialSubject(t *testing.T) {
 	iss := newTestIssuer(t)
-	raw, _ := iss.Issue("did:plc:holder1abcdefghij", "commitment-1")
+	raw, _ := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
 	cs, _ := raw["credentialSubject"].(map[string]any)
 	for _, prohibited := range []string{"nationalId", "legalName", "birthDate", "email"} {
 		if _, ok := cs[prohibited]; ok {
@@ -141,10 +141,10 @@ func TestIssuer_NoPIIInCredentialSubject(t *testing.T) {
 
 func TestIssuer_RefusesDuplicate(t *testing.T) {
 	iss := newTestIssuer(t)
-	if _, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-same"); err != nil {
+	if _, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-same"}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := iss.Issue("did:plc:holder2abcdefghij", "commitment-same")
+	_, err := iss.Issue("did:plc:holder2abcdefghij", []string{"commitment-same"})
 	if !errors.Is(err, vc.ErrDuplicateActiveCredential) {
 		t.Fatalf("expected ErrDuplicateActiveCredential, got %v", err)
 	}
@@ -152,10 +152,10 @@ func TestIssuer_RefusesDuplicate(t *testing.T) {
 
 func TestIssuer_DifferentCommitmentsAllowed(t *testing.T) {
 	iss := newTestIssuer(t)
-	if _, err := iss.Issue("did:plc:holder1abcdefghij", "commitment-a"); err != nil {
+	if _, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-a"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := iss.Issue("did:plc:holder2abcdefghij", "commitment-b"); err != nil {
+	if _, err := iss.Issue("did:plc:holder2abcdefghij", []string{"commitment-b"}); err != nil {
 		t.Fatalf("different commitments should be allowed: %v", err)
 	}
 }
@@ -201,7 +201,7 @@ func TestIssuer_IssueMobileMoicaRPCredential(t *testing.T) {
 	iss := newTestIssuer(t)
 	raw, err := iss.IssueMobileMoicaRP(
 		"did:plc:holder1abcdefghij",
-		"mobilemoica-commitment-1",
+		[]string{"mobilemoica-commitment-1"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -252,10 +252,10 @@ func TestIssuer_IssueMobileMoicaRPCredential(t *testing.T) {
 
 func TestIssuer_RefusesDuplicateMobileMoicaRPCommitment(t *testing.T) {
 	iss := newTestIssuer(t)
-	if _, err := iss.IssueMobileMoicaRP("did:plc:holder1abcdefghij", "mobilemoica-commitment-same"); err != nil {
+	if _, err := iss.IssueMobileMoicaRP("did:plc:holder1abcdefghij", []string{"mobilemoica-commitment-same"}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := iss.IssueMobileMoicaRP("did:plc:holder2abcdefghij", "mobilemoica-commitment-same")
+	_, err := iss.IssueMobileMoicaRP("did:plc:holder2abcdefghij", []string{"mobilemoica-commitment-same"})
 	if !errors.Is(err, vc.ErrDuplicateActiveCredential) {
 		t.Fatalf("expected ErrDuplicateActiveCredential, got %v", err)
 	}
@@ -295,7 +295,7 @@ func TestIssuer_IssueEmailCredential(t *testing.T) {
 
 func TestIssuer_RefusesDuplicateNationalIDBinding(t *testing.T) {
 	iss := newTestIssuer(t)
-	if _, err := iss.Issue("did:plc:holder1abcdefghij", "national-id-hash-abc123"); err != nil {
+	if _, err := iss.Issue("did:plc:holder1abcdefghij", []string{"national-id-hash-abc123"}); err != nil {
 		t.Fatal(err)
 	}
 	_, err := iss.IssuePassport(
@@ -339,7 +339,7 @@ func TestIssuer_FileStorePersistsActivePersonhoodBinding(t *testing.T) {
 	iss := newTestIssuerUsingStore(t, store)
 	if _, err := iss.IssueMobileMoicaRP(
 		"did:plc:holder1abcdefghij",
-		"tw-national-id-commitment-abc123",
+		[]string{"tw-national-id-commitment-abc123"},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -368,5 +368,74 @@ func TestIssuer_InvalidKeyHex(t *testing.T) {
 	}, vc.NewStore())
 	if err == nil {
 		t.Fatal("expected error for invalid key hex")
+	}
+}
+
+func TestIssuer_DualCheckMatchesPreviousPepperCommitment(t *testing.T) {
+	// Person enrolled under a legacy commitment value.
+	iss, _ := newTestIssuerWithStore(t)
+	if _, err := iss.Issue("did:plc:holder1abcdefghij", []string{"legacy-commitment"}); err != nil {
+		t.Fatalf("first issue: %v", err)
+	}
+
+	// A later issuance for the same person supplies both the new-pepper primary
+	// commitment (element 0, never seen) and the legacy commitment. The dual
+	// check across both must catch the duplicate.
+	_, err := iss.Issue("did:plc:holder2abcdefghij", []string{"new-primary-commitment", "legacy-commitment"})
+	if !errors.Is(err, vc.ErrDuplicateActiveCredential) {
+		t.Fatalf("expected duplicate via dual-check, got %v", err)
+	}
+}
+
+func TestIssuer_RevokeFreesCommitmentForReEnrolment(t *testing.T) {
+	iss, _ := newTestIssuerWithStore(t)
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
+	if err != nil {
+		t.Fatalf("issue: %v", err)
+	}
+	credID := raw["id"].(string)
+
+	// Duplicate is blocked while active.
+	if _, err := iss.Issue("did:plc:holder2abcdefghij", []string{"commitment-1"}); !errors.Is(err, vc.ErrDuplicateActiveCredential) {
+		t.Fatalf("expected duplicate while active, got %v", err)
+	}
+
+	// Status reflects active, then revoked.
+	if st, ok := iss.Status(credID); !ok || st != vc.StatusActive {
+		t.Fatalf("expected active status, got %v ok=%v", st, ok)
+	}
+	if err := iss.Revoke(credID); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	if st, ok := iss.Status(credID); !ok || st != vc.StatusRevoked {
+		t.Fatalf("expected revoked status, got %v ok=%v", st, ok)
+	}
+
+	// After revocation the same commitment may re-enrol.
+	if _, err := iss.Issue("did:plc:holder2abcdefghij", []string{"commitment-1"}); err != nil {
+		t.Fatalf("expected re-enrolment after revoke, got %v", err)
+	}
+}
+
+func TestIssuer_RevokeUnknownReturnsNotFound(t *testing.T) {
+	iss := newTestIssuer(t)
+	if err := iss.Revoke("https://issuer.elix.cool/vc/does-not-exist"); !errors.Is(err, vc.ErrCredentialNotFound) {
+		t.Fatalf("expected ErrCredentialNotFound, got %v", err)
+	}
+}
+
+func TestIssuer_CredentialStatusRoundTripsThroughProof(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
+	if err != nil {
+		t.Fatalf("issue: %v", err)
+	}
+	// credentialStatus is part of the signed payload; the proof must still
+	// verify with it present.
+	if _, ok := raw["credentialStatus"].(map[string]any); !ok {
+		t.Fatalf("issued credential missing credentialStatus: %v", raw)
+	}
+	if !iss.VerifyProof(raw) {
+		t.Fatal("proof did not round-trip with credentialStatus present")
 	}
 }

@@ -289,14 +289,19 @@ func TestMobileMoicaRPIssueRejectsDuplicateBinding(t *testing.T) {
 	h := newTestHandler(t)
 	configureMobileMoica(t, h, now, &fakeMobileMoicaBroker{})
 
-	issueCredential := func(holderDID string) *httptest.ResponseRecorder {
-		start := call(h, http.MethodPost, "/api/v1/vc/mobilemoica/start", map[string]any{
+	// start returns the raw start response so callers can assert the duplicate
+	// check (which runs at start, where the raw national ID is still available
+	// for the pepper-rotation dual-check).
+	start := func(holderDID string) *httptest.ResponseRecorder {
+		return call(h, http.MethodPost, "/api/v1/vc/mobilemoica/start", map[string]any{
 			"holder_did":        holderDID,
 			"national_id":       "Z123000000",
 			"consent_version":   "mobilemoica-rp-v1",
 			"consent_copy_hash": "sha256:copy-hash",
 		})
-		offerID := bodyJSON(t, start)["offer_id"].(string)
+	}
+	issueCredential := func(holderDID string, startResp *httptest.ResponseRecorder) *httptest.ResponseRecorder {
+		offerID := bodyJSON(t, startResp)["offer_id"].(string)
 		status := call(h, http.MethodGet, "/api/v1/vc/mobilemoica/status/"+offerID, nil)
 		if bodyJSON(t, status)["status"] != "verified" {
 			t.Fatalf("expected verified, got %s", status.Body)
@@ -307,13 +312,19 @@ func TestMobileMoicaRPIssueRejectsDuplicateBinding(t *testing.T) {
 		})
 	}
 
-	first := issueCredential(testDID)
+	firstStart := start(testDID)
+	if firstStart.Code != http.StatusOK {
+		t.Fatalf("expected first start 200, got %d %s", firstStart.Code, firstStart.Body)
+	}
+	first := issueCredential(testDID, firstStart)
 	if first.Code != http.StatusOK {
 		t.Fatalf("expected first issue 200, got %d %s", first.Code, first.Body)
 	}
-	second := issueCredential("did:plc:zzzzzzzzzzzzzzzz")
+
+	// The same person (national ID) starting again must be rejected at start.
+	second := start("did:plc:zzzzzzzzzzzzzzzz")
 	if second.Code != http.StatusConflict {
-		t.Fatalf("expected duplicate conflict, got %d %s", second.Code, second.Body)
+		t.Fatalf("expected duplicate conflict at start, got %d %s", second.Code, second.Body)
 	}
 	if bodyJSON(t, second)["error"] != "duplicate_active_credential" {
 		t.Fatalf("unexpected duplicate error: %s", second.Body)
@@ -428,6 +439,13 @@ func issueMobileMoicaForNationalID(t *testing.T, h *api.Handler, holderDID, nati
 		"consent_version":   "mobilemoica-rp-v1",
 		"consent_copy_hash": "sha256:copy-hash",
 	})
+	// The one-person-one-credential (and pepper-rotation) duplicate check runs
+	// at start, where the raw national ID is available. When the person is
+	// already bound, start surfaces the conflict directly — return it so the
+	// caller can assert on it.
+	if start.Code == http.StatusConflict {
+		return start
+	}
 	if start.Code != http.StatusOK {
 		t.Fatalf("expected MobileMoica start 200, got %d %s", start.Code, start.Body)
 	}

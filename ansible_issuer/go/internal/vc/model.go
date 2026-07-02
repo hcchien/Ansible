@@ -2,14 +2,24 @@ package vc
 
 // Credential is the W3C VC JSON structure issued by Tris-Aura.
 type Credential struct {
-	Context           []string          `json:"@context"`
-	ID                string            `json:"id"`
-	Type              []string          `json:"type"`
-	Issuer            string            `json:"issuer"`
-	ValidFrom         string            `json:"validFrom"`
-	ValidUntil        string            `json:"validUntil"`
-	CredentialSubject CredentialSubject `json:"credentialSubject"`
-	Proof             *Proof            `json:"proof,omitempty"`
+	Context           []string           `json:"@context"`
+	ID                string             `json:"id"`
+	Type              []string           `json:"type"`
+	Issuer            string             `json:"issuer"`
+	ValidFrom         string             `json:"validFrom"`
+	ValidUntil        string             `json:"validUntil"`
+	CredentialSubject CredentialSubject  `json:"credentialSubject"`
+	CredentialStatus  *CredentialStatus2 `json:"credentialStatus,omitempty"`
+	Proof             *Proof             `json:"proof,omitempty"`
+}
+
+// CredentialStatus2 is the W3C `credentialStatus` block. It points a verifier at
+// the issuer's status endpoint so a revoked credential can be detected after
+// issuance. It is part of the signed payload (covered by the eddsa-jcs-2022
+// proof), so tampering with the status URL invalidates the proof.
+type CredentialStatus2 struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
 }
 
 // CredentialSubject contains privacy-preserving attestation claims.
@@ -43,6 +53,16 @@ const (
 	StatusActive CredentialStatus = iota
 	StatusRevoked
 )
+
+// String returns the stable wire label for a credential status.
+func (s CredentialStatus) String() string {
+	switch s {
+	case StatusRevoked:
+		return "revoked"
+	default:
+		return "active"
+	}
+}
 
 // record is the issuer's internal entry for a credential.
 type record struct {

@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -16,6 +19,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/trisaura/ansible_issuer/internal/api"
+	"github.com/trisaura/ansible_issuer/internal/commitment"
 	"github.com/trisaura/ansible_issuer/internal/otp"
 	"github.com/trisaura/ansible_issuer/internal/pgstore"
 	"github.com/trisaura/ansible_issuer/internal/provider"
@@ -30,7 +34,32 @@ func main() {
 		TTLDays:    envInt("VC_TTL_DAYS", 90),
 	}
 	pepper := mustEnv("SUBJECT_COMMITMENT_PEPPER")
+	previousPeppers := splitCSV(os.Getenv("SUBJECT_COMMITMENT_PEPPER_PREVIOUS"))
 	mockMode := os.Getenv("MOCK_MODE") == "true"
+	if mockMode && isProdLikeEnvironment(cfg.IssuerURL) {
+		log.Fatal("MOCK_MODE=true refused: this looks like a production deployment " +
+			"(K_SERVICE set or a non-local HTTPS ISSUER_URL). Mock mode disables real " +
+			"identity verification — it issues credentials for any email and returns the " +
+			"OTP in the HTTP response. Unset MOCK_MODE.")
+	}
+
+	// Reject weak/known secrets at boot outside dev. A dev-sentinel pepper or a
+	// placeholder private key would silently make commitments/proofs forgeable,
+	// so fail closed rather than start. Skipped under MOCK_MODE (dev only).
+	if !mockMode {
+		if err := validateCommitmentPepper(pepper); err != nil {
+			log.Fatalf("SUBJECT_COMMITMENT_PEPPER rejected: %v", err)
+		}
+		for _, prev := range previousPeppers {
+			if err := validateCommitmentPepper(prev); err != nil {
+				log.Fatalf("SUBJECT_COMMITMENT_PEPPER_PREVIOUS entry rejected: %v", err)
+			}
+		}
+		if err := validateIssuerPrivateKeyHex(cfg.PrivKeyHex); err != nil {
+			log.Fatalf("ISSUER_PRIVATE_KEY_HEX rejected: %v", err)
+		}
+	}
+	peppers := commitment.NewSet(pepper, previousPeppers)
 	otpTTL := time.Duration(envInt("OTP_TTL_SECONDS", 300)) * time.Second
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -71,12 +100,36 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	handler := api.NewHandler(otp.NewStore(otpTTL), prov, issuer, pepper, mockMode)
+	handler := api.NewHandler(otp.NewStore(otpTTL), prov, issuer, peppers, mockMode)
 	configureTWProvider(handler, mockMode, pgPool)
 	configureMobileMoicaRP(handler, mockMode, pgPool)
+	// Passport issuance is intentionally left UNCONFIGURED: there is no real
+	// PassportBindingVerifier (a ZKP/NFC verifier) in this service yet, and we
+	// will not wire a fake one. handler.ConfigurePassport is therefore never
+	// called, so POST /api/v1/vc/passport/issue fails closed with 503
+	// passport_verifier_unconfigured (see handler.passportIssue). This is a
+	// deliberate scope limit, not an oversight — do not enable it until a
+	// genuine verifier exists.
+	log.Println("passport issuance disabled: no PassportBindingVerifier configured (fails closed 503)")
+	if adminToken := os.Getenv("ISSUER_ADMIN_TOKEN"); adminToken != "" {
+		handler.ConfigureAdmin(adminToken)
+		log.Println("credential revocation endpoint enabled (bearer-token guarded)")
+	} else {
+		log.Println("credential revocation endpoint disabled: set ISSUER_ADMIN_TOKEN to enable")
+	}
 	handler.Register(mux)
 
-	srv := &http.Server{Addr: ":" + port, Handler: mux}
+	// Bound every phase of a connection's lifetime so a slow or idle client
+	// cannot pin a connection (slowloris). ReadHeaderTimeout is the key
+	// slowloris guard; the rest cap total request/response and idle time.
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 
 	// On Cloud Run the platform sends SIGTERM before stopping the instance.
 	// Drain in-flight requests so an issuance whose durable store write is in
@@ -102,12 +155,117 @@ func main() {
 	<-idleClosed
 }
 
+// isProdLikeEnvironment reports whether the process appears to be running in a
+// managed/production deployment, in which case MOCK_MODE must be refused. Two
+// signals are used: Cloud Run injects K_SERVICE into every container, and a
+// production issuer is served from a non-local HTTPS ISSUER_URL. Staging on
+// Cloud Run uses the `contract` adapter (not mock mode), so K_SERVICE being set
+// is a sufficient guard there too.
+func isProdLikeEnvironment(issuerURL string) bool {
+	if os.Getenv("K_SERVICE") != "" {
+		return true
+	}
+	u, err := url.Parse(issuerURL)
+	if err != nil || u.Scheme != "https" {
+		return false
+	}
+	host := u.Hostname()
+	if host == "" || host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return false
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+			return false
+		}
+	}
+	return true
+}
+
 func mustEnv(key string) string {
 	v := os.Getenv(key)
 	if v == "" {
 		log.Fatalf("required env var %s is not set", key)
 	}
 	return v
+}
+
+// devSecretSentinels are substrings that mark a value as a development
+// placeholder that must never reach production.
+var devSecretSentinels = []string{
+	"dev-pepper-not-for-production",
+	"dev-",
+	"changeme",
+	"placeholder",
+	"example",
+	"test-pepper",
+}
+
+// minPepperBytes is the minimum accepted pepper length. HMAC-SHA256 keys shorter
+// than the block-relevant 32 bytes materially reduce brute-force cost, and a
+// short pepper is a strong sign of a hand-typed dev value.
+const minPepperBytes = 32
+
+// validateCommitmentPepper rejects a commitment pepper that is too short or
+// matches a known dev sentinel, since either makes subject commitments (and thus
+// the one-person-one-credential guarantee) forgeable.
+func validateCommitmentPepper(pepper string) error {
+	if len(pepper) < minPepperBytes {
+		return fmt.Errorf("pepper must be at least %d bytes, got %d", minPepperBytes, len(pepper))
+	}
+	lower := strings.ToLower(pepper)
+	for _, s := range devSecretSentinels {
+		if strings.Contains(lower, s) {
+			return fmt.Errorf("pepper contains dev sentinel %q", s)
+		}
+	}
+	return nil
+}
+
+// validateIssuerPrivateKeyHex rejects a signing key that is not a well-formed
+// 32-byte Ed25519 seed, or that is an obvious placeholder (all-zero, all-one, or
+// a repeated nibble), which would make issued proofs trivially forgeable.
+func validateIssuerPrivateKeyHex(keyHex string) error {
+	if len(keyHex) != 64 {
+		return fmt.Errorf("key must be 64 hex chars (32-byte Ed25519 seed), got %d chars", len(keyHex))
+	}
+	seed, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return fmt.Errorf("key is not valid hex: %w", err)
+	}
+	allZero, allOne := true, true
+	for _, b := range seed {
+		if b != 0x00 {
+			allZero = false
+		}
+		if b != 0xff {
+			allOne = false
+		}
+	}
+	if allZero {
+		return errors.New("key is all-zero placeholder")
+	}
+	if allOne {
+		return errors.New("key is all-ones placeholder")
+	}
+	// A key that is a single repeated hex nibble (e.g. "1111...", "abab...") is
+	// almost certainly a hand-typed placeholder, not real key material.
+	if isRepeatedNibble(keyHex) {
+		return errors.New("key is a repeated-nibble placeholder")
+	}
+	return nil
+}
+
+func isRepeatedNibble(keyHex string) bool {
+	if keyHex == "" {
+		return false
+	}
+	first := keyHex[0]
+	for i := 1; i < len(keyHex); i++ {
+		if keyHex[i] != first {
+			return false
+		}
+	}
+	return true
 }
 
 func envInt(key string, def int) int {
