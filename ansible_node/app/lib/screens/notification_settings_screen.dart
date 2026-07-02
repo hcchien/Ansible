@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/apns_push_token_provider.dart';
 import '../services/notification_preferences_controller.dart';
 import '../services/push_registration_service.dart';
 import '../theme/ansible_design.dart';
@@ -91,7 +92,12 @@ class _NotificationSettingsScreenState
       }
       final service =
           widget.pushServiceFactory?.call(node.url) ??
-          PushRegistrationService(baseUrl: node.url);
+          PushRegistrationService(
+            baseUrl: node.url,
+            // Native APNS on iOS; Android stays "not configured" until the
+            // FCM provider lands with the Android release work.
+            tokenProvider: ApnsPushTokenProvider(),
+          );
       try {
         if (enabled) {
           final categories = [

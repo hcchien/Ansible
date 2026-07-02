@@ -11,6 +11,10 @@
 	     must serve /.well-known/apple-app-site-association (relay + web frontend
 	     both do, gated on UNIVERSAL_LINK_IOS_APP_IDS). Requires the Associated
 	     Domains capability on the App ID (automatic signing adds it). -->
+	<!-- APNS wake pushes (notification system Phase B). Xcode/signing swaps
+	     this to "production" for App Store / TestFlight builds. -->
+	<key>aps-environment</key>
+	<string>development</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:relay-dev.elix.cool</string>

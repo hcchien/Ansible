@@ -4,6 +4,13 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  /// Pending Flutter results waiting for an APNS device token (see
+  /// registerPushTokenChannel). Completed by the register-success/-failure
+  /// callbacks below; APNS wakes are content-free (`{"hint":"sync"}`), so no
+  /// notification payload ever crosses this channel.
+  private var pendingPushTokenResults: [FlutterResult] = []
+  private var pushTokenChannel: FlutterMethodChannel?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -11,7 +18,74 @@ import UIKit
     GeneratedPluginRegistrant.register(with: self)
     registerBackupPolicyChannel()
     registerEmbeddingChannel()
+    registerPushTokenChannel()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // ── Push wake token (notification system, Phase B) ─────────────────────────
+  // Background wakes need only registerForRemoteNotifications() — no user
+  // alert permission — because the relay pushes `apns-push-type: background`
+  // with no visible content; the app composes local notifications itself.
+
+  private func registerPushTokenChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      return
+    }
+    let channel = FlutterMethodChannel(
+      name: "elix/push_token",
+      binaryMessenger: controller.binaryMessenger
+    )
+    pushTokenChannel = channel
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "requestToken" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      #if targetEnvironment(simulator)
+        // The simulator has no APNS; report "unavailable" instead of hanging.
+        result(nil)
+      #else
+        self?.pendingPushTokenResults.append(result)
+        UIApplication.shared.registerForRemoteNotifications()
+      #endif
+    }
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    super.application(
+      application,
+      didRegisterForRemoteNotificationsWithDeviceToken: deviceToken
+    )
+    let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
+    for result in pendingPushTokenResults { result(hex) }
+    pendingPushTokenResults.removeAll()
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    super.application(
+      application,
+      didFailToRegisterForRemoteNotificationsWithError: error
+    )
+    for result in pendingPushTokenResults { result(nil) }
+    pendingPushTokenResults.removeAll()
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    // Content-free wake: nudge the Dart side to run a bounded sync pass when
+    // the engine is alive (foreground/backgrounded). Cold-start background
+    // execution is deliberately out of scope here — opening the app syncs.
+    pushTokenChannel?.invokeMethod("wakeReceived", arguments: nil)
+    completionHandler(.newData)
   }
 
   private func registerEmbeddingChannel() {

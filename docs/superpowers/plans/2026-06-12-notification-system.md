@@ -165,10 +165,12 @@ Elixir/Phoenix (`mix test`) + platform push setup (APNS key, FCM project).
       only prompts/registers when the user enables push (never at first
       launch). Permission prompt + token **rotation** land with the platform
       plugin below.
-- [ ] (platform config) FCM/APNS plugin integration: a `PushTokenProvider`
-      backed by `firebase_messaging`/APNS with google-services.json / APNS
-      entitlement, and the background wake handler that runs a bounded sync
-      pass and posts **local** notifications from the Phase A table.
+- [x] APNS token provider (2026-07-03): `ApnsPushTokenProvider` over a native
+      `elix/push_token` channel (AppDelegate) — no Firebase dependency;
+      `aps-environment` entitlement + `remote-notification` background mode
+      added; wake handler seam is `onWake` (fires while the engine is alive).
+      Remaining: FCM provider for Android (with the Android release work) and
+      cold-start background execution.
 - [x] Platform config steps documented in `docs/getting-started-dev.md`
       (§ Push Notifications).
 - [x] Tests: token lifecycle (mockable signer/provider/client), settings

@@ -205,19 +205,28 @@ scheduler with content-free `{"hint":"sync"}` payloads; app token lifecycle
 credentials that are deliberately not in the repo:
 
 1. **Relay sender adapter.** The default `:push_sender` is
-   `AnsibleRelay.Push.LogSender` (logs instead of sending). Implement/enable
-   an APNS or FCM adapter and point `config :ansible_relay, :push_sender` at
-   it; credentials go in env (APNS team/key id + .p8, or an FCM service
-   account).
-2. **App token provider.** `PushRegistrationService` takes a
-   `PushTokenProvider`; the default `UnavailablePushTokenProvider` returns
-   null, which keeps the settings toggle visibly "not configured". Wire a
-   provider backed by the platform push plugin (e.g. `firebase_messaging`)
-   plus the matching platform config (google-services.json / APNS
-   entitlement) and pass it where the settings screen builds the service.
+   `AnsibleRelay.Push.LogSender` (logs instead of sending). The real
+   `AnsibleRelay.Push.PushSender` activates when its credentials exist in
+   env: APNS token auth (`APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY_P8`,
+   `APNS_TOPIC`, `APNS_ENVIRONMENT`) or FCM HTTP v1 (`FCM_PROJECT_ID` +
+   service account). **Only these env values are missing — config work, not
+   code.**
+2. **App token provider — iOS done.** The settings screen builds
+   `PushRegistrationService` with `ApnsPushTokenProvider`
+   (`lib/services/apns_push_token_provider.dart` ↔ the `elix/push_token`
+   channel in `ios/Runner/AppDelegate.swift`): native
+   `registerForRemoteNotifications()`, no Firebase dependency, no alert
+   permission needed for content-free wakes. Requires the `aps-environment`
+   entitlement + `remote-notification` background mode (both in-repo) and an
+   App ID with the Push capability. On Android the provider returns null
+   (toggle stays "not configured") — the FCM provider (`firebase_messaging`
+   + google-services.json) lands with the Android release work.
 3. The constitution constraint to preserve: payloads stay content-free; the
-   background wake handler syncs and composes notifications **on-device**
-   from the local notifications table.
+   wake handler (`ApnsPushTokenProvider.onWake`) syncs and composes
+   notifications **on-device** from the local notifications table.
+   Cold-start background execution (engine not running) is a known
+   follow-up; a wake while the app is alive nudges a sync, and opening the
+   app syncs regardless.
 
 ## Deeper Docs
 
