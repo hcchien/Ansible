@@ -241,6 +241,10 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
   end
 
   setup do
+    # The attestation store persists accepted VCs to PostgreSQL.
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(AnsibleRelay.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(AnsibleRelay.Repo, {:shared, self()})
+
     for mod <- [DidAccountCache, AnsibleRelay.AbuseDetector] do
       case mod.start_link([]) do
         {:ok, _} -> :ok
