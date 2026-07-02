@@ -1,7 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:ansible_store/src/entities/post.dart",
-    "package:ansible_store/src/repositories/post_repository.dart"
-  ]
-}
