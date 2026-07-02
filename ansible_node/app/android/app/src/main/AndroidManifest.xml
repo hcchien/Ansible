@@ -50,14 +50,22 @@
                     android:host="content"
                     android:pathPrefix="/boards" />
             </intent-filter>
-            <!-- TODO(universal links): to make plain https://<share-host>/boards/...
-                 links open the app directly (Android App Links), add an
-                 autoVerify intent-filter for android:scheme="https" with the
-                 production share host, and publish
-                 /.well-known/assetlinks.json on that host containing this app's
-                 package name + signing-cert SHA-256 fingerprint. The in-app
-                 routing already accepts https content links (ElixContentLink),
-                 so only the OS association files remain. -->
+            <!-- Android App Links (outbound sharing loop): plain
+                 https://<share-host>/boards/... opens the app directly once
+                 the host serves /.well-known/assetlinks.json (relay + web
+                 frontend both do, gated on APP_LINK_ANDROID_PACKAGE +
+                 APP_LINK_ANDROID_SHA256_CERTS). In-app routing is
+                 lib/main.dart via app_links + ElixContentLink. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="relay-dev.elix.cool" />
+                <data android:host="relay.elix.cool" />
+                <data android:host="forum.elix.cool" />
+                <data android:pathPrefix="/boards" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

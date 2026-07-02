@@ -19,8 +19,22 @@ defmodule AnsibleRelay.Web.Router do
     send_resp(conn, 204, "")
   end
 
+  # Liveness: cheap, no I/O — safe for a fast TCP/startup probe.
   get "/health" do
     send_json(conn, 200, %{status: "ok", relay: "ansible_relay", version: "0.1.0"})
+  end
+
+  # Readiness: cheap DB ping so a dead/exhausted pool reports unhealthy and the
+  # load balancer stops routing to this instance. Kept separate from /health so
+  # the liveness probe never fails on a transient DB blip.
+  get "/readyz" do
+    case db_ready?() do
+      :ok ->
+        send_json(conn, 200, %{status: "ready", relay: "ansible_relay"})
+
+      {:error, reason} ->
+        send_json(conn, 503, %{status: "unavailable", reason: reason})
+    end
   end
 
   # Phase 0 — Observability baseline (G17): Prometheus metrics scrape target.
@@ -48,6 +62,21 @@ defmodule AnsibleRelay.Web.Router do
   # ActivityPub discovery and relay-owned actor endpoints
   get "/.well-known/webfinger" do
     AnsibleRelay.Web.Controllers.ActivityPubController.webfinger(conn, conn.query_params)
+  end
+
+  # OS universal-link association files (outbound sharing loop). Fail-closed:
+  # 404 until the app identifiers are configured via environment variables.
+  get "/.well-known/apple-app-site-association" do
+    AnsibleRelay.Web.Controllers.AppAssociationController.apple(conn, %{})
+  end
+
+  # Apple also probes the pre-iOS-9.3 root path; serve the same document.
+  get "/apple-app-site-association" do
+    AnsibleRelay.Web.Controllers.AppAssociationController.apple(conn, %{})
+  end
+
+  get "/.well-known/assetlinks.json" do
+    AnsibleRelay.Web.Controllers.AppAssociationController.android(conn, %{})
   end
 
   get "/users/:actor" do
@@ -129,6 +158,11 @@ defmodule AnsibleRelay.Web.Router do
 
   get "/api/v1/discover/boards" do
     AnsibleRelay.Web.Controllers.ForumHostController.discover_boards(conn, conn.query_params)
+  end
+
+  # Public thread metadata for shared-link previews (outbound sharing loop).
+  get "/api/v1/forum-host/threads/:thread_id/preview" do
+    AnsibleRelay.Web.Controllers.ForumHostController.thread_preview(conn, thread_id)
   end
 
   get "/api/v1/forum-host/announcements" do
@@ -281,6 +315,19 @@ defmodule AnsibleRelay.Web.Router do
 
   match _ do
     send_json(conn, 404, %{error: "not_found"})
+  end
+
+  # Cheap round-trip to Postgres. A short timeout means a stuck pool reports
+  # unhealthy quickly rather than hanging the readiness probe.
+  defp db_ready? do
+    case AnsibleRelay.Repo.query("SELECT 1", [], timeout: 2_000) do
+      {:ok, _} -> :ok
+      {:error, _} -> {:error, "database_unavailable"}
+    end
+  rescue
+    _ -> {:error, "database_unavailable"}
+  catch
+    :exit, _ -> {:error, "database_unavailable"}
   end
 
   defp send_json(conn, status, body) do

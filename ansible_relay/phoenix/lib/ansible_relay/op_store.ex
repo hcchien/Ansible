@@ -57,16 +57,79 @@ defmodule AnsibleRelay.OpStore do
     end
   end
 
-  @doc "List ops after a given log_id cursor (indexed primary-key range scan)."
+  @doc """
+  List ops after a given log_id cursor (indexed primary-key range scan).
+
+  ## Sequence-gap safety
+
+  `id` is a bigserial: a transaction reserves its id when it inserts, but
+  commits independently. So a delta read can observe a committed `id = N` while
+  a concurrent transaction that reserved `id = N - 1` earlier is still
+  uncommitted. A naive `WHERE id > cursor` would serve `N`, advance the
+  consumer's cursor past `N`, and permanently skip `N - 1` once it commits.
+
+  To close that gap we hold back any row at or above the first *not-yet-settled*
+  id. A row is "settled" once its inserting transaction id (`xmin`) is strictly
+  below the current snapshot's xmin — at that point every transaction with a
+  lower xid has committed or aborted, so no lower-id row can still appear. The
+  watermark is the lowest id whose `xmin` is still at/above the snapshot xmin;
+  we only serve `id < watermark`, which is monotonic and never skips a gap.
+  """
   def list(after_log_id: cursor, limit: limit) do
-    Repo.all(
-      from(o in Op,
-        where: o.id > ^cursor,
-        order_by: [asc: o.id],
-        limit: ^limit
-      )
-    )
+    query =
+      if settle_guard_enabled?() do
+        from(o in Op,
+          where: o.id > ^cursor and o.id < subquery(settle_watermark()),
+          order_by: [asc: o.id],
+          limit: ^limit
+        )
+      else
+        # The settle guard relies on transaction xids to detect uncommitted
+        # lower-id rows. The Ecto SQL sandbox wraps each statement in a
+        # savepoint (subtransaction), giving inserted rows a subtransaction
+        # xmin distinct from the top-level xid, so the guard would hide a
+        # test's own just-inserted rows. Sandboxed tests set
+        # :op_store_settle_guard to false; the raw-connection gap test exercises
+        # the real guarded SQL instead. Never disable this outside tests.
+        from(o in Op,
+          where: o.id > ^cursor,
+          order_by: [asc: o.id],
+          limit: ^limit
+        )
+      end
+
+    query
+    |> Repo.all()
     |> Enum.map(&to_op_map/1)
+  end
+
+  defp settle_guard_enabled? do
+    Application.get_env(:ansible_relay, :op_store_settle_guard, true)
+  end
+
+  # Lowest id that is not yet guaranteed settled. Any row with an id below this
+  # is committed and can never be preceded by a still-pending lower id. When no
+  # unsettled rows exist the watermark is max(id) + 1 so the whole log is
+  # servable. `xmin::text::xid8` widens the 32-bit row xid for comparison
+  # against pg_snapshot_xmin (an xid8); acceptable for a short settle horizon.
+  #
+  # A row is "unsettled" when its inserting transaction id (xmin) is at/above the
+  # current snapshot's xmin — i.e. that transaction may still be in flight, so a
+  # lower id could still appear. Holding back everything at/above the lowest such
+  # id makes the served window monotonic and gap-free.
+  defp settle_watermark do
+    from(o in Op,
+      select:
+        coalesce(
+          min(o.id),
+          fragment("(SELECT COALESCE(MAX(id), 0) + 1 FROM ops)")
+        ),
+      where:
+        fragment(
+          "?::text::xid8 >= pg_snapshot_xmin(pg_current_snapshot())",
+          fragment("xmin")
+        )
+    )
   end
 
   @doc "Check if an op_id has already been processed (indexed unique lookup)."
@@ -91,6 +154,54 @@ defmodule AnsibleRelay.OpStore do
         select: o.author_did
       )
     )
+  end
+
+  @doc """
+  The create (`insert`) op for an entity as a served op map, or nil.
+
+  Used by the thread-preview endpoint to read a thread's title/author without
+  a delta scan.
+  """
+  def create_op(entity_type, entity_id) do
+    from(o in Op,
+      where:
+        o.entity_type == ^entity_type and o.entity_id == ^entity_id and
+          o.op_type == "insert",
+      order_by: [asc: o.id],
+      limit: 1
+    )
+    |> Repo.one()
+    |> case do
+      nil -> nil
+      row -> to_op_map(row)
+    end
+  end
+
+  @doc """
+  Reply stats for a thread: `{count, first_reply_op_map | nil}` over post
+  insert ops whose payload `threadId` is the given thread. The payload column
+  is text, so the filter casts through jsonb (invalid-JSON rows are impossible
+  past ingest validation).
+  """
+  def thread_reply_stats(thread_id) do
+    base =
+      from(o in Op,
+        where:
+          o.entity_type == "post" and o.op_type == "insert" and
+            fragment("(?::jsonb ->> 'threadId') = ?", o.payload, ^thread_id)
+      )
+
+    count = Repo.aggregate(base, :count)
+
+    first =
+      from(o in base, order_by: [asc: o.id], limit: 1)
+      |> Repo.one()
+      |> case do
+        nil -> nil
+        row -> to_op_map(row)
+      end
+
+    {count, first}
   end
 
   # --- GenServer (vestigial: supervision compatibility only) ---

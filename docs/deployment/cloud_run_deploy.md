@@ -193,6 +193,25 @@ gcloud run deploy ansible-relay \
 `WEB_ALLOWED_ORIGINS` must list the real frontend origin(s) — the default is
 localhost and would block the deployed frontend.
 
+### 6b. Universal links (optional, fail-closed)
+
+Share URLs point at the host in `canonical_board_uri` (this relay, via
+`FORUM_HOST_BASE_URL`). For the OS to open `https://<host>/boards/...` links
+directly in the app, add these env vars to the relay deploy above (the web
+frontend honours the same variables); each association file 404s until its
+variables are set:
+
+```bash
+# iOS: TEAMID.bundleId, comma-separated.
+UNIVERSAL_LINK_IOS_APP_IDS="T68YYD5V2Y.com.example.ansibleNode"
+# Android: applicationId + signing-cert SHA-256 fingerprint(s).
+APP_LINK_ANDROID_PACKAGE="io.trisaura.ansible_node"
+APP_LINK_ANDROID_SHA256_CERTS="<keytool -list -v ... | grep SHA256>"
+```
+
+Verify: `curl https://${RELAY_HOST}/.well-known/apple-app-site-association`
+and `curl https://${RELAY_HOST}/.well-known/assetlinks.json`.
+
 ### 6a. Run migrations (Cloud Run Job)
 
 The release image has no `mix`; migrations run through `AnsibleRelay.Release`

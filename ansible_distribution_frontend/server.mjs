@@ -16,6 +16,13 @@ import {
 const DEFAULT_PORT = 5173;
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_RELAY_BASE_URL = 'http://localhost:4001';
+
+// Proxy safety limits (finding: unbounded body + no upstream timeout).
+// A single client can otherwise stream an unbounded body through the proxy or
+// hold a browser request open forever behind a hung relay. Override via env for
+// deployments that legitimately need larger uploads / slower upstreams.
+const MAX_PROXY_BODY_BYTES = Number(process.env.MAX_PROXY_BODY_BYTES ?? 10 * 1024 * 1024); // 10 MiB
+const PROXY_UPSTREAM_TIMEOUT_MS = Number(process.env.PROXY_UPSTREAM_TIMEOUT_MS ?? 30_000);
 // The AppView is a separate read service. External/federated content is fetched
 // only from it (GET /api/v1/boards/:id/external), so it gets its own upstream.
 // Defaults to the relay base URL so single-process dev works out of the box.
@@ -111,6 +118,12 @@ const SECURITY_HEADERS = Object.freeze({
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
   'referrer-policy': 'strict-origin-when-cross-origin',
+  // Force HTTPS for a year including subdomains. Safe to send unconditionally:
+  // browsers ignore HSTS on plain-HTTP responses, so local http dev is unaffected
+  // while production (served over TLS) gets strict transport security + preload.
+  'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+  // Deny access to powerful browser features this SPA never uses.
+  'permissions-policy': 'geolocation=(), camera=(), microphone=(), payment=(), usb=()',
   // CSP: same-origin scripts only; no inline scripts; no plugins; no framing.
   // The frontend is a plain ES-module SPA with no inline event handlers or
   // eval usage, so this policy is safe to enforce without nonces.
@@ -143,6 +156,7 @@ export function createFrontendServer({
   rootDir = SERVER_ROOT,
   relayBaseUrl = process.env.RELAY_BASE_URL ?? DEFAULT_RELAY_BASE_URL,
   appViewBaseUrl = DEFAULT_APPVIEW_BASE_URL,
+  appAssociations = appAssociationsFromEnv(),
   logger = console,
 } = {}) {
   const resolvedRoot = resolve(rootDir);
@@ -154,12 +168,31 @@ export function createFrontendServer({
       rootDir: resolvedRoot,
       relayBaseUrl: resolvedRelayBaseUrl,
       appViewBaseUrl: resolvedAppViewBaseUrl,
+      appAssociations,
       logger,
     }).catch((error) => {
       logger?.error?.(error);
       sendJson(response, 500, { error: 'frontend_server_error' });
     });
   });
+}
+
+// OS universal-link association config (outbound sharing loop). Same variable
+// names as the relay so one deployment env configures both services; each file
+// 404s until its identifiers are set (fail-closed — never publish a bogus
+// association for an unconfigured host).
+function appAssociationsFromEnv() {
+  const csv = (value) =>
+    String(value ?? '')
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+  return {
+    iosAppIds: csv(process.env.UNIVERSAL_LINK_IOS_APP_IDS),
+    androidPackage: (process.env.APP_LINK_ANDROID_PACKAGE ?? '').trim(),
+    androidSha256Certs: csv(process.env.APP_LINK_ANDROID_SHA256_CERTS),
+  };
 }
 
 export function startFrontendServer({
@@ -210,6 +243,53 @@ async function handleRequest(request, response, context) {
     return;
   }
 
+  // OS universal-link association files. Served before the asset path so the
+  // SPA fallback can never shadow them; JSON content-type per both specs.
+  if (
+    ['/.well-known/apple-app-site-association', '/apple-app-site-association'].includes(
+      url.pathname,
+    )
+  ) {
+    metrics.inc('frontend_requests_total', 'association');
+    const appIds = context.appAssociations?.iosAppIds ?? [];
+    if (appIds.length === 0) {
+      sendJson(response, 404, { error: 'universal_links_not_configured' });
+      return;
+    }
+    sendJson(response, 200, {
+      applinks: {
+        details: [
+          {
+            appIDs: appIds,
+            components: [{ '/': '/boards/*' }],
+            paths: ['/boards/*'],
+          },
+        ],
+      },
+    });
+    return;
+  }
+
+  if (url.pathname === '/.well-known/assetlinks.json') {
+    metrics.inc('frontend_requests_total', 'association');
+    const { androidPackage = '', androidSha256Certs = [] } = context.appAssociations ?? {};
+    if (!androidPackage || androidSha256Certs.length === 0) {
+      sendJson(response, 404, { error: 'app_links_not_configured' });
+      return;
+    }
+    sendJson(response, 200, [
+      {
+        relation: ['delegate_permission/common.handle_all_urls'],
+        target: {
+          namespace: 'android_app',
+          package_name: androidPackage,
+          sha256_cert_fingerprints: androidSha256Certs,
+        },
+      },
+    ]);
+    return;
+  }
+
   if (url.pathname.startsWith('/api/')) {
     metrics.inc('frontend_requests_total', 'proxy');
     // Curated external content lives on the AppView, a separate read service;
@@ -251,8 +331,13 @@ async function serveSharePage(request, response, sharePath, context) {
   }
 
   const origin = resolveOrigin(request);
-  const boards = await fetchPublicBoards(relayBaseUrl);
-  const metadata = buildPageMetadata(sharePath, { boards, origin });
+  const [boards, threadPreview] = await Promise.all([
+    fetchPublicBoards(relayBaseUrl),
+    sharePath.kind === 'thread'
+      ? fetchThreadPreview(relayBaseUrl, sharePath.threadId)
+      : Promise.resolve(null),
+  ]);
+  const metadata = buildPageMetadata(sharePath, { boards, origin, threadPreview });
   const headTags = renderMetaTags(metadata);
   const document = injectMetaTags(html, headTags);
   const body = Buffer.from(document, 'utf8');
@@ -329,6 +414,65 @@ function fetchPublicBoards(relayBaseUrl) {
   });
 }
 
+// Fetches the relay's per-thread preview (title + first-reply excerpt) for a
+// shared thread link. Same degrade-to-null discipline as fetchPublicBoards:
+// any failure (404 removed/unknown thread, timeout, bad JSON) yields null and
+// the OG injector falls back to board-level metadata.
+function fetchThreadPreview(relayBaseUrl, threadId) {
+  return new Promise((resolvePromise) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolvePromise(value);
+    };
+
+    let relayUrl;
+    try {
+      relayUrl = new URL(
+        `/api/v1/forum-host/threads/${encodeURIComponent(threadId)}/preview`,
+        `${trimTrailingSlash(relayBaseUrl)}/`,
+      );
+    } catch {
+      finish(null);
+      return;
+    }
+
+    const requestFn = relayUrl.protocol === 'https:' ? httpsRequest : httpRequest;
+    const relayRequest = requestFn(
+      relayUrl,
+      { method: 'GET', headers: { accept: 'application/json' } },
+      (relayResponse) => {
+        if ((relayResponse.statusCode ?? 500) >= 400) {
+          relayResponse.resume();
+          finish(null);
+          return;
+        }
+        let raw = '';
+        relayResponse.setEncoding('utf8');
+        relayResponse.on('data', (chunk) => {
+          raw += chunk;
+        });
+        relayResponse.on('end', () => {
+          try {
+            const payload = JSON.parse(raw);
+            finish(payload && typeof payload === 'object' ? payload : null);
+          } catch {
+            finish(null);
+          }
+        });
+      },
+    );
+
+    relayRequest.on('error', () => finish(null));
+    relayRequest.setTimeout(2000, () => {
+      relayRequest.destroy();
+      finish(null);
+    });
+    relayRequest.end();
+  });
+}
+
 async function serveFrontendAsset(request, response, url, { rootDir }) {
   if (!['GET', 'HEAD'].includes(request.method ?? 'GET')) {
     response.writeHead(405, { ...SECURITY_HEADERS, allow: 'GET, HEAD' });
@@ -400,7 +544,25 @@ function proxyRelayRequest(clientRequest, clientResponse, url, { relayBaseUrl })
     const headers = filterProxyHeaders(clientRequest.headers);
     headers.host = relayUrl.host;
 
+    // Reject oversized bodies up front when the client advertises a length,
+    // before opening an upstream connection at all.
+    const declaredLength = Number(clientRequest.headers['content-length']);
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_PROXY_BODY_BYTES) {
+      sendJson(clientResponse, 413, { error: 'payload_too_large' });
+      // Drain and discard so the socket can be reused / closed cleanly.
+      clientRequest.resume();
+      resolvePromise();
+      return;
+    }
+
     metrics.inc('frontend_upstream_requests_total');
+
+    let settled = false;
+    const finishOnce = () => {
+      if (settled) return;
+      settled = true;
+      resolvePromise();
+    };
 
     const relayRequest = requestFn(
       relayUrl,
@@ -420,14 +582,46 @@ function proxyRelayRequest(clientRequest, clientResponse, url, { relayBaseUrl })
         };
         clientResponse.writeHead(status, proxiedHeaders);
         relayResponse.pipe(clientResponse);
-        relayResponse.on('end', resolvePromise);
+        relayResponse.on('end', finishOnce);
       },
     );
 
-    relayRequest.on('error', () => {
+    // Cap how long we wait on a hung/slow relay so the browser request can't be
+    // held open forever. Applies to connect + response latency on this socket.
+    relayRequest.setTimeout(PROXY_UPSTREAM_TIMEOUT_MS, () => {
+      metrics.inc('frontend_upstream_errors_total', 'timeout');
+      relayRequest.destroy(new Error('upstream_timeout'));
+    });
+
+    relayRequest.on('error', (error) => {
       metrics.inc('frontend_upstream_errors_total', 'transport');
-      sendJson(clientResponse, 502, { error: 'relay_unavailable' });
-      resolvePromise();
+      // Headers may already be sent if the relay started responding; only write
+      // a synthetic error status when nothing has been flushed yet.
+      if (!clientResponse.headersSent) {
+        const isTimeout = error?.message === 'upstream_timeout';
+        sendJson(clientResponse, isTimeout ? 504 : 502, {
+          error: isTimeout ? 'relay_timeout' : 'relay_unavailable',
+        });
+      } else {
+        clientResponse.destroy();
+      }
+      finishOnce();
+    });
+
+    // Enforce the body cap even when the client lies about (or omits)
+    // content-length: count streamed bytes and abort if the ceiling is crossed.
+    let streamedBytes = 0;
+    clientRequest.on('data', (chunk) => {
+      streamedBytes += chunk.length;
+      if (streamedBytes > MAX_PROXY_BODY_BYTES) {
+        metrics.inc('frontend_upstream_errors_total', 'body_too_large');
+        clientRequest.unpipe(relayRequest);
+        relayRequest.destroy(new Error('payload_too_large'));
+        if (!clientResponse.headersSent) {
+          sendJson(clientResponse, 413, { error: 'payload_too_large' });
+        }
+        finishOnce();
+      }
     });
 
     clientRequest.pipe(relayRequest);

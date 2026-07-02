@@ -101,6 +101,39 @@ assert.match(
 );
 console.log('ok - thread metadata is article-typed with a thread-scoped canonical URL');
 
+// With a relay thread preview, the thread title leads and the first-reply
+// excerpt becomes the description; without one, board context remains.
+const previewedThreadMeta = buildPageMetadata(
+  { kind: 'thread', boardId: 'general', threadId: 'thread-9' },
+  {
+    boards,
+    origin: 'https://elix.example',
+    threadPreview: {
+      title: '我們在重建什麼樣的網路？',
+      excerpt: '便利往往是監控偽裝成的禮物。',
+      reply_count: 2,
+    },
+  },
+);
+assert.match(previewedThreadMeta.title, /^我們在重建什麼樣的網路？ · /);
+assert.equal(previewedThreadMeta.description, '便利往往是監控偽裝成的禮物。');
+assert.equal(previewedThreadMeta.type, 'article');
+console.log('ok - thread preview supplies thread title + excerpt');
+
+// A preview without an excerpt still upgrades the title but keeps the board
+// description fallback.
+const titleOnlyPreviewMeta = buildPageMetadata(
+  { kind: 'thread', boardId: 'general', threadId: 'thread-9' },
+  {
+    boards,
+    origin: 'https://elix.example',
+    threadPreview: { title: 'Title only', excerpt: null },
+  },
+);
+assert.match(titleOnlyPreviewMeta.title, /^Title only · /);
+assert.equal(titleOnlyPreviewMeta.description, threadMeta.description);
+console.log('ok - preview without excerpt falls back to board description');
+
 // No og:image is fabricated when none is configured.
 assert.ok(!boardTags.includes('og:image'), 'og:image omitted without a configured image');
 console.log('ok - omits og:image when no image is configured');

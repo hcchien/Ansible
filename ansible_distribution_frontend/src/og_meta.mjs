@@ -122,10 +122,14 @@ function normalizeOrigin(value) {
 
 // Builds the page metadata (title/description/type/canonicalUrl) for a share
 // page from the descriptor + the boards already known to the relay. Thread
-// pages reuse the board title/description as the excerpt source — the relay has
-// no per-thread content endpoint yet, so the board is the best available
-// context (see TODO below). `boards` is the normalized board list, or [].
-export function buildPageMetadata(descriptor, { boards = [], origin = null } = {}) {
+// pages prefer the relay's per-thread preview (title + first-reply excerpt,
+// GET /api/v1/forum-host/threads/:id/preview) and degrade to the board
+// title/description when the preview is unavailable. `boards` is the
+// normalized board list, or []; `threadPreview` is the preview payload or null.
+export function buildPageMetadata(
+  descriptor,
+  { boards = [], origin = null, threadPreview = null } = {},
+) {
   const board = findBoard(boards, descriptor.boardId);
 
   if (descriptor.kind === 'board') {
@@ -138,14 +142,16 @@ export function buildPageMetadata(descriptor, { boards = [], origin = null } = {
     };
   }
 
-  // Thread page. TODO(relay thread endpoint): once the relay exposes per-thread
-  // title/excerpt, fetch and use it here for a thread-specific preview. Until
-  // then the board provides the title/description context, with the thread id
-  // making the canonical URL unique.
+  // Thread page: thread title from the preview when available, board context
+  // otherwise; description prefers the first-reply excerpt.
   const boardTitle = (board?.title || descriptor.boardId).trim() || descriptor.boardId;
+  const threadTitle = String(threadPreview?.title ?? '').trim();
+  const excerpt = buildDescription(threadPreview?.excerpt);
+
   return {
-    title: `${boardTitle} · ${SITE_NAME}`,
-    description: buildDescription(board?.description) || defaultBoardDescription(boardTitle),
+    title: threadTitle ? `${threadTitle} · ${boardTitle} · ${SITE_NAME}` : `${boardTitle} · ${SITE_NAME}`,
+    description:
+      excerpt || buildDescription(board?.description) || defaultBoardDescription(boardTitle),
     type: 'article',
     canonicalUrl: absoluteUrl(
       origin,

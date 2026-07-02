@@ -26,6 +26,71 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     send_json(conn, 200, %{boards: Store.list_boards_created_by(did)})
   end
 
+  # GET /api/v1/forum-host/threads/:thread_id/preview — public metadata for a
+  # shared thread link (outbound sharing loop): the web frontend's OG injector
+  # uses it to render a thread-specific preview instead of falling back to the
+  # board description. Removal tombstones win: a removed thread 404s with its
+  # public reason code rather than leaking the stripped payload.
+  def thread_preview(conn, thread_id) do
+    case AnsibleRelay.OpStore.create_op("thread", thread_id) do
+      nil ->
+        send_json(conn, 404, %{error: "thread_not_found"})
+
+      op ->
+        case Moderation.overlay_ops([op]) do
+          [%{removed: true, reason_code: reason}] ->
+            send_json(conn, 404, %{error: "thread_removed", reason_code: reason})
+
+          [visible] ->
+            send_json(conn, 200, thread_preview_body(thread_id, visible))
+        end
+    end
+  end
+
+  defp thread_preview_body(thread_id, op) do
+    payload = decode_op_payload(op.payload)
+    {reply_count, first_reply} = AnsibleRelay.OpStore.thread_reply_stats(thread_id)
+
+    excerpt =
+      case first_reply && decode_op_payload(first_reply.payload) do
+        %{"content" => content} when is_binary(content) -> truncate_excerpt(content)
+        _ -> nil
+      end
+
+    %{
+      thread_id: thread_id,
+      board_id: payload["boardId"],
+      title: payload["title"],
+      author_did: op.author_did,
+      author_handle: author_handle(op.author_did),
+      created_at: payload["createdAt"] || op.received_at,
+      reply_count: reply_count,
+      excerpt: excerpt,
+      locked: Map.get(op, :locked, false)
+    }
+  end
+
+  defp decode_op_payload(payload) when is_binary(payload) do
+    case Jason.decode(payload) do
+      {:ok, map} when is_map(map) -> map
+      _ -> %{}
+    end
+  end
+
+  defp decode_op_payload(_payload), do: %{}
+
+  defp truncate_excerpt(content) do
+    trimmed = String.trim(content)
+    if String.length(trimmed) > 200, do: String.slice(trimmed, 0, 200) <> "…", else: trimmed
+  end
+
+  defp author_handle(did) do
+    case AnsibleRelay.DidAccountCache.get(did) do
+      {:ok, %{handle: handle}} when is_binary(handle) and handle != "" -> handle
+      _ -> nil
+    end
+  end
+
   # GET /api/v1/discover/boards?q=&limit=  (empty q -> browse all)
   def discover_boards(conn, params) do
     q = params["q"] || ""
