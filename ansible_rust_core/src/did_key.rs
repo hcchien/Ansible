@@ -22,7 +22,10 @@ pub fn generate_keypair() -> KeyPairBytes {
 
     let public_bytes = verifying_key.to_bytes();
     let public_key_hex = hex::encode(public_bytes);
-    let did = encode_did_key(public_key_hex.clone());
+    // The public key is freshly generated and always 32 valid hex bytes, so
+    // encode_did_key cannot fail here; expect() documents that invariant.
+    let did = encode_did_key(public_key_hex.clone())
+        .expect("freshly generated public key must encode as did:key");
 
     KeyPairBytes { private_key_hex, public_key_hex, did }
 }
@@ -31,17 +34,26 @@ pub fn generate_keypair() -> KeyPairBytes {
 ///
 /// Spec: https://w3c-ccg.github.io/did-method-key/
 /// Encoding: multibase base58btc of (0xed 0x01 || 32-byte pubkey), prefixed with 'z'
-pub fn encode_did_key(public_key_hex: String) -> String {
+///
+/// Returns `Err` (rather than panicking) when `public_key_hex` is not valid hex
+/// or does not decode to exactly 32 bytes. This function is reachable from FFI,
+/// so it must never panic across the boundary.
+pub fn encode_did_key(public_key_hex: String) -> Result<String, String> {
     let bytes = hex::decode(&public_key_hex)
-        .expect("public_key_hex must be valid hex");
-    assert_eq!(bytes.len(), 32, "Ed25519 public key must be 32 bytes");
+        .map_err(|e| format!("public_key_hex must be valid hex: {}", e))?;
+    if bytes.len() != 32 {
+        return Err(format!(
+            "Ed25519 public key must be 32 bytes, got {}",
+            bytes.len()
+        ));
+    }
 
     // Multicodec prefix for Ed25519 public key: 0xed 0x01
     let mut prefixed = vec![0xed_u8, 0x01_u8];
     prefixed.extend_from_slice(&bytes);
 
     let encoded = bs58::encode(&prefixed).into_string();
-    format!("did:key:z{}", encoded)
+    Ok(format!("did:key:z{}", encoded))
 }
 
 /// Extract the hex-encoded public key from a did:key string.
@@ -59,4 +71,30 @@ pub fn decode_did_key(did: String) -> Result<String, String> {
     }
 
     Ok(hex::encode(&decoded[2..]))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_did_key_roundtrips_valid_key() {
+        let pub_hex = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29";
+        let did = encode_did_key(pub_hex.to_string()).expect("valid key encodes");
+        assert!(did.starts_with("did:key:z"));
+        assert_eq!(decode_did_key(did).unwrap(), pub_hex);
+    }
+
+    #[test]
+    fn encode_did_key_bad_hex_returns_err_not_panic() {
+        let err = encode_did_key("zzzz".to_string()).unwrap_err();
+        assert!(err.contains("valid hex"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn encode_did_key_wrong_length_returns_err_not_panic() {
+        // 2 bytes of valid hex, not 32.
+        let err = encode_did_key("dead".to_string()).unwrap_err();
+        assert!(err.contains("32 bytes"), "unexpected error: {err}");
+    }
 }

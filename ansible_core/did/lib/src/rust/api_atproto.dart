@@ -9,6 +9,7 @@ import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Encode a Lexicon record to DAG-CBOR bytes.
+/// Returns Err on serialization failure rather than panicking.
 Future<Uint8List> apiCborEncodeRecord({required LexiconRecord record}) =>
     RustLib.instance.api.crateApiAtprotoApiCborEncodeRecord(record: record);
 
@@ -26,6 +27,7 @@ Future<String> apiSignCommit({
 );
 
 /// Create a did:plc genesis op from an Ed25519 public key hex.
+/// Returns Err on invalid key hex or serialization failure rather than panicking.
 PlcGenesisOp apiCreateDidPlc({
   required String signingKeyHex,
   required String handle,

@@ -6,6 +6,8 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `lock_docs`
+
 /// Create or reset a Yrs document for [entityId].
 void apiCrdtInitDoc({required String entityId}) =>
     RustLib.instance.api.crateApiCrdtApiCrdtInitDoc(entityId: entityId);

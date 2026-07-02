@@ -19,8 +19,9 @@ pub fn api_generate_keypair() -> KeyPairBytes {
 }
 
 /// Encode a hex-encoded Ed25519 public key as a did:key string.
+/// Returns Err on invalid hex or wrong key length rather than panicking.
 #[frb(sync)]
-pub fn api_encode_did_key(public_key_hex: String) -> String {
+pub fn api_encode_did_key(public_key_hex: String) -> Result<String, String> {
     encode_did_key(public_key_hex)
 }
 

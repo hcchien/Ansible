@@ -12,7 +12,10 @@ pub struct LexiconRecord {
 }
 
 /// Encode a LexiconRecord as DAG-CBOR bytes (deterministic, sorted keys).
-pub fn cbor_encode_record(rec: &LexiconRecord) -> Vec<u8> {
+///
+/// Returns `Err` instead of panicking if CBOR serialization fails; this is
+/// reachable from FFI and must never panic across the boundary.
+pub fn cbor_encode_record(rec: &LexiconRecord) -> Result<Vec<u8>, String> {
     let mut map: BTreeMap<&str, ciborium::Value> = BTreeMap::new();
     map.insert("$type", ciborium::Value::Text(rec.type_.clone()));
     map.insert("createdAt", ciborium::Value::Text(rec.created_at.clone()));
@@ -28,8 +31,9 @@ pub fn cbor_encode_record(rec: &LexiconRecord) -> Vec<u8> {
 
     let value = ciborium::Value::Map(cbor_map);
     let mut out = Vec::new();
-    ciborium::ser::into_writer(&value, &mut out).expect("CBOR serialization failed");
-    out
+    ciborium::ser::into_writer(&value, &mut out)
+        .map_err(|e| format!("CBOR serialization failed: {}", e))?;
+    Ok(out)
 }
 
 /// Sign CBOR bytes with an Ed25519 private key.
@@ -58,4 +62,21 @@ pub fn sign_record_commit(cbor_bytes: &[u8], private_key_hex: &str) -> Result<St
     let signature = signing_key.sign(cbor_bytes);
 
     Ok(hex::encode(signature.to_bytes()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cbor_encode_record_is_ok_and_nonempty() {
+        let rec = LexiconRecord {
+            type_: "app.bsky.feed.post".to_string(),
+            text: "hello".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            reply_to: None,
+        };
+        let bytes = cbor_encode_record(&rec).expect("encodes without panic");
+        assert!(!bytes.is_empty());
+    }
 }

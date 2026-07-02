@@ -120,7 +120,27 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
+    // Downgrade guard: drift's onUpgrade only fires for from < to, so opening an
+    // OLDER build over a database written by a NEWER schema (from > to) would
+    // otherwise skip migration and fail later with an opaque "no such
+    // table/column" error. Detect the downgrade before any query runs and fail
+    // fast with an actionable message. (This does not alter the forward
+    // migration logic below.)
+    beforeOpen: (details) async {
+      final storedVersion = details.versionBefore;
+      if (storedVersion != null && storedVersion > schemaVersion) {
+        throw DatabaseDowngradeError(
+          storedVersion: storedVersion,
+          appVersion: schemaVersion,
+        );
+      }
+    },
     onUpgrade: (m, from, to) async {
+      if (from > to) {
+        // Defensive: should be unreachable because onUpgrade only runs for
+        // from < to, but guard here too so a downgrade can never silently no-op.
+        throw DatabaseDowngradeError(storedVersion: from, appVersion: to);
+      }
       if (from < 6) {
         await _createTableIfMissing(m, remoteNodes);
         await _createTableIfMissing(m, boardSyncConfigs);
@@ -267,6 +287,29 @@ class AppDatabase extends _$AppDatabase {
       await migrator.addColumn(table, column);
     }
   }
+}
+
+/// Thrown when the on-disk database was written by a NEWER app build than the
+/// one now opening it (a downgrade). Migrations only move forward, so the older
+/// build cannot safely read the newer schema; surfacing a clear error is far
+/// better than the opaque failures that arise from running against an
+/// unexpected schema.
+class DatabaseDowngradeError extends Error {
+  DatabaseDowngradeError({required this.storedVersion, required this.appVersion});
+
+  /// Schema version currently stored in the database file (the newer one).
+  final int storedVersion;
+
+  /// Schema version the running app expects (the older one).
+  final int appVersion;
+
+  @override
+  String toString() =>
+      'DatabaseDowngradeError: the local database is at schema v$storedVersion '
+      'but this build only supports up to v$appVersion. This happens when an '
+      'older app build is opened over a database written by a newer build. '
+      'Update the app to the latest version, or remove the local database to '
+      'start fresh (this discards local data).';
 }
 
 LazyDatabase _openConnection() {

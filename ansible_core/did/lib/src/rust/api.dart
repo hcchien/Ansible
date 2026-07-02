@@ -13,6 +13,7 @@ KeyPairBytes apiGenerateKeypair() =>
     RustLib.instance.api.crateApiApiGenerateKeypair();
 
 /// Encode a hex-encoded Ed25519 public key as a did:key string.
+/// Returns Err on invalid hex or wrong key length rather than panicking.
 String apiEncodeDidKey({required String publicKeyHex}) =>
     RustLib.instance.api.crateApiApiEncodeDidKey(publicKeyHex: publicKeyHex);
 

@@ -32,6 +32,7 @@ import 'services/backup_policy_service.dart';
 import 'services/canonical_identity_store.dart';
 import 'services/elix_content_link.dart';
 import 'services/elix_content_router.dart';
+import 'services/error_reporter.dart';
 import 'services/reading_preferences_controller.dart';
 import 'services/relay_identity_client.dart';
 import 'services/web_session_approval_client.dart';
@@ -40,8 +41,43 @@ import 'theme/ansible_design.dart';
 
 final ElixThemeController themeController = ElixThemeController();
 
-void main() async {
+void main() {
+  // Route every uncaught error through the single ErrorReporter seam. By
+  // default this only logs (no telemetry); an operator can install a real
+  // backend once via `ErrorReporter.instance = ...` (see error_reporter.dart).
+  // Framework errors (build/layout/paint) and async/platform errors both flow
+  // here, so there is one place to plug in crash reporting.
+  runZonedGuarded(
+    _bootstrap,
+    (error, stack) {
+      ErrorReporter.instance.report(error, stack, fatal: true, context: 'zone');
+    },
+  );
+}
+
+Future<void> _bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Flutter framework errors (widget build/layout exceptions): keep the default
+  // console dump in debug, and forward to the reporter for potential upload.
+  final previousOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    previousOnError?.call(details);
+    ErrorReporter.instance.report(
+      details.exception,
+      details.stack,
+      context: 'flutter',
+    );
+  };
+
+  // Uncaught errors that reach the platform dispatcher (e.g. from platform
+  // channels / microtasks outside a guarded zone). Returning true marks them
+  // handled so they don't also crash the isolate.
+  PlatformDispatcher.instance.onError = (error, stack) {
+    ErrorReporter.instance.report(error, stack, fatal: true, context: 'platform');
+    return true;
+  };
+
   try {
     AppEnvironment.validateRuntimeReadiness(
       isReleaseBuild: kReleaseMode,
@@ -65,7 +101,8 @@ void main() async {
     runApp(MyApp(db: db, webSessionLinks: AppLinks().uriLinkStream));
   } catch (error, stack) {
     // A failure before runApp() otherwise shows a blank screen with no clue.
-    // Surface it on-device so startup problems are diagnosable.
+    // Surface it on-device so startup problems are diagnosable, and report it.
+    ErrorReporter.instance.report(error, stack, fatal: true, context: 'startup');
     runApp(_BootErrorApp(error: error, stack: stack));
   }
 }

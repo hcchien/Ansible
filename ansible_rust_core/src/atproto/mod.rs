@@ -21,5 +21,8 @@ pub(crate) fn base32_encode_nopad(data: &[u8]) -> String {
     if bit_count > 0 {
         out.push(ALPHA[((bits << (5 - bit_count)) & 0x1f) as usize]);
     }
-    String::from_utf8(out).unwrap()
+    // Every byte pushed comes from the ASCII-only `ALPHA` table, so the buffer is
+    // always valid UTF-8. Use a lossy conversion instead of unwrap() so this
+    // FFI-reachable helper can never panic even if the invariant is ever broken.
+    String::from_utf8_lossy(&out).into_owned()
 }

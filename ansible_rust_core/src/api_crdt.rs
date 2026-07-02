@@ -1,7 +1,7 @@
 //! flutter_rust_bridge CRDT API surface
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard, PoisonError};
 use once_cell::sync::Lazy;
 use flutter_rust_bridge::frb;
 use crate::crdt::{doc::YrsDocument, delta};
@@ -9,10 +9,21 @@ use crate::crdt::{doc::YrsDocument, delta};
 static DOCS: Lazy<Mutex<HashMap<String, YrsDocument>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+/// Acquire the DOCS lock, recovering gracefully from mutex poisoning.
+///
+/// A poisoned mutex means a previous holder panicked while holding the lock.
+/// Rather than propagating that panic (which is FFI-reachable and would abort
+/// or unwind across the boundary), we recover the inner guard and continue —
+/// the CRDT map is self-consistent enough that a poisoned entry is recoverable,
+/// and callers get a normal error path instead of a crash.
+fn lock_docs() -> MutexGuard<'static, HashMap<String, YrsDocument>> {
+    DOCS.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
 /// Create or reset a Yrs document for [entityId].
 #[frb(sync)]
 pub fn api_crdt_init_doc(entity_id: String) {
-    let mut docs = DOCS.lock().unwrap();
+    let mut docs = lock_docs();
     docs.insert(entity_id, YrsDocument::new());
 }
 
@@ -21,7 +32,7 @@ pub fn api_crdt_init_doc(entity_id: String) {
 /// Returns the base64-encoded binary delta to send as Op payload.
 #[frb(sync)]
 pub fn api_crdt_insert_text(entity_id: String, field_name: String, content: String) -> Result<String, String> {
-    let docs = DOCS.lock().unwrap();
+    let docs = lock_docs();
     let doc = docs.get(&entity_id)
         .ok_or_else(|| format!("No YrsDoc for entity_id: {entity_id}. Call api_crdt_init_doc first."))?;
     let state_bytes = doc.insert_text(&field_name, &content);
@@ -32,7 +43,7 @@ pub fn api_crdt_insert_text(entity_id: String, field_name: String, content: Stri
 #[frb(sync)]
 pub fn api_crdt_apply_delta(entity_id: String, payload_b64: String) -> Result<(), String> {
     let bytes = delta::decode_delta(&payload_b64)?;
-    let docs = DOCS.lock().unwrap();
+    let docs = lock_docs();
     let doc = docs.get(&entity_id)
         .ok_or_else(|| format!("No YrsDoc for entity_id: {entity_id}."))?;
     doc.apply_update(&bytes)
@@ -41,7 +52,7 @@ pub fn api_crdt_apply_delta(entity_id: String, payload_b64: String) -> Result<()
 /// Get the current text content for a named field of a Yrs document.
 #[frb(sync)]
 pub fn api_crdt_get_text(entity_id: String, field_name: String) -> Result<String, String> {
-    let docs = DOCS.lock().unwrap();
+    let docs = lock_docs();
     let doc = docs.get(&entity_id)
         .ok_or_else(|| format!("No YrsDoc for entity_id: {entity_id}."))?;
     Ok(doc.get_text(&field_name))

@@ -71,10 +71,8 @@ fn wire__crate__api_atproto__api_cbor_encode_record_impl(
                 <crate::atproto::lexicon::LexiconRecord>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok(
-                        crate::api_atproto::api_cbor_encode_record(api_record),
-                    )?;
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api_atproto::api_cbor_encode_record(api_record)?;
                     Ok(output_ok)
                 })())
             }
@@ -268,12 +266,12 @@ fn wire__crate__api_atproto__api_create_did_plc_impl(
             let api_handle = <String>::sse_decode(&mut deserializer);
             let api_pds_endpoint = <String>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api_atproto::api_create_did_plc(
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api_atproto::api_create_did_plc(
                     api_signing_key_hex,
                     api_handle,
                     api_pds_endpoint,
-                ))?;
+                )?;
                 Ok(output_ok)
             })())
         },
@@ -332,9 +330,8 @@ fn wire__crate__api__api_encode_did_key_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_public_key_hex = <String>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok =
-                    Result::<_, ()>::Ok(crate::api::api_encode_did_key(api_public_key_hex))?;
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::api_encode_did_key(api_public_key_hex)?;
                 Ok(output_ok)
             })())
         },

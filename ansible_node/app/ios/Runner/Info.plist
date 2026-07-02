@@ -22,6 +22,13 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Content-free wake pushes (apns-push-type: background) need the
+	     remote-notification background mode; the relay only ever sends
+	     {"hint":"sync"} and the app composes local notifications itself. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -55,13 +62,26 @@
 	<string>Elix uses NFC to read the ePassport chip for identity anchoring.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Elix uses the camera to scan verifier QR requests before presenting wallet credentials.</string>
+	<!-- App Transport Security.
+	     NSAllowsLocalNetworking permits plaintext HTTP to LAN/loopback hosts.
+	     It is required ONLY by the staging build (scripts/install_ios_staging_release.sh),
+	     which points the app at a LAN-IP relay over http:// for on-device QA.
+	     A production build talks to a remote HTTPS relay/issuer (see
+	     lib/config/app_environment.dart) and does NOT need this key — for a
+	     store submission, remove the NSAppTransportSecurity dict below (and the
+	     NSLocalNetworkUsageDescription string) so ATS enforces HTTPS-only, and
+	     NEVER add NSAllowsArbitraryLoads. It is left enabled here because this
+	     shared plist currently drives the staging QA build. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- Shown when the app first accesses the local network. Kept
+	     App-Store-appropriate (no "development" wording) since the same plist is
+	     reused for release builds. -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Elix connects to the local development relay.</string>
+	<string>Elix uses the local network to reach your Elix relay on the same Wi-Fi network.</string>
 	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
 	<array>
 		<string>A0000002471001</string>
