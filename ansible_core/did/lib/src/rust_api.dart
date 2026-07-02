@@ -37,13 +37,13 @@ import 'rust/atproto/lexicon.dart';
 
 /// Initialise the Rust bridge with the correct library loader per platform.
 ///
-/// iOS statically links `libansible_rust_core.a` (via `-force_load` in the
-/// plugin podspec), so there is no dynamic library to open — the FFI symbols
-/// live in the app binary and must be resolved from the running process.
-/// Other platforms (Android `.so`, desktop `.dylib`/`.so`) use frb's default
-/// stem-based loader.
+/// iOS and macOS statically link `libansible_rust_core.a` (via `-force_load` in
+/// the platform podspecs), so there is no dynamic library to open — the FFI
+/// symbols live in the app binary and must be resolved from the running process.
+/// Other platforms (Android `.so`, Linux `.so`) use frb's default stem-based
+/// loader.
 Future<void> initRustBridge() async {
-  if (Platform.isIOS) {
+  if (Platform.isIOS || Platform.isMacOS) {
     await RustLib.init(
       externalLibrary: ExternalLibrary.process(iKnowHowToUseIt: true),
     );
