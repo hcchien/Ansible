@@ -1,5 +1,8 @@
 ARG ELIXIR_IMAGE=hexpm/elixir:1.19.5-erlang-28.5.0.2-debian-bookworm-20260610-slim
-ARG RUNNER_IMAGE=debian:bookworm-slim
+# Pin the runner to a dated bookworm snapshot rather than the floating
+# `bookworm-slim` tag, so a rebuild reproduces the same base OS. Bump this in
+# lockstep with the ELIXIR_IMAGE snapshot date (…-debian-bookworm-<date>-slim).
+ARG RUNNER_IMAGE=debian:bookworm-20260610-slim
 
 FROM ${ELIXIR_IMAGE} AS build
 

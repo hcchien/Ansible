@@ -16,4 +16,17 @@ defmodule AnsibleAppview.CacheTest do
     Process.sleep(2)
     assert Cache.get(expired) == :miss
   end
+
+  test "periodic sweep deletes expired rows never read back" do
+    # A key that is written but never re-read: only the sweep can reclaim it.
+    key = "sweep:#{System.unique_integer([:positive])}"
+    :ok = Cache.put(key, :dead, 0)
+    Process.sleep(2)
+
+    removed = AnsibleAppview.Cache.ETS.sweep_expired()
+    assert removed >= 1
+
+    # The underlying row is gone (not just lazily hidden on read).
+    assert :ets.lookup(:ansible_appview_cache, key) == []
+  end
 end

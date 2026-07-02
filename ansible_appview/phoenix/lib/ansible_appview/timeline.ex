@@ -119,7 +119,7 @@ defmodule AnsibleAppview.Timeline do
     merged =
       dids
       |> Enum.uniq()
-      |> Enum.flat_map(&author_recent/1)
+      |> authors_recent()
       |> Enum.sort_by(& &1.log_id, :desc)
 
     has_more = length(merged) > limit
@@ -132,6 +132,85 @@ defmodule AnsibleAppview.Timeline do
       end
 
     %{items: visible, next_cursor: next_cursor, has_more: has_more}
+  end
+
+  # Batched cold-read: resolve the per-author recent list for many DIDs with a
+  # single `author_did IN (...)` windowed query for the cache-miss set, instead
+  # of one query per followed author. Cache-hit authors are served from the
+  # per-author cache; missed authors are queried together, grouped, capped, and
+  # each author's slice is written back under its own key (preserving the same
+  # per-author 10s TTL as `author_recent/1`).
+  defp authors_recent([]), do: []
+
+  defp authors_recent(dids) do
+    {hits, misses} =
+      Enum.reduce(dids, {[], []}, fn did, {hits, misses} ->
+        case AnsibleAppview.Cache.get("author:" <> did) do
+          {:ok, items} -> {[items | hits], misses}
+          :miss -> {hits, [did | misses]}
+        end
+      end)
+
+    fetched =
+      case misses do
+        [] -> []
+        ids -> batch_author_recent(ids)
+      end
+
+    List.flatten(hits) ++ fetched
+  end
+
+  # One windowed query over all missing authors: rank rows per author by log_id
+  # desc and keep the top `cap` per author. Authors with no rows are cached as
+  # an empty list so a repeat request within the TTL is a hit, not a re-query.
+  defp batch_author_recent(dids) do
+    cap = Application.get_env(:ansible_appview, :author_cache_limit, 100)
+    ttl = Application.get_env(:ansible_appview, :author_cache_ttl_ms, 10_000)
+
+    ranked =
+      from(f in FeedItem,
+        where:
+          f.author_did in ^dids and f.deleted == false and f.sig_verified == true and
+            f.entity_type != "comment" and
+            (is_nil(f.visibility) or f.visibility in ^@relayable),
+        select: %{
+          log_id: f.log_id,
+          rn:
+            over(row_number(),
+              partition_by: f.author_did,
+              order_by: [desc: f.log_id]
+            )
+        }
+      )
+
+    # Rank in-DB, keep the top `cap` per author, then hydrate the surviving rows
+    # in a single lookup by primary key (`log_id`), ordered newest-first.
+    kept_ids =
+      read_repo().all(
+        from(r in subquery(ranked),
+          where: r.rn <= ^cap,
+          select: r.log_id
+        )
+      )
+
+    grouped =
+      case kept_ids do
+        [] ->
+          %{}
+
+        ids ->
+          read_repo().all(
+            from(f in FeedItem, where: f.log_id in ^ids, order_by: [desc: f.log_id])
+          )
+          |> Enum.map(&to_map/1)
+          |> Enum.group_by(& &1.author_did)
+      end
+
+    Enum.flat_map(dids, fn did ->
+      items = Map.get(grouped, did, [])
+      AnsibleAppview.Cache.put("author:" <> did, items, ttl)
+      items
+    end)
   end
 
   defp author_recent(did) do

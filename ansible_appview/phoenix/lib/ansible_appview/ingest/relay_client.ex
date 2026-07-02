@@ -8,17 +8,11 @@ defmodule AnsibleAppview.Ingest.RelayClient do
     url =
       "#{String.trim_trailing(base_url, "/")}/api/v1/ops/delta?cursor=#{cursor}&limit=#{limit}"
 
-    request = {String.to_charlist(url), [{~c"accept", ~c"application/json"}]}
-
-    case :httpc.request(:get, request, [{:timeout, 15_000}], body_format: :binary) do
-      {:ok, {{_http, 200, _reason}, _headers, body}} ->
-        decode(body)
-
-      {:ok, {{_http, status, _reason}, _headers, _body}} ->
-        {:error, {:http_status, status}}
-
-      {:error, reason} ->
-        {:error, reason}
+    # SSRF/DoS-hardened fetch: no implicit redirects, private/loopback/link-local
+    # destinations blocked at every hop, response body size capped.
+    case AnsibleAppview.Ingest.SafeHttp.get(url, "application/json") do
+      {:ok, body} -> decode(body)
+      {:error, reason} -> {:error, reason}
     end
   end
 

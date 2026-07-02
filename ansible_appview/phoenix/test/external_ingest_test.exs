@@ -285,12 +285,24 @@ defmodule AnsibleAppview.ExternalIngestTest do
     assert body["items"] == []
   end
 
-  test "per-board external read increments external_read_requests_total{board}" do
+  test "per-board external read increments external_read_requests_total{board} for a KNOWN board" do
+    # A known board is one with a mapped curated source.
+    add_source(%{board_id: "board-metric"})
     before = metric_count("external_read_requests_total", "\\{board=\"board-metric\"\\}")
     assert board_external("board-metric").status == 200
 
     assert metric_count("external_read_requests_total", "\\{board=\"board-metric\"\\}") ==
              before + 1
+  end
+
+  test "an UNKNOWN board does not mint a new metric series (cardinality DoS guard)" do
+    bogus = "bogus-#{System.unique_integer([:positive])}"
+
+    # No source maps this board id, so the request must still succeed (empty page)
+    # but must NOT create a fresh external_read_requests_total{board=<bogus>} row.
+    assert board_external(bogus).status == 200
+
+    assert metric_count("external_read_requests_total", "\\{board=\"#{bogus}\"\\}") == 0
   end
 
   # ============================================================================

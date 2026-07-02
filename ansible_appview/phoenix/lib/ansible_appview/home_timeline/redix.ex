@@ -9,11 +9,25 @@ defmodule AnsibleAppview.HomeTimeline.Redix do
   @behaviour AnsibleAppview.HomeTimeline
   @conn :appview_redis
 
+  # ZSET keys are otherwise persistent — a reader who never returns would leave
+  # `htl:{reader}` in Redis forever. Refresh a sliding TTL on every write so an
+  # inactive reader's timeline is reclaimed; an active reader keeps bumping it.
+  @default_ttl_seconds 60 * 60 * 24 * 30
+
   defp key(reader), do: "htl:" <> reader
+
+  defp ttl_seconds,
+    do: Application.get_env(:ansible_appview, :home_timeline_redis_ttl_seconds, @default_ttl_seconds)
+
+  defp touch_ttl(reader) do
+    _ = Redix.command(@conn, ["EXPIRE", key(reader), Integer.to_string(ttl_seconds())])
+    :ok
+  end
 
   @impl AnsibleAppview.HomeTimeline
   def add(reader, log_id, op_id) do
     _ = Redix.command(@conn, ["ZADD", key(reader), Integer.to_string(log_id), op_id])
+    touch_ttl(reader)
     :ok
   rescue
     _ -> :ok
@@ -30,6 +44,7 @@ defmodule AnsibleAppview.HomeTimeline.Redix do
         end)
 
       _ = Redix.command(@conn, ["ZADD", key(reader) | args])
+      touch_ttl(reader)
     end)
 
     :ok

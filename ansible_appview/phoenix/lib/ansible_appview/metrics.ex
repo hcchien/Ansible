@@ -21,6 +21,8 @@ defmodule AnsibleAppview.Metrics do
       (`reason=bad_signature|expired_anchor`); rejected ops never reach a
       public projection
     * `appview_ingest_lag_seconds` (gauge) — now − newest folded op timestamp
+    * `appview_ingest_drain_consecutive_failures` (gauge) — consecutive drain
+      failures; an alertable "drain stuck" signal
     * `appview_timeline_requests_total{kind}` — timeline reads (following/home/board)
     * `appview_timeline_request_duration_seconds` (histogram) — timeline latency
     * `appview_discovery_requests_total{kind}` — discovery/explore/search reads
@@ -45,6 +47,9 @@ defmodule AnsibleAppview.Metrics do
        "Ops rejected at fold time by reason (bad_signature/expired_anchor); never folded into public projections."},
     "appview_ingest_lag_seconds" =>
       {:gauge, "Seconds between now and the newest folded op timestamp."},
+    "appview_ingest_drain_consecutive_failures" =>
+      {:gauge,
+       "Consecutive ingest drain failures (relay fetch error / drain exception). Alert when this stays > 0; a persistently rising value means the drain is stuck."},
     "appview_timeline_requests_total" =>
       {:counter, "Timeline read requests by kind (following/home/board)."},
     "appview_timeline_request_duration_seconds" =>

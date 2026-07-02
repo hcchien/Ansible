@@ -20,14 +20,21 @@ defmodule AnsibleAppview.Web.Controllers.ExternalController do
   """
 
   import Plug.Conn
-  alias AnsibleAppview.{External, Metrics}
+  alias AnsibleAppview.{External, ExternalSources, Metrics}
 
   # GET /api/v1/boards/:board_id/external?cursor=&limit=
   def board_external(conn, params) do
     board_id = params["board_id"]
 
     if is_binary(board_id) and board_id != "" do
-      Metrics.inc("external_read_requests_total", %{board: board_id})
+      # Only mint the per-board metric series for a KNOWN board (one with mapped
+      # curated sources). Emitting it for the raw path segment let any GET with a
+      # random board id create a new ETS counter row + Prometheus series
+      # (unbounded label cardinality → DoS). An unknown board still returns a
+      # normal empty page below, it just isn't counted under a fresh label.
+      if board_known?(board_id) do
+        Metrics.inc("external_read_requests_total", %{board: board_id})
+      end
 
       result =
         External.for_board(
@@ -41,6 +48,8 @@ defmodule AnsibleAppview.Web.Controllers.ExternalController do
       send_json(conn, 422, %{error: "board_id_required"})
     end
   end
+
+  defp board_known?(board_id), do: ExternalSources.list_for_board(board_id) != []
 
   defp parse_int(nil), do: nil
   defp parse_int(value) when is_integer(value), do: value

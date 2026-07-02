@@ -43,12 +43,27 @@ defmodule AnsibleAppview.Ingest.Folder do
     prepared =
       ops
       |> Task.async_stream(
-        fn op -> {op, decode_payload(op["payload"]), verify(op)} end,
+        fn op -> prepare_op(op) end,
         max_concurrency: System.schedulers_online(),
         ordered: true,
-        timeout: 30_000
+        timeout: 30_000,
+        # A single slow/pathological op must NOT crash the whole fold loop.
+        # :kill_task returns {:exit, reason} for that element instead of
+        # bringing down the caller; we dead-letter it below.
+        on_timeout: :kill_task,
+        zip_input_on_exit: true
       )
-      |> Enum.map(fn {:ok, result} -> result end)
+      |> Enum.zip(ops)
+      |> Enum.map(fn
+        {{:ok, result}, _op} ->
+          result
+
+        {{:exit, reason}, op} ->
+          # Poison op: skipped (dead-lettered) with a reason-coded metric rather
+          # than halting all ingest. It is treated as a rejected op below.
+          dead_letter(op, {:exit, reason})
+          {op, %{}, {:error, :poison_op}}
+      end)
 
     max_log =
       Enum.reduce(prepared, nil, fn {op, _payload, _verification}, acc ->
@@ -175,6 +190,34 @@ defmodule AnsibleAppview.Ingest.Folder do
     }
   end
 
+  # Per-op preparation, guarded so a single malformed op (decode/verify raising)
+  # is dead-lettered and skipped rather than crashing the whole page fold. A
+  # timeout is handled separately (the task is killed and surfaces as {:exit,_}).
+  defp prepare_op(op) do
+    {op, decode_payload(op["payload"]), verify(op)}
+  rescue
+    e ->
+      dead_letter(op, {:error, e})
+      {op, %{}, {:error, :poison_op}}
+  catch
+    kind, reason ->
+      dead_letter(op, {kind, reason})
+      {op, %{}, {:error, :poison_op}}
+  end
+
+  # A single malformed/poison op is logged with its id + reason and counted so a
+  # stuck ingest is visible, instead of silently halting the drain loop.
+  defp dead_letter(op, reason) do
+    require Logger
+
+    Logger.error(
+      "AppView ingest dead-lettered op " <>
+        "log_id=#{inspect(op["log_id"])} op_id=#{inspect(op["op_id"])}: #{inspect(reason)}"
+    )
+
+    AnsibleAppview.Metrics.inc("appview_ingest_rejections_total", %{reason: "poison_op"})
+  end
+
   # Independent verification of one op. Returns {:ok, anchor_expires_at} when the
   # signature verifies over the canonical bytes AND the author's DID anchor is
   # non-expired; otherwise {:error, :bad_signature} | {:error, :expired_anchor}.
@@ -222,6 +265,8 @@ defmodule AnsibleAppview.Ingest.Folder do
   defp record_rejections(prepared) do
     prepared
     |> Enum.reduce(%{}, fn
+      # :poison_op is already counted (and logged) by dead_letter/2; don't double count.
+      {_op, _payload, {:error, :poison_op}}, acc -> acc
       {_op, _payload, {:error, reason}}, acc -> Map.update(acc, reason, 1, &(&1 + 1))
       {_op, _payload, {:ok, _}}, acc -> acc
     end)
@@ -252,11 +297,55 @@ defmodule AnsibleAppview.Ingest.Folder do
 
       if is_binary(follower) and is_binary(author) and author != "" do
         case op["op_type"] do
-          "delete" -> AnsibleAppview.FollowGraph.remove(follower, author)
-          _ -> AnsibleAppview.FollowGraph.upsert(follower, author, op["log_id"])
+          "delete" ->
+            AnsibleAppview.FollowGraph.remove(follower, author)
+
+          _ ->
+            AnsibleAppview.FollowGraph.upsert(follower, author, op["log_id"])
+            backfill_home_timeline(follower, author)
         end
       end
     end
+  end
+
+  # On a NEW follow edge, backfill the follower's materialized home timeline with
+  # the followed author's most-recent EXISTING items. Without this a reader who
+  # already has a materialized timeline (past the cold-read fallback) would only
+  # ever see the author's FUTURE posts. Bounded to the newest N and skipped for
+  # celebrities (handled by read-time merge). Best-effort: the timeline is a
+  # reproducible cache, so a failure only degrades to fan-out-on-read.
+  defp backfill_home_timeline(follower, author) do
+    threshold = Application.get_env(:ansible_appview, :celebrity_follower_threshold, 10_000)
+    limit = Application.get_env(:ansible_appview, :follow_backfill_limit, 50)
+
+    if FollowGraph.follower_count(author) < threshold do
+      import Ecto.Query
+
+      entries =
+        Repo.all(
+          from(f in FeedItem,
+            where:
+              f.author_did == ^author and f.deleted == false and f.sig_verified == true and
+                f.entity_type != "comment" and
+                (is_nil(f.visibility) or f.visibility in ^@relayable),
+            order_by: [desc: f.log_id],
+            limit: ^limit,
+            select: {f.log_id, f.op_id}
+          )
+        )
+        |> Enum.map(fn {log_id, op_id} -> {follower, log_id, op_id} end)
+
+      case entries do
+        [] ->
+          :ok
+
+        _ ->
+          HomeTimeline.add_many(entries)
+          HomeTimeline.cap(follower, HomeTimeline.max_entries())
+      end
+    end
+  rescue
+    _ -> :ok
   end
 
   # Public actor profiles only. A delete op removes the directory entry.

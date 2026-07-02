@@ -44,19 +44,35 @@ defmodule AnsibleAppview.Web.Controllers.TimelineController do
   defp do_home(conn, params) do
     reader = params["reader"]
 
-    if is_binary(reader) and reader != "" do
-      result =
-        Timeline.home(
-          reader,
-          parse_int(params["cursor"]),
-          parse_int(params["limit"]) || 50
-        )
+    cond do
+      not (is_binary(reader) and reader != "") ->
+        send_json(conn, 422, %{error: "reader_required"})
 
-      send_json(conn, 200, result)
-    else
-      send_json(conn, 422, %{error: "reader_required"})
+      true ->
+        # The home feed discloses the reader's follow graph, so a caller may only
+        # read its OWN feed. Authenticate via a signed request (see HomeAuth).
+        case AnsibleAppview.HomeAuth.authorize(header_map(conn), reader) do
+          :ok ->
+            result =
+              Timeline.home(
+                reader,
+                parse_int(params["cursor"]),
+                parse_int(params["limit"]) || 50
+              )
+
+            send_json(conn, 200, result)
+
+          {:error, :unknown_reader} ->
+            send_json(conn, 403, %{error: "forbidden"})
+
+          {:error, :unauthorized} ->
+            send_json(conn, 401, %{error: "unauthorized"})
+        end
     end
   end
+
+  # req_headers are {lowercase_name, value} tuples; fold to a map for lookup.
+  defp header_map(conn), do: Map.new(conn.req_headers)
 
   # GET /api/v1/board-feed?board_id=&cursor=&limit=
   def board_feed(conn, params) do
