@@ -482,17 +482,18 @@ class _ExternalContentSettingsRowState
                         Text(
                           context.uiCopy(zh: '站外內容', en: 'External content'),
                           style: const TextStyle(
-                            fontSize: 14.5,
+                            fontFamily: AnsibleDesign.serif,
+                            fontSize: 16,
                             color: AnsibleDesign.ink,
-                            fontWeight: FontWeight.w400,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const Text(
                           'FEDIVERSE',
                           style: TextStyle(
                             fontFamily: AnsibleDesign.mono,
-                            fontSize: 8.5,
-                            letterSpacing: 1.4,
+                            fontSize: 10,
+                            letterSpacing: 1.3,
                             color: AnsibleDesign.inkFaint,
                           ),
                         ),
@@ -506,8 +507,9 @@ class _ExternalContentSettingsRowState
                             'opt in; off by default',
                       ),
                       style: const TextStyle(
-                        fontSize: 11.5,
-                        color: AnsibleDesign.inkFaint,
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 13,
+                        color: AnsibleDesign.inkMuted,
                       ),
                     ),
                   ],

@@ -556,28 +556,28 @@ class ElixSignedPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
       decoration: BoxDecoration(
         color: _bg(dark),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             '✓',
-            style: TextStyle(fontSize: 9, color: _fg(dark), height: 1.2),
+            style: TextStyle(fontSize: 10, color: _fg(dark), height: 1.35),
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Text(
             kind,
             style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
+              fontFamily: AnsibleDesign.sans,
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              letterSpacing: 0.6,
+              letterSpacing: 0.4,
               color: _fg(dark),
-              height: 1.2,
+              height: 1.35,
             ),
           ),
         ],

@@ -63,25 +63,25 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _mono(context.uiCopy(zh: '1 / 3', en: '1 / 3')),
+              _step('1 / 3'),
               GestureDetector(
                 onTap: widget.onContinue,
-                child: _mono(context.uiCopy(zh: '跳過', en: 'Skip')),
+                child: _link(context.uiCopy(zh: '跳過', en: 'Skip')),
               ),
             ],
           ),
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 26),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AnsibleMark(size: 96),
-                const SizedBox(height: 26),
-                const ElixWordmark(fontSize: 40),
-                const SizedBox(height: 26),
+                const AnsibleMark(size: 50),
+                const SizedBox(height: 20),
+                const ElixWordmark(fontSize: 46),
+                const SizedBox(height: 20),
                 Text(
                   context.uiCopy(
                     zh: '你的話、你的圈、\n你的鑰匙。',
@@ -89,12 +89,14 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   ),
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.serif,
-                    fontSize: 22,
-                    height: 1.55,
+                    fontSize: 30,
+                    height: 1.32,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
                     color: AnsibleDesign.ink,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 Text(
                   context.uiCopy(
                     zh: '一個重新建立信任的社群。資料留在本地，身分握在你自己手上。要被看見之前，先問過你。',
@@ -104,8 +106,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontStyle: FontStyle.italic,
-                    fontSize: 14,
-                    height: 1.7,
+                    fontSize: 15.5,
+                    height: 1.78,
                     color: AnsibleDesign.inkMuted,
                   ),
                 ),
@@ -119,12 +121,18 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
             children: [
               _cta(context.uiCopy(zh: '進入', en: 'Enter'), trailing: '→'),
               const SizedBox(height: 14),
-              _mono(
+              Text(
                 context.uiCopy(
                   zh: '沒有帳號 · 沒有雲端 · 不會被收集',
                   en: 'No account · No cloud · Never collected',
                 ),
-                center: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.sans,
+                  fontSize: 12,
+                  letterSpacing: 0.3,
+                  color: AnsibleDesign.inkFaint,
+                ),
               ),
             ],
           ),
@@ -148,9 +156,9 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   duration: const Duration(milliseconds: 240),
                   curve: Curves.easeOut,
                 ),
-                child: _mono(context.uiCopy(zh: '← 上一步', en: '← Back')),
+                child: _link(context.uiCopy(zh: '← 上一步', en: '← Back')),
               ),
-              _mono('2 / 3'),
+              _step('2 / 3'),
             ],
           ),
         ),
@@ -169,9 +177,10 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   ),
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.serif,
-                    fontSize: 24,
-                    height: 1.45,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 25,
+                    height: 1.38,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.25,
                     color: AnsibleDesign.ink,
                   ),
                 ),
@@ -184,8 +193,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   ),
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.serif,
-                    fontSize: 13.5,
-                    height: 1.75,
+                    fontSize: 15,
+                    height: 1.78,
                     color: AnsibleDesign.inkMuted,
                   ),
                 ),
@@ -193,7 +202,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                 Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: AnsibleDesign.rule, width: 0.5),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: Column(
@@ -244,15 +253,15 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
         Container(
           width: double.infinity,
           color: AnsibleDesign.paperElev,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 6,
-                    height: 6,
+                    width: 8,
+                    height: 8,
                     decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 10),
@@ -260,7 +269,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     zh,
                     style: const TextStyle(
                       fontFamily: AnsibleDesign.serif,
-                      fontSize: 13,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w600,
                       color: AnsibleDesign.ink,
                     ),
                   ),
@@ -278,13 +288,13 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                 top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             child: Text(
               '· $t',
               style: const TextStyle(
                 fontFamily: AnsibleDesign.serif,
-                fontSize: 13,
-                color: AnsibleDesign.ink,
+                fontSize: 14.5,
+                color: AnsibleDesign.inkMuted,
               ),
             ),
           ),
@@ -298,9 +308,34 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
       textAlign: center ? TextAlign.center : null,
       style: const TextStyle(
         fontFamily: AnsibleDesign.mono,
-        fontSize: 9.5,
-        letterSpacing: 1.6,
+        fontSize: 10.5,
+        letterSpacing: 2,
         color: AnsibleDesign.inkFaint,
+      ),
+    );
+  }
+
+  /// Mono step counter in the top bar ("1 / 3").
+  Widget _step(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontFamily: AnsibleDesign.mono,
+        fontSize: 12,
+        letterSpacing: 1.2,
+        color: AnsibleDesign.inkFaint,
+      ),
+    );
+  }
+
+  /// Sans top-bar link ("跳過" / "← 上一步").
+  Widget _link(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontFamily: AnsibleDesign.sans,
+        fontSize: 14,
+        color: AnsibleDesign.inkMuted,
       ),
     );
   }
@@ -322,19 +357,20 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                 Text(
                   label,
                   style: const TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontSize: 14,
+                    fontFamily: AnsibleDesign.sans,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                     color: AnsibleDesign.paper,
                   ),
                 ),
                 if (trailing != null) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 9),
                   Text(
                     trailing,
                     style: TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 12,
-                      color: AnsibleDesign.paper.withValues(alpha: 0.55),
+                      fontFamily: AnsibleDesign.sans,
+                      fontSize: 14,
+                      color: AnsibleDesign.paper.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

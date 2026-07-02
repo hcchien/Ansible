@@ -14,6 +14,10 @@ seeded zh-Hant data — these are real widgets rendering real layout/color/spaci
 | `d02_notifications.png` | Notifications |
 | `e01_me_settings.png` | Me / Settings |
 | `e15_single_board.png` | Single board — #philosophy (E·15) |
+| `e15_single_board_dark.png` | Single board — Ink (dark) variant |
+| `f01_bottom_nav.png` | Bottom navigation bar |
+| `f02_thread.png` | Thread view (E·16) |
+| `f02_thread_dark.png` | Thread view — Ink (dark) variant |
 
 ## Design system
 

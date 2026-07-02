@@ -92,15 +92,47 @@ class _SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Labels arrive as "身分與裝置 · IDENTITY" — the zh part rides on sans, the
+    // trailing ASCII tag on mono, per the design's glabel.
+    final parts = label.split(' · ');
+    final en = parts.length > 1 && _isAscii(parts.last) ? parts.last : null;
+    final zh = en == null ? label : parts.sublist(0, parts.length - 1).join(' · ');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AnsibleMonoLabel(
-          label,
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 22, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                zh,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.sans,
+                  fontSize: 13,
+                  color: AnsibleDesign.inkFaint,
+                ),
+              ),
+              if (en != null) ...[
+                const SizedBox(width: 6),
+                Text(
+                  en.toUpperCase(),
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 10,
+                    letterSpacing: 1.4,
+                    color: AnsibleDesign.inkFaint,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         AnsibleRuleGroup(children: children),
       ],
     );
   }
+
+  static bool _isAscii(String s) => s.codeUnits.every((c) => c < 128);
 }

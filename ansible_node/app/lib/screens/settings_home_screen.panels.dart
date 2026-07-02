@@ -73,13 +73,14 @@ class _InterfaceSettingsPanelState extends State<_InterfaceSettingsPanel> {
             en: 'LIGHT',
             value: '${_personalStyle.label} / ${_forumStyle.label}',
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 6),
           Text(
             widget.text.sceneLightSubtitle,
             style: const TextStyle(
-              fontSize: 11.5,
-              height: 1.45,
-              color: AnsibleDesign.inkFaint,
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 13,
+              height: 1.5,
+              color: AnsibleDesign.inkMuted,
             ),
           ),
           const SizedBox(height: 12),
@@ -158,16 +159,17 @@ class _InterfacePanelHeading extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 14.5,
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 16,
                   color: AnsibleDesign.ink,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 en,
                 style: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
-                  fontSize: 8.5,
+                  fontSize: 10,
                   letterSpacing: 1.4,
                   color: AnsibleDesign.inkFaint,
                 ),
@@ -183,9 +185,8 @@ class _InterfacePanelHeading extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
             style: const TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 11,
-              letterSpacing: 1.1,
+              fontFamily: AnsibleDesign.sans,
+              fontSize: 14,
               color: AnsibleDesign.inkMuted,
             ),
           ),
@@ -216,14 +217,13 @@ class _SceneStylePicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: 54,
+          width: 56,
           child: Text(
             label,
             style: const TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 11,
-              letterSpacing: 1.1,
-              color: AnsibleDesign.inkFaint,
+              fontFamily: AnsibleDesign.sans,
+              fontSize: 13,
+              color: AnsibleDesign.inkMuted,
             ),
           ),
         ),
@@ -271,42 +271,58 @@ class _StyleChoice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = style.dataFor(Theme.of(context).brightness);
-    final previewColor = style == ElixScreenStyle.system
-        ? AnsibleDesign.paperDeep
-        : data.background;
+    // Auto previews as a half-Paper / half-Ink split, per the design's swatch.
+    final auto = style == ElixScreenStyle.system;
+    final previewColor = auto ? null : data.background;
+    const autoGradient = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      stops: [0.5, 0.5],
+      colors: [AnsibleDesign.paper, AnsibleDesign.ink],
+    );
     return InkWell(
       onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: selected ? AnsibleDesign.paperElev : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          // Opaque fill so the selection glow reads as an outer ring, not a
+          // wash through the card.
+          color: AnsibleDesign.paper,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? AnsibleDesign.ochre : AnsibleDesign.rule,
             width: 0.5,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AnsibleDesign.ochre.withValues(alpha: 0.28),
+                    spreadRadius: 1.5,
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           children: [
             Container(
-              height: 18,
+              height: 30,
               decoration: BoxDecoration(
                 color: previewColor,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+                gradient: auto ? autoGradient : null,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: AnsibleDesign.rule, width: 0.5),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 8),
             Text(
               style.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 9,
-                letterSpacing: 0.8,
+                fontFamily: AnsibleDesign.sans,
+                fontSize: 12.5,
                 color: selected ? AnsibleDesign.ink : AnsibleDesign.inkMuted,
               ),
             ),
@@ -338,9 +354,11 @@ class _MotionChoice extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? AnsibleDesign.paperDeep : Colors.transparent,
+          color: selected
+              ? AnsibleDesign.ochre.withValues(alpha: 0.14)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? AnsibleDesign.ochre : AnsibleDesign.rule,
@@ -350,10 +368,10 @@ class _MotionChoice extends StatelessWidget {
         child: Text(
           motion.label,
           style: TextStyle(
-            fontFamily: AnsibleDesign.mono,
-            fontSize: 10,
-            letterSpacing: 1.1,
-            color: selected ? AnsibleDesign.ink : AnsibleDesign.inkMuted,
+            fontFamily: AnsibleDesign.sans,
+            fontSize: 14,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? AnsibleDesign.ochre : AnsibleDesign.inkMuted,
           ),
         ),
       ),

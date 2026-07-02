@@ -2,317 +2,278 @@
 <html lang="zh-TW">
 <head>
 <meta charset="utf-8"/>
-<title>Elix · App Screens (Feed-first)</title>
+<title>Elix · App Screens (Threads-style)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=Noto+Serif+TC:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=Noto+Serif+TC:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+/* ─────────────────────────────────────────────
+   THREADS-INFLUENCED ELIX — near-white / true-ink
+   Serif = content · Sans = UI chrome · Mono = DID / technical
+   ───────────────────────────────────────────── */
 :root {
-  --bg: #FAF6EC; --bg-soft: #F0EBDA; --bg-deep: #E8E1CF;
-  --fg: #1A1815; --fg-muted: #3A3530; --fg-faint: #8A847A;
-  --rule: #D9D2BE; --rule-soft: #E4DDC8;
-  --amber: #B97A3C; --sage: #4A6B5E; --ember: #7A3E1E;
+  --bg: #FFFFFF; --bg-soft: #F6F6F6; --bg-deep: #ECECEC;
+  --fg: #0A0A0A; --fg-muted: #5C5C5C; --fg-faint: #9A9A9A;
+  --rule: #E6E6E6; --rule-soft: #F0F0F0;
+  --amber: #B97A3C; --sage: #4A6B5E; --ember: #9A4A24;
   --serif: 'Noto Serif TC', 'Newsreader', serif;
-  --sans: 'Noto Sans TC', system-ui, sans-serif;
+  --sans: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', monospace;
 }
 body.dark .surface, body.dark .device-body {
-  --bg: #14130F; --bg-soft: #1E1C17; --bg-deep: #26241E;
-  --fg: #F0EAD8; --fg-muted: #B8B0A0; --fg-faint: #6E665A;
-  --rule: #2E2B23; --rule-soft: #24221C;
-  --amber: #D69968; --sage: #7AA39B;
+  --bg: #000000; --bg-soft: #0E0E0E; --bg-deep: #1A1A1A;
+  --fg: #F4F4F4; --fg-muted: #A4A4A4; --fg-faint: #606060;
+  --rule: #242424; --rule-soft: #161616;
+  --amber: #D69968; --sage: #7AA39B; --ember: #C97B52;
 }
 * { box-sizing: border-box; }
-html, body { margin:0; padding:0; background:#E3DECD; font-family:var(--sans); color:#1A1815; }
+html, body { margin:0; padding:0; background:#DCDCDC; font-family:var(--sans); color:#0A0A0A; -webkit-font-smoothing: antialiased; }
 
-.page { padding: 44px 28px 80px; }
-.title-bar { max-width: 1320px; margin: 0 auto 28px; display:flex; align-items:baseline; justify-content:space-between; gap:18px; flex-wrap:wrap; }
-.title-bar h1 { font-family: var(--serif); font-weight: 500; font-size: 30px; margin:0; }
-.title-bar .sub { font-family: var(--serif); font-style: italic; font-size: 13.5px; color:#5A554A; max-width: 70ch; line-height: 1.6; }
+/* ── Gallery chrome ── */
+.page { padding: 44px 28px 90px; }
+.title-bar { max-width: 1360px; margin: 0 auto 30px; display:flex; align-items:baseline; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+.title-bar h1 { font-family: var(--serif); font-weight: 600; font-size: 30px; margin:0; letter-spacing:-0.01em; }
+.title-bar .sub { font-family: var(--serif); font-size: 14px; color:#555; max-width: 64ch; line-height: 1.65; margin-top:6px; }
+.meta-tag { font-family: var(--mono); font-size:10px; letter-spacing:0.14em; color:#888; text-transform:uppercase; }
 .theme-toggle {
-  display:inline-flex; align-items:center; gap:8px; padding:7px 13px 7px 8px;
-  border-radius:999px; background:#FAF6EC; border:0.5px solid #D9D2BE; color:#1A1815;
+  display:inline-flex; align-items:center; gap:8px; padding:7px 14px 7px 8px;
+  border-radius:999px; background:#fff; border:1px solid #D2D2D2; color:#0A0A0A;
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; cursor:pointer;
+  position: fixed; top: 20px; right: 24px; z-index: 50;
 }
-.theme-toggle .swatch { width:14px; height:14px; border-radius:50%; background:#FAF6EC; border:0.5px solid #D9D2BE; }
-body.dark .theme-toggle { background:#14130F; color:#F0EAD8; border-color:#2E2B23; }
-body.dark .theme-toggle .swatch { background:#14130F; border-color:#2E2B23; }
+.theme-toggle .swatch { width:14px; height:14px; border-radius:50%; background:#fff; border:1px solid #C8C8C8; }
+body.dark .theme-toggle { background:#0A0A0A; color:#F0F0F0; border-color:#333; }
+body.dark .theme-toggle .swatch { background:#000; border-color:#444; }
 
-.section { max-width: 1320px; margin: 0 auto 64px; }
-.section-head { display:flex; align-items:baseline; gap:14px; padding: 0 0 18px; margin-bottom: 22px; border-bottom: 0.5px solid #C9C1AE; }
-.section-head .ix { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: #8A847A; text-transform: uppercase; }
-.section-head h2 { margin:0; font-family: var(--serif); font-size: 22px; font-weight: 500; color:#1A1815; }
-.section-head .desc { font-family: var(--serif); font-style: italic; font-size: 13.5px; color:#5A554A; margin-left: auto; }
+.section { max-width: 1360px; margin: 0 auto 58px; }
+.section-head { display:flex; align-items:baseline; gap:14px; padding: 0 0 16px; margin-bottom: 24px; border-bottom: 1px solid #C6C6C6; }
+.section-head .ix { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: #888; text-transform: uppercase; }
+.section-head h2 { margin:0; font-family: var(--serif); font-size: 22px; font-weight: 600; color:#0A0A0A; }
+.section-head .desc { font-family: var(--serif); font-size: 13.5px; color:#5A554A; margin-left: auto; font-style: italic; }
 
-.frame-row { display:flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.frame-row { display:flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
 
-/* iOS frame */
-.device {
-  width: 360px; flex-shrink: 0;
-  display:flex; flex-direction: column; gap: 10px;
-}
-.device .caption {
-  display:flex; gap:10px; align-items:baseline; padding: 0 6px;
-}
-.device .caption .id { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color:#8A847A; text-transform:uppercase; }
-.device .caption .name { font-family: var(--serif); font-size: 13.5px; color:#1A1815; font-weight: 500; }
+/* ── iOS frame ── */
+.device { width: 360px; flex-shrink: 0; display:flex; flex-direction: column; gap: 11px; }
+.device .caption { display:flex; gap:10px; align-items:baseline; padding: 0 6px; }
+.device .caption .id { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color:#888; text-transform:uppercase; }
+.device .caption .name { font-family: var(--serif); font-size: 13.5px; color:#1A1815; font-weight: 600; }
 .device .bezel {
-  position:relative;
-  border-radius: 40px; padding: 11px;
-  background: linear-gradient(180deg, #1d1a14 0%, #0c0a07 100%);
-  box-shadow: 0 30px 60px -12px rgba(60,40,20,0.35), 0 6px 16px rgba(0,0,0,0.18), inset 0 0 0 1.5px #2a261d;
+  position:relative; border-radius: 42px; padding: 11px;
+  background: linear-gradient(180deg, #2a2a2a 0%, #050505 100%);
+  box-shadow: 0 34px 60px -16px rgba(0,0,0,0.4), 0 8px 18px rgba(0,0,0,0.16), inset 0 0 0 1.5px #1c1c1c;
 }
-.device-screen {
-  position: relative; border-radius: 30px; overflow:hidden;
-  background: var(--bg); width: 100%; aspect-ratio: 9 / 19;
-  display:flex; flex-direction: column;
-}
-.device .notch { position:absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 100px; height: 28px; background: #060503; border-radius: 100px; z-index: 10; }
+.device-screen { position: relative; border-radius: 32px; overflow:hidden; background: var(--bg); width: 100%; aspect-ratio: 9 / 19.3; display:flex; flex-direction: column; }
+.device .notch { position:absolute; top: 13px; left: 50%; transform: translateX(-50%); width: 104px; height: 28px; background: #000; border-radius: 100px; z-index: 12; }
 .device-body { display:flex; flex-direction: column; flex:1; min-height:0; background: var(--bg); color: var(--fg); }
-.status-bar {
-  display:flex; align-items:center; justify-content: space-between;
-  padding: 12px 24px 2px; font-family: var(--mono); font-size: 11px; color: var(--fg); letter-spacing: 0.05em;
-  flex-shrink: 0;
-}
-.status-bar .ico-row { display:flex; gap: 5px; align-items:center; }
-.status-bar .ico-row svg { color: var(--fg); }
+.status-bar { display:flex; align-items:center; justify-content: space-between; padding: 13px 26px 3px; font-family: var(--sans); font-weight:600; font-size: 13px; color: var(--fg); flex-shrink: 0; }
+.status-bar .ico-row { display:flex; gap: 6px; align-items:center; }
 
-/* App header / chrome */
-.app-header {
-  display:flex; align-items:center; justify-content: space-between;
-  padding: 16px 18px 14px; gap: 12px;
-  border-bottom: 0.5px solid var(--rule-soft);
-  flex-shrink: 0;
-}
+/* ── Generic top bars ── */
+.topbar { display:flex; align-items:center; justify-content: space-between; padding: 12px 16px 12px; gap: 10px; flex-shrink: 0; min-height: 50px; }
+.topbar.ruled { border-bottom: 1px solid var(--rule-soft); }
+.topbar.center { display:grid; grid-template-columns: 1fr auto 1fr; }
+.topbar.center .ctitle { text-align:center; font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; color: var(--fg-muted); text-transform: uppercase; }
+.topbar .lead, .topbar .trail { display:flex; align-items:center; gap: 7px; }
+.topbar .trail { justify-content: flex-end; }
+.tb-link { font-family: var(--sans); font-size: 14px; color: var(--fg-muted); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.tb-link.strong { color: var(--fg); font-weight: 600; }
+.tb-step { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; color: var(--fg-faint); }
+
+/* brand header (feed) */
+.app-header { display:flex; align-items:center; justify-content: space-between; padding: 13px 16px 12px; gap: 12px; flex-shrink: 0; }
 .app-header .brand { display:flex; align-items:center; gap: 8px; }
-.app-header .brand .word { font-family: var(--serif); font-size: 17px; font-weight: 500; }
-.app-header .actions { display:flex; gap: 8px; align-items:center; }
-.icon-btn { width: 30px; height: 30px; border-radius: 50%; background: var(--bg-soft); border: 0.5px solid var(--rule-soft); display:inline-flex; align-items:center; justify-content:center; color: var(--fg); position: relative; }
-.icon-btn .badge { position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+.app-header .brand .word { font-family: var(--serif); font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.app-header .actions { display:flex; gap: 10px; align-items:center; }
+.icon-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--bg-soft); display:inline-flex; align-items:center; justify-content:center; color: var(--fg); position: relative; cursor:pointer; }
+.session-chip { display:inline-flex; align-items:center; gap: 6px; border: 1px solid var(--rule); border-radius: 999px; padding: 3px 9px 3px 3px; }
+.session-chip .av { width: 24px; height: 24px; border-radius: 50%; background: var(--amber); color: #fff; display:inline-flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 12px; }
+.session-chip .tier { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: var(--amber); text-transform: uppercase; font-weight:500; }
 
-.session-chip { display:inline-flex; align-items:center; gap: 6px; border: 0.5px solid var(--rule); border-radius: 999px; padding: 3px 8px 3px 3px; }
-.session-chip .av { width: 22px; height: 22px; border-radius: 50%; background: var(--amber); color: var(--bg); display:inline-flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 11px; }
-.session-chip .tier { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; color: var(--amber); text-transform: uppercase; }
+/* ── Scroll body ── */
+.app-body { flex: 1; min-height: 0; overflow: hidden; display:flex; flex-direction: column; }
+.feed { display:flex; flex-direction: column; }
 
-/* Body scroll area */
-.app-body { flex: 1; min-height: 0; overflow: hidden; display:flex; flex-direction: column; gap: 12px; padding: 14px 14px 16px; }
-
-/* Feed tabs */
-.feed-tabs { display:flex; gap: 4px; background: var(--bg-soft); border-radius: 999px; padding: 3px; border: 0.5px solid var(--rule-soft); flex-shrink:0; }
-.feed-tabs button { flex:1; padding: 6px 0; border-radius: 999px; background: transparent; border:none; font-family: var(--serif); font-size: 12px; color: var(--fg-muted); cursor:pointer; }
-.feed-tabs button.on { background: var(--bg); color: var(--fg); border: 0.5px solid var(--rule); }
-
-/* Post card */
+/* ── POST CARD (rounded card kept, internals Threads-tightened) ── */
+.feed-pad { padding: 12px 14px; display:flex; flex-direction:column; gap: 12px; }
 .post {
   display:flex; flex-direction: column; gap: 10px;
-  padding: 14px 14px 12px; background: var(--bg); border: 0.5px solid var(--rule); border-radius: 10px;
+  padding: 15px 16px 13px; background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 18px;
 }
-.post.anon { background: var(--bg-soft); }
-.post-source { display:flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform:uppercase; padding-bottom: 6px; border-bottom: 0.5px dashed var(--rule-soft); }
-.post-source .pip { width: 4px; height: 4px; border-radius: 50%; background: var(--sage); }
-.post-source.board .pip { background: var(--amber); }
-.post-source.note .pip { background: var(--fg); }
-.post-source.murmur .pip { background: var(--ember); }
-.post-author { display:grid; grid-template-columns: 32px 1fr auto; gap: 9px; align-items:center; }
-.post-author .av { width: 30px; height: 30px; border-radius: 50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 13px; }
-.post-author.signed .av { background: var(--amber); color: var(--bg); }
-.post-author .who { display:flex; flex-direction: column; gap: 0; min-width: 0; }
-.post-author .who .name { font-family: var(--serif); font-size: 14px; font-weight: 500; display:inline-flex; align-items:center; gap: 5px; }
-.post-author .who .name .sig { width: 4px; height: 4px; border-radius: 50%; background: var(--amber); }
-.post-author .who .handle { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; color: var(--fg-faint); }
-.post-author .when { font-family: var(--mono); font-size: 9px; color: var(--fg-faint); letter-spacing: 0.06em; align-self:start; padding-top: 3px; }
-.post-body { font-family: var(--serif); font-size: 14px; line-height: 1.65; color: var(--fg); }
-.post-body p { margin: 0 0 6px; }
-.post-body p:last-child { margin-bottom: 0; }
-.post-body .tag { font-family: var(--mono); font-style: normal; font-size: 10px; color: var(--amber); letter-spacing: 0.08em; text-transform: uppercase; }
-.post-body .quote { padding: 4px 0 4px 12px; border-left: 2px solid var(--amber); font-style: italic; color: var(--fg-muted); margin: 6px 0; }
-.post-actions { display:flex; align-items: center; gap: 16px; padding-top: 8px; border-top: 0.5px solid var(--rule-soft); }
-.post-action { display:inline-flex; align-items:center; gap: 5px; background:none; border: none; padding: 0; cursor: pointer; font-family: var(--serif); font-size: 12px; color: var(--fg-muted); }
-.post-action .ic { width: 14px; height: 14px; color: var(--fg-faint); }
-.post-action .n { font-family: var(--mono); font-size: 10px; color: var(--fg-faint); }
-.post-side { margin-left: auto; font-family: var(--mono); font-size: 8px; letter-spacing: 0.14em; color: var(--amber); text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; }
-.post-side .pip { width: 4px; height: 4px; border-radius: 50%; background: var(--amber); }
+.post-top { display:grid; grid-template-columns: 40px 1fr auto; gap: 11px; align-items: center; }
+.av { border-radius: 50%; display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-weight:500; flex-shrink:0; background: var(--bg-deep); color: var(--fg-muted); }
+.av.lg { width: 40px; height: 40px; font-size: 16px; }
+.av.signed { background: var(--amber); color: #fff; }
+.post-id { min-width: 0; display:flex; flex-direction: column; gap: 1px; }
+.post-id .handle { font-family: var(--sans); font-size: 14.5px; font-weight: 600; color: var(--fg); display:inline-flex; align-items:center; gap: 5px; line-height: 1.2; }
+.post-id .handle .seal { color: var(--amber); display:inline-flex; }
+.post-id .sub { font-family: var(--sans); font-size: 12px; color: var(--fg-faint); }
+.post-id .sub .sg { color: var(--amber); }
+.unread { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); align-self: flex-start; margin-top: 4px; }
+.post-heading { font-family: var(--serif); font-size: 16.5px; font-weight: 700; line-height: 1.4; color: var(--fg); margin: 0; }
+.post-body { font-family: var(--serif); font-size: 15px; line-height: 1.72; color: var(--fg); }
+.post-body p { margin: 0 0 6px; } .post-body p:last-child { margin-bottom: 0; }
+.post-body .muted { color: var(--fg-muted); }
 
-/* Type-specific post chrome */
-.murmur-player {
-  display:flex; align-items: center; gap: 10px;
-  padding: 10px 12px; background: var(--bg-soft); border-radius: 8px; border: 0.5px solid var(--rule-soft);
-}
-.murmur-play { width: 30px; height: 30px; border-radius: 50%; background: var(--fg); color: var(--bg); display:flex; align-items:center; justify-content:center; flex-shrink: 0; }
-.waveform { flex: 1; height: 24px; display:flex; align-items:center; gap: 1.5px; }
-.waveform i { display: block; width: 2px; background: var(--fg-faint); border-radius: 1px; }
-.waveform i.played { background: var(--amber); }
-.murmur-dur { font-family: var(--mono); font-size: 10px; color: var(--fg-faint); letter-spacing: 0.06em; }
-.murmur-transcript { font-family: var(--serif); font-style: italic; font-size: 13px; line-height: 1.6; color: var(--fg-muted); }
-.murmur-transcript::before { content: '“'; font-family: var(--serif); font-size: 18px; color: var(--ember); margin-right: 3px; }
+/* Threads-style icon action row */
+.actions { display:flex; align-items: center; gap: 4px; padding-top: 4px; }
+.act { display:inline-flex; align-items:center; gap: 6px; background:none; border:none; padding: 6px; border-radius: 999px; cursor:pointer; color: var(--fg); font-family: var(--sans); }
+.act svg { width: 21px; height: 21px; }
+.act .c { font-size: 13px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.act:hover { background: var(--bg-soft); }
+.act.heart.on { color: var(--ember); }
+.act.heart.on .c { color: var(--ember); }
+.act.share { margin-left: auto; }
 
-.note-title { font-family: var(--serif); font-size: 17px; font-weight: 500; line-height: 1.35; color: var(--fg); margin: 0; }
+/* ── Onboarding ── */
+.pad { flex:1; display:flex; flex-direction:column; padding: 18px 26px 30px; min-height:0; }
+.kicker { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.2em; color: var(--fg-faint); text-transform: uppercase; }
+.wordmark { font-family: var(--serif); font-size: 46px; font-weight: 600; letter-spacing: -0.02em; color: var(--fg); line-height: 1; }
+h1.display { margin: 0; font-family: var(--serif); font-size: 30px; line-height: 1.32; font-weight: 600; color: var(--fg); letter-spacing:-0.01em; }
+h2.display { margin: 0; font-family: var(--serif); font-size: 25px; line-height: 1.38; font-weight: 600; color: var(--fg); letter-spacing:-0.01em; }
+.lede { font-family: var(--serif); font-size: 15.5px; line-height: 1.78; color: var(--fg-muted); font-style: italic; }
+.body-text { font-family: var(--serif); font-size: 15px; line-height: 1.78; color: var(--fg-muted); }
+.foot-note { font-family: var(--sans); font-size: 12px; color: var(--fg-faint); text-align:center; letter-spacing: 0.02em; }
 
-/* Tab bar — flat, icon-only (familiar feed-app convention) */
-.tabbar {
-  display:flex; align-items: center;
-  padding: 7px 8px 26px; border-top: 0.5px solid var(--rule-soft);
-  background: var(--bg); flex-shrink: 0;
-  position: relative;
-}
-.tabbar .tab {
-  flex: 1; display:flex; align-items: center; justify-content: center;
-  height: 46px; color: var(--fg-faint); cursor: pointer; position: relative;
-  transition: color .16s ease, transform .12s ease;
-}
-.tabbar .tab svg { width: 26px; height: 26px; transition: transform .12s ease; }
-.tabbar .tab span { display: none; }            /* icon-only — no labels */
-.tabbar .tab:active { transform: scale(0.92); }
-.tabbar .tab.on { color: var(--fg); }
-.tabbar .tab.on svg { transform: scale(1.06); }
-.tabbar .tab.center {
-  flex: 0 0 auto; width: 50px; height: 38px; border-radius: 12px;
-  background: var(--bg-soft); border: 0.5px solid var(--rule); color: var(--fg);
-  margin: 0 4px; box-shadow: none;
-}
-.tabbar .tab.center svg { width: 22px; height: 22px; }
-.tabbar .tab .dot {
-  position:absolute; width: 7px; height: 7px; border-radius:50%; background: var(--amber);
-  top: 4px; left: 50%; margin-left: 3px; border: 1.5px solid var(--bg);
-}
-
-/* Onboarding & utility */
-.full-pad { flex:1; display:flex; flex-direction:column; padding: 22px 22px 28px; gap: 18px; }
-.kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--amber); text-transform: uppercase; }
-h1.display { margin: 0; font-family: var(--serif); font-size: 28px; line-height: 1.2; font-weight: 500; color: var(--fg); }
-h2.display { margin: 0; font-family: var(--serif); font-size: 22px; line-height: 1.3; font-weight: 500; color: var(--fg); }
-.body-text { font-family: var(--serif); font-size: 14.5px; line-height: 1.7; color: var(--fg-muted); }
-.body-text em { font-style: italic; color: var(--amber); }
-
-.btn { display:inline-flex; align-items:center; justify-content:center; gap: 8px; padding: 11px 18px; border-radius: 999px; border:none; font-family: var(--serif); font-size: 14px; cursor:pointer; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap: 9px; padding: 13px 20px; border-radius: 999px; border:none; font-family: var(--sans); font-weight:600; font-size: 15px; cursor:pointer; }
 .btn-primary { background: var(--fg); color: var(--bg); }
-.btn-ghost { background: transparent; color: var(--fg); border: 0.5px solid var(--rule); }
-.btn-block { width: 100%; padding: 14px 18px; font-size: 15px; }
+.btn-ghost { background: transparent; color: var(--fg); border: 1px solid var(--rule); }
+.btn-block { width: 100%; }
 
-/* Identity / key card */
-.id-card {
-  padding: 18px 18px; border: 0.5px solid var(--rule); border-radius: 12px; background: var(--bg-soft); display:flex; flex-direction: column; gap: 12px;
-}
-.id-card .row { display:flex; justify-content:space-between; gap: 12px; }
-.id-card .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform: uppercase; }
-.id-card .val { font-family: var(--mono); font-size: 11px; color: var(--fg); word-break: break-all; }
-.id-card .val.amber { color: var(--amber); }
-.id-card .val.sage { color: var(--sage); }
+/* Promise card (a02) */
+.promise { border: 1px solid var(--rule); border-radius: 18px; overflow: hidden; }
+.promise-head { display:flex; align-items:center; gap: 10px; padding: 14px 16px; background: var(--bg-soft); }
+.promise-head .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink:0; }
+.promise-head .zh { font-family: var(--serif); font-size: 15.5px; font-weight: 600; color: var(--fg); }
+.promise-head .en { margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; color: var(--fg-faint); text-transform: uppercase; }
+.promise-item { padding: 13px 16px; font-family: var(--serif); font-size: 14.5px; color: var(--fg-muted); border-top: 1px solid var(--rule-soft); }
 
-/* Compose action sheet */
-.sheet-backdrop { position:absolute; inset: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); }
-body.dark .device-body .sheet-backdrop { background: rgba(0,0,0,0.55); }
-.action-sheet {
-  position: absolute; left: 8px; right: 8px; bottom: 8px;
-  background: var(--bg); border-radius: 18px; padding: 6px;
-  border: 0.5px solid var(--rule); box-shadow: 0 24px 60px rgba(0,0,0,0.2);
-}
-.action-sheet .item {
-  display:grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center;
-  padding: 14px 14px; border-radius: 14px;
-}
-.action-sheet .item + .item { border-top: 0.5px solid var(--rule-soft); }
-.action-sheet .item .glyph { width: 36px; height: 36px; border-radius: 10px; background: var(--bg-soft); display:flex; align-items: center; justify-content: center; color: var(--fg); }
-.action-sheet .item h3 { margin:0; font-family: var(--serif); font-size: 15px; font-weight: 500; color: var(--fg); }
-.action-sheet .item .desc { font-family: var(--serif); font-style: italic; font-size: 12px; color: var(--fg-muted); margin-top: 2px; line-height: 1.45; }
-.action-sheet .item .arrow { color: var(--fg-faint); }
-.action-sheet .cancel { padding: 12px; text-align:center; font-family: var(--serif); font-size: 14px; color: var(--fg-muted); cursor:pointer; border-top: 0.5px solid var(--rule-soft); margin-top: 4px; }
-
-/* Note editor */
-.editor { display:flex; flex-direction: column; gap: 14px; flex:1; min-height:0; }
-.editor input.title { border: none; background: transparent; font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--fg); padding: 4px 0; outline: none; width: 100%; }
-.editor input.title::placeholder { color: var(--fg-faint); font-style: italic; font-weight: 300; }
-.editor .doc { font-family: var(--serif); font-size: 15px; line-height: 1.75; color: var(--fg); flex:1; }
-.editor .doc p { margin: 0 0 10px; }
-.editor .doc p.cursor::after { content: '|'; color: var(--amber); font-weight: 200; margin-left: 1px; animation: blink 1s steps(2) infinite; }
+/* ── Compose (c01) ── */
+.compose-area { flex:1; padding: 20px 22px; min-height:0; }
+.compose-ph { font-family: var(--serif); font-size: 22px; line-height: 1.5; color: var(--fg-faint); display:flex; align-items:flex-start; }
+.compose-ph::before { content:''; display:inline-block; width: 2px; height: 26px; background: var(--amber); margin: 3px 2px 0 0; animation: blink 1.05s steps(2) infinite; }
 @keyframes blink { to { opacity: 0; } }
+.did-bar { display:flex; align-items:center; justify-content: space-between; padding: 13px 18px 18px; border-top: 1px solid var(--rule-soft); flex-shrink:0; }
+.did-bar .did { display:inline-flex; align-items:center; gap: 8px; font-family: var(--mono); font-size: 13px; color: var(--fg-muted); }
+.did-bar .did svg { color: var(--amber); }
+.did-bar .count { font-family: var(--mono); font-size: 13px; color: var(--fg-faint); }
+.btn-send { padding: 8px 18px; border-radius: 999px; background: var(--bg-soft); color: var(--fg); border: 1px solid var(--rule); font-family: var(--sans); font-weight:600; font-size: 14px; }
 
-/* Audience chip strip (composer) */
-.audience-strip {
-  display:flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px;
-  background: var(--bg-soft); border-radius: 10px; border: 0.5px solid var(--rule-soft);
-}
-.audience-strip .chip { display:inline-flex; align-items:center; gap:5px; padding: 4px 9px; border-radius: 999px; background: var(--bg); border: 0.5px solid var(--rule); font-family: var(--serif); font-size: 11.5px; color: var(--fg); }
-.audience-strip .chip.amber { color: var(--amber); border-color: var(--amber); }
-.audience-strip .chip.sage { color: var(--sage); border-color: var(--sage); }
+/* ── Detail (d01) ── */
+.detail-post { padding: 16px 18px 18px; border-bottom: 1px solid var(--rule); display:flex; flex-direction:column; gap: 10px; }
+.detail-post .who { font-family: var(--sans); font-size: 14.5px; font-weight: 600; color: var(--fg); }
+.detail-post .who .t { color: var(--fg-faint); font-weight: 400; font-size: 13px; }
+.empty-state { padding: 26px 18px; font-family: var(--serif); font-size: 15px; color: var(--fg-faint); font-style: italic; }
+.reply-bar { display:flex; align-items:center; gap: 10px; padding: 11px 14px 18px; border-top: 1px solid var(--rule-soft); flex-shrink:0; }
+.reply-bar .field { flex:1; padding: 11px 16px; border-radius: 999px; border: 1px solid var(--rule); font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--fg-faint); }
+.reply-bar .send { width: 40px; height: 40px; border-radius: 50%; display:flex; align-items:center; justify-content:center; color: var(--fg); flex-shrink:0; }
 
-/* Murmur capture */
-.murmur-cap {
-  flex:1; display:flex; flex-direction:column; justify-content:center; align-items: center; gap: 22px; padding: 30px 22px; text-align: center;
-}
-.record-ring { width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, rgba(185,122,60,0.18), transparent 70%); display:flex; align-items:center; justify-content:center; position:relative; }
-.record-ring::before, .record-ring::after { content: ''; position:absolute; inset: -8px; border-radius:50%; border: 0.5px solid rgba(185,122,60,0.4); }
-.record-ring::after { inset: -22px; border-color: rgba(185,122,60,0.2); }
-.record-btn { width: 92px; height: 92px; border-radius: 50%; background: var(--amber); color: var(--bg); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 16px; }
-.record-btn .square { width: 26px; height: 26px; background: var(--bg); border-radius: 4px; }
-.wave-live { display:flex; align-items: center; gap: 2px; height: 36px; }
-.wave-live i { width: 3px; background: var(--amber); border-radius: 2px; }
+/* ── Notifications (d02) ── */
+.notif-pad { padding: 6px 16px; }
+.notif-row { display:grid; grid-template-columns: 44px 1fr auto; gap: 13px; padding: 16px 2px; border-bottom: 1px solid var(--rule-soft); align-items: center; }
+.notif-glyph { width: 42px; height: 42px; border-radius: 12px; background: var(--bg-soft); border: 1px solid var(--rule-soft); display:flex; align-items:center; justify-content:center; color: var(--fg-muted); }
+.notif-text .who { font-family: var(--sans); font-size: 14.5px; font-weight: 600; color: var(--fg); }
+.notif-text .what { font-family: var(--serif); font-size: 14.5px; color: var(--fg-muted); margin-top: 2px; }
+.notif-meta { display:flex; flex-direction:column; align-items:flex-end; gap: 7px; }
+.notif-meta .when { font-family: var(--sans); font-size: 12px; color: var(--fg-faint); }
+.notif-meta .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); }
 
-/* Boards */
-.board-list { display:flex; flex-direction:column; gap: 8px; }
-.board-row {
-  display:grid; grid-template-columns: 1fr auto; gap: 4px 12px;
-  padding: 12px 14px; border: 0.5px solid var(--rule-soft); border-radius: 10px; background: var(--bg);
-}
-.board-row .name { font-family: var(--serif); font-size: 15px; font-weight: 500; color: var(--fg); }
-.board-row .desc { grid-column: 1 / -1; font-family: var(--serif); font-size: 12.5px; line-height: 1.55; color: var(--fg-muted); margin: 0; }
-.board-row .perm { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--amber); text-transform: uppercase; align-self: start; }
-.board-row .perm.read { color: var(--fg-faint); }
+/* ── Board (e15) ── */
+.board-pad { padding: 22px 16px 16px; display:flex; flex-direction: column; gap: 16px; }
+.board-hero { text-align:center; font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--fg); letter-spacing: -0.01em; }
+.board-meta { border: 1px solid var(--rule); border-radius: 18px; padding: 16px 18px; display:flex; flex-direction: column; gap: 12px; }
+.board-meta .tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; color: var(--amber); text-transform: lowercase; }
+.board-meta .blurb { font-family: var(--serif); font-size: 15px; line-height: 1.7; color: var(--fg); }
+.board-meta .foot { display:flex; gap: 16px; padding-top: 12px; border-top: 1px solid var(--rule-soft); font-family: var(--sans); font-size: 13px; }
+.board-meta .foot .n { color: var(--fg-muted); }
+.board-meta .foot .perm { color: var(--amber); }
+.thread-card { border: 1px solid var(--rule); border-radius: 18px; padding: 16px 18px; display:flex; flex-direction: column; gap: 12px; }
+.thread-card .status { display:flex; align-items:center; gap: 9px; padding-bottom: 11px; border-bottom: 1px solid var(--rule-soft); font-family: var(--sans); font-size: 13px; color: var(--fg-muted); }
+.thread-card .status .d { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); }
+.thread-card .status .d.new { background: var(--amber); }
+.thread-card .ttl { font-family: var(--serif); font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--fg); }
+.thread-card .by { display:flex; align-items:center; gap: 10px; }
+.thread-card .by .av { width: 34px; height: 34px; font-size: 14px; }
+.thread-card .by .col .n { font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--fg); display:inline-flex; align-items:center; gap:6px; }
+.thread-card .by .col .n .pip { width:5px;height:5px;border-radius:50%;background:var(--amber); }
+.thread-card .by .col .m { font-family: var(--sans); font-size: 12px; color: var(--fg-faint); margin-top:1px; }
+.fab { position:absolute; right: 18px; bottom: 22px; width: 60px; height: 60px; border-radius: 20px; background: var(--fg); color: var(--bg); display:flex; align-items:center; justify-content:center; box-shadow: 0 14px 30px rgba(0,0,0,0.28); z-index: 8; }
 
-/* Profile head */
-.profile-head { padding: 18px 14px 18px; display:flex; flex-direction:column; gap: 12px; }
-.profile-head .top { display:flex; gap: 14px; align-items: flex-start; }
-.profile-head .av-big { width: 62px; height: 62px; border-radius: 50%; background: var(--amber); color: var(--bg); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 24px; flex-shrink:0; }
-.profile-head .info { flex:1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.profile-head .info h1 { margin:0; font-family: var(--serif); font-weight: 500; font-size: 20px; display:inline-flex; align-items:center; gap: 6px; }
-.profile-head .info h1 .sig { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
-.profile-head .info .handle { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; color: var(--fg-faint); }
-.profile-head .bio { font-family: var(--serif); font-size: 13px; line-height: 1.6; color: var(--fg-muted); }
-.profile-head .stats { display:flex; gap: 14px; padding-top: 10px; border-top: 0.5px solid var(--rule-soft); }
-.profile-head .stat { display:flex; flex-direction:column; gap: 1px; }
-.profile-head .stat .n { font-family: var(--serif); font-size: 15px; font-weight: 500; }
-.profile-head .stat .l { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform: uppercase; }
+/* ── Thread detail (e16) — OP + replies ── */
+.thread-hd { padding: 10px 16px 12px; display:flex; flex-direction:column; gap:3px; border-bottom: 1px solid var(--rule-soft); }
+.thread-hd .crumb { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--amber); text-transform: lowercase; }
+.thread-hd .name { font-family: var(--serif); font-size: 20px; font-weight: 700; color: var(--fg); line-height: 1.3; }
+.op { padding: 16px 16px 14px; border-bottom: 1px solid var(--rule); display:flex; flex-direction:column; gap: 11px; }
+.op .post-top { grid-template-columns: 40px 1fr; }
+.op .op-body { font-family: var(--serif); font-size: 16px; line-height: 1.78; color: var(--fg); }
+.op .op-body p { margin: 0 0 8px; } .op .op-body p:last-child { margin-bottom: 0; }
+.reply-head { display:flex; align-items:center; gap: 8px; padding: 13px 16px 4px; font-family: var(--sans); font-size: 13px; color: var(--fg-muted); }
+.reply-head .rn { font-weight: 600; color: var(--fg); }
+.reply-list { padding: 4px 16px 8px; display:flex; flex-direction:column; }
+.reply { display:grid; grid-template-columns: 34px 1fr; gap: 11px; padding: 12px 0; position: relative; }
+.reply:not(:last-child)::after { content:''; position:absolute; left: 16.5px; top: 46px; bottom: -1px; width: 1.5px; background: var(--rule); }
+.reply .av { width: 34px; height: 34px; font-size: 13px; z-index: 1; }
+.reply .rc { min-width: 0; display:flex; flex-direction:column; gap: 5px; }
+.reply .rc .rtop { display:flex; align-items:center; gap: 6px; }
+.reply .rc .rh { font-family: var(--sans); font-size: 13.5px; font-weight: 600; color: var(--fg); display:inline-flex; align-items:center; gap:4px; }
+.reply .rc .rh .seal { color: var(--amber); display:inline-flex; }
+.reply .rc .rt { font-family: var(--sans); font-size: 12px; color: var(--fg-faint); }
+.reply .rc .rbody { font-family: var(--serif); font-size: 14.5px; line-height: 1.68; color: var(--fg); }
+.reply .rc .ract { display:flex; align-items:center; gap: 14px; padding-top: 1px; }
+.reply .rc .ract .m { display:inline-flex; align-items:center; gap: 5px; font-family: var(--sans); font-size: 12px; color: var(--fg-faint); cursor:pointer; }
+.reply .rc .ract .m svg { width: 16px; height: 16px; }
+.reply .rc .ract .m.on { color: var(--ember); }
 
-/* Notifications */
-.notif-row { display:grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 12px 4px; border-bottom: 0.5px solid var(--rule-soft); align-items: flex-start; }
-.notif-row .av { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 12px; flex-shrink:0; }
-.notif-row.signed .av { background: var(--amber); color: var(--bg); }
-.notif-row .text { font-family: var(--serif); font-size: 13px; line-height: 1.55; color: var(--fg); }
-.notif-row .text strong { font-weight: 500; }
-.notif-row .text .light { color: var(--fg-muted); }
-.notif-row .when { font-family: var(--mono); font-size: 9px; color: var(--fg-faint); letter-spacing: 0.06em; margin-top: 3px; display: block; }
+/* ── Settings (e01) ── */
+.settings { overflow:hidden; }
+.profile { padding: 20px 18px 18px; display:grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: start; }
+.profile .av-big { width: 64px; height: 64px; border-radius: 50%; background: var(--amber); color: #fff; display:flex; align-items:center; justify-content:center; }
+.profile .meta h2 { margin:0; font-family: var(--serif); font-weight: 700; font-size: 22px; display:inline-flex; align-items:center; gap: 8px; color: var(--fg); }
+.pk-badge { display:inline-flex; align-items:center; gap: 4px; background: var(--amber); color:#fff; font-family: var(--sans); font-weight:600; font-size: 11px; padding: 2px 9px; border-radius: 999px; }
+.profile .meta .auth { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--amber); text-transform: uppercase; margin-top: 6px; }
+.profile .meta .did { font-family: var(--mono); font-size: 12.5px; color: var(--fg-muted); margin-top: 3px; }
+.profile .edit { font-family: var(--sans); font-size: 14px; color: var(--fg); font-weight:600; }
+.set-group { padding: 8px 18px 0; }
+.set-group > .glabel { font-family: var(--sans); font-size: 13px; color: var(--fg-faint); padding: 14px 2px 8px; }
+.set-group > .glabel .en { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; margin-left: 6px; }
+.set-row { display:grid; grid-template-columns: 40px 1fr auto; gap: 13px; padding: 15px 2px; align-items: center; border-top: 1px solid var(--rule-soft); }
+.set-row .glyph { width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--rule); display:flex; align-items:center; justify-content:center; color: var(--fg-muted); }
+.set-row .nm { font-family: var(--serif); font-size: 16px; font-weight: 600; color: var(--fg); display:inline-flex; align-items:baseline; gap:8px; }
+.set-row .nm .en { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--fg-faint); text-transform: uppercase; }
+.set-row .nm-sub { font-family: var(--serif); font-size: 13px; color: var(--fg-muted); margin-top: 2px; }
+.set-row .val { font-family: var(--sans); font-size: 14px; color: var(--fg-muted); display:inline-flex; align-items:center; gap:5px; }
+.set-row .val .arr { color: var(--fg-faint); }
 
-/* Settings list */
-.settings-group { margin-top: 16px; }
-.settings-group h4 { margin: 0 6px 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em; color: var(--fg-faint); text-transform: uppercase; }
-.settings-group .list { background: var(--bg); border-radius: 12px; border: 0.5px solid var(--rule-soft); overflow: hidden; }
-.settings-row { display:grid; grid-template-columns: 22px 1fr auto; gap: 10px; padding: 13px 14px; align-items: center; }
-.settings-row + .settings-row { border-top: 0.5px solid var(--rule-soft); }
-.settings-row .glyph { color: var(--fg-muted); }
-.settings-row .name { font-family: var(--serif); font-size: 14px; color: var(--fg); }
-.settings-row .meta { font-family: var(--mono); font-size: 9.5px; color: var(--fg-faint); letter-spacing: 0.06em; text-transform: uppercase; }
-.settings-row .arrow { color: var(--fg-faint); }
+/* Theme picker */
+.theme-block { padding: 16px 2px 6px; border-top: 1px solid var(--rule-soft); }
+.theme-block .row1 { display:flex; align-items:baseline; gap: 10px; }
+.theme-block .row1 .lab { font-family: var(--serif); font-size: 16px; font-weight: 600; color: var(--fg); }
+.theme-block .row1 .en { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform: uppercase; }
+.theme-block .row1 .cur { margin-left: auto; font-family: var(--sans); font-size: 14px; color: var(--fg-muted); }
+.theme-block .hint { font-family: var(--serif); font-size: 13px; color: var(--fg-muted); margin: 6px 0 12px; }
+.swatch-row { display:grid; grid-template-columns: 56px 1fr 1fr 1fr; gap: 9px; align-items:center; margin-bottom: 10px; }
+.swatch-row .surf-lab { font-family: var(--sans); font-size: 13px; color: var(--fg-muted); }
+.swatch { border-radius: 12px; border: 1px solid var(--rule); padding: 10px; display:flex; flex-direction:column; gap:8px; cursor:pointer; }
+.swatch.sel { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(185,122,60,0.28); }
+.swatch .chip { height: 30px; border-radius: 7px; border: 1px solid var(--rule); }
+.swatch .chip.paper { background: #fff; } .swatch .chip.ink { background: #0A0A0A; border-color:#0A0A0A; }
+.swatch .chip.auto { background: linear-gradient(110deg, #fff 50%, #0A0A0A 50%); }
+.swatch .nm { font-family: var(--sans); font-size: 12.5px; color: var(--fg); text-align:center; }
+.pill-row { display:flex; gap: 9px; margin-top: 6px; }
+.pill { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--rule); font-family: var(--sans); font-size: 14px; color: var(--fg-muted); cursor:pointer; }
+.pill.sel { background: rgba(185,122,60,0.14); border-color: var(--amber); color: var(--amber); font-weight: 600; }
+body.dark .pill.sel { background: rgba(214,153,104,0.16); }
 
-/* Section block */
-.section-block { padding: 12px 14px; border: 0.5px solid var(--rule); border-radius: 10px; background: var(--bg); display:flex; flex-direction: column; gap: 8px; }
-.section-block h4 { margin: 0; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em; color: var(--amber); text-transform: uppercase; }
-.section-block .desc { font-family: var(--serif); font-size: 13px; line-height: 1.55; color: var(--fg-muted); margin:0; }
-
-/* Reply thread */
-.reply { display:grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 10px 0; }
-.reply .av { width: 24px; height: 24px; border-radius: 50%; background: var(--bg-deep); color: var(--fg-muted); display:flex; align-items:center; justify-content:center; font-family: var(--serif); font-size: 11px; }
-.reply.signed .av { background: var(--amber); color: var(--bg); }
-.reply .body { font-family: var(--serif); font-size: 13px; line-height: 1.55; color: var(--fg); }
-.reply .meta { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; color: var(--fg-faint); margin-top: 3px; }
-
-/* Banner */
-.banner { padding: 12px 14px; border-radius: 8px; border: 0.5px solid var(--amber); background: rgba(185,122,60,0.08); font-family: var(--serif); font-size: 12.5px; line-height: 1.55; color: var(--fg-muted); }
-.banner strong { color: var(--amber); font-weight: 500; }
-
-/* Hide scrollbar inside app body for cleanliness */
-.app-body { overflow: hidden; }
-
+/* ── Bottom nav (kept, restyled) ── */
+.tabbar { display:flex; align-items: center; padding: 8px 8px 26px; border-top: 1px solid var(--rule-soft); background: var(--bg); flex-shrink: 0; }
+.tabbar .tab { flex: 1; display:flex; align-items: center; justify-content: center; height: 46px; color: var(--fg-faint); cursor: pointer; position: relative; }
+.tabbar .tab svg { width: 26px; height: 26px; }
+.tabbar .tab.on { color: var(--fg); }
+.tabbar .tab.center { flex: 0 0 auto; width: 52px; height: 40px; border-radius: 13px; background: var(--bg-soft); border: 1px solid var(--rule); color: var(--fg); margin: 0 4px; }
+.tabbar .tab.center svg { width: 23px; height: 23px; }
+.tabbar .tab .nd { position:absolute; width: 7px; height: 7px; border-radius:50%; background: var(--amber); top: 5px; left: 50%; margin-left: 4px; border: 2px solid var(--bg); }
 </style>
 </head>
 <body>
@@ -348,28 +309,28 @@ body.dark .device-body .sheet-backdrop { background: rgba(0,0,0,0.55); }
         <circle cx="0" cy="6" r="8" fill="#B97A3C"/>
       </g>
     </symbol>
-    <symbol id="ic-resonate" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3" fill="currentColor"/><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.5"/><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1" fill="none" opacity="0.25"/></symbol>
-    <symbol id="ic-reply" viewBox="0 0 20 20"><path d="M3 5 h12 a2 2 0 0 1 2 2 v5 a2 2 0 0 1 -2 2 h-7 l-4 3 v-3 h-1 a2 2 0 0 1 -2 -2 v-5 a2 2 0 0 1 2 -2 z" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
-    <symbol id="ic-pass" viewBox="0 0 20 20"><path d="M4 10 h12 M11 5 l5 5 -5 5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="ic-home" viewBox="0 0 20 20"><path d="M3 10 l7 -7 7 7 v7 h-5 v-5 h-4 v5 h-5 z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></symbol>
-    <symbol id="ic-bell" viewBox="0 0 20 20"><path d="M5 14 v-4 a5 5 0 0 1 10 0 v4 l1.5 2 h-13 z M8 17 a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
-    <symbol id="ic-search" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M13 13 l4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
-    <symbol id="ic-circle" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="10" cy="10" r="2" fill="currentColor"/></symbol>
-    <symbol id="ic-board" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M3 8 h14 M8 8 v9" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
-    <symbol id="ic-plus" viewBox="0 0 20 20"><path d="M10 4 v12 M4 10 h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
-    <symbol id="ic-mic" viewBox="0 0 20 20"><rect x="7" y="3" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M4 10 a6 6 0 0 0 12 0 M10 16 v2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></symbol>
-    <symbol id="ic-pen" viewBox="0 0 20 20"><path d="M3 17 l3 -1 10 -10 -2 -2 -10 10 z M13 5 l2 2" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
-    <symbol id="ic-play" viewBox="0 0 20 20"><path d="M6 4 l10 6 -10 6 z" fill="currentColor"/></symbol>
-    <symbol id="ic-key" viewBox="0 0 20 20"><circle cx="7" cy="10" r="3.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M10 10 h7 M14 10 v3 M17 10 v2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></symbol>
-    <symbol id="ic-shield" viewBox="0 0 20 20"><path d="M10 3 l6 2 v5 a6 7 0 0 1 -6 7 a6 7 0 0 1 -6 -7 v-5 z" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
-    <symbol id="ic-sync" viewBox="0 0 20 20"><path d="M4 8 a6 6 0 0 1 10 -2 l2 -2 M16 12 a6 6 0 0 1 -10 2 l-2 2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M14 4 l2 2 -2 2 M6 16 l-2 -2 2 -2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round" stroke-linecap="round"/></symbol>
-    <symbol id="ic-eye" viewBox="0 0 20 20"><path d="M2 10 c 3 -5 13 -5 16 0 c -3 5 -13 5 -16 0 z" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
-    <symbol id="ic-moon" viewBox="0 0 20 20"><path d="M14 4 a7 7 0 1 0 2 12 a6 6 0 0 1 -2 -12 z" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
-    <symbol id="ic-globe" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M3 10 h14 M10 3 c 3 4 3 10 0 14 M10 3 c -3 4 -3 10 0 14" stroke="currentColor" stroke-width="1.2" fill="none"/></symbol>
-    <symbol id="ic-chev" viewBox="0 0 20 20"><path d="M8 5 l5 5 -5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="ic-sig" viewBox="0 0 20 20"><path d="M3 14 c 2 -8 5 -8 7 0 c 2 -8 4 -8 7 0" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></symbol>
-    <symbol id="ic-wifi" viewBox="0 0 16 12"><path d="M2 5 a8 8 0 0 1 12 0 M4 7 a5 5 0 0 1 8 0 M6 9 a3 3 0 0 1 4 0" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></symbol>
-    <symbol id="ic-batt" viewBox="0 0 22 12"><rect x="1" y="2" width="18" height="8" rx="2" stroke="currentColor" stroke-width="0.8" fill="none"/><rect x="3" y="4" width="14" height="4" rx="1" fill="currentColor"/><rect x="20" y="4" width="1.5" height="4" rx="0.5" fill="currentColor"/></symbol>
+    <symbol id="ic-heart" viewBox="0 0 22 22"><path d="M11 19 C 2.5 13 2 7.5 5.8 6 C 8.4 5 11 7.5 11 7.5 C 11 7.5 13.6 5 16.2 6 C 20 7.5 19.5 13 11 19 Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-comment" viewBox="0 0 22 22"><path d="M3.5 6 a2 2 0 0 1 2 -2 h11 a2 2 0 0 1 2 2 v7 a2 2 0 0 1 -2 2 h-6 l-4 3 v-3 h-1 a2 2 0 0 1 -2 -2 z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-repost" viewBox="0 0 22 22"><path d="M5 9 V7.5 A2 2 0 0 1 7 5.5 H15 M12.5 3 L15.5 5.5 L12.5 8 M17 13 V14.5 A2 2 0 0 1 15 16.5 H7 M9.5 19 L6.5 16.5 L9.5 14" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-share" viewBox="0 0 22 22"><path d="M19 3 L9.5 12.5 M19 3 L13 19 L9.5 12.5 L3 9 Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-seal" viewBox="0 0 16 16"><path d="M8 1.5 l1.6 1.2 2 -.2 .6 1.9 1.7 1.1 -.7 1.9 .7 1.9 -1.7 1.1 -.6 1.9 -2 -.2 -1.6 1.2 -1.6 -1.2 -2 .2 -.6 -1.9 -1.7 -1.1 .7 -1.9 -.7 -1.9 1.7 -1.1 .6 -1.9 2 .2 z" fill="currentColor"/><path d="M5.6 8 l1.6 1.6 3.2 -3.4" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-home" viewBox="0 0 20 20"><path d="M3 10 l7 -7 7 7 v7 h-5 v-5 h-4 v5 h-5 z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-bell" viewBox="0 0 20 20"><path d="M5 14 v-4 a5 5 0 0 1 10 0 v4 l1.5 2 h-13 z M8 17 a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M13 13 l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-circle" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.3" fill="none"/><circle cx="10" cy="10" r="2.4" fill="currentColor"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 20 20"><path d="M10 4 v12 M4 10 h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-eye" viewBox="0 0 20 20"><path d="M2 10 c 3 -5 13 -5 16 0 c -3 5 -13 5 -16 0 z" stroke="currentColor" stroke-width="1.3" fill="none"/><circle cx="10" cy="10" r="2.6" stroke="currentColor" stroke-width="1.3" fill="none"/></symbol>
+    <symbol id="ic-chev" viewBox="0 0 20 20"><path d="M8 5 l5 5 -5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 20 20"><path d="M5 5 l10 10 M15 5 l-10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-finger" viewBox="0 0 20 20"><path d="M5 11 a5 5 0 0 1 10 0 M7 11 a3 3 0 0 1 6 0 v3 M10 11 v4 M4 8 a7 7 0 0 1 12 0" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="ic-send" viewBox="0 0 20 20"><path d="M17 3 L8.5 11.5 M17 3 L11.5 17 L8.5 11.5 L3 8 Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-person" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M5.5 19 a6.5 6.5 0 0 1 13 0" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="ic-wallet" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.3" fill="none"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.3" fill="none"/></symbol>
+    <symbol id="ic-sync" viewBox="0 0 20 20"><path d="M4 8 a6 6 0 0 1 10 -2 l2 -2 M16 12 a6 6 0 0 1 -10 2 l-2 2" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M14 4 l2 2 -2 2 M6 16 l-2 -2 2 -2" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="ic-admin" viewBox="0 0 20 20"><rect x="3.5" y="3.5" width="13" height="13" rx="2.5" stroke="currentColor" stroke-width="1.3" fill="none"/></symbol>
+    <symbol id="ic-lang" viewBox="0 0 20 20"><path d="M3 6 h8 M7 4 v2 M5 6 c 0 4 2 6 5 7 M9 6 c 0 4 -2 6 -5 7 M10 16 l3 -7 3 7 M11.2 13.5 h3.6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-wifi" viewBox="0 0 16 12"><path d="M2 5 a8 8 0 0 1 12 0 M4 7 a5 5 0 0 1 8 0 M6 9 a3 3 0 0 1 4 0" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="ic-batt" viewBox="0 0 24 12"><rect x="1" y="2" width="19" height="8" rx="2.4" stroke="currentColor" stroke-width="1" fill="none"/><rect x="3" y="4" width="15" height="4" rx="1" fill="currentColor"/><rect x="21" y="4.5" width="1.6" height="3" rx="0.8" fill="currentColor"/></symbol>
   </defs>
 </svg>
 
@@ -378,1103 +339,360 @@ body.dark .device-body .sheet-backdrop { background: rgba(0,0,0,0.55); }
   <div class="title-bar">
     <div>
       <h1>Elix · App Screens</h1>
-      <div class="sub">重視身分的社群 App — 動態優先，身分為架構。Note 與 Murmur 是兩種發文型態，會出現在追蹤者的動態裡。</div>
+      <div class="sub">重視身分的社群 App。介面向 Threads 的版面語言靠攏，降低台灣使用者的轉換成本 — 但保留 Elix 的近白／純黑質感、襯線內文、passkey 簽署身分，以及自己的底部導覽。</div>
     </div>
-    <div style="font-family:var(--mono); font-size:10px; letter-spacing:0.14em; color:#8A847A; text-transform:uppercase;">20 SCREENS · 5 SECTIONS · iOS 375 × 812</div>
+    <div class="meta-tag">9 SCREENS · RE-STYLE · iOS</div>
   </div>
 
-<!-- ════════════════════════════════════════════════════ -->
-<!-- A · ONBOARDING -->
-<!-- ════════════════════════════════════════════════════ -->
-<section class="section">
-  <div class="section-head">
-    <span class="ix">A · ONBOARDING</span>
-    <h2>啟程</h2>
-    <span class="desc">先把身分握在自己手裡。Elix 不問你的電話、信箱、生日。</span>
-  </div>
-  <div class="frame-row">
+  <!-- ════════ A · ONBOARDING ════════ -->
+  <section class="section">
+    <div class="section-head"><span class="ix">A · ONBOARDING</span><h2>啟程</h2><span class="desc">先把身分握在自己手裡。</span></div>
+    <div class="frame-row">
 
-    <!-- 01 Welcome -->
-    <div class="device">
-      <div class="caption"><span class="id">A · 01</span><span class="name">歡迎 / Welcome</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="full-pad" style="justify-content: space-between;">
-              <div></div>
-              <div style="display:flex; flex-direction:column; gap:18px; align-items:flex-start;">
-                <svg width="44" height="44" style="color: var(--fg)"><use href="#elx-mark"/></svg>
-                <span class="kicker">ELIX · 萬靈丹</span>
-                <h1 class="display">一個你可以重新開始<br/>說話的地方。</h1>
-                <p class="body-text">不問你是誰，先問你想要被誰看見。每一次發文都從你的裝置簽出，<em>沒有人替你保管鑰匙。</em></p>
-              </div>
-              <div style="display:flex; flex-direction:column; gap: 8px;">
-                <button class="btn btn-primary btn-block">開始</button>
-                <button class="btn btn-ghost btn-block">我已經有 Elix 身分</button>
-              </div>
+      <!-- a01 Welcome -->
+      <div class="device">
+        <div class="caption"><span class="id">a01</span><span class="name">歡迎 / Welcome</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="topbar"><span class="tb-step">1 / 3</span><span class="tb-link">跳過</span></div>
+          <div class="pad" style="justify-content: space-between;">
+            <div></div>
+            <div style="display:flex; flex-direction:column; gap:20px; align-items:flex-start;">
+              <svg width="50" height="50" style="color: var(--fg)"><use href="#elx-mark"/></svg>
+              <div class="wordmark">Elix</div>
+              <h1 class="display">你的話、你的圈、<br/>你的鑰匙。</h1>
+              <p class="lede">一個重新建立信任的社群。資料留在本地，身分握在你自己手上。要被看見之前，先問過你。</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap: 14px;">
+              <button class="btn btn-primary btn-block">進入 &nbsp;→</button>
+              <div class="foot-note">沒有帳號 · 沒有雲端 · 不會被收集</div>
             </div>
           </div>
-        </div>
+        </div></div></div>
       </div>
-    </div>
 
-    <!-- 02 Promise -->
-    <div class="device">
-      <div class="caption"><span class="id">A · 02</span><span class="name">承諾 / Promise</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="full-pad">
-              <span class="kicker">這幾件事我們做不到</span>
-              <h2 class="display">Elix 不會替你保管<br/>你的身分。</h2>
-              <div style="display:flex; flex-direction:column; gap: 16px; padding-top: 8px;">
-                <div style="display:flex; gap:10px; align-items:flex-start;">
-                  <span style="width:6px; height:6px; border-radius:50%; background: var(--amber); margin-top: 8px; flex-shrink:0;"></span>
-                  <p class="body-text" style="margin:0;"><strong style="color:var(--fg); font-weight:500;">沒有伺服器密碼。</strong> 你的鑰匙住在這台手機。</p>
-                </div>
-                <div style="display:flex; gap:10px; align-items:flex-start;">
-                  <span style="width:6px; height:6px; border-radius:50%; background: var(--amber); margin-top: 8px; flex-shrink:0;"></span>
-                  <p class="body-text" style="margin:0;"><strong style="color:var(--fg); font-weight:500;">沒有「忘記密碼」。</strong> 弄丟手機等於弄丟身分。但你可以加密備份。</p>
-                </div>
-                <div style="display:flex; gap:10px; align-items:flex-start;">
-                  <span style="width:6px; height:6px; border-radius:50%; background: var(--amber); margin-top: 8px; flex-shrink:0;"></span>
-                  <p class="body-text" style="margin:0;"><strong style="color:var(--fg); font-weight:500;">沒有演算法。</strong> 你看到誰，是你決定的。</p>
-                </div>
-              </div>
-              <div style="margin-top:auto; display:flex; flex-direction:column; gap: 8px;">
-                <button class="btn btn-primary btn-block">我懂了，繼續</button>
-              </div>
+      <!-- a02 Promise -->
+      <div class="device">
+        <div class="caption"><span class="id">a02</span><span class="name">三條承諾 / Promises</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="topbar"><span class="tb-link"><svg width="16" height="16" style="transform:rotate(180deg)"><use href="#ic-chev"/></svg>上一步</span><span class="tb-step">2 / 3</span></div>
+          <div class="pad" style="gap: 16px; overflow:hidden;">
+            <span class="kicker">三條承諾 · THREE PROMISES</span>
+            <h2 class="display">這是一個會跟你<br/>一起變舊的地方。</h2>
+            <p class="body-text" style="font-size:14px;">所有寫下來的東西，預設只在你的裝置裡。不上雲，不索引，不分析。要送出去之前，會先問你。</p>
+            <div class="promise">
+              <div class="promise-head"><span class="dot" style="background:var(--sage)"></span><span class="zh">留在你這裡</span><span class="en">Stays local</span></div>
+              <div class="promise-item">· 碎念與筆記的內容</div>
+              <div class="promise-item">· 寫作的時序與停頓</div>
+              <div class="promise-item">· 草稿與沒寄出的句子</div>
+              <div class="promise-head" style="border-top:1px solid var(--rule);"><span class="dot" style="background:var(--amber)"></span><span class="zh">送出前會先問你</span><span class="en">Asks first</span></div>
+              <div class="promise-item">· 請 AI 整理一段內容</div>
+              <div class="promise-item">· 把筆記分享到圈子或公開</div>
+              <div class="promise-item">· 把 murmur 編入別人的討論</div>
+            </div>
+            <button class="btn btn-primary btn-block" style="margin-top:auto;">明白了 · 繼續 &nbsp;→</button>
+          </div>
+        </div></div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════ B · FEED & POST ════════ -->
+  <section class="section">
+    <div class="section-head"><span class="ix">B · FEED & POST</span><h2>動態與貼文</h2><span class="desc">追蹤的人、訂閱的板、圈內 — 按時間排序。</span></div>
+    <div class="frame-row">
+
+      <!-- b01 Timeline -->
+      <div class="device">
+        <div class="caption"><span class="id">b01</span><span class="name">動態 / Timeline</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="app-header">
+            <div class="brand"><svg width="24" height="24" style="color: var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+            <div class="actions">
+              <button class="icon-btn"><svg width="16" height="16"><use href="#ic-search"/></svg></button>
+              <span class="session-chip"><span class="av">T</span><span class="tier">PK</span></span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+          <div class="app-body"><div class="feed-pad">
 
-    <!-- 03 First Key -->
-    <div class="device">
-      <div class="caption"><span class="id">A · 03</span><span class="name">第一把鑰匙 / First key</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="full-pad">
-              <span class="kicker">A · 03 · GENERATING</span>
-              <h2 class="display">正在替你刻一把<br/>新的鑰匙 …</h2>
-              <div style="margin: 14px 0 8px; display:flex; align-items:center; justify-content:center;">
-                <div style="width:120px; height:120px; border-radius:50%; border:0.5px solid var(--amber); display:flex; align-items:center; justify-content:center; position:relative;">
-                  <div style="position:absolute; inset:-8px; border-radius:50%; border:0.5px solid rgba(185,122,60,0.4);"></div>
-                  <div style="position:absolute; inset:-22px; border-radius:50%; border:0.5px solid rgba(185,122,60,0.2);"></div>
-                  <svg width="40" height="40" style="color: var(--amber)"><use href="#ic-key"/></svg>
-                </div>
+            <article class="post">
+              <div class="post-top">
+                <span class="av lg signed">M</span>
+                <div class="post-id"><span class="handle">mira.elix.cool<span class="seal"><svg width="14" height="14"><use href="#ic-seal"/></svg></span></span><span class="sub">1 小時 · <span class="sg">signed</span></span></div>
+                <span class="unread"></span>
               </div>
-              <div class="id-card">
-                <div class="row"><span class="lbl">YOUR DID</span><span class="lbl" style="color:var(--amber);">just now</span></div>
-                <span class="val amber">did:elix:tr15…9c1e</span>
-                <div class="row" style="padding-top: 8px; border-top: 0.5px solid var(--rule-soft);"><span class="lbl">FINGERPRINT</span></div>
-                <span class="val">6F · 3A · 9C · 1E · 4D · 88</span>
-              </div>
-              <p class="body-text" style="font-style:italic; font-size: 12.5px;">這串字代表你。沒有人有複本。如果你想，可以稍後設定加密備份。</p>
-              <div style="margin-top:auto;">
-                <button class="btn btn-primary btn-block">收下，進入 Elix</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 04 Follow recommendations -->
-    <div class="device">
-      <div class="caption"><span class="id">A · 04</span><span class="name">跟著誰先 / Who to follow first</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <span style="font-family:var(--serif); font-size:14px; color: var(--fg-muted);">跳過</span>
-              <span style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.14em; color:var(--amber); text-transform:uppercase;">A · 04 · 4 / 4</span>
-              <span style="font-family:var(--serif); font-size:14px; font-weight: 500; color: var(--fg);">完成</span>
-            </div>
-            <div class="app-body">
-              <div style="padding: 4px 4px 0;">
-                <span class="kicker">最後一步 · 選 2–3 個就好</span>
-                <h2 class="display" style="font-size: 22px; margin-top: 8px;">你不需要立刻<br/>有很多人。</h2>
-                <p class="body-text" style="font-size: 13.5px; margin-top: 10px;">這幾個人都用 passkey 簽自己說的話。他們的動態會混進你的，你可以隨時取消。</p>
-              </div>
-
-              <div class="section-block" style="border: 0.5px solid var(--rule); background: var(--bg);">
-                <div style="display:grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items:center;">
-                  <span class="av" style="width:34px;height:34px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:14px;">M</span>
-                  <div style="min-width:0;"><div style="font-family:var(--serif); font-size:14px; font-weight:500; display:inline-flex; align-items:center; gap:5px;">Mira Lin<span style="width:5px;height:5px;border-radius:50%;background:var(--amber);"></span></div><div style="font-family:var(--mono); font-size:9px; color:var(--fg-faint); letter-spacing:0.06em;">@mira · 238 篇 · passkey</div></div>
-                  <button class="btn btn-primary" style="padding: 5px 12px; font-size: 11.5px;">＋ 追蹤</button>
-                </div>
-                <p class="desc" style="margin: 4px 0 0; padding-left: 46px;">"寫字、收養老貓、相信網路還可以更好。"</p>
-                <div style="padding-left: 46px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; color: var(--sage); text-transform: uppercase;">● 在 #philosophy 起頭過 3 串</div>
-              </div>
-
-              <div class="section-block" style="border: 0.5px solid var(--rule); background: var(--bg);">
-                <div style="display:grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items:center;">
-                  <span class="av" style="width:34px;height:34px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:14px;">k</span>
-                  <div style="min-width:0;"><div style="font-family:var(--serif); font-size:14px; font-weight:500; display:inline-flex; align-items:center; gap:5px;">Kr<span style="width:5px;height:5px;border-radius:50%;background:var(--amber);"></span></div><div style="font-family:var(--mono); font-size:9px; color:var(--fg-faint); letter-spacing:0.06em;">@kr · 多在 Murmur · passkey</div></div>
-                  <button class="btn btn-ghost" style="padding: 5px 12px; font-size: 11.5px; color: var(--fg-muted);">已加</button>
-                </div>
-                <p class="desc" style="margin: 4px 0 0; padding-left: 46px;">"做工具的人。慢一點，也認真一點。"</p>
-                <div style="padding-left: 46px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; color: var(--amber); text-transform: uppercase;">● 你訂閱 #tools · 他也訂</div>
-              </div>
-
-              <div class="section-block" style="border: 0.5px solid var(--rule); background: var(--bg);">
-                <div style="display:grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items:center;">
-                  <span class="av" style="width:34px;height:34px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:14px;">汐</span>
-                  <div style="min-width:0;"><div style="font-family:var(--serif); font-size:14px; font-weight:500; display:inline-flex; align-items:center; gap:5px;">汐羽<span style="width:5px;height:5px;border-radius:50%;background:var(--amber);"></span></div><div style="font-family:var(--mono); font-size:9px; color:var(--fg-faint); letter-spacing:0.06em;">@hsiyu · 92 篇 · passkey</div></div>
-                  <button class="btn btn-primary" style="padding: 5px 12px; font-size: 11.5px;">＋ 追蹤</button>
-                </div>
-                <p class="desc" style="margin: 4px 0 0; padding-left: 46px;">"設計、不過度、不打擾。"</p>
-              </div>
-
-              <div class="section-block" style="background: var(--bg-soft); border: 0.5px dashed var(--rule);">
-                <h4 style="color: var(--fg-faint);">RELAY · 你連線到的伺服器</h4>
-                <p class="desc">這些推薦不是演算法，是這個 relay 上目前活躍且共識度高的成員。你可以稍後在設定裡換 relay。</p>
-              </div>
-
-              <button class="btn btn-primary btn-block" style="margin-top: 8px;">已選 1 人 · 進入動態</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ════════════════════════════════════════════════════ -->
-<!-- B · FEED -->
-<!-- ════════════════════════════════════════════════════ -->
-<section class="section">
-  <div class="section-head">
-    <span class="ix">B · FEED</span>
-    <h2>動態</h2>
-    <span class="desc">追蹤的人 + 訂閱的板 + 圈內。按時間排序，沒有演算法。</span>
-  </div>
-  <div class="frame-row">
-
-    <!-- 04 Home Feed -->
-    <div class="device">
-      <div class="caption"><span class="id">B · 04</span><span class="name">動態首頁 / Home feed</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div class="brand"><svg width="22" height="22" style="color: var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
+              <h3 class="post-heading">我們在重建什麼樣的網路？</h3>
+              <div class="post-body"><p>關於默許可見、身分自主、社群健康的長對話。<span class="muted">便利往往是監控偽裝的禮物。</span></p></div>
               <div class="actions">
-                <button class="icon-btn"><svg width="14" height="14"><use href="#ic-search"/></svg></button>
-                <span class="session-chip"><span class="av">T</span><span class="tier">passkey</span></span>
+                <button class="act heart on"><svg><use href="#ic-heart"/></svg><span class="c">12</span></button>
+                <button class="act"><svg><use href="#ic-comment"/></svg><span class="c">3</span></button>
+                <button class="act"><svg><use href="#ic-repost"/></svg></button>
+                <button class="act share"><svg><use href="#ic-share"/></svg></button>
               </div>
-            </div>
-            <div class="app-body">
-              <div class="feed-tabs"><button class="on">動態</button><button>追蹤</button><button>板</button><button>圈內</button></div>
+            </article>
 
-              <article class="post">
-                <div class="post-source"><span class="pip"></span><span>FROM A FOLLOW · NOTE</span></div>
-                <div class="post-author signed"><div class="av">M</div><div class="who"><span class="name">Mira Lin<span class="sig"></span></span><span class="handle">@mira · passkey</span></div><span class="when">2h</span></div>
-                <h3 class="note-title">關於演算法跟沈默</h3>
-                <div class="post-body"><p>翻到 2017 年的舊筆記：「當演算法決定你看見什麼，沈默就會變成默許。」</p><p>八年後我們在 Elix 上重新打字 — <span class="tag">#我決定誰看見</span></p></div>
-                <div class="post-actions">
-                  <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg>共鳴<span class="n">42</span></button>
-                  <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">7</span></button>
-                  <span class="post-side"><span class="pip"></span>SIGNED</span>
-                </div>
-              </article>
+            <article class="post">
+              <div class="post-top">
+                <span class="av lg signed">K</span>
+                <div class="post-id"><span class="handle">kr.elix.cool<span class="seal"><svg width="14" height="14"><use href="#ic-seal"/></svg></span></span><span class="sub">12 分 · <span class="sg">signed</span></span></div>
+                <span class="unread"></span>
+              </div>
+              <div class="post-body"><p>刪掉社群帳號的第 47 天。安靜得令人不安，但也第一次聽見自己的想法。</p></div>
+              <div class="actions">
+                <button class="act heart"><svg><use href="#ic-heart"/></svg><span class="c">4</span></button>
+                <button class="act"><svg><use href="#ic-comment"/></svg><span class="c">0</span></button>
+                <button class="act"><svg><use href="#ic-repost"/></svg></button>
+                <button class="act share"><svg><use href="#ic-share"/></svg></button>
+              </div>
+            </article>
 
-              <article class="post">
-                <div class="post-source murmur"><span class="pip"></span><span>FROM A FOLLOW · MURMUR · 0:42</span></div>
-                <div class="post-author signed"><div class="av">k</div><div class="who"><span class="name">Kr<span class="sig"></span></span><span class="handle">@kr · passkey</span></div><span class="when">5h</span></div>
-                <div class="murmur-player">
-                  <span class="murmur-play"><svg width="13" height="13"><use href="#ic-play"/></svg></span>
-                  <div class="waveform" id="wf1"></div>
-                  <span class="murmur-dur">0:42</span>
-                </div>
-                <p class="murmur-transcript">passkey 跨平台還是不夠順，可這就是慢一點的代價，我選擇承擔 …</p>
-                <div class="post-actions">
-                  <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg>共鳴<span class="n">28</span></button>
-                  <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">14</span></button>
-                  <span class="post-side"><span class="pip"></span>SIGNED</span>
-                </div>
-              </article>
-
-              <article class="post anon">
-                <div class="post-source board"><span class="pip"></span><span>BOARD · #PHILOSOPHY · 匿名</span></div>
-                <div class="post-author"><div class="av">·</div><div class="who"><span class="name" style="font-style:italic; color:var(--fg-muted);">匿名 · x9b3</span><span class="handle">basic · web</span></div><span class="when">昨</span></div>
-                <div class="post-body"><p>刪掉社群帳號的第 47 天。第一個月最難，你會發現自己一天打開 18 次空白桌面。</p></div>
-              </article>
-            </div>
-            <div class="tabbar">
-              <div class="tab on"><svg width="18" height="18"><use href="#ic-home"/></svg><span>動態</span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-circle"/></svg><span>圈內</span></div>
-              <div class="tab center"><svg width="18" height="18"><use href="#ic-plus"/></svg></div>
-              <div class="tab" style="position:relative;"><svg width="18" height="18"><use href="#ic-bell"/></svg><span>通知</span><span class="dot"></span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-eye"/></svg><span>你</span></div>
-            </div>
+          </div></div>
+          <div class="tabbar">
+            <div class="tab on"><svg><use href="#ic-home"/></svg></div>
+            <div class="tab"><svg><use href="#ic-circle"/></svg></div>
+            <div class="tab center"><svg><use href="#ic-plus"/></svg></div>
+            <div class="tab"><svg><use href="#ic-bell"/></svg><span class="nd"></span></div>
+            <div class="tab"><svg><use href="#ic-eye"/></svg></div>
           </div>
-        </div>
+        </div></div></div>
       </div>
-    </div>
 
-    <!-- 05 Compose action sheet -->
-    <div class="device">
-      <div class="caption"><span class="id">B · 05</span><span class="name">寫 / Compose sheet</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body" style="position:relative;">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header" style="opacity: 0.4;">
-              <div class="brand"><svg width="22" height="22" style="color: var(--fg)"><use href="#elx-mark"/></svg><span class="word">Elix</span></div>
-              <div class="actions"><span class="session-chip"><span class="av">T</span><span class="tier">passkey</span></span></div>
-            </div>
-            <div class="app-body" style="opacity:0.3;">
-              <div class="feed-tabs"><button class="on">動態</button><button>追蹤</button><button>板</button><button>圈內</button></div>
-              <article class="post"><div class="post-author signed"><div class="av">M</div><div class="who"><span class="name">Mira</span></div></div><div class="post-body" style="font-size:13px;">關於演算法跟沈默 …</div></article>
-            </div>
-            <div class="sheet-backdrop"></div>
-            <div class="action-sheet">
-              <div class="item">
-                <div class="glyph" style="color: var(--fg);"><svg width="20" height="20"><use href="#ic-pen"/></svg></div>
-                <div><h3>寫一篇 Note</h3><div class="desc">長一點的、想清楚的話。可以加標題、有段落。</div></div>
-                <span class="arrow"><svg width="14" height="14"><use href="#ic-chev"/></svg></span>
+      <!-- d01 Detail -->
+      <div class="device">
+        <div class="caption"><span class="id">d01</span><span class="name">貼文細節 / Detail</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="topbar center ruled"><span class="lead"><span class="tb-link"><svg width="16" height="16" style="transform:rotate(180deg)"><use href="#ic-chev"/></svg>返回</span></span><span class="ctitle">貼文</span><span class="trail"></span></div>
+          <div class="app-body">
+            <div class="detail-post">
+              <div class="post-top" style="grid-template-columns:40px 1fr;">
+                <span class="av lg signed">M</span>
+                <div class="post-id"><span class="handle">mira.elix.cool<span class="seal"><svg width="14" height="14"><use href="#ic-seal"/></svg></span></span><span class="sub">1 小時 · <span class="sg">signed</span></span></div>
               </div>
-              <div class="item">
-                <div class="glyph" style="color: var(--ember);"><svg width="20" height="20"><use href="#ic-mic"/></svg></div>
-                <div><h3>錄一段 Murmur</h3><div class="desc">用聲音說。最多 2 分鐘，自動產生逐字稿。</div></div>
-                <span class="arrow"><svg width="14" height="14"><use href="#ic-chev"/></svg></span>
+              <h3 class="post-heading">我們在重建什麼樣的網路？</h3>
+              <div class="post-body"><p>一個沒有默許監控、身分由自己保管的網路。便利往往是監控偽裝成的禮物——我們交出了座標，換回了推薦。</p></div>
+              <div class="actions">
+                <button class="act heart on"><svg><use href="#ic-heart"/></svg><span class="c">12</span></button>
+                <button class="act"><svg><use href="#ic-comment"/></svg><span class="c">0</span></button>
+                <button class="act"><svg><use href="#ic-repost"/></svg></button>
+                <button class="act share"><svg><use href="#ic-share"/></svg></button>
               </div>
-              <div class="item">
-                <div class="glyph" style="color: var(--amber);"><svg width="20" height="20"><use href="#ic-board"/></svg></div>
-                <div><h3>到板上發言</h3><div class="desc">先選一個你訂閱的板。發文會以 passkey 簽署。</div></div>
-                <span class="arrow"><svg width="14" height="14"><use href="#ic-chev"/></svg></span>
-              </div>
-              <div class="cancel">取消</div>
             </div>
+            <div class="empty-state">還沒有留言，搶頭香！</div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 06 Post Detail / Thread -->
-    <div class="device">
-      <div class="caption"><span class="id">B · 06</span><span class="name">發文細節 / Post & replies</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" style="transform:rotate(180deg); color: var(--fg);"><use href="#ic-chev"/></svg><span style="font-family:var(--serif); font-size:14px; font-weight:500;">回到動態</span></div>
-              <div class="actions"><button class="icon-btn"><svg width="14" height="14"><use href="#ic-shield"/></svg></button></div>
-            </div>
-            <div class="app-body" style="gap:8px;">
-              <article class="post" style="border-radius: 10px;">
-                <div class="post-source"><span class="pip"></span><span>NOTE · BY @MIRA</span></div>
-                <div class="post-author signed"><div class="av">M</div><div class="who"><span class="name">Mira Lin<span class="sig"></span></span><span class="handle">@mira · passkey</span></div><span class="when">2h</span></div>
-                <h3 class="note-title">關於演算法跟沈默</h3>
-                <div class="post-body"><p>翻到 2017 年的舊筆記：「當演算法決定你看見什麼，沈默就會變成默許。」</p><p>八年後我們在 Elix 上重新打字。差別不是介面，是 — <span class="tag">#我決定誰看見</span></p></div>
-                <div class="post-actions">
-                  <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg>共鳴<span class="n">42</span></button>
-                  <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">7</span></button>
-                  <span class="post-side"><span class="pip"></span>SIGNED · PASSKEY</span>
-                </div>
-              </article>
-
-              <div style="padding: 0 4px;">
-                <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.14em; color:var(--fg-faint); text-transform:uppercase; padding-bottom: 6px;">7 個回覆 · 全部簽署</div>
-                <div class="reply signed"><div class="av">k</div><div><div class="body">「沈默就會變成默許」這句太重了。</div><div class="meta">@kr · 1h · signed</div></div></div>
-                <div class="reply"><div class="av">·</div><div><div class="body">默許不只變成同意，還變成記憶——你會開始忘記自己原本怎麼想。</div><div class="meta">匿名 · 38m · 此板可見</div></div></div>
-                <div class="reply signed"><div class="av">B</div><div><div class="body">想到 Bourdieu 的 doxa。要在它之前，就先說話。</div><div class="meta">@boheng · 22m · DID</div></div></div>
-              </div>
-            </div>
+          <div class="reply-bar">
+            <span class="field">寫留言…</span>
+            <span class="send"><svg width="22" height="22"><use href="#ic-send"/></svg></span>
           </div>
-        </div>
+        </div></div></div>
       </div>
+
+      <!-- c01 Compose -->
+      <div class="device">
+        <div class="caption"><span class="id">c01</span><span class="name">發表貼文 / Compose</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="topbar center">
+            <span class="lead"><span class="tb-link"><svg width="18" height="18"><use href="#ic-x"/></svg>取消</span></span>
+            <span class="ctitle">發表貼文 · Reply</span>
+            <span class="trail"><button class="btn-send">發表</button></span>
+          </div>
+          <div class="compose-area"><div class="compose-ph">輸入貼文內容</div></div>
+          <div class="did-bar">
+            <span class="did"><svg width="18" height="18"><use href="#ic-finger"/></svg>tris.elix.cool</span>
+            <span class="count">0 字</span>
+          </div>
+        </div></div></div>
+      </div>
+
     </div>
+  </section>
 
-  </div>
-</section>
+  <!-- ════════ C · BOARDS & ACTIVITY ════════ -->
+  <section class="section">
+    <div class="section-head"><span class="ix">C · BOARDS & ACTIVITY</span><h2>討論區與通知</h2><span class="desc">看板、單篇討論串、與發生在你身上的事。</span></div>
+    <div class="frame-row">
 
-<!-- ════════════════════════════════════════════════════ -->
-<!-- C · POST TYPES -->
-<!-- ════════════════════════════════════════════════════ -->
-<section class="section">
-  <div class="section-head">
-    <span class="ix">C · POST TYPES</span>
-    <h2>兩種發文：Note & Murmur</h2>
-    <span class="desc">寫，或者說。兩者都會公開到追蹤你的人的動態裡。</span>
-  </div>
-  <div class="frame-row">
-
-    <!-- 07 Note Editor -->
-    <div class="device">
-      <div class="caption"><span class="id">C · 07</span><span class="name">Note 編輯 / Write a note</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <span style="font-family:var(--serif); font-size:14px; color: var(--fg-muted);">取消</span>
-              <span style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.14em; color:var(--amber); text-transform:uppercase;">NOTE · 草稿</span>
-              <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;">發布</button>
+      <!-- e15 Board -->
+      <div class="device">
+        <div class="caption"><span class="id">e15</span><span class="name">看板 / #philosophy</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body" style="position:relative;">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="app-body"><div class="board-pad">
+            <div class="board-hero"># philosophy</div>
+            <div class="board-meta">
+              <div class="tag">看板 · philosophy</div>
+              <div class="blurb">我們在重建什麼樣的網路？關於默許可見、身分自主、社群健康的長對話。</div>
+              <div class="foot"><span class="n">3 串</span><span class="perm">公開 · 可發文</span></div>
             </div>
-            <div class="app-body editor">
-              <input class="title" placeholder="標題（可省略）" value="我們其實沒有要被全世界看見"/>
-              <div class="doc">
-                <p>網路最美的時候，是大家都還相信「按下發布」是一個慎重的動作。</p>
-                <p>後來變成 reflex。然後變成 metric。然後變成 anxiety。</p>
-                <p class="cursor">Elix 的賭注是 — 我們其實沒有要被全世界看見。</p>
-              </div>
+            <div class="thread-card">
+              <div class="status"><span class="d"></span>2 回應 · 進行中</div>
+              <div class="ttl">我們在重建什麼樣的網路？</div>
+              <div class="by"><span class="av signed">M</span><div class="col"><span class="n">mira.elix.cool<span class="pip"></span></span><span class="m">最後回應 · 13 小時</span></div></div>
+            </div>
+            <div class="thread-card">
+              <div class="status"><span class="d new"></span>0 回應 · 新討論</div>
+              <div class="ttl">便利往往是監控偽裝的禮物</div>
+              <div class="by"><span class="av signed">K</span><div class="col"><span class="n">kr.elix.cool<span class="pip"></span></span><span class="m">起頭 · 13 小時</span></div></div>
+            </div>
+            <div class="thread-card">
+              <div class="status"><span class="d new"></span>0 回應 · 新討論</div>
+              <div class="ttl">刪掉社群帳號的第 47 天</div>
+              <div class="by"><span class="av signed">T</span><div class="col"><span class="n">tris.elix.cool<span class="pip"></span></span><span class="m">起頭 · 2 天</span></div></div>
+            </div>
+          </div></div>
+          <div class="fab"><svg width="26" height="26"><use href="#ic-plus"/></svg></div>
+        </div></div></div>
+      </div>
 
-              <div class="audience-strip">
-                <span class="chip amber">● 追蹤我的人 · 24</span>
-                <span class="chip sage">+ #design</span>
-                <span class="chip" style="color: var(--fg-faint);">＋ 新增受眾</span>
-              </div>
+      <!-- e16 Thread detail -->
+      <div class="device">
+        <div class="caption"><span class="id">e16</span><span class="name">討論串 / Thread</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="topbar center ruled"><span class="lead"><span class="tb-link"><svg width="16" height="16" style="transform:rotate(180deg)"><use href="#ic-chev"/></svg>philosophy</span></span><span class="ctitle">討論串</span><span class="trail"><span class="tb-link"><svg width="18" height="18"><use href="#ic-share"/></svg></span></span></div>
+          <div class="app-body">
+            <div class="thread-hd">
+              <div class="crumb"># philosophy</div>
+              <div class="name">我們在重建什麼樣的網路？</div>
+            </div>
 
-              <div class="section-block">
-                <h4>簽署 · SIGNATURE</h4>
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <span class="post-side"><span class="pip"></span>WEB · PASSKEY</span>
-                  <span style="font-family:var(--serif); font-style:italic; font-size:12px; color:var(--fg-muted);">公開你的 passkey 身分</span>
+            <div class="op">
+              <div class="post-top">
+                <span class="av lg signed">M</span>
+                <div class="post-id"><span class="handle">mira.elix.cool<span class="seal"><svg width="14" height="14"><use href="#ic-seal"/></svg></span></span><span class="sub">13 小時 · <span class="sg">signed</span> · 起頭</span></div>
+              </div>
+              <div class="op-body"><p>關於默許可見、身分自主、社群健康的長對話。我們把座標交出去，換回了推薦——但那真的划算嗎？</p><p>如果一個網路預設「先問過你」，它會長成什麼樣子？</p></div>
+              <div class="actions">
+                <button class="act heart on"><svg><use href="#ic-heart"/></svg><span class="c">12</span></button>
+                <button class="act"><svg><use href="#ic-comment"/></svg><span class="c">2</span></button>
+                <button class="act"><svg><use href="#ic-repost"/></svg></button>
+                <button class="act share"><svg><use href="#ic-share"/></svg></button>
+              </div>
+            </div>
+
+            <div class="reply-head"><span class="rn">2 則回應</span> · 依時間</div>
+            <div class="reply-list">
+              <div class="reply">
+                <span class="av signed">K</span>
+                <div class="rc">
+                  <div class="rtop"><span class="rh">kr.elix.cool<span class="seal"><svg width="12" height="12"><use href="#ic-seal"/></svg></span></span><span class="rt">11 小時</span></div>
+                  <div class="rbody">便利往往是監控偽裝成的禮物。願意慢下來的人，才留得住自己的座標。</div>
+                  <div class="ract"><span class="m on"><svg><use href="#ic-heart"/></svg>5</span><span class="m"><svg><use href="#ic-comment"/></svg>回覆</span></div>
                 </div>
-                <div style="display:flex; gap:6px;">
-                  <button class="btn btn-ghost" style="padding: 5px 12px; font-size: 11px;">改為匿名</button>
-                  <button class="btn btn-ghost" style="padding: 5px 12px; font-size: 11px;">DID</button>
+              </div>
+              <div class="reply">
+                <span class="av signed">T</span>
+                <div class="rc">
+                  <div class="rtop"><span class="rh">tris.elix.cool<span class="seal"><svg width="12" height="12"><use href="#ic-seal"/></svg></span></span><span class="rt">42 分</span></div>
+                  <div class="rbody">刪掉社群帳號的第 47 天，第一次聽見自己的想法。這裡的安靜，是設計出來的。</div>
+                  <div class="ract"><span class="m"><svg><use href="#ic-heart"/></svg>1</span><span class="m"><svg><use href="#ic-comment"/></svg>回覆</span></div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+          <div class="reply-bar">
+            <span class="av signed" style="width:32px;height:32px;font-size:13px;">T</span>
+            <span class="field">回覆這則討論…</span>
+            <span class="send"><svg width="22" height="22"><use href="#ic-send"/></svg></span>
+          </div>
+        </div></div></div>
       </div>
-    </div>
 
-    <!-- 08 Murmur Capture -->
-    <div class="device">
-      <div class="caption"><span class="id">C · 08</span><span class="name">Murmur 錄音 / Record murmur</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <span style="font-family:var(--serif); font-size:14px; color: var(--fg-muted);">取消</span>
-              <span style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.14em; color:var(--ember); text-transform:uppercase;">MURMUR · 錄音中</span>
-              <span style="font-family:var(--mono); font-size:12px; color: var(--amber);">0:23</span>
+      <!-- d02 Notifications -->
+      <div class="device">
+        <div class="caption"><span class="id">d02</span><span class="name">通知 / Notifications</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="topbar center ruled"><span class="lead"></span><span class="ctitle">Notifications</span><span class="trail"><span class="tb-link">全部已讀</span></span></div>
+          <div class="app-body"><div class="notif-pad">
+            <div class="notif-row">
+              <span class="notif-glyph"><svg width="20" height="20"><use href="#ic-comment"/></svg></span>
+              <div class="notif-text"><div class="who">mira.elix.cool</div><div class="what">回覆了你的留言</div></div>
+              <div class="notif-meta"><span class="when">13 小時前</span><span class="dot"></span></div>
             </div>
-            <div class="murmur-cap">
-              <span class="kicker" style="color: var(--ember);">說一段不用想太完整的話</span>
-              <div class="record-ring">
-                <div class="record-btn"><span class="square"></span></div>
+            <div class="notif-row">
+              <span class="notif-glyph"><svg width="20" height="20"><use href="#ic-circle"/></svg></span>
+              <div class="notif-text"><div class="who">kr.elix.cool</div><div class="what">開始追蹤你</div></div>
+              <div class="notif-meta"><span class="when">16 小時前</span><span class="dot"></span></div>
+            </div>
+          </div></div>
+          <div class="tabbar">
+            <div class="tab"><svg><use href="#ic-home"/></svg></div>
+            <div class="tab"><svg><use href="#ic-circle"/></svg></div>
+            <div class="tab center"><svg><use href="#ic-plus"/></svg></div>
+            <div class="tab on"><svg><use href="#ic-bell"/></svg></div>
+            <div class="tab"><svg><use href="#ic-eye"/></svg></div>
+          </div>
+        </div></div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════ D · YOU ════════ -->
+  <section class="section">
+    <div class="section-head"><span class="ix">D · YOU</span><h2>你</h2><span class="desc">本機身分、同步、與每個版面的光。</span></div>
+    <div class="frame-row">
+
+      <!-- e01 Settings -->
+      <div class="device">
+        <div class="caption"><span class="id">e01</span><span class="name">設定 / Settings</span></div>
+        <div class="bezel"><div class="device-screen"><span class="notch"></span><div class="device-body">
+          <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="16" height="12"><use href="#ic-wifi"/></svg><svg width="24" height="12"><use href="#ic-batt"/></svg></span></div>
+          <div class="topbar center ruled"><span class="lead"></span><span class="ctitle">Settings</span><span class="trail"></span></div>
+          <div class="app-body settings" style="overflow-y:auto;">
+            <div class="profile">
+              <span class="av-big"><svg width="30" height="30"><use href="#ic-person"/></svg></span>
+              <div class="meta">
+                <h2>本機身分 <span class="pk-badge">✓ PK</span></h2>
+                <div class="auth">Signed · Passkey</div>
+                <div class="did">本機 DID · did:plc:tris</div>
               </div>
-              <div class="wave-live" id="wfLive"></div>
-              <p class="body-text" style="font-style:italic; font-size:13px; max-width: 80%;">「Elix 的賭注是，我們其實沒有要被全世界看見。我們只想要 ⋯⋯」</p>
-              <div style="font-family:var(--mono); font-size:9px; letter-spacing:0.14em; color: var(--fg-faint); text-transform: uppercase;">最多 2 分鐘 · 即時轉錄</div>
+              <span class="edit">編輯</span>
             </div>
-            <div style="padding: 0 18px 24px; display:flex; gap:10px;">
-              <button class="btn btn-ghost" style="flex:1;">重來</button>
-              <button class="btn btn-primary" style="flex:2;">完成，下一步</button>
+
+            <div class="set-group">
+              <div class="glabel">身分與裝置<span class="en">Identity</span></div>
+              <div class="set-row"><span class="glyph"><svg width="20" height="20"><use href="#ic-wallet"/></svg></span><div><div class="nm">皮夾 <span class="en">Wallet</span></div><div class="nm-sub">尚無憑證</div></div><span class="val">空 <span class="arr"><svg width="16" height="16"><use href="#ic-chev"/></svg></span></span></div>
+              <div class="set-row"><span class="glyph"><svg width="20" height="20"><use href="#ic-sync"/></svg></span><div><div class="nm">同步 <span class="en">Sync</span></div><div class="nm-sub">Elix Relay 設定</div></div><span class="val">設定 <span class="arr"><svg width="16" height="16"><use href="#ic-chev"/></svg></span></span></div>
+              <div class="set-row"><span class="glyph"><svg width="20" height="20"><use href="#ic-admin"/></svg></span><div><div class="nm">存取與審計 <span class="en">Admin</span></div><div class="nm-sub">誰看見了哪一個我</div></div><span class="val">0 可疑 <span class="arr"><svg width="16" height="16"><use href="#ic-chev"/></svg></span></span></div>
+            </div>
+
+            <div class="set-group">
+              <div class="glabel">介面與語言</div>
+              <div class="theme-block">
+                <div class="row1"><span class="lab">每版的光</span><span class="en">Light</span><span class="cur">Paper / Ink</span></div>
+                <div class="hint">個人版與討論區可以各自使用 Paper、Ink 或 Auto。</div>
+                <div class="swatch-row">
+                  <span class="surf-lab">個人版</span>
+                  <div class="swatch sel"><span class="chip paper"></span><span class="nm">Paper</span></div>
+                  <div class="swatch"><span class="chip ink"></span><span class="nm">Ink</span></div>
+                  <div class="swatch"><span class="chip auto"></span><span class="nm">Auto</span></div>
+                </div>
+                <div class="swatch-row">
+                  <span class="surf-lab">討論區</span>
+                  <div class="swatch"><span class="chip paper"></span><span class="nm">Paper</span></div>
+                  <div class="swatch sel"><span class="chip ink"></span><span class="nm">Ink</span></div>
+                  <div class="swatch"><span class="chip auto"></span><span class="nm">Auto</span></div>
+                </div>
+              </div>
+              <div class="theme-block">
+                <div class="row1"><span class="lab">換版的動態</span><span class="en">Motion</span><span class="cur">Book</span></div>
+                <div class="pill-row"><span class="pill">Slide</span><span class="pill sel">Book</span><span class="pill">Cube</span></div>
+              </div>
+              <div class="set-row" style="padding-bottom:22px;"><span class="glyph"><svg width="20" height="20"><use href="#ic-lang"/></svg></span><div><div class="nm">語言 <span class="en">Language</span></div><div class="nm-sub">選擇 app 介面語言</div></div><span class="val">跟隨系統 <span class="arr"><svg width="16" height="16"><use href="#ic-chev"/></svg></span></span></div>
             </div>
           </div>
-        </div>
+        </div></div></div>
       </div>
+
     </div>
+  </section>
 
-    <!-- 09 Murmur detail (after publish, in feed context) -->
-    <div class="device">
-      <div class="caption"><span class="id">C · 09</span><span class="name">Murmur 已發布 / Murmur shipped</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" style="transform:rotate(180deg); color: var(--fg);"><use href="#ic-chev"/></svg><span style="font-family:var(--serif); font-size:14px; font-weight:500;">回到動態</span></div>
-              <div class="actions"><button class="icon-btn"><svg width="14" height="14"><use href="#ic-shield"/></svg></button></div>
-            </div>
-            <div class="app-body">
-              <div class="banner"><strong>發布成功</strong> — 你的 Murmur 現在出現在 24 個追蹤你的人的動態裡。每一份都會驗證你的 passkey 簽名。</div>
-
-              <article class="post">
-                <div class="post-source murmur"><span class="pip"></span><span>MURMUR · 1:14 · BY YOU</span></div>
-                <div class="post-author signed"><div class="av">T</div><div class="who"><span class="name">Tris<span class="sig"></span></span><span class="handle">@tris · passkey</span></div><span class="when">just now</span></div>
-                <div class="murmur-player">
-                  <span class="murmur-play"><svg width="13" height="13"><use href="#ic-play"/></svg></span>
-                  <div class="waveform" id="wf2"></div>
-                  <span class="murmur-dur">1:14</span>
-                </div>
-                <p class="murmur-transcript">Elix 的賭注是，我們其實沒有要被全世界看見。我們只想要某幾個人看到、聽到、回應 …</p>
-                <div class="post-actions">
-                  <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg>共鳴<span class="n">0</span></button>
-                  <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">0</span></button>
-                  <span class="post-side"><span class="pip"></span>YOUR PASSKEY</span>
-                </div>
-              </article>
-
-              <div class="section-block">
-                <h4>受眾 · WHO RECEIVES THIS</h4>
-                <p class="desc">追蹤你的 24 人 · 其中 18 人線上 · 簽名會在他們的裝置上即時驗證</p>
-                <div style="display:flex; gap: -6px;">
-                  <span class="post-author" style="display:flex; gap: 0;">
-                    <span class="av" style="width:22px;height:22px;font-size:10px; background:var(--amber); color:var(--bg); margin-right:-4px; border:2px solid var(--bg);">M</span>
-                    <span class="av" style="width:22px;height:22px;font-size:10px; background:var(--amber); color:var(--bg); margin-right:-4px; border:2px solid var(--bg);">k</span>
-                    <span class="av" style="width:22px;height:22px;font-size:10px; background:var(--amber); color:var(--bg); margin-right:-4px; border:2px solid var(--bg);">B</span>
-                    <span class="av" style="width:22px;height:22px;font-size:10px; background:var(--bg-deep); color:var(--fg-muted); border:2px solid var(--bg); font-family: var(--mono); font-size: 9px;">+21</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ════════════════════════════════════════════════════ -->
-<!-- D · SOCIAL -->
-<!-- ════════════════════════════════════════════════════ -->
-<section class="section">
-  <div class="section-head">
-    <span class="ix">D · SOCIAL</span>
-    <h2>圈內、他人、通知</h2>
-    <span class="desc">圈內是你真正在意的人。通知不打擾，只通報誰共鳴了你說的話。</span>
-  </div>
-  <div class="frame-row">
-
-    <!-- 10 Profile (other) -->
-    <div class="device">
-      <div class="caption"><span class="id">D · 10</span><span class="name">他人檔案 / @mira</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" style="transform:rotate(180deg); color: var(--fg);"><use href="#ic-chev"/></svg><span style="font-family:var(--serif); font-size:14px; font-weight:500;">@mira</span></div>
-              <div class="actions"><button class="btn btn-primary" style="padding: 5px 12px; font-size:11.5px;">已追蹤</button></div>
-            </div>
-            <div class="app-body">
-              <div class="profile-head" style="padding: 6px 0 12px;">
-                <div class="top">
-                  <div class="av-big">M</div>
-                  <div class="info">
-                    <h1>Mira Lin<span class="sig"></span></h1>
-                    <span class="handle">@mira · passkey · 自 2024</span>
-                    <p class="bio">寫字、收養老貓、相信網路還可以更好。</p>
-                  </div>
-                </div>
-                <div class="stats">
-                  <div class="stat"><span class="n">238</span><span class="l">發文</span></div>
-                  <div class="stat"><span class="n">1.2K</span><span class="l">共鳴</span></div>
-                  <div class="stat"><span class="n">142</span><span class="l">被信任</span></div>
-                </div>
-              </div>
-              <div class="feed-tabs"><button class="on">Notes</button><button>Murmurs</button><button>共鳴過</button></div>
-
-              <article class="post">
-                <div class="post-source"><span class="pip"></span><span>NOTE · 2H</span></div>
-                <h3 class="note-title" style="margin-top:-2px;">關於演算法跟沈默</h3>
-                <div class="post-body"><p>翻到 2017 年的舊筆記：「當演算法決定你看見什麼，沈默就會變成默許。」</p></div>
-                <div class="post-actions">
-                  <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg><span class="n">42</span></button>
-                  <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">7</span></button>
-                </div>
-              </article>
-
-              <article class="post">
-                <div class="post-source murmur"><span class="pip"></span><span>MURMUR · 0:38 · 1D</span></div>
-                <div class="murmur-player" style="margin-top: -2px;">
-                  <span class="murmur-play"><svg width="13" height="13"><use href="#ic-play"/></svg></span>
-                  <div class="waveform" id="wf3"></div>
-                  <span class="murmur-dur">0:38</span>
-                </div>
-                <p class="murmur-transcript" style="font-size:12.5px;">私人帳號不等於我的，鎖了之後演算法還在裡面 …</p>
-              </article>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 11 Circle -->
-    <div class="device">
-      <div class="caption"><span class="id">D · 11</span><span class="name">圈內 / Circle</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div class="brand"><span class="word" style="font-size:16px;">圈內 · Circle</span></div>
-              <div class="actions"><button class="icon-btn"><svg width="14" height="14"><use href="#ic-plus"/></svg></button></div>
-            </div>
-            <div class="app-body">
-              <div class="section-block" style="border-color: var(--amber); background: rgba(185,122,60,0.06);">
-                <div style="display:flex; align-items: baseline; justify-content: space-between; gap: 10px;">
-                  <h4 style="color: var(--amber);">圈內 · 4 / 8 上限</h4>
-                  <span style="font-family: var(--mono); font-size: 9px; color: var(--fg-faint); letter-spacing: 0.12em;">EOY · 全簽署</span>
-                </div>
-                <p class="desc" style="margin:0;">他們可以看到只給圈內的話。加入或移出需要對方在他們的裝置上確認。</p>
-              </div>
-
-              <div class="section-block">
-                <h4>本週簽署過 · 4</h4>
-                <div style="display:flex; flex-direction: column; gap: 6px;">
-                  <div style="display:flex; align-items: center; gap: 10px;"><span class="av" style="width:26px;height:26px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:11px;">M</span><span style="font-family:var(--serif); font-size:13.5px; flex:1;">Mira</span><span style="font-family:var(--mono); font-size:9px; color:var(--amber); letter-spacing:0.06em;">signed 12m</span></div>
-                  <div style="display:flex; align-items: center; gap: 10px;"><span class="av" style="width:26px;height:26px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:11px;">k</span><span style="font-family:var(--serif); font-size:13.5px; flex:1;">Kr</span><span style="font-family:var(--mono); font-size:9px; color:var(--fg-faint); letter-spacing:0.06em;">2h</span></div>
-                  <div style="display:flex; align-items: center; gap: 10px;"><span class="av" style="width:26px;height:26px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:11px;">B</span><span style="font-family:var(--serif); font-size:13.5px; flex:1;">伯衡</span><span style="font-family:var(--mono); font-size:9px; color:var(--fg-faint); letter-spacing:0.06em;">8h</span></div>
-                  <div style="display:flex; align-items: center; gap: 10px;"><span class="av" style="width:26px;height:26px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:11px;">汐</span><span style="font-family:var(--serif); font-size:13.5px; flex:1;">汐羽</span><span style="font-family:var(--mono); font-size:9px; color:var(--fg-faint); letter-spacing:0.06em;">1d</span></div>
-                </div>
-              </div>
-            </div>
-            <div class="tabbar">
-              <div class="tab"><svg width="18" height="18"><use href="#ic-home"/></svg><span>動態</span></div>
-              <div class="tab on"><svg width="18" height="18"><use href="#ic-circle"/></svg><span>圈內</span></div>
-              <div class="tab center"><svg width="18" height="18"><use href="#ic-plus"/></svg></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-bell"/></svg><span>通知</span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-eye"/></svg><span>你</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 12 Notifications -->
-    <div class="device">
-      <div class="caption"><span class="id">D · 12</span><span class="name">通知 / Notifications</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div class="brand"><span class="word" style="font-size:16px;">通知</span></div>
-              <div class="actions"><span style="font-family: var(--mono); font-size: 9.5px; color: var(--fg-faint); letter-spacing: 0.12em;">3 未讀</span></div>
-            </div>
-            <div class="app-body">
-              <div class="feed-tabs"><button class="on">全部</button><button>共鳴</button><button>回覆</button><button>圈內</button></div>
-
-              <div style="font-family:var(--mono); font-size:9px; letter-spacing:0.14em; color:var(--amber); text-transform:uppercase; padding: 4px;">TODAY</div>
-              <div class="notif-row signed">
-                <span class="av">M</span>
-                <div><div class="text"><strong>Mira</strong> <span class="light">共鳴了你的 Murmur</span> ——「我們其實沒有要被全世界看見 …」<span class="when">2m · signed</span></div></div>
-              </div>
-              <div class="notif-row signed">
-                <span class="av">k</span>
-                <div><div class="text"><strong>Kr</strong> <span class="light">回覆了你的 Note</span> ——「我也是這樣想的 …」<span class="when">36m · signed</span></div></div>
-              </div>
-              <div class="notif-row signed">
-                <span class="av">B</span>
-                <div><div class="text"><strong>伯衡</strong> <span class="light">把你的 Note 傳給了他的圈內</span><span class="when">1h · signed</span></div></div>
-              </div>
-
-              <div style="font-family:var(--mono); font-size:9px; letter-spacing:0.14em; color:var(--fg-faint); text-transform:uppercase; padding: 14px 4px 4px;">YESTERDAY</div>
-              <div class="notif-row">
-                <span class="av">·</span>
-                <div><div class="text"><strong style="font-style:italic; color: var(--fg-muted);">匿名訪客</strong> <span class="light">共鳴了 #philosophy 上你的回覆</span><span class="when">昨日</span></div></div>
-              </div>
-              <div class="notif-row signed">
-                <span class="av">汐</span>
-                <div><div class="text"><strong>汐羽</strong> <span class="light">在 #design 開了新討論</span> ——「介面如何邀請慢一點」<span class="when">昨日 · signed</span></div></div>
-              </div>
-            </div>
-            <div class="tabbar">
-              <div class="tab"><svg width="18" height="18"><use href="#ic-home"/></svg><span>動態</span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-circle"/></svg><span>圈內</span></div>
-              <div class="tab center"><svg width="18" height="18"><use href="#ic-plus"/></svg></div>
-              <div class="tab on"><svg width="18" height="18"><use href="#ic-bell"/></svg><span>通知</span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-eye"/></svg><span>你</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 13 Discover / Search -->
-    <div class="device">
-      <div class="caption"><span class="id">D · 13</span><span class="name">發現 / Discover</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header" style="padding-bottom: 10px;">
-              <div style="display:flex; align-items:center; gap: 8px; flex: 1; padding: 7px 12px; background: var(--bg-soft); border-radius: 999px; border: 0.5px solid var(--rule-soft);">
-                <svg width="14" height="14" style="color: var(--fg-faint);"><use href="#ic-search"/></svg>
-                <span style="font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--fg);">找 · 板 · Note · 人 …</span>
-              </div>
-              <span style="font-family:var(--serif); font-size:14px; color: var(--fg-muted); padding-left: 8px;">取消</span>
-            </div>
-            <div class="app-body">
-              <div class="feed-tabs"><button class="on">全部</button><button>人</button><button>板</button><button>Notes</button><button>Murmurs</button></div>
-
-              <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.16em; color:var(--fg-faint); text-transform:uppercase; padding: 4px 4px 0;">最近查過 · RECENT</div>
-              <div style="display:flex; flex-direction:column; gap: 0;">
-                <div style="display:grid; grid-template-columns: 18px 1fr 16px; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 0.5px solid var(--rule-soft);">
-                  <svg width="14" height="14" style="color: var(--fg-faint);"><use href="#ic-search"/></svg>
-                  <span style="font-family: var(--serif); font-size: 13.5px;">passkey 跨平台</span>
-                  <span style="font-family: var(--mono); font-size: 9px; color: var(--fg-faint);">×</span>
-                </div>
-                <div style="display:grid; grid-template-columns: 18px 1fr 16px; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 0.5px solid var(--rule-soft);">
-                  <svg width="14" height="14" style="color: var(--fg-faint);"><use href="#ic-board"/></svg>
-                  <span style="font-family: var(--serif); font-size: 13.5px;"># slow-media</span>
-                  <span style="font-family: var(--mono); font-size: 9px; color: var(--fg-faint);">×</span>
-                </div>
-                <div style="display:grid; grid-template-columns: 18px 1fr 16px; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 0.5px solid var(--rule-soft);">
-                  <svg width="14" height="14" style="color: var(--fg-faint);"><use href="#ic-pen"/></svg>
-                  <span style="font-family: var(--serif); font-size: 13.5px;">@mira</span>
-                  <span style="font-family: var(--mono); font-size: 9px; color: var(--fg-faint);">×</span>
-                </div>
-              </div>
-
-              <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.16em; color:var(--amber); text-transform:uppercase; padding: 14px 4px 4px;">這個 RELAY 上 · 本週活躍</div>
-
-              <div class="section-block">
-                <h4>BOARD · # slow-media</h4>
-                <p class="desc">18 串 · 你追蹤的 3 人都在這個板裡。</p>
-                <div style="display:flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 0.5px solid var(--rule-soft);">
-                  <span style="display:flex; gap: 0;">
-                    <span style="width:20px;height:20px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:10px;margin-right:-3px; border: 2px solid var(--bg);">M</span>
-                    <span style="width:20px;height:20px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:10px;margin-right:-3px; border: 2px solid var(--bg);">k</span>
-                    <span style="width:20px;height:20px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:10px; border: 2px solid var(--bg);">汐</span>
-                  </span>
-                  <button class="btn btn-ghost" style="padding: 4px 12px; font-size: 11px;">＋ 訂閱</button>
-                </div>
-              </div>
-
-              <div class="section-block">
-                <h4>NOTE · 多人共鳴 · 2D</h4>
-                <h3 class="note-title" style="font-size: 15px;">便利往往是 surveillance 偽裝的禮物</h3>
-                <div style="display:flex; gap: 14px; padding-top: 6px; border-top: 0.5px solid var(--rule-soft); font-family: var(--mono); font-size: 9px; color: var(--fg-faint); letter-spacing: 0.08em;">
-                  <span>@kr · signed</span>
-                  <span style="color: var(--amber);">▲ 124 共鳴</span>
-                  <span>41 回覆</span>
-                </div>
-              </div>
-
-              <div class="section-block">
-                <h4>PEOPLE · 你可能想看見</h4>
-                <div style="display:grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items:center;">
-                  <span class="av" style="width:28px;height:28px;border-radius:50%;background:var(--amber);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:12px;">B</span>
-                  <div><div style="font-family:var(--serif); font-size:13.5px;">伯衡</div><div style="font-family:var(--mono); font-size:9px; color: var(--fg-faint); letter-spacing: 0.06em;">Mira & Kr 都信任</div></div>
-                  <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 10.5px;">＋</button>
-                </div>
-              </div>
-            </div>
-            <div class="tabbar">
-              <div class="tab"><svg width="18" height="18"><use href="#ic-home"/></svg><span>動態</span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-circle"/></svg><span>圈內</span></div>
-              <div class="tab center"><svg width="18" height="18"><use href="#ic-plus"/></svg></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-bell"/></svg><span>通知</span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-eye"/></svg><span>你</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ════════════════════════════════════════════════════ -->
-<!-- E · YOU & BOARDS -->
-<!-- ════════════════════════════════════════════════════ -->
-<section class="section">
-  <div class="section-head">
-    <span class="ix">E · YOU</span>
-    <h2>你的據點：個人主頁 + 板</h2>
-    <span class="desc">「你」整合身分、發過的話、訂閱、設定。論壇板降級為訂閱類別之一。</span>
-  </div>
-  <div class="frame-row">
-
-    <!-- 13 You hub -->
-    <div class="device">
-      <div class="caption"><span class="id">E · 13</span><span class="name">你的個人主頁 / You</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-body" style="padding: 18px 14px 16px;">
-              <div class="profile-head" style="padding: 4px 0 14px;">
-                <div class="top">
-                  <div class="av-big">T</div>
-                  <div class="info">
-                    <h1>Tris<span class="sig"></span></h1>
-                    <span class="handle">@tris · did:elix:6f3a…9c1e</span>
-                    <p class="bio">編劇、信任這件事還沒放棄的人。</p>
-                  </div>
-                </div>
-                <div class="stats">
-                  <div class="stat"><span class="n">42</span><span class="l">發過</span></div>
-                  <div class="stat"><span class="n">24</span><span class="l">追蹤你</span></div>
-                  <div class="stat"><span class="n">8</span><span class="l">你追蹤</span></div>
-                  <div class="stat"><span class="n">5</span><span class="l">圈內</span></div>
-                </div>
-              </div>
-
-              <div class="feed-tabs"><button class="on">Notes</button><button>Murmurs</button><button>草稿</button><button>已封存</button></div>
-
-              <article class="post">
-                <div class="post-source"><span class="pip"></span><span>NOTE · 你發過 · 12H</span></div>
-                <h3 class="note-title">為什麼我留下了一個帳號名字</h3>
-                <div class="post-body" style="font-size:13px;"><p>我可以全用 DID 就好，但「Tris」是 2014 年某個夏天朋友替我取的，留下它讓我記得 …</p></div>
-                <div class="post-actions">
-                  <button class="post-action"><svg class="ic"><use href="#ic-resonate"/></svg><span class="n">19</span></button>
-                  <button class="post-action"><svg class="ic"><use href="#ic-reply"/></svg><span class="n">4</span></button>
-                  <span class="post-side"><span class="pip"></span>SIGNED</span>
-                </div>
-              </article>
-
-              <article class="post">
-                <div class="post-source murmur"><span class="pip"></span><span>MURMUR · 1:14 · 1H</span></div>
-                <div class="murmur-player" style="margin-top:-2px;">
-                  <span class="murmur-play"><svg width="13" height="13"><use href="#ic-play"/></svg></span>
-                  <div class="waveform" id="wf4"></div>
-                  <span class="murmur-dur">1:14</span>
-                </div>
-              </article>
-            </div>
-            <div class="tabbar">
-              <div class="tab"><svg width="18" height="18"><use href="#ic-home"/></svg><span>動態</span></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-circle"/></svg><span>圈內</span></div>
-              <div class="tab center"><svg width="18" height="18"><use href="#ic-plus"/></svg></div>
-              <div class="tab"><svg width="18" height="18"><use href="#ic-bell"/></svg><span>通知</span></div>
-              <div class="tab on"><svg width="18" height="18"><use href="#ic-eye"/></svg><span>你</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 14 Boards subscription -->
-    <div class="device">
-      <div class="caption"><span class="id">E · 14</span><span class="name">板 / Subscribed boards</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" style="transform:rotate(180deg); color: var(--fg);"><use href="#ic-chev"/></svg><span style="font-family:var(--serif); font-size:14px; font-weight:500;">板</span></div>
-              <div class="actions"><button class="icon-btn"><svg width="14" height="14"><use href="#ic-search"/></svg></button></div>
-            </div>
-            <div class="app-body">
-              <p class="body-text" style="font-style:italic; font-size:12.5px; padding: 0 4px; margin:0;">板上的發文也會混進你的動態。要關掉哪個板的通知，可以在這裡調。</p>
-
-              <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.16em; color:var(--amber); text-transform:uppercase; padding: 4px;">你訂閱的 · 4</div>
-
-              <div class="board-list">
-                <div class="board-row">
-                  <span class="name"># philosophy</span>
-                  <span class="perm">POSTING</span>
-                  <p class="desc">關於信任的地形 · 23 串 · 3 新</p>
-                </div>
-                <div class="board-row">
-                  <span class="name"># tools</span>
-                  <span class="perm">POSTING</span>
-                  <p class="desc">passkey & 同步的實作 · 41 串 · 12 新</p>
-                </div>
-                <div class="board-row">
-                  <span class="name"># design</span>
-                  <span class="perm">POSTING</span>
-                  <p class="desc">如何邀請慢一點 · 14 串 · 1 新</p>
-                </div>
-                <div class="board-row">
-                  <span class="name"># announce</span>
-                  <span class="perm read">READ ONLY</span>
-                  <p class="desc">Relay 公告 · 8 串</p>
-                </div>
-              </div>
-
-              <div style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.16em; color:var(--fg-faint); text-transform:uppercase; padding: 14px 4px 4px;">你可以再訂閱</div>
-              <div class="board-list">
-                <div class="board-row">
-                  <span class="name"># slow-media</span>
-                  <span class="perm" style="color:var(--sage);">＋ 訂閱</span>
-                  <p class="desc">汐羽、Mira 也訂閱 · 18 串</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 15 Single Board -->
-    <div class="device">
-      <div class="caption"><span class="id">E · 15</span><span class="name">單一板 / #philosophy</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" style="transform:rotate(180deg); color: var(--fg);"><use href="#ic-chev"/></svg><span style="font-family:var(--serif); font-size:15px; font-weight:500;"># philosophy</span></div>
-              <div class="actions"><button class="btn btn-ghost" style="padding: 5px 12px; font-size:11.5px;">已訂閱</button></div>
-            </div>
-            <div class="app-body">
-              <div class="section-block">
-                <h4>BOARD · 關於信任的地形</h4>
-                <p class="desc">我們在重建什麼樣的網路？關於默許可見、身分自主、社群健康的長對話。</p>
-                <div style="display:flex; gap: 14px; padding-top:8px; border-top: 0.5px solid var(--rule-soft);">
-                  <span style="font-family:var(--mono); font-size:9px; color:var(--fg-faint); letter-spacing:0.08em;">23 串</span>
-                  <span style="font-family:var(--mono); font-size:9px; color:var(--amber); letter-spacing:0.08em;">需 PASSKEY · 可發文</span>
-                </div>
-              </div>
-
-              <article class="post">
-                <div class="post-source"><span class="pip"></span><span>由 @MIRA 起頭 · 23 回應</span></div>
-                <h3 class="note-title">我們在重建什麼樣的網路？</h3>
-                <div class="post-author signed" style="margin-top: -2px;"><div class="av">M</div><div class="who"><span class="name">Mira<span class="sig"></span></span><span class="handle">最後回應：1h 前</span></div></div>
-              </article>
-
-              <article class="post">
-                <div class="post-source"><span class="pip"></span><span>41 回應 · 進行中</span></div>
-                <h3 class="note-title">便利往往是 surveillance 偽裝的禮物</h3>
-                <div class="post-author signed" style="margin-top: -2px;"><div class="av">k</div><div class="who"><span class="name">Kr<span class="sig"></span></span><span class="handle">最後回應：12m 前</span></div></div>
-              </article>
-
-              <article class="post anon">
-                <div class="post-source"><span class="pip"></span><span>7 回應 · 匿名</span></div>
-                <h3 class="note-title" style="font-style:italic; color: var(--fg-muted);">刪掉社群帳號的第 47 天</h3>
-              </article>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 16 Wallet / Identity -->
-    <div class="device">
-      <div class="caption"><span class="id">E · 16</span><span class="name">身分與鑰匙 / Wallet</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" style="transform:rotate(180deg); color: var(--fg);"><use href="#ic-chev"/></svg><span style="font-family:var(--serif); font-size:14px; font-weight:500;">身分與鑰匙</span></div>
-              <div class="actions"><button class="icon-btn"><svg width="14" height="14"><use href="#ic-shield"/></svg></button></div>
-            </div>
-            <div class="app-body">
-              <div class="id-card">
-                <span class="kicker">PRIMARY · 主身分</span>
-                <h2 class="display" style="font-size:17px; margin-top: 4px;">Tris</h2>
-                <span class="val amber">did:elix:6f3a…9c1e</span>
-                <div class="row" style="padding-top:8px; border-top: 0.5px solid var(--rule-soft);"><span class="lbl">FINGERPRINT</span><span class="lbl" style="color:var(--sage);">● 同步中</span></div>
-                <span class="val">6F · 3A · 9C · 1E · 4D · 88</span>
-              </div>
-
-              <div class="settings-group" style="margin-top: 4px;">
-                <h4>其他身分 · ALTER IDENTITIES</h4>
-                <div class="list">
-                  <div class="settings-row">
-                    <span class="glyph"><svg width="16" height="16"><use href="#ic-sig"/></svg></span>
-                    <span class="name">匿名 · #philosophy 用</span>
-                    <span class="meta">基本</span>
-                  </div>
-                  <div class="settings-row">
-                    <span class="glyph"><svg width="16" height="16"><use href="#ic-key"/></svg></span>
-                    <span class="name">工作 DID</span>
-                    <span class="meta">passkey</span>
-                  </div>
-                  <div class="settings-row">
-                    <span class="glyph" style="color: var(--fg-faint);"><svg width="16" height="16"><use href="#ic-plus"/></svg></span>
-                    <span class="name" style="color: var(--fg-muted);">新增身分</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="settings-group">
-                <h4>裝置 · 已授權的 3 台</h4>
-                <div class="list">
-                  <div class="settings-row">
-                    <span class="glyph"><svg width="16" height="16"><use href="#ic-shield"/></svg></span>
-                    <span class="name">iPhone · 這台</span>
-                    <span class="meta" style="color: var(--amber);">主</span>
-                  </div>
-                  <div class="settings-row">
-                    <span class="glyph"><svg width="16" height="16"><use href="#ic-shield"/></svg></span>
-                    <span class="name">MacBook</span>
-                    <span class="meta">2h</span>
-                  </div>
-                  <div class="settings-row">
-                    <span class="glyph"><svg width="16" height="16"><use href="#ic-globe"/></svg></span>
-                    <span class="name">Web · Firefox</span>
-                    <span class="meta">3d</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 17 Settings -->
-    <div class="device">
-      <div class="caption"><span class="id">E · 17</span><span class="name">設定 / Settings</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" style="transform:rotate(180deg); color: var(--fg);"><use href="#ic-chev"/></svg><span style="font-family:var(--serif); font-size:14px; font-weight:500;">設定</span></div>
-            </div>
-            <div class="app-body">
-              <div class="settings-group" style="margin-top:0;">
-                <h4>身分 · IDENTITY</h4>
-                <div class="list">
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-key"/></svg></span><span class="name">鑰匙圈</span><span class="arrow"><svg width="12" height="12"><use href="#ic-chev"/></svg></span></div>
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-eye"/></svg></span><span class="name">公開身分</span><span class="meta">@tris</span></div>
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-shield"/></svg></span><span class="name">封存的身分</span><span class="meta">2</span></div>
-                </div>
-              </div>
-              <div class="settings-group">
-                <h4>動態與發文 · FEED & POSTS</h4>
-                <div class="list">
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-pen"/></svg></span><span class="name">預設簽署</span><span class="meta" style="color:var(--amber);">PASSKEY</span></div>
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-mic"/></svg></span><span class="name">Murmur 自動轉錄</span><span class="meta" style="color:var(--sage);">開</span></div>
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-circle"/></svg></span><span class="name">圈內預設受眾</span><span class="meta">4 人</span></div>
-                </div>
-              </div>
-              <div class="settings-group">
-                <h4>資料 · DATA</h4>
-                <div class="list">
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-sync"/></svg></span><span class="name">裝置同步</span><span class="meta" style="color: var(--sage);">3 台</span></div>
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-shield"/></svg></span><span class="name">存取與審計</span><span class="meta">7 筆</span></div>
-                </div>
-              </div>
-              <div class="settings-group">
-                <h4>介面 · INTERFACE</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px;">
-                  <label style="display:block;padding:8px;border:0.5px solid var(--amber);border-radius:8px;background:rgba(185,122,60,0.06);cursor:pointer;">
-                    <div style="width:100%;aspect-ratio:1/1;background:#F4EFE6;border:0.5px solid var(--rule);border-radius:5px;position:relative;"><span style="position:absolute;top:5px;left:5px;width:12px;height:1.5px;background:#1A1815;border-radius:1px;"></span><span style="position:absolute;top:9px;left:5px;width:18px;height:1.5px;background:#5C544A;border-radius:1px;"></span><span style="position:absolute;bottom:5px;right:5px;width:5px;height:5px;background:#B97A3C;border-radius:50%;"></span></div>
-                    <div style="display:flex;align-items:center;gap:4px;padding-top:6px;"><span style="width:8px;height:8px;border-radius:50%;border:1.2px solid var(--amber);background:radial-gradient(var(--amber) 45%,transparent 50%);flex-shrink:0;"></span><span style="font-family:var(--serif);font-size:11px;color:var(--fg);">Paper</span></div>
-                  </label>
-                  <label style="display:block;padding:8px;border:0.5px solid var(--rule);border-radius:8px;cursor:pointer;">
-                    <div style="width:100%;aspect-ratio:1/1;background:#1A1815;border:0.5px solid var(--rule);border-radius:5px;position:relative;"><span style="position:absolute;top:5px;left:5px;width:12px;height:1.5px;background:#F4EFE6;border-radius:1px;"></span><span style="position:absolute;top:9px;left:5px;width:18px;height:1.5px;background:#A8A095;border-radius:1px;"></span><span style="position:absolute;bottom:5px;right:5px;width:5px;height:5px;background:#D69968;border-radius:50%;"></span></div>
-                    <div style="display:flex;align-items:center;gap:4px;padding-top:6px;"><span style="width:8px;height:8px;border-radius:50%;border:1.2px solid var(--rule);flex-shrink:0;"></span><span style="font-family:var(--serif);font-size:11px;color:var(--fg);">Ink</span></div>
-                  </label>
-                  <label style="display:block;padding:8px;border:0.5px solid var(--rule);border-radius:8px;cursor:pointer;">
-                    <div style="width:100%;aspect-ratio:1/1;border:0.5px solid var(--rule);border-radius:5px;background:linear-gradient(135deg,#F4EFE6 0% 50%,#1A1815 50% 100%);position:relative;"><span style="position:absolute;bottom:5px;right:5px;width:5px;height:5px;background:#D69968;border-radius:50%;"></span></div>
-                    <div style="display:flex;align-items:center;gap:4px;padding-top:6px;"><span style="width:8px;height:8px;border-radius:50%;border:1.2px solid var(--rule);flex-shrink:0;"></span><span style="font-family:var(--serif);font-size:11px;color:var(--fg);">系統</span></div>
-                  </label>
-                </div>
-                <div class="list">
-                  <div class="settings-row"><span class="glyph"><svg width="16" height="16"><use href="#ic-globe"/></svg></span><span class="name">語言</span><span class="meta">中文 · 繁</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 18 Board reply composer -->
-    <div class="device">
-      <div class="caption"><span class="id">E · 18</span><span class="name">板上回文 / Reply on board</span></div>
-      <div class="bezel">
-        <div class="device-screen"><span class="notch"></span>
-          <div class="device-body">
-            <div class="status-bar"><span>9:41</span><span class="ico-row"><svg width="14" height="10"><use href="#ic-wifi"/></svg><svg width="20" height="10"><use href="#ic-batt"/></svg></span></div>
-            <div class="app-header">
-              <span style="font-family:var(--serif); font-size:14px; color: var(--fg-muted);">取消</span>
-              <span style="font-family:var(--mono); font-size:9.5px; letter-spacing:0.14em; color:var(--amber); text-transform:uppercase;">回 # PHILOSOPHY</span>
-              <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;">發送</button>
-            </div>
-            <div class="app-body editor">
-
-              <div class="section-block" style="background: var(--bg-soft); border-color: var(--rule-soft); padding: 10px 12px;">
-                <div style="display:flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; color: var(--fg-faint); text-transform: uppercase;">
-                  <span>回應</span><span>·</span><span>由 @MIRA 起頭</span><span>·</span><span>2H</span>
-                </div>
-                <h3 style="margin: 4px 0 0; font-family: var(--serif); font-size: 14.5px; font-weight: 500; color: var(--fg);">我們在重建什麼樣的網路？</h3>
-                <p style="margin: 4px 0 0; font-family: var(--serif); font-size: 12.5px; font-style: italic; color: var(--fg-muted); line-height: 1.55;">"當演算法決定你看見什麼，沈默就會變成默許 …"</p>
-              </div>
-
-              <div class="doc" style="flex:1; min-height: 120px; padding: 6px 4px 0;">
-                <p>「默許」這個字我想了很久。它不只是允許，它在重塑你的記憶。</p>
-                <p class="cursor">演算法給你看了什麼，你會慢慢以為那就是世界的樣子。</p>
-              </div>
-
-              <div style="display:flex; gap: 6px; padding: 8px 0; border-top: 0.5px solid var(--rule-soft);">
-                <button class="icon-btn" style="width: 32px; height: 32px; border-radius: 8px;"><svg width="14" height="14"><use href="#ic-pen"/></svg></button>
-                <button class="icon-btn" style="width: 32px; height: 32px; border-radius: 8px;"><svg width="14" height="14"><use href="#ic-mic"/></svg></button>
-                <button class="icon-btn" style="width: 32px; height: 32px; border-radius: 8px;"><svg width="14" height="14"><use href="#ic-board"/></svg></button>
-                <span style="margin-left:auto; font-family: var(--mono); font-size: 9px; color: var(--fg-faint); letter-spacing: 0.08em; align-self: center;">128 / 2000</span>
-              </div>
-
-              <div class="audience-strip">
-                <span class="chip amber">● 此板 · # philosophy · 41 訂閱者</span>
-                <span class="chip" style="color: var(--fg-faint);">不發到動態</span>
-              </div>
-
-              <div class="section-block">
-                <h4>簽署 · SIGNATURE</h4>
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <span class="post-side"><span class="pip"></span>PASSKEY · @TRIS</span>
-                  <span style="font-family:var(--serif); font-style:italic; font-size:12px; color:var(--fg-muted);">此板要求簽署</span>
-                </div>
-                <div style="display:flex; gap:6px;">
-                  <button class="btn btn-ghost" style="padding: 5px 12px; font-size: 11px;">換 DID</button>
-                  <button class="btn btn-ghost" style="padding: 5px 12px; font-size: 11px; color: var(--fg-faint); text-decoration: line-through;">匿名</button>
-                  <span style="font-family: var(--mono); font-size: 8.5px; color: var(--fg-faint); letter-spacing: 0.12em; align-self: center;">不可用</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-</div><!-- /page -->
-
-<script>
-// Build waveforms — random-ish bar heights for each murmur player
-(function() {
-  function build(elId, count, playedRatio) {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    let h = (elId.charCodeAt(elId.length - 1) * 33) | 0;
-    const rand = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 0xFFFFFFFF; };
-    const cells = [];
-    for (let i = 0; i < count; i++) {
-      const t = i / count;
-      const env = Math.sin(t * Math.PI) * 0.7 + 0.3;
-      const r = (0.3 + rand() * 0.7) * env;
-      cells.push(r);
-    }
-    el.innerHTML = cells.map((v, i) => {
-      const h = Math.max(3, v * 22);
-      const cls = (i / count) < playedRatio ? ' class="played"' : '';
-      return `<i${cls} style="height:${h}px"></i>`;
-    }).join('');
-  }
-  function buildLive(elId, count) {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    let h = 17;
-    const rand = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 0xFFFFFFFF; };
-    const cells = [];
-    for (let i = 0; i < count; i++) {
-      const t = i / count;
-      const env = Math.sin(t * Math.PI * 0.85 + 0.6) * 0.7 + 0.3;
-      const r = (0.4 + rand() * 0.6) * env;
-      cells.push(r);
-    }
-    el.innerHTML = cells.map(v => `<i style="height:${Math.max(4, v * 32)}px"></i>`).join('');
-  }
-  document.addEventListener('DOMContentLoaded', () => {
-    build('wf1', 40, 0.35);
-    build('wf2', 40, 0.0);
-    build('wf3', 36, 0.0);
-    build('wf4', 40, 0.0);
-    buildLive('wfLive', 28);
-  });
-})();
-</script>
-
+</div>
 </body>
 </html>

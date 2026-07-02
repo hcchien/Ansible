@@ -35,20 +35,19 @@ class AnsibleScreenScaffold extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(22, paddingTop, 22, 14),
               child: Row(
                 children: [
-                  _NavTextButton(label: leading, onTap: onLeading),
                   Expanded(
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: AnsibleDesign.mono,
-                        fontSize: 10,
-                        letterSpacing: 1.6,
-                      ).copyWith(color: screenStyle.faint),
-                    ),
+                    child: _NavTextButton(label: leading, onTap: onLeading),
                   ),
-                  SizedBox(
-                    width: 68,
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 11,
+                      letterSpacing: 2.4,
+                    ).copyWith(color: screenStyle.muted),
+                  ),
+                  Expanded(
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: trailing ?? const SizedBox.shrink(),
@@ -147,7 +146,7 @@ class AnsibleSettingsRow extends StatelessWidget {
         child: Row(
           children: [
             AnsibleGlyphBox(glyph: glyph, danger: danger),
-            const SizedBox(width: 12),
+            const SizedBox(width: 13),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,17 +158,18 @@ class AnsibleSettingsRow extends StatelessWidget {
                       Text(
                         label,
                         style: TextStyle(
-                          fontSize: 14.5,
+                          fontFamily: AnsibleDesign.serif,
+                          fontSize: 16,
                           color: color,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
                         en,
                         style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
-                          fontSize: 8.5,
-                          letterSpacing: 1.4,
+                          fontSize: 10,
+                          letterSpacing: 1.3,
                           color: AnsibleDesign.inkFaint,
                         ),
                       ),
@@ -180,8 +180,9 @@ class AnsibleSettingsRow extends StatelessWidget {
                     Text(
                       sub!,
                       style: const TextStyle(
-                        fontSize: 11.5,
-                        color: AnsibleDesign.inkFaint,
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 13,
+                        color: AnsibleDesign.inkMuted,
                       ),
                     ),
                   ],
@@ -193,20 +194,16 @@ class AnsibleSettingsRow extends StatelessWidget {
               Text(
                 value!,
                 style: const TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 11,
-                  letterSpacing: 1.2,
+                  fontFamily: AnsibleDesign.sans,
+                  fontSize: 14,
                 ).copyWith(color: valueColor ?? AnsibleDesign.inkMuted),
               ),
             ],
-            const SizedBox(width: 8),
-            const Text(
-              '›',
-              style: TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 13,
-                color: AnsibleDesign.inkFaint,
-              ),
+            const SizedBox(width: 5),
+            const Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: AnsibleDesign.inkFaint,
             ),
           ],
         ),
@@ -224,10 +221,10 @@ class AnsibleGlyphBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 26,
-      height: 26,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(color: AnsibleDesign.rule, width: 0.5),
       ),
       alignment: Alignment.center,
@@ -235,7 +232,7 @@ class AnsibleGlyphBox extends StatelessWidget {
         glyph,
         style: TextStyle(
           fontFamily: AnsibleDesign.mono,
-          fontSize: 12,
+          fontSize: 15,
           color: danger ? AnsibleDesign.danger : AnsibleDesign.inkMuted,
         ),
       ),
@@ -284,24 +281,21 @@ class _NavTextButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 68,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: InkWell(
-          onTap: onTap ?? () => Navigator.of(context).maybePop(),
-          borderRadius: BorderRadius.circular(4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: AnsibleDesign.navTextSize,
-                letterSpacing: 1.5,
-                color: AnsibleDesign.inkMuted,
-              ),
+    if (label.isEmpty) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: onTap ?? () => Navigator.of(context).maybePop(),
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.sans,
+              fontSize: 14,
+              color: AnsibleDesign.inkMuted,
             ),
           ),
         ),

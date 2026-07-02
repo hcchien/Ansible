@@ -6,6 +6,7 @@ import '../l10n/moderation_copy.dart';
 import '../services/messenger_sync_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import '../widgets/author_label.dart';
 import 'messenger_thread_screen.dart';
 import 'posts_view_screen.dart';
 import 'user_profile_screen.dart';
@@ -176,19 +177,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  String _actorLabel(BuildContext context, AppNotification notification) {
+  /// Contact label when we know the actor; null lets the row resolve the
+  /// actor's handle from the DID (matching feed bylines).
+  String? _actorLabel(BuildContext context, AppNotification notification) {
     if (notification.type == NotificationType.moderationOutcome) {
       // Public moderation state carries no moderator DID by design.
       return context.uiCopy(zh: '板務', en: 'Board moderators');
     }
-    final contact = _actorContacts[notification.actorDid];
-    if (contact != null) return contact.label;
-    return _shortDid(notification.actorDid);
-  }
-
-  static String _shortDid(String did) {
-    if (did.length <= 20) return did;
-    return '${did.substring(0, 14)}…${did.substring(did.length - 4)}';
+    return _actorContacts[notification.actorDid]?.label;
   }
 
   String _typeLabel(BuildContext context, AppNotification notification) {
@@ -234,13 +230,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  String _typeGlyph(NotificationType type) {
+  IconData _typeIcon(NotificationType type) {
     return switch (type) {
       NotificationType.replyToThread ||
-      NotificationType.replyToPost => '↩',
-      NotificationType.newFollower => '◎',
-      NotificationType.messengerMessage => '✉',
-      NotificationType.moderationOutcome => '⚑',
+      NotificationType.replyToPost => Icons.mode_comment_outlined,
+      NotificationType.newFollower => Icons.adjust,
+      NotificationType.messengerMessage => Icons.mail_outline,
+      NotificationType.moderationOutcome => Icons.outlined_flag,
     };
   }
 
@@ -265,12 +261,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ? TextButton(
               key: const Key('notifications_mark_all_read'),
               onPressed: _markAllRead,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               child: Text(
                 context.uiCopy(zh: '全部已讀', en: 'Mark all read'),
+                maxLines: 1,
                 style: const TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 10,
-                  letterSpacing: 1.2,
+                  fontFamily: AnsibleDesign.sans,
+                  fontSize: 14,
+                  color: AnsibleDesign.inkMuted,
                 ),
               ),
             )
@@ -297,7 +299,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 final notification = _notifications[index];
                 return _NotificationRow(
                   key: Key('notification_row_${notification.id}'),
-                  glyph: _typeGlyph(notification.type),
+                  icon: _typeIcon(notification.type),
+                  actorDid: notification.actorDid,
                   actorLabel: _actorLabel(context, notification),
                   typeLabel: _typeLabel(context, notification),
                   timeLabel: _relativeTime(context, notification.createdAt),
@@ -313,7 +316,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 class _NotificationRow extends StatelessWidget {
   const _NotificationRow({
     super.key,
-    required this.glyph,
+    required this.icon,
+    required this.actorDid,
     required this.actorLabel,
     required this.typeLabel,
     required this.timeLabel,
@@ -321,47 +325,67 @@ class _NotificationRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final String glyph;
-  final String actorLabel;
+  final IconData icon;
+  final String actorDid;
+
+  /// Contact label; when null the row resolves the handle from [actorDid].
+  final String? actorLabel;
   final String typeLabel;
   final String timeLabel;
   final bool unread;
   final VoidCallback onTap;
+
+  static const _whoStyle = TextStyle(
+    fontFamily: AnsibleDesign.sans,
+    fontSize: 14.5,
+    fontWeight: FontWeight.w600,
+    color: AnsibleDesign.ink,
+  );
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         child: Row(
           children: [
-            AnsibleGlyphBox(glyph: glyph),
-            const SizedBox(width: 12),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AnsibleDesign.paperElev,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AnsibleDesign.ruleSoft,
+                  width: 0.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 20, color: AnsibleDesign.inkMuted),
+            ),
+            const SizedBox(width: 13),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    actorLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: unread ? FontWeight.w600 : FontWeight.w500,
-                      color: AnsibleDesign.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  actorLabel != null
+                      ? Text(
+                          actorLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _whoStyle,
+                        )
+                      : AuthorLabel(did: actorDid, style: _whoStyle),
+                  const SizedBox(height: 2),
                   Text(
                     typeLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: unread
-                          ? AnsibleDesign.ink
-                          : AnsibleDesign.inkMuted,
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.serif,
+                      fontSize: 14.5,
+                      color: AnsibleDesign.inkMuted,
                     ),
                   ),
                 ],
@@ -374,18 +398,17 @@ class _NotificationRow extends StatelessWidget {
                 Text(
                   timeLabel,
                   style: const TextStyle(
-                    fontFamily: AnsibleDesign.mono,
-                    fontSize: 10,
-                    letterSpacing: 1.1,
+                    fontFamily: AnsibleDesign.sans,
+                    fontSize: 12,
                     color: AnsibleDesign.inkFaint,
                   ),
                 ),
                 if (unread) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 7),
                   Container(
                     key: const Key('notification_unread_dot'),
-                    width: 8,
-                    height: 8,
+                    width: 9,
+                    height: 9,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: AnsibleDesign.ochre,

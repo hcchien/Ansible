@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
+import '../widgets/author_label.dart';
 
 /// Full-screen composer for a forum reply (new or edit), styled to the app's
 /// design system to match [ThreadComposerScreen]. Pops the trimmed content
@@ -69,9 +70,12 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
                   minLines: 8,
                   maxLines: null,
                   keyboardType: TextInputType.multiline,
+                  cursorColor: AnsibleDesign.accent,
+                  cursorWidth: 2,
                   style: const TextStyle(
-                    fontSize: AnsibleDesign.readingTextSize,
-                    height: 1.8,
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 22,
+                    height: 1.5,
                     color: AnsibleDesign.ink,
                   ),
                   decoration: InputDecoration(
@@ -81,9 +85,10 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
                       en: 'Write your reply',
                     ),
                     hintStyle: const TextStyle(
+                      fontFamily: AnsibleDesign.serif,
                       color: AnsibleDesign.inkFaint,
-                      fontSize: AnsibleDesign.readingTextSize,
-                      height: 1.8,
+                      fontSize: 22,
+                      height: 1.5,
                     ),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -121,45 +126,59 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 8, 14, 6),
       child: Row(
         children: [
-          TextButton.icon(
-            onPressed: onCancel,
-            icon: const Icon(Icons.close_rounded, size: 17),
-            label: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
-            style: TextButton.styleFrom(
-              foregroundColor: AnsibleDesign.inkMuted,
-              textStyle: const TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 10,
-                letterSpacing: 1.2,
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onCancel,
+                icon: const Icon(Icons.close_rounded, size: 18),
+                label: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+                style: TextButton.styleFrom(
+                  foregroundColor: AnsibleDesign.inkMuted,
+                  textStyle: const TextStyle(
+                    fontFamily: AnsibleDesign.sans,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
           ),
-          const Spacer(),
           Text(
             isEdit
                 ? context.uiCopy(zh: '編輯貼文 · EDIT', en: 'EDIT POST')
                 : context.uiCopy(zh: '發表貼文 · REPLY', en: 'NEW POST'),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 10,
-              color: AnsibleDesign.inkFaint,
-              letterSpacing: 1.4,
+              fontSize: 11,
+              color: AnsibleDesign.inkMuted,
+              letterSpacing: 2.4,
             ),
           ),
-          const SizedBox(width: 14),
-          FilledButton(
-            key: const Key('post_composer_done_button'),
-            onPressed: onDone,
-            style: FilledButton.styleFrom(
-              backgroundColor: AnsibleDesign.paperElev,
-              foregroundColor: AnsibleDesign.ink,
-              side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              minimumSize: const Size(0, 34),
-            ),
-            child: Text(
-              context.uiCopy(zh: '發表', en: 'Post'),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                key: const Key('post_composer_done_button'),
+                onPressed: onDone,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AnsibleDesign.paperElev,
+                  foregroundColor: AnsibleDesign.ink,
+                  side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 8,
+                  ),
+                  minimumSize: const Size(0, 36),
+                ),
+                child: Text(
+                  context.uiCopy(zh: '發表', en: 'Post'),
+                  style: const TextStyle(
+                    fontFamily: AnsibleDesign.sans,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -189,18 +208,17 @@ class _Footer extends StatelessWidget {
           if (did != null && did!.isNotEmpty) ...[
             const Icon(
               Icons.fingerprint_rounded,
-              size: 14,
+              size: 18,
               color: AnsibleDesign.accent,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                did!,
-                overflow: TextOverflow.ellipsis,
+              child: AuthorLabel(
+                did: did!,
                 style: const TextStyle(
                   fontFamily: AnsibleDesign.mono,
-                  fontSize: 11,
-                  color: AnsibleDesign.inkFaint,
+                  fontSize: 13,
+                  color: AnsibleDesign.inkMuted,
                 ),
               ),
             ),
@@ -210,9 +228,8 @@ class _Footer extends StatelessWidget {
             context.uiCopy(zh: '$characterCount 字', en: '$characterCount chars'),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 10,
+              fontSize: 13,
               color: AnsibleDesign.inkFaint,
-              letterSpacing: 0.7,
             ),
           ),
         ],

@@ -115,31 +115,31 @@ class SettingsHomeScreen extends StatelessWidget {
               child: Text(
                 text.done,
                 style: const TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 10,
-                  letterSpacing: 1.2,
+                  fontFamily: AnsibleDesign.sans,
+                  fontSize: 14,
+                  color: AnsibleDesign.inkMuted,
                 ),
               ),
             ),
       child: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 18),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AnsibleDesign.accentSoft,
-                    border: Border.all(color: AnsibleDesign.accent, width: 0.5),
+                    color: AnsibleDesign.accent,
                   ),
                   alignment: Alignment.center,
                   child: const Icon(
                     Icons.person_outline,
-                    size: 24,
-                    color: AnsibleDesign.accent,
+                    size: 30,
+                    color: AnsibleDesign.paper,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -154,8 +154,9 @@ class SettingsHomeScreen extends StatelessWidget {
                               text.localIdentity,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
+                                fontFamily: AnsibleDesign.serif,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
                                 color: AnsibleDesign.ink,
                               ),
                             ),
@@ -164,14 +165,14 @@ class SettingsHomeScreen extends StatelessWidget {
                           const ElixSignedPill(kind: 'PK'),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       const Text(
                         'SIGNED · PASSKEY',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: AnsibleDesign.mono,
-                          fontSize: 8.5,
-                          letterSpacing: 1.2,
+                          fontSize: 11,
+                          letterSpacing: 1.3,
                           color: AnsibleDesign.ochre,
                         ),
                       ),
@@ -181,9 +182,8 @@ class SettingsHomeScreen extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: AnsibleDesign.mono,
-                          fontSize: 11,
-                          letterSpacing: 1,
-                          color: AnsibleDesign.inkFaint,
+                          fontSize: 12.5,
+                          color: AnsibleDesign.inkMuted,
                         ),
                       ),
                     ],
@@ -200,9 +200,10 @@ class SettingsHomeScreen extends StatelessWidget {
                   child: Text(
                     text.edit,
                     style: const TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 10,
-                      letterSpacing: 1.1,
+                      fontFamily: AnsibleDesign.sans,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AnsibleDesign.ink,
                     ),
                   ),
                 ),
