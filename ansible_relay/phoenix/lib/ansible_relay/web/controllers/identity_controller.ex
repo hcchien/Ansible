@@ -56,6 +56,44 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
     end
   end
 
+  # GET /api/v1/identity/verify-handle?handle=&did= — DNS handle
+  # verification (Phase 4.3). Read-only: reports whether the handle proves
+  # control by the DID via DNS TXT or /.well-known. Rate-limited per peer —
+  # each check triggers outbound DNS/HTTPS lookups.
+  def verify_handle(conn, params) do
+    handle = params["handle"]
+    did = params["did"]
+
+    cond do
+      not is_binary(handle) or handle == "" or not is_binary(did) or did == "" ->
+        send_json(conn, 422, %{error: "missing_handle_or_did"})
+
+      match?({:error, :rate_limited, _}, AnsibleRelay.AbuseDetector.check_peer("verify_handle:" <> peer_hash(conn))) ->
+        send_json(conn, 429, %{error: "rate_limited"})
+
+      true ->
+        case AnsibleRelay.Identity.HandleVerifier.verify(handle, did) do
+          {:ok, proof} ->
+            send_json(conn, 200, %{verified: true, proof: to_string(proof)})
+
+          {:error, :invalid_handle} ->
+            send_json(conn, 422, %{error: "invalid_handle"})
+
+          {:error, :not_verified} ->
+            send_json(conn, 200, %{verified: false})
+        end
+    end
+  end
+
+  defp peer_hash(conn) do
+    conn.remote_ip
+    |> :inet.ntoa()
+    |> to_string()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 16)
+  end
+
   defp send_json(conn, status, body) do
     conn
     |> put_resp_content_type("application/json")

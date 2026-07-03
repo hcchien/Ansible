@@ -135,6 +135,12 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityController.attestation(conn, %{"did" => did})
   end
 
+  # DNS handle verification (Phase 4.3): does this custom-domain handle
+  # prove control by this DID (TXT _atproto.<handle> or /.well-known)?
+  get "/api/v1/identity/verify-handle" do
+    AnsibleRelay.Web.Controllers.IdentityController.verify_handle(conn, conn.query_params)
+  end
+
   # Phase 2 — Op ingestion
   post "/api/v1/ops" do
     AnsibleRelay.Web.Controllers.OpsController.ingest(conn, conn.body_params)
