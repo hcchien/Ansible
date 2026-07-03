@@ -26,8 +26,20 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
     send_json(conn, 200, Actor.document(actor, base_url(conn)), "application/activity+json")
   end
 
+  # Inbound AP behaviors (Phase 4 core): Follow → record + Accept back;
+  # Undo Follow → remove. Always 202 toward the remote server (AP inboxes
+  # are best-effort; a malformed activity is dropped, never errored back),
+  # with the handled behavior echoed for observability/tests.
   def inbox(conn, %{"actor" => actor}) do
-    send_json(conn, 202, %{accepted: true, actor: actor})
+    case AnsibleRelay.ActivityPub.Inbox.handle(actor, conn.body_params,
+           base_url: base_url(conn)
+         ) do
+      {:accepted, kind} ->
+        send_json(conn, 202, %{accepted: true, actor: actor, behavior: to_string(kind)})
+
+      {:error, :malformed} ->
+        send_json(conn, 202, %{accepted: true, actor: actor, behavior: "dropped"})
+    end
   end
 
   def outbox(conn, %{"actor" => actor}) do
