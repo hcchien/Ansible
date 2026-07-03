@@ -5,7 +5,7 @@
 > is parked, and what already landed, with links to the underlying specs and
 > plans.
 >
-> **Last updated:** 2026-06-16
+> **Last updated:** 2026-07-03
 >
 > **Keep it current:** when a plan lands, is paused, or a new spec/plan is
 > added under `docs/superpowers/`, update this file in the same change.
@@ -44,13 +44,13 @@ Top actions distilled from the two reviews:
 
 | # | Action | Source | Priority |
 |---|---|---|---|
-| 1 | **Cold-start seeding** — genesis boards, recruited founding posters, default subscriptions, guided first-session empty state | PM (highest leverage, no owner) | P0 for soft launch |
-| 2 | **Outbound sharing loop** — OG meta tags + native share sheet + universal/deep links | PM | **✅ done 2026-06-13** (OS universal-link association files remain a TODO) |
-| 3 | **Identity recovery implementation** + tested device-loss walkthrough | PM + architecture Phase 1 | P0 foundation (in progress) |
+| 1 | **Cold-start seeding** — genesis boards, recruited founding posters, default subscriptions, guided first-session empty state | PM (highest leverage, no owner) | **✅ engineering shipped 2026-07-03** (`tool/seed_genesis.dart`, first-run auto-subscriptions, guided first session; recruiting founding posters + cadence = ops, see [runbook](operations/cold-start-seeding.md)) |
+| 2 | **Outbound sharing loop** — OG meta tags + native share sheet + universal/deep links | PM | **✅ fully done 2026-07-03** — association files (AASA/assetlinks, fail-closed env-gated on relay + frontend) and the relay per-thread preview endpoint both landed |
+| 3 | **Identity recovery implementation** + tested device-loss walkthrough | PM + architecture Phase 1 | Core flow ✅; veto alert UI ✅ 2026-07-03; remaining: multi-device QR approve, anchor crypto → rust, real two-device walkthrough (needs hardware) |
 | 4 | **Compose-loop i18n bugs** — `post_form_dialog.dart`, `board_form_dialog.dart`, `posts_view_screen.dart` leak English in the primary zh-Hant create path | UX (reads as bugs, quick win) | P1, quick win |
-| 5 | **Onboarding benefit-framing + guided first session** — lead with outcome not mechanism; surface Discover; first-three-actions guidance | UX | P1 |
-| 6 | **Trust-gated upgrade CTA dead-end** — gate the「升級驗證」CTA on a configured issuer or add an interim「即將開放」state while TW-provider is fail-closed | UX | P1 (protects the flagship) |
-| 7 | Privacy-preserving metrics baseline folded into the above so launch teaches something | PM (+ Phase 0 observability) | P1 |
+| 5 | **Onboarding benefit-framing + guided first session** — lead with outcome not mechanism; surface Discover; first-three-actions guidance | UX | **✅ done 2026-07-03** (benefit-led onboarding lede per 行銷策略書; empty timeline = three-step guided start) |
+| 6 | **Trust-gated upgrade CTA dead-end** — gate the「升級驗證」CTA on a configured issuer or add an interim「即將開放」state while TW-provider is fail-closed | UX | **✅ done 2026-07-03** (issuer /readyz probe → disabled 即將開放 state) |
+| 7 | Privacy-preserving metrics baseline folded into the above so launch teaches something | PM (+ Phase 0 observability) | **✅ done 2026-07-03** — aggregate-only ProductPulse gauges on relay /metrics ([spec](superpowers/specs/2026-07-03-constitutional-measurement-design.md)) |
 
 Items 1, 2, 5, 6 are new/sharpened; they extend the Add/Improve tables
 below. Item 4 is a tracked quick-win bug-fix batch. Items 3 and 7 are
@@ -60,12 +60,12 @@ already underway (architecture Phase 1 / Phase 0).
 
 | Item | Priority | Plan | Why |
 |---|---|---|---|
-| Notification system — in-app feed + badge first, content-free push second | P1 — **✅ Phase A + B pipeline shipped 2026-06-13** (only APNS/FCM credentials remain — config work) | [Plan](superpowers/plans/2026-06-12-notification-system.md) | Local projection over already-synced data (replies/follows/messages/moderation outcomes), feed + bell badge + settings; relay wake scheduler is debounced and strictly content-free (`{"hint":"sync"}`) |
+| Notification system — in-app feed + badge first, content-free push second | P1 — **✅ shipped**; APNS token provider landed 2026-07-03 (native, no Firebase) — only APNS/FCM **credentials** remain (env config) | [Plan](superpowers/plans/2026-06-12-notification-system.md) | Local projection over already-synced data (replies/follows/messages/moderation outcomes), feed + bell badge + settings; relay wake scheduler is debounced and strictly content-free (`{"hint":"sync"}`) |
 | Content reporting + board moderation tools | P1 — **✅ shipped 2026-06-13** (incl. app tombstone/lock rendering) | [Plan](superpowers/plans/2026-06-12-content-reporting-moderation.md) | Reason-coded reports on both rails with tier-aware rate limits, web moderator console (queue/actions/audit), host-scoped tombstones + thread locks enforced at both write chokepoints and rendered web + app |
 | Trust-gated boards（真人驗證版）| P1 — **✅ shipped 2026-06-13** | [Plan](superpowers/plans/2026-06-12-trust-gated-boards.md) | Highest ROI in the repo: the whole VC→tier pipeline existed, boards already had an empty `posting_policy` field — `min_post_tier` is now enforced relay-side and surfaced in app + web frontend |
-| Cold-start strategy — genesis boards, default follows/subscriptions, seed content | P2 | (operations plan needed, not engineering) | Discover/feed are built but day-one network is empty; without seeding, launch = ghost town |
+| Cold-start strategy — genesis boards, default follows/subscriptions, seed content | P2 — **✅ engineering 2026-07-03** | [Ops runbook](operations/cold-start-seeding.md) | Seeding tool + first-run auto-subscriptions + guided first session shipped; founding posters/cadence is the remaining (ops) work |
 | Sharing & deep links — OG tags on frontend, share sheet + universal links in app | P2 — **✅ done 2026-06-13** | — | Frontend injects og/twitter/canonical tags on board/thread pages (SSR over the SPA); app has share buttons (share_plus) + in-app deep-link routing (`trisaura://content/...` + https). Remaining: OS universal-link association files (apple-app-site-association / assetlinks.json) and a relay per-thread endpoint for richer thread previews |
-| Privacy-preserving product metrics (activation/retention, constitution-compatible) | P2 | — | Constitution restricts analytics, but without DAU/retention/board-activity aggregates every priority above is a guess; needs an explicit "constitutional measurement" design |
+| Privacy-preserving product metrics (activation/retention, constitution-compatible) | P2 — **✅ done 2026-07-03** | [Spec](superpowers/specs/2026-07-03-constitutional-measurement-design.md) | Aggregate-only ProductPulse (registered/active/new/returning authors, active boards) on relay /metrics; no client telemetry, no per-user output |
 
 ### Remove / Freeze（刪除或凍結）
 
@@ -92,7 +92,7 @@ already underway (architecture Phase 1 / Phase 0).
 | Item | Priority | Links | Notes / dependencies |
 |---|---|---|---|
 | iOS staging release hardening — real Rust FFI bridge, relay auto-seed, DID auto-anchor, `elix.cool` rebrand, CI strict analyze | P1 | (no plan file; see recent `main` commits) | Current active work stream; consider capturing remaining iOS/TestFlight steps in a plan like the Android checklist |
-| **Identity recovery & re-anchor** — multi-device attestation, encrypted identity-key backup, relay re-anchor protocol, anchor as user-signed portable object | P1 — launch blocker · **core flow ✅ done 2026-06-13 (device-loss recovery works end-to-end)** | [Design](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) · [Architecture plan — Phase 1](architecture/service_architecture_plan.md) | Shipped: anchor object + chain + encrypted backup (foundation); relay re-anchor endpoints + device-attestation verification + recovery 72h grace/alert/veto, did_accounts as cache; **app device keys + recovery wizard (restore-from-backup → rotation re-anchor)** with a passing device-loss walkthrough test against an in-process relay doing the real verifications. **Remaining (not launch-blocking):** wire publishInitialAnchor into onboarding; multi-device QR approve-from-other-device path; veto alert-driven UI; move anchor crypto to rust; a real two-device manual walkthrough |
+| **Identity recovery & re-anchor** — multi-device attestation, encrypted identity-key backup, relay re-anchor protocol, anchor as user-signed portable object | P1 — launch blocker · **core flow ✅ done 2026-06-13 (device-loss recovery works end-to-end)** | [Design](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) · [Architecture plan — Phase 1](architecture/service_architecture_plan.md) | Shipped: anchor object + chain + encrypted backup (foundation); relay re-anchor endpoints + device-attestation verification + recovery 72h grace/alert/veto, did_accounts as cache; **app device keys + recovery wizard (restore-from-backup → rotation re-anchor)** with a passing device-loss walkthrough test against an in-process relay doing the real verifications. **Remaining (not launch-blocking):** multi-device QR approve-from-other-device path; move anchor crypto to rust; a real two-device manual walkthrough (needs hardware). ~~publishInitialAnchor onboarding wiring~~ (already shipped) and ~~veto alert UI~~ (✅ 2026-07-03: relay pending endpoint + app alert on launch/resume, one-tap veto) |
 | Custody-class labeling + rust `zeroize` (reduced-trust mode made explicit) | P1 | [Architecture plan — Phase 1](architecture/service_architecture_plan.md) · [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | G1 closes via Base Rule 1's explicit reduced-trust branch: software custody, plainly labeled; fix comments that overclaim enclave custody. **Hardware custody itself deferred to Later** (product decision 2026-06-13 — user barrier too high; returns as opt-in per-device upgrade, zero protocol change) |
 | Cross-cutting foundations — app↔relay API versioning + observability baseline | P1 — **✅ done 2026-06-13** | [Architecture plan — Phase 0](architecture/service_architecture_plan.md) | Versioning: `x-ansible-protocol` header + `/api/v1/meta` + `426 upgrade_required` on relay & appview, op `schema_version` (additive, out of signed payload). Observability: `GET /metrics` (Prometheus) on relay/appview/issuer/frontend with the series later phases need for exit criteria (sig pass/fail, op growth, ingest lag, wake sends). Phase 0 complete |
 
@@ -103,9 +103,41 @@ already underway (architecture Phase 1 / Phase 0).
 | TW provider **production** adapter (real TW FidO/MOICA partner API) | P1 | [Plan](superpowers/plans/2026-05-05-tw-provider-production-integration.md) · [Adapter boundary plan](superpowers/plans/2026-05-05-issuer-production-adapter-boundary.md) | Production-shaped flow + fail-closed boundary are done; the real partner integration is blocked on external partner API / trust-anchor details |
 | MobileMoica RP production configuration | P1 | [Plan](superpowers/plans/2026-05-30-mobilemoica-rp-explicit-disclosure.md) · [Spec](superpowers/specs/2026-05-30-mobilemoica-rp-explicit-disclosure-design.md) | Flow implemented; production stays fail-closed until approval artifact IDs, MobileMoica service credentials, trust anchors, PKCS#7 validation, and revocation checks are configured |
 | Android release readiness (beta build → Play Store) | P2 | [Plan](superpowers/plans/2026-05-10-android-release-readiness-checklist.md) | **In progress, stalled** — Task 1 (DID plugin packaging, build unblocked) done; identity/assets/signing, platform verification, and release checklist remain. Recent release effort has gone to iOS |
-| External host compliance level — local persistence + policy use | P2 | [Architecture plan — Phase 1.4](architecture/service_architecture_plan.md) · [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | Discovery exposes compliance labels already; local `ForumHost`/`RemoteNode` records don't persist them and ranking/sync/trust policy don't consume them yet |
+| External host compliance level — local persistence + policy use | P2 — **✅ done 2026-07-03** | [Compliance review](superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md) | RemoteNode persists the host-declared level (drift v26, captured at add/seed time); consumed in default-subscription ranking + displayed on saved hosts (display/ranking only, never trust-bearing) |
 | Data-plane integrity — AppView independent signature re-verification, relay signed snapshots + retention, relay schema separation | P2 — **verification ✅ + snapshots/retention ✅ done 2026-06-13**; ops partitioning + schema separation deferred | [Architecture plan — Phase 2](architecture/service_architecture_plan.md) | AppView now independently Ed25519-verifies every fold and excludes unverified rows from public reads; relay serves content-addressed signed snapshots (`/api/v1/ops/snapshot`) + guarded retention so consumers rebuild from snapshot+delta. Remaining: physical `ops` partitioning (risky live migration) + identity/forum/federation schema separation |
 | **Canonical identity method (`did:elix`) & trust** — `did:elix` canonical + `did:key` wallet holder + opt-in `did:plc` bridge + Issuer Trust Registry + cross-relay resolution v0 | P1 — **Phases A + B + C ✅ done + tested 2026-06-16/17, deployed**; only `did:plc` bridge (D) remaining | [Layered identity plan](superpowers/plans/2026-06-16-layered-identity-did-method-plan.md) · [Architecture plan — Phase 1.5](architecture/service_architecture_plan.md) | Shipped: `did:elix` derivation + `did:key` encoder (cross-verified vs rust), `also_known_as` on anchors, relay DID-document resolution, **app registration mints `did:elix`** (+ `main.dart` canonical persistence), Issuer Trust Registry (`untrusted_issuer` + per-type gating), cross-relay `FederatedResolver` with self-certifying peer verification (relay + app, lying-peer rejection proven). Remaining: the real DAG-CBOR `did:plc` Bluesky bridge (Phase D). Global directory governance + atproto content interop are separate follow-up specs |
+
+### Shipped since 2026-06-16 (summary)
+
+- **Elix Threads-style redesign complete** — all 9 design screens implemented
+  (feed/detail/board/thread earlier; onboarding/compose/notifications/settings
+  polish 2026-07-02), design vendored, screenshot harness verified.
+- **Murmur/note comments** — distinct `comment` entity end-to-end (app,
+  relay, appview `GET /api/v1/thread/:id`); **deploy gate**: relay-dev +
+  appview-dev redeploys still pending.
+- **Sharing loop closed** — universal-link association files + relay thread
+  preview → frontend OG (2026-07-03).
+- **Push end-to-end on iOS** — native APNS token provider; only credentials
+  remain (2026-07-03).
+- **Hijack-resistance veto UI** — pending-recovery alert + one-tap veto
+  (2026-07-03).
+- **Portable issuer re-verification** — relay persists+serves the accepted
+  issuer-signed VC; the app re-verifies the issuer proof itself; tiers never
+  trusted from a relay again (2026-07-03; closes the federation trust hole).
+- **prod-readiness branch** — appview SSRF guard/ingest resilience, FFI panic
+  recovery, frontend origin pinning (parallel work stream, 2026-07-03).
+
+### Deferred by decision（明確延後 — 決策記錄）
+
+| Item | Decision | Revisit when |
+|---|---|---|
+| Hardware key custody (Secure Enclave / StrongBox) | Product decision 2026-06-13: user barrier too high for launch; `custody_class` labeling is the honest interim | As an opt-in per-device upgrade post-launch (zero protocol change) |
+| Standalone Reputation Labeler service | Decision D3: extract only when a second consumer exists; tier paths already propagate end-to-end | A second consumer (external AppView / other relay) appears |
+| Push distribution firehose (Phase 3) | Gated on Phase 2 ops partitioning (restart-safety); polling ingest is correct at current scale | Ingest lag or wake latency SLOs are missed |
+| Physical `ops` partitioning + schema separation | Risky live migration; deferred with Phase 2 sign-off | Op table growth approaches operational limits |
+| Android release (signing / Play listing) | Blocked on user-held signing keys + Play account; engineering checklist exists | Owner allocates the release window |
+| LLM plugin / MCP agent access | Backlog (P3) — should ride app-mediated web-session grants | After launch stabilizes |
+| Multi-AppView / multi-region scale-out | P4 by design; single AppView is a reproducible projection | Genesis-region capacity or latency demands it |
 
 ## Later（未來）
 
@@ -113,8 +145,8 @@ already underway (architecture Phase 1 / Phase 0).
 |---|---|---|---|
 | Hardware key custody (Secure Enclave / StrongBox) as an **opt-in per-device upgrade** | P3 — deferred 2026-06-13 | [Phase 1.0 design §D1](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md) | Product decision: user barrier too high for launch. The anchor's `custody_class` + device-record flow is the ready mount point — dual-key P-256 attestation slots in with zero protocol change; ES256 identity-key migration permanently rejected |
 | Push distribution — op firehose over Phoenix Channels, Oban delivery workers, abuse-detection completion | P3 | [Architecture plan — Phase 3](architecture/service_architecture_plan.md) | After Phase 2 (snapshots make push restart-safe); replaces AppView polling and the Postgres retry loop |
-| Federation completion — Nostr key custody, full ActivityPub inbox behaviors | P3 | [Architecture plan — Phase 4](architecture/service_architecture_plan.md) | Nostr custody depends on Phase 1; AP behaviors independent |
-| DNS handle verification (DNS TXT + HTTPS `/.well-known`) | P3 | [Architecture plan — Phase 4.3](architecture/service_architecture_plan.md) | 🔜 future in component status; no spec/plan yet |
+| Federation completion — Nostr key custody, full ActivityPub inbox behaviors | P3 — **AP inbox core ✅ 2026-07-03** (Follow → record + Accept via delivery queue, Undo Follow; edges mirror-cosmetic, never trust-bearing) | [Architecture plan — Phase 4](architecture/service_architecture_plan.md) | Remaining: inbound HTTP-signature verification (upgrades inbox to authenticated) + Nostr production key custody |
+| DNS handle verification (DNS TXT + HTTPS `/.well-known`) | P3 — **✅ done 2026-07-03** | [Architecture plan — Phase 4.3](architecture/service_architecture_plan.md) | atproto-compatible: TXT `_atproto.<handle>` or `/.well-known/atproto-did`, served at `GET /api/v1/identity/verify-handle` (rate-limited, resolver-injected tests) |
 | Standalone Reputation Labeler service | P3 | [Architecture plan — Phase 4.4](architecture/service_architecture_plan.md) | Extract only when a second consumer exists (decision D3); VP→tier paths already propagate relay → AppView → app badges |
 | LLM plugin / MCP agent access (ChatGPT, Claude, Codex, local MCP) | P3 | [TODO](superpowers/todos/2026-05-16-llm-plugin-mcp-access.md) | Backlog only — all phases unchecked. Should reuse app-mediated web-session grants; never exposes root DID keys |
 | AI Agent (Component F) — summarisation/filtering over firehose | P4 | README component table | Explicitly P4; local AI-assistance foundation (providers, context packs, review flows) already landed via content lineage work |
@@ -174,19 +206,20 @@ and the README component status table.
    design ([Phase 1.0 design](superpowers/plans/2026-06-13-identity-recovery-reanchor-design.md)),
    no silent overclaiming. Hardware returns later as an opt-in per-device
    upgrade. Affects DID, PLC, and Nostr key paths.
-2. **External host compliance level** — *partially implemented.* Discovery
-   exposes and the app displays compliance labels, but local host records do
-   not persist `constitution_compliance`, and ranking/sync/recommendation/trust
-   policy do not consume it.
+2. **External host compliance level** — **✅ resolved 2026-07-03.** Local
+   `RemoteNode` records persist the host-declared level; default-subscription
+   ranking consumes it and saved hosts display it (display/ranking input
+   only — trust still comes exclusively from issuer-signed attestations).
 3. **TW provider production adapter** — issuer fails closed in production by
    design until the real partner API / trust anchors are configured (same gap
    gates MobileMoica RP production).
 4. **Standalone Reputation Labeler** — tier mapping exists inside the relay
    path only; no independent labeler service.
-5. **DNS handle verification** — not started (🔜 future).
+5. **DNS handle verification** — **✅ shipped 2026-07-03** (relay endpoint; wiring custom-domain handles into registration remains future product work).
 6. **AI Agent (Component F)** — not started (P4).
 7. **Partial adapters** — Nostr production key custody incomplete; ActivityPub
-   full federation behavior incomplete. The `did:plc` *creation* path was
+   inbox core behaviors (Follow/Accept/Undo) landed 2026-07-03 but inbound
+   HTTP-signature verification remains (edges are mirror-cosmetic until then). The `did:plc` *creation* path was
    retired (canonical identity is `did:elix`); the real DAG-CBOR `did:plc`
    genesis is the opt-in Bluesky bridge, Phase D (see README component table).
 8. Items the review **fixed** (Email OTP ≠ verified human; wallet parser
