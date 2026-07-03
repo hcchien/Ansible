@@ -78,10 +78,37 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		)`,
 	}
 
+	// Serialize schema creation across concurrent callers: `IF NOT EXISTS`
+	// does NOT protect two connections racing the same CREATE (they collide
+	// on pg_type/pg_class catalog inserts — SQLSTATE 23505 on
+	// pg_type_typname_nsp_index). That race is real both in tests (packages
+	// run in parallel against one database) and in production (this issuer
+	// is built to boot as multiple horizontally-scaled instances). A
+	// transaction-scoped advisory lock makes exactly one creator win; the
+	// rest wait and then no-op through IF NOT EXISTS.
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("ensure issuer schema: begin: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", schemaLockKey); err != nil {
+		return fmt.Errorf("ensure issuer schema: lock: %w", err)
+	}
+
 	for _, stmt := range stmts {
-		if _, err := pool.Exec(ctx, stmt); err != nil {
+		if _, err := tx.Exec(ctx, stmt); err != nil {
 			return fmt.Errorf("ensure issuer schema: %w", err)
 		}
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("ensure issuer schema: commit: %w", err)
+	}
 	return nil
 }
+
+// Arbitrary but stable advisory-lock key for issuer schema DDL ("elixissr"
+// as an int64) — must only be distinct from other advisory locks on the
+// same database.
+const schemaLockKey int64 = 0x656C69786973_7372
