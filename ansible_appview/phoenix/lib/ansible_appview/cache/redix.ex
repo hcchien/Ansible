@@ -28,4 +28,12 @@ defmodule AnsibleAppview.Cache.Redix do
   rescue
     _ -> :ok
   end
+
+  @impl AnsibleAppview.Cache
+  def delete(key) do
+    _ = Redix.command(@conn, ["DEL", key])
+    :ok
+  rescue
+    _ -> :ok
+  end
 end

@@ -11,9 +11,11 @@ defmodule AnsibleAppview.Cache do
 
   @callback get(key :: String.t()) :: {:ok, term()} | :miss
   @callback put(key :: String.t(), value :: term(), ttl_ms :: non_neg_integer()) :: :ok
+  @callback delete(key :: String.t()) :: :ok
 
   def get(key), do: adapter().get(key)
   def put(key, value, ttl_ms), do: adapter().put(key, value, ttl_ms)
+  def delete(key), do: adapter().delete(key)
 
   defp adapter do
     Application.get_env(:ansible_appview, :cache_adapter, AnsibleAppview.Cache.ETS)

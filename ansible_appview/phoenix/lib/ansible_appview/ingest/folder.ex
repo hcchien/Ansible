@@ -86,10 +86,19 @@ defmodule AnsibleAppview.Ingest.Folder do
       end
     end
 
+    # Deletions hide content by entity_id. A delete/removal op carries its own
+    # log_id, so it must UPDATE the original content row(s) rather than insert a
+    # new row (the old bug: the delete was folded as a fresh deleted=true row
+    # while the original stayed deleted=false and was served forever). Covers
+    # both signature-verified author deletes and host moderation removals; runs
+    # before the insert path, which now excludes deletes.
+    apply_deletions(prepared)
+
     rows =
       prepared
       |> Enum.filter(fn {op, payload, verification} ->
         match?({:ok, _}, verification) and op["entity_type"] not in ["follow", "profile"] and
+          op["op_type"] != "delete" and
           visibility_ok?(op["entity_type"], payload)
       end)
       |> Enum.map(fn {op, payload, {:ok, expires_at}} -> row(op, payload, expires_at) end)
@@ -227,6 +236,16 @@ defmodule AnsibleAppview.Ingest.Folder do
     sig = op["signature"]
 
     cond do
+      op["removed"] == true ->
+        # Host moderation tombstone from our own relay firehose: the relay strips
+        # payload + signature, so it cannot (and must not) be verified by author
+        # signature. It is honored as a delete-by-entity_id in apply_deletions,
+        # never folded as content. Safe within the existing trust boundary: the
+        # relay is already this consumer's sole firehose and can withhold any op,
+        # so honoring a removal only exercises hide-power it already has — it
+        # still cannot forge content (that requires a valid signature below).
+        {:error, :moderation_removed}
+
       not (is_binary(pk) and is_binary(sig) and
                SigVerifier.verify_ed25519(pk, SigningPayload.build(op), sig)) ->
         {:error, :bad_signature}
@@ -267,6 +286,8 @@ defmodule AnsibleAppview.Ingest.Folder do
     |> Enum.reduce(%{}, fn
       # :poison_op is already counted (and logged) by dead_letter/2; don't double count.
       {_op, _payload, {:error, :poison_op}}, acc -> acc
+      # A host removal tombstone is an applied takedown, not a rejected op.
+      {_op, _payload, {:error, :moderation_removed}}, acc -> acc
       {_op, _payload, {:error, reason}}, acc -> Map.update(acc, reason, 1, &(&1 + 1))
       {_op, _payload, {:ok, _}}, acc -> acc
     end)
@@ -277,6 +298,71 @@ defmodule AnsibleAppview.Ingest.Folder do
         count
       )
     end)
+  end
+
+  # Mark the original content row(s) deleted for every delete/removal op in the
+  # page, keyed by (entity_id, author_did) since a delete op has its own log_id.
+  # Author deletes are signature-verified ({:ok, _} + op_type "delete"); host
+  # moderation removals arrive as {:error, :moderation_removed}. Both hide by the
+  # same mechanism.
+  defp apply_deletions(prepared) do
+    pairs =
+      prepared
+      |> Enum.filter(&deletion?/1)
+      |> Enum.flat_map(fn {op, _payload, _verification} ->
+        entity_id = op["entity_id"]
+        author_did = op["author_did"]
+
+        if is_binary(entity_id) and entity_id != "" and is_binary(author_did) and
+             author_did != "" do
+          [{entity_id, author_did}]
+        else
+          []
+        end
+      end)
+      |> Enum.uniq()
+
+    case pairs do
+      [] -> :ok
+      _ -> mark_deleted(pairs)
+    end
+  end
+
+  defp deletion?({op, _payload, {:ok, _}}),
+    do: op["entity_type"] not in ["follow", "profile"] and op["op_type"] == "delete"
+
+  defp deletion?({_op, _payload, {:error, :moderation_removed}}), do: true
+  defp deletion?(_), do: false
+
+  # Flip deleted=true on the matching not-yet-deleted rows, then tombstone the
+  # object cache for each affected op_id and drop the author building-block cache
+  # so the removal is visible immediately, not only after the cache TTL lapses.
+  # All read paths already filter deleted == false, so this is the whole fix.
+  defp mark_deleted(pairs) do
+    import Ecto.Query
+
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    total =
+      Enum.reduce(pairs, 0, fn {entity_id, author_did}, acc ->
+        {count, op_ids} =
+          Repo.update_all(
+            from(f in FeedItem,
+              where:
+                f.entity_id == ^entity_id and f.author_did == ^author_did and
+                  f.deleted == false,
+              select: f.op_id
+            ),
+            set: [deleted: true, updated_at: now]
+          )
+
+        for op_id <- op_ids || [], do: Cache.put("item:" <> op_id, :deleted, item_ttl())
+        Cache.delete("author:" <> author_did)
+        acc + count
+      end)
+
+    if total > 0, do: AnsibleAppview.Metrics.inc("appview_ingest_deletes_total", %{}, total)
+    :ok
   end
 
   defp visibility_ok?(entity_type, payload) when entity_type in @content_types do

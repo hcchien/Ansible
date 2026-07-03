@@ -80,5 +80,11 @@ defmodule AnsibleAppview.Cache.ETS do
     :ok
   end
 
+  @impl AnsibleAppview.Cache
+  def delete(key) do
+    :ets.delete(@table, key)
+    :ok
+  end
+
   defp now_ms, do: System.monotonic_time(:millisecond)
 end
