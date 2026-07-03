@@ -24,6 +24,7 @@ class DriftRemoteNodeRepository implements RemoteNodeRepository {
             createdAt: Value(node.createdAt),
             updatedAt: Value(node.updatedAt),
             isActive: Value(node.isActive),
+            constitutionCompliance: Value(node.constitutionCompliance),
           ),
           mode: InsertMode.insertOrReplace,
         );
@@ -83,6 +84,7 @@ class DriftRemoteNodeRepository implements RemoteNodeRepository {
         lastSyncAt: Value(node.lastSyncAt),
         updatedAt: Value(node.updatedAt),
         isActive: Value(node.isActive),
+        constitutionCompliance: Value(node.constitutionCompliance),
       ),
     );
   }
@@ -120,6 +122,7 @@ class DriftRemoteNodeRepository implements RemoteNodeRepository {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       isActive: row.isActive,
+      constitutionCompliance: row.constitutionCompliance,
     );
   }
 }

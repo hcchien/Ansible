@@ -11,6 +11,10 @@ class RemoteNode {
   final DateTime updatedAt;
   final bool isActive;
 
+  /// Host-declared constitution compliance ("full"/"partial"/"unknown");
+  /// null when never fetched. Display + ranking input, never trust-bearing.
+  final String? constitutionCompliance;
+
   RemoteNode({
     required this.id,
     required this.name,
@@ -21,6 +25,7 @@ class RemoteNode {
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
+    this.constitutionCompliance,
   });
 
   Map<String, dynamic> toJson() {
@@ -34,6 +39,7 @@ class RemoteNode {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isActive': isActive,
+      'constitutionCompliance': constitutionCompliance,
     };
   }
 
@@ -48,6 +54,7 @@ class RemoteNode {
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
       isActive: json['isActive'] as bool? ?? true,
+      constitutionCompliance: json['constitutionCompliance'] as String?,
     );
   }
 
@@ -61,6 +68,7 @@ class RemoteNode {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    String? constitutionCompliance,
   }) {
     return RemoteNode(
       id: id ?? this.id,
@@ -72,6 +80,8 @@ class RemoteNode {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      constitutionCompliance:
+          constitutionCompliance ?? this.constitutionCompliance,
     );
   }
 

@@ -115,7 +115,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -245,6 +245,15 @@ class AppDatabase extends _$AppDatabase {
         // DID). Legacy 'user-local' placeholders stay false.
         await customStatement(
           "UPDATE posts SET signature_verified = 1 WHERE author_id LIKE 'did:%'",
+        );
+      }
+      if (from < 26) {
+        // Compliance-review gap #2: persist the host-declared constitution
+        // compliance level on saved forum hosts.
+        await _addColumnIfMissing(
+          m,
+          remoteNodes,
+          remoteNodes.constitutionCompliance,
         );
       }
       await _addColumnIfMissing(

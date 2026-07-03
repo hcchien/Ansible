@@ -6,6 +6,7 @@ import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import '../l10n/subpage_l10n.dart';
 import '../services/content_publication_service.dart';
+import '../services/relay_discovery_client.dart';
 import '../services/app_sync_service.dart';
 import '../services/nostr_publication_service.dart';
 import '../services/nostr_relay_settings_store.dart';
@@ -191,6 +192,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       }
     }
 
+    // Compliance-review gap #2: capture the host's self-declared compliance
+    // level at add time (best-effort) so saved hosts carry it.
+    final discoveryClient = RelayDiscoveryClient(baseUrl: data['url']!);
+    final compliance = await discoveryClient.fetchHostConstitutionCompliance();
+    discoveryClient.close();
+
     final node = RemoteNode(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: data['name']!,
@@ -199,6 +206,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       createdAt: now,
       updatedAt: now,
       isActive: true,
+      constitutionCompliance: compliance,
     );
 
     await _remoteNodeRepo.create(node);
@@ -867,6 +875,21 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                             color: AnsibleDesign.inkMuted,
                           ),
                         ),
+                        if (node.constitutionCompliance != null) ...[
+                          const SizedBox(height: 4),
+                          // Host-declared constitution compliance (gap #2):
+                          // display-only, never trust-bearing.
+                          Text(
+                            'CONSTITUTION · '
+                            '${node.constitutionCompliance!.toUpperCase()}',
+                            style: const TextStyle(
+                              fontFamily: AnsibleDesign.mono,
+                              fontSize: 9,
+                              letterSpacing: 1.2,
+                              color: AnsibleDesign.inkFaint,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         Row(
                           children: [

@@ -535,7 +535,32 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final host = hosts.first;
 
       final discovery = await _fetchDefaultRelayDiscovery();
-      final featured = discovery.featuredBoards.take(3).toList();
+      // Compliance-consuming ranking (compliance-review gap #2): prefer
+      // boards on hosts with a higher declared constitution compliance,
+      // keeping the relay's featured order within each level.
+      final complianceByHostUrl = {
+        for (final host in discovery.featuredForumHosts)
+          host.forumHostUrl: host.constitutionCompliance,
+      };
+      int complianceRank(String level) => switch (level) {
+        'full' => 0,
+        'partial' => 1,
+        _ => 2,
+      };
+      final ranked = List.of(discovery.featuredBoards);
+      final originalIndex = {
+        for (var i = 0; i < ranked.length; i++) ranked[i]: i,
+      };
+      ranked.sort((a, b) {
+        final byCompliance = complianceRank(
+          complianceByHostUrl[a.forumHostUrl] ?? 'unknown',
+        ).compareTo(
+          complianceRank(complianceByHostUrl[b.forumHostUrl] ?? 'unknown'),
+        );
+        if (byCompliance != 0) return byCompliance;
+        return originalIndex[a]!.compareTo(originalIndex[b]!);
+      });
+      final featured = ranked.take(3).toList();
       if (featured.isEmpty) return;
 
       final now = DateTime.now();
@@ -1102,6 +1127,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // Non-empty with no default and no run.app node → leave the user's setup
       // alone. Only seed on a truly fresh install.
       if (existing.isNotEmpty) return;
+      // Compliance-review gap #2: capture the host-declared compliance level
+      // at seed time (best-effort).
+      final discoveryClient = RelayDiscoveryClient(baseUrl: url);
+      final compliance =
+          await discoveryClient.fetchHostConstitutionCompliance();
+      discoveryClient.close();
       await _remoteNodeRepo.create(
         RemoteNode(
           id: now.millisecondsSinceEpoch.toString(),
@@ -1110,6 +1141,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           createdAt: now,
           updatedAt: now,
           isActive: true,
+          constitutionCompliance: compliance,
         ),
       );
     } catch (_) {

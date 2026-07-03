@@ -6047,6 +6047,17 @@ class $RemoteNodesTable extends RemoteNodes
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _constitutionComplianceMeta =
+      const VerificationMeta('constitutionCompliance');
+  @override
+  late final GeneratedColumn<String> constitutionCompliance =
+      GeneratedColumn<String>(
+        'constitution_compliance',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     nodeId,
@@ -6058,6 +6069,7 @@ class $RemoteNodesTable extends RemoteNodes
     createdAt,
     updatedAt,
     isActive,
+    constitutionCompliance,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6137,6 +6149,15 @@ class $RemoteNodesTable extends RemoteNodes
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('constitution_compliance')) {
+      context.handle(
+        _constitutionComplianceMeta,
+        constitutionCompliance.isAcceptableOrUnknown(
+          data['constitution_compliance']!,
+          _constitutionComplianceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6182,6 +6203,10 @@ class $RemoteNodesTable extends RemoteNodes
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      constitutionCompliance: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}constitution_compliance'],
+      ),
     );
   }
 
@@ -6201,6 +6226,11 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+
+  /// Host-declared constitution compliance level ("full"/"partial"/...),
+  /// captured from the host's own metadata at add/refresh time. Null = never
+  /// fetched; "unknown" = fetched but undeclared. Compliance-review gap #2.
+  final String? constitutionCompliance;
   const RemoteNode({
     required this.nodeId,
     required this.name,
@@ -6211,6 +6241,7 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
     required this.createdAt,
     required this.updatedAt,
     required this.isActive,
+    this.constitutionCompliance,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6228,6 +6259,9 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || constitutionCompliance != null) {
+      map['constitution_compliance'] = Variable<String>(constitutionCompliance);
+    }
     return map;
   }
 
@@ -6246,6 +6280,9 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isActive: Value(isActive),
+      constitutionCompliance: constitutionCompliance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(constitutionCompliance),
     );
   }
 
@@ -6264,6 +6301,9 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      constitutionCompliance: serializer.fromJson<String?>(
+        json['constitutionCompliance'],
+      ),
     );
   }
   @override
@@ -6279,6 +6319,9 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isActive': serializer.toJson<bool>(isActive),
+      'constitutionCompliance': serializer.toJson<String?>(
+        constitutionCompliance,
+      ),
     };
   }
 
@@ -6292,6 +6335,7 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
+    Value<String?> constitutionCompliance = const Value.absent(),
   }) => RemoteNode(
     nodeId: nodeId ?? this.nodeId,
     name: name ?? this.name,
@@ -6302,6 +6346,9 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     isActive: isActive ?? this.isActive,
+    constitutionCompliance: constitutionCompliance.present
+        ? constitutionCompliance.value
+        : this.constitutionCompliance,
   );
   RemoteNode copyWithCompanion(RemoteNodesCompanion data) {
     return RemoteNode(
@@ -6320,6 +6367,9 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      constitutionCompliance: data.constitutionCompliance.present
+          ? data.constitutionCompliance.value
+          : this.constitutionCompliance,
     );
   }
 
@@ -6334,7 +6384,8 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
           ..write('lastSyncAt: $lastSyncAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('constitutionCompliance: $constitutionCompliance')
           ..write(')'))
         .toString();
   }
@@ -6350,6 +6401,7 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
     createdAt,
     updatedAt,
     isActive,
+    constitutionCompliance,
   );
   @override
   bool operator ==(Object other) =>
@@ -6363,7 +6415,8 @@ class RemoteNode extends DataClass implements Insertable<RemoteNode> {
           other.lastSyncAt == this.lastSyncAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.constitutionCompliance == this.constitutionCompliance);
 }
 
 class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
@@ -6376,6 +6429,7 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> isActive;
+  final Value<String?> constitutionCompliance;
   final Value<int> rowid;
   const RemoteNodesCompanion({
     this.nodeId = const Value.absent(),
@@ -6387,6 +6441,7 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.constitutionCompliance = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RemoteNodesCompanion.insert({
@@ -6399,6 +6454,7 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.constitutionCompliance = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : nodeId = Value(nodeId),
        name = Value(name),
@@ -6413,6 +6469,7 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? isActive,
+    Expression<String>? constitutionCompliance,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6425,6 +6482,8 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isActive != null) 'is_active': isActive,
+      if (constitutionCompliance != null)
+        'constitution_compliance': constitutionCompliance,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6439,6 +6498,7 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? isActive,
+    Value<String?>? constitutionCompliance,
     Value<int>? rowid,
   }) {
     return RemoteNodesCompanion(
@@ -6451,6 +6511,8 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      constitutionCompliance:
+          constitutionCompliance ?? this.constitutionCompliance,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6485,6 +6547,11 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (constitutionCompliance.present) {
+      map['constitution_compliance'] = Variable<String>(
+        constitutionCompliance.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6503,6 +6570,7 @@ class RemoteNodesCompanion extends UpdateCompanion<RemoteNode> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isActive: $isActive, ')
+          ..write('constitutionCompliance: $constitutionCompliance, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -33454,6 +33522,7 @@ typedef $$RemoteNodesTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> isActive,
+      Value<String?> constitutionCompliance,
       Value<int> rowid,
     });
 typedef $$RemoteNodesTableUpdateCompanionBuilder =
@@ -33467,6 +33536,7 @@ typedef $$RemoteNodesTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> isActive,
+      Value<String?> constitutionCompliance,
       Value<int> rowid,
     });
 
@@ -33521,6 +33591,11 @@ class $$RemoteNodesTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get constitutionCompliance => $composableBuilder(
+    column: $table.constitutionCompliance,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -33578,6 +33653,11 @@ class $$RemoteNodesTableOrderingComposer
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get constitutionCompliance => $composableBuilder(
+    column: $table.constitutionCompliance,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RemoteNodesTableAnnotationComposer
@@ -33621,6 +33701,11 @@ class $$RemoteNodesTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<String> get constitutionCompliance => $composableBuilder(
+    column: $table.constitutionCompliance,
+    builder: (column) => column,
+  );
 }
 
 class $$RemoteNodesTableTableManager
@@ -33663,6 +33748,7 @@ class $$RemoteNodesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> constitutionCompliance = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RemoteNodesCompanion(
                 nodeId: nodeId,
@@ -33674,6 +33760,7 @@ class $$RemoteNodesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isActive: isActive,
+                constitutionCompliance: constitutionCompliance,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -33687,6 +33774,7 @@ class $$RemoteNodesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> constitutionCompliance = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RemoteNodesCompanion.insert(
                 nodeId: nodeId,
@@ -33698,6 +33786,7 @@ class $$RemoteNodesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isActive: isActive,
+                constitutionCompliance: constitutionCompliance,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

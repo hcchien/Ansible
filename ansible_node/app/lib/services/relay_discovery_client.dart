@@ -33,6 +33,26 @@ class RelayDiscoveryClient {
     return RelayDiscovery.fromJson(decoded);
   }
 
+  /// The host's self-declared constitution compliance level from its own
+  /// metadata (`GET /api/v1/forum-host`). Returns null when unreachable or
+  /// undeclared — callers persist it on the saved host record (compliance
+  /// review gap #2) and must treat it as display/ranking input only, never
+  /// trust-bearing.
+  Future<String?> fetchHostConstitutionCompliance() async {
+    try {
+      final response = await _client
+          .get(_endpoint('/api/v1/forum-host'))
+          .timeout(timeout);
+      if (response.statusCode != 200) return null;
+      final decoded = _decodeJson(response.body);
+      if (decoded is! Map) return null;
+      final level = decoded['constitution_compliance'];
+      return level is String && level.isNotEmpty ? level : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Object? _decodeJson(String responseBody) {
     if (responseBody.trim().isEmpty) return const {};
     return jsonDecode(responseBody);

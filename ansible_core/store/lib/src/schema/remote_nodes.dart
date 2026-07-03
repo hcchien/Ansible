@@ -11,6 +11,11 @@ class RemoteNodes extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
+  /// Host-declared constitution compliance level ("full"/"partial"/...),
+  /// captured from the host's own metadata at add/refresh time. Null = never
+  /// fetched; "unknown" = fetched but undeclared. Compliance-review gap #2.
+  TextColumn get constitutionCompliance => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {nodeId};
 }
