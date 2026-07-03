@@ -268,6 +268,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // app can sync out-of-box without the user manually adding a relay.
       await _ensureDefaultRelayNode();
       if (!mounted) return;
+      // Cold start (PM review P0): a brand-new install auto-subscribes the
+      // relay's genesis/featured boards so day one has something to read.
+      unawaited(
+        _ensureDefaultSubscriptions().whenComplete(() {
+          if (mounted) unawaited(_loadData());
+        }),
+      );
       unawaited(_loadScreenStyles());
       unawaited(_loadBoardMotion());
       unawaited(_loadData());
@@ -500,6 +507,86 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       return await client.fetchDiscovery();
     } finally {
       client.close();
+    }
+  }
+
+  static const _genesisSubscribedKey = 'elix-genesis-subscribed';
+
+  /// First-run default subscriptions (cold-start): when this install has no
+  /// hosted-board subscriptions yet, subscribe the relay's featured (genesis)
+  /// boards so the forum isn't a ghost town on day one. Runs once per install
+  /// (prefs-flagged) and never overrides a user's own subscription state —
+  /// unsubscribing later sticks. Best-effort: any failure just leaves the
+  /// user on the normal Discover path.
+  Future<void> _ensureDefaultSubscriptions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_genesisSubscribedKey) ?? false) return;
+
+      final existing = await _hostedBoardRepo.listSubscriptions();
+      if (existing.isNotEmpty) {
+        await prefs.setBool(_genesisSubscribedKey, true);
+        return;
+      }
+
+      final hosts =
+          (await _remoteNodeRepo.list()).where((n) => n.isActive).toList();
+      if (hosts.isEmpty) return;
+      final host = hosts.first;
+
+      final discovery = await _fetchDefaultRelayDiscovery();
+      final featured = discovery.featuredBoards.take(3).toList();
+      if (featured.isEmpty) return;
+
+      final now = DateTime.now();
+      for (final board in featured) {
+        final localBoardId = '${host.id}_${board.hostedBoardId}';
+        try {
+          await _boardRepo.create(
+            Board(
+              id: localBoardId,
+              slug: localBoardId,
+              title: board.title,
+              description: board.description,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        } catch (_) {
+          // Board row may already exist; continue.
+        }
+        await _hostedBoardRepo.upsertProjection(
+          HostedBoardProjection(
+            localBoardId: localBoardId,
+            forumHostId: host.id,
+            hostedBoardId: board.hostedBoardId,
+            canonicalBoardUri: board.canonicalBoardUri,
+            remoteSlug: board.hostedBoardId,
+            localSlug: localBoardId,
+            title: board.title,
+            description: board.description,
+            permissions: const {'read': true, 'write': true},
+            postingPolicy: const {},
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await _hostedBoardRepo.upsertSubscription(
+          BoardSubscription(
+            subscriptionId: localBoardId,
+            forumHostId: host.id,
+            hostedBoardId: board.hostedBoardId,
+            localBoardId: localBoardId,
+            readEnabled: true,
+            writeEnabled: true,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+      await prefs.setBool(_genesisSubscribedKey, true);
+    } catch (_) {
+      // Best-effort — Discover remains the manual path.
     }
   }
 
