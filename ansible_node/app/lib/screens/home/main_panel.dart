@@ -253,6 +253,7 @@ class MainPanel extends StatelessWidget {
                     followingPosts: followingPosts,
                     opsDispatchService: opsDispatchService,
                     onFlushPendingOps: onFlushPendingOps,
+                    onCompose: onComposeTap,
                   ),
                 ),
               ),

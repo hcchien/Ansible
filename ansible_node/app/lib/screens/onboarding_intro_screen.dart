@@ -98,10 +98,13 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
+                  // Benefit-led, not mechanism-led (UX review P1 + 行銷策略書:
+                  // 「不要賣機制，要賣機制帶來的感受」).
                   context.uiCopy(
-                    zh: '一個重新建立信任的社群。資料留在本地，身分握在你自己手上。要被看見之前，先問過你。',
-                    en: 'A community rebuilding trust. Your data stays local, '
-                        'your identity is yours. Nothing is seen without asking you first.',
+                    zh: '一個每個人都是真人的討論社群。沒有機器人、沒有網軍，你的帳號和內容永遠是你的。',
+                    en: 'A community where everyone is a real person. No bots, '
+                        'no troll armies — and your account and words stay '
+                        'yours, always.',
                   ),
                   style: const TextStyle(
                     fontFamily: AnsibleDesign.serif,

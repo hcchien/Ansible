@@ -31,12 +31,16 @@ class DiscoverScreen extends StatefulWidget {
     required this.localDid,
     required this.client,
     this.onOpenBoard,
+    this.startOnBoards = false,
   });
 
   final AppDatabase db;
   final String localDid;
   final DiscoveryClient client;
   final void Function(BoardSearchResult board)? onOpenBoard;
+
+  /// Opens on the 看板 tab (guided first session step 1).
+  final bool startOnBoards;
 
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -60,6 +64,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.startOnBoards) _tab = _DiscoverTab.boards;
     _loadFeed();
   }
 
