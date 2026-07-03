@@ -117,7 +117,9 @@ void main() {
       await pumpThreads(tester, db, board);
 
       expect(find.text('此看板僅限通過真人驗證的成員發文'), findsOneWidget);
-      expect(find.text('升級驗證'), findsOneWidget);
+      // No reachable issuer in tests → the CTA shows the honest interim
+      // state (UX review P1: never a wizard that cannot finish).
+      expect(find.text('真人驗證即將開放'), findsOneWidget);
       final fab = tester.widget<FloatingActionButton>(
         find.byType(FloatingActionButton),
       );
