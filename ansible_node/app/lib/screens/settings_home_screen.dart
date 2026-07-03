@@ -20,6 +20,7 @@ import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'identity_backup_screen.dart';
 import 'inbox_screen.dart';
+import 'recovery_approve_scanner_screen.dart';
 import 'recovery_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'edit_profile_screen.dart';
@@ -276,11 +277,29 @@ class SettingsHomeScreen extends StatelessWidget {
                 en: 'ADMIN',
                 sub: text.accessAuditSubtitle,
                 value: text.noSuspiciousAccess,
-                last: true,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const CredentialAdminScreen(),
+                    ),
+                  );
+                },
+              ),
+              AnsibleSettingsRow(
+                key: const Key('settings_approve_recovery_row'),
+                glyph: '⇄',
+                label: context.uiCopy(zh: '核可另一台裝置', en: 'Approve a device'),
+                en: 'APPROVE',
+                sub: context.uiCopy(
+                  zh: '掃描新裝置的復原 QR，替它背書',
+                  en: 'Scan a new device\'s recovery QR to vouch for it',
+                ),
+                last: true,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          RecoveryApproveScannerScreen(localDid: did),
                     ),
                   );
                 },

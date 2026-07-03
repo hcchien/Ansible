@@ -136,8 +136,10 @@ void main() {
     // nav cell. (The bottom nav carries only 時間軸 + 討論區.)
     await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(
+    await tester.scrollUntilVisible(
       find.byKey(const Key('settings_style_choice_personal_paper')),
+      120,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(
       find.byKey(const Key('settings_style_choice_personal_paper')),
@@ -159,8 +161,10 @@ void main() {
 
     await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(
+    await tester.scrollUntilVisible(
       find.byKey(const Key('settings_style_choice_forum_ink')),
+      120,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settings_style_choice_forum_ink')));
@@ -197,12 +201,20 @@ void main() {
     await tester.tap(find.byKey(const Key('settings_button')));
     await tester.pumpAndSettle();
 
+    // The settings list builds lazily; bring the interface section into view.
+    await tester.scrollUntilVisible(
+      find.text('Interface & Language'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Interface & Language'), findsOneWidget);
     expect(find.text('Board Theme'), findsOneWidget);
     expect(find.text('Board Motion'), findsOneWidget);
 
-    await tester.ensureVisible(
+    await tester.scrollUntilVisible(
       find.byKey(const Key('settings_style_choice_personal_paper')),
+      120,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(
       find.byKey(const Key('settings_style_choice_personal_paper')),

@@ -6,6 +6,7 @@ import '../l10n/user_facing_error.dart';
 import '../services/identity_anchor_service.dart';
 import '../services/relay_anchor_client.dart';
 import '../theme/ansible_design.dart';
+import 'recovery_from_device_screen.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
 /// Recovery wizard — restore-from-backup path (recovery design Task 5, the
@@ -267,6 +268,36 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
             ? context.uiCopy(zh: '復原中…', en: 'Recovering…')
             : context.uiCopy(zh: '復原我的帳號', en: 'Recover my account'),
         onPressed: working ? null : _recover,
+      ),
+      const SizedBox(height: 22),
+      // Approve-from-other-device (design flow 3a): no backup needed when an
+      // old, enrolled device survives.
+      Center(
+        child: TextButton(
+          key: const Key('recovery_from_device_entry'),
+          onPressed: working
+              ? null
+              : () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RecoveryFromDeviceScreen(
+                        installRecoveredKey: widget.installRecoveredKey,
+                      ),
+                    ),
+                  );
+                },
+          child: Text(
+            context.uiCopy(
+              zh: '沒有備份？用另一台裝置核可',
+              en: 'No backup? Approve from another device',
+            ),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.sans,
+              fontSize: 14,
+              color: AnsibleDesign.inkMuted,
+            ),
+          ),
+        ),
       ),
     ];
   }
