@@ -4,6 +4,7 @@ import 'package:ansible_store/ansible_store.dart';
 
 import 'content_publication_service.dart';
 import 'host_moderation_sync_service.dart';
+import 'issuer_attestation_service.dart';
 import 'notification_projector.dart';
 import 'nostr_publication_service.dart';
 import 'nostr_relay_settings_store.dart';
@@ -131,6 +132,18 @@ class AppSyncService {
   final NostrRelayClient? _relayClient;
   final RelayPublicationClient? _relayPublicationClient;
   final RelayIdentityClient? _identityClient;
+
+  // Portable issuer re-verification (federation trust): one service per
+  // relay node, kept for the AppSyncService lifetime so its per-DID verified
+  // cache survives across sync passes.
+  final Map<String, IssuerAttestationService> _attestationServices = {};
+
+  IssuerAttestationService _attestationServiceFor(String nodeUrl) {
+    return _attestationServices.putIfAbsent(
+      nodeUrl,
+      () => IssuerAttestationService(relayBaseUrl: nodeUrl),
+    );
+  }
 
   Future<AppSyncResult> syncAll({bool pullRemote = true}) async {
     final pullSummary = pullRemote
@@ -367,6 +380,7 @@ class AppSyncService {
         didReputationRepo: _didReputationRepo,
         followerDid: _followerDid,
         notificationProjector: _notificationProjector,
+        issuerAttestationService: _attestationServiceFor(node.url),
         identityClient: _identityClient,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);
       if (result.success) {

@@ -7,6 +7,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/protocol.dart';
+import 'issuer_attestation_service.dart';
 import 'notification_projector.dart';
 import 'op_signature_payload.dart';
 import 'relay_identity_client.dart';
@@ -330,6 +331,10 @@ class RemoteSyncService {
   // server request and runs before board filtering so follow ops (which have
   // no board) still notify.
   final NotificationProjector? _notificationProjector;
+
+  // Portable issuer re-verification (federation trust): the ONLY source of
+  // reputation tiers on ingest. Null keeps tiers untouched (everyone basic).
+  final IssuerAttestationService? _issuerAttestations;
   final RemoteOpSignatureVerifier _opSignatureVerifier;
   final DateTime Function() _now;
 
@@ -345,6 +350,7 @@ class RemoteSyncService {
     DidReputationRepository? didReputationRepo,
     String? followerDid,
     NotificationProjector? notificationProjector,
+    IssuerAttestationService? issuerAttestationService,
     RemoteOpSignatureVerifier? opSignatureVerifier,
     RelayIdentityClient? identityClient,
     DateTime Function()? now,
@@ -359,6 +365,7 @@ class RemoteSyncService {
        _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
        _notificationProjector = notificationProjector,
+       _issuerAttestations = issuerAttestationService,
        _opSignatureVerifier =
            opSignatureVerifier ??
            RemoteOpSignatureVerifier(
@@ -694,10 +701,30 @@ class RemoteSyncService {
   Future<void> _captureAuthorTiers(List<dynamic> trusted) async {
     final repo = _didReputationRepo;
     if (repo == null) return;
-    // Fail closed: never write a peer-asserted tier (it's unsigned). Leaving the
-    // repo untouched also avoids clobbering tiers that the issuer-attestation
-    // re-verification path will set. No writes here by design.
-    return;
+    // Fail closed: never write a peer-asserted tier (it's unsigned). Tiers
+    // come only from the issuer-attestation re-verification path below —
+    // the relay serves the issuer-signed VC, and WE re-verify the issuer's
+    // Ed25519 proof against the pinned issuer key before believing it.
+    final attestations = _issuerAttestations;
+    if (attestations == null) return;
+
+    final authorDids = <String>{};
+    for (final raw in trusted) {
+      if (raw is! Map) continue;
+      final signed = raw['signedOp'];
+      if (signed is! Map) continue;
+      final did = signed['authorDid'];
+      if (did is String && did.isNotEmpty) authorDids.add(did);
+    }
+
+    for (final did in authorDids) {
+      // Per-DID verified results (incl. negatives) are cached inside the
+      // service, so this stays cheap across sync batches.
+      final tier = await attestations.verifiedTierFor(did);
+      if (tier != null && tier.isNotEmpty) {
+        await repo.put(did, tier);
+      }
+    }
   }
 
   Future<Set<String>> _resolveFollowedAuthorDids() async {
