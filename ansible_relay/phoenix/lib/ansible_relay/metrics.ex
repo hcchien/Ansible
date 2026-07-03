@@ -66,7 +66,17 @@ defmodule AnsibleRelay.Metrics do
       {:counter, "Recovery re-anchors entering the grace window (pending)."},
     "identity_veto_total" => {:counter, "Pending recovery anchors vetoed (account frozen)."},
     "identity_alert_sends_total" =>
-      {:counter, "Identity-alert wake pushes sent to enrolled devices, by reason."}
+      {:counter, "Identity-alert wake pushes sent to enrolled devices, by reason."},
+    # Constitutional product measurement (ProductPulse) — aggregate-only.
+    "elix_registered_dids" => {:gauge, "Registered DID accounts on this relay."},
+    "elix_active_authors" =>
+      {:gauge, "Distinct authors with ≥1 op in the window (aggregate only)."},
+    "elix_active_boards" =>
+      {:gauge, "Distinct boards with thread/post activity in the window."},
+    "elix_new_authors" =>
+      {:gauge, "Authors whose first op landed inside the window (activation)."},
+    "elix_returning_authors" =>
+      {:gauge, "Window-active authors whose first op predates it (retention)."}
   }
 
   # --- Public API ---
@@ -179,11 +189,21 @@ defmodule AnsibleRelay.Metrics do
     {:ok, %{interval: interval}}
   end
 
+  # Product-pulse gauges are COUNT DISTINCT scans — sample them every Nth
+  # gauge tick (default 15s * 20 = 5min) rather than on every poll.
+  @product_pulse_every 20
+
   @impl true
   def handle_info(:poll_gauges, %{interval: interval} = state) do
+    tick = Map.get(state, :tick, 0)
     poll_gauges()
+
+    if rem(tick, @product_pulse_every) == 0 do
+      sample_product_pulse()
+    end
+
     if interval > 0, do: Process.send_after(self(), :poll_gauges, interval)
-    {:noreply, state}
+    {:noreply, Map.put(state, :tick, tick + 1)}
   end
 
   @doc "Sample gauge series. Safe to call directly in tests."
@@ -193,6 +213,14 @@ defmodule AnsibleRelay.Metrics do
   rescue
     error ->
       Logger.warning("Metrics.poll_gauges failed: #{inspect(error.__struct__)}")
+      :ok
+  end
+
+  defp sample_product_pulse do
+    AnsibleRelay.ProductPulse.sample()
+  rescue
+    error ->
+      Logger.warning("ProductPulse.sample failed: #{inspect(error.__struct__)}")
       :ok
   end
 
