@@ -1,11 +1,14 @@
 package io.trisaura.ansible_node
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
-class MainActivity : FlutterActivity() {
+// FlutterFragmentActivity (not FlutterActivity): the local_auth biometric
+// prompt used by passkey registration requires a FragmentActivity host —
+// with plain FlutterActivity registration fails at the device-auth step.
+class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(
