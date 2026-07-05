@@ -51,6 +51,10 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   connectivity_plus: ^6.0.0
   drift: ^2.4.0
+  # Bundles the native sqlite3 .so per ABI into the Android APK (and
+  # the dylib on iOS is the system one). Without it drift's NativeDatabase
+  # crashes at first DB open on Android: libsqlite3.so not found.
+  sqlite3_flutter_libs: ^0.5.0
   http: ^1.1.0
   crypto: ^3.0.7
   local_auth: ^2.2.0
