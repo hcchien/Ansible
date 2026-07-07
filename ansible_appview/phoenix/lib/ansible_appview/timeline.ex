@@ -244,7 +244,14 @@ defmodule AnsibleAppview.Timeline do
 
   @spec for_board(String.t(), integer() | nil, pos_integer()) :: map()
   def for_board(board_id, cursor, limit) do
-    page(from(f in FeedItem, where: f.board_id == ^board_id), cursor, limit)
+    pattern = "%_" <> board_id
+    page(
+      from(f in FeedItem,
+        where: f.board_id == ^board_id or like(f.board_id, ^pattern)
+      ),
+      cursor,
+      limit
+    )
   end
 
   @doc """
