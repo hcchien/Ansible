@@ -28,6 +28,8 @@ export function renderPageBody(viewModel, uiState = {}) {
       return renderBoards(viewModel);
     case PAGE_IDS.board:
       return renderBoard(viewModel, uiState);
+    case PAGE_IDS.thread:
+      return renderThreadDetail(viewModel, uiState);
     case PAGE_IDS.login:
       return renderLogin(viewModel, uiState.login ?? {});
     case PAGE_IDS.sessions:
@@ -133,6 +135,83 @@ function renderBoard(viewModel, uiState = {}) {
           ${renderThreadList(threads, threadContext)}
         </section>
         ${renderExternalSection(board, viewModel.externalContent)}
+      </section>
+      ${renderRightRail(viewModel, viewModel.boards ?? [])}
+    </section>
+  `;
+}
+
+function renderThreadDetail(viewModel, uiState = {}) {
+  const board = viewModel.board ?? {};
+  if (board.missing) {
+    return renderMissingBoard(viewModel, board);
+  }
+
+  const thread = viewModel.thread;
+  const boardId = board.slug || board.id || viewModel.route?.params?.boardId || '';
+  const boardHref = `#/boards/${encodeURIComponent(boardId)}`;
+
+  if (!thread) {
+    return `
+      ${renderError(viewModel.error)}
+      <section class="cols" aria-labelledby="missing-thread-title">
+        ${renderLeftRail(viewModel, 'boards')}
+        <section class="feed thread-detail" aria-labelledby="missing-thread-title">
+          <a class="back-link" href="${escapeAttribute(boardHref)}">${escapeHtml(t('common.backToBoard'))}</a>
+          <section class="card not-found-page">
+            <p class="section-label">${escapeHtml(t('notFound.kicker'))}</p>
+            <h2 id="missing-thread-title">${escapeHtml(t('notFound.title'))}</h2>
+            <p>${escapeHtml(t('notFound.body', { path: viewModel.route?.params?.threadId ?? '' }))}</p>
+          </section>
+        </section>
+        ${renderRightRail(viewModel, viewModel.boards ?? [])}
+      </section>
+    `;
+  }
+
+  const title = thread.title || thread.subject || t('common.threadFallback');
+  const author = thread.authorDid || thread.subjectDid || thread.author || null;
+  const signed = Boolean(author);
+  const locked = Boolean(thread.locked);
+  const posts = thread.posts ?? [];
+  const context = {
+    session: viewModel.session,
+    boardId: board.id ?? boardId,
+    canReply: Boolean(viewModel.actions?.canReply),
+  };
+
+  return `
+    ${renderNotice(uiState.notice)}
+    ${renderError(viewModel.error)}
+    <section class="cols" aria-labelledby="thread-title">
+      ${renderLeftRail(viewModel, 'boards')}
+      <section class="feed thread-detail" aria-labelledby="thread-title">
+        <a class="back-link" href="${escapeAttribute(boardHref)}">${escapeHtml(t('common.backToBoard'))}</a>
+        <article class="thread-detail-card">
+          <header class="thread-detail-head">
+            <p class="section-label">${escapeHtml(t('thread.kicker'))}</p>
+            <h1 id="thread-title">${escapeHtml(title)}${locked ? ` ${renderLockedBadge()}` : ''}</h1>
+            <p class="author">${escapeHtml(shortIdentity(author))}${signed ? ` ${renderSignedPill(t('focus.passkeyCompact'))}` : ''}</p>
+            <div class="thread-detail-meta">
+              <span>${escapeHtml(t('board.replyCount', { count: thread.replyCount ?? thread.replies ?? posts.length }))}</span>
+              <span>${escapeHtml(thread.updatedAt ? formatExpiry(thread.updatedAt) : t('common.recent'))}</span>
+            </div>
+            ${locked ? renderLockedBanner(thread.lockReasonCode) : ''}
+          </header>
+          <section class="thread-detail-posts" aria-labelledby="thread-replies-title">
+            <div class="head">
+              <h3 id="thread-replies-title">${escapeHtml(t('thread.repliesTitle', { count: posts.length }))}</h3>
+            </div>
+            ${posts.length ? renderThreadPosts(posts, context) : `<p class="empty-state">${escapeHtml(t('thread.noReplies'))}</p>`}
+          </section>
+          ${renderThreadActions({
+            thread,
+            context,
+            locked,
+            authenticated: Boolean(viewModel.session?.authenticated),
+            threadId: thread.id ?? '',
+          })}
+        </article>
       </section>
       ${renderRightRail(viewModel, viewModel.boards ?? [])}
     </section>
@@ -695,12 +774,18 @@ function renderThreadItem(thread, context = {}) {
   const posts = thread.posts ?? [];
   const threadId = thread.id ?? '';
   const authenticated = Boolean(context.session?.authenticated);
+  const href = threadId && context.boardId
+    ? `#/boards/${encodeURIComponent(context.boardId)}/threads/${encodeURIComponent(threadId)}`
+    : null;
+  const linkedTitle = href
+    ? `<a class="thread-title-link" href="${escapeAttribute(href)}">${escapeHtml(title)}</a>`
+    : escapeHtml(title);
 
   return `
-    <li${signed ? ' class="signed"' : ''}${locked ? ' data-locked="true"' : ''}>
+    <li${signed ? ' class="signed"' : ''}${locked ? ' data-locked="true"' : ''}${threadId ? ` data-thread-id="${escapeAttribute(threadId)}"` : ''}>
       <div class="av">${escapeHtml(initial)}</div>
       <div>
-        <h4 class="ttl">${escapeHtml(title)}${locked ? ` ${renderLockedBadge()}` : ''}</h4>
+        <h4 class="ttl">${linkedTitle}${locked ? ` ${renderLockedBadge()}` : ''}</h4>
         <p class="author">${escapeHtml(shortIdentity(author))}${signed ? ` ${renderSignedPill(t('focus.passkeyCompact'))}` : ''}</p>
         ${locked ? renderLockedBanner(thread.lockReasonCode) : ''}
         ${posts.length ? renderThreadPosts(posts, context) : ''}
@@ -756,7 +841,7 @@ function renderThreadPost(post, context = {}) {
 
   return `
     <li class="thread-post">
-      <p class="post-body">${escapeHtml(post.body ?? '')}</p>
+      <p class="post-body">${escapeHtml(post.body ?? post.content ?? '')}</p>
       ${
         authenticated
           ? renderReportControl({

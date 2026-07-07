@@ -1151,6 +1151,17 @@ p {
   margin: 0 0 4px;
 }
 
+.thread-title-link {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 4px;
+}
+
+.thread-title-link:hover,
+.thread-title-link:focus-visible {
+  text-decoration: underline;
+}
+
 .thread-list li .author {
   display: flex;
   align-items: center;
@@ -1259,6 +1270,67 @@ p {
   font-family: var(--sans);
   font-size: 12.5px;
   color: var(--faint);
+}
+
+.thread-detail .back-link {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 0 18px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.thread-detail .back-link:hover,
+.thread-detail .back-link:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.thread-detail-card {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 4px 10px;
+}
+
+.thread-detail-head h1 {
+  font-family: var(--serif);
+  font-size: 42px;
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 6px 0 10px;
+  color: var(--text);
+}
+
+.thread-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0 0;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--faint);
+}
+
+.thread-detail-posts {
+  margin-top: 24px;
+}
+
+.thread-detail-posts .head {
+  padding: 14px 0 8px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.thread-detail-posts .head h3 {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0;
 }
 
 /* ── Directory (boards page) ───────────────── */
@@ -2308,6 +2380,10 @@ p {
 
   .board-head .heading h1 {
     font-size: 26px;
+  }
+
+  .thread-detail-head h1 {
+    font-size: 32px;
   }
 
   .mobile-tabbar {

@@ -299,6 +299,10 @@ const moderatedBoardVm = buildAppViewModel({
 });
 const moderatedBoardHtml = renderPageBody(moderatedBoardVm);
 
+// Board rows expose real thread detail links instead of inert list text.
+assert.match(moderatedBoardHtml, /href="#\/boards\/general\/threads\/thread-9"/);
+assert.match(moderatedBoardHtml, /href="#\/boards\/general\/threads\/thread-1"/);
+
 // Removed-post tombstone: reason-coded, content stripped.
 assert.match(moderatedBoardHtml, /class="post-tombstone"/);
 assert.match(moderatedBoardHtml, /已自此看板移除 · 垃圾訊息/);
@@ -348,6 +352,29 @@ assert.match(anonymousModeratedHtml, /class="post-tombstone"/);
 assert.match(anonymousModeratedHtml, /class="locked-banner"/);
 assert.doesNotMatch(anonymousModeratedHtml, /data-action="submit-report"/);
 assert.doesNotMatch(anonymousModeratedHtml, /class="thread-reply"/);
+
+const threadDetailVm = buildAppViewModel({
+  route: { pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-1' } },
+  session: moderatedSession,
+  forum: {
+    host: normalizeForumHost(CONTRACT_FIXTURES.forum.host),
+    boards: [generalBoard],
+    board: generalBoard,
+    thread: {
+      ...moderatedThreads[1],
+      posts: [{ id: 'post-201', content: 'reply content from AppView' }],
+    },
+    threads: moderatedThreads,
+    capabilities: { canCreateThread: true, canReply: true },
+  },
+});
+const threadDetailHtml = renderPageBody(threadDetailVm);
+assert.match(threadDetailHtml, /class="feed thread-detail"/);
+assert.match(threadDetailHtml, /Open thread/);
+assert.match(threadDetailHtml, /reply content from AppView/);
+assert.match(threadDetailHtml, /href="#\/boards\/general"/);
+assert.match(threadDetailHtml, /data-target-kind="thread" data-target-ref="thread-1"/);
+assert.doesNotMatch(threadDetailHtml, /路徑不可用/);
 
 // Moderation console: queue grouped by board, action buttons, audit history.
 const moderationConsoleVm = buildAppViewModel({

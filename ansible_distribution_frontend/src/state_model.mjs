@@ -5,6 +5,7 @@ export const PAGE_IDS = Object.freeze({
   home: 'home',
   boards: 'boards',
   board: 'board',
+  thread: 'thread',
   sessions: 'sessions',
   login: 'login',
   moderation: 'moderation',
@@ -40,6 +41,7 @@ export function buildAppViewModel({
     host: forum?.host ?? null,
     boards: forum?.boards ?? [],
     board: forum?.board ?? null,
+    thread: forum?.thread ?? null,
     threads: forum?.threads ?? [],
     externalContent: forum?.externalContent ?? null,
     moderation: forum?.moderation ?? null,
@@ -91,6 +93,12 @@ function pageDescriptor(route, forum) {
       return {
         id: PAGE_IDS.board,
         title: forum?.board?.title || route.params?.boardId || t('common.board'),
+      };
+
+    case PAGE_IDS.thread:
+      return {
+        id: PAGE_IDS.thread,
+        title: forum?.thread?.title || route.params?.threadId || t('common.threadFallback'),
       };
 
     case PAGE_IDS.sessions:

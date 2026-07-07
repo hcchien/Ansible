@@ -59,3 +59,23 @@ export async function fetchBoardFeed({
   );
 }
 
+export async function fetchThreadFeed({
+  appViewBaseUrl,
+  fetchImpl = globalThis.fetch,
+  threadId,
+  cursor = null,
+  limit = null,
+}) {
+  const query = new URLSearchParams();
+  if (cursor != null && cursor !== '') {
+    query.set('cursor', String(cursor));
+  }
+  if (limit != null && limit !== '') {
+    query.set('limit', String(limit));
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+
+  return createRelayApiClient({ relayBaseUrl: appViewBaseUrl, fetchImpl }).getJson(
+    `/api/v1/thread/${encodeURIComponent(threadId)}${suffix}`,
+  );
+}

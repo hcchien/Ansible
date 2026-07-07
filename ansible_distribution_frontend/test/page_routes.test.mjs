@@ -15,6 +15,11 @@ assert.deepEqual(parseRoute('#/boards/general'), {
   pageId: PAGE_IDS.board,
   params: { boardId: 'general' },
 });
+assert.equal(PAGE_IDS.thread, 'thread');
+assert.deepEqual(parseRoute('#/boards/general/threads/thread-9'), {
+  pageId: PAGE_IDS.thread,
+  params: { boardId: 'general', threadId: 'thread-9' },
+});
 assert.deepEqual(parseRoute('#/sessions'), {
   pageId: PAGE_IDS.sessions,
   params: {},
@@ -33,6 +38,10 @@ console.log('ok - parses hash routes');
 assert.equal(routeToHash({ pageId: PAGE_IDS.home }), '#/');
 assert.equal(routeToHash({ pageId: PAGE_IDS.boards }), '#/boards');
 assert.equal(routeToHash({ pageId: PAGE_IDS.board, params: { boardId: 'general' } }), '#/boards/general');
+assert.equal(
+  routeToHash({ pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-9' } }),
+  '#/boards/general/threads/thread-9',
+);
 assert.equal(routeToHash({ pageId: PAGE_IDS.sessions }), '#/sessions');
 assert.equal(routeToHash({ pageId: PAGE_IDS.login }), '#/login');
 assert.equal(routeToHash({ pageId: PAGE_IDS.moderation }), '#/moderation');
@@ -80,6 +89,36 @@ assert.equal(boardState.route.pageId, PAGE_IDS.board);
 assert.equal(boardState.viewModel.page.title, 'General');
 assert.equal(boardState.viewModel.actions.canCreateThread, true);
 console.log('ok - loads board page skeleton data');
+
+const threadCalls = [];
+const threadController = createPageController({
+  getCurrentHash: () => '#/boards/general/threads/thread-9',
+  sessionLifecycle: {
+    async restore() {
+      threadCalls.push('restore');
+      return { status: 'authenticated', viewModel: authenticatedSession };
+    },
+  },
+  forumDataAdapter: {
+    async loadThreadPage({ boardId, threadId, sessionViewModel }) {
+      threadCalls.push(['thread', boardId, threadId, sessionViewModel.trustTier]);
+      return {
+        host: { id: 'host-local-dev', displayName: 'Local Forum Host' },
+        board: { id: boardId, title: 'General' },
+        thread: { id: threadId, title: 'Thread detail' },
+        threads: [{ id: threadId, title: 'Thread detail' }],
+        capabilities: { canCreateThread: true, canReply: true },
+        error: null,
+      };
+    },
+  },
+});
+const threadState = await threadController.loadCurrentRoute();
+assert.deepEqual(threadCalls, ['restore', ['thread', 'general', 'thread-9', 'self_custody_did']]);
+assert.equal(threadState.route.pageId, PAGE_IDS.thread);
+assert.equal(threadState.viewModel.page.title, 'Thread detail');
+assert.equal(threadState.viewModel.thread.id, 'thread-9');
+console.log('ok - loads thread detail route data');
 
 const moderationCalls = [];
 const moderationController = createPageController({

@@ -6,6 +6,7 @@ import {
 } from '../src/contract_fixtures.mjs';
 import {
   buildForumHomeViewModel,
+  buildThreadsFromFeed,
   createForumDataAdapter,
   normalizeHostedBoard,
 } from '../src/forum_data_adapter.mjs';
@@ -178,6 +179,123 @@ test('loads board data and marks missing boards with a semantic error', async ()
   assert.equal(missing.error.type, ERROR_TYPES.notFound);
   assert.equal(missing.board.id, 'missing');
   assert.equal(missing.board.missing, true);
+});
+
+test('loads thread detail from the AppView thread feed', async () => {
+  const calls = [];
+  const adapter = createForumDataAdapter({
+    relayBaseUrl: 'http://localhost:4001',
+    appViewBaseUrl: 'http://localhost:5174',
+    forumHostClient: {
+      async fetchForumHostInfo() {
+        calls.push(['host']);
+        return {
+          forum_host_id: 'host-local-dev',
+          display_name: 'Local Forum Host',
+          capabilities: { create_threads: true },
+        };
+      },
+      async fetchHostedBoards() {
+        calls.push(['boards']);
+        return {
+          boards: [{ hosted_board_id: 'fifa2026', slug: 'fifa2026', title: 'FIFA2026' }],
+        };
+      },
+      async fetchBoardModerationState({ boardId }) {
+        calls.push(['moderation', boardId]);
+        return { removed_posts: [], locked_threads: [] };
+      },
+    },
+    appViewClient: {
+      async fetchThreadFeed({ appViewBaseUrl, threadId }) {
+        calls.push(['thread-feed', appViewBaseUrl, threadId]);
+        return {
+          items: [
+            {
+              entity_type: 'thread',
+              op_type: 'insert',
+              entity_id: 'thread-9',
+              author_did: 'did:plc:author',
+              created_at: '2026-06-18T14:33:27.083198Z',
+              payload: { title: '不見了', threadId: 'thread-9' },
+            },
+            {
+              entity_type: 'post',
+              op_type: 'insert',
+              entity_id: 'post-1',
+              author_did: 'did:plc:author',
+              created_at: '2026-06-18T14:33:27.093554Z',
+              payload: { threadId: 'thread-9', content: '文章不見了？！' },
+            },
+          ],
+        };
+      },
+    },
+  });
+
+  const page = await adapter.loadThreadPage({
+    boardId: 'fifa2026',
+    threadId: 'thread-9',
+    sessionViewModel: AUTHENTICATED_SESSION,
+  });
+
+  assert.equal(page.board.id, 'fifa2026');
+  assert.equal(page.thread.id, 'thread-9');
+  assert.equal(page.thread.title, '不見了');
+  assert.equal(page.thread.posts[0].content, '文章不見了？！');
+  assert.deepEqual(calls, [
+    ['host'],
+    ['boards'],
+    ['moderation', 'fifa2026'],
+    ['thread-feed', 'http://localhost:5174', 'thread-9'],
+  ]);
+});
+
+test('marks missing thread detail routes with a semantic error', async () => {
+  const adapter = createForumDataAdapter({
+    relayBaseUrl: 'http://localhost:4001',
+    forumHostClient: {
+      async fetchForumHostInfo() {
+        return { forum_host_id: 'host-local-dev', display_name: 'Local Forum Host' };
+      },
+      async fetchHostedBoards() {
+        return { boards: [{ hosted_board_id: 'fifa2026', slug: 'fifa2026', title: 'FIFA2026' }] };
+      },
+      async fetchBoardModerationState() {
+        return { removed_posts: [], locked_threads: [] };
+      },
+    },
+    appViewClient: {
+      async fetchThreadFeed() {
+        return { items: [] };
+      },
+    },
+  });
+
+  const page = await adapter.loadThreadPage({ boardId: 'fifa2026', threadId: 'missing' });
+  assert.equal(page.thread, null);
+  assert.equal(page.error.type, ERROR_TYPES.notFound);
+});
+
+test('normalizes AppView post content into thread posts', () => {
+  const [thread] = buildThreadsFromFeed([
+    {
+      entity_type: 'thread',
+      op_type: 'insert',
+      entity_id: 'thread-9',
+      created_at: '2026-06-18T14:33:27.083198Z',
+      payload: { title: '不見了' },
+    },
+    {
+      entity_type: 'post',
+      op_type: 'insert',
+      entity_id: 'post-1',
+      created_at: '2026-06-18T14:33:27.093554Z',
+      payload: { threadId: 'thread-9', content: '文章不見了？！' },
+    },
+  ]);
+
+  assert.equal(thread.posts[0].content, '文章不見了？！');
 });
 
 test('submits thread drafts only when the session can post', async () => {

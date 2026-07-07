@@ -17,6 +17,13 @@ export function parseRoute(hash) {
     return { pageId: PAGE_IDS.board, params: { boardId: segments[1] } };
   }
 
+  if (segments.length === 4 && segments[0] === 'boards' && segments[2] === 'threads') {
+    return {
+      pageId: PAGE_IDS.thread,
+      params: { boardId: segments[1], threadId: segments[3] },
+    };
+  }
+
   if (segments.length === 1 && segments[0] === 'sessions') {
     return { pageId: PAGE_IDS.sessions, params: {} };
   }
@@ -42,6 +49,9 @@ export function routeToHash(route) {
 
     case PAGE_IDS.board:
       return `#/boards/${encodeURIComponent(route.params.boardId)}`;
+
+    case PAGE_IDS.thread:
+      return `#/boards/${encodeURIComponent(route.params.boardId)}/threads/${encodeURIComponent(route.params.threadId)}`;
 
     case PAGE_IDS.sessions:
       return '#/sessions';
@@ -86,6 +96,15 @@ export function createPageController({
     if (route.pageId === PAGE_IDS.board) {
       const forum = await forumDataAdapter.loadBoardPage({
         boardId: route.params.boardId,
+        sessionViewModel: session,
+      });
+      return setState(route, session, forum);
+    }
+
+    if (route.pageId === PAGE_IDS.thread) {
+      const forum = await forumDataAdapter.loadThreadPage({
+        boardId: route.params.boardId,
+        threadId: route.params.threadId,
         sessionViewModel: session,
       });
       return setState(route, session, forum);

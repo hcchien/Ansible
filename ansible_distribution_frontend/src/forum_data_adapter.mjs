@@ -8,7 +8,7 @@ import {
   submitWebModerationAction,
   submitWebReport,
 } from './forum_host_client.mjs';
-import { fetchBoardExternalContent, fetchBoardFeed } from './appview_client.mjs';
+import { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed } from './appview_client.mjs';
 import { ERROR_TYPES, normalizeFrontendError, notFoundError, scopeError } from './error_taxonomy.mjs';
 import {
   applyModerationStateToThreads,
@@ -37,7 +37,7 @@ export function createForumDataAdapter({
     submitWebModerationAction,
     fetchBoardModerationState,
   },
-  appViewClient = { fetchBoardExternalContent, fetchBoardFeed },
+  appViewClient = { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed },
 }) {
   async function loadForumHome({ sessionViewModel } = {}) {
     const [host, boardsResponse] = await Promise.all([
@@ -92,6 +92,50 @@ export function createForumDataAdapter({
     };
   }
 
+  async function loadThreadPage({ boardId, threadId, sessionViewModel } = {}) {
+    const home = await loadForumHome({ sessionViewModel });
+    const board = home.boards.find(
+      (candidate) => candidate.id === boardId || candidate.slug === boardId,
+    );
+
+    if (!board) {
+      return {
+        ...home,
+        board: {
+          id: boardId,
+          slug: boardId,
+          title: boardId,
+          description: null,
+          missing: true,
+        },
+        thread: null,
+        threads: [],
+        moderationState: normalizeModerationState(null),
+        error: notFoundError('board_not_found', { boardId }),
+      };
+    }
+
+    const [moderationState, threadFeedResponse] = await Promise.all([
+      loadPublicModerationState(board.id),
+      loadThreadFeed(threadId),
+    ]);
+    const threads = applyModerationStateToThreads(
+      buildThreadsFromFeed(threadFeedResponse?.items ?? []),
+      moderationState,
+    );
+    const thread = threads.find((candidate) => candidate.id === threadId) ?? null;
+
+    return {
+      ...home,
+      board,
+      thread,
+      threads,
+      moderationState,
+      externalContent: null,
+      error: thread ? null : notFoundError('thread_not_found', { boardId, threadId }),
+    };
+  }
+
   async function loadBoardFeed(boardId) {
     if (typeof appViewClient.fetchBoardFeed !== 'function') {
       return { items: [] };
@@ -102,6 +146,22 @@ export function createForumDataAdapter({
         appViewBaseUrl,
         fetchImpl,
         boardId,
+      });
+    } catch {
+      return { items: [] };
+    }
+  }
+
+  async function loadThreadFeed(threadId) {
+    if (typeof appViewClient.fetchThreadFeed !== 'function') {
+      return { items: [] };
+    }
+
+    try {
+      return await appViewClient.fetchThreadFeed({
+        appViewBaseUrl,
+        fetchImpl,
+        threadId,
       });
     } catch {
       return { items: [] };
@@ -293,6 +353,7 @@ export function createForumDataAdapter({
   return {
     loadForumHome,
     loadBoardPage,
+    loadThreadPage,
     submitThreadDraft,
     submitReport,
     loadModerationConsole,
