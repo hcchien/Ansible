@@ -57,6 +57,61 @@ assert.match(root.innerHTML, /登入後發文/);
 assert.match(root.innerHTML, /class="board-head"/);
 assert.doesNotMatch(root.innerHTML, /Sign in to post|New thread/);
 
+const postRoot = createFakeRoot();
+const postWindow = createFakeWindow('#/boards/general', {
+  dispatchesHashchange: false,
+});
+const postHarness = createFrontendFlowHarness({
+  routeHash: '#/boards/general',
+  sessionMode: 'approvedDid',
+});
+let submittedDraft = null;
+const postingAdapter = {
+  ...postHarness.forumDataAdapter,
+  async submitThreadDraft(params) {
+    submittedDraft = params;
+    return {
+      accepted: true,
+      subjectDid: 'did:plc:fixture',
+      trustTier: 'self_custody_did',
+    };
+  },
+};
+const postPageController = createPageController({
+  getCurrentHash: () => postWindow.location.hash,
+  sessionLifecycle: postHarness.sessionLifecycle,
+  forumDataAdapter: postingAdapter,
+});
+const postApp = createForumUiApp({
+  root: postRoot,
+  pageController: postPageController,
+  sessionLifecycle: postHarness.sessionLifecycle,
+  forumDataAdapter: postingAdapter,
+  storage: postHarness.storage,
+  windowLike: postWindow,
+});
+await postApp.start();
+await postRoot.listeners.get('click')({
+  target: createContainedActionElement(postRoot, 'new-thread', {
+    boardId: 'general',
+  }),
+  preventDefault() {},
+});
+assert.match(postRoot.innerHTML, /data-thread-draft-form/);
+
+await postRoot.listeners.get('click')({
+  target: createContainedActionElement(postRoot, 'submit-thread-draft', {
+    boardId: 'general',
+    title: 'Web posted thread',
+  }),
+  preventDefault() {},
+});
+assert.equal(submittedDraft.title, 'Web posted thread');
+assert.equal(submittedDraft.boardId, 'general');
+assert.equal(submittedDraft.sessionViewModel.authenticated, true);
+assert.match(postRoot.innerHTML, /已送出討論串/);
+postApp.stop();
+
 await app.navigate('#/login');
 assert.match(root.innerHTML, /產生登入 QR code/);
 assert.match(root.innerHTML, /class="login-grid"/);

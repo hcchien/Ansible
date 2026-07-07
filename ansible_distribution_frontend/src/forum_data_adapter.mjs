@@ -219,7 +219,7 @@ export function createForumDataAdapter({
     }
   }
 
-  async function submitThreadDraft({ title, sessionViewModel }) {
+  async function submitThreadDraft({ title, boardId, sessionViewModel }) {
     if (!sessionViewModel?.capabilities?.canPost) {
       throw scopeError('forum:post');
     }
@@ -228,6 +228,7 @@ export function createForumDataAdapter({
       relayBaseUrl,
       storage,
       fetchImpl,
+      boardId,
       title,
     });
 

@@ -335,6 +335,7 @@ p {
   font-family: var(--sans);
   font-weight: 600;
   font-size: 13.5px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -342,6 +343,28 @@ p {
 .primary-action:hover {
   opacity: 0.88;
   color: var(--background);
+}
+
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border-strong);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.secondary-action:hover {
+  color: var(--text);
+  border-color: var(--text);
 }
 
 .danger-action,
@@ -857,6 +880,60 @@ p {
   font-size: 15px;
   color: var(--faint);
   margin: 0;
+}
+
+.thread-draft-form {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 16px;
+}
+
+.thread-draft-form .head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.thread-draft-form h3 {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.thread-draft-label {
+  display: grid;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.thread-draft-label input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+}
+
+.thread-draft-label input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.thread-draft-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .avatar {

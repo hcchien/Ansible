@@ -20,25 +20,35 @@ import { TRUST_TIERS, meetsMinPostTier } from './web_session_client.mjs';
 
 export function renderPageBody(viewModel, uiState = {}) {
   const pageId = viewModel?.page?.id ?? viewModel?.route?.pageId;
+  let bodyHtml;
 
   switch (pageId) {
     case PAGE_IDS.home:
-      return renderHome(viewModel, uiState);
+      bodyHtml = renderHome(viewModel, uiState);
+      break;
     case PAGE_IDS.boards:
-      return renderBoards(viewModel);
+      bodyHtml = renderBoards(viewModel);
+      break;
     case PAGE_IDS.board:
-      return renderBoard(viewModel, uiState);
+      bodyHtml = renderBoard(viewModel, uiState);
+      break;
     case PAGE_IDS.thread:
-      return renderThreadDetail(viewModel, uiState);
+      bodyHtml = renderThreadDetail(viewModel, uiState);
+      break;
     case PAGE_IDS.login:
-      return renderLogin(viewModel, uiState.login ?? {});
+      bodyHtml = renderLogin(viewModel, uiState.login ?? {});
+      break;
     case PAGE_IDS.sessions:
-      return renderSessions(viewModel, uiState);
+      bodyHtml = renderSessions(viewModel, uiState);
+      break;
     case PAGE_IDS.moderation:
-      return renderModeration(viewModel, uiState);
+      bodyHtml = renderModeration(viewModel, uiState);
+      break;
     default:
-      return renderNotFound(viewModel);
+      bodyHtml = renderNotFound(viewModel);
   }
+
+  return `${renderThreadDraftForm(uiState.threadDraft)}${bodyHtml}`;
 }
 
 function renderHome(viewModel, uiState = {}) {
@@ -477,8 +487,11 @@ function renderBoardPostAction(viewModel, gate) {
     `;
   }
 
+  const boardId = viewModel.board?.id || viewModel.board?.slug || '';
+  const boardAttribute = boardId ? ` data-board-id="${escapeAttribute(boardId)}"` : '';
+
   return viewModel.actions?.canCreateThread
-    ? `<button class="primary-action" type="button" data-action="new-thread">${escapeHtml(t('common.newThread'))}</button>`
+    ? `<button class="primary-action" type="button" data-action="new-thread"${boardAttribute}>${escapeHtml(t('common.newThread'))}</button>`
     : `<a class="primary-action" href="#/login">${escapeHtml(t('board.signInToPost'))}</a>`;
 }
 
@@ -816,6 +829,29 @@ function renderNotice(notice) {
   `;
 }
 
+function renderThreadDraftForm(draft) {
+  if (!draft) return '';
+
+  const boardId = draft.boardId ?? '';
+
+  return `
+    <section class="card thread-draft-form" data-thread-draft-form data-board-id="${escapeAttribute(boardId)}" aria-labelledby="thread-draft-title">
+      <div class="head">
+        <h3 id="thread-draft-title">${escapeHtml(t('compose.threadDraft.title'))}</h3>
+        ${boardId ? `<span class="label-mono">#${escapeHtml(boardId)}</span>` : ''}
+      </div>
+      <label class="thread-draft-label">
+        <span>${escapeHtml(t('compose.threadDraft.titleLabel'))}</span>
+        <input type="text" data-thread-draft-title value="${escapeAttribute(draft.title ?? '')}" placeholder="${escapeAttribute(t('compose.threadDraft.titlePlaceholder'))}" autocomplete="off" />
+      </label>
+      <div class="thread-draft-actions">
+        <button class="secondary-action" type="button" data-action="cancel-thread-draft">${escapeHtml(t('common.cancel'))}</button>
+        <button class="primary-action" type="button" data-action="submit-thread-draft" data-board-id="${escapeAttribute(boardId)}">${escapeHtml(t('common.publish'))}</button>
+      </div>
+    </section>
+  `;
+}
+
 function renderError(error) {
   const description = describeError(error);
   if (!description) return '';
@@ -833,9 +869,11 @@ function renderError(error) {
 
 function renderComposeCard(viewModel) {
   const audience = viewModel.session?.authenticated ? t('home.signedBySession') : t('home.loginRequiredForPosting');
+  const boardId = viewModel.board?.id || viewModel.board?.slug || viewModel.boards?.[0]?.id || viewModel.boards?.[0]?.slug || '';
+  const boardAttribute = boardId ? ` data-board-id="${escapeAttribute(boardId)}"` : '';
   const action = viewModel.actions?.showLogin
     ? `<a class="primary-action" href="#/login">${escapeHtml(t('home.loginToPost'))}</a>`
-    : `<button class="primary-action" type="button" data-action="new-thread">${escapeHtml(t('common.publish'))}</button>`;
+    : `<button class="primary-action" type="button" data-action="new-thread"${boardAttribute}>${escapeHtml(t('common.publish'))}</button>`;
 
   return `
     <section class="compose" aria-label="${escapeAttribute(t('common.createPostAria'))}">

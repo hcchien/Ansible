@@ -32,11 +32,17 @@ export async function createHostedWebThread({
   relayBaseUrl,
   storage,
   fetchImpl,
+  boardId,
   title,
 }) {
+  const body = { title };
+  if (typeof boardId === 'string' && boardId.trim() !== '') {
+    body.board_id = boardId.trim();
+  }
+
   return relayClient({ relayBaseUrl, storage, fetchImpl }).postJson(
     '/api/v1/forum-host/web/threads',
-    { title },
+    body,
     { authenticated: true },
   );
 }

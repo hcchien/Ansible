@@ -323,6 +323,7 @@ test('submits thread drafts only when the session can post', async () => {
 
   const accepted = await adapter.submitThreadDraft({
     title: 'Hello Forum',
+    boardId: 'general',
     sessionViewModel: {
       capabilities: { canPost: true },
     },
@@ -334,11 +335,13 @@ test('submits thread drafts only when the session can post', async () => {
     trustTier: 'self_custody_did',
   });
   assert.equal(submissions[0].title, 'Hello Forum');
+  assert.equal(submissions[0].boardId, 'general');
 
   await assert.rejects(
     () =>
       adapter.submitThreadDraft({
         title: 'Blocked',
+        boardId: 'general',
         sessionViewModel: {
           capabilities: { canPost: false },
         },

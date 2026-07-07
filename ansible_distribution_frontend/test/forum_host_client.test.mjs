@@ -79,6 +79,7 @@ test('creates hosted web threads with the httpOnly session cookie', async () => 
   const result = await createHostedWebThread({
     relayBaseUrl: 'http://localhost:4001',
     storage,
+    boardId: 'general',
     title: 'Hello Forum',
     fetchImpl: async (url, init) => {
       requests.push({ url, init });
@@ -101,7 +102,10 @@ test('creates hosted web threads with the httpOnly session cookie', async () => 
   );
   assert.equal(headerValue(requests[0].init.headers, 'authorization'), undefined);
   assert.equal(requests[0].init.credentials, 'same-origin');
-  assert.equal(requests[0].init.body, '{"title":"Hello Forum"}');
+  assert.equal(
+    requests[0].init.body,
+    '{"title":"Hello Forum","board_id":"general"}',
+  );
 });
 
 test('submits web reports with the relay contract payload (201 created)', async () => {

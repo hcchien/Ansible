@@ -101,7 +101,9 @@ export function renderPrimaryAction(viewModel) {
   }
 
   if (viewModel.actions?.canCreateThread && viewModel.page.id === 'board') {
-    return `<button class="header-action" type="button" data-action="new-thread">${escapeHtml(t('common.newThread'))}</button>`;
+    const boardId = viewModel.board?.id || viewModel.board?.slug || viewModel.route?.params?.boardId || '';
+    const boardAttribute = boardId ? ` data-board-id="${escapeAttribute(boardId)}"` : '';
+    return `<button class="header-action" type="button" data-action="new-thread"${boardAttribute}>${escapeHtml(t('common.newThread'))}</button>`;
   }
 
   if (viewModel.actions?.showLogin) {

@@ -34,6 +34,7 @@ export function createForumUiApp({
   let loginState = null;
   let uiError = null;
   let uiNotice = null;
+  let threadDraft = null;
   let uiPreferences = readUiPreferences(storage);
   let pollTimer = null;
   let bound = false;
@@ -66,6 +67,12 @@ export function createForumUiApp({
         setMotionMode(actionElement.dataset.motion);
       } else if (action === 'dismiss-swipe-coachmark') {
         dismissSwipeCoachmark();
+      } else if (action === 'new-thread') {
+        openThreadDraft(actionElement);
+      } else if (action === 'cancel-thread-draft') {
+        cancelThreadDraft();
+      } else if (action === 'submit-thread-draft') {
+        await submitThreadDraft(actionElement);
       } else if (action === 'submit-report') {
         await submitReport(actionElement);
       } else if (action === 'moderation-action') {
@@ -197,6 +204,57 @@ export function createForumUiApp({
     }
   }
 
+  function openThreadDraft(actionElement) {
+    threadDraft = {
+      boardId: currentBoardId(actionElement),
+      title: '',
+    };
+    uiError = null;
+    render();
+  }
+
+  function cancelThreadDraft() {
+    threadDraft = null;
+    render();
+  }
+
+  async function submitThreadDraft(actionElement) {
+    if (!forumDataAdapter?.submitThreadDraft) return;
+
+    try {
+      const title = readThreadDraftTitle(actionElement);
+      const trimmedTitle = String(title).trim();
+      if (!trimmedTitle) return;
+
+      await forumDataAdapter.submitThreadDraft({
+        title: trimmedTitle,
+        boardId: currentBoardId(actionElement),
+        sessionViewModel: currentSessionViewModel(),
+      });
+
+      uiError = null;
+      threadDraft = null;
+      uiNotice = {
+        tone: 'success',
+        title: t('compose.threadSubmitted.title'),
+        message: t('compose.threadSubmitted.message'),
+      };
+      state = await pageController.loadCurrentRoute();
+      render();
+    } catch (error) {
+      renderUiError(error);
+    }
+  }
+
+  function readThreadDraftTitle(actionElement) {
+    const form = findThreadDraftForm(actionElement, root);
+    return (
+      form?.querySelector?.('[data-thread-draft-title]')?.value ??
+      actionElement?.dataset?.title ??
+      ''
+    );
+  }
+
   // Submits a report from an inline report form. The target travels on the
   // action element's dataset; reason/note come from the form fields (with a
   // dataset fallback so non-DOM hosts can drive the same action).
@@ -278,6 +336,19 @@ export function createForumUiApp({
     return state?.session ?? null;
   }
 
+  function currentBoardId(actionElement) {
+    const datasetBoardId = actionElement?.dataset?.boardId;
+    if (datasetBoardId) return datasetBoardId;
+
+    return (
+      state?.viewModel?.board?.id ||
+      state?.viewModel?.board?.slug ||
+      state?.viewModel?.boards?.[0]?.id ||
+      state?.viewModel?.boards?.[0]?.slug ||
+      null
+    );
+  }
+
   function render() {
     if (!root || !state?.viewModel) return;
 
@@ -287,6 +358,7 @@ export function createForumUiApp({
       login,
       preferences: uiPreferences,
       notice: uiNotice,
+      threadDraft,
     });
     root.innerHTML = renderAppShell({ viewModel, bodyHtml, uiPreferences });
     uiNotice = null;
@@ -455,6 +527,25 @@ function findReportForm(element, root) {
   let node = element;
   while (node) {
     if (node.dataset && 'reportForm' in node.dataset) {
+      return isWithinRoot(node, root) ? node : null;
+    }
+    node = node.parentElement;
+  }
+
+  return null;
+}
+
+function findThreadDraftForm(element, root) {
+  if (!element) return null;
+
+  if (typeof element.closest === 'function') {
+    const form = element.closest('[data-thread-draft-form]');
+    return isWithinRoot(form, root) ? form : null;
+  }
+
+  let node = element;
+  while (node) {
+    if (node.dataset && 'threadDraftForm' in node.dataset) {
       return isWithinRoot(node, root) ? node : null;
     }
     node = node.parentElement;
