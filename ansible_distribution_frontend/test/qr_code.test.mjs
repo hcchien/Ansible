@@ -8,6 +8,8 @@ const svg = renderQrCodeSvg(payload);
 
 assert.match(svg, /class="qr-code"/);
 assert.match(svg, /viewBox="0 0 57 57"/);
+assert.match(svg, /class="qr-code__background"[^>]*fill="#fff"/);
+assert.match(svg, /class="qr-code__modules"[^>]*fill="#000"/);
 assert.match(svg, /<rect x="4" y="4" width="1" height="1"\/>/);
 assert.doesNotMatch(svg, /trisaura:\/\/web-session/);
 

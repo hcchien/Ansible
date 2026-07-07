@@ -45,8 +45,8 @@ export function renderQrCodeSvg(value, { className = 'qr-code', ariaLabel = t('l
 
   return `
     <svg class="${escapeAttribute(className)}" viewBox="0 0 ${viewSize} ${viewSize}" role="img" aria-label="${escapeAttribute(ariaLabel)}">
-      <rect class="qr-code__background" width="${viewSize}" height="${viewSize}"/>
-      <g class="qr-code__modules">${rects.join('')}</g>
+      <rect class="qr-code__background" fill="#fff" width="${viewSize}" height="${viewSize}"/>
+      <g class="qr-code__modules" fill="#000">${rects.join('')}</g>
     </svg>
   `;
 }
