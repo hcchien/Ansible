@@ -36,3 +36,26 @@ export async function fetchBoardExternalContent({
     `/api/v1/boards/${encodeURIComponent(boardId)}/external${suffix}`,
   );
 }
+
+export async function fetchBoardFeed({
+  appViewBaseUrl,
+  fetchImpl = globalThis.fetch,
+  boardId,
+  cursor = null,
+  limit = null,
+}) {
+  const query = new URLSearchParams();
+  query.set('board_id', String(boardId));
+  if (cursor != null && cursor !== '') {
+    query.set('cursor', String(cursor));
+  }
+  if (limit != null && limit !== '') {
+    query.set('limit', String(limit));
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+
+  return createRelayApiClient({ relayBaseUrl: appViewBaseUrl, fetchImpl }).getJson(
+    `/api/v1/board-feed${suffix}`,
+  );
+}
+

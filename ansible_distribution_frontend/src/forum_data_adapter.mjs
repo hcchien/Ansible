@@ -8,7 +8,7 @@ import {
   submitWebModerationAction,
   submitWebReport,
 } from './forum_host_client.mjs';
-import { fetchBoardExternalContent } from './appview_client.mjs';
+import { fetchBoardExternalContent, fetchBoardFeed } from './appview_client.mjs';
 import { ERROR_TYPES, normalizeFrontendError, notFoundError, scopeError } from './error_taxonomy.mjs';
 import {
   applyModerationStateToThreads,
@@ -37,7 +37,7 @@ export function createForumDataAdapter({
     submitWebModerationAction,
     fetchBoardModerationState,
   },
-  appViewClient = { fetchBoardExternalContent },
+  appViewClient = { fetchBoardExternalContent, fetchBoardFeed },
 }) {
   async function loadForumHome({ sessionViewModel } = {}) {
     const [host, boardsResponse] = await Promise.all([
@@ -74,19 +74,38 @@ export function createForumDataAdapter({
       };
     }
 
-    const [moderationState, externalContent] = await Promise.all([
+    const [moderationState, externalContent, feedResponse] = await Promise.all([
       loadPublicModerationState(board.id),
       loadBoardExternalContent(board),
+      loadBoardFeed(board.id),
     ]);
+
+    const rawThreads = buildThreadsFromFeed(feedResponse?.items ?? []);
 
     return {
       ...home,
       board,
-      threads: applyModerationStateToThreads([], moderationState),
+      threads: applyModerationStateToThreads(rawThreads, moderationState),
       moderationState,
       externalContent,
       error: null,
     };
+  }
+
+  async function loadBoardFeed(boardId) {
+    if (typeof appViewClient.fetchBoardFeed !== 'function') {
+      return { items: [] };
+    }
+
+    try {
+      return await appViewClient.fetchBoardFeed({
+        appViewBaseUrl,
+        fetchImpl,
+        boardId,
+      });
+    } catch {
+      return { items: [] };
+    }
   }
 
   // External (federated) content is fetched ONLY when the board host opted in
@@ -375,4 +394,51 @@ export function normalizeThreadSubmission(response) {
     subjectDid: response?.subject_did ?? null,
     trustTier: response?.trust_tier ?? null,
   };
+}
+
+export function buildThreadsFromFeed(items) {
+  const threads = [];
+  const postsByThread = new Map();
+
+  for (const item of items) {
+    if (item.entity_type === 'thread' && item.op_type === 'insert') {
+      const payload = item.payload ?? {};
+      threads.push({
+        id: item.entity_id,
+        title: payload.title || '',
+        authorDid: item.author_did,
+        updatedAt: item.created_at,
+        replyCount: 0,
+        posts: [],
+      });
+    } else if (item.entity_type === 'post' && item.op_type === 'insert') {
+      const payload = item.payload ?? {};
+      const threadId = payload.threadId || payload.thread_id;
+      if (threadId) {
+        if (!postsByThread.has(threadId)) {
+          postsByThread.set(threadId, []);
+        }
+        postsByThread.get(threadId).push({
+          id: item.entity_id,
+          content: payload.content || '',
+          authorDid: item.author_did,
+          createdAt: item.created_at,
+        });
+      }
+    }
+  }
+
+  for (const thread of threads) {
+    const posts = postsByThread.get(thread.id) ?? [];
+    posts.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    thread.posts = posts;
+    thread.replyCount = posts.length;
+    if (posts.length > 0) {
+      thread.updatedAt = posts[posts.length - 1].createdAt;
+    }
+  }
+
+  threads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+  return threads;
 }

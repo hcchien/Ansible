@@ -28,9 +28,9 @@ const PROXY_UPSTREAM_TIMEOUT_MS = Number(process.env.PROXY_UPSTREAM_TIMEOUT_MS ?
 // only from it (GET /api/v1/boards/:id/external), so it gets its own upstream.
 // Defaults to the relay base URL so single-process dev works out of the box.
 const DEFAULT_APPVIEW_BASE_URL = process.env.APPVIEW_URL ?? DEFAULT_RELAY_BASE_URL;
-// Requests on this path are curated external content and route to the AppView
+// Requests on these paths are read-only timeline/feed content and route to the AppView
 // rather than the relay.
-const EXTERNAL_CONTENT_PATH = /^\/api\/v1\/boards\/[^/]+\/external$/;
+const APPVIEW_PROXY_PATH = /^\/api\/v1\/(boards\/[^/]+\/external|board-feed|thread\/[^/]+|timeline|home|suggest\/follows|explore|search|search\/actors)$/;
 const SERVER_ROOT = dirname(fileURLToPath(import.meta.url));
 
 // Observability baseline (service architecture plan, Phase 0 — closes G17).
@@ -293,9 +293,9 @@ async function handleRequest(request, response, context) {
 
   if (url.pathname.startsWith('/api/')) {
     metrics.inc('frontend_requests_total', 'proxy');
-    // Curated external content lives on the AppView, a separate read service;
+    // Curated external, feed, timeline, and search read traffic lives on the AppView;
     // everything else proxies to the relay (where the session cookie lives).
-    const upstreamBaseUrl = EXTERNAL_CONTENT_PATH.test(url.pathname)
+    const upstreamBaseUrl = APPVIEW_PROXY_PATH.test(url.pathname)
       ? context.appViewBaseUrl
       : context.relayBaseUrl;
     await proxyRelayRequest(request, response, url, { relayBaseUrl: upstreamBaseUrl });
