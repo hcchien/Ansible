@@ -348,7 +348,7 @@ function renderMobileFocusStage(viewModel, boards, preferences) {
       }
       <div class="scene-viewport">
         <div class="scene-track">
-          ${renderPersonalScene(viewModel, preferences)}
+          ${renderPersonalScene(viewModel, boards, preferences)}
           ${renderForumScene(viewModel, boards, preferences)}
         </div>
       </div>
@@ -367,14 +367,14 @@ function renderSceneButton(scene, label, activeScene) {
   `;
 }
 
-function renderPersonalScene(viewModel, preferences) {
+function renderPersonalScene(viewModel, boards, preferences) {
   const audience = viewModel.session?.authenticated ? t('home.signedBySession') : t('home.loginRequiredForPosting');
 
   return `
     <section class="scene-panel personal-scene" data-scene="personal" data-scene-theme="${escapeAttribute(preferences.personalTheme)}" aria-labelledby="personal-board-title">
       <div class="scene-meta-row">
-        <span>${escapeHtml(t('focus.personal.date'))}</span>
-        <span>${escapeHtml(t('focus.personal.week'))}</span>
+        <span>${escapeHtml(t('focus.personal.sources', { count: boards.length }))}</span>
+        <span>${escapeHtml(renderPermissionLabel(viewModel))}</span>
       </div>
       <div class="personal-board-head">
         <div>
@@ -383,19 +383,10 @@ function renderPersonalScene(viewModel, preferences) {
         </div>
         <span class="signed-pill">${escapeHtml(audience)}</span>
       </div>
-      <div class="diary-list">
-        ${renderDiaryEntry({ type: t('focus.diary.noteType'), when: t('focus.diary.noteWhen'), title: t('focus.diary.noteTitle'), body: t('focus.diary.noteBody'), kind: 'note' })}
-        ${renderDiaryEntry({ type: t('focus.diary.murmurOneType'), when: t('focus.diary.murmurOneWhen'), body: t('focus.diary.murmurOneBody'), kind: 'murmur', player: true })}
-        ${renderDiaryEntry({ type: t('focus.diary.murmurTwoType'), when: t('focus.diary.murmurTwoWhen'), body: t('focus.diary.murmurTwoBody'), kind: 'murmur' })}
+      <div class="forum-list">
+        ${renderComposeCard(viewModel)}
+        ${renderRelayFeed(boards, viewModel)}
       </div>
-      <section class="ai-bridge-card" aria-label="${escapeAttribute(t('focus.aiBridgeAria'))}">
-        <span class="ai-dot-inline">${renderAiGlyph()}</span>
-        <div>
-          <p class="section-label">${escapeHtml(t('focus.aiBridgeLabel'))}</p>
-          <h3>${escapeHtml(t('focus.aiBridgeTitle'))}</h3>
-          <p>${escapeHtml(t('focus.aiBridgeBody'))}</p>
-        </div>
-      </section>
       <button class="mobile-compose-fab" type="button" aria-label="${escapeAttribute(t('focus.composeAria'))}">+</button>
     </section>
   `;
@@ -405,7 +396,7 @@ function renderForumScene(viewModel, boards, preferences) {
   return `
     <section class="scene-panel forum-scene" data-scene="forum" data-scene-theme="${escapeAttribute(preferences.forumTheme)}" aria-labelledby="forum-board-title">
       <div class="scene-meta-row">
-        <span>${escapeHtml(t('focus.forum.newToday'))}</span>
+        <span>${escapeHtml(t('focus.forum.sourceCount', { count: boards.length }))}</span>
         <span>${escapeHtml(t('focus.forum.sources'))}</span>
       </div>
       <div class="personal-board-head">
@@ -416,56 +407,9 @@ function renderForumScene(viewModel, boards, preferences) {
         <a class="scene-inline-action" href="#/boards">${escapeHtml(t('focus.forum.subscribeBoards'))}</a>
       </div>
       <div class="forum-list">
-        ${renderFollowFeedPost()}
         ${renderRelayFeed(boards, viewModel)}
       </div>
     </section>
-  `;
-}
-
-function renderDiaryEntry({ type, when, title, body, kind, player = false }) {
-  return `
-    <article class="diary-entry">
-      <div class="diary-entry-meta">
-        <span class="entry-pip is-${escapeAttribute(kind)}"></span>
-        <span>${escapeHtml(type)}</span>
-        <time>${escapeHtml(when)}</time>
-      </div>
-      ${title ? `<h3>${escapeHtml(title)}</h3>` : ''}
-      ${player ? renderMurmurMiniPlayer() : ''}
-      <p${kind === 'murmur' ? ' class="is-italic"' : ''}>${escapeHtml(body)}</p>
-    </article>
-  `;
-}
-
-function renderMurmurMiniPlayer() {
-  return `
-    <div class="murmur-mini-player" aria-label="${escapeAttribute(t('focus.murmurAudioAria'))}">
-      <span class="play-dot">▶</span>
-      <span class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-      <span>0:38</span>
-    </div>
-  `;
-}
-
-function renderFollowFeedPost() {
-  return `
-    <article class="post social-post">
-      <div class="post-source">${escapeHtml(t('focus.follow.source'))}</div>
-      <div class="post-author">
-        <span class="avatar">M</span>
-        <div>
-          <strong>Mira Lin ${renderSignedPill(t('focus.passkeyCompact'))}</strong>
-          <span>${escapeHtml(t('focus.follow.timestamp'))}</span>
-        </div>
-      </div>
-      <p class="post-body">${escapeHtml(t('focus.follow.body'))}</p>
-      <div class="post-actions">
-        <button type="button">${escapeHtml(t('focus.follow.resonate'))}</button>
-        <button type="button">${escapeHtml(t('common.reply'))}</button>
-        ${renderSignedPill(t('focus.signedPasskey'))}
-      </div>
-    </article>
   `;
 }
 
@@ -1206,14 +1150,6 @@ function renderInlineMark() {
         <circle cx="0" cy="-60" r="14" />
         <circle class="elix-mark__center" cx="0" cy="6" r="8" />
       </g>
-    </svg>
-  `;
-}
-
-function renderAiGlyph() {
-  return `
-    <svg viewBox="0 0 22 22" aria-hidden="true" focusable="false">
-      <path d="M11 3 L12.4 7.5 L16.9 8.9 L12.4 10.3 L11 14.8 L9.6 10.3 L5.1 8.9 L9.6 7.5 Z M17 14 L17.6 15.8 L19.4 16.4 L17.6 17 L17 18.8 L16.4 17 L14.6 16.4 L16.4 15.8 Z" />
     </svg>
   `;
 }

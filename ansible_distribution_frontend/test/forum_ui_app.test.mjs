@@ -29,8 +29,8 @@ assert.match(root.innerHTML, /class="cols social-home mobile-focus-home"/);
 assert.match(root.innerHTML, /RELAY · BOARD · #general/);
 assert.match(root.innerHTML, /class="mobile-focus-stage"/);
 assert.match(root.innerHTML, /data-active-scene="personal"/);
-assert.match(root.innerHTML, /AI · 橫向橋/);
 assert.match(root.innerHTML, /mobile-tabbar/);
+assert.doesNotMatch(root.innerHTML, /Mira Lin|FROM A FOLLOW|關於信任的地形|MURMUR · 0:38|AI · 橫向橋/);
 assert.doesNotMatch(root.innerHTML, /RELAY · 來源|Relay 資料/);
 assert.doesNotMatch(root.innerHTML, /Anonymous|Sign in|Read only|Open board/);
 

@@ -37,11 +37,10 @@ assert.match(homeHtml, /class="mobile-focus-stage"/);
 assert.match(homeHtml, /data-scene="personal"/);
 assert.match(homeHtml, /個人版/);
 assert.match(homeHtml, /討論區/);
-assert.match(homeHtml, /MURMUR · 0:38/);
-assert.match(homeHtml, /AI · 橫向橋/);
 assert.match(homeHtml, /往左滑/);
 assert.match(homeHtml, /class="mobile-compose-fab"/);
 assert.match(homeHtml, /已訂閱看板/);
+assert.doesNotMatch(homeHtml, /Mira Lin|FROM A FOLLOW|關於信任的地形|MURMUR · 0:38|AI · 橫向橋/);
 assert.doesNotMatch(homeHtml, /工作階段/);
 assert.doesNotMatch(homeHtml, /RELAY · 來源/);
 assert.doesNotMatch(homeHtml, /Relay 資料/);
@@ -231,12 +230,11 @@ assert.doesNotMatch(sessionsHtml, /Revoke current session|This browser session i
 setCurrentLocale('en');
 
 const englishHomeHtml = renderPageBody(homeState.viewModel);
-assert.match(englishHomeHtml, /Your Notes and Murmurs/);
+assert.match(englishHomeHtml, /Available public sources/);
 assert.match(englishHomeHtml, /Swipe left/);
 assert.match(englishHomeHtml, /Forum/);
-assert.match(englishHomeHtml, /From past murmurs/);
-assert.match(englishHomeHtml, /Resonate/);
-assert.doesNotMatch(englishHomeHtml, /個人版|討論區|往左滑|橫向橋|共鳴/);
+assert.match(englishHomeHtml, /Open board/);
+assert.doesNotMatch(englishHomeHtml, /Mira Lin|FROM A FOLLOW|A terrain of trust|From past murmurs|個人版|討論區|往左滑|橫向橋|共鳴/);
 
 const englishSessionsHtml = renderPageBody(sessionsVm);
 assert.match(englishSessionsHtml, /Done/);
