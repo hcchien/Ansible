@@ -10,12 +10,13 @@ export function resolveFrontendRuntimeConfig({
 } = {}) {
   const locationUrl = toLocationUrl(location);
   const storedRelayBaseUrl = storage?.getItem?.(RELAY_BASE_URL_KEY);
-  const fallbackRelayOrigin = defaultRelayOrigin(locationUrl);
-  const relayOrigin = normalizeLocalRelayBaseUrl(
-    storedRelayBaseUrl ?? fallbackRelayOrigin,
-    fallbackRelayOrigin,
-    { pageOrigin: locationUrl.origin },
-  );
+  const runtimeRelayOrigin = runtimeConfiguredRelayOrigin();
+  const fallbackRelayOrigin = runtimeRelayOrigin ?? defaultRelayOrigin(locationUrl);
+  const relayOrigin =
+    runtimeRelayOrigin ??
+    normalizeLocalRelayBaseUrl(storedRelayBaseUrl ?? fallbackRelayOrigin, fallbackRelayOrigin, {
+      pageOrigin: locationUrl.origin,
+    });
   const relayBaseUrl = shouldUseSameOriginRelayProxy(locationUrl, relayOrigin)
     ? locationUrl.origin
     : relayOrigin;
@@ -28,6 +29,23 @@ export function resolveFrontendRuntimeConfig({
       locationUrl.searchParams.get('lang') ?? storage?.getItem?.(LOCALE_KEY) ?? navigatorLike?.language ?? DEFAULT_LOCALE,
     ),
   };
+}
+
+function runtimeConfiguredRelayOrigin() {
+  const value = globalThis.__ELIX_RUNTIME_CONFIG__?.relayOrigin;
+  if (typeof value !== 'string' || value.trim() === '') return null;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'https:' && url.hostname) return url.origin;
+    if (url.protocol === 'http:' && isLoopbackHost(url.hostname)) {
+      return normalizeLocalRelayBaseUrl(url.origin);
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 export function defaultRelayOrigin(location) {

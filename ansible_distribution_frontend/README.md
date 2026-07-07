@@ -28,12 +28,15 @@ npm test                   # runs test/*.test.mjs
 | Var | Purpose | Default |
 |---|---|---|
 | `RELAY_BASE_URL` | Relay the server proxies `/api/*` to | `http://localhost:4001` |
+| `PUBLIC_RELAY_ORIGIN` | Public relay origin embedded in app-login QR payloads | `RELAY_BASE_URL` |
 | `APPVIEW_URL` | AppView the server proxies curated external content (`GET /api/v1/boards/:id/external`) to | `RELAY_BASE_URL` |
 | `HOST` | Bind address | `127.0.0.1` (image: `0.0.0.0`) |
 | `PORT` | HTTP port | `5173` (image: `8080`) |
 
 Point `RELAY_BASE_URL` at the deployed relay in production, and add this
 frontend's origin to the relay's `WEB_ALLOWED_ORIGINS`.
+Set `PUBLIC_RELAY_ORIGIN` when the proxy upstream is not the same public origin
+that the Elix app should call from scanned login QR codes.
 
 `APPVIEW_URL` is a separate read service for curated, never-verified federated
 ("站外 / fediverse") content. Only `GET /api/v1/boards/:id/external` is routed

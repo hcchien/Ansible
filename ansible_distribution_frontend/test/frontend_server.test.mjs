@@ -45,7 +45,21 @@ try {
   const index = await request(`${baseUrl}/`);
   assert.equal(index.status, 200);
   assert.match(index.body, /<title>Elix<\/title>/);
+  assert.match(index.body, /<script src="\.\/runtime-config\.js"><\/script>/);
+  assert.match(
+    index.body,
+    /<script type="module" src="\.\/src\/main\.mjs"><\/script>/,
+  );
   assert.match(index.headers['content-type'], /text\/html/);
+
+  const runtimeConfig = await request(`${baseUrl}/runtime-config.js`);
+  assert.equal(runtimeConfig.status, 200);
+  assert.match(runtimeConfig.headers['content-type'], /text\/javascript/);
+  assert.match(runtimeConfig.body, /globalThis\.__ELIX_RUNTIME_CONFIG__/);
+  assert.match(
+    runtimeConfig.body,
+    new RegExp(JSON.stringify(`http://127.0.0.1:${relay.address().port}`)),
+  );
 
   const module = await request(`${baseUrl}/src/main.mjs`);
   assert.equal(module.status, 200);

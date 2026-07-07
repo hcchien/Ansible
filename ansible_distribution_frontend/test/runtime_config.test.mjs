@@ -54,6 +54,27 @@ const subdomainRelayConfig = resolveFrontendRuntimeConfig({
 });
 assert.equal(subdomainRelayConfig.relayOrigin, 'https://api.web.elix.example');
 
+const previousRuntimeConfig = globalThis.__ELIX_RUNTIME_CONFIG__;
+globalThis.__ELIX_RUNTIME_CONFIG__ = {
+  relayOrigin: 'https://relay-dev.elix.cool',
+};
+try {
+  const deployedConfig = resolveFrontendRuntimeConfig({
+    location: new URL('https://dev.elix.cool/#/login'),
+    storage: createStorage(),
+    navigatorLike: { language: 'zh-TW' },
+  });
+  assert.equal(deployedConfig.webOrigin, 'https://dev.elix.cool');
+  assert.equal(deployedConfig.relayOrigin, 'https://relay-dev.elix.cool');
+  assert.equal(deployedConfig.relayBaseUrl, 'https://dev.elix.cool');
+} finally {
+  if (previousRuntimeConfig === undefined) {
+    delete globalThis.__ELIX_RUNTIME_CONFIG__;
+  } else {
+    globalThis.__ELIX_RUNTIME_CONFIG__ = previousRuntimeConfig;
+  }
+}
+
 // Security: plain HTTP to a non-loopback host must be rejected because browser
 // API traffic would cross an untrusted cleartext channel.
 assert.equal(

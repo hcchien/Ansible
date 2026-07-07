@@ -156,18 +156,21 @@ const HOP_BY_HOP_HEADERS = new Set([
 export function createFrontendServer({
   rootDir = SERVER_ROOT,
   relayBaseUrl = process.env.RELAY_BASE_URL ?? DEFAULT_RELAY_BASE_URL,
+  publicRelayOrigin = process.env.PUBLIC_RELAY_ORIGIN ?? process.env.RELAY_ORIGIN ?? relayBaseUrl,
   appViewBaseUrl = DEFAULT_APPVIEW_BASE_URL,
   appAssociations = appAssociationsFromEnv(),
   logger = console,
 } = {}) {
   const resolvedRoot = resolve(rootDir);
   const resolvedRelayBaseUrl = normalizeRelayProxyBaseUrl(relayBaseUrl);
+  const resolvedPublicRelayOrigin = normalizePublicOrigin(publicRelayOrigin);
   const resolvedAppViewBaseUrl = normalizeRelayProxyBaseUrl(appViewBaseUrl);
 
   return createHttpServer((request, response) => {
     handleRequest(request, response, {
       rootDir: resolvedRoot,
       relayBaseUrl: resolvedRelayBaseUrl,
+      publicRelayOrigin: resolvedPublicRelayOrigin,
       appViewBaseUrl: resolvedAppViewBaseUrl,
       appAssociations,
       logger,
@@ -200,11 +203,18 @@ export function startFrontendServer({
   host = process.env.HOST ?? DEFAULT_HOST,
   port = Number(process.env.PORT ?? DEFAULT_PORT),
   relayBaseUrl = process.env.RELAY_BASE_URL ?? DEFAULT_RELAY_BASE_URL,
+  publicRelayOrigin = process.env.PUBLIC_RELAY_ORIGIN ?? process.env.RELAY_ORIGIN ?? relayBaseUrl,
   appViewBaseUrl = DEFAULT_APPVIEW_BASE_URL,
   rootDir = SERVER_ROOT,
   logger = console,
 } = {}) {
-  const server = createFrontendServer({ rootDir, relayBaseUrl, appViewBaseUrl, logger });
+  const server = createFrontendServer({
+    rootDir,
+    relayBaseUrl,
+    publicRelayOrigin,
+    appViewBaseUrl,
+    logger,
+  });
 
   return new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -241,6 +251,12 @@ async function handleRequest(request, response, context) {
       ok: true,
       service: 'elix-web-frontend',
     });
+    return;
+  }
+
+  if (url.pathname === '/runtime-config.js') {
+    metrics.inc('frontend_requests_total', 'config');
+    sendRuntimeConfig(response, context.publicRelayOrigin);
     return;
   }
 
@@ -666,6 +682,21 @@ function sendJson(response, status, body) {
   response.end(json);
 }
 
+function sendRuntimeConfig(response, relayOrigin) {
+  const config = {
+    relayOrigin,
+  };
+  const body =
+    `globalThis.__ELIX_RUNTIME_CONFIG__ = Object.freeze(${JSON.stringify(config)});\n`;
+  response.writeHead(200, {
+    ...SECURITY_HEADERS,
+    'content-type': 'text/javascript; charset=utf-8',
+    'content-length': Buffer.byteLength(body),
+    'cache-control': 'no-store',
+  });
+  response.end(body);
+}
+
 function safeDecodePath(pathname) {
   try {
     return decodeURIComponent(pathname);
@@ -692,6 +723,15 @@ function normalizeRelayProxyBaseUrl(value) {
     return trimTrailingSlash(url.toString());
   } catch {
     return trimTrailingSlash(value);
+  }
+}
+
+function normalizePublicOrigin(value) {
+  try {
+    const url = new URL(value);
+    return url.origin;
+  } catch {
+    return String(value ?? '').replace(/\/+$/, '');
   }
 }
 

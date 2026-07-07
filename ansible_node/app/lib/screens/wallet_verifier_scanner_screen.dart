@@ -6,8 +6,20 @@ import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../services/oid4vp_presentation_service.dart';
 import '../services/oid4vp_request.dart';
+import '../services/web_session_approval_client.dart';
+import '../services/web_session_grant_service.dart';
 import '../widgets/elix_focus_route.dart';
+import 'web_session_approval_screen.dart';
 import 'wallet_verifier_consent_screen.dart';
+
+typedef WalletQrScannerBuilder =
+    Widget Function(
+      BuildContext context,
+      ValueChanged<BarcodeCapture> onDetect,
+    );
+
+typedef WebSessionApprovalRouteBuilder =
+    Widget Function(BuildContext context, WebSessionApprovalLink link);
 
 class WalletVerifierScannerScreen extends StatefulWidget {
   const WalletVerifierScannerScreen({
@@ -17,6 +29,9 @@ class WalletVerifierScannerScreen extends StatefulWidget {
     this.presentationService,
     this.onRequestScanned,
     this.allowLocalHttp,
+    this.allowedWebSessionRelayOrigins,
+    this.scannerBuilder,
+    this.webSessionApprovalBuilder,
   });
 
   final String holderDid;
@@ -24,6 +39,9 @@ class WalletVerifierScannerScreen extends StatefulWidget {
   final Oid4vpPresentationApprover? presentationService;
   final ValueChanged<Oid4vpAuthorizationRequest>? onRequestScanned;
   final bool? allowLocalHttp;
+  final Set<String>? allowedWebSessionRelayOrigins;
+  final WalletQrScannerBuilder? scannerBuilder;
+  final WebSessionApprovalRouteBuilder? webSessionApprovalBuilder;
 
   @override
   State<WalletVerifierScannerScreen> createState() =>
@@ -42,6 +60,7 @@ class _WalletVerifierScannerScreenState
         .whereType<String>()
         .firstOrNull;
     if (rawValue == null || rawValue.isEmpty) return;
+    if (_handleWebSessionCapture(rawValue)) return;
 
     try {
       final request = Oid4vpAuthorizationRequest.parse(
@@ -72,6 +91,47 @@ class _WalletVerifierScannerScreenState
     } catch (error) {
       setState(() => _errorMessage = _formatError(error));
     }
+  }
+
+  bool _handleWebSessionCapture(String rawValue) {
+    final uri = Uri.tryParse(rawValue);
+    final isWebSessionLink =
+        uri?.scheme == 'trisaura' &&
+        uri?.host == 'web-session' &&
+        uri?.path == '/approve';
+    if (!isWebSessionLink) return false;
+
+    try {
+      final link = WebSessionApprovalLink.parse(
+        uri!,
+        allowedRelayOrigins:
+            widget.allowedWebSessionRelayOrigins ??
+            const {AppEnvironment.defaultRelayBaseUrl},
+        allowLocalHttp: widget.allowLocalHttp ?? !AppEnvironment.isProduction,
+      );
+      _handled = true;
+      Navigator.of(context)
+          .push(
+            elixFocusPageRoute<void>(
+              settings: const RouteSettings(name: '/web-session/approve'),
+              builder: (routeContext) =>
+                  widget.webSessionApprovalBuilder?.call(routeContext, link) ??
+                  WebSessionApprovalScreen(
+                    challengeId: link.challengeId,
+                    currentDid: widget.holderDid,
+                    client: WebSessionApprovalClient(baseUrl: link.relayOrigin),
+                  ),
+            ),
+          )
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _handled = false);
+          });
+    } catch (_) {
+      setState(() => _errorMessage = _formatError(const FormatException()));
+    }
+
+    return true;
   }
 
   String _formatError(Object error) {
@@ -111,7 +171,10 @@ class _WalletVerifierScannerScreenState
       ),
       body: Stack(
         children: [
-          MobileScanner(onDetect: _handleCapture),
+          (widget.scannerBuilder ?? _defaultScannerBuilder)(
+            context,
+            _handleCapture,
+          ),
           Align(
             alignment: Alignment.topCenter,
             child: Material(
@@ -148,4 +211,11 @@ class _WalletVerifierScannerScreenState
       ),
     );
   }
+}
+
+Widget _defaultScannerBuilder(
+  BuildContext context,
+  ValueChanged<BarcodeCapture> onDetect,
+) {
+  return MobileScanner(onDetect: onDetect);
 }

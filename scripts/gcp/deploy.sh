@@ -216,6 +216,7 @@ case "$SERVICE" in
   frontend)
     require_env RELAY_HOST
     ENV_VARS="RELAY_BASE_URL=https://${RELAY_HOST}"
+    ENV_VARS+=";PUBLIC_RELAY_ORIGIN=${PUBLIC_RELAY_ORIGIN:-https://${RELAY_HOST}}"
     [ -z "${APPVIEW_HOST:-}" ] || ENV_VARS+=";APPVIEW_URL=https://${APPVIEW_HOST}"
     for OPT in UNIVERSAL_LINK_IOS_APP_IDS APP_LINK_ANDROID_PACKAGE APP_LINK_ANDROID_SHA256_CERTS; do
       [ -z "${!OPT:-}" ] || ENV_VARS+=";${OPT}=${!OPT}"
