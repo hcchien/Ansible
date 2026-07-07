@@ -12,6 +12,7 @@ defmodule AnsibleAppview.Timeline do
 
   import Ecto.Query
   alias AnsibleAppview.Db.FeedItem
+  alias AnsibleAppview.Profiles
 
   defp read_repo, do: Application.get_env(:ansible_appview, :read_repo, AnsibleAppview.Repo)
 
@@ -245,6 +246,7 @@ defmodule AnsibleAppview.Timeline do
   @spec for_board(String.t(), integer() | nil, pos_integer()) :: map()
   def for_board(board_id, cursor, limit) do
     pattern = "%_" <> board_id
+
     page(
       from(f in FeedItem,
         where: f.board_id == ^board_id or like(f.board_id, ^pattern)
@@ -285,6 +287,7 @@ defmodule AnsibleAppview.Timeline do
     rows = read_repo().all(scoped)
     has_more = length(rows) > limit
     visible = Enum.take(rows, limit)
+
     next_cursor =
       case visible do
         [] -> nil
@@ -337,6 +340,7 @@ defmodule AnsibleAppview.Timeline do
       log_id: f.log_id,
       op_id: f.op_id,
       author_did: f.author_did,
+      author_handle: author_handle(f.author_did),
       entity_type: f.entity_type,
       entity_id: f.entity_id,
       op_type: f.op_type,
@@ -349,4 +353,13 @@ defmodule AnsibleAppview.Timeline do
       reputation_tier: f.author_tier
     }
   end
+
+  defp author_handle(did) when is_binary(did) do
+    case Profiles.get(did) do
+      %{handle: handle} when is_binary(handle) and handle != "" -> handle
+      _ -> nil
+    end
+  end
+
+  defp author_handle(_did), do: nil
 end

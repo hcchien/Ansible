@@ -468,6 +468,7 @@ export function buildThreadsFromFeed(items) {
         id: item.entity_id,
         title: payload.title || '',
         authorDid: item.author_did,
+        authorHandle: normalizeAuthorHandle(item, payload),
         updatedAt: item.created_at,
         replyCount: 0,
         posts: [],
@@ -483,6 +484,7 @@ export function buildThreadsFromFeed(items) {
           id: item.entity_id,
           content: payload.content || '',
           authorDid: item.author_did,
+          authorHandle: normalizeAuthorHandle(item, payload),
           createdAt: item.created_at,
         });
       }
@@ -502,4 +504,16 @@ export function buildThreadsFromFeed(items) {
   threads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
   return threads;
+}
+
+function normalizeAuthorHandle(item, payload = {}) {
+  const value =
+    item?.author_handle ??
+    item?.authorHandle ??
+    payload?.author_handle ??
+    payload?.authorHandle ??
+    payload?.handle ??
+    null;
+  const handle = String(value ?? '').trim();
+  return handle || null;
 }

@@ -197,7 +197,7 @@ function renderThreadDetail(viewModel, uiState = {}) {
             <p class="thread-crumb">${escapeHtml(t('thread.kicker'))}</p>
             <h1 id="thread-title">${escapeHtml(title)}${locked ? ` ${renderLockedBadge()}` : ''}</h1>
             <div class="thread-hd-meta">
-              ${renderThreadIdentity(threadAuthor(thread))}
+              ${renderThreadIdentity(thread)}
               <span>${escapeHtml(t('board.replyCount', { count: replyCount }))}</span>
               ${renderThreadTime(thread.updatedAt ?? thread.createdAt)}
             </div>
@@ -217,6 +217,18 @@ function renderThreadDetail(viewModel, uiState = {}) {
 
 function threadAuthor(thread) {
   return thread?.authorDid || thread?.subjectDid || thread?.author || null;
+}
+
+function authorHandle(entity) {
+  if (!entity || typeof entity !== 'object') return null;
+  const handle = String(entity.authorHandle ?? entity.author_handle ?? entity.handle ?? '').trim();
+  return handle || null;
+}
+
+function authorDisplayName(entity) {
+  const handle = authorHandle(entity);
+  if (handle) return handle;
+  return shortIdentity(threadAuthor(entity));
 }
 
 function threadReplyCount(thread, posts = []) {
@@ -242,11 +254,13 @@ function renderPkPill(label = t('focus.passkeyCompact')) {
   return `<span class="pk-pill">${escapeHtml(label)}</span>`;
 }
 
-function renderThreadIdentity(author) {
+function renderThreadIdentity(entity) {
+  const author = threadAuthor(entity);
+  const label = authorDisplayName(entity);
   const signed = Boolean(author);
   return `
     <span class="thread-identity">
-      <span class="did-handle">${escapeHtml(shortIdentity(author))}</span>
+      <span class="did-handle"${author && label !== shortIdentity(author) ? ` title="${escapeAttribute(author)}"` : ''}>${escapeHtml(label)}</span>
       ${signed ? renderPkPill() : ''}
     </span>
   `;
@@ -263,6 +277,7 @@ function renderThreadTime(value, className = 'thread-time') {
 
 function renderThreadOriginalPost(thread, context = {}) {
   const author = threadAuthor(thread);
+  const authorLabel = authorDisplayName(thread);
   const signed = Boolean(author);
   const body = threadBody(thread);
   const threadId = context.threadId ?? thread?.id ?? '';
@@ -282,7 +297,7 @@ function renderThreadOriginalPost(thread, context = {}) {
       </div>
       <div class="thread-post-content">
         <div class="thread-post-top">
-          <span class="thread-author">${escapeHtml(shortIdentity(author))}</span>
+          <span class="thread-author"${author && authorLabel !== shortIdentity(author) ? ` title="${escapeAttribute(author)}"` : ''}>${escapeHtml(authorLabel)}</span>
           <span class="thread-source">${escapeHtml(t('thread.originalMarker'))}${signed ? ` · <span class="thread-source-strong">${escapeHtml(t('thread.signedPk'))}</span>` : ''}</span>
           ${renderThreadTime(thread.createdAt ?? thread.updatedAt, 'thread-post-time')}
         </div>
@@ -360,8 +375,10 @@ function renderThreadReplies(posts, context = {}) {
 function renderThreadReplyItem(post, context = {}) {
   const anonymous = Boolean(context.anonymousReplies) || !post.authorDid && !post.subjectDid && !post.author;
   const author = post.authorDid || post.subjectDid || post.author || null;
-  const avatar = anonymous ? '·' : threadInitial(shortIdentity(author), author);
-  const authorLabel = anonymous ? t('common.anonymous') : shortIdentity(author);
+  const displayName = authorDisplayName(post);
+  const avatar = anonymous ? '·' : threadInitial(displayName, author);
+  const authorLabel = anonymous ? t('common.anonymous') : displayName;
+  const title = author && !anonymous && authorLabel !== shortIdentity(author) ? ` title="${escapeAttribute(author)}"` : '';
 
   if (post.removed) {
     return `
@@ -369,7 +386,7 @@ function renderThreadReplyItem(post, context = {}) {
         <div class="thread-reply-avatar${anonymous ? ' is-anonymous' : ''}">${escapeHtml(avatar)}</div>
         <div class="thread-reply-content">
           <div class="thread-reply-top">
-            <span class="thread-reply-name">${escapeHtml(authorLabel)}</span>
+            <span class="thread-reply-name"${title}>${escapeHtml(authorLabel)}</span>
             ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
           </div>
           ${renderRemovedTombstone(post.reasonCode)}
@@ -391,7 +408,7 @@ function renderThreadReplyItem(post, context = {}) {
       <div class="thread-reply-avatar${anonymous ? ' is-anonymous' : ''}">${escapeHtml(avatar)}</div>
       <div class="thread-reply-content">
         <div class="thread-reply-top">
-          <span class="thread-reply-name${anonymous ? ' is-anonymous' : ''}">${escapeHtml(authorLabel)}</span>
+          <span class="thread-reply-name${anonymous ? ' is-anonymous' : ''}"${title}>${escapeHtml(authorLabel)}</span>
           ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
         </div>
         <div class="thread-reply-body">${renderThreadParagraphs(post.body ?? post.content ?? '')}</div>
@@ -981,7 +998,7 @@ function renderThreadItem(thread, context = {}) {
   const title = threadTitle(thread);
   const author = threadAuthor(thread);
   const signed = Boolean(author);
-  const initial = threadInitial(title, author);
+  const initial = threadInitial(title, authorDisplayName(thread) || author);
   const locked = Boolean(thread.locked);
   const posts = thread.posts ?? [];
   const threadId = thread.id ?? '';
@@ -1005,7 +1022,7 @@ function renderThreadItem(thread, context = {}) {
       <span class="board-thread-status">${escapeHtml(t('board.replyCount', { count: replyCount }))} · ${escapeHtml(status)}</span>
       <span class="board-thread-title">${titleContent}</span>
       <span class="board-thread-by">
-        ${renderThreadIdentity(author)}
+        ${renderThreadIdentity(thread)}
         ${renderThreadTime(thread.updatedAt ?? thread.createdAt, 'board-thread-time')}
       </span>
       ${locked ? renderLockedBanner(thread.lockReasonCode) : ''}

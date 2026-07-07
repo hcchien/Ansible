@@ -283,6 +283,8 @@ test('normalizes AppView post content into thread posts', () => {
       entity_type: 'thread',
       op_type: 'insert',
       entity_id: 'thread-9',
+      author_did: 'did:plc:thread-author',
+      author_handle: 'thread-author.elix.cool',
       created_at: '2026-06-18T14:33:27.083198Z',
       payload: { title: '不見了' },
     },
@@ -290,11 +292,15 @@ test('normalizes AppView post content into thread posts', () => {
       entity_type: 'post',
       op_type: 'insert',
       entity_id: 'post-1',
+      author_did: 'did:plc:reply-author',
+      author_handle: 'reply-author.elix.cool',
       created_at: '2026-06-18T14:33:27.093554Z',
       payload: { threadId: 'thread-9', content: '文章不見了？！' },
     },
   ]);
 
+  assert.equal(thread.authorHandle, 'thread-author.elix.cool');
+  assert.equal(thread.posts[0].authorHandle, 'reply-author.elix.cool');
   assert.equal(thread.posts[0].content, '文章不見了？！');
 });
 

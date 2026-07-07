@@ -397,6 +397,36 @@ assert.match(threadDetailHtml, /data-target-kind="post" data-target-ref="post-20
 assert.doesNotMatch(threadDetailHtml, /class="thread-posts"/);
 assert.doesNotMatch(threadDetailHtml, /路徑不可用/);
 
+const handledThreadDetailVm = buildAppViewModel({
+  route: { pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-handled' } },
+  session: moderatedSession,
+  forum: {
+    host: normalizeForumHost(CONTRACT_FIXTURES.forum.host),
+    boards: [generalBoard],
+    board: generalBoard,
+    thread: {
+      id: 'thread-handled',
+      title: 'Handle thread',
+      authorDid: 'did:plc:threadauthorabcdef',
+      authorHandle: 'thread-author.elix.cool',
+      posts: [
+        {
+          id: 'post-handled',
+          content: 'reply with handle',
+          authorDid: 'did:plc:replyauthorabcdef',
+          authorHandle: 'reply-author.elix.cool',
+        },
+      ],
+    },
+    threads: [],
+    capabilities: { canCreateThread: true, canReply: true },
+  },
+});
+const handledThreadDetailHtml = renderPageBody(handledThreadDetailVm);
+assert.match(handledThreadDetailHtml, /thread-author\.elix\.cool/);
+assert.match(handledThreadDetailHtml, /reply-author\.elix\.cool/);
+assert.doesNotMatch(handledThreadDetailHtml, /did:plc\.\.\.abcdef/);
+
 const lockedThreadDetailVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-9' } },
   session: moderatedSession,

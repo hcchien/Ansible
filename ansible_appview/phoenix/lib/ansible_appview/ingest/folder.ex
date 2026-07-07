@@ -27,7 +27,16 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   @source "relay_firehose"
 
-  alias AnsibleAppview.{Cache, FollowGraph, HomeTimeline, Repo, SigVerifier, SigningPayload}
+  alias AnsibleAppview.{
+    Cache,
+    FollowGraph,
+    HomeTimeline,
+    Profiles,
+    Repo,
+    SigVerifier,
+    SigningPayload
+  }
+
   alias AnsibleAppview.Db.FeedItem
 
   @content_types ~w(murmur note)
@@ -186,6 +195,7 @@ defmodule AnsibleAppview.Ingest.Folder do
       log_id: row.log_id,
       op_id: row.op_id,
       author_did: row.author_did,
+      author_handle: author_handle(row.author_did),
       entity_type: row.entity_type,
       entity_id: row.entity_id,
       op_type: row.op_type,
@@ -198,6 +208,15 @@ defmodule AnsibleAppview.Ingest.Folder do
       reputation_tier: row.author_tier
     }
   end
+
+  defp author_handle(did) when is_binary(did) do
+    case Profiles.get(did) do
+      %{handle: handle} when is_binary(handle) and handle != "" -> handle
+      _ -> nil
+    end
+  end
+
+  defp author_handle(_did), do: nil
 
   # Per-op preparation, guarded so a single malformed op (decode/verify raising)
   # is dead-lettered and skipped rather than crashing the whole page fold. A

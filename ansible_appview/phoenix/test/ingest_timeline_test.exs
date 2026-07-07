@@ -44,6 +44,19 @@ defmodule AnsibleAppview.IngestTimelineTest do
 
     ops = [
       signed_op(
+        log_id: 0,
+        op_id: "profile-alice",
+        author_did: "did:key:alice",
+        entity_type: "profile",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "visibility" => "public",
+          "handle" => "alice.elix.cool",
+          "displayName" => "Alice"
+        }
+      ),
+      signed_op(
         log_id: 1,
         author_did: "did:key:alice",
         entity_type: "murmur",
@@ -98,6 +111,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     alice = Timeline.for_authors(["did:key:alice"], nil, 50)
     assert length(alice.items) == 1
     assert hd(alice.items).author_did == "did:key:alice"
+    assert hd(alice.items).author_handle == "alice.elix.cool"
     assert hd(alice.items).public_key_hex == pub
     assert hd(alice.items).reputation_tier == "verified_human"
 
