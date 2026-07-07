@@ -226,8 +226,13 @@ config :ansible_relay,
   ]
 ```
 
-Before public launch, replace the dev hash with the audited verification key
-hash and keep retired keys in config only for explicit migration windows.
+The dev hashes above never reach production: `config/runtime.exs` overrides
+them at prod boot with an empty (disabled, fail-closed) registry unless
+`ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS` supplies audited entries as JSON
+(`[{"version":"...","hash":"sha256:<64 hex>","status":"active"|"retired"}]`);
+placeholder or malformed entries refuse to boot
+(`AnsibleRelay.Config.ZkpVerificationKeys`). Keep retired keys configured only
+for explicit migration windows.
 
 ## Gossipsub Topics
 

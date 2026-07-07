@@ -160,6 +160,26 @@ if config_env() == :prod do
     raise "allow_dev_identity_signatures must be false in production"
   end
 
+  if Application.get_env(:ansible_relay, :allow_dev_zkp_proofs, false) do
+    raise "allow_dev_zkp_proofs must be false in production"
+  end
+
+  # P0 — the dev ZKP verification-key placeholders in config.exs
+  # ("sha256:dev-vk-hash-placeholder", "sha256:dev-passport-v1-placeholder")
+  # must never be active trust anchors in a production release. The Phase 1 ZKP
+  # challenge/anchor flow is retired (no code consumes :zkp_verification_keys
+  # today), so prod boots with NO active keys — overriding config.exs — unless
+  # the operator explicitly supplies audited entries via
+  # ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS (JSON array of
+  # {"version","hash":"sha256:<64 hex>","status":"active"|"retired"}).
+  # Placeholder or malformed entries raise at boot (fail closed); see
+  # AnsibleRelay.Config.ZkpVerificationKeys.
+  config :ansible_relay,
+         :zkp_verification_keys,
+         AnsibleRelay.Config.ZkpVerificationKeys.load_prod!(
+           System.get_env("ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS")
+         )
+
   # Phase 2.3 — op retention window in days. Unset = :infinity (never prune).
   case System.get_env("ANSIBLE_RELAY_SNAPSHOT_RETENTION_DAYS") do
     nil -> :ok

@@ -16,6 +16,12 @@ All commands assume bash. Replace every `<...>` placeholder. Re-running the
 idempotent create steps is safe (they no-op or error harmlessly if the resource
 exists).
 
+> See also: [`gcp_production_checklist.md`](gcp_production_checklist.md)
+> (ordered go-live checklist), [`postgres_backup_pitr.md`](postgres_backup_pitr.md)
+> (backups/PITR/restore drills), and `scripts/gcp/` (`provision.sh`,
+> `deploy.sh <service>`, `check_prod_readiness.sh`) which script the steps
+> below idempotently.
+
 ---
 
 ## 0. Variables and APIs
@@ -76,6 +82,13 @@ openssl rand -hex 32 | gcloud secrets create subject-commitment-pepper --data-fi
 # TW provider contract-mode shared secret (staging / contract adapter).
 openssl rand -hex 32 | gcloud secrets create tw-provider-shared-secret --data-file=-
 
+# Relay op-snapshot Ed25519 signing seed — REQUIRED: the relay's prod boot
+# raises without ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX (config/runtime.exs).
+openssl rand -hex 32 | gcloud secrets create relay-snapshot-signing-key --data-file=-
+
+# Issuer admin bearer token (enables the credential-revocation endpoint).
+openssl rand -hex 32 | gcloud secrets create issuer-admin-token --data-file=-
+
 # Relay PostgreSQL connection string (filled in after step 3).
 # Created here as a placeholder; add the real value as a new version in step 3.
 ```
@@ -90,7 +103,8 @@ use a dedicated SA in production):
 ```bash
 export RUNTIME_SA="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
 
-for S in issuer-priv-key subject-commitment-pepper tw-provider-shared-secret relay-database-url; do
+for S in issuer-priv-key subject-commitment-pepper tw-provider-shared-secret \
+  relay-snapshot-signing-key issuer-admin-token relay-database-url; do
   gcloud secrets add-iam-policy-binding "$S" \
     --member="serviceAccount:${RUNTIME_SA}" \
     --role="roles/secretmanager.secretAccessor" 2>/dev/null || true
@@ -111,13 +125,18 @@ gcloud compute networks vpc-access connectors create ansible-conn \
   --network=default \
   --range=10.8.0.0/28
 
-# Cloud SQL Postgres with private IP only.
+# Cloud SQL Postgres with private IP only. Daily backups + PITR are enabled
+# from day one — see postgres_backup_pitr.md for retention, restore, and drills.
 gcloud sql instances create ansible-relay-db \
   --database-version=POSTGRES_16 \
   --tier=db-custom-1-3840 \
   --region="$REGION" \
   --network=default \
-  --no-assign-ip
+  --no-assign-ip \
+  --backup-start-time=17:00 \
+  --retained-backups-count=14 \
+  --enable-point-in-time-recovery \
+  --retained-transaction-log-days=7
 
 gcloud sql databases create ansible_relay --instance=ansible-relay-db
 
@@ -185,7 +204,7 @@ gcloud run deploy ansible-relay \
   --vpc-egress=private-ranges-only \
   --min-instances=1 \
   --set-env-vars="ISSUER_DID=${ISSUER_DID},ISSUER_PUBLIC_KEY_HEX=${ISSUER_PUB_HEX},RELAY_ORIGIN=https://${RELAY_HOST},FORUM_HOST_BASE_URL=https://${RELAY_HOST},WEB_ALLOWED_ORIGINS=https://${WEB_HOST},DATABASE_SSL=false,POOL_SIZE=10" \
-  --set-secrets="DATABASE_URL=relay-database-url:latest" \
+  --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest" \
   --allow-unauthenticated
 ```
 
@@ -252,7 +271,7 @@ gcloud run deploy ansible-issuer \
   --add-volume="name=issuer-state,type=cloud-storage,bucket=${ISSUER_BUCKET}" \
   --add-volume-mount="volume=issuer-state,mount-path=/var/issuer-state" \
   --set-env-vars="ISSUER_DID=${ISSUER_DID},ISSUER_URL=https://${ISSUER_HOST},PERSONHOOD_BINDING_STORE_PATH=/var/issuer-state/personhood.json,TW_PROVIDER_SESSION_STORE_PATH=/var/issuer-state/tw_provider_sessions.json,TW_PROVIDER_AUTH_URL=https://<provider-authorize-url>,TW_PROVIDER_ADAPTER_MODE=contract,TW_PROVIDER_AUDIENCE=trisaura-issuer,VC_TTL_DAYS=90,OTP_TTL_SECONDS=300" \
-  --set-secrets="ISSUER_PRIVATE_KEY_HEX=issuer-priv-key:latest,SUBJECT_COMMITMENT_PEPPER=subject-commitment-pepper:latest,TW_PROVIDER_SHARED_SECRET=tw-provider-shared-secret:latest" \
+  --set-secrets="ISSUER_PRIVATE_KEY_HEX=issuer-priv-key:latest,SUBJECT_COMMITMENT_PEPPER=subject-commitment-pepper:latest,TW_PROVIDER_SHARED_SECRET=tw-provider-shared-secret:latest,ISSUER_ADMIN_TOKEN=issuer-admin-token:latest" \
   --allow-unauthenticated
 ```
 
@@ -389,8 +408,15 @@ Cross-service checklist:
 - [ ] Relay migration job ran successfully.
 - [ ] Issuer is pinned to a single instance and `/readyz` is 200.
 - [ ] `did.json` is published at the issuer host.
-- [ ] Replace the dev ZKP verification-key hash in relay config before public launch
-      (`ansible_relay/phoenix/README.md` — ZKP Verification Key Pinning).
+- [ ] ZKP verification keys: nothing to replace — the relay's prod boot overrides
+      the dev placeholders in `config.exs` with an empty (disabled, fail-closed)
+      registry and rejects placeholder values in
+      `ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS`. Set that env var only when audited
+      circuit keys ship (`config/runtime.exs`,
+      `AnsibleRelay.Config.ZkpVerificationKeys`).
+- [ ] Automated backups + PITR verified on `ansible-relay-db` and the first
+      restore drill scheduled ([`postgres_backup_pitr.md`](postgres_backup_pitr.md)).
+- [ ] Preflight passes: `scripts/gcp/check_prod_readiness.sh --project "$PROJECT_ID"`.
 - [ ] SOSP pre-launch security gate cleared (`docs/security/sosp.md`).
 
 ---
