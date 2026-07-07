@@ -12,6 +12,7 @@ import {
   renderMetaTags,
   resolveOrigin,
 } from './src/og_meta.mjs';
+import { renderLegalPage } from './src/legal_pages.mjs';
 
 const DEFAULT_PORT = 5173;
 const DEFAULT_HOST = '127.0.0.1';
@@ -298,6 +299,24 @@ async function handleRequest(request, response, context) {
       ? context.appViewBaseUrl
       : context.relayBaseUrl;
     await proxyRelayRequest(request, response, url, { relayBaseUrl: upstreamBaseUrl });
+    return;
+  }
+
+  // Legal / policy pages (/privacy, /terms, /about, /account-deletion): real
+  // path-based documents rendered on the server, because App Store / Play Store
+  // reviewers open these URLs directly and never run the SPA. Served before the
+  // SPA fallback so the hash router can never shadow them.
+  const legalPage = renderLegalPage(url.pathname);
+  if (legalPage && ['GET', 'HEAD'].includes(request.method ?? 'GET')) {
+    metrics.inc('frontend_requests_total', 'legal');
+    const body = Buffer.from(legalPage.html, 'utf8');
+    response.writeHead(200, {
+      ...SECURITY_HEADERS,
+      'content-type': 'text/html; charset=utf-8',
+      'content-length': body.length,
+      'cache-control': 'no-store',
+    });
+    response.end(request.method === 'HEAD' ? undefined : body);
     return;
   }
 

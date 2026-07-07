@@ -16,6 +16,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../services/notification_preferences_controller.dart';
+import 'about_screen.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'identity_backup_screen.dart';
@@ -392,6 +393,11 @@ class SettingsHomeScreen extends StatelessWidget {
                 label: text.about,
                 en: 'ABOUT',
                 sub: text.aboutSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                  );
+                },
               ),
               AnsibleSettingsRow(glyph: '?', label: text.manual, en: 'MANUAL'),
               AnsibleSettingsRow(

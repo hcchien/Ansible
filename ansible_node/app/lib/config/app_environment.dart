@@ -101,6 +101,14 @@ class AppEnvironment {
     defaultValue: 'user',
   );
 
+  /// Public web frontend origin (forum). Legal / policy pages required for
+  /// store submission live here (`/privacy`, `/terms`, `/about`,
+  /// `/account-deletion`) and are opened from the in-app About screen.
+  static const forumWebBaseUrl = String.fromEnvironment(
+    'ANSIBLE_FORUM_WEB_BASE_URL',
+    defaultValue: 'https://forum.elix.cool',
+  );
+
   static List<String> productionReadinessIssues({
     AppEnvironmentName? environmentName,
     String? relayBaseUrl,

@@ -120,6 +120,7 @@ function renderAppFooter(viewModel) {
   return `
     <footer class="app-footer">
       <span>${escapeHtml(t('common.identityBackedSocialApp'))}</span>
+      <span><a href="/privacy">${escapeHtml(t('common.privacyPolicy'))}</a> · <a href="/terms">${escapeHtml(t('common.termsOfService'))}</a></span>
       <span>${escapeHtml(pageLabel)}</span>
     </footer>
   `;
