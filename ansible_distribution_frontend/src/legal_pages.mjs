@@ -13,6 +13,8 @@
 // about collection we do not do — and do not soften the append-only-log
 // honesty in the deletion sections.
 
+import { DEFAULT_LOCALE, resolveLocale } from './web_i18n.mjs';
+
 export const LEGAL_EFFECTIVE_DATE = '2026-07-07';
 export const LEGAL_EFFECTIVE_DATE_ZH = '2026 年 7 月 7 日';
 export const PRIVACY_CONTACT_EMAIL = 'privacy@elix.cool';
@@ -35,14 +37,22 @@ const NAV_ITEMS = Object.freeze([
   { path: '/account-deletion', zh: '刪除帳號', en: 'Delete account' },
 ]);
 
-function layout({ path, title, zhBody, enBody }) {
+function layout({ path, title, body, locale }) {
+  const labelKey = locale === 'en' ? 'en' : 'zh';
+  const alternateLocale = locale === 'en' ? 'zh-Hant' : 'en';
+  const alternateLabel = locale === 'en' ? '中文版本' : 'English version';
+  const footerDate =
+    locale === 'en'
+      ? `Effective date: ${LEGAL_EFFECTIVE_DATE}`
+      : `生效日期：${LEGAL_EFFECTIVE_DATE_ZH} (${LEGAL_EFFECTIVE_DATE})`;
+  const footerContact = locale === 'en' ? 'Contact' : '聯絡';
   const nav = NAV_ITEMS.map((item) => {
     const current = item.path === path ? ' aria-current="page"' : '';
-    return `<a href="${item.path}"${current}>${item.zh}</a>`;
+    return `<a href="${localizedHref(item.path, locale)}"${current}>${item[labelKey]}</a>`;
   }).join('\n        ');
 
   return `<!doctype html>
-<html lang="zh-Hant">
+<html lang="${locale}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -53,24 +63,61 @@ function layout({ path, title, zhBody, enBody }) {
   <body>
     <main class="legal-page">
       <header class="legal-header">
-        <a class="legal-home" href="/">Elix</a>
-        <nav aria-label="法律文件">
+        <a class="legal-home" href="/?lang=${locale}">Elix</a>
+        <nav aria-label="${locale === 'en' ? 'Legal documents' : '法律文件'}">
         ${nav}
         </nav>
       </header>
-      <a class="legal-lang-jump" href="#en">English version below ↓</a>
-${zhBody}
-      <section id="en" lang="en">
-${enBody}
-      </section>
+      <a class="legal-lang-jump" href="${localizedHref(path, alternateLocale)}">${alternateLabel}</a>
+${body}
       <footer class="legal-footer">
-        <span>生效日期 Effective date: ${LEGAL_EFFECTIVE_DATE}</span>
-        <span>聯絡 Contact: <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a></span>
+        <span>${footerDate}</span>
+        <span>${footerContact}: <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a></span>
       </footer>
     </main>
   </body>
 </html>
 `;
+}
+
+function localizedHref(path, locale) {
+  return `${path}?lang=${locale}`;
+}
+
+function localizeLegalBodyLinks(body, locale) {
+  return String(body).replace(
+    /href="(\/(?:privacy|terms|about|account-deletion))"/g,
+    (_, path) => `href="${localizedHref(path, locale)}"`,
+  );
+}
+
+export function resolveLegalLocale(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return DEFAULT_LOCALE;
+
+  const candidates = raw
+    .split(',')
+    .map((entry, index) => {
+      const parts = entry.trim().split(';');
+      const tag = parts[0]?.trim() ?? '';
+      const qParam = parts.find((part) => part.trim().startsWith('q='));
+      const q = qParam ? Number(qParam.trim().slice(2)) : 1;
+      return {
+        tag,
+        index,
+        q: Number.isFinite(q) ? q : 1,
+      };
+    })
+    .filter((candidate) => candidate.tag)
+    .sort((left, right) => right.q - left.q || left.index - right.index);
+
+  for (const { tag } of candidates) {
+    const normalized = tag.replaceAll('_', '-').toLowerCase();
+    if (normalized === 'en' || normalized.startsWith('en-')) return 'en';
+    if (normalized === 'zh' || normalized.startsWith('zh-')) return 'zh-Hant';
+  }
+
+  return resolveLocale(raw);
 }
 
 // ---------------------------------------------------------------------------
@@ -480,40 +527,20 @@ const DELETION_EN = `
 
 const PAGES = Object.freeze({
   '/privacy': {
-    title: '隱私權政策 · Privacy Policy',
-    html: layout({
-      path: '/privacy',
-      title: '隱私權政策 · Privacy Policy',
-      zhBody: PRIVACY_ZH,
-      enBody: PRIVACY_EN,
-    }),
+    titles: { 'zh-Hant': '隱私權政策', en: 'Privacy Policy' },
+    bodies: { 'zh-Hant': PRIVACY_ZH, en: PRIVACY_EN },
   },
   '/terms': {
-    title: '服務條款 · Terms of Service',
-    html: layout({
-      path: '/terms',
-      title: '服務條款 · Terms of Service',
-      zhBody: TERMS_ZH,
-      enBody: TERMS_EN,
-    }),
+    titles: { 'zh-Hant': '服務條款', en: 'Terms of Service' },
+    bodies: { 'zh-Hant': TERMS_ZH, en: TERMS_EN },
   },
   '/about': {
-    title: '關於 Elix · About Elix',
-    html: layout({
-      path: '/about',
-      title: '關於 Elix · About Elix',
-      zhBody: ABOUT_ZH,
-      enBody: ABOUT_EN,
-    }),
+    titles: { 'zh-Hant': '關於 Elix', en: 'About Elix' },
+    bodies: { 'zh-Hant': ABOUT_ZH, en: ABOUT_EN },
   },
   '/account-deletion': {
-    title: '刪除帳號與資料 · Account & Data Deletion',
-    html: layout({
-      path: '/account-deletion',
-      title: '刪除帳號與資料 · Account & Data Deletion',
-      zhBody: DELETION_ZH,
-      enBody: DELETION_EN,
-    }),
+    titles: { 'zh-Hant': '刪除帳號與資料', en: 'Account & Data Deletion' },
+    bodies: { 'zh-Hant': DELETION_ZH, en: DELETION_EN },
   },
 });
 
@@ -521,7 +548,24 @@ const PAGES = Object.freeze({
 // not a legal page (the server then continues to the SPA/asset pipeline).
 // Trailing slashes are tolerated (`/privacy/` → `/privacy`) so pasted store
 // URLs never 404 on a slash.
-export function renderLegalPage(pathname) {
+export function renderLegalPage(pathname, { locale = DEFAULT_LOCALE } = {}) {
   const normalized = String(pathname ?? '').replace(/\/+$/, '') || '/';
-  return PAGES[normalized] ?? null;
+  const page = PAGES[normalized];
+  if (!page) return null;
+
+  const resolvedLocale = resolveLegalLocale(locale);
+  const title = page.titles[resolvedLocale] ?? page.titles[DEFAULT_LOCALE];
+
+  return {
+    title: `${title} · Elix`,
+    html: layout({
+      path: normalized,
+      title,
+      body: localizeLegalBodyLinks(
+        page.bodies[resolvedLocale] ?? page.bodies[DEFAULT_LOCALE],
+        resolvedLocale,
+      ),
+      locale: resolvedLocale,
+    }),
+  };
 }

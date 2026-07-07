@@ -17,6 +17,7 @@ const { relayBaseUrl, relayOrigin, webOrigin, locale } = resolveFrontendRuntimeC
   navigatorLike: navigator,
 });
 setCurrentLocale(locale);
+document.documentElement.lang = locale;
 
 const sessionLifecycle = createSessionLifecycle({
   relayBaseUrl,

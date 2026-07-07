@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { renderAppShell, renderCommandHeader } from '../src/forum_shell_renderer.mjs';
 import { buildAppViewModel, PAGE_IDS } from '../src/state_model.mjs';
 import { DEFAULT_SESSION_VIEW_MODEL } from '../src/session_lifecycle.mjs';
+import { setCurrentLocale } from '../src/web_i18n.mjs';
 
 const anonymousVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.home, params: {} },
@@ -62,6 +63,18 @@ assert.match(shell, /<section class="page-panel">Body<\/section>/);
 assert.match(shell, /mobile-tabbar/);
 assert.match(shell, /app-footer/);
 assert.match(shell, /以身分支撐的社群 App/);
+assert.match(shell, /href="\/privacy\?lang=zh-Hant"/);
+assert.match(shell, /href="\/terms\?lang=zh-Hant"/);
+
+setCurrentLocale('en');
+const englishShell = renderAppShell({
+  viewModel: authenticatedVm,
+  bodyHtml: '<section class="page-panel">Body</section>',
+});
+assert.match(englishShell, /identity-backed social app/);
+assert.match(englishShell, /href="\/privacy\?lang=en"/);
+assert.match(englishShell, /href="\/terms\?lang=en"/);
+setCurrentLocale('zh-Hant');
 
 const staleSessionsVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.sessions, params: {} },

@@ -24,7 +24,9 @@ export function resolveFrontendRuntimeConfig({
     relayBaseUrl,
     relayOrigin,
     webOrigin: locationUrl.origin,
-    locale: resolveLocale(storage?.getItem?.(LOCALE_KEY) ?? navigatorLike?.language ?? DEFAULT_LOCALE),
+    locale: resolveLocale(
+      locationUrl.searchParams.get('lang') ?? storage?.getItem?.(LOCALE_KEY) ?? navigatorLike?.language ?? DEFAULT_LOCALE,
+    ),
   };
 }
 

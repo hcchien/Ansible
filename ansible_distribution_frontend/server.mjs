@@ -306,7 +306,9 @@ async function handleRequest(request, response, context) {
   // path-based documents rendered on the server, because App Store / Play Store
   // reviewers open these URLs directly and never run the SPA. Served before the
   // SPA fallback so the hash router can never shadow them.
-  const legalPage = renderLegalPage(url.pathname);
+  const legalPage = renderLegalPage(url.pathname, {
+    locale: url.searchParams.get('lang') ?? request.headers['accept-language'],
+  });
   if (legalPage && ['GET', 'HEAD'].includes(request.method ?? 'GET')) {
     metrics.inc('frontend_requests_total', 'legal');
     const body = Buffer.from(legalPage.html, 'utf8');

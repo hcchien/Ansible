@@ -1,5 +1,5 @@
 import { shortIdentity, trustTierLabel } from './forum_ui_text.mjs';
-import { t } from './web_i18n.mjs';
+import { getCurrentLocale, t } from './web_i18n.mjs';
 
 const DEFAULT_UI_PREFERENCES = Object.freeze({
   activeScene: 'personal',
@@ -120,10 +120,14 @@ function renderAppFooter(viewModel) {
   return `
     <footer class="app-footer">
       <span>${escapeHtml(t('common.identityBackedSocialApp'))}</span>
-      <span><a href="/privacy">${escapeHtml(t('common.privacyPolicy'))}</a> · <a href="/terms">${escapeHtml(t('common.termsOfService'))}</a></span>
+      <span><a href="${escapeAttribute(legalHref('/privacy'))}">${escapeHtml(t('common.privacyPolicy'))}</a> · <a href="${escapeAttribute(legalHref('/terms'))}">${escapeHtml(t('common.termsOfService'))}</a></span>
       <span>${escapeHtml(pageLabel)}</span>
     </footer>
   `;
+}
+
+function legalHref(path) {
+  return `${path}?lang=${encodeURIComponent(getCurrentLocale())}`;
 }
 
 function renderMobileTabBar(viewModel) {

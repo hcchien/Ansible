@@ -21,6 +21,13 @@ assert.equal(storedLoopbackConfig.relayOrigin, 'http://localhost:4001');
 assert.equal(storedLoopbackConfig.relayBaseUrl, 'http://localhost:5173');
 assert.equal(storedLoopbackConfig.locale, 'en');
 
+const queryLocaleConfig = resolveFrontendRuntimeConfig({
+  location: new URL('http://localhost:5173/?lang=en#/login'),
+  storage: createStorage([['trisaura.locale', 'zh-Hant']]),
+  navigatorLike: { language: 'zh-TW' },
+});
+assert.equal(queryLocaleConfig.locale, 'en');
+
 const invalidStoredRelayConfig = resolveFrontendRuntimeConfig({
   location: new URL('http://127.0.0.1:5173/#/login'),
   storage: createStorage([['trisaura.relay_base_url', 'localhost:4001']]),
