@@ -5,7 +5,7 @@
 > is parked, and what already landed, with links to the underlying specs and
 > plans.
 >
-> **Last updated:** 2026-07-03
+> **Last updated:** 2026-07-07
 >
 > **Keep it current:** when a plan lands, is paused, or a new spec/plan is
 > added under `docs/superpowers/`, update this file in the same change.
@@ -108,6 +108,25 @@ already underway (architecture Phase 1 / Phase 0).
 | **Canonical identity method (`did:elix`) & trust** — `did:elix` canonical + `did:key` wallet holder + opt-in `did:plc` bridge + Issuer Trust Registry + cross-relay resolution v0 | P1 — **Phases A + B + C ✅ done + tested 2026-06-16/17, deployed**; only `did:plc` bridge (D) remaining | [Layered identity plan](superpowers/plans/2026-06-16-layered-identity-did-method-plan.md) · [Architecture plan — Phase 1.5](architecture/service_architecture_plan.md) | Shipped: `did:elix` derivation + `did:key` encoder (cross-verified vs rust), `also_known_as` on anchors, relay DID-document resolution, **app registration mints `did:elix`** (+ `main.dart` canonical persistence), Issuer Trust Registry (`untrusted_issuer` + per-type gating), cross-relay `FederatedResolver` with self-certifying peer verification (relay + app, lying-peer rejection proven). Remaining: the real DAG-CBOR `did:plc` Bluesky bridge (Phase D). Global directory governance + atproto content interop are separate follow-up specs |
 
 ### Shipped since 2026-06-16 (summary)
+
+- **Forum hosting completion sweep (2026-07-07)** — relay signed-intent board
+  *update* endpoint (`POST /api/v1/forum-host/boards/:id/update`,
+  creator-only, replay-protected, fail-closed) + app「我主持的看板」hosted-board
+  admin screen; composer posting-gate pre-check banner; cross-post target
+  selector (「同時發佈到…」) with per-target failure feedback; host
+  constitution-compliance warning on add (display-only, never trust-bearing);
+  report-flow test seams + payload-verifying tests.
+- **Legal / store-readiness pages (2026-07-07)** — server-rendered bilingual
+  `/privacy`, `/terms`, `/about`, `/account-deletion` on the distribution
+  frontend (no-JS, store-reviewer-safe); app About screen (version + legal
+  links via `ANSIBLE_FORUM_WEB_BASE_URL`); store questionnaire answers in
+  [store_listing_privacy.md](deployment/store_listing_privacy.md).
+- **GCP production prep (2026-07-07)** — dev ZKP verification-key placeholders
+  no longer bake into prod (runtime.exs forces an empty registry unless
+  `ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS` supplies audited keys; dev-proof flag
+  hard-asserted false); `scripts/gcp/` idempotent provision/deploy/preflight;
+  [Postgres backup & PITR runbook](deployment/postgres_backup_pitr.md);
+  [go-live checklist](deployment/gcp_production_checklist.md).
 
 - **Elix Threads-style redesign complete** — all 9 design screens implemented
   (feed/detail/board/thread earlier; onboarding/compose/notifications/settings
