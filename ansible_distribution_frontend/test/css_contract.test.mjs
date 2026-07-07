@@ -118,6 +118,36 @@ assert.match(
 );
 assert.match(
   css,
+  /\.board-thread-row\s*\{[^}]*display:\s*grid;/s,
+  'board thread rows must use the Elix Web thread list layout',
+);
+assert.match(
+  css,
+  /\.thread-hd\s*\{[^}]*border-bottom:\s*1px solid var\(--border\);/s,
+  'thread detail must have the Elix Web thread header rule',
+);
+assert.match(
+  css,
+  /\.thread-op\s*\{[^}]*display:\s*grid;/s,
+  'original post must use the Threads-style post grid',
+);
+assert.match(
+  css,
+  /\.thread-reply-item\s*\{[^}]*display:\s*grid;/s,
+  'replies must render as full conversation items instead of blank left-border blocks',
+);
+assert.match(
+  css,
+  /\.thread-reply-item:not\(:last-child\)::after\s*\{/,
+  'reply items must draw a conversation connector line',
+);
+assert.match(
+  css,
+  /\.thread-reply-composer\s*\{[^}]*display:\s*grid;/s,
+  'thread detail must include the inline reply composer surface',
+);
+assert.match(
+  css,
   /\.login-grid\s*\{[^}]*grid-template-columns:\s*1\.15fr 1fr;/s,
   'login page must use the Elix challenge and QR split layout on desktop',
 );

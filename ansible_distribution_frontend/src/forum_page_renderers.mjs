@@ -170,15 +170,20 @@ function renderThreadDetail(viewModel, uiState = {}) {
   }
 
   const title = thread.title || thread.subject || t('common.threadFallback');
-  const author = thread.authorDid || thread.subjectDid || thread.author || null;
-  const signed = Boolean(author);
   const locked = Boolean(thread.locked);
   const posts = thread.posts ?? [];
   const context = {
     session: viewModel.session,
     boardId: board.id ?? boardId,
     canReply: Boolean(viewModel.actions?.canReply),
+    authenticated: Boolean(viewModel.session?.authenticated),
+    thread,
+    threadId: thread.id ?? '',
+    anonymousReplies:
+      board.permissions?.canWrite === false ||
+      (viewModel.session?.trustTier ?? TRUST_TIERS.anonymous) === TRUST_TIERS.anonymous,
   };
+  const replyCount = threadReplyCount(thread, posts);
 
   return `
     ${renderNotice(uiState.notice)}
@@ -187,34 +192,241 @@ function renderThreadDetail(viewModel, uiState = {}) {
       ${renderLeftRail(viewModel, 'boards')}
       <section class="feed thread-detail" aria-labelledby="thread-title">
         <a class="back-link" href="${escapeAttribute(boardHref)}">${escapeHtml(t('common.backToBoard'))}</a>
-        <article class="thread-detail-card">
-          <header class="thread-detail-head">
-            <p class="section-label">${escapeHtml(t('thread.kicker'))}</p>
+        <article class="thread-detail-shell">
+          <header class="thread-hd">
+            <p class="thread-crumb">${escapeHtml(t('thread.kicker'))}</p>
             <h1 id="thread-title">${escapeHtml(title)}${locked ? ` ${renderLockedBadge()}` : ''}</h1>
-            <p class="author">${escapeHtml(shortIdentity(author))}${signed ? ` ${renderSignedPill(t('focus.passkeyCompact'))}` : ''}</p>
-            <div class="thread-detail-meta">
-              <span>${escapeHtml(t('board.replyCount', { count: thread.replyCount ?? thread.replies ?? posts.length }))}</span>
-              <span>${escapeHtml(thread.updatedAt ? formatExpiry(thread.updatedAt) : t('common.recent'))}</span>
+            <div class="thread-hd-meta">
+              ${renderThreadIdentity(threadAuthor(thread))}
+              <span>${escapeHtml(t('board.replyCount', { count: replyCount }))}</span>
+              ${renderThreadTime(thread.updatedAt ?? thread.createdAt)}
             </div>
             ${locked ? renderLockedBanner(thread.lockReasonCode) : ''}
           </header>
-          <section class="thread-detail-posts" aria-labelledby="thread-replies-title">
-            <div class="head">
-              <h3 id="thread-replies-title">${escapeHtml(t('thread.repliesTitle', { count: posts.length }))}</h3>
-            </div>
-            ${posts.length ? renderThreadPosts(posts, context) : `<p class="empty-state">${escapeHtml(t('thread.noReplies'))}</p>`}
+          <section class="thread-conversation" aria-labelledby="thread-replies-title">
+            ${renderThreadOriginalPost(thread, context)}
+            ${renderThreadReplyComposer({ locked, context })}
+            ${renderThreadReplies(posts, context)}
           </section>
-          ${renderThreadActions({
-            thread,
-            context,
-            locked,
-            authenticated: Boolean(viewModel.session?.authenticated),
-            threadId: thread.id ?? '',
-          })}
         </article>
       </section>
-      ${renderRightRail(viewModel, viewModel.boards ?? [])}
+      ${renderThreadContextRail(viewModel, board)}
     </section>
+  `;
+}
+
+function threadAuthor(thread) {
+  return thread?.authorDid || thread?.subjectDid || thread?.author || null;
+}
+
+function threadReplyCount(thread, posts = []) {
+  const rawCount = thread?.replyCount ?? thread?.replies;
+  const count = Number(rawCount);
+  return Number.isFinite(count) ? count : posts.length;
+}
+
+function threadTitle(thread) {
+  return thread?.title || thread?.subject || t('common.threadFallback');
+}
+
+function threadBody(thread) {
+  return thread?.body || thread?.content || thread?.text || threadTitle(thread);
+}
+
+function threadInitial(primary, fallback = 'T') {
+  const value = String(primary || fallback || '').trim();
+  return (value.charAt(0) || 'T').toUpperCase();
+}
+
+function renderPkPill(label = t('focus.passkeyCompact')) {
+  return `<span class="pk-pill">${escapeHtml(label)}</span>`;
+}
+
+function renderThreadIdentity(author) {
+  const signed = Boolean(author);
+  return `
+    <span class="thread-identity">
+      <span class="did-handle">${escapeHtml(shortIdentity(author))}</span>
+      ${signed ? renderPkPill() : ''}
+    </span>
+  `;
+}
+
+function renderThreadTime(value, className = 'thread-time') {
+  const label = value ? formatExpiry(value) : t('common.recent');
+  const parsed = value ? new Date(value) : null;
+  const datetime =
+    parsed && !Number.isNaN(parsed.getTime()) ? ` datetime="${escapeAttribute(parsed.toISOString())}"` : '';
+
+  return `<time class="${escapeAttribute(className)}"${datetime}>${escapeHtml(label)}</time>`;
+}
+
+function renderThreadOriginalPost(thread, context = {}) {
+  const author = threadAuthor(thread);
+  const signed = Boolean(author);
+  const body = threadBody(thread);
+  const threadId = context.threadId ?? thread?.id ?? '';
+  const report = context.authenticated
+    ? renderReportControl({
+        targetKind: 'thread',
+        targetRef: threadId,
+        boardId: context.boardId ?? '',
+      })
+    : '';
+
+  return `
+    <article class="thread-op">
+      <div class="thread-post-lane">
+        <div class="thread-op-avatar">${escapeHtml(threadInitial(threadTitle(thread), author))}</div>
+        <span class="thread-line" aria-hidden="true"></span>
+      </div>
+      <div class="thread-post-content">
+        <div class="thread-post-top">
+          <span class="thread-author">${escapeHtml(shortIdentity(author))}</span>
+          <span class="thread-source">${escapeHtml(t('thread.originalMarker'))}${signed ? ` · <span class="thread-source-strong">${escapeHtml(t('thread.signedPk'))}</span>` : ''}</span>
+          ${renderThreadTime(thread.createdAt ?? thread.updatedAt, 'thread-post-time')}
+        </div>
+        <div class="thread-body-copy">${renderThreadParagraphs(body)}</div>
+        ${renderThreadActionRow({
+          hearts: thread.likeCount ?? thread.likes ?? 0,
+          comments: threadReplyCount(thread, thread.posts ?? []),
+          reposts: thread.repostCount ?? 0,
+          report,
+        })}
+      </div>
+    </article>
+  `;
+}
+
+function renderThreadParagraphs(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return `<p>${escapeHtml(t('common.threadFallback'))}</p>`;
+
+  return text
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll('\n', '<br>')}</p>`)
+    .join('');
+}
+
+function renderThreadActionRow({ hearts = 0, comments = 0, reposts = 0, report = '' } = {}) {
+  return `
+    <div class="thread-action-row" aria-label="${escapeAttribute(t('thread.actionsAria'))}">
+      ${renderThreadIconButton('heart', hearts)}
+      ${renderThreadIconButton('comment', comments)}
+      ${renderThreadIconButton('repost', reposts)}
+      ${renderThreadIconButton('share', '')}
+      ${report}
+    </div>
+  `;
+}
+
+function renderThreadIconButton(kind, label) {
+  const content = label === '' ? '' : `<span>${escapeHtml(label)}</span>`;
+  return `<button class="thread-action" type="button" aria-label="${escapeAttribute(t(`thread.action.${kind}`))}">${renderThreadActionIcon(kind)}${content}</button>`;
+}
+
+function renderThreadReplyComposer({ locked, context = {} } = {}) {
+  const sessionIdentity = context.session?.subjectDid || context.session?.did || null;
+  const canReply = Boolean(context.canReply) && !locked;
+  const label = canReply ? t('common.reply') : locked ? t('moderation.lockedNoReply') : t('thread.loginToReply');
+  const field = canReply
+    ? `<button class="thread-composer-field" type="button">${escapeHtml(t('thread.composerPlaceholder'))}</button>`
+    : `<a class="thread-composer-field" href="#/login">${escapeHtml(t('thread.composerPlaceholder'))}</a>`;
+
+  return `
+    <div class="thread-reply-composer">
+      <div class="thread-reply-avatar${sessionIdentity ? '' : ' is-anonymous'}">${escapeHtml(sessionIdentity ? threadInitial(shortIdentity(sessionIdentity), sessionIdentity) : '·')}</div>
+      ${field}
+      <button class="thread-composer-send" type="button" ${canReply ? '' : 'disabled'}>${escapeHtml(label)}</button>
+    </div>
+  `;
+}
+
+function renderThreadReplies(posts, context = {}) {
+  return `
+    <section class="thread-replies" aria-labelledby="thread-replies-title">
+      <div class="thread-replies-head">
+        <h3 id="thread-replies-title">${escapeHtml(t('thread.repliesTitle', { count: posts.length }))}</h3>
+      </div>
+      ${
+        posts.length
+          ? posts.map((post) => renderThreadReplyItem(post, context)).join('')
+          : `<p class="empty-state">${escapeHtml(t('thread.noReplies'))}</p>`
+      }
+    </section>
+  `;
+}
+
+function renderThreadReplyItem(post, context = {}) {
+  const anonymous = Boolean(context.anonymousReplies) || !post.authorDid && !post.subjectDid && !post.author;
+  const author = post.authorDid || post.subjectDid || post.author || null;
+  const avatar = anonymous ? '·' : threadInitial(shortIdentity(author), author);
+  const authorLabel = anonymous ? t('common.anonymous') : shortIdentity(author);
+
+  if (post.removed) {
+    return `
+      <article class="thread-reply-item is-removed">
+        <div class="thread-reply-avatar${anonymous ? ' is-anonymous' : ''}">${escapeHtml(avatar)}</div>
+        <div class="thread-reply-content">
+          <div class="thread-reply-top">
+            <span class="thread-reply-name">${escapeHtml(authorLabel)}</span>
+            ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
+          </div>
+          ${renderRemovedTombstone(post.reasonCode)}
+        </div>
+      </article>
+    `;
+  }
+
+  const report = context.authenticated
+    ? renderReportControl({
+        targetKind: 'post',
+        targetRef: post.id ?? '',
+        boardId: context.boardId ?? '',
+      })
+    : '';
+
+  return `
+    <article class="thread-reply-item">
+      <div class="thread-reply-avatar${anonymous ? ' is-anonymous' : ''}">${escapeHtml(avatar)}</div>
+      <div class="thread-reply-content">
+        <div class="thread-reply-top">
+          <span class="thread-reply-name${anonymous ? ' is-anonymous' : ''}">${escapeHtml(authorLabel)}</span>
+          ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
+        </div>
+        <div class="thread-reply-body">${renderThreadParagraphs(post.body ?? post.content ?? '')}</div>
+        <div class="thread-mini-actions">
+          ${renderThreadMiniAction('heart', post.likeCount ?? post.likes ?? 0)}
+          ${renderThreadMiniAction('comment', post.replyCount ?? 0)}
+          ${report}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderThreadMiniAction(kind, count) {
+  return `<button class="thread-mini-action" type="button" aria-label="${escapeAttribute(t(`thread.action.${kind}`))}">${renderThreadActionIcon(kind)}<span>${escapeHtml(count)}</span></button>`;
+}
+
+function renderThreadContextRail(viewModel, board = {}) {
+  const boardId = board.slug || board.id || '';
+  const boardTitle = board.title || board.id || t('common.board');
+  const href = boardId ? `#/boards/${encodeURIComponent(boardId)}` : '#/boards';
+  const permission = renderPermissionLabel(viewModel);
+  const trustTier = trustTierLabel(viewModel.session?.trustTier ?? TRUST_TIERS.anonymous);
+
+  return `
+    <aside class="right-rail thread-context-rail" aria-label="${escapeAttribute(t('common.feedContextAria'))}">
+      <section class="side-panel thread-board-card">
+        <p class="section-label">${escapeHtml(t('thread.boardContext'))}</p>
+        <a class="thread-board-title" href="${escapeAttribute(href)}">#${escapeHtml(boardTitle)}</a>
+        <p class="thread-board-meta">${escapeHtml(permission)} · ${escapeHtml(t('common.trustTier'))}: ${escapeHtml(trustTier)}</p>
+      </section>
+      <section class="side-note">
+        ${escapeHtml(t('home.feedNote'))}
+      </section>
+    </aside>
   `;
 }
 
@@ -766,10 +978,10 @@ function renderThreadList(threads, context = {}) {
 }
 
 function renderThreadItem(thread, context = {}) {
-  const title = thread.title || thread.subject || t('common.threadFallback');
-  const author = thread.authorDid || thread.subjectDid || thread.author || null;
+  const title = threadTitle(thread);
+  const author = threadAuthor(thread);
   const signed = Boolean(author);
-  const initial = title.trim().charAt(0).toUpperCase() || 'T';
+  const initial = threadInitial(title, author);
   const locked = Boolean(thread.locked);
   const posts = thread.posts ?? [];
   const threadId = thread.id ?? '';
@@ -777,36 +989,8 @@ function renderThreadItem(thread, context = {}) {
   const href = threadId && context.boardId
     ? `#/boards/${encodeURIComponent(context.boardId)}/threads/${encodeURIComponent(threadId)}`
     : null;
-  const linkedTitle = href
-    ? `<a class="thread-title-link" href="${escapeAttribute(href)}">${escapeHtml(title)}</a>`
-    : escapeHtml(title);
-
-  return `
-    <li${signed ? ' class="signed"' : ''}${locked ? ' data-locked="true"' : ''}${threadId ? ` data-thread-id="${escapeAttribute(threadId)}"` : ''}>
-      <div class="av">${escapeHtml(initial)}</div>
-      <div>
-        <h4 class="ttl">${linkedTitle}${locked ? ` ${renderLockedBadge()}` : ''}</h4>
-        <p class="author">${escapeHtml(shortIdentity(author))}${signed ? ` ${renderSignedPill(t('focus.passkeyCompact'))}` : ''}</p>
-        ${locked ? renderLockedBanner(thread.lockReasonCode) : ''}
-        ${posts.length ? renderThreadPosts(posts, context) : ''}
-        ${renderThreadActions({ thread, context, locked, authenticated, threadId })}
-      </div>
-      <div class="meta">
-        <span class="replies">${escapeHtml(t('board.replyCount', { count: thread.replyCount ?? thread.replies ?? 0 }))}</span>
-        <span class="ago">${escapeHtml(thread.updatedAt ? formatExpiry(thread.updatedAt) : t('common.recent'))}</span>
-      </div>
-    </li>
-  `;
-}
-
-function renderThreadActions({ context, locked, authenticated, threadId }) {
-  // Constitution Base Rule 6: lock state is visible and reason-coded; a
-  // locked thread accepts no new replies, so the reply affordance disappears.
-  const reply = locked
-    ? `<span class="locked-no-reply">${escapeHtml(t('moderation.lockedNoReply'))}</span>`
-    : context.canReply
-      ? `<button type="button" class="thread-reply">${escapeHtml(t('common.reply'))}</button>`
-      : '';
+  const replyCount = threadReplyCount(thread, posts);
+  const status = locked ? t('error.threadLocked.title') : t('thread.statusActive');
   const report = authenticated
     ? renderReportControl({
         targetKind: 'thread',
@@ -814,43 +998,28 @@ function renderThreadActions({ context, locked, authenticated, threadId }) {
         boardId: context.boardId ?? '',
       })
     : '';
-
-  if (!reply && !report) return '';
-
-  return `<div class="thread-actions">${reply}${report}</div>`;
-}
-
-function renderThreadPosts(posts, context = {}) {
-  return `
-    <ul class="thread-posts">
-      ${posts.map((post) => renderThreadPost(post, context)).join('')}
-    </ul>
+  const titleContent = `${escapeHtml(title)}${locked ? ` ${renderLockedBadge()}` : ''}`;
+  const rowBody = `
+    <span class="board-thread-avatar">${escapeHtml(initial)}</span>
+    <span class="board-thread-copy">
+      <span class="board-thread-status">${escapeHtml(t('board.replyCount', { count: replyCount }))} · ${escapeHtml(status)}</span>
+      <span class="board-thread-title">${titleContent}</span>
+      <span class="board-thread-by">
+        ${renderThreadIdentity(author)}
+        ${renderThreadTime(thread.updatedAt ?? thread.createdAt, 'board-thread-time')}
+      </span>
+      ${locked ? renderLockedBanner(thread.lockReasonCode) : ''}
+    </span>
   `;
-}
-
-function renderThreadPost(post, context = {}) {
-  if (post.removed) {
-    return `
-      <li class="thread-post is-removed">
-        ${renderRemovedTombstone(post.reasonCode)}
-      </li>
-    `;
-  }
-
-  const authenticated = Boolean(context.session?.authenticated);
 
   return `
-    <li class="thread-post">
-      <p class="post-body">${escapeHtml(post.body ?? post.content ?? '')}</p>
+    <li class="board-thread-row${signed ? ' is-signed' : ''}${locked ? ' is-locked' : ''}"${locked ? ' data-locked="true"' : ''}${threadId ? ` data-thread-id="${escapeAttribute(threadId)}"` : ''}>
       ${
-        authenticated
-          ? renderReportControl({
-              targetKind: 'post',
-              targetRef: post.id ?? '',
-              boardId: context.boardId ?? '',
-            })
-          : ''
+        href
+          ? `<a class="board-thread-link thread-title-link" href="${escapeAttribute(href)}">${rowBody}</a>`
+          : `<div class="board-thread-link">${rowBody}</div>`
       }
+      ${report ? `<div class="board-thread-tools">${report}</div>` : ''}
     </li>
   `;
 }
@@ -1223,6 +1392,17 @@ function normalizeUiPreferences(preferences = {}) {
 
 function normalizeTheme(value) {
   return ['light', 'dark', 'auto'].includes(value) ? value : 'auto';
+}
+
+function renderThreadActionIcon(kind) {
+  const paths = {
+    heart: '<path d="M10 17 C6.2 14.2 4 11.9 4 8.8 C4 6.7 5.4 5.2 7.2 5.2 C8.4 5.2 9.3 5.8 10 6.8 C10.7 5.8 11.6 5.2 12.8 5.2 C14.6 5.2 16 6.7 16 8.8 C16 11.9 13.8 14.2 10 17 Z"/>',
+    comment: '<path d="M5 5.5 H15 V12.5 H10.8 L7 15.5 V12.5 H5 Z"/>',
+    repost: '<path d="M6 7 H14 L12 5 M14 13 H6 L8 15"/>',
+    share: '<path d="M8.5 6.5 L10 5 L11.5 6.5 M10 5 V12"/><path d="M6 10 V15 H14 V10"/>',
+  };
+
+  return `<svg class="thread-action-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">${paths[kind] ?? paths.heart}</svg>`;
 }
 
 function renderInlineMark() {

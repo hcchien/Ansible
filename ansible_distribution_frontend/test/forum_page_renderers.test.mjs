@@ -302,29 +302,33 @@ const moderatedBoardHtml = renderPageBody(moderatedBoardVm);
 // Board rows expose real thread detail links instead of inert list text.
 assert.match(moderatedBoardHtml, /href="#\/boards\/general\/threads\/thread-9"/);
 assert.match(moderatedBoardHtml, /href="#\/boards\/general\/threads\/thread-1"/);
+assert.match(moderatedBoardHtml, /class="board-thread-row is-signed"/);
+assert.match(moderatedBoardHtml, /class="board-thread-status"/);
+assert.match(moderatedBoardHtml, /class="board-thread-avatar"/);
+assert.match(moderatedBoardHtml, /class="did-handle"/);
+assert.match(moderatedBoardHtml, /class="pk-pill"/);
+assert.doesNotMatch(moderatedBoardHtml, /class="thread-posts"/);
 
-// Removed-post tombstone: reason-coded, content stripped.
-assert.match(moderatedBoardHtml, /class="post-tombstone"/);
-assert.match(moderatedBoardHtml, /已自此看板移除 · 垃圾訊息/);
+// Board rows stay summary-only; removed content is visible in the thread detail projection.
 assert.doesNotMatch(moderatedBoardHtml, /removed body text/);
-assert.match(moderatedBoardHtml, /kept body text/);
+assert.doesNotMatch(moderatedBoardHtml, /kept body text/);
 
 // Locked-thread banner with reason; reply affordance disappears on lock.
 assert.match(moderatedBoardHtml, /class="locked-banner"/);
 assert.match(moderatedBoardHtml, /討論串已鎖定 · 騷擾/);
 assert.match(moderatedBoardHtml, /class="locked-badge"/);
-assert.match(moderatedBoardHtml, /鎖定中的討論串不接受新回覆/);
-assert.match(moderatedBoardHtml, /class="thread-reply"/);
+assert.doesNotMatch(moderatedBoardHtml, /鎖定中的討論串不接受新回覆/);
+assert.doesNotMatch(moderatedBoardHtml, /class="thread-reply"/);
 const lockedItemHtml = moderatedBoardHtml.slice(
   moderatedBoardHtml.indexOf('Reported thread'),
   moderatedBoardHtml.indexOf('Open thread'),
 );
 assert.doesNotMatch(lockedItemHtml, /class="thread-reply"/);
 
-// Signed-in report picker: reason enum + note field + required-note hint.
+// Signed-in thread report picker: reason enum + note field + required-note hint.
 assert.match(moderatedBoardHtml, /data-action="submit-report"/);
 assert.match(moderatedBoardHtml, /data-target-kind="thread" data-target-ref="thread-1"/);
-assert.match(moderatedBoardHtml, /data-target-kind="post" data-target-ref="post-201"/);
+assert.doesNotMatch(moderatedBoardHtml, /data-target-kind="post" data-target-ref="post-201"/);
 assert.match(moderatedBoardHtml, /<option value="spam">垃圾訊息<\/option>/);
 assert.match(moderatedBoardHtml, /<option value="harassment">騷擾<\/option>/);
 assert.match(moderatedBoardHtml, /<option value="illegal_content">違法內容<\/option>/);
@@ -334,7 +338,7 @@ assert.match(moderatedBoardHtml, /<option value="other">其他<\/option>/);
 assert.match(moderatedBoardHtml, /data-report-note/);
 assert.match(moderatedBoardHtml, /選擇「其他」時，請留一段附註給板主。/);
 
-// Anonymous sessions read tombstones and lock state but get no report action.
+// Anonymous sessions read thread lock state on the board list but get no report action.
 const anonymousModeratedHtml = renderPageBody(
   buildAppViewModel({
     route: { pageId: PAGE_IDS.board, params: { boardId: 'general' } },
@@ -348,7 +352,7 @@ const anonymousModeratedHtml = renderPageBody(
     },
   }),
 );
-assert.match(anonymousModeratedHtml, /class="post-tombstone"/);
+assert.doesNotMatch(anonymousModeratedHtml, /class="post-tombstone"/);
 assert.match(anonymousModeratedHtml, /class="locked-banner"/);
 assert.doesNotMatch(anonymousModeratedHtml, /data-action="submit-report"/);
 assert.doesNotMatch(anonymousModeratedHtml, /class="thread-reply"/);
@@ -370,11 +374,48 @@ const threadDetailVm = buildAppViewModel({
 });
 const threadDetailHtml = renderPageBody(threadDetailVm);
 assert.match(threadDetailHtml, /class="feed thread-detail"/);
+assert.match(threadDetailHtml, /class="thread-detail-shell"/);
+assert.match(threadDetailHtml, /class="thread-hd"/);
+assert.match(threadDetailHtml, /THREAD · 討論串/);
 assert.match(threadDetailHtml, /Open thread/);
+assert.match(threadDetailHtml, /class="did-handle"/);
+assert.match(threadDetailHtml, /class="pk-pill"/);
+assert.match(threadDetailHtml, /class="thread-op"/);
+assert.match(threadDetailHtml, /起頭 · <span class="thread-source-strong">signed · PK<\/span>/);
 assert.match(threadDetailHtml, /reply content from AppView/);
+assert.match(threadDetailHtml, /class="thread-replies"/);
+assert.match(threadDetailHtml, /class="thread-reply-item"/);
+assert.match(threadDetailHtml, /class="thread-reply-avatar/);
+assert.match(threadDetailHtml, /class="thread-mini-actions"/);
+assert.match(threadDetailHtml, /class="thread-reply-composer"/);
+assert.match(threadDetailHtml, /class="right-rail thread-context-rail"/);
+assert.match(threadDetailHtml, /看板 · BOARD/);
+assert.match(threadDetailHtml, /#General/);
 assert.match(threadDetailHtml, /href="#\/boards\/general"/);
 assert.match(threadDetailHtml, /data-target-kind="thread" data-target-ref="thread-1"/);
+assert.match(threadDetailHtml, /data-target-kind="post" data-target-ref="post-201"/);
+assert.doesNotMatch(threadDetailHtml, /class="thread-posts"/);
 assert.doesNotMatch(threadDetailHtml, /路徑不可用/);
+
+const lockedThreadDetailVm = buildAppViewModel({
+  route: { pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-9' } },
+  session: moderatedSession,
+  forum: {
+    host: normalizeForumHost(CONTRACT_FIXTURES.forum.host),
+    boards: [generalBoard],
+    board: generalBoard,
+    thread: moderatedThreads[0],
+    threads: moderatedThreads,
+    capabilities: { canCreateThread: true, canReply: false },
+  },
+});
+const lockedThreadDetailHtml = renderPageBody(lockedThreadDetailVm);
+assert.match(lockedThreadDetailHtml, /class="post-tombstone"/);
+assert.match(lockedThreadDetailHtml, /已自此看板移除 · 垃圾訊息/);
+assert.match(lockedThreadDetailHtml, /kept body text/);
+assert.match(lockedThreadDetailHtml, /class="locked-banner"/);
+assert.match(lockedThreadDetailHtml, /討論串已鎖定 · 騷擾/);
+assert.match(lockedThreadDetailHtml, /鎖定中的討論串不接受新回覆/);
 
 // Moderation console: queue grouped by board, action buttons, audit history.
 const moderationConsoleVm = buildAppViewModel({
@@ -462,8 +503,10 @@ assert.match(englishConsoleHtml, /Open reports · 3/);
 assert.match(englishConsoleHtml, /Dismiss report/);
 assert.match(englishConsoleHtml, /Remove from board/);
 const englishBoardHtml = renderPageBody(moderatedBoardVm);
-assert.match(englishBoardHtml, /Removed from this board · Spam/);
 assert.match(englishBoardHtml, /Thread locked · Harassment/);
+const englishLockedThreadDetailHtml = renderPageBody(lockedThreadDetailVm);
+assert.match(englishLockedThreadDetailHtml, /Removed from this board · Spam/);
+assert.match(englishLockedThreadDetailHtml, /Thread locked · Harassment/);
 setCurrentLocale('zh-Hant');
 
 console.log('ok - forum page renderers');
