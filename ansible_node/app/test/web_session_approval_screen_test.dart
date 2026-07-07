@@ -77,6 +77,51 @@ void main() {
     expect(approved?.sessionToken, 'wst_token');
   });
 
+  testWidgets('closes with approved result after user approves', (
+    tester,
+  ) async {
+    bool? routeResult;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: const Text('Settings page'),
+            floatingActionButton: ElevatedButton(
+              key: const Key('open_web_session_approval'),
+              onPressed: () async {
+                routeResult = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute<bool>(
+                    builder: (_) => WebSessionApprovalScreen(
+                      challengeId: 'wsc_abc',
+                      currentDid: 'did:plc:abc23456789',
+                      client: _FakeApprovalClient(),
+                      grantService: _FakeGrantService(),
+                      deviceIdProvider: const _FakeDeviceIdProvider(),
+                      now: () => DateTime.utc(2026, 5, 11, 12, 50),
+                    ),
+                  ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('open_web_session_approval')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('核准'));
+    await tester.pump();
+    await tester.tap(find.text('核准'));
+    await tester.pumpAndSettle();
+
+    expect(routeResult, isTrue);
+    expect(find.text('Settings page'), findsOneWidget);
+    expect(find.text('核准網頁工作階段'), findsNothing);
+  });
+
   testWidgets('rejects when user taps reject', (tester) async {
     final client = _FakeApprovalClient();
     var rejected = false;

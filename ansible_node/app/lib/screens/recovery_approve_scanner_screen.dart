@@ -98,8 +98,8 @@ class _RecoveryApproveScannerScreenState
       _handling = true;
       setState(() => _errorMessage = null);
       Navigator.of(context)
-          .push(
-            elixFocusPageRoute<void>(
+          .push<bool>(
+            elixFocusPageRoute<bool>(
               settings: const RouteSettings(name: '/web-session/approve'),
               builder: (routeContext) =>
                   widget.webSessionApprovalBuilder?.call(routeContext, link) ??
@@ -110,7 +110,12 @@ class _RecoveryApproveScannerScreenState
                   ),
             ),
           )
-          .whenComplete(() {
+          .then((approved) {
+            if (!mounted) return;
+            if (approved == true && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+              return;
+            }
             _handling = false;
           });
     } catch (_) {

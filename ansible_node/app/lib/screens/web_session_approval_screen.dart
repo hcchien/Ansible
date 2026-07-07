@@ -79,7 +79,6 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
       final signed = await _grantService.sign(grant);
       final result = await _client.approve(signed);
       if (!mounted) return;
-      widget.onApproved?.call(result);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -87,6 +86,9 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
           ),
         ),
       );
+      widget.onApproved?.call(result);
+      if (!mounted) return;
+      Navigator.of(context).maybePop(true);
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = userFacingError(context, error));
@@ -103,7 +105,6 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
     try {
       await _client.reject(widget.challengeId);
       if (!mounted) return;
-      widget.onRejected?.call();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -111,6 +112,9 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
           ),
         ),
       );
+      widget.onRejected?.call();
+      if (!mounted) return;
+      Navigator.of(context).maybePop(false);
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = userFacingError(context, error));
@@ -123,9 +127,7 @@ class _WebSessionApprovalScreenState extends State<WebSessionApprovalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          context.uiCopy(zh: '核准網頁工作階段', en: 'Approve web session'),
-        ),
+        title: Text(context.uiCopy(zh: '核准網頁工作階段', en: 'Approve web session')),
       ),
       body: FutureBuilder<WebSessionChallenge>(
         future: _challengeFuture,
