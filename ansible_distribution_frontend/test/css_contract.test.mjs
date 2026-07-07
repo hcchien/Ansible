@@ -13,58 +13,58 @@ assert.match(
 );
 assert.match(
   css,
-  /--background:\s*#FBF7DC;/,
-  'Elix Bone Goose background token is required',
+  /--background:\s*#FFFFFF;/,
+  'Elix Web near-white background token is required',
 );
 assert.match(
   css,
-  /--surface-raised:\s*#F4EEC6;/,
-  'Elix Vellum raised paper token is required',
+  /--surface-raised:\s*#F6F6F6;/,
+  'Elix Web soft surface token is required',
 );
 assert.match(
   css,
-  /--surface-deep:\s*#E8DEAA;/,
-  'Elix deep paper token is required',
+  /--surface-deep:\s*#ECECEC;/,
+  'Elix Web deep surface token is required',
 );
 assert.match(
   css,
-  /--border:\s*#D6CB94;/,
-  'Elix rule token is required',
+  /--border:\s*#E6E6E6;/,
+  'Elix Web rule token is required',
 );
 assert.match(
   css,
-  /--muted-fill:\s*#E8DEAA;/,
-  'Elix muted fill token is required',
+  /--muted-fill:\s*#ECECEC;/,
+  'Elix Web muted fill token is required',
 );
 assert.match(
   css,
-  /--accent:\s*#B88C2E;/,
+  /--accent:\s*#B97A3C;/,
   'Elix ochre accent token is required',
 );
 assert.match(
   css,
-  /--warning:\s*#7E4A1E;/,
+  /--warning:\s*#9A4A24;/,
   'Elix ember warning token is required',
 );
 assert.match(
   css,
-  /--danger:\s*#7E4A1E;/,
+  /--danger:\s*#9A4A24;/,
   'Elix danger token is required',
 );
 assert.match(
   css,
-  /--success:\s*#5A6E3A;/,
+  /--success:\s*#4A6B5E;/,
   'Elix moss success token is required',
 );
 assert.match(
   css,
-  /--text:\s*#1F2E20;/,
-  'Elix forest ink token is required',
+  /--text:\s*#0A0A0A;/,
+  'Elix Web true-ink text token is required',
 );
 assert.match(
   css,
-  /--muted:\s*#3D4E3D;/,
-  'Elix soft ink token is required',
+  /--muted:\s*#5C5C5C;/,
+  'Elix Web muted ink token is required',
 );
 assert.match(
   css,
