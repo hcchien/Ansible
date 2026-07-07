@@ -5,7 +5,20 @@ import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../services/recovery_approval_service.dart';
 import '../services/relay_anchor_client.dart';
+import '../services/web_session_approval_client.dart';
+import '../services/web_session_grant_service.dart';
 import '../theme/ansible_design.dart';
+import '../widgets/elix_focus_route.dart';
+import 'web_session_approval_screen.dart';
+
+typedef RecoveryQrScannerBuilder =
+    Widget Function(
+      BuildContext context,
+      ValueChanged<BarcodeCapture> onDetect,
+    );
+
+typedef RecoveryWebSessionApprovalRouteBuilder =
+    Widget Function(BuildContext context, WebSessionApprovalLink link);
 
 /// OLD-device half of approve-from-other-device recovery: scan the new
 /// device's QR, show the user WHAT they are approving (whose identity, the
@@ -18,12 +31,20 @@ class RecoveryApproveScannerScreen extends StatefulWidget {
     super.key,
     required this.localDid,
     this.service,
+    this.allowLocalHttp,
+    this.allowedWebSessionRelayOrigins,
+    this.scannerBuilder,
+    this.webSessionApprovalBuilder,
   });
 
   final String localDid;
 
   /// Injectable for tests; defaults to the relay from the build config.
   final RecoveryApprovalService? service;
+  final bool? allowLocalHttp;
+  final Set<String>? allowedWebSessionRelayOrigins;
+  final RecoveryQrScannerBuilder? scannerBuilder;
+  final RecoveryWebSessionApprovalRouteBuilder? webSessionApprovalBuilder;
 
   @override
   State<RecoveryApproveScannerScreen> createState() =>
@@ -33,6 +54,7 @@ class RecoveryApproveScannerScreen extends StatefulWidget {
 class _RecoveryApproveScannerScreenState
     extends State<RecoveryApproveScannerScreen> {
   bool _handling = false;
+  String? _errorMessage;
 
   RecoveryApprovalService get _service =>
       widget.service ??
@@ -46,6 +68,7 @@ class _RecoveryApproveScannerScreenState
     if (_handling) return;
     final raw = capture.barcodes.firstOrNull?.rawValue;
     if (raw == null || raw.isEmpty) return;
+    if (_handleWebSessionCapture(raw)) return;
     final anchor = RecoveryApprovalService.parseRequest(raw);
     if (anchor == null) return; // not our QR — keep scanning
     _handling = true;
@@ -54,6 +77,52 @@ class _RecoveryApproveScannerScreenState
     } finally {
       if (mounted) _handling = false;
     }
+  }
+
+  bool _handleWebSessionCapture(String rawValue) {
+    final uri = Uri.tryParse(rawValue);
+    final isWebSessionLink =
+        uri?.scheme == 'trisaura' &&
+        uri?.host == 'web-session' &&
+        uri?.path == '/approve';
+    if (!isWebSessionLink) return false;
+
+    try {
+      final link = WebSessionApprovalLink.parse(
+        uri!,
+        allowedRelayOrigins:
+            widget.allowedWebSessionRelayOrigins ??
+            const {AppEnvironment.defaultRelayBaseUrl},
+        allowLocalHttp: widget.allowLocalHttp ?? !AppEnvironment.isProduction,
+      );
+      _handling = true;
+      setState(() => _errorMessage = null);
+      Navigator.of(context)
+          .push(
+            elixFocusPageRoute<void>(
+              settings: const RouteSettings(name: '/web-session/approve'),
+              builder: (routeContext) =>
+                  widget.webSessionApprovalBuilder?.call(routeContext, link) ??
+                  WebSessionApprovalScreen(
+                    challengeId: link.challengeId,
+                    currentDid: widget.localDid,
+                    client: WebSessionApprovalClient(baseUrl: link.relayOrigin),
+                  ),
+            ),
+          )
+          .whenComplete(() {
+            _handling = false;
+          });
+    } catch (_) {
+      setState(
+        () => _errorMessage = context.uiCopy(
+          zh: '無法解析這個 QR request。',
+          en: 'Could not parse this QR request.',
+        ),
+      );
+    }
+
+    return true;
   }
 
   Future<void> _confirmAndApprove(dynamic anchor) async {
@@ -76,9 +145,11 @@ class _RecoveryApproveScannerScreenState
           children: [
             Text(
               context.uiCopy(
-                zh: '這會讓一台新裝置在 72 小時寬限期後接管你的身分'
+                zh:
+                    '這會讓一台新裝置在 72 小時寬限期後接管你的身分'
                     '（${anchor.handle}）。只在你自己正在復原時核可。',
-                en: 'A new device will take over your identity '
+                en:
+                    'A new device will take over your identity '
                     '(${anchor.handle}) after the 72h grace window. Approve '
                     'only if YOU are recovering right now.',
               ),
@@ -121,7 +192,8 @@ class _RecoveryApproveScannerScreenState
 
     final doneMessage = context.uiCopy(
       zh: '已送出核可。寬限期後新裝置生效；期間其他裝置可否決。',
-      en: 'Approval submitted. The new device activates after the grace '
+      en:
+          'Approval submitted. The new device activates after the grace '
           'window; other devices can veto until then.',
     );
     final staleMessage = context.uiCopy(
@@ -134,14 +206,12 @@ class _RecoveryApproveScannerScreenState
     );
 
     try {
-      await _service.approve(
-        localDid: widget.localDid,
-        anchor: anchor,
-      );
+      await _service.approve(localDid: widget.localDid, anchor: anchor);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.maybeOf(context)
-          ?.showSnackBar(SnackBar(content: Text(doneMessage)));
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(doneMessage)));
     } on RecoveryApprovalException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -153,8 +223,9 @@ class _RecoveryApproveScannerScreenState
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.maybeOf(context)
-          ?.showSnackBar(SnackBar(content: Text(failedMessage)));
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(failedMessage)));
     }
   }
 
@@ -174,7 +245,10 @@ class _RecoveryApproveScannerScreenState
       ),
       body: Stack(
         children: [
-          MobileScanner(onDetect: _handleCapture),
+          (widget.scannerBuilder ?? _defaultScannerBuilder)(
+            context,
+            _handleCapture,
+          ),
           Align(
             alignment: Alignment.topCenter,
             child: Material(
@@ -183,19 +257,39 @@ class _RecoveryApproveScannerScreenState
                 padding: const EdgeInsets.all(14),
                 child: Text(
                   context.uiCopy(
-                    zh: '掃描新裝置畫面上的復原 QR',
-                    en: 'Scan the recovery QR shown on the new device',
+                    zh: '掃描新裝置畫面上的復原 QR，或網頁登入 QR',
+                    en: 'Scan a device recovery QR or web login QR',
                   ),
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Colors.white),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.white),
                 ),
               ),
             ),
           ),
+          if (_errorMessage != null)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Material(
+                color: Colors.black87,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
+}
+
+Widget _defaultScannerBuilder(
+  BuildContext context,
+  ValueChanged<BarcodeCapture> onDetect,
+) {
+  return MobileScanner(onDetect: onDetect);
 }

@@ -116,7 +116,7 @@ function drawFunctionPatterns(matrix, reserved) {
   drawFinder(matrix, reserved, SIZE - 4, 3);
   drawFinder(matrix, reserved, 3, SIZE - 4);
 
-  for (let i = 0; i < SIZE; i += 1) {
+  for (let i = 8; i < SIZE - 8; i += 1) {
     setFunction(matrix, reserved, 6, i, i % 2 === 0);
     setFunction(matrix, reserved, i, 6, i % 2 === 0);
   }
@@ -299,13 +299,15 @@ function versionBits(version) {
 }
 
 function reedSolomonGenerator(degree) {
-  const result = [1];
+  const result = new Array(degree).fill(0);
+  result[degree - 1] = 1;
+  let root = 1;
   for (let i = 0; i < degree; i += 1) {
-    result.push(0);
-    for (let j = result.length - 1; j > 0; j -= 1) {
-      result[j] = result[j - 1] ^ multiply(result[j], GF_EXP[i]);
+    for (let j = 0; j < degree; j += 1) {
+      result[j] = multiply(result[j], root);
+      if (j + 1 < degree) result[j] ^= result[j + 1];
     }
-    result[0] = multiply(result[0], GF_EXP[i]);
+    root = multiply(root, 0x02);
   }
   return result;
 }

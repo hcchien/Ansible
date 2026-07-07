@@ -289,11 +289,14 @@ class SettingsHomeScreen extends StatelessWidget {
               AnsibleSettingsRow(
                 key: const Key('settings_approve_recovery_row'),
                 glyph: '⇄',
-                label: context.uiCopy(zh: '核可另一台裝置', en: 'Approve a device'),
+                label: context.uiCopy(
+                  zh: '核可裝置 / 網頁登入',
+                  en: 'Approve device / web login',
+                ),
                 en: 'APPROVE',
                 sub: context.uiCopy(
-                  zh: '掃描新裝置的復原 QR，替它背書',
-                  en: 'Scan a new device\'s recovery QR to vouch for it',
+                  zh: '掃描復原 QR 或網頁登入 QR',
+                  en: 'Scan a recovery QR or web login QR',
                 ),
                 last: true,
                 onTap: () {
@@ -458,4 +461,3 @@ class SettingsHomeScreen extends StatelessWidget {
     return '${did.substring(0, 14)}...${did.substring(did.length - 4)}';
   }
 }
-
