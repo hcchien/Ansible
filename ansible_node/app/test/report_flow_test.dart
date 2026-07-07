@@ -1,11 +1,34 @@
 import 'dart:convert';
 
+import 'package:ansible_node/screens/posts_view_screen.dart';
 import 'package:ansible_node/services/forum_host_client.dart';
 import 'package:ansible_node/widgets/report_dialog.dart';
+import 'package:ansible_store/ansible_store.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+
+/// Records the submitted intent instead of hitting the network; throws
+/// [error] first when set (failure-path tests).
+class _RecordingForumHostClient extends ForumHostClient {
+  _RecordingForumHostClient() : super(baseUrl: 'https://host.example');
+
+  ReportContentIntent? submitted;
+  Object? error;
+
+  @override
+  Future<ReportSubmission> submitReport(ReportContentIntent intent) async {
+    submitted = intent;
+    final failure = error;
+    if (failure != null) throw failure;
+    return const ReportSubmission(
+      duplicate: false,
+      report: {'id': 'r1', 'status': 'open'},
+    );
+  }
+}
 
 void main() {
   group('ReportContentIntent canonical payload', () {
@@ -199,6 +222,159 @@ void main() {
       final draft = await result;
       expect(draft?.reasonCode, 'spam');
       expect(draft?.note, isNull);
+    });
+  });
+
+  // Full report rail through the thread view: overflow/app-bar action →
+  // reason dialog → signed intent handed to the (fake) Forum Host client.
+  // Widget copy assertions are zh-Hant (test locale fallback).
+  group('report submission from the thread view', () {
+    const localDid = 'did:plc:local-user';
+    const otherDid = 'did:plc:someone-else';
+    final now = DateTime.utc(2026, 7, 7);
+
+    late AppDatabase db;
+    late Thread thread;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      await DriftBoardRepository(db).create(
+        Board(
+          id: 'board-1',
+          slug: 'general',
+          title: 'General',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      thread = Thread(
+        id: 'thread-1',
+        boardId: 'board-1',
+        title: 'A thread',
+        authorId: otherDid,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await DriftThreadRepository(db).create(thread);
+      await DriftPostRepository(db).create(
+        Post(
+          id: 'post-1',
+          threadId: 'thread-1',
+          boardId: 'board-1',
+          authorId: otherDid,
+          content: 'questionable content',
+          createdAt: now,
+          updatedAt: now,
+          lastEditAt: now,
+        ),
+      );
+      await DriftHostedBoardRepository(db).upsertProjection(
+        HostedBoardProjection(
+          localBoardId: 'board-1',
+          forumHostId: 'host-1',
+          hostedBoardId: 'hosted-1',
+          canonicalBoardUri: 'https://host.example/boards/hosted-1',
+          remoteSlug: 'general',
+          localSlug: 'general',
+          title: 'General',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await DriftRemoteNodeRepository(db).create(
+        RemoteNode(
+          id: 'host-1',
+          name: 'Host',
+          url: 'https://host.example',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    });
+
+    tearDown(() => db.close());
+
+    Future<void> pumpThreadView(
+      WidgetTester tester,
+      _RecordingForumHostClient client,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PostsViewScreen(
+            db: db,
+            thread: thread,
+            authorDid: localDid,
+            reportClientFactory: (_) => client,
+            reportPayloadSigner: (_) async => 'facadefeed',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('post report submits a signed reason-coded intent', (
+      tester,
+    ) async {
+      final client = _RecordingForumHostClient();
+      await pumpThreadView(tester, client);
+
+      await tester.tap(find.byIcon(Icons.more_horiz).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('檢舉'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('report_reason_harassment')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('report_submit_button')));
+      await tester.pumpAndSettle();
+
+      final intent = client.submitted;
+      expect(intent, isNotNull);
+      expect(intent!.targetKind, 'post');
+      expect(intent.targetRef, 'post-1');
+      expect(intent.boardId, 'hosted-1');
+      expect(intent.reasonCode, 'harassment');
+      expect(intent.authorDid, localDid);
+      expect(intent.targetForumHost, 'https://host.example');
+      expect(intent.signature, 'facadefeed');
+      // Confirmation snackbar.
+      expect(find.text('已送出檢舉，將由板務依板規處理'), findsOneWidget);
+    });
+
+    testWidgets('thread report targets the thread itself', (tester) async {
+      final client = _RecordingForumHostClient();
+      await pumpThreadView(tester, client);
+
+      await tester.tap(find.byKey(const Key('report_thread_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('report_submit_button')));
+      await tester.pumpAndSettle();
+
+      final intent = client.submitted;
+      expect(intent, isNotNull);
+      expect(intent!.targetKind, 'thread');
+      expect(intent.targetRef, 'thread-1');
+      expect(intent.reasonCode, 'spam');
+    });
+
+    testWidgets('submission failure surfaces localized user-facing copy', (
+      tester,
+    ) async {
+      final client = _RecordingForumHostClient()
+        ..error = const ForumHostException(
+          statusCode: 429,
+          body: {},
+          error: 'rate_limited',
+        );
+      await pumpThreadView(tester, client);
+
+      await tester.tap(find.byKey(const Key('report_thread_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('report_submit_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('操作太頻繁，請稍後再試。'), findsOneWidget);
+      expect(find.text('已送出檢舉，將由板務依板規處理'), findsNothing);
     });
   });
 }

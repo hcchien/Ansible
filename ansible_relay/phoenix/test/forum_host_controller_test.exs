@@ -470,6 +470,317 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert Jason.decode!(second.resp_body)["error"] == "duplicate_intent"
   end
 
+  # ---- signed-intent board update (creator-only board management) ----
+
+  defp signed_update_board_intent(did, private_key, board_id, attrs \\ %{}) do
+    payload =
+      Map.merge(
+        %{
+          "type" => "io.trisaura.forum.updateBoard",
+          "version" => 1,
+          "intent_id" => "intent-update-#{System.unique_integer([:positive])}",
+          "author_did" => did,
+          "board_id" => board_id,
+          "target_forum_host" => "http://localhost:4001",
+          "action" => "update_board",
+          "created_at" => DateTime.to_iso8601(DateTime.utc_now()),
+          "expires_at" => DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), 300, :second)),
+          "board" => %{
+            "title" => "Updated Title",
+            "description" => "Updated description"
+          }
+        },
+        attrs
+      )
+
+    Map.put(payload, "signature", sign(private_key, SignedIntent.canonical_json(payload)))
+  end
+
+  defp create_board_as(did, private_key, title) do
+    response =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{"board" => %{"title" => title}}),
+        []
+      )
+
+    assert response.status == 201
+    Jason.decode!(response.resp_body)["hosted_board_id"]
+  end
+
+  test "POST boards/:id/update lets the creator update title, description, and policy" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updateowner#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Update Me #{System.unique_integer([:positive])}")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{
+          "board" => %{
+            "title" => "Renamed Board",
+            "description" => "New description",
+            "posting_policy" => %{"min_post_tier" => "verified_human"}
+          }
+        }),
+        []
+      )
+
+    assert response.status == 200
+
+    body = Jason.decode!(response.resp_body)
+    assert body["hosted_board_id"] == board_id
+    assert body["title"] == "Renamed Board"
+    assert body["description"] == "New description"
+    assert body["posting_policy"] == %{"min_post_tier" => "verified_human"}
+
+    # The update is durable and the board identity is unchanged.
+    listed = get_json("/api/v1/forum-host/boards/created-by/#{did}")
+    board = listed.resp_body |> Jason.decode!() |> Map.fetch!("boards") |> hd()
+    assert board["hosted_board_id"] == board_id
+    assert board["title"] == "Renamed Board"
+    assert board["slug"] == board_id
+  end
+
+  test "POST boards/:id/update leaves absent fields untouched" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:partialupdate#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    created =
+      post_json(
+        "/api/v1/forum-host/boards",
+        signed_create_board_intent(did, private_key, %{
+          "board" => %{
+            "title" => "Partial #{System.unique_integer([:positive])}",
+            "description" => "Keep me"
+          }
+        }),
+        []
+      )
+
+    assert created.status == 201
+    board_id = Jason.decode!(created.resp_body)["hosted_board_id"]
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{
+          "board" => %{"title" => "Partial Renamed"}
+        }),
+        []
+      )
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["title"] == "Partial Renamed"
+    assert body["description"] == "Keep me"
+  end
+
+  test "POST boards/:id/update rejects a non-creator DID with 403" do
+    {owner_public_key, owner_private_key} = ed25519_keypair()
+    owner_did = "did:plc:updateauthor#{System.unique_integer([:positive])}"
+    :ok = cache_identity(owner_did, owner_public_key)
+    board_id = create_board_as(owner_did, owner_private_key, "Owned #{System.unique_integer([:positive])}")
+
+    {other_public_key, other_private_key} = ed25519_keypair()
+    other_did = "did:plc:updatestranger#{System.unique_integer([:positive])}"
+    :ok = cache_identity(other_did, other_public_key)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(other_did, other_private_key, board_id),
+        []
+      )
+
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "not_board_creator"
+  end
+
+  test "POST boards/:id/update rejects seed boards that have no creator record" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:seedupdater#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    # "general" is seeded from config, not created through an accepted intent.
+    get_json("/api/v1/forum-host/boards")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/general/update",
+        signed_update_board_intent(did, private_key, "general"),
+        []
+      )
+
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "not_board_creator"
+  end
+
+  test "POST boards/:id/update rejects a tampered signed intent" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updatetamper#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Tamper #{System.unique_integer([:positive])}")
+
+    body =
+      did
+      |> signed_update_board_intent(private_key, board_id)
+      |> put_in(["board", "title"], "Tampered After Signing")
+
+    response = post_json("/api/v1/forum-host/boards/#{board_id}/update", body, [])
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_signature"
+  end
+
+  test "POST boards/:id/update replays are idempotent; changed replays are rejected" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updatereplay#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Replay #{System.unique_integer([:positive])}")
+    intent_id = "intent-update-replay-#{System.unique_integer([:positive])}"
+
+    intent =
+      signed_update_board_intent(did, private_key, board_id, %{
+        "intent_id" => intent_id,
+        "board" => %{"title" => "Replay Renamed"}
+      })
+
+    first = post_json("/api/v1/forum-host/boards/#{board_id}/update", intent, [])
+    replay = post_json("/api/v1/forum-host/boards/#{board_id}/update", intent, [])
+
+    changed =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{
+          "intent_id" => intent_id,
+          "board" => %{"title" => "Replay Renamed Differently"}
+        }),
+        []
+      )
+
+    assert first.status == 200
+    assert replay.status == 200
+    assert Jason.decode!(replay.resp_body)["title"] == "Replay Renamed"
+    assert changed.status == 409
+    assert Jason.decode!(changed.resp_body)["error"] == "duplicate_intent"
+  end
+
+  test "POST boards/:id/update rejects an unknown posting_policy min_post_tier" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updatebadtier#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Bad Tier #{System.unique_integer([:positive])}")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{
+          "board" => %{"posting_policy" => %{"min_post_tier" => "vip"}}
+        }),
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_min_post_tier"
+  end
+
+  test "POST boards/:id/update rejects external_inclusion with a trust gate" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updateconflict#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Conflict #{System.unique_integer([:positive])}")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{
+          "board" => %{
+            "posting_policy" => %{
+              "external_inclusion" => true,
+              "min_post_tier" => "verified_human"
+            }
+          }
+        }),
+        []
+      )
+
+    assert response.status == 422
+
+    assert Jason.decode!(response.resp_body)["error"] ==
+             "external_inclusion_conflicts_with_trust_gate"
+  end
+
+  test "POST boards/:id/update 404s for a missing board" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updatemissing#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/no-such-board/update",
+        signed_update_board_intent(did, private_key, "no-such-board"),
+        []
+      )
+
+    assert response.status == 404
+    assert Jason.decode!(response.resp_body)["error"] == "board_not_found"
+  end
+
+  test "POST boards/:id/update rejects a path/payload board_id mismatch" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updatemismatch#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Mismatch #{System.unique_integer([:positive])}")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/some-other-board/update",
+        signed_update_board_intent(did, private_key, board_id),
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "board_id_mismatch"
+  end
+
+  test "POST boards/:id/update rejects a mismatched audience" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updateaudience#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Audience #{System.unique_integer([:positive])}")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{
+          "target_forum_host" => "https://other-forum.trisaura.test"
+        }),
+        []
+      )
+
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "audience_mismatch"
+  end
+
+  test "POST boards/:id/update rejects an empty update payload" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updateempty#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+    board_id = create_board_as(did, private_key, "Empty #{System.unique_integer([:positive])}")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{"board" => %{}}),
+        []
+      )
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_board"
+  end
+
   test "web session must include forum:post to create a hosted web thread" do
     token = approved_session_token(["forum:read"])
 

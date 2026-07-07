@@ -5,10 +5,17 @@ class ForumPublicationResult {
   final int rejected;
   final List<String> errors;
 
+  /// Target ids (subscription ids) that were skipped because the
+  /// subscription is missing or not write-enabled. Callers surface these as
+  /// a non-blocking "could not cross-post" notice — the primary publication
+  /// is never blocked by a failed cross-post target.
+  final List<String> rejectedTargetIds;
+
   const ForumPublicationResult({
     required this.accepted,
     this.rejected = 0,
     this.errors = const [],
+    this.rejectedTargetIds = const [],
   });
 }
 
@@ -36,16 +43,83 @@ class ForumPublicationService {
       );
     }
 
-    final accepted = await _createTargets(
+    final outcome = await _createTargets(
       localSourceId: localDraftId,
       sourceType: BoardPublicationSourceType.threadDraft,
       targetModes: {
         primaryTargetId: BoardPublicationMode.primary,
         for (final targetId in crossPostTargetIds)
-          targetId: BoardPublicationMode.crossPost,
+          if (targetId != primaryTargetId)
+            targetId: BoardPublicationMode.crossPost,
       },
     );
-    return ForumPublicationResult(accepted: accepted);
+    return ForumPublicationResult(
+      accepted: outcome.accepted,
+      rejected: outcome.rejectedTargetIds.length,
+      rejectedTargetIds: outcome.rejectedTargetIds,
+    );
+  }
+
+  /// Composer-facing variant of [createThread]: resolves the primary local
+  /// board's hosted-board subscription itself (composers know local board
+  /// ids, not subscription ids). Returns null when the primary board is
+  /// local-only and no cross-post targets were selected — nothing leaves the
+  /// device unless the user chose a distribution path (Base Rule 2).
+  Future<ForumPublicationResult?> createThreadForLocalBoard({
+    required String localDraftId,
+    required String primaryLocalBoardId,
+    List<String> crossPostTargetIds = const [],
+  }) async {
+    final subscriptions = await hostedBoards.listSubscriptions();
+    BoardSubscription? primary;
+    for (final subscription in subscriptions) {
+      if (subscription.localBoardId == primaryLocalBoardId &&
+          subscription.writeEnabled) {
+        primary = subscription;
+        break;
+      }
+    }
+    if (primary == null && crossPostTargetIds.isEmpty) return null;
+
+    final outcome = await _createTargets(
+      localSourceId: localDraftId,
+      sourceType: BoardPublicationSourceType.threadDraft,
+      targetModes: {
+        if (primary != null) primary.subscriptionId: BoardPublicationMode.primary,
+        for (final targetId in crossPostTargetIds)
+          if (targetId != primary?.subscriptionId)
+            targetId: BoardPublicationMode.crossPost,
+      },
+    );
+    return ForumPublicationResult(
+      accepted: outcome.accepted,
+      rejected: outcome.rejectedTargetIds.length,
+      rejectedTargetIds: outcome.rejectedTargetIds,
+    );
+  }
+
+  /// Human-readable local board titles for [targetIds] (subscription ids),
+  /// for user-facing publication notices. Falls back to the raw id when the
+  /// subscription or local board row is gone.
+  Future<List<String>> boardTitlesForTargets(
+    BoardRepository boards,
+    List<String> targetIds,
+  ) async {
+    if (targetIds.isEmpty) return const [];
+    final subscriptions = await hostedBoards.listSubscriptions();
+    final subscriptionById = {
+      for (final subscription in subscriptions)
+        subscription.subscriptionId: subscription,
+    };
+    final titles = <String>[];
+    for (final targetId in targetIds) {
+      final subscription = subscriptionById[targetId];
+      final board = subscription == null
+          ? null
+          : await boards.getById(subscription.localBoardId);
+      titles.add(board?.title ?? targetId);
+    }
+    return titles;
   }
 
   Future<ForumPublicationResult> projectContentItem({
@@ -76,7 +150,7 @@ class ForumPublicationService {
       );
     }
 
-    final accepted = await _createTargets(
+    final outcome = await _createTargets(
       localSourceId: contentItemId,
       sourceType: BoardPublicationSourceType.contentItem,
       targetModes: {
@@ -84,10 +158,14 @@ class ForumPublicationService {
           targetId: BoardPublicationMode.projection,
       },
     );
-    return ForumPublicationResult(accepted: accepted);
+    return ForumPublicationResult(
+      accepted: outcome.accepted,
+      rejected: outcome.rejectedTargetIds.length,
+      rejectedTargetIds: outcome.rejectedTargetIds,
+    );
   }
 
-  Future<int> _createTargets({
+  Future<({int accepted, List<String> rejectedTargetIds})> _createTargets({
     required String localSourceId,
     required BoardPublicationSourceType sourceType,
     required Map<String, BoardPublicationMode> targetModes,
@@ -98,10 +176,12 @@ class ForumPublicationService {
         subscription.subscriptionId: subscription,
     };
     var accepted = 0;
+    final rejectedTargetIds = <String>[];
     final timestamp = now().toUtc();
     for (final entry in targetModes.entries) {
       final subscription = subscriptionById[entry.key];
       if (subscription == null || !subscription.writeEnabled) {
+        rejectedTargetIds.add(entry.key);
         continue;
       }
       await hostedBoards.upsertPublicationTarget(
@@ -123,7 +203,7 @@ class ForumPublicationService {
       );
       accepted += 1;
     }
-    return accepted;
+    return (accepted: accepted, rejectedTargetIds: rejectedTargetIds);
   }
 
   String _targetId(

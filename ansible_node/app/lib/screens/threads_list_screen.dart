@@ -13,6 +13,7 @@ import '../theme/elix_screen_style.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
+import '../services/forum_publication_service.dart';
 import '../services/posting_gate.dart';
 import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
@@ -59,6 +60,10 @@ class ThreadsListScreen extends StatefulWidget {
   /// dark/light choice made for the Forum board.
   final ElixScreenStyle screenStyle;
 
+  /// Records hosted-board publication targets (primary + cross-posts) for
+  /// new threads. Injectable for tests; defaults to a drift-backed service.
+  final ForumPublicationService? forumPublicationService;
+
   const ThreadsListScreen({
     super.key,
     required this.db,
@@ -70,6 +75,7 @@ class ThreadsListScreen extends StatefulWidget {
     this.opsDispatchService,
     this.onFlushPendingOps,
     this.screenStyle = ElixScreenStyle.paper,
+    this.forumPublicationService,
   });
 
   @override
@@ -261,20 +267,24 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   }
 
   Future<void> _createThread() async {
-    final dialogResult = await Navigator.of(context).push<Map<String, String?>>(
+    final dialogResult = await Navigator.of(context).push<Map<String, Object?>>(
       MaterialPageRoute(
         builder: (_) => ThreadComposerScreen(
           boards: [widget.board],
           initialBoardId: widget.board.id,
           authorDid: widget.localDid,
+          db: widget.db,
         ),
       ),
     );
 
     if (dialogResult == null) return;
-    final title = dialogResult['title']?.trim();
-    final boardId = dialogResult['boardId'];
-    final content = dialogResult['content']?.trim() ?? '';
+    final title = (dialogResult['title'] as String?)?.trim();
+    final boardId = dialogResult['boardId'] as String?;
+    final content = (dialogResult['content'] as String?)?.trim() ?? '';
+    final crossPostTargetIds =
+        (dialogResult['crossPostTargetIds'] as List?)?.cast<String>() ??
+        const <String>[];
     final authorDid = widget.localDid;
     if (title == null ||
         title.isEmpty ||
@@ -327,7 +337,53 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         ),
       );
     }
+    await _recordPublicationTargets(
+      threadId: thread.id,
+      boardId: boardId,
+      crossPostTargetIds: crossPostTargetIds,
+    );
     await _loadThreads();
+  }
+
+  /// Records hosted-board publication targets for the new thread (primary +
+  /// selected cross-posts) and surfaces a non-blocking notice when some
+  /// cross-post targets were rejected (e.g. write access revoked since the
+  /// composer was opened). Never blocks the primary publication.
+  Future<void> _recordPublicationTargets({
+    required String threadId,
+    required String boardId,
+    required List<String> crossPostTargetIds,
+  }) async {
+    final service =
+        widget.forumPublicationService ??
+        ForumPublicationService(
+          hostedBoards: DriftHostedBoardRepository(widget.db),
+        );
+    final result = await service.createThreadForLocalBoard(
+      localDraftId: threadId,
+      primaryLocalBoardId: boardId,
+      crossPostTargetIds: crossPostTargetIds,
+    );
+    if (result == null) return;
+    final failedCrossPosts = result.rejectedTargetIds
+        .where(crossPostTargetIds.contains)
+        .toList();
+    if (failedCrossPosts.isEmpty) return;
+    final titles = await service.boardTitlesForTargets(
+      DriftBoardRepository(widget.db),
+      failedCrossPosts,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.uiCopy(
+            zh: '部分看板未能同時發佈：${titles.join('、')}',
+            en: 'Could not cross-post to: ${titles.join(', ')}',
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {

@@ -38,6 +38,7 @@ import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
+import '../services/forum_publication_service.dart';
 import '../services/host_moderation_sync_service.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
@@ -54,6 +55,7 @@ import 'package:ansible_store/ansible_store.dart' as store;
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import 'discover_screen.dart';
+import 'hosted_boards_screen.dart';
 import 'settings_home_screen.dart';
 import 'threads_list_screen.dart';
 import 'thread_composer_screen.dart';
@@ -1438,19 +1440,23 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _createThread() async {
-    final dialogResult = await Navigator.of(context).push<Map<String, String?>>(
+    final dialogResult = await Navigator.of(context).push<Map<String, Object?>>(
       MaterialPageRoute(
         builder: (_) => ThreadComposerScreen(
           boards: _boards,
           initialBoardId: _selectedBoardId,
           authorDid: widget.did,
+          db: widget.db,
         ),
       ),
     );
     if (dialogResult == null) return;
-    final threadTitle = dialogResult['title']?.trim();
-    final boardId = dialogResult['boardId'];
-    final content = dialogResult['content']?.trim() ?? '';
+    final threadTitle = (dialogResult['title'] as String?)?.trim();
+    final boardId = dialogResult['boardId'] as String?;
+    final content = (dialogResult['content'] as String?)?.trim() ?? '';
+    final crossPostTargetIds =
+        (dialogResult['crossPostTargetIds'] as List?)?.cast<String>() ??
+        const <String>[];
     if (threadTitle == null ||
         threadTitle.isEmpty ||
         boardId == null ||
@@ -1498,7 +1504,48 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         content: post.content,
       ),
     );
+    await _recordThreadPublicationTargets(
+      threadId: thread.id,
+      boardId: boardId,
+      crossPostTargetIds: crossPostTargetIds,
+    );
     await _loadData();
+  }
+
+  /// Records hosted-board publication targets for a new thread (primary +
+  /// selected cross-posts) and surfaces a non-blocking notice when some
+  /// cross-post targets were rejected. Never blocks the primary publication.
+  Future<void> _recordThreadPublicationTargets({
+    required String threadId,
+    required String boardId,
+    required List<String> crossPostTargetIds,
+  }) async {
+    final service = ForumPublicationService(hostedBoards: _hostedBoardRepo);
+    final result = await service.createThreadForLocalBoard(
+      localDraftId: threadId,
+      primaryLocalBoardId: boardId,
+      crossPostTargetIds: crossPostTargetIds,
+    );
+    if (result == null) return;
+    final failedCrossPosts = result.rejectedTargetIds
+        .where(crossPostTargetIds.contains)
+        .toList();
+    if (failedCrossPosts.isEmpty) return;
+    final titles = await service.boardTitlesForTargets(
+      _boardRepo,
+      failedCrossPosts,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.uiCopy(
+            zh: '部分看板未能同時發佈：${titles.join('、')}',
+            en: 'Could not cross-post to: ${titles.join(', ')}',
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
@@ -1761,9 +1808,83 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               title: Text(l10n.manageBoards),
               content: SizedBox(
                 width: 400,
-                child: _boards.isEmpty
-                    ? Text(l10n.noBoardsYet)
-                    : ListView.separated(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Hosted-board management (boards this DID created on a
+                    // Forum Host) — distinct from the local/subscription list
+                    // below, which stays the unsubscribe/rename surface.
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.dashboard_customize_outlined),
+                      title: Text(
+                        context.uiCopy(zh: '我主持的看板', en: 'Boards I host'),
+                      ),
+                      subtitle: Text(
+                        context.uiCopy(
+                          zh: '編輯你建立的託管看板',
+                          en: 'Edit the hosted boards you created',
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _openHostedBoards();
+                      },
+                    ),
+                    const Divider(height: 1),
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: _buildManageBoardsList(setStateDialog),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l10n.close),
+                ),
+                FilledButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _createBoard();
+                  },
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.addBoard),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    await _loadData();
+  }
+
+  /// Pushes the "boards I host" management screen (hosted boards this DID
+  /// created; edits go through signed update_board intents).
+  Future<void> _openHostedBoards() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => HostedBoardsScreen(
+          did: widget.did,
+          remoteNodeRepo: _remoteNodeRepo,
+          hostedBoardRepo: _hostedBoardRepo,
+          boardRepo: _boardRepo,
+          onCreateBoard: _createBoard,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadData();
+  }
+
+  Widget _buildManageBoardsList(StateSetter setStateDialog) {
+    final l10n = context.l10n;
+    return _boards.isEmpty
+        ? Text(l10n.noBoardsYet)
+        : ListView.separated(
                         shrinkWrap: true,
                         itemCount: _boards.length,
                         separatorBuilder: (_, _) => const Divider(height: 1),
@@ -1861,28 +1982,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                             ),
                           );
                         },
-                      ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(l10n.close),
-                ),
-                FilledButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await _createBoard();
-                  },
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.addBoard),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    await _loadData();
+                      );
   }
 
   String _slugify(String input) {

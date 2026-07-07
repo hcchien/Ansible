@@ -129,6 +129,45 @@ defmodule AnsibleRelay.ForumHost.Store do
     end
   end
 
+  @doc """
+  Applies a verified `update_board` intent. Only the board's creator (the
+  author DID of the accepted `create_board` intent that produced the board)
+  may update it; seed/config boards have no creator record, so nobody can
+  update them through this path (fail closed). Replays are idempotent: an
+  identical accepted intent returns the current board, a same-id intent with
+  different content is rejected as `duplicate_intent`. The board's identity
+  (hosted_board_id, slug, canonical URI) never changes on update.
+  """
+  def update_board(attrs) do
+    with {:ok, request} <- normalize_update_board_attrs(attrs) do
+      payload_hash = update_board_payload_hash(request)
+
+      Repo.transaction(fn ->
+        case fetch_board_for_creator(request.board_id, request.author_did) do
+          {:ok, board} ->
+            case insert_accepted_intent(update_board_intent_attrs(request, payload_hash)) do
+              :inserted ->
+                update_board_or_rollback(board, request.changes)
+
+              :conflict ->
+                resolve_accepted_update_intent(request.intent_id, payload_hash, request.board_id)
+
+              {:error, changeset} ->
+                Repo.rollback({:error, changeset})
+            end
+
+          {:error, reason} ->
+            Repo.rollback({:error, reason})
+        end
+      end)
+      |> case do
+        {:ok, result} -> result
+        {:error, {:error, reason}} -> {:error, reason}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
   def forum_host_id do
     Application.get_env(:ansible_relay, :forum_host_id, "host-local-dev")
   end
@@ -408,6 +447,130 @@ defmodule AnsibleRelay.ForumHost.Store do
       canonical_board_uri: "#{base_url()}/boards/#{slug}"
     })
   end
+
+  defp fetch_board_for_creator(board_id, author_did) do
+    case Repo.get(ForumHostBoard, board_id) do
+      nil ->
+        {:error, :board_not_found}
+
+      board ->
+        creator = board_creator(board_id)
+
+        if is_binary(creator) and creator == author_did do
+          {:ok, board}
+        else
+          {:error, :not_board_creator}
+        end
+    end
+  end
+
+  # created_by is derived from the accepted create_board intent that produced
+  # the board — the same record `list_boards_created_by/1` relies on.
+  defp board_creator(board_id) do
+    from(i in ForumHostAcceptedIntent,
+      where:
+        i.action == "create_board" and i.result_kind == "forum_host_board" and
+          i.result_id == ^board_id,
+      select: i.author_did,
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  defp update_board_or_rollback(board, changes) do
+    board
+    |> ForumHostBoard.changeset(changes)
+    |> Repo.update()
+    |> case do
+      {:ok, updated} -> {:ok, updated}
+      {:error, changeset} -> Repo.rollback({:error, changeset})
+    end
+  end
+
+  defp resolve_accepted_update_intent(intent_id, payload_hash, board_id) do
+    case Repo.get(ForumHostAcceptedIntent, intent_id) do
+      %ForumHostAcceptedIntent{payload_hash: ^payload_hash, result_id: ^board_id} ->
+        {:ok, Repo.get!(ForumHostBoard, board_id)}
+
+      _other ->
+        {:error, :duplicate_intent}
+    end
+  end
+
+  defp update_board_payload_hash(request) do
+    %{
+      action: "update_board",
+      intent_id: request.intent_id,
+      author_did: request.author_did,
+      board_id: request.board_id,
+      board: request.changes
+    }
+    |> canonical_payload()
+    |> Jason.encode!()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp update_board_intent_attrs(request, payload_hash) do
+    %{
+      intent_id: request.intent_id,
+      author_did: request.author_did,
+      action: "update_board",
+      payload_hash: payload_hash,
+      result_kind: "forum_host_board",
+      result_id: request.board_id
+    }
+  end
+
+  defp normalize_update_board_attrs(attrs) do
+    missing = missing_update_board_fields(attrs)
+    changes = update_board_changes(attrs)
+
+    cond do
+      missing != [] ->
+        {:error, {:invalid_board, missing}}
+
+      changes == %{} ->
+        {:error, :invalid_board}
+
+      Map.has_key?(changes, :title) and not non_empty_string?(changes[:title]) ->
+        {:error, :invalid_board}
+
+      Map.has_key?(changes, :posting_policy) and
+          not valid_posting_policy?(changes[:posting_policy]) ->
+        {:error, :invalid_min_post_tier}
+
+      Map.has_key?(changes, :posting_policy) and
+          external_inclusion_conflicts_with_trust_gate?(changes[:posting_policy]) ->
+        {:error, :external_inclusion_conflicts_with_trust_gate}
+
+      true ->
+        {:ok,
+         %{
+           intent_id: get_attr(attrs, :intent_id),
+           author_did: get_attr(attrs, :author_did),
+           board_id: get_attr(attrs, :board_id),
+           changes: changes
+         }}
+    end
+  end
+
+  defp update_board_changes(attrs) do
+    Enum.reduce([:title, :description, :posting_policy], %{}, fn field, changes ->
+      if has_attr?(attrs, field) do
+        Map.put(changes, field, get_attr(attrs, field))
+      else
+        changes
+      end
+    end)
+  end
+
+  defp missing_update_board_fields(attrs) do
+    [:intent_id, :author_did, :board_id]
+    |> Enum.reject(fn field -> non_empty_string?(get_attr(attrs, field, :missing)) end)
+  end
+
+  defp non_empty_string?(value), do: is_binary(value) and String.trim(value) != ""
 
   defp normalize_create_board_attrs(attrs) do
     missing = missing_create_board_fields(attrs)

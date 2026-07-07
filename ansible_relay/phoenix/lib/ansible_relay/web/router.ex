@@ -192,6 +192,15 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ForumHostController.create_board(conn, conn.body_params)
   end
 
+  # Signed-intent hosted-board update (creator-only board management).
+  post "/api/v1/forum-host/boards/:board_id/update" do
+    AnsibleRelay.Web.Controllers.ForumHostController.update_board(
+      conn,
+      board_id,
+      conn.body_params
+    )
+  end
+
   post "/api/v1/forum-host/web/threads" do
     AnsibleRelay.Web.Controllers.ForumHostController.create_web_thread(conn, conn.body_params)
   end

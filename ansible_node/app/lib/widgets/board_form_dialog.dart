@@ -11,6 +11,13 @@ class BoardFormDialog extends StatefulWidget {
   final String? initialForumHostId;
   final bool requireForumHost;
 
+  /// Shows the posting-policy (who can post) selector without requiring a
+  /// forum-host picker — used when editing an existing hosted board.
+  final bool showPostingPolicy;
+
+  /// Current `posting_policy.min_post_tier` when editing; null ⇒ ungated.
+  final String? initialMinPostTier;
+
   const BoardFormDialog({
     super.key,
     this.initialTitle,
@@ -18,6 +25,8 @@ class BoardFormDialog extends StatefulWidget {
     this.forumHosts = const [],
     this.initialForumHostId,
     this.requireForumHost = false,
+    this.showPostingPolicy = false,
+    this.initialMinPostTier,
   });
 
   @override
@@ -43,7 +52,11 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
     _selectedForumHostId =
         widget.initialForumHostId ??
         (widget.forumHosts.isNotEmpty ? widget.forumHosts.first.id : null);
+    _minPostTier = widget.initialMinPostTier;
   }
+
+  bool get _showsPostingPolicy =>
+      widget.requireForumHost || widget.showPostingPolicy;
 
   @override
   void dispose() {
@@ -128,7 +141,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
               ),
               maxLines: 3,
             ),
-            if (widget.requireForumHost) ...[
+            if (_showsPostingPolicy) ...[
               const SizedBox(height: 16),
               DropdownButtonFormField<String?>(
                 initialValue: _minPostTier,
@@ -173,7 +186,10 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                 'description': description.isEmpty ? null : description,
                 if (_selectedForumHostId != null)
                   'forumHostId': _selectedForumHostId,
-                if (_minPostTier != null) 'minPostTier': _minPostTier,
+                // Included (possibly null) whenever the selector is shown so
+                // edit mode can distinguish "cleared the gate" from "not
+                // editable here".
+                if (_showsPostingPolicy) 'minPostTier': _minPostTier,
               });
             }
           },

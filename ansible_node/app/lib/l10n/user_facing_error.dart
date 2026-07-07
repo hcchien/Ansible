@@ -31,6 +31,12 @@ String userFacingError(BuildContext context, Object error) {
       en: 'Too many requests; please try again later.',
     );
   }
+  if (error is ForumHostException && error.error == 'not_board_creator') {
+    return context.uiCopy(
+      zh: '只有看板建立者可以編輯這個看板。',
+      en: 'Only the board creator can edit this board.',
+    );
+  }
   if (error is ForumHostException && error.error == 'thread_locked') {
     return context.uiCopy(
       zh: '這個討論串已被板務鎖定，無法新增回覆。',

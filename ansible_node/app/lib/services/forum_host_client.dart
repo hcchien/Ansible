@@ -80,6 +80,97 @@ class CreateHostedBoardIntent {
   }
 }
 
+/// Signed `update_board` intent — creator-only hosted-board management
+/// (`POST /api/v1/forum-host/boards/:board_id/update`). Same envelope as
+/// [CreateHostedBoardIntent]; the payload names the target `board_id` plus a
+/// `board` map carrying only the fields to change. The Forum Host verifies
+/// the signature and that the author DID created the board.
+class UpdateHostedBoardIntent {
+  static const type = 'io.trisaura.forum.updateBoard';
+  static const version = 1;
+
+  final String intentId;
+  final String authorDid;
+  final String targetForumHost;
+  final String signature;
+
+  /// Host-side board identity (`hosted_board_id`), never the local board id.
+  final String boardId;
+
+  /// Fields to change; a null field is left untouched host-side. An empty
+  /// [description] string clears the stored description.
+  final String? title;
+  final String? description;
+
+  /// Replaces the stored posting policy when non-null (send the full desired
+  /// policy map, e.g. `{"min_post_tier": "verified_human"}`; `{}` clears it).
+  final Map<String, Object?>? postingPolicy;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+
+  const UpdateHostedBoardIntent({
+    required this.intentId,
+    required this.authorDid,
+    required this.targetForumHost,
+    required this.signature,
+    required this.boardId,
+    required this.createdAt,
+    required this.expiresAt,
+    this.title,
+    this.description,
+    this.postingPolicy,
+  });
+
+  /// Keys are listed alphabetically (nested map included) so the encoded
+  /// JSON matches the relay's canonical sorted-key encoding for signature
+  /// verification — same convention as [CreateHostedBoardIntent].
+  static Map<String, Object?> canonicalPayload({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+    String? title,
+    String? description,
+    Map<String, Object?>? postingPolicy,
+  }) {
+    return {
+      'action': 'update_board',
+      'author_did': authorDid,
+      'board': {
+        if (description != null) 'description': description,
+        if (postingPolicy != null) 'posting_policy': postingPolicy,
+        if (title != null) 'title': title,
+      },
+      'board_id': boardId,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'expires_at': expiresAt.toUtc().toIso8601String(),
+      'intent_id': intentId,
+      'target_forum_host': targetForumHost,
+      'type': type,
+      'version': version,
+    };
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      ...canonicalPayload(
+        intentId: intentId,
+        authorDid: authorDid,
+        targetForumHost: targetForumHost,
+        boardId: boardId,
+        title: title,
+        description: description,
+        postingPolicy: postingPolicy,
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+      ),
+      'signature': signature,
+    };
+  }
+}
+
 /// Signed `report_content` intent — the app rail for reporting hosted
 /// board content to its Forum Host (`POST /api/v1/forum-host/reports`).
 ///
@@ -285,6 +376,18 @@ class ForumHostClient {
       '/api/v1/forum-host/boards',
       intent.toJson(),
       expectedStatus: 201,
+    );
+  }
+
+  /// Updates a hosted board this DID created. Returns the updated board as
+  /// serialized by the host (200). Idempotent for replayed intents.
+  Future<Map<String, dynamic>> updateHostedBoard(
+    UpdateHostedBoardIntent intent,
+  ) async {
+    return _postJson(
+      '/api/v1/forum-host/boards/${Uri.encodeComponent(intent.boardId)}/update',
+      intent.toJson(),
+      expectedStatus: 200,
     );
   }
 

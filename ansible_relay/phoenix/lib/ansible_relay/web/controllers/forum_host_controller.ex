@@ -128,6 +128,39 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     end
   end
 
+  # POST /api/v1/forum-host/boards/:board_id/update — signed-intent board
+  # management: only the board's creator DID may update title, description,
+  # or posting_policy. Same fail-closed envelope checks as create_board.
+  def update_board(conn, board_id, params) do
+    case SignedIntent.verify_update_board(params) do
+      {:ok, intent} ->
+        if intent.board_id == board_id do
+          apply_board_update(conn, intent)
+        else
+          send_json(conn, 422, %{error: "board_id_mismatch"})
+        end
+
+      {:error, :audience_mismatch} ->
+        send_json(conn, 403, %{error: "audience_mismatch"})
+
+      {:error, error} when error in [:invalid_signature, :missing_signature, :unknown_did] ->
+        send_json(conn, 401, %{error: "invalid_signature"})
+
+      {:error, error} ->
+        send_json(conn, 422, %{error: error_string(error)})
+    end
+  end
+
+  defp apply_board_update(conn, intent) do
+    case Store.update_board(intent) do
+      {:ok, board} -> send_json(conn, 200, board)
+      {:error, :board_not_found} -> send_json(conn, 404, %{error: "board_not_found"})
+      {:error, :not_board_creator} -> send_json(conn, 403, %{error: "not_board_creator"})
+      {:error, :duplicate_intent} -> send_json(conn, 409, %{error: "duplicate_intent"})
+      {:error, error} -> send_json(conn, 422, %{error: error_string(error)})
+    end
+  end
+
   def create_web_thread(conn, params) do
     conn = VerifyWebSession.call(conn, ["forum:post"], audience: Store.base_url())
 

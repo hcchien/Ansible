@@ -42,6 +42,14 @@ class PostsViewScreen extends StatefulWidget {
   /// Follows the originating board's Paper/Ink choice.
   final ElixScreenStyle screenStyle;
 
+  /// Test seam: builds the Forum Host client used to submit reports.
+  /// Defaults to a real [ForumHostClient] against the board's host URL.
+  final ForumHostClient Function(String baseUrl)? reportClientFactory;
+
+  /// Test seam: signs the canonical report payload with the local DID key.
+  /// Defaults to [DidSignerImpl] (secure-storage key + Rust core).
+  final Future<String> Function(List<int> payload)? reportPayloadSigner;
+
   const PostsViewScreen({
     super.key,
     required this.db,
@@ -51,6 +59,8 @@ class PostsViewScreen extends StatefulWidget {
     this.onFlushPendingOps,
     this.shareSheet = _defaultShareSheet,
     this.screenStyle = ElixScreenStyle.paper,
+    this.reportClientFactory,
+    this.reportPayloadSigner,
   });
 
   @override
@@ -200,10 +210,11 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       expiresAt: expiresAt,
     );
     try {
-      final signature = await DidSignerImpl()
-          .sign(utf8.encode(jsonEncode(canonicalPayload)))
-          .then((signature) => signature.hex);
-      final client = ForumHostClient(baseUrl: host.url);
+      final signature = await _signReportPayload(
+        utf8.encode(jsonEncode(canonicalPayload)),
+      );
+      final client = (widget.reportClientFactory ??
+          (baseUrl) => ForumHostClient(baseUrl: baseUrl))(host.url);
       final ReportSubmission submission;
       try {
         submission = await client.submitReport(
@@ -246,6 +257,12 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
     }
+  }
+
+  Future<String> _signReportPayload(List<int> payload) {
+    final signer = widget.reportPayloadSigner;
+    if (signer != null) return signer(payload);
+    return DidSignerImpl().sign(payload).then((signature) => signature.hex);
   }
 
   Future<void> _createPost() async {

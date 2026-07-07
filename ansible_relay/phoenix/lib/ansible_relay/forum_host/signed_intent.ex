@@ -7,6 +7,10 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @create_board_type "io.trisaura.forum.createBoard"
   @create_board_action "create_board"
   @create_board_version 1
+  @update_board_type "io.trisaura.forum.updateBoard"
+  @update_board_action "update_board"
+  @update_board_version 1
+  @update_board_updatable_fields ~w(title description posting_policy)
   @report_content_type "io.trisaura.forum.reportContent"
   @report_content_action "report_content"
   @report_content_version 1
@@ -42,6 +46,44 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   def verify_create_board(_params), do: {:error, :invalid_intent}
+
+  @doc """
+  Verifies an `update_board` intent (hosted-board management by its creator).
+  Same envelope as `create_board`: audience-bound, time-windowed, and
+  Ed25519-signed over the canonical JSON by the author's anchored DID. The
+  payload names the target `board_id` plus a `board` map carrying only the
+  updatable fields (title, description, posting_policy). Creator
+  authorization happens in the Store against the accepted create intent.
+  """
+  def verify_update_board(params) when is_map(params) do
+    with :ok <- require_string(params, "signature", :missing_signature),
+         :ok <- require_string(params, "author_did", :missing_author_did),
+         :ok <- require_string(params, "intent_id", :missing_intent_id),
+         :ok <- require_string(params, "board_id", :missing_board_id),
+         :ok <- require_string(params, "target_forum_host", :missing_target_forum_host),
+         :ok <- require_string(params, "action", :missing_action),
+         :ok <- require_string(params, "created_at", :missing_created_at),
+         :ok <- require_update_board_payload(params),
+         :ok <- require_type(params, @update_board_type),
+         :ok <- require_version(params, @update_board_version),
+         :ok <- require_action(params, @update_board_action),
+         :ok <- require_target_host(params["target_forum_host"]),
+         :ok <- require_timestamp_window(params),
+         {:ok, public_key_hex} <- public_key(params["author_did"]),
+         true <-
+           SigVerifier.verify_ed25519(
+             public_key_hex,
+             canonical_json(params),
+             params["signature"]
+           ) do
+      {:ok, update_board_attrs(params)}
+    else
+      false -> {:error, :invalid_signature}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def verify_update_board(_params), do: {:error, :invalid_intent}
 
   @doc """
   Verifies a `report_content` intent (the app rail for content reports).
@@ -112,6 +154,57 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
       end
     )
   end
+
+  defp update_board_attrs(params) do
+    board = params["board"]
+
+    [
+      {"title", :title},
+      {"description", :description},
+      {"posting_policy", :posting_policy}
+    ]
+    |> Enum.reduce(
+      %{
+        intent_id: params["intent_id"],
+        author_did: params["author_did"],
+        board_id: params["board_id"]
+      },
+      fn {payload_key, attr_key}, attrs ->
+        # `has_key?` (not nil-check): an explicit empty description clears the
+        # stored one, while an absent key leaves the field untouched.
+        if Map.has_key?(board, payload_key) do
+          Map.put(attrs, attr_key, board[payload_key])
+        else
+          attrs
+        end
+      end
+    )
+  end
+
+  # The board map must carry at least one updatable field, each well-typed.
+  # Unknown keys are tolerated in the map (they are ignored by the Store) but
+  # never applied.
+  defp require_update_board_payload(%{"board" => %{} = board}) do
+    cond do
+      not Enum.any?(@update_board_updatable_fields, &Map.has_key?(board, &1)) ->
+        {:error, :invalid_board}
+
+      Map.has_key?(board, "title") and
+          not (is_binary(board["title"]) and String.trim(board["title"]) != "") ->
+        {:error, :invalid_board}
+
+      Map.has_key?(board, "description") and not is_binary(board["description"]) ->
+        {:error, :invalid_board}
+
+      Map.has_key?(board, "posting_policy") and not is_map(board["posting_policy"]) ->
+        {:error, :invalid_board}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp require_update_board_payload(_params), do: {:error, :invalid_board}
 
   defp report_content_attrs(params) do
     report = params["report"]

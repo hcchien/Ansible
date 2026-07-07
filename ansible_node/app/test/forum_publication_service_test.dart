@@ -59,6 +59,89 @@ void main() {
     },
   );
 
+  test('rejected cross-post targets are reported by id', () async {
+    final hostedBoards = InMemoryHostedBoardRepository();
+    final now = DateTime.utc(2026, 7, 7);
+    await _seedSubscription(hostedBoards, now, subscriptionId: 'primary');
+    await _seedSubscription(
+      hostedBoards,
+      now,
+      subscriptionId: 'read-only',
+      hostedBoardId: 'hosted-news',
+      localBoardId: 'local-news',
+      writeEnabled: false,
+    );
+
+    final result = await ForumPublicationService(
+      hostedBoards: hostedBoards,
+      now: () => now,
+    ).createThread(
+      localDraftId: 'draft-1',
+      primaryTargetId: 'primary',
+      crossPostTargetIds: const ['read-only', 'missing'],
+    );
+
+    expect(result.accepted, 1);
+    expect(result.rejected, 2);
+    expect(result.rejectedTargetIds, containsAll(['read-only', 'missing']));
+  });
+
+  test(
+    'createThreadForLocalBoard resolves the primary board subscription',
+    () async {
+      final hostedBoards = InMemoryHostedBoardRepository();
+      final now = DateTime.utc(2026, 7, 7);
+      await _seedSubscription(hostedBoards, now, subscriptionId: 'primary');
+      await _seedSubscription(
+        hostedBoards,
+        now,
+        subscriptionId: 'cross',
+        forumHostId: 'host-2',
+        hostedBoardId: 'hosted-news',
+        localBoardId: 'local-news',
+      );
+
+      final result =
+          await ForumPublicationService(
+            hostedBoards: hostedBoards,
+            now: () => now,
+          ).createThreadForLocalBoard(
+            localDraftId: 'draft-1',
+            primaryLocalBoardId: 'local-general',
+            crossPostTargetIds: const ['cross'],
+          );
+
+      expect(result, isNotNull);
+      expect(result!.accepted, 2);
+      final targets = await hostedBoards.listPublicationTargets();
+      final modesByHost = {
+        for (final target in targets) target.forumHostId: target.mode,
+      };
+      expect(modesByHost['host-1'], BoardPublicationMode.primary);
+      expect(modesByHost['host-2'], BoardPublicationMode.crossPost);
+    },
+  );
+
+  test(
+    'createThreadForLocalBoard is a no-op for a local-only board '
+    'with no cross-posts',
+    () async {
+      final hostedBoards = InMemoryHostedBoardRepository();
+      final now = DateTime.utc(2026, 7, 7);
+
+      final result = await ForumPublicationService(
+        hostedBoards: hostedBoards,
+        now: () => now,
+      ).createThreadForLocalBoard(
+        localDraftId: 'draft-1',
+        primaryLocalBoardId: 'local-only-board',
+      );
+
+      expect(result, isNull);
+      expect(await hostedBoards.listPublicationTargets(), isEmpty);
+    },
+  );
+
   test(
     'public content item projection keeps content local canonical',
     () async {
@@ -140,6 +223,7 @@ Future<void> _seedSubscription(
   String forumHostId = 'host-1',
   String hostedBoardId = 'hosted-general',
   String localBoardId = 'local-general',
+  bool writeEnabled = true,
 }) async {
   await hostedBoards.upsertSubscription(
     BoardSubscription(
@@ -148,7 +232,7 @@ Future<void> _seedSubscription(
       hostedBoardId: hostedBoardId,
       localBoardId: localBoardId,
       readEnabled: true,
-      writeEnabled: true,
+      writeEnabled: writeEnabled,
       createdAt: now,
       updatedAt: now,
     ),

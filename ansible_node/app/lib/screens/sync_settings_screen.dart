@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
+import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../services/content_publication_service.dart';
 import '../services/relay_discovery_client.dart';
@@ -20,14 +21,29 @@ import '../widgets/nostr_relay_settings_panel.dart';
 
 part 'sync_settings_screen.rows.dart';
 
+/// Whether adding a host with this self-declared compliance level needs an
+/// explicit user confirmation first. Only the two levels that positively
+/// declare constitution compatibility add silently; unknown/undeclared,
+/// non-compliant, and any unrecognised future value warn first. The level
+/// stays display/ranking input only — never trust-bearing (constitution
+/// "Scope And Compliance").
+bool hostComplianceNeedsWarning(String? compliance) {
+  return compliance != 'constitution_compliant' && compliance != 'compatible';
+}
+
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
   final String? initialForumHostUrl;
+
+  /// Test seam for fetching a host's self-declared constitution compliance
+  /// at add time. Defaults to [RelayDiscoveryClient] against the host URL.
+  final Future<String?> Function(String url)? complianceFetcher;
 
   const SyncSettingsScreen({
     super.key,
     required this.db,
     this.initialForumHostUrl,
+    this.complianceFetcher,
   });
 
   @override
@@ -193,10 +209,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     }
 
     // Compliance-review gap #2: capture the host's self-declared compliance
-    // level at add time (best-effort) so saved hosts carry it.
-    final discoveryClient = RelayDiscoveryClient(baseUrl: data['url']!);
-    final compliance = await discoveryClient.fetchHostConstitutionCompliance();
-    discoveryClient.close();
+    // level at add time (best-effort) so saved hosts carry it. Display and
+    // ranking input only — never trust-bearing.
+    final compliance = await _fetchHostCompliance(data['url']!);
+    if (hostComplianceNeedsWarning(compliance)) {
+      if (!mounted) return;
+      final addAnyway = await _confirmUndeclaredComplianceHost(compliance);
+      if (addAnyway != true) return;
+    }
 
     final node = RemoteNode(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -218,6 +238,66 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(text.t('forumHostAdded'))));
     }
+  }
+
+  Future<String?> _fetchHostCompliance(String url) async {
+    final fetcher = widget.complianceFetcher;
+    if (fetcher != null) return fetcher(url);
+    final discoveryClient = RelayDiscoveryClient(baseUrl: url);
+    try {
+      return await discoveryClient.fetchHostConstitutionCompliance();
+    } finally {
+      discoveryClient.close();
+    }
+  }
+
+  /// Confirm dialog before saving a host whose constitution compliance is
+  /// unknown/undeclared or non-compliant. The constitution requires the
+  /// compliance level to be visible when it affects user trust, but keeps it
+  /// display-only — so the user may still add the host after seeing it.
+  Future<bool?> _confirmUndeclaredComplianceHost(String? compliance) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('host_compliance_warning_dialog'),
+        title: Text(
+          dialogContext.uiCopy(
+            zh: '主機憲章聲明',
+            en: 'Host constitution compliance',
+          ),
+        ),
+        content: Text(
+          compliance == 'non_compliant'
+              ? dialogContext.uiCopy(
+                  zh: '此主機聲明不符合憲章。加入後仍可同步與瀏覽，但它可能不遵守本應用的內容與身分保護規則。'
+                      '此標示僅供顯示與排序參考。',
+                  en: 'This host declares itself non-compliant with the '
+                      'constitution. You can still add and browse it, but it '
+                      'may not follow this app\'s content and identity '
+                      'protections. The label is informational only.',
+                )
+              : dialogContext.uiCopy(
+                  zh: '此主機未聲明符合憲章。加入後仍可同步與瀏覽，但其行為未經評估。'
+                      '此標示僅供顯示與排序參考。',
+                  en: 'This host has not declared constitution compliance. '
+                      'You can still add and browse it, but its behavior has '
+                      'not been evaluated. The label is informational only.',
+                ),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('host_compliance_cancel'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(dialogContext.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            key: const Key('host_compliance_add_anyway'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(dialogContext.uiCopy(zh: '仍要加入', en: 'Add anyway')),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _updateRemoteNode(

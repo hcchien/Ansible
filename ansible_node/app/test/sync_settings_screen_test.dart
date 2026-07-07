@@ -84,4 +84,115 @@ void main() {
       findsOneWidget,
     );
   });
+
+  test('hostComplianceNeedsWarning gates only positive declarations', () {
+    expect(hostComplianceNeedsWarning('constitution_compliant'), isFalse);
+    expect(hostComplianceNeedsWarning('compatible'), isFalse);
+    expect(hostComplianceNeedsWarning('unknown'), isTrue);
+    expect(hostComplianceNeedsWarning('non_compliant'), isTrue);
+    expect(hostComplianceNeedsWarning(null), isTrue);
+    // Fail closed on unrecognised future levels.
+    expect(hostComplianceNeedsWarning('something_new'), isTrue);
+  });
+
+  group('host compliance warning on add', () {
+    Future<AppDatabase> pumpAndSubmitAddHost(
+      WidgetTester tester, {
+      required Future<String?> Function(String url) complianceFetcher,
+    }) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSettingsScreen(db: db, complianceFetcher: complianceFetcher),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await tester.tap(find.text('新增 Elix Relay'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(0), 'Example Host');
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'https://host.example',
+      );
+      await tester.tap(find.text('儲存'));
+      await tester.pumpAndSettle();
+      return db;
+    }
+
+    testWidgets('an undeclared host warns and cancel aborts the add', (
+      tester,
+    ) async {
+      final db = await pumpAndSubmitAddHost(
+        tester,
+        complianceFetcher: (_) async => null,
+      );
+
+      expect(
+        find.byKey(const Key('host_compliance_warning_dialog')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('此主機未聲明符合憲章'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('host_compliance_cancel')));
+      await tester.pumpAndSettle();
+
+      expect(await DriftRemoteNodeRepository(db).list(), isEmpty);
+    });
+
+    testWidgets('add anyway saves the host with its compliance level', (
+      tester,
+    ) async {
+      final db = await pumpAndSubmitAddHost(
+        tester,
+        complianceFetcher: (_) async => 'unknown',
+      );
+
+      expect(
+        find.byKey(const Key('host_compliance_warning_dialog')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('host_compliance_add_anyway')));
+      await tester.pumpAndSettle();
+
+      final nodes = await DriftRemoteNodeRepository(db).list();
+      expect(nodes, hasLength(1));
+      expect(nodes.single.url, 'https://host.example');
+      expect(nodes.single.constitutionCompliance, 'unknown');
+    });
+
+    testWidgets('a non-compliant host gets the stronger warning copy', (
+      tester,
+    ) async {
+      await pumpAndSubmitAddHost(
+        tester,
+        complianceFetcher: (_) async => 'non_compliant',
+      );
+
+      expect(
+        find.byKey(const Key('host_compliance_warning_dialog')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('此主機聲明不符合憲章'), findsOneWidget);
+    });
+
+    testWidgets('a compliant host adds silently as before', (tester) async {
+      final db = await pumpAndSubmitAddHost(
+        tester,
+        complianceFetcher: (_) async => 'constitution_compliant',
+      );
+
+      expect(
+        find.byKey(const Key('host_compliance_warning_dialog')),
+        findsNothing,
+      );
+      final nodes = await DriftRemoteNodeRepository(db).list();
+      expect(nodes, hasLength(1));
+      expect(nodes.single.constitutionCompliance, 'constitution_compliant');
+    });
+  });
 }

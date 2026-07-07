@@ -1,19 +1,24 @@
+import 'dart:async';
+
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 
 /// Full-screen composer for a new forum discussion, styled to match the app's
 /// design system (mirrors [NoteEditorScreen]'s chrome). Replaces the old
-/// Material `AlertDialog`. Pops `{boardId, title, content}` on submit, or null
-/// on cancel — the same contract the caller already consumes.
+/// Material `AlertDialog`. Pops
+/// `{boardId, title, content, crossPostTargetIds}` on submit, or null on
+/// cancel — the caller consumes the map and dispatches the ops/publication.
 class ThreadComposerScreen extends StatefulWidget {
   const ThreadComposerScreen({
     super.key,
     required this.boards,
     this.initialBoardId,
     this.authorDid,
+    this.db,
   });
 
   final List<Board> boards;
@@ -22,8 +27,27 @@ class ThreadComposerScreen extends StatefulWidget {
   /// Shown in the footer for parity with the note editor. Optional.
   final String? authorDid;
 
+  /// When provided, the composer pre-checks the selected board's posting
+  /// gate (`posting_policy.min_post_tier`) and offers cross-posting to other
+  /// subscribed writable boards. Without it the composer behaves as before
+  /// (no gate pre-check, no cross-post selector). The relay stays the source
+  /// of truth for gate enforcement — this is UX pre-validation only.
+  final AppDatabase? db;
+
   @override
   State<ThreadComposerScreen> createState() => _ThreadComposerScreenState();
+}
+
+/// A cross-post candidate: another subscribed, writable hosted board the
+/// user clears the posting gate for.
+class _CrossPostTarget {
+  final String subscriptionId;
+  final String boardTitle;
+
+  const _CrossPostTarget({
+    required this.subscriptionId,
+    required this.boardTitle,
+  });
 }
 
 class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
@@ -31,6 +55,15 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   final _contentController = TextEditingController();
   String? _selectedBoardId;
   String? _error;
+
+  /// True when the selected board requires a tier the local user lacks.
+  /// UX pre-validation only — the relay re-checks at intent acceptance.
+  bool _postingBlocked = false;
+
+  /// Other subscribed writable boards the user can also publish to
+  /// (excluding the primary board and any board whose gate the user fails).
+  List<_CrossPostTarget> _crossPostTargets = const [];
+  final Set<String> _selectedCrossPostIds = <String>{};
 
   @override
   void initState() {
@@ -40,6 +73,59 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
         (widget.boards.isNotEmpty ? widget.boards.first.id : null);
     _titleController.addListener(() => setState(() {}));
     _contentController.addListener(() => setState(() {}));
+    unawaited(_loadBoardPolicy());
+  }
+
+  /// Computes the selected board's posting-gate pre-check and the list of
+  /// cross-post candidates. Skips silently when no [ThreadComposerScreen.db]
+  /// was provided (e.g. previews); the gate stays discoverable before
+  /// posting (constitution Base Rule 6) whenever we can check it.
+  Future<void> _loadBoardPolicy() async {
+    final db = widget.db;
+    final boardId = _selectedBoardId;
+    if (db == null || boardId == null) return;
+    final hostedRepo = DriftHostedBoardRepository(db);
+    final boardRepo = DriftBoardRepository(db);
+    final did = widget.authorDid;
+    final tier = (did == null || did.isEmpty)
+        ? PostingGate.basicTier
+        : await DriftDidReputationRepository(db).tierFor(did);
+    final projection = await hostedRepo.getProjectionByLocalBoardId(boardId);
+    final blocked =
+        projection != null &&
+        !PostingGate.satisfies(tier, projection.minPostTier);
+
+    final targets = <_CrossPostTarget>[];
+    for (final subscription in await hostedRepo.listSubscriptions()) {
+      if (!subscription.writeEnabled) continue;
+      if (subscription.localBoardId == boardId) continue;
+      final targetProjection = await hostedRepo.getProjectionByLocalBoardId(
+        subscription.localBoardId,
+      );
+      // Respect each target's own posting gate: never offer a board the
+      // user cannot post to.
+      if (targetProjection != null &&
+          !PostingGate.satisfies(tier, targetProjection.minPostTier)) {
+        continue;
+      }
+      final board = await boardRepo.getById(subscription.localBoardId);
+      if (board == null || board.isDeleted) continue;
+      targets.add(
+        _CrossPostTarget(
+          subscriptionId: subscription.subscriptionId,
+          boardTitle: board.title,
+        ),
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _postingBlocked = blocked;
+      _crossPostTargets = targets;
+      _selectedCrossPostIds.removeWhere(
+        (id) => !targets.any((target) => target.subscriptionId == id),
+      );
+    });
   }
 
   @override
@@ -57,6 +143,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   }
 
   void _submit() {
+    if (_postingBlocked) return;
     final l10n = context.l10n;
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
@@ -72,10 +159,11 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
       setState(() => _error = l10n.contentRequired);
       return;
     }
-    Navigator.of(context).pop<Map<String, String?>>({
+    Navigator.of(context).pop<Map<String, Object?>>({
       'boardId': _selectedBoardId,
       'title': title,
       'content': content,
+      'crossPostTargetIds': _selectedCrossPostIds.toList(),
     });
   }
 
@@ -105,7 +193,10 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
         ),
       ),
     );
-    if (chosen != null) setState(() => _selectedBoardId = chosen);
+    if (chosen != null) {
+      setState(() => _selectedBoardId = chosen);
+      unawaited(_loadBoardPolicy());
+    }
   }
 
   @override
@@ -117,7 +208,10 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(onCancel: () => Navigator.of(context).pop(), onDone: _submit),
+            _TopBar(
+              onCancel: () => Navigator.of(context).pop(),
+              onDone: _postingBlocked ? null : _submit,
+            ),
             if (_error != null) _ErrorBanner(message: _error!),
             _BoardSelector(
               label: l10n.chooseHostedBoard,
@@ -125,6 +219,19 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
               canChange: widget.boards.length > 1,
               onTap: _pickBoard,
             ),
+            if (_postingBlocked) const _PostingGateBanner(),
+            if (!_postingBlocked && _crossPostTargets.isNotEmpty)
+              _CrossPostSelector(
+                targets: _crossPostTargets,
+                selectedIds: _selectedCrossPostIds,
+                onToggle: (subscriptionId, selected) => setState(() {
+                  if (selected) {
+                    _selectedCrossPostIds.add(subscriptionId);
+                  } else {
+                    _selectedCrossPostIds.remove(subscriptionId);
+                  }
+                }),
+              ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
@@ -216,7 +323,9 @@ class _TopBar extends StatelessWidget {
   const _TopBar({required this.onCancel, required this.onDone});
 
   final VoidCallback onCancel;
-  final VoidCallback onDone;
+
+  /// Null disables the create button (e.g. posting gate not cleared).
+  final VoidCallback? onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -385,6 +494,120 @@ class _Footer extends StatelessWidget {
               color: AnsibleDesign.inkFaint,
               letterSpacing: 0.7,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Inline explanation shown when the selected board's posting gate is not
+/// cleared: the gate must be discoverable before posting (Base Rule 6). The
+/// submit button is disabled while this banner is visible; the relay remains
+/// the enforcement source of truth.
+class _PostingGateBanner extends StatelessWidget {
+  const _PostingGateBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('composer_posting_gate_banner'),
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(22, 2, 22, 6),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.accent.withValues(alpha: 0.08),
+        border: Border.all(
+          color: AnsibleDesign.accent.withValues(alpha: 0.4),
+          width: 0.5,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.verified_outlined,
+            size: 16,
+            color: AnsibleDesign.accent,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              context.uiCopy(
+                zh: '此看板僅限已驗證真人發文。完成真人驗證後才能在這裡發佈，閱讀不受影響。',
+                en: 'Only verified humans can post in this board. Complete '
+                    'identity verification to publish here; reading is not '
+                    'affected.',
+              ),
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.5,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Optional multi-select of other subscribed writable boards to cross-post
+/// the new thread to ("同時發佈到…").
+class _CrossPostSelector extends StatelessWidget {
+  const _CrossPostSelector({
+    required this.targets,
+    required this.selectedIds,
+    required this.onToggle,
+  });
+
+  final List<_CrossPostTarget> targets;
+  final Set<String> selectedIds;
+  final void Function(String subscriptionId, bool selected) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.uiCopy(zh: '同時發佈到…', en: 'ALSO POST TO…'),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9,
+              color: AnsibleDesign.inkFaint,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              for (final target in targets)
+                FilterChip(
+                  key: Key('cross_post_target_${target.subscriptionId}'),
+                  label: Text(target.boardTitle),
+                  labelStyle: const TextStyle(
+                    fontSize: 12,
+                    color: AnsibleDesign.ink,
+                  ),
+                  selected: selectedIds.contains(target.subscriptionId),
+                  onSelected: (selected) =>
+                      onToggle(target.subscriptionId, selected),
+                  backgroundColor: AnsibleDesign.paper,
+                  selectedColor: AnsibleDesign.paperDeep,
+                  checkmarkColor: AnsibleDesign.accent,
+                  side: const BorderSide(
+                    color: AnsibleDesign.rule,
+                    width: 0.5,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+            ],
           ),
         ],
       ),

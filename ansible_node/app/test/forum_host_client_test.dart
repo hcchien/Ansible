@@ -324,6 +324,146 @@ void main() {
     },
   );
 
+  test('updateHostedBoard posts the signed update intent to the board path',
+      () async {
+    final createdAt = DateTime.utc(2026, 7, 7, 10);
+    final expiresAt = createdAt.add(const Duration(minutes: 5));
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/v1/forum-host/boards/fifa2026/update');
+        expect(request.headers['content-type'], 'application/json');
+
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['type'], 'io.trisaura.forum.updateBoard');
+        expect(body['version'], 1);
+        expect(body['action'], 'update_board');
+        expect(body['board_id'], 'fifa2026');
+        expect(body['intent_id'], 'intent-2');
+        expect(body['author_did'], 'did:key:z6MkUser');
+        expect(body['signature'], 'sig-hex');
+        expect(body['board'], {
+          'description': '',
+          'posting_policy': {'min_post_tier': 'verified_human'},
+          'title': 'Renamed',
+        });
+
+        return http.Response(
+          jsonEncode({
+            'hosted_board_id': 'fifa2026',
+            'canonical_board_uri': 'http://relay.local/boards/fifa2026',
+            'slug': 'fifa2026',
+            'title': 'Renamed',
+            'posting_policy': {'min_post_tier': 'verified_human'},
+          }),
+          200,
+        );
+      }),
+    );
+
+    final board = await client.updateHostedBoard(
+      UpdateHostedBoardIntent(
+        intentId: 'intent-2',
+        authorDid: 'did:key:z6MkUser',
+        targetForumHost: 'http://relay.local',
+        signature: 'sig-hex',
+        boardId: 'fifa2026',
+        title: 'Renamed',
+        description: '',
+        postingPolicy: const {'min_post_tier': 'verified_human'},
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+      ),
+    );
+
+    expect(board['hosted_board_id'], 'fifa2026');
+    expect(board['title'], 'Renamed');
+  });
+
+  test('updateHostedBoard surfaces relay error codes', () {
+    final client = ForumHostClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'error': 'not_board_creator'}), 403),
+      ),
+    );
+
+    expect(
+      client.updateHostedBoard(
+        UpdateHostedBoardIntent(
+          intentId: 'intent-3',
+          authorDid: 'did:key:z6MkOther',
+          targetForumHost: 'http://relay.local',
+          signature: 'sig-hex',
+          boardId: 'fifa2026',
+          title: 'Hijack',
+          createdAt: DateTime.utc(2026, 7, 7, 10),
+          expiresAt: DateTime.utc(2026, 7, 7, 10, 5),
+        ),
+      ),
+      throwsA(
+        isA<ForumHostException>()
+            .having((error) => error.statusCode, 'statusCode', 403)
+            .having((error) => error.error, 'error', 'not_board_creator'),
+      ),
+    );
+  });
+
+  test('UpdateHostedBoardIntent canonicalPayload uses signed-intent order', () {
+    final createdAt = DateTime.utc(2026, 7, 7, 10);
+    final expiresAt = createdAt.add(const Duration(minutes: 5));
+
+    final payload = UpdateHostedBoardIntent.canonicalPayload(
+      intentId: 'intent-2',
+      authorDid: 'did:key:z6MkUser',
+      targetForumHost: 'http://relay.local',
+      boardId: 'fifa2026',
+      title: 'Renamed',
+      description: 'New description',
+      postingPolicy: const {'min_post_tier': 'verified_human'},
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+    );
+
+    expect(payload.keys.toList(), [
+      'action',
+      'author_did',
+      'board',
+      'board_id',
+      'created_at',
+      'expires_at',
+      'intent_id',
+      'target_forum_host',
+      'type',
+      'version',
+    ]);
+    expect((payload['board'] as Map<String, Object?>).keys.toList(), [
+      'description',
+      'posting_policy',
+      'title',
+    ]);
+    expect(
+      jsonEncode(payload),
+      '{"action":"update_board","author_did":"did:key:z6MkUser","board":{"description":"New description","posting_policy":{"min_post_tier":"verified_human"},"title":"Renamed"},"board_id":"fifa2026","created_at":"2026-07-07T10:00:00.000Z","expires_at":"2026-07-07T10:05:00.000Z","intent_id":"intent-2","target_forum_host":"http://relay.local","type":"io.trisaura.forum.updateBoard","version":1}',
+    );
+  });
+
+  test('UpdateHostedBoardIntent omits absent fields from the board map', () {
+    final payload = UpdateHostedBoardIntent.canonicalPayload(
+      intentId: 'intent-2',
+      authorDid: 'did:key:z6MkUser',
+      targetForumHost: 'http://relay.local',
+      boardId: 'fifa2026',
+      title: 'Renamed',
+      createdAt: DateTime.utc(2026, 7, 7, 10),
+      expiresAt: DateTime.utc(2026, 7, 7, 10, 5),
+    );
+
+    expect(payload['board'], {'title': 'Renamed'});
+  });
+
   test('CreateHostedBoardIntent canonicalPayload uses signed-intent order', () {
     final createdAt = DateTime.utc(2026, 6, 2, 10);
     final expiresAt = createdAt.add(const Duration(minutes: 5));
