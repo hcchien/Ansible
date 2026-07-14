@@ -148,48 +148,53 @@ class _BoardTileState extends State<_BoardTile> {
                 ]
               : null,
         ),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: item.accent.withValues(alpha: 0.15),
-            foregroundColor: item.accent,
-            child: const Text(
-              '#',
-              style: TextStyle(fontWeight: FontWeight.w700),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: item.accent.withValues(alpha: 0.15),
+              foregroundColor: item.accent,
+              child: const Text(
+                '#',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
-          ),
-          title: Text(
-            item.title,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: _hover ? item.accent : AnsibleDesign.ink,
+            title: Text(
+              item.title,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: _hover ? item.accent : AnsibleDesign.ink,
+              ),
             ),
+            subtitle: item.subtitle != null
+                ? Text(
+                    item.subtitle!,
+                    style: const TextStyle(
+                      color: AnsibleDesign.inkMuted,
+                      fontSize: 12,
+                    ),
+                  )
+                : null,
+            trailing: item.badge != null
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AnsibleDesign.paperDeep,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      item.badge!,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  )
+                : null,
+            onTap: widget.onTap,
           ),
-          subtitle: item.subtitle != null
-              ? Text(
-                  item.subtitle!,
-                  style: const TextStyle(
-                    color: AnsibleDesign.inkMuted,
-                    fontSize: 12,
-                  ),
-                )
-              : null,
-          trailing: item.badge != null
-              ? Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AnsibleDesign.paperDeep,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    item.badge!,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                )
-              : null,
-          onTap: widget.onTap,
         ),
       ),
     );
