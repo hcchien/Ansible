@@ -155,7 +155,7 @@ already underway (architecture Phase 1 / Phase 0).
 | Push distribution firehose (Phase 3) | Gated on Phase 2 ops partitioning (restart-safety); polling ingest is correct at current scale | Ingest lag or wake latency SLOs are missed |
 | Physical `ops` partitioning + schema separation | Risky live migration; deferred with Phase 2 sign-off | Op table growth approaches operational limits |
 | Android release (signing / Play listing) | Blocked on user-held signing keys + Play account; engineering checklist exists | Owner allocates the release window |
-| LLM plugin / MCP agent access | Backlog (P3) — should ride app-mediated web-session grants | After launch stabilizes |
+| LLM plugin / MCP agent access | **Local MCP path ✅ 2026-07-14** (`ansible_mcp` read-only stdio server + in-app consent); remote/cloud path still backlog, should ride app-mediated web-session grants | Remote path: after launch stabilizes |
 | Multi-AppView / multi-region scale-out | P4 by design; single AppView is a reproducible projection | Genesis-region capacity or latency demands it |
 
 ## Later（未來）
@@ -167,7 +167,7 @@ already underway (architecture Phase 1 / Phase 0).
 | Federation completion — Nostr key custody, full ActivityPub inbox behaviors | P3 — **AP inbox core ✅ 2026-07-03** (Follow → record + Accept via delivery queue, Undo Follow; edges mirror-cosmetic, never trust-bearing) | [Architecture plan — Phase 4](architecture/service_architecture_plan.md) | Remaining: inbound HTTP-signature verification (upgrades inbox to authenticated) + Nostr production key custody |
 | DNS handle verification (DNS TXT + HTTPS `/.well-known`) | P3 — **✅ done 2026-07-03** | [Architecture plan — Phase 4.3](architecture/service_architecture_plan.md) | atproto-compatible: TXT `_atproto.<handle>` or `/.well-known/atproto-did`, served at `GET /api/v1/identity/verify-handle` (rate-limited, resolver-injected tests) |
 | Standalone Reputation Labeler service | P3 | [Architecture plan — Phase 4.4](architecture/service_architecture_plan.md) | Extract only when a second consumer exists (decision D3); VP→tier paths already propagate relay → AppView → app badges |
-| LLM plugin / MCP agent access (ChatGPT, Claude, Codex, local MCP) | P3 | [TODO](superpowers/todos/2026-05-16-llm-plugin-mcp-access.md) | Backlog only — all phases unchecked. Should reuse app-mediated web-session grants; never exposes root DID keys |
+| LLM plugin / MCP agent access (ChatGPT, Claude, Codex, local MCP) | P3 — **local MCP (Phase 3) ✅ 2026-07-14** | [TODO](superpowers/todos/2026-05-16-llm-plugin-mcp-access.md) · [spec](superpowers/specs/2026-07-14-local-mcp-agent-access-design.md) · [plan](superpowers/plans/2026-07-14-local-mcp-agent-access.md) | `ansible_mcp` read-only stdio server, grant-gated via Settings → Local AI Access, desktop only. Remote/cloud path still backlog; should reuse app-mediated web-session grants; never exposes root DID keys |
 | AI Agent (Component F) — summarisation/filtering over firehose | P4 | README component table | Explicitly P4; local AI-assistance foundation (providers, context packs, review flows) already landed via content lineage work |
 | Multi-AppView federation / multi-region scale-out | P4 | [Architecture plan — Phase 5](architecture/service_architecture_plan.md) · [AppView design](superpowers/specs/2026-06-04-scalable-following-feed-appview-design.md) | Single AppView is a reproducible projection today; multi-region (genesis target), cross-region transport (decision D2), and CDN/WAF land here |
 

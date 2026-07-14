@@ -6,6 +6,8 @@
 > - `docs/superpowers/todos/2026-05-06-content-lineage-transformation-ai.md`
 > - `docs/superpowers/todos/2026-05-11-app-mediated-web-session.md`
 > - `docs/architecture/genesis_hosting.md`
+> - Phase 3 detailed design:
+>   `docs/superpowers/specs/2026-07-14-local-mcp-agent-access-design.md`
 
 ## Goal
 
@@ -55,15 +57,26 @@ access.
 
 ## Phase 3: Local MCP / Device-First Path
 
-- [ ] Build a local MCP server that talks to the user's local Ansible node.
-- [ ] Let local agents read local cache, followed feeds, subscriptions, and
+> Delivered 2026-07-14 — `ansible_mcp` crate (read-only stdio server) +
+> Settings → Local AI Access consent surface. Design:
+> `docs/superpowers/specs/2026-07-14-local-mcp-agent-access-design.md`,
+> `docs/superpowers/plans/2026-07-14-local-mcp-agent-access.md`.
+
+- [x] Build a local MCP server that talks to the user's local Ansible node.
+  (Reads the node's SQLite store directly, read-only; fail-closed grant file.)
+- [x] Let local agents read local cache, followed feeds, subscriptions, and
   drafts without exposing them through the public relay.
-- [ ] Keep sensitive content local by default and require explicit user approval
-  before any remote model call.
-- [ ] Package setup instructions for Claude Desktop, Claude Code, Codex, and
-  other local MCP clients.
-- [ ] Add a health check and diagnostics command for local MCP setup.
-- [ ] Support the same tool names and response schemas as the remote MCP path.
+- [x] Keep sensitive content local by default and require explicit user approval
+  before any remote model call. (Off by default; in-app disclosure names the
+  cloud-vendor consequence; messenger/wallet/identity hard-excluded.)
+- [x] Package setup instructions for Claude Desktop, Claude Code, Codex, and
+  other local MCP clients. (Settings screen renders snippets with the data
+  dir baked in; `ansible_mcp/README.md`.)
+- [x] Add a health check and diagnostics command for local MCP setup.
+  (`ansible-mcp doctor`.)
+- [x] Support the same tool names and response schemas as the remote MCP path.
+  (The 8-tool read contract is defined here first; the remote path must reuse
+  it per the shared `AgentAccess` contract.)
 
 ## Phase 4: Write And Publication Guardrails
 

@@ -22,3 +22,8 @@ pushd "$ROOT_DIR/ansible_node/app" >/dev/null
 flutter pub get
 flutter build macos
 popd >/dev/null
+
+echo "Building ansible-mcp (local AI access binary)..."
+pushd "$ROOT_DIR/ansible_mcp" >/dev/null
+cargo build --release
+popd >/dev/null

@@ -5,7 +5,7 @@ POSTGRES_TEST_ENV := POSTGRES_USER="$$USER" POSTGRES_PASSWORD=postgres MIX_ENV=t
 
 .PHONY: help setup dev dev-down test test-flutter test-app test-packages \
         test-relay test-appview test-issuer test-frontend test-rust \
-        lint analyze
+        build-mcp lint analyze
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -50,8 +50,13 @@ test-issuer: ## Go issuer tests (Postgres-backed tests skip without ISSUER_TEST_
 test-frontend: ## Distribution frontend tests
 	cd ansible_distribution_frontend && npm test
 
-test-rust: ## Rust core tests
+test-rust: ## Rust core + ansible-mcp tests
 	cd ansible_rust_core && cargo test
+	cd ansible_mcp && cargo test
+
+build-mcp: ## Build the ansible-mcp local AI access binary (release)
+	cd ansible_mcp && cargo build --release
+	@echo "binary: ansible_mcp/target/release/ansible_mcp"
 
 analyze: ## Static analysis (Flutter app)
 	cd ansible_node/app && flutter analyze

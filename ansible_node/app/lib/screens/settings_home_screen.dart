@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+
 import 'package:ansible_store/ansible_store.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -21,6 +24,7 @@ import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'identity_backup_screen.dart';
 import 'inbox_screen.dart';
+import 'local_ai_access_screen.dart';
 import 'recovery_approve_scanner_screen.dart';
 import 'recovery_wizard_screen.dart';
 import 'notification_settings_screen.dart';
@@ -63,11 +67,22 @@ class SettingsHomeScreen extends StatelessWidget {
     this.onOpenRecoveryWizard,
     this.onOpenPersonalBoard,
     this.embedded = false,
+    this.showLocalAiAccess,
   });
 
   /// When true the screen is the bottom-nav 我 tab (not a pushed route), so it
   /// drops the "Done" close button — the nav switches destinations.
   final bool embedded;
+
+  /// Local AI Access (MCP) is desktop-only by design — mobile has no local
+  /// MCP clients and background execution limits. Null = decide by platform;
+  /// overridable for tests.
+  final bool? showLocalAiAccess;
+
+  bool get _showLocalAiAccess =>
+      showLocalAiAccess ??
+      (!kIsWeb &&
+          (Platform.isMacOS || Platform.isLinux || Platform.isWindows));
 
   /// Jumps to the user's 個人版 (personal board) in the home pager. Surfaced as
   /// the top entry here because the personal board no longer has its own cell in
@@ -366,6 +381,30 @@ class SettingsHomeScreen extends StatelessWidget {
               ),
             ],
           ),
+          if (_showLocalAiAccess)
+            _SettingsSection(
+              label: context.uiCopy(zh: 'AI 存取', en: 'AI ACCESS'),
+              children: [
+                AnsibleSettingsRow(
+                  key: const Key('settings_local_ai_access_row'),
+                  glyph: '⌁',
+                  label: context.uiCopy(zh: '本機 AI 存取', en: 'Local AI Access'),
+                  en: 'LOCAL MCP',
+                  sub: context.uiCopy(
+                    zh: '讓本機 AI 客戶端讀取你選擇的內容',
+                    en: 'Let local AI clients read content you choose',
+                  ),
+                  last: true,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => LocalAiAccessScreen(db: db, did: did),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           _SettingsSection(
             label: text.boundaries,
             children: [
