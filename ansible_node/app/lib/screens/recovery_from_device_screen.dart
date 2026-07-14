@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../config/app_environment.dart';
@@ -68,10 +69,6 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
   Future<void> _build() async {
     final handle = _handleController.text.trim();
     if (handle.isEmpty) return;
-    final notFoundMessage = context.uiCopy(
-      zh: '找不到這個 handle 的身分',
-      en: 'No identity found for that handle',
-    );
     setState(() {
       _busy = true;
       _error = null;
@@ -85,9 +82,13 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
       final request = await _service.buildRequest(did: did, handle: handle);
       if (!mounted) return;
       if (request == null) {
+        // Handle resolved, but the relay has no active anchor for this DID —
+        // typically a legacy (pre-did:elix) account that never joined the
+        // anchor chain. There is nothing to chain a recovery onto, so this
+        // flow can't help; say so instead of blaming the handle.
         setState(() {
           _busy = false;
-          _error = notFoundMessage;
+          _error = _noAnchorMessage();
         });
         return;
       }
@@ -97,14 +98,46 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
         _busy = false;
       });
       _startPolling();
+    } on AtProtoException catch (error) {
+      if (!mounted) return;
+      // A 404 handle_not_found is a genuine "no such handle"; any other status
+      // is the relay reachable but unhappy — surface that distinctly.
+      final handleNotFound =
+          error.statusCode == 404 && error.error == 'handle_not_found';
+      setState(() {
+        _busy = false;
+        _error = handleNotFound ? _handleNotFoundMessage() : _relayErrorMessage();
+      });
     } catch (_) {
+      // SocketException / TimeoutException / http ClientException: the relay
+      // could not be reached at all. This is the case that previously
+      // masqueraded as "handle not found".
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = notFoundMessage;
+        _error = _relayErrorMessage();
       });
     }
   }
+
+  String _handleNotFoundMessage() => context.uiCopy(
+        zh: '找不到這個 handle。請確認拼字，或這個帳號是否在這個 relay 上。',
+        en: 'No such handle. Check the spelling, or whether this account lives '
+            'on this relay.',
+      );
+
+  String _relayErrorMessage() => context.uiCopy(
+        zh: '連不到伺服器。請確認網路，以及 app 指向的 relay 設定是否正確。',
+        en: 'Could not reach the server. Check your connection and which relay '
+            'this app is pointed at.',
+      );
+
+  String _noAnchorMessage() => context.uiCopy(
+        zh: '這個帳號在此 relay 上還沒有身分 anchor（可能是舊版帳號），'
+            '無法用「另一台裝置核可」的方式登入。',
+        en: 'This account has no identity anchor on this relay (it may be a '
+            'legacy account), so it cannot be added via device approval.',
+      );
 
   void _startPolling() {
     _poll?.cancel();
@@ -253,7 +286,36 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
           color: AnsibleDesign.inkMuted,
         ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
+      // No-camera fallback: the approving device can paste this instead of
+      // scanning (its scanner screen has a matching "paste" entry).
+      Center(
+        child: TextButton.icon(
+          key: const Key('recovery_from_device_copy_button'),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: request.toQrPayload()));
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              SnackBar(
+                content: Text(
+                  context.uiCopy(
+                    zh: '已複製，把內容傳到舊裝置後貼上核可',
+                    en: 'Copied — transfer it to the old device and paste to approve',
+                  ),
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.copy, size: 15),
+          label: Text(
+            context.uiCopy(
+              zh: '舊裝置沒有相機？複製請求內容',
+              en: 'No camera on the old device? Copy request',
+            ),
+            style: const TextStyle(fontSize: 13),
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
       Text(
         context.uiCopy(
           zh: '金鑰指紋（兩台裝置應一致）\n${request.newKeyFingerprint}',

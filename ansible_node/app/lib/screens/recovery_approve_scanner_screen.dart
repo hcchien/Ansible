@@ -65,18 +65,48 @@ class _RecoveryApproveScannerScreenState
       );
 
   Future<void> _handleCapture(BarcodeCapture capture) async {
-    if (_handling) return;
     final raw = capture.barcodes.firstOrNull?.rawValue;
     if (raw == null || raw.isEmpty) return;
+    await _handleRaw(raw, manual: false);
+  }
+
+  /// Shared routing for a request payload, whether scanned or pasted.
+  /// Scanning ignores payloads it does not recognize (keep scanning);
+  /// manual entry surfaces an error instead — the user expects feedback.
+  Future<void> _handleRaw(String raw, {required bool manual}) async {
+    if (_handling) return;
     if (_handleWebSessionCapture(raw)) return;
     final anchor = RecoveryApprovalService.parseRequest(raw);
-    if (anchor == null) return; // not our QR — keep scanning
+    if (anchor == null) {
+      if (manual && mounted) {
+        setState(
+          () => _errorMessage = context.uiCopy(
+            zh: '無法解析貼上的內容，請確認複製了完整的請求內容。',
+            en: 'Could not parse the pasted content — make sure the full '
+                'request was copied.',
+          ),
+        );
+      }
+      return; // not our QR — keep scanning
+    }
     _handling = true;
     try {
       await _confirmAndApprove(anchor);
     } finally {
       if (mounted) _handling = false;
     }
+  }
+
+  /// No-camera fallback (desktops without a webcam, or camera permission
+  /// denied): paste the request payload the new device copied.
+  Future<void> _openManualEntry() async {
+    final submitted = await showDialog<String>(
+      context: context,
+      builder: (_) => const _ManualEntryDialog(),
+    );
+    if (submitted == null || submitted.isEmpty || !mounted) return;
+    setState(() => _errorMessage = null);
+    await _handleRaw(submitted, manual: true);
   }
 
   bool _handleWebSessionCapture(String rawValue) {
@@ -272,6 +302,28 @@ class _RecoveryApproveScannerScreenState
               ),
             ),
           ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: _errorMessage != null ? 64 : 16,
+              ),
+              child: TextButton(
+                key: const Key('recovery_manual_entry_button'),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: _openManualEntry,
+                child: Text(
+                  context.uiCopy(
+                    zh: '無法使用相機？手動貼上請求內容',
+                    en: "Can't use the camera? Paste the request",
+                  ),
+                ),
+              ),
+            ),
+          ),
           if (_errorMessage != null)
             Align(
               alignment: Alignment.bottomCenter,
@@ -297,4 +349,85 @@ Widget _defaultScannerBuilder(
   ValueChanged<BarcodeCapture> onDetect,
 ) {
   return MobileScanner(onDetect: onDetect);
+}
+
+/// Paste-the-request dialog. Owns its own controller so it is disposed with
+/// the dialog's State (not before the exit transition, which is what a
+/// controller disposed inline after showDialog would hit).
+class _ManualEntryDialog extends StatefulWidget {
+  const _ManualEntryDialog();
+
+  @override
+  State<_ManualEntryDialog> createState() => _ManualEntryDialogState();
+}
+
+class _ManualEntryDialogState extends State<_ManualEntryDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Text(
+        context.uiCopy(zh: '貼上請求內容', en: 'Paste the request'),
+        style: const TextStyle(
+          fontFamily: AnsibleDesign.serif,
+          fontSize: 19,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.uiCopy(
+              zh: '在新裝置的 QR 畫面點「複製請求內容」，把內容傳給這台裝置後貼上。',
+              en: 'On the new device tap "Copy request" below the QR, '
+                  'transfer it to this device, and paste it here.',
+            ),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 13.5,
+              height: 1.6,
+              color: AnsibleDesign.inkMuted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('recovery_manual_entry_field'),
+            controller: _controller,
+            maxLines: 5,
+            autofocus: true,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 11,
+            ),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+        ),
+        FilledButton(
+          key: const Key('recovery_manual_entry_submit'),
+          onPressed: () =>
+              Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(context.uiCopy(zh: '繼續', en: 'Continue')),
+        ),
+      ],
+    );
+  }
 }

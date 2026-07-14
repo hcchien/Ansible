@@ -528,8 +528,8 @@ class _PasskeysRegistrationScreenState
                               : null,
                           child: Text(
                             _copy(
-                              zh: '已經有帳號？從備份復原',
-                              en: 'Recover an existing account',
+                              zh: '已經有帳號？在這台裝置使用或復原',
+                              en: 'Use or recover an existing account',
                             ),
                             style: const TextStyle(
                               fontSize: 13,

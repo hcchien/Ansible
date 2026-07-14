@@ -209,7 +209,7 @@ void main() {
       );
 
       // zh-Hant copy (test locale falls back to zh-Hant).
-      expect(find.text('已經有帳號？從備份復原'), findsOneWidget);
+      expect(find.text('已經有帳號？在這台裝置使用或復原'), findsOneWidget);
       await tester.tap(
         find.byKey(const Key('recover_existing_account_button')),
       );

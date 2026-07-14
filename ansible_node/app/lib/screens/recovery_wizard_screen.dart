@@ -196,7 +196,7 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
   @override
   Widget build(BuildContext context) {
     return AnsibleScreenScaffold(
-      title: context.uiCopy(zh: '復原帳號', en: 'RECOVER ACCOUNT'),
+      title: context.uiCopy(zh: '使用既有帳號', en: 'USE EXISTING ACCOUNT'),
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
       onLeading: () => Navigator.of(context).maybePop(),
       child: ListView(

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:ansible_node/screens/recovery_approve_scanner_screen.dart';
+import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -117,5 +120,84 @@ void main() {
     expect(find.text('Settings page'), findsOneWidget);
     expect(find.byKey(const Key('scan_web_session_qr')), findsNothing);
     expect(find.byKey(const Key('approve_web_session')), findsNothing);
+  });
+
+  manualEntryTests();
+}
+
+// ── Manual paste fallback (no-camera desktops) ──────────────────────────────
+
+Widget _scannerWithNoopCamera({required String localDid}) {
+  return MaterialApp(
+    home: RecoveryApproveScannerScreen(
+      localDid: localDid,
+      allowLocalHttp: false,
+      allowedWebSessionRelayOrigins: const {'https://relay-dev.elix.cool'},
+      scannerBuilder: (context, onDetect) => const SizedBox.expand(),
+    ),
+  );
+}
+
+Future<void> _openManualEntry(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('recovery_manual_entry_button')));
+  await tester.pumpAndSettle();
+  expect(find.byKey(const Key('recovery_manual_entry_field')), findsOneWidget);
+}
+
+void manualEntryTests() {
+  testWidgets('manual paste of a valid recovery request opens the confirm '
+      'dialog', (tester) async {
+    final anchor = IdentityAnchor(
+      did: 'did:plc:abc23456789',
+      handle: 'tris.elix.cool',
+      identityKey: 'ab12cd34ef56ab78ab12cd34ef56ab78',
+      alsoKnownAs: const [],
+      custodyClass: CustodyClass.software,
+      devices: const [],
+      prevAnchorCid: 'prevcid',
+      reason: AnchorReason.recovery,
+      createdAt: DateTime.utc(2026, 7, 14),
+      sig: 'sig',
+    );
+    final payload = jsonEncode({
+      'v': 1,
+      't': 'elix.recovery.approve',
+      'anchor': anchor.toCanonicalMap(),
+    });
+
+    await tester.pumpWidget(
+      _scannerWithNoopCamera(localDid: 'did:plc:abc23456789'),
+    );
+    await _openManualEntry(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('recovery_manual_entry_field')),
+      payload,
+    );
+    await tester.tap(find.byKey(const Key('recovery_manual_entry_submit')));
+    await tester.pumpAndSettle();
+
+    // The same confirm dialog the scan path shows.
+    expect(find.byKey(const Key('recovery_approve_confirm')), findsOneWidget);
+  });
+
+  testWidgets('manual paste of garbage shows a parse error instead of '
+      'silently ignoring it', (tester) async {
+    await tester.pumpWidget(
+      _scannerWithNoopCamera(localDid: 'did:plc:abc23456789'),
+    );
+    await _openManualEntry(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('recovery_manual_entry_field')),
+      'not a recovery payload',
+    );
+    await tester.tap(find.byKey(const Key('recovery_manual_entry_submit')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('無法解析貼上的內容'),
+      findsOneWidget,
+    );
   });
 }
