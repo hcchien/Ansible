@@ -27,6 +27,13 @@ cannot sign or publish anything.
 The easiest path: enable **Settings → Local AI Access** in the desktop app
 and copy the generated snippet — it has the right `--data-dir` baked in.
 
+Desktop builds bundle this binary at `Elix.app/Contents/Helpers/ansible-mcp`
+(the "Bundle ansible-mcp" Xcode build phase compiles it from this crate), and
+the generated snippets point there automatically, so no separate install is
+needed. There is nothing to start manually either way: stdio MCP servers are
+spawned by the AI client per session. A separately installed `ansible-mcp` on
+PATH is only the fallback for builds without the bundled helper.
+
 Manual (Claude Code):
 
 ```bash

@@ -55,11 +55,11 @@ class _MemoryLocalAiAccessService extends LocalAiAccessService {
       const [];
 
   @override
-  Future<String> claudeCodeSnippet({String binaryPath = 'ansible-mcp'}) async =>
+  Future<String> claudeCodeSnippet({String? binaryPath}) async =>
       'claude mcp add ansible -- ansible-mcp serve --data-dir "/data"';
 
   @override
-  Future<String> mcpJsonSnippet({String binaryPath = 'ansible-mcp'}) async =>
+  Future<String> mcpJsonSnippet({String? binaryPath}) async =>
       '{"mcpServers": {}}';
 }
 

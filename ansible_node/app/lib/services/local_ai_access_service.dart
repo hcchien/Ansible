@@ -123,19 +123,42 @@ class LocalAiAccessService {
     return entries;
   }
 
+  /// Path of the `ansible-mcp` helper bundled inside the desktop app
+  /// (`Elix.app/Contents/Helpers/ansible-mcp`, copied by the "Bundle
+  /// ansible-mcp" Xcode build phase), or null when this build ships without
+  /// it. Bundling keeps the binary in lockstep with the DB schema, so the
+  /// snippets prefer it over whatever `ansible-mcp` happens to be on PATH.
+  ///
+  /// Injectable for tests via [bundledBinaryPathOverride].
+  static String? Function() bundledBinaryPathOverride = _macosBundledBinary;
+
+  static String? bundledBinaryPath() => bundledBinaryPathOverride();
+
+  static String? _macosBundledBinary() {
+    if (!Platform.isMacOS) return null;
+    // resolvedExecutable = <app>.app/Contents/MacOS/<exe>
+    final contents = File(Platform.resolvedExecutable).parent.parent;
+    final helper = File(p.join(contents.path, 'Helpers', 'ansible-mcp'));
+    return helper.existsSync() ? helper.path : null;
+  }
+
   /// Claude Code CLI setup command with the data dir baked in (plan D-4).
-  Future<String> claudeCodeSnippet({String binaryPath = 'ansible-mcp'}) async {
+  /// Defaults to the bundled helper when present, else `ansible-mcp` on PATH.
+  Future<String> claudeCodeSnippet({String? binaryPath}) async {
+    final bin = binaryPath ?? bundledBinaryPath() ?? 'ansible-mcp';
     final dir = await dataDirectory();
-    return 'claude mcp add ansible -- $binaryPath serve --data-dir "${dir.path}"';
+    return 'claude mcp add ansible -- "$bin" serve --data-dir "${dir.path}"';
   }
 
   /// Generic stdio-server JSON block (Claude Desktop and most MCP clients).
-  Future<String> mcpJsonSnippet({String binaryPath = 'ansible-mcp'}) async {
+  /// Defaults to the bundled helper when present, else `ansible-mcp` on PATH.
+  Future<String> mcpJsonSnippet({String? binaryPath}) async {
+    final bin = binaryPath ?? bundledBinaryPath() ?? 'ansible-mcp';
     final dir = await dataDirectory();
     return const JsonEncoder.withIndent('  ').convert({
       'mcpServers': {
         'ansible': {
-          'command': binaryPath,
+          'command': bin,
           'args': ['serve', '--data-dir', dir.path],
         },
       },

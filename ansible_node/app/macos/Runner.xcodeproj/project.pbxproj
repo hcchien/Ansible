@@ -192,6 +192,7 @@
 				33CC10EB2044A3C60003C045 /* Resources */,
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
+				7B3E5A1C2E260001A1B2C3D4 /* Bundle ansible-mcp */,
 				185B3E26B0A7E21E55799EDC /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
@@ -321,6 +322,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "echo \"$PRODUCT_NAME.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
+		};
+		7B3E5A1C2E260001A1B2C3D4 /* Bundle ansible-mcp */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle ansible-mcp";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n# Build the local read-only MCP helper and bundle it into the app so the\n# Settings snippets can point at Contents/Helpers/ansible-mcp (no separate\n# install). Skips with a warning when no Rust toolchain is available; the\n# app then falls back to an ansible-mcp on PATH.\nexport PATH=\"$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"\nMCP_DIR=\"$SRCROOT/../../../ansible_mcp\"\nif ! command -v cargo >/dev/null 2>&1; then\n  echo \"warning: cargo not found; skipping ansible-mcp bundling\"\n  exit 0\nfi\ncargo build --release --manifest-path \"$MCP_DIR/Cargo.toml\"\nHELPERS_DIR=\"$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Helpers\"\nmkdir -p \"$HELPERS_DIR\"\ncp \"$MCP_DIR/target/release/ansible_mcp\" \"$HELPERS_DIR/ansible-mcp\"\nif [ \"${CODE_SIGNING_ALLOWED:-YES}\" = \"YES\" ] && [ -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n  codesign --force --options runtime --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" \"$HELPERS_DIR/ansible-mcp\"\nfi\n";
+			showEnvVarsInLog = 0;
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;

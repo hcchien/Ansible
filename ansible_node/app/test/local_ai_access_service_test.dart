@@ -125,4 +125,52 @@ void main() {
         ((parsed['mcpServers'] as Map)['ansible'] as Map).cast<String, Object?>();
     expect(server['args'], ['serve', '--data-dir', tempDir.path]);
   });
+
+  group('bundled binary resolution', () {
+    final defaultOverride = LocalAiAccessService.bundledBinaryPathOverride;
+
+    tearDown(() {
+      LocalAiAccessService.bundledBinaryPathOverride = defaultOverride;
+    });
+
+    test('snippets prefer the helper bundled inside the app', () async {
+      LocalAiAccessService.bundledBinaryPathOverride =
+          () => '/Applications/Elix.app/Contents/Helpers/ansible-mcp';
+
+      final code = await service.claudeCodeSnippet();
+      expect(
+        code,
+        contains('"/Applications/Elix.app/Contents/Helpers/ansible-mcp"'),
+      );
+
+      final parsed =
+          jsonDecode(await service.mcpJsonSnippet()) as Map<String, dynamic>;
+      final server = ((parsed['mcpServers'] as Map)['ansible'] as Map)
+          .cast<String, Object?>();
+      expect(
+        server['command'],
+        '/Applications/Elix.app/Contents/Helpers/ansible-mcp',
+      );
+    });
+
+    test('snippets fall back to ansible-mcp on PATH without a bundle', () async {
+      LocalAiAccessService.bundledBinaryPathOverride = () => null;
+
+      expect(await service.claudeCodeSnippet(), contains('"ansible-mcp"'));
+      final parsed =
+          jsonDecode(await service.mcpJsonSnippet()) as Map<String, dynamic>;
+      final server = ((parsed['mcpServers'] as Map)['ansible'] as Map)
+          .cast<String, Object?>();
+      expect(server['command'], 'ansible-mcp');
+    });
+
+    test('an explicit binaryPath argument wins over the bundle', () async {
+      LocalAiAccessService.bundledBinaryPathOverride =
+          () => '/Applications/Elix.app/Contents/Helpers/ansible-mcp';
+      expect(
+        await service.claudeCodeSnippet(binaryPath: '/opt/custom/ansible-mcp'),
+        contains('"/opt/custom/ansible-mcp"'),
+      );
+    });
+  });
 }

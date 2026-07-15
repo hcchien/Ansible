@@ -41,6 +41,7 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
   List<LocalAiAccessAuditEntry> _recentAccess = const [];
   String? _claudeCodeSnippet;
   String? _mcpJsonSnippet;
+  String? _bundledBinary;
 
   // Draft scope selections while disabled.
   bool _allBoards = false;
@@ -64,8 +65,10 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
         ? await _service.claudeCodeSnippet()
         : null;
     final mcpJson = grant != null ? await _service.mcpJsonSnippet() : null;
+    final bundledBinary = LocalAiAccessService.bundledBinaryPath();
     if (!mounted) return;
     setState(() {
+      _bundledBinary = bundledBinary;
       _grant = grant;
       _boards = boards.where((b) => !b.isDeleted).toList();
       _recentAccess = recent;
@@ -234,6 +237,32 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
       ),
       const SizedBox(height: 8),
       _sectionLabel(context.uiCopy(zh: '連接 AI 客戶端', en: 'CONNECT A CLIENT')),
+      ListTile(
+        key: const Key('local_ai_binary_tile'),
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          _bundledBinary != null
+              ? context.uiCopy(
+                  zh: 'MCP 伺服器：隨附於 App，由 AI 客戶端自動啟動',
+                  en: 'MCP server: bundled with the app, launched automatically by the AI client',
+                )
+              : context.uiCopy(
+                  zh: 'MCP 伺服器：此版本未隨附，將使用 PATH 上的 ansible-mcp',
+                  en: 'MCP server: not bundled in this build; uses ansible-mcp from PATH',
+                ),
+          style: const TextStyle(fontSize: 13),
+        ),
+        subtitle: _bundledBinary == null
+            ? null
+            : Text(
+                _bundledBinary!,
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 11,
+                ),
+              ),
+      ),
       if (_claudeCodeSnippet != null)
         _snippetCard(
           context,
