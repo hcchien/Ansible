@@ -162,11 +162,11 @@ class HomeBottomBar extends StatelessWidget {
     );
   }
 
-  /// Center ＋ — a 52×40 rounded-rect with a soft fill and a hairline rule, ink
-  /// glyph. Deliberately not a solid disc (matches the Elix tabbar spec).
+  /// Center ＋ — a 52×40 rounded-rect sticker: accent fill, lavender outer
+  /// ring, highlight-yellow glyph (matches the yellow-paper tabbar spec).
   Widget _compose(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7),
       child: Semantics(
         button: true,
         label: context.uiCopy(zh: '發表貼文', en: 'New post'),
@@ -177,11 +177,21 @@ class HomeBottomBar extends StatelessWidget {
             width: 52,
             height: 40,
             decoration: BoxDecoration(
-              color: AnsibleDesign.paperElev,
+              color: AnsibleDesign.ochre,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: AnsibleDesign.rule, width: 1),
+              boxShadow: const [
+                BoxShadow(
+                  color: AnsibleDesign.lavender,
+                  spreadRadius: 3,
+                  blurRadius: 0,
+                ),
+              ],
             ),
-            child: const Icon(Icons.add, size: 23, color: AnsibleDesign.ink),
+            child: const Icon(
+              Icons.add,
+              size: 23,
+              color: AnsibleDesign.highlight,
+            ),
           ),
         ),
       ),

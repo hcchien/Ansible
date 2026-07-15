@@ -13,33 +13,48 @@ assert.match(
 );
 assert.match(
   css,
-  /--background:\s*#FFFFFF;/,
-  'Elix Web near-white background token is required',
+  /--background:\s*#FAF8CE;/,
+  'Elix Web yellow-paper background token is required',
 );
 assert.match(
   css,
-  /--surface-raised:\s*#F6F6F6;/,
+  /--surface:\s*#FFFFFF;/,
+  'Elix Web paper-white card surface token is required',
+);
+assert.match(
+  css,
+  /--surface-raised:\s*#F5F1BE;/,
   'Elix Web soft surface token is required',
 );
 assert.match(
   css,
-  /--surface-deep:\s*#ECECEC;/,
+  /--surface-deep:\s*#EDE7A6;/,
   'Elix Web deep surface token is required',
 );
 assert.match(
   css,
-  /--border:\s*#E6E6E6;/,
+  /--border:\s*#E7E1A6;/,
   'Elix Web rule token is required',
 );
 assert.match(
   css,
-  /--muted-fill:\s*#ECECEC;/,
+  /--muted-fill:\s*#EDE7A6;/,
   'Elix Web muted fill token is required',
 );
 assert.match(
   css,
-  /--accent:\s*#B97A3C;/,
-  'Elix ochre accent token is required',
+  /--accent:\s*#C9AEEB;/,
+  'Elix lavender accent token is required',
+);
+assert.match(
+  css,
+  /--lavender:\s*#2846A8;/,
+  'Elix deep-lavender signal token is required',
+);
+assert.match(
+  css,
+  /--highlight:\s*#EBE21C;/,
+  'Elix highlight yellow token is required',
 );
 assert.match(
   css,
@@ -53,17 +68,17 @@ assert.match(
 );
 assert.match(
   css,
-  /--success:\s*#4A6B5E;/,
-  'Elix moss success token is required',
+  /--success:\s*#6FB2E8;/,
+  'Elix sky success token is required',
 );
 assert.match(
   css,
-  /--text:\s*#0A0A0A;/,
-  'Elix Web true-ink text token is required',
+  /--text:\s*#2A2A0A;/,
+  'Elix Web warm-ink text token is required',
 );
 assert.match(
   css,
-  /--muted:\s*#5C5C5C;/,
+  /--muted:\s*#625F3C;/,
   'Elix Web muted ink token is required',
 );
 assert.match(
@@ -193,8 +208,8 @@ assert.match(
 );
 assert.doesNotMatch(
   css,
-  /border-radius:\s*(1[2-9]|[2-9][0-9])px/,
-  'cards and panels must not use oversized radii',
+  /border-radius:\s*(2[1-9]|[3-9][0-9])px/,
+  'cards and panels must not use oversized radii (paper sheets cap at 20px)',
 );
 const backgroundDeclarations = css
   .split(';')

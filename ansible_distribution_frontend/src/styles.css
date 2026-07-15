@@ -1,28 +1,35 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Threads-style RWA (near-white / true-ink)
-   Serif = content · Sans = UI chrome · Mono = handles/DID
+   ELIX WEB — Threads-style RWA (yellow paper / warm ink)
+   Sans = content + UI chrome · Mono = handles/DID
+   Posts and cards sit as white paper sheets on the
+   yellow notebook background.
    Light tokens on :root; dark tokens via
    scene theme attributes or system dark.
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #FFFFFF;
-  --background-soft: #F6F6F6;
-  --surface: #FFFFFF;
-  --surface-raised: #F6F6F6;
-  --surface-deep: #ECECEC;
-  --border: #E6E6E6;
-  --border-soft: #F0F0F0;
-  --muted-fill: #ECECEC;
-  --accent: #B97A3C;
+  --background: #FAF8CE;
+  --background-soft: #F5F1BE;
+  --surface: #FFFFFF; /* paper-white — post/card sheets */
+  --surface-raised: #F5F1BE;
+  --surface-deep: #EDE7A6;
+  --border: #E7E1A6;
+  --border-soft: #F0EBBE;
+  --border-strong: #DBD48E;
+  --muted-fill: #EDE7A6;
+  --accent: #C9AEEB;
+  --lavender: #2846A8;
+  --highlight: #EBE21C;
   --warning: #9A4A24;
   --danger: #9A4A24;
-  --success: #4A6B5E;
-  --text: #0A0A0A;
-  --muted: #5C5C5C;
-  --faint: #9A9A9A;
-  --serif: "Noto Serif TC", Newsreader, Georgia, serif;
-  --serif-en: Newsreader, "Noto Serif TC", Georgia, serif;
+  --success: #6FB2E8;
+  --text: #2A2A0A;
+  --muted: #625F3C;
+  --faint: #9C9974;
+  --serif: "Noto Sans TC", Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif-en: "Noto Sans TC", Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   --sans: "Noto Sans TC", Inter, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
@@ -33,42 +40,48 @@
 /* Ink (dark) theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #000000;
-  --background-soft: #0E0E0E;
-  --surface: #000000;
-  --surface-raised: #0E0E0E;
-  --surface-deep: #1A1A1A;
-  --border: #242424;
-  --border-soft: #161616;
-  --muted-fill: #1A1A1A;
-  --accent: #D69968;
+  --background: #17130A;
+  --background-soft: #1F1A0E;
+  --surface: #14131A;
+  --surface-raised: #1F1A0E;
+  --surface-deep: #2A2413;
+  --border: #362E17;
+  --border-soft: #221D10;
+  --border-strong: #4A4020;
+  --muted-fill: #2A2413;
+  --accent: #D9C6F2;
+  --lavender: #5C82E0;
+  --highlight: #F5EE3A;
   --warning: #C97B52;
   --danger: #C97B52;
-  --success: #7AA39B;
-  --text: #F4F4F4;
-  --muted: #A4A4A4;
-  --faint: #606060;
+  --success: #8FC4F5;
+  --text: #F4EEDA;
+  --muted: #B7AD8E;
+  --faint: #726B4F;
 }
 
 /* Ink (dark) theme — auto: follow the system */
 @media (prefers-color-scheme: dark) {
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #000000;
-    --background-soft: #0E0E0E;
-    --surface: #000000;
-    --surface-raised: #0E0E0E;
-    --surface-deep: #1A1A1A;
-    --border: #242424;
-    --border-soft: #161616;
-    --muted-fill: #1A1A1A;
-    --accent: #D69968;
+    --background: #17130A;
+    --background-soft: #1F1A0E;
+    --surface: #14131A;
+    --surface-raised: #1F1A0E;
+    --surface-deep: #2A2413;
+    --border: #362E17;
+    --border-soft: #221D10;
+    --border-strong: #4A4020;
+    --muted-fill: #2A2413;
+    --accent: #D9C6F2;
+    --lavender: #5C82E0;
+    --highlight: #F5EE3A;
     --warning: #C97B52;
     --danger: #C97B52;
-    --success: #7AA39B;
-    --text: #F4F4F4;
-    --muted: #A4A4A4;
-    --faint: #606060;
+    --success: #8FC4F5;
+    --text: #F4EEDA;
+    --muted: #B7AD8E;
+    --faint: #726B4F;
   }
 }
 
@@ -122,7 +135,7 @@ a {
 }
 
 a:hover {
-  color: var(--warning);
+  color: var(--lavender);
 }
 
 .focus-visible,
@@ -308,7 +321,7 @@ p {
   font-family: var(--mono);
   font-size: 9px;
   letter-spacing: 0.1em;
-  color: var(--accent);
+  color: var(--success);
   text-transform: uppercase;
 }
 
@@ -516,9 +529,9 @@ p {
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  background: var(--background-soft);
-  border: 1px solid var(--border);
-  color: var(--accent);
+  background: var(--lavender);
+  border: none;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -553,13 +566,13 @@ p {
   text-overflow: ellipsis;
 }
 
-/* Right rail cards */
+/* Right rail cards — white paper sheets */
 .side-panel,
 .card {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 16px;
   padding: 16px 18px;
-  background: var(--background);
+  background: var(--surface);
 }
 
 .side-panel .section-label {
@@ -663,7 +676,7 @@ p {
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--lavender);
   white-space: nowrap;
   padding-top: 6px;
 }
@@ -821,15 +834,17 @@ p {
 .signed-pill {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 5px;
   padding: 3px 8px;
   color: var(--accent);
+  background: var(--surface);
   font-family: var(--mono);
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
+  transform: rotate(-2deg);
 }
 
 .scene-inline-action {
@@ -847,10 +862,11 @@ p {
   bottom: 22px;
   width: 52px;
   height: 52px;
-  border: 1px solid var(--text);
+  border: none;
   border-radius: 50%;
-  background: var(--text);
-  color: var(--background);
+  background: var(--accent);
+  color: var(--highlight);
+  box-shadow: 0 0 0 3px var(--lavender);
   font-size: 28px;
   line-height: 1;
   z-index: 8;
@@ -981,13 +997,16 @@ p {
   min-width: 0;
 }
 
-/* Post card (Threads-style) */
+/* Post card (Threads-style) — white paper sheet on yellow ground */
 .post {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  padding: 18px 4px;
-  border-bottom: 1px solid var(--border);
+  padding: 18px 14px;
+  margin: 0 -4px;
+  border-radius: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .post-source {
@@ -1076,15 +1095,17 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 5px;
   padding: 1px 8px;
   font-family: var(--mono);
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent);
+  background: var(--surface);
   white-space: nowrap;
+  transform: rotate(-2deg);
 }
 
 .empty-state {
@@ -1137,7 +1158,7 @@ p {
 .permission-state .val {
   font-family: var(--sans);
   font-size: 13px;
-  color: var(--accent);
+  color: var(--lavender);
   font-weight: 600;
 }
 
@@ -1216,8 +1237,14 @@ p {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
-  padding: 17px 4px;
-  border-bottom: 1px solid var(--border);
+  padding: 17px 14px;
+  margin: 0 -4px 4px;
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.board-thread-row:hover {
+  background: var(--background-soft);
 }
 
 .board-thread-link {
@@ -1317,15 +1344,17 @@ p {
 .pk-pill {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 5px;
   padding: 2px 7px;
   font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0;
-  color: var(--text);
-  background: var(--background);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--surface);
   white-space: nowrap;
+  transform: rotate(-2deg);
 }
 
 .board-thread-time,
@@ -1418,7 +1447,7 @@ p {
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--success);
 }
 
 .thread-hd h1 {
@@ -1464,8 +1493,8 @@ p {
 }
 
 .thread-op-avatar {
-  background: var(--text);
-  color: var(--background);
+  background: var(--accent);
+  color: #fff;
   font-size: 18px;
 }
 
@@ -1731,7 +1760,7 @@ p {
   font-size: 9.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--lavender);
 }
 
 .directory li .perm.read {
@@ -2048,7 +2077,7 @@ p {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--lavender);
   margin-top: 6px;
   flex-shrink: 0;
 }
@@ -2157,7 +2186,14 @@ p {
 }
 
 .login-page .section-label {
-  color: var(--accent);
+  color: var(--success);
+}
+
+/* Sign-in / generate-challenge buttons ride the accent (btn-gen in design) */
+.login-page .primary-action {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .login-page h2 {
@@ -2442,13 +2478,15 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1.5px dashed var(--accent);
   font-family: var(--sans);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 11px;
   padding: 2px 9px;
-  border-radius: 999px;
+  border-radius: 5px;
+  transform: rotate(-2deg);
 }
 
 /* Theme picker (Paper / Ink / Auto) */
@@ -2476,8 +2514,8 @@ p {
 }
 
 .theme-option.is-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(185, 122, 60, 0.26);
+  border-color: var(--lavender);
+  box-shadow: 0 0 0 2px rgba(201, 174, 235, 0.5);
 }
 
 .theme-swatch {
@@ -2490,16 +2528,16 @@ p {
 }
 
 .theme-swatch.is-light {
-  background: #FFFFFF;
+  background: #FAF8CE;
 }
 
 .theme-swatch.is-dark {
-  background: #000000;
-  border-color: #000000;
+  background: #17130A;
+  border-color: #17130A;
 }
 
 .theme-swatch.is-auto {
-  background: #FFFFFF;
+  background: #FAF8CE;
 }
 
 .theme-swatch.is-auto::after {
@@ -2509,7 +2547,7 @@ p {
   bottom: -8px;
   right: -18px;
   width: 60%;
-  background: #000000;
+  background: #17130A;
   transform: skewX(-20deg);
 }
 

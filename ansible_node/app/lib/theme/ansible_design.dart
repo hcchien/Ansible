@@ -4,48 +4,58 @@ import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Elix Design System — "Threads-style"
-// Near-white / pure-black surface, serif content + sans UI, amber·sage·ember.
-// Light: Paper White  ·  Dark: True Black
+// Elix Design System — "Threads-style" (yellow paper restyle)
+// Yellow notebook paper ground with white paper-sheet cards, warm ink text,
+// lavender accent · sky "sage" · deep-lavender signals · yellow highlight.
+// Light: Yellow Paper  ·  Dark: Warm Black
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
   static const brandName = 'Elix';
 
-  // ── Light (Paper White) ───────────────────────────────────────────────────
-  static const paper = Color(0xFFFFFFFF);
-  static const paperElev = Color(0xFFF6F6F6);
-  static const paperDeep = Color(0xFFECECEC);
-  static const ink = Color(0xFF0A0A0A);
-  static const inkMuted = Color(0xFF5C5C5C);
-  static const inkFaint = Color(0xFF9A9A9A);
-  static const rule = Color(0xFFE6E6E6);
-  static const ruleSoft = Color(0xFFF0F0F0);
-  static const accent = Color(0xFFB97A3C); // amber (trust dot · accents)
-  static const accentSoft = Color(0xFFE8D2BA); // lighter amber
-  static const spore = Color(0xFF4A6B5E); // sage
-  static const moss = Color(0xFF4A6B5E); // alias — "sage"
-  static const danger = Color(0xFF9A4A24); // ember
-  static const ember = Color(0xFF9A4A24); // alias — "ember"
-  static const ochre = Color(0xFFB97A3C); // alias — "amber"
+  // ── Light (Yellow Paper) ──────────────────────────────────────────────────
+  static const paper = Color(0xFFFAF8CE);
+  static const paperElev = Color(0xFFF5F1BE);
+  static const paperDeep = Color(0xFFEDE7A6);
+  static const paperWhite = Color(0xFFFFFFFF); // card sheets on the paper
+  static const ink = Color(0xFF2A2A0A);
+  static const inkMuted = Color(0xFF625F3C);
+  static const inkFaint = Color(0xFF9C9974);
+  static const rule = Color(0xFFE7E1A6);
+  static const ruleSoft = Color(0xFFF0EBBE);
+  static const accent = Color(0xFFC9AEEB); // lavender (trust dot · accents)
+  static const accentSoft = Color(0xFFE6DAF6); // lighter lavender
+  static const spore = Color(0xFF6FB2E8); // sky ("sage" slot)
+  static const moss = Color(0xFF6FB2E8); // alias — "sage"
+  static const lavender = Color(0xFF2846A8); // deep signal — dots · selection
+  static const highlight = Color(0xFFEBE21C); // decorative yellow highlight
+  // Destructive/warning text must stay readable on yellow paper, so it keeps
+  // a warm rust instead of the design file's decorative yellow "ember" slot.
+  static const danger = Color(0xFF9A4A24);
+  static const ember = Color(0xFF9A4A24); // alias — warning text
+  static const ochre = Color(0xFFC9AEEB); // alias — "amber" slot
 
-  // ── Dark (True Black) ─────────────────────────────────────────────────────
-  static const darkPaper = Color(0xFF000000);
-  static const darkPaperElev = Color(0xFF0E0E0E);
-  static const darkPaperDeep = Color(0xFF1A1A1A);
-  static const darkInk = Color(0xFFF4F4F4);
-  static const darkInkMuted = Color(0xFFA4A4A4);
-  static const darkInkFaint = Color(0xFF606060);
-  static const darkRule = Color(0xFF242424);
-  static const darkRuleSoft = Color(0xFF161616);
-  static const darkOchre = Color(0xFFD69968); // amber (dark)
-  static const darkMoss = Color(0xFF7AA39B); // sage (dark)
-  static const darkEmber = Color(0xFFC97B52); // ember (dark)
+  // ── Dark (Warm Black) ─────────────────────────────────────────────────────
+  static const darkPaper = Color(0xFF17130A);
+  static const darkPaperElev = Color(0xFF1F1A0E);
+  static const darkPaperDeep = Color(0xFF2A2413);
+  static const darkPaperWhite = Color(0xFF14131A); // card sheets (dark)
+  static const darkInk = Color(0xFFF4EEDA);
+  static const darkInkMuted = Color(0xFFB7AD8E);
+  static const darkInkFaint = Color(0xFF726B4F);
+  static const darkRule = Color(0xFF362E17);
+  static const darkRuleSoft = Color(0xFF221D10);
+  static const darkOchre = Color(0xFFD9C6F2); // lavender (dark)
+  static const darkMoss = Color(0xFF8FC4F5); // sky (dark)
+  static const darkLavender = Color(0xFF5C82E0); // deep signal (dark)
+  static const darkHighlight = Color(0xFFF5EE3A); // highlight (dark)
+  static const darkEmber = Color(0xFFC97B52); // warning text (dark)
 
   // ── Typography ────────────────────────────────────────────────────────────
-  // UI chrome rides on sans; long-form content and headings ride on serif.
-  static const serif = 'Noto Serif TC';
-  static const serifEn = 'Newsreader';
+  // The restyle rides everything on sans (Noto Sans TC); the serif slots stay
+  // as named tokens but resolve to the sans family per the new design.
+  static const serif = 'Noto Sans TC';
+  static const serifEn = 'Noto Sans TC';
   static const sans = 'Noto Sans TC';
   static const mono = 'JetBrains Mono';
   static const appTextScale = 1.08;
@@ -122,8 +132,8 @@ class AnsibleDesign {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: ink,
-          foregroundColor: paper,
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
@@ -146,11 +156,11 @@ class AnsibleDesign {
       ),
       iconTheme: const IconThemeData(color: inkMuted),
       cardTheme: CardThemeData(
-        color: paperElev,
+        color: paperWhite,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           side: const BorderSide(color: ruleSoft, width: 0.5),
         ),
       ),
@@ -176,7 +186,7 @@ class AnsibleDesign {
       onSurface: darkInk,
       surfaceContainerHighest: darkPaperElev,
       outline: darkRule,
-      error: ember,
+      error: darkEmber,
     );
 
     final base = ThemeData(
@@ -224,7 +234,7 @@ class AnsibleDesign {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: darkInk,
+          backgroundColor: darkOchre,
           foregroundColor: darkPaper,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -248,11 +258,11 @@ class AnsibleDesign {
       ),
       iconTheme: const IconThemeData(color: darkInkMuted),
       cardTheme: CardThemeData(
-        color: darkPaperElev,
+        color: darkPaperWhite,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           side: const BorderSide(color: darkRuleSoft, width: 0.5),
         ),
       ),
@@ -330,7 +340,7 @@ class ElixWordmark extends StatelessWidget {
         fontFamily: AnsibleDesign.serifEn,
         fontFamilyFallback: AnsibleDesign.fallback,
         fontSize: fontSize,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w600,
         height: 1,
         letterSpacing: 0,
         color: color ?? AnsibleDesign.ink,
@@ -524,65 +534,103 @@ class AnsibleSectionHead extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Trust badge pill. [kind] is one of: 'PK', 'DID', 'WEB', 'BASIC'.
+/// Restyle: hand-stamped look — white paper chip, dashed colored border,
+/// slight counter-clockwise rotation (matches the web `.pk-badge`).
 class ElixSignedPill extends StatelessWidget {
   const ElixSignedPill({super.key, required this.kind});
 
   final String kind; // 'PK' | 'DID' | 'WEB' | 'BASIC'
 
-  Color _bg(bool dark) {
+  Color _fg(bool dark) {
     switch (kind) {
       case 'PK':
         return dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
       case 'DID':
         return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
       case 'WEB':
-        return dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
-      default: // BASIC
-        return dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
-    }
-  }
-
-  Color _fg(bool dark) {
-    switch (kind) {
-      case 'PK':
-      case 'DID':
-        return dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
-      default:
         return dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+      default: // BASIC
+        return dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
-      decoration: BoxDecoration(
-        color: _bg(dark),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '✓',
-            style: TextStyle(fontSize: 10, color: _fg(dark), height: 1.35),
+    final fg = _fg(dark);
+    final bg = dark ? AnsibleDesign.darkPaperWhite : AnsibleDesign.paperWhite;
+    return Transform.rotate(
+      angle: -0.035, // ≈ -2°
+      child: CustomPaint(
+        painter: _DashedRectPainter(color: fg, fill: bg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '✓',
+                style: TextStyle(fontSize: 10, color: fg, height: 1.35),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                kind,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.sans,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: fg,
+                  height: 1.35,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 4),
-          Text(
-            kind,
-            style: TextStyle(
-              fontFamily: AnsibleDesign.sans,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-              color: _fg(dark),
-              height: 1.35,
-            ),
-          ),
-        ],
+        ),
       ),
     );
+  }
+}
+
+/// Rounded rect with a dashed hairline border — the "hand-stamped" chip
+/// treatment used by trust badges in the yellow-paper restyle.
+class _DashedRectPainter extends CustomPainter {
+  const _DashedRectPainter({required this.color, required this.fill});
+
+  final Color color;
+  final Color fill;
+
+  static const double radius = 5;
+  static const double strokeWidth = 1.5;
+  static const double dash = 4;
+  static const double gap = 3;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+    canvas.drawRRect(rrect, Paint()..color = fill);
+
+    final border = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    final path = Path()..addRRect(rrect.deflate(strokeWidth / 2));
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final next = (distance + dash).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(distance, next), border);
+        distance = next + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRectPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.fill != fill;
   }
 }
 
@@ -1032,7 +1080,7 @@ class DiaryEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final bg = dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+    final bg = dark ? AnsibleDesign.darkPaperWhite : AnsibleDesign.paperWhite;
     final border = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
     final inkColor = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
     final mutedColor = dark
@@ -1129,8 +1177,8 @@ class ElixAIDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final bg = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-    final markColor = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+    final bg = dark ? AnsibleDesign.darkOchre : AnsibleDesign.ochre;
+    final ring = dark ? AnsibleDesign.darkLavender : AnsibleDesign.lavender;
 
     return GestureDetector(
       onTap: onTap,
@@ -1140,6 +1188,7 @@ class ElixAIDot extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: bg,
+          border: Border.all(color: ring, width: 3),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.22),
@@ -1148,7 +1197,7 @@ class ElixAIDot extends StatelessWidget {
             ),
           ],
         ),
-        child: Center(child: AnsibleMark(size: 26, color: markColor)),
+        child: const Center(child: AnsibleMark(size: 26, color: Colors.white)),
       ),
     );
   }
