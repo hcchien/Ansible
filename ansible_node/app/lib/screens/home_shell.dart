@@ -1154,13 +1154,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // Already pointed at this build's relay → nothing to do.
       if (existing.any((n) => _relayOrigin(n.url) == defaultOrigin)) return;
 
-      // Self-heal: an earlier build auto-seeded the relay's Cloud Run native
-      // URL (*.run.app). Re-point that node at this build's relay rather than
-      // leaving a stale/duplicate. Only rewrites run.app hosts — never a user's
-      // custom forum host.
+      // Self-heal build-provided endpoints. Staging/prod can never use a local
+      // relay, but older builds accidentally seeded 127.0.0.1 because the
+      // ANSIBLE_RELAY_BASE_URL define was missing. Re-point that entry without
+      // deleting the app's local-first data. Custom non-local hosts are kept.
       final stale = existing.where((n) {
         final h = Uri.tryParse(n.url)?.host ?? '';
-        return h.endsWith('.run.app');
+        final isLocal =
+            h == 'localhost' ||
+            h == '::1' ||
+            h.startsWith('127.') ||
+            h.endsWith('.localhost');
+        return h.endsWith('.run.app') ||
+            (AppEnvironment.name != AppEnvironmentName.dev && isLocal);
       }).toList();
       if (stale.isNotEmpty) {
         for (final node in stale) {
