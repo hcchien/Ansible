@@ -15,6 +15,10 @@ import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
 import '../posts_view_screen.dart';
 
+typedef PostShareSheet = Future<void> Function(String text);
+
+Future<void> _defaultPostShareSheet(String text) => Share.share(text);
+
 /// A thread's first stored post is its OP; only subsequent posts are replies.
 int replyCountForPosts(Iterable<Post> posts) {
   final count = posts.length;
@@ -90,6 +94,7 @@ class PostCard extends StatefulWidget {
     required this.onFlushPendingOps,
     this.onOpenAuthor,
     this.onOpenContent,
+    this.shareSheet = _defaultPostShareSheet,
   });
 
   final AppDatabase db;
@@ -103,6 +108,7 @@ class PostCard extends StatefulWidget {
   /// (an item with [PostCardData.openableThread] == false). When null, such a
   /// tap falls back to the author profile.
   final void Function(PostCardData data)? onOpenContent;
+  final PostShareSheet shareSheet;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -203,11 +209,11 @@ class _PostCardState extends State<PostCard> {
   }
 
   /// "↗ pass on" — share the post's text via the platform share sheet.
-  void _share() {
+  Future<void> _share() async {
     final text = widget.data.content.isNotEmpty
         ? widget.data.content
         : widget.data.title;
-    if (text.isNotEmpty) Share.share(text);
+    if (text.isNotEmpty) await widget.shareSheet(text);
   }
 
   /// Avatar: the author's initial (serif), amber-filled when the opening op is
@@ -250,9 +256,10 @@ class _PostCardState extends State<PostCard> {
     int? count,
     bool active = false,
     VoidCallback? onTap,
+    String? tooltip,
   }) {
     final tint = active ? color.accent : color.muted;
-    return GestureDetector(
+    final action = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Row(
@@ -272,6 +279,12 @@ class _PostCardState extends State<PostCard> {
           ],
         ],
       ),
+    );
+    if (tooltip == null) return action;
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: Tooltip(message: tooltip, child: action),
     );
   }
 
@@ -404,7 +417,12 @@ class _PostCardState extends State<PostCard> {
                   const SizedBox(width: 26),
                   _feedAction(Icons.repeat, color: style, onTap: _share),
                   const Spacer(),
-                  _feedAction(Icons.send_outlined, color: style, onTap: _share),
+                  _feedAction(
+                    Icons.ios_share,
+                    color: style,
+                    onTap: _share,
+                    tooltip: context.uiCopy(zh: '分享貼文', en: 'Share post'),
+                  ),
                 ],
               ),
             ],
