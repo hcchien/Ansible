@@ -63,6 +63,83 @@ void main() {
     expect(find.byKey(const Key('nostr_relay_url_field')), findsOneWidget);
   });
 
+  testWidgets(
+    'hosted board checkbox pauses sync without deleting local content',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final now = DateTime.utc(2026, 7, 17);
+      await DriftRemoteNodeRepository(db).create(
+        RemoteNode(
+          id: 'host-1',
+          name: 'Dev Relay',
+          url: 'https://relay.example',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await DriftBoardRepository(db).create(
+        Board(
+          id: 'local-general',
+          slug: 'general',
+          title: 'General',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final hostedRepo = DriftHostedBoardRepository(db);
+      await hostedRepo.upsertProjection(
+        HostedBoardProjection(
+          localBoardId: 'local-general',
+          forumHostId: 'host-1',
+          hostedBoardId: 'general',
+          canonicalBoardUri: 'https://relay.example/boards/general',
+          remoteSlug: 'general',
+          localSlug: 'general',
+          title: 'General',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await hostedRepo.upsertSubscription(
+        BoardSubscription(
+          subscriptionId: 'host-1_general',
+          forumHostId: 'host-1',
+          hostedBoardId: 'general',
+          localBoardId: 'local-general',
+          readEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSettingsScreen(db: db, localDid: 'did:elix:test'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dev Relay'));
+      await tester.pumpAndSettle();
+      final checkbox = find.widgetWithText(CheckboxListTile, 'General');
+      expect(checkbox, findsOneWidget);
+      expect(tester.widget<CheckboxListTile>(checkbox).value, isTrue);
+
+      await tester.tap(checkbox);
+      await tester.pumpAndSettle();
+
+      final subscriptions = await hostedRepo.listSubscriptions(
+        forumHostId: 'host-1',
+      );
+      expect(subscriptions.single.readEnabled, isFalse);
+      expect(
+        await DriftBoardRepository(db).getById('local-general'),
+        isNotNull,
+      );
+    },
+  );
+
   testWidgets('sync settings can prefill discovered Elix Relay URL', (
     tester,
   ) async {

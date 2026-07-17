@@ -108,6 +108,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     try {
       final nodes = await _remoteNodeRepo.list();
       final boards = await _boardRepo.list();
+      final hostedSubscriptions = await _hostedBoardRepo.listSubscriptions();
       final nostrRelays = await _nostrRelaySettingsStore.list();
       final failedNostrTargets = await _publicationRepo.listTargets(
         protocol: PublicationProtocol.nostr,
@@ -124,6 +125,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           syncStatusByNode[node.id]![config.boardId] = config.syncEnabled;
           retentionByNode[node.id]![config.boardId] = config.retentionDays;
         }
+      }
+      // Hosted subscriptions are the authoritative sync switch for Forum Host
+      // boards. Overlay them on legacy configs so the checkbox reflects what
+      // RemoteSyncService actually reads.
+      for (final subscription in hostedSubscriptions) {
+        syncStatusByNode[subscription.forumHostId] ??= {};
+        retentionByNode[subscription.forumHostId] ??= {};
+        syncStatusByNode[subscription.forumHostId]![subscription.localBoardId] =
+            subscription.readEnabled;
+        retentionByNode[subscription.forumHostId]![subscription.localBoardId] =
+            subscription.retentionDays;
       }
 
       setState(() {
@@ -389,6 +401,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     bool enabled,
   ) async {
     await _boardSyncConfigRepo.toggleSync(nodeId, boardId, enabled);
+    final subscriptions = await _hostedBoardRepo.listSubscriptions(
+      forumHostId: nodeId,
+    );
+    for (final subscription in subscriptions.where(
+      (item) => item.localBoardId == boardId,
+    )) {
+      await _hostedBoardRepo.upsertSubscription(
+        subscription.copyWith(readEnabled: enabled, updatedAt: DateTime.now()),
+      );
+    }
     setState(() {
       _boardSyncStatusByNode[nodeId] ??= {};
       _boardRetentionByNode[nodeId] ??= {};
@@ -424,6 +446,19 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     } else {
       await _boardSyncConfigRepo.update(
         existing.copyWith(retentionDays: retentionDays, updatedAt: now),
+      );
+    }
+    final subscriptions = await _hostedBoardRepo.listSubscriptions(
+      forumHostId: nodeId,
+    );
+    for (final subscription in subscriptions.where(
+      (item) => item.localBoardId == boardId,
+    )) {
+      await _hostedBoardRepo.upsertSubscription(
+        subscription.copyWith(
+          retentionDays: retentionDays,
+          updatedAt: DateTime.now(),
+        ),
       );
     }
 
