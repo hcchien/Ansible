@@ -78,7 +78,9 @@ void main() {
       expect(find.text('還沒有貼文'), findsNothing);
     });
 
-    testWidgets('empty board shows Chinese empty-state copy', (tester) async {
+    testWidgets('legacy thread without post row renders its original title', (
+      tester,
+    ) async {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(() => db.close());
 
@@ -104,10 +106,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(find.text('還沒有貼文'), findsOneWidget);
-      expect(find.text('搶先發表第一則貼文'), findsOneWidget);
-      expect(find.text('No posts yet'), findsNothing);
-      expect(find.text('Be the first to post'), findsNothing);
+      expect(find.text('測試討論串'), findsOneWidget);
+      expect(find.text('還沒有貼文'), findsNothing);
     });
   });
 }

@@ -132,6 +132,24 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         !posts.any((post) => post.id == openingPost.id)) {
       posts.insert(0, openingPost);
     }
+    if (posts.isEmpty) {
+      // Legacy/local-first data may contain a canonical Thread created before
+      // opening posts were stored as separate Post rows. The thread itself is
+      // still real user content, so render it as a read-only OP rather than
+      // claiming that no post exists.
+      posts.add(
+        Post(
+          id: '${widget.thread.id}:legacy-opening',
+          threadId: widget.thread.id,
+          boardId: widget.thread.boardId,
+          authorId: widget.thread.authorId,
+          content: '',
+          createdAt: widget.thread.createdAt,
+          updatedAt: widget.thread.updatedAt,
+          lastEditAt: widget.thread.updatedAt,
+        ),
+      );
+    }
     final board = await DriftBoardRepository(
       widget.db,
     ).getById(widget.thread.boardId);
@@ -639,16 +657,18 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               color: _fg,
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            post.content,
-            style: TextStyle(
-              fontFamily: AnsibleDesign.serif,
-              fontSize: 16,
-              height: 1.78,
-              color: _fg,
+          if (post.content.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              post.content,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 16,
+                height: 1.78,
+                color: _fg,
+              ),
             ),
-          ),
+          ],
           if (removal == null) ...[
             const SizedBox(height: 6),
             _opActions(context, post),

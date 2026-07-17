@@ -364,18 +364,20 @@ class _PostCardState extends State<PostCard> {
                   ),
                 ),
               ],
-              const SizedBox(height: 6),
-              Text(
-                data.content.isEmpty ? context.l10n.noContentYet : data.content,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.serif,
-                  color: style.foreground,
-                  height: 1.72,
-                  fontSize: 15,
+              if (data.content.trim().isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  data.content,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    color: style.foreground,
+                    height: 1.72,
+                    fontSize: 15,
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 10),
               Row(
                 children: [
