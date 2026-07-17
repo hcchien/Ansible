@@ -11,6 +11,22 @@ NEW_PATH=`echo $PATH | tr ":" "\n" | grep -v "Contents/Developer/" | tr "\n" ":"
 
 export PATH=${NEW_PATH%?} # remove trailing :
 
+# Xcode may replace PATH for CocoaPods script phases even when xcodebuild was
+# launched from a shell that can resolve rustup. CargoKit also checks
+# $HOME/.cargo/bin, but make it explicit here so physical-device release builds
+# behave consistently across Xcode invocations.
+if [ -n "${CARGO_HOME:-}" ]; then
+  export PATH="$CARGO_HOME/bin:$PATH"
+elif [ -n "${HOME:-}" ]; then
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
+for rustup_bin in /opt/homebrew/opt/rustup/bin /usr/local/opt/rustup/bin; do
+  if [ -x "$rustup_bin/rustup" ]; then
+    export PATH="$rustup_bin:$PATH"
+    break
+  fi
+done
+
 env
 
 # Platform name (macosx, iphoneos, iphonesimulator)
