@@ -344,15 +344,6 @@ class _PostCardState extends State<PostCard> {
                     Icon(Icons.verified, size: 14, color: AnsibleDesign.spore),
                     const SizedBox(width: 8),
                   ],
-                  if (data.signatureVerified)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AnsibleDesign.spore,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
                 ],
               ),
               if (data.title.isNotEmpty) ...[
