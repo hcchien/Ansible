@@ -409,7 +409,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!firstPosts.containsKey(t.id)) {
         final posts = await _postRepo.list(threadId: t.id);
         firstPosts[t.id] = posts.isNotEmpty ? posts.first : null;
-        postCounts[t.id] = posts.length;
+        // The first row is the opening post; the comment badge counts replies
+        // only, matching the thread detail header.
+        postCounts[t.id] = replyCountForPosts(posts);
 
         final reactions = await _reactionRepo.listByTarget(
           store.TargetType.thread.name,
@@ -1099,7 +1101,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           timeAgo: _formatTimeAgo(entry.post.createdAt),
           content: entry.post.content,
           reactions: {'👍': countMap[store.ReactionType.thumbsUp.name] ?? 0},
-          comments: posts.length,
+          comments: replyCountForPosts(posts),
           reacted: reacted,
           openingPost: entry.post,
           signatureVerified: entry.post.signatureVerified,

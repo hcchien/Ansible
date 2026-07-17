@@ -15,6 +15,12 @@ import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
 import '../posts_view_screen.dart';
 
+/// A thread's first stored post is its OP; only subsequent posts are replies.
+int replyCountForPosts(Iterable<Post> posts) {
+  final count = posts.length;
+  return count == 0 ? 0 : count - 1;
+}
+
 class PostCardData {
   PostCardData({
     required this.thread,
