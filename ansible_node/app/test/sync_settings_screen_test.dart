@@ -24,7 +24,11 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
-    await tester.pumpWidget(MaterialApp(home: SyncSettingsScreen(db: db)));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SyncSettingsScreen(db: db, localDid: 'did:elix:test'),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -41,7 +45,11 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
-    await tester.pumpWidget(MaterialApp(home: SyncSettingsScreen(db: db)));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SyncSettingsScreen(db: db, localDid: 'did:elix:test'),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -66,6 +74,7 @@ void main() {
       MaterialApp(
         home: SyncSettingsScreen(
           db: db,
+          localDid: 'did:elix:test',
           initialForumHostUrl: 'https://relay.example',
         ),
       ),
@@ -106,7 +115,11 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: SyncSettingsScreen(db: db, complianceFetcher: complianceFetcher),
+          home: SyncSettingsScreen(
+            db: db,
+            localDid: 'did:elix:test',
+            complianceFetcher: complianceFetcher,
+          ),
         ),
       );
       await tester.pump();

@@ -667,6 +667,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       MaterialPageRoute(
         builder: (_) => SyncSettingsScreen(
           db: widget.db,
+          localDid: widget.did,
           initialForumHostUrl: forumHostUrl,
         ),
       ),

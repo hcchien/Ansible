@@ -33,6 +33,7 @@ bool hostComplianceNeedsWarning(String? compliance) {
 
 class SyncSettingsScreen extends StatefulWidget {
   final AppDatabase db;
+  final String localDid;
   final String? initialForumHostUrl;
 
   /// Test seam for fetching a host's self-declared constitution compliance
@@ -42,6 +43,7 @@ class SyncSettingsScreen extends StatefulWidget {
   const SyncSettingsScreen({
     super.key,
     required this.db,
+    required this.localDid,
     this.initialForumHostUrl,
     this.complianceFetcher,
   });
@@ -269,17 +271,21 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         content: Text(
           compliance == 'non_compliant'
               ? dialogContext.uiCopy(
-                  zh: '此主機聲明不符合憲章。加入後仍可同步與瀏覽，但它可能不遵守本應用的內容與身分保護規則。'
+                  zh:
+                      '此主機聲明不符合憲章。加入後仍可同步與瀏覽，但它可能不遵守本應用的內容與身分保護規則。'
                       '此標示僅供顯示與排序參考。',
-                  en: 'This host declares itself non-compliant with the '
+                  en:
+                      'This host declares itself non-compliant with the '
                       'constitution. You can still add and browse it, but it '
                       'may not follow this app\'s content and identity '
                       'protections. The label is informational only.',
                 )
               : dialogContext.uiCopy(
-                  zh: '此主機未聲明符合憲章。加入後仍可同步與瀏覽，但其行為未經評估。'
+                  zh:
+                      '此主機未聲明符合憲章。加入後仍可同步與瀏覽，但其行為未經評估。'
                       '此標示僅供顯示與排序參考。',
-                  en: 'This host has not declared constitution compliance. '
+                  en:
+                      'This host has not declared constitution compliance. '
                       'You can still add and browse it, but its behavior has '
                       'not been evaluated. The label is informational only.',
                 ),
@@ -503,10 +509,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              SubpageL10n.of(context).f('syncNodeError', {
-                'name': node.name,
-                'error': '$e',
-              }),
+              SubpageL10n.of(
+                context,
+              ).f('syncNodeError', {'name': node.name, 'error': '$e'}),
             ),
             backgroundColor: Colors.red,
           ),
@@ -551,7 +556,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     bool showSnackBar = true,
   }) async {
     final publicItems = (await _contentItemRepo.list())
-        .where((item) => item.visibility != ContentVisibility.private)
+        .where((item) => isPublishableContentForDid(item, widget.localDid))
         .toList();
     if (publicItems.isEmpty) {
       return const PublicPublishSummary(publicItems: 0);
@@ -1195,4 +1200,3 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         : text.f('daysShort', {'count': days});
   }
 }
-

@@ -81,8 +81,7 @@ class SettingsHomeScreen extends StatelessWidget {
 
   bool get _showLocalAiAccess =>
       showLocalAiAccess ??
-      (!kIsWeb &&
-          (Platform.isMacOS || Platform.isLinux || Platform.isWindows));
+      (!kIsWeb && (Platform.isMacOS || Platform.isLinux || Platform.isWindows));
 
   /// Jumps to the user's 個人版 (personal board) in the home pager. Surfaced as
   /// the top entry here because the personal board no longer has its own cell in
@@ -282,7 +281,7 @@ class SettingsHomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => SyncSettingsScreen(db: db),
+                      builder: (_) => SyncSettingsScreen(db: db, localDid: did),
                     ),
                   );
                 },
