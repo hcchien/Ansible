@@ -1702,6 +1702,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         notificationProjector: _notificationProjector,
         localDid: widget.did,
       ),
+      remoteTombstoneRepository: DriftRemoteTombstoneRepository(widget.db),
       opsQueueRepo: _opsQueueRepo,
       opsDispatchService: _opsDispatchService,
       signingBridge: const SchnorrSigningBridge(),

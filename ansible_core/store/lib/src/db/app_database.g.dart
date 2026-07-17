@@ -29117,6 +29117,540 @@ class IdentityAnchorsCompanion extends UpdateCompanion<IdentityAnchorRow> {
   }
 }
 
+class $RemoteTombstonesTable extends RemoteTombstones
+    with TableInfo<$RemoteTombstonesTable, RemoteTombstoneRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RemoteTombstonesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sourceNodeIdMeta = const VerificationMeta(
+    'sourceNodeId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceNodeId = GeneratedColumn<String>(
+    'source_node_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boardIdMeta = const VerificationMeta(
+    'boardId',
+  );
+  @override
+  late final GeneratedColumn<String> boardId = GeneratedColumn<String>(
+    'board_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _authorDidMeta = const VerificationMeta(
+    'authorDid',
+  );
+  @override
+  late final GeneratedColumn<String> authorDid = GeneratedColumn<String>(
+    'author_did',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedByDidMeta = const VerificationMeta(
+    'deletedByDid',
+  );
+  @override
+  late final GeneratedColumn<String> deletedByDid = GeneratedColumn<String>(
+    'deleted_by_did',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receivedAtMeta = const VerificationMeta(
+    'receivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> receivedAt = GeneratedColumn<DateTime>(
+    'received_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    sourceNodeId,
+    entityType,
+    entityId,
+    boardId,
+    authorDid,
+    deletedByDid,
+    deletedAt,
+    receivedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'remote_tombstones';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RemoteTombstoneRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('source_node_id')) {
+      context.handle(
+        _sourceNodeIdMeta,
+        sourceNodeId.isAcceptableOrUnknown(
+          data['source_node_id']!,
+          _sourceNodeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceNodeIdMeta);
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('board_id')) {
+      context.handle(
+        _boardIdMeta,
+        boardId.isAcceptableOrUnknown(data['board_id']!, _boardIdMeta),
+      );
+    }
+    if (data.containsKey('author_did')) {
+      context.handle(
+        _authorDidMeta,
+        authorDid.isAcceptableOrUnknown(data['author_did']!, _authorDidMeta),
+      );
+    }
+    if (data.containsKey('deleted_by_did')) {
+      context.handle(
+        _deletedByDidMeta,
+        deletedByDid.isAcceptableOrUnknown(
+          data['deleted_by_did']!,
+          _deletedByDidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_deletedByDidMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deletedAtMeta);
+    }
+    if (data.containsKey('received_at')) {
+      context.handle(
+        _receivedAtMeta,
+        receivedAt.isAcceptableOrUnknown(data['received_at']!, _receivedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_receivedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sourceNodeId, entityType, entityId};
+  @override
+  RemoteTombstoneRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RemoteTombstoneRow(
+      sourceNodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_node_id'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      boardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}board_id'],
+      ),
+      authorDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_did'],
+      ),
+      deletedByDid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deleted_by_did'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      )!,
+      receivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}received_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RemoteTombstonesTable createAlias(String alias) {
+    return $RemoteTombstonesTable(attachedDatabase, alias);
+  }
+}
+
+class RemoteTombstoneRow extends DataClass
+    implements Insertable<RemoteTombstoneRow> {
+  final String sourceNodeId;
+  final String entityType;
+  final String entityId;
+  final String? boardId;
+  final String? authorDid;
+  final String deletedByDid;
+  final DateTime deletedAt;
+  final DateTime receivedAt;
+  const RemoteTombstoneRow({
+    required this.sourceNodeId,
+    required this.entityType,
+    required this.entityId,
+    this.boardId,
+    this.authorDid,
+    required this.deletedByDid,
+    required this.deletedAt,
+    required this.receivedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['source_node_id'] = Variable<String>(sourceNodeId);
+    map['entity_type'] = Variable<String>(entityType);
+    map['entity_id'] = Variable<String>(entityId);
+    if (!nullToAbsent || boardId != null) {
+      map['board_id'] = Variable<String>(boardId);
+    }
+    if (!nullToAbsent || authorDid != null) {
+      map['author_did'] = Variable<String>(authorDid);
+    }
+    map['deleted_by_did'] = Variable<String>(deletedByDid);
+    map['deleted_at'] = Variable<DateTime>(deletedAt);
+    map['received_at'] = Variable<DateTime>(receivedAt);
+    return map;
+  }
+
+  RemoteTombstonesCompanion toCompanion(bool nullToAbsent) {
+    return RemoteTombstonesCompanion(
+      sourceNodeId: Value(sourceNodeId),
+      entityType: Value(entityType),
+      entityId: Value(entityId),
+      boardId: boardId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boardId),
+      authorDid: authorDid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authorDid),
+      deletedByDid: Value(deletedByDid),
+      deletedAt: Value(deletedAt),
+      receivedAt: Value(receivedAt),
+    );
+  }
+
+  factory RemoteTombstoneRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RemoteTombstoneRow(
+      sourceNodeId: serializer.fromJson<String>(json['sourceNodeId']),
+      entityType: serializer.fromJson<String>(json['entityType']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      boardId: serializer.fromJson<String?>(json['boardId']),
+      authorDid: serializer.fromJson<String?>(json['authorDid']),
+      deletedByDid: serializer.fromJson<String>(json['deletedByDid']),
+      deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+      receivedAt: serializer.fromJson<DateTime>(json['receivedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sourceNodeId': serializer.toJson<String>(sourceNodeId),
+      'entityType': serializer.toJson<String>(entityType),
+      'entityId': serializer.toJson<String>(entityId),
+      'boardId': serializer.toJson<String?>(boardId),
+      'authorDid': serializer.toJson<String?>(authorDid),
+      'deletedByDid': serializer.toJson<String>(deletedByDid),
+      'deletedAt': serializer.toJson<DateTime>(deletedAt),
+      'receivedAt': serializer.toJson<DateTime>(receivedAt),
+    };
+  }
+
+  RemoteTombstoneRow copyWith({
+    String? sourceNodeId,
+    String? entityType,
+    String? entityId,
+    Value<String?> boardId = const Value.absent(),
+    Value<String?> authorDid = const Value.absent(),
+    String? deletedByDid,
+    DateTime? deletedAt,
+    DateTime? receivedAt,
+  }) => RemoteTombstoneRow(
+    sourceNodeId: sourceNodeId ?? this.sourceNodeId,
+    entityType: entityType ?? this.entityType,
+    entityId: entityId ?? this.entityId,
+    boardId: boardId.present ? boardId.value : this.boardId,
+    authorDid: authorDid.present ? authorDid.value : this.authorDid,
+    deletedByDid: deletedByDid ?? this.deletedByDid,
+    deletedAt: deletedAt ?? this.deletedAt,
+    receivedAt: receivedAt ?? this.receivedAt,
+  );
+  RemoteTombstoneRow copyWithCompanion(RemoteTombstonesCompanion data) {
+    return RemoteTombstoneRow(
+      sourceNodeId: data.sourceNodeId.present
+          ? data.sourceNodeId.value
+          : this.sourceNodeId,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      boardId: data.boardId.present ? data.boardId.value : this.boardId,
+      authorDid: data.authorDid.present ? data.authorDid.value : this.authorDid,
+      deletedByDid: data.deletedByDid.present
+          ? data.deletedByDid.value
+          : this.deletedByDid,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      receivedAt: data.receivedAt.present
+          ? data.receivedAt.value
+          : this.receivedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteTombstoneRow(')
+          ..write('sourceNodeId: $sourceNodeId, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('boardId: $boardId, ')
+          ..write('authorDid: $authorDid, ')
+          ..write('deletedByDid: $deletedByDid, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('receivedAt: $receivedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    sourceNodeId,
+    entityType,
+    entityId,
+    boardId,
+    authorDid,
+    deletedByDid,
+    deletedAt,
+    receivedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RemoteTombstoneRow &&
+          other.sourceNodeId == this.sourceNodeId &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.boardId == this.boardId &&
+          other.authorDid == this.authorDid &&
+          other.deletedByDid == this.deletedByDid &&
+          other.deletedAt == this.deletedAt &&
+          other.receivedAt == this.receivedAt);
+}
+
+class RemoteTombstonesCompanion extends UpdateCompanion<RemoteTombstoneRow> {
+  final Value<String> sourceNodeId;
+  final Value<String> entityType;
+  final Value<String> entityId;
+  final Value<String?> boardId;
+  final Value<String?> authorDid;
+  final Value<String> deletedByDid;
+  final Value<DateTime> deletedAt;
+  final Value<DateTime> receivedAt;
+  final Value<int> rowid;
+  const RemoteTombstonesCompanion({
+    this.sourceNodeId = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.boardId = const Value.absent(),
+    this.authorDid = const Value.absent(),
+    this.deletedByDid = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.receivedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RemoteTombstonesCompanion.insert({
+    required String sourceNodeId,
+    required String entityType,
+    required String entityId,
+    this.boardId = const Value.absent(),
+    this.authorDid = const Value.absent(),
+    required String deletedByDid,
+    required DateTime deletedAt,
+    required DateTime receivedAt,
+    this.rowid = const Value.absent(),
+  }) : sourceNodeId = Value(sourceNodeId),
+       entityType = Value(entityType),
+       entityId = Value(entityId),
+       deletedByDid = Value(deletedByDid),
+       deletedAt = Value(deletedAt),
+       receivedAt = Value(receivedAt);
+  static Insertable<RemoteTombstoneRow> custom({
+    Expression<String>? sourceNodeId,
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<String>? boardId,
+    Expression<String>? authorDid,
+    Expression<String>? deletedByDid,
+    Expression<DateTime>? deletedAt,
+    Expression<DateTime>? receivedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (sourceNodeId != null) 'source_node_id': sourceNodeId,
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (boardId != null) 'board_id': boardId,
+      if (authorDid != null) 'author_did': authorDid,
+      if (deletedByDid != null) 'deleted_by_did': deletedByDid,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (receivedAt != null) 'received_at': receivedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RemoteTombstonesCompanion copyWith({
+    Value<String>? sourceNodeId,
+    Value<String>? entityType,
+    Value<String>? entityId,
+    Value<String?>? boardId,
+    Value<String?>? authorDid,
+    Value<String>? deletedByDid,
+    Value<DateTime>? deletedAt,
+    Value<DateTime>? receivedAt,
+    Value<int>? rowid,
+  }) {
+    return RemoteTombstonesCompanion(
+      sourceNodeId: sourceNodeId ?? this.sourceNodeId,
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      boardId: boardId ?? this.boardId,
+      authorDid: authorDid ?? this.authorDid,
+      deletedByDid: deletedByDid ?? this.deletedByDid,
+      deletedAt: deletedAt ?? this.deletedAt,
+      receivedAt: receivedAt ?? this.receivedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sourceNodeId.present) {
+      map['source_node_id'] = Variable<String>(sourceNodeId.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (boardId.present) {
+      map['board_id'] = Variable<String>(boardId.value);
+    }
+    if (authorDid.present) {
+      map['author_did'] = Variable<String>(authorDid.value);
+    }
+    if (deletedByDid.present) {
+      map['deleted_by_did'] = Variable<String>(deletedByDid.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (receivedAt.present) {
+      map['received_at'] = Variable<DateTime>(receivedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteTombstonesCompanion(')
+          ..write('sourceNodeId: $sourceNodeId, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('boardId: $boardId, ')
+          ..write('authorDid: $authorDid, ')
+          ..write('deletedByDid: $deletedByDid, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('receivedAt: $receivedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -29211,6 +29745,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $IdentityAnchorsTable identityAnchors = $IdentityAnchorsTable(
     this,
   );
+  late final $RemoteTombstonesTable remoteTombstones = $RemoteTombstonesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -29268,6 +29805,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     notifications,
     hostModerationStates,
     identityAnchors,
+    remoteTombstones,
   ];
 }
 
@@ -49653,6 +50191,281 @@ typedef $$IdentityAnchorsTableProcessedTableManager =
       IdentityAnchorRow,
       PrefetchHooks Function()
     >;
+typedef $$RemoteTombstonesTableCreateCompanionBuilder =
+    RemoteTombstonesCompanion Function({
+      required String sourceNodeId,
+      required String entityType,
+      required String entityId,
+      Value<String?> boardId,
+      Value<String?> authorDid,
+      required String deletedByDid,
+      required DateTime deletedAt,
+      required DateTime receivedAt,
+      Value<int> rowid,
+    });
+typedef $$RemoteTombstonesTableUpdateCompanionBuilder =
+    RemoteTombstonesCompanion Function({
+      Value<String> sourceNodeId,
+      Value<String> entityType,
+      Value<String> entityId,
+      Value<String?> boardId,
+      Value<String?> authorDid,
+      Value<String> deletedByDid,
+      Value<DateTime> deletedAt,
+      Value<DateTime> receivedAt,
+      Value<int> rowid,
+    });
+
+class $$RemoteTombstonesTableFilterComposer
+    extends Composer<_$AppDatabase, $RemoteTombstonesTable> {
+  $$RemoteTombstonesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sourceNodeId => $composableBuilder(
+    column: $table.sourceNodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorDid => $composableBuilder(
+    column: $table.authorDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletedByDid => $composableBuilder(
+    column: $table.deletedByDid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RemoteTombstonesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RemoteTombstonesTable> {
+  $$RemoteTombstonesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sourceNodeId => $composableBuilder(
+    column: $table.sourceNodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorDid => $composableBuilder(
+    column: $table.authorDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletedByDid => $composableBuilder(
+    column: $table.deletedByDid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RemoteTombstonesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RemoteTombstonesTable> {
+  $$RemoteTombstonesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sourceNodeId => $composableBuilder(
+    column: $table.sourceNodeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get boardId =>
+      $composableBuilder(column: $table.boardId, builder: (column) => column);
+
+  GeneratedColumn<String> get authorDid =>
+      $composableBuilder(column: $table.authorDid, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedByDid => $composableBuilder(
+    column: $table.deletedByDid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get receivedAt => $composableBuilder(
+    column: $table.receivedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$RemoteTombstonesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RemoteTombstonesTable,
+          RemoteTombstoneRow,
+          $$RemoteTombstonesTableFilterComposer,
+          $$RemoteTombstonesTableOrderingComposer,
+          $$RemoteTombstonesTableAnnotationComposer,
+          $$RemoteTombstonesTableCreateCompanionBuilder,
+          $$RemoteTombstonesTableUpdateCompanionBuilder,
+          (
+            RemoteTombstoneRow,
+            BaseReferences<
+              _$AppDatabase,
+              $RemoteTombstonesTable,
+              RemoteTombstoneRow
+            >,
+          ),
+          RemoteTombstoneRow,
+          PrefetchHooks Function()
+        > {
+  $$RemoteTombstonesTableTableManager(
+    _$AppDatabase db,
+    $RemoteTombstonesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemoteTombstonesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RemoteTombstonesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RemoteTombstonesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> sourceNodeId = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String?> boardId = const Value.absent(),
+                Value<String?> authorDid = const Value.absent(),
+                Value<String> deletedByDid = const Value.absent(),
+                Value<DateTime> deletedAt = const Value.absent(),
+                Value<DateTime> receivedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RemoteTombstonesCompanion(
+                sourceNodeId: sourceNodeId,
+                entityType: entityType,
+                entityId: entityId,
+                boardId: boardId,
+                authorDid: authorDid,
+                deletedByDid: deletedByDid,
+                deletedAt: deletedAt,
+                receivedAt: receivedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String sourceNodeId,
+                required String entityType,
+                required String entityId,
+                Value<String?> boardId = const Value.absent(),
+                Value<String?> authorDid = const Value.absent(),
+                required String deletedByDid,
+                required DateTime deletedAt,
+                required DateTime receivedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RemoteTombstonesCompanion.insert(
+                sourceNodeId: sourceNodeId,
+                entityType: entityType,
+                entityId: entityId,
+                boardId: boardId,
+                authorDid: authorDid,
+                deletedByDid: deletedByDid,
+                deletedAt: deletedAt,
+                receivedAt: receivedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RemoteTombstonesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RemoteTombstonesTable,
+      RemoteTombstoneRow,
+      $$RemoteTombstonesTableFilterComposer,
+      $$RemoteTombstonesTableOrderingComposer,
+      $$RemoteTombstonesTableAnnotationComposer,
+      $$RemoteTombstonesTableCreateCompanionBuilder,
+      $$RemoteTombstonesTableUpdateCompanionBuilder,
+      (
+        RemoteTombstoneRow,
+        BaseReferences<
+          _$AppDatabase,
+          $RemoteTombstonesTable,
+          RemoteTombstoneRow
+        >,
+      ),
+      RemoteTombstoneRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -49782,4 +50595,6 @@ class $AppDatabaseManager {
       $$HostModerationStatesTableTableManager(_db, _db.hostModerationStates);
   $$IdentityAnchorsTableTableManager get identityAnchors =>
       $$IdentityAnchorsTableTableManager(_db, _db.identityAnchors);
+  $$RemoteTombstonesTableTableManager get remoteTombstones =>
+      $$RemoteTombstonesTableTableManager(_db, _db.remoteTombstones);
 }

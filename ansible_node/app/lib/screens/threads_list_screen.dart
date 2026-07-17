@@ -108,6 +108,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   /// Set when this board is hosted by a Forum Host; only hosted boards have a
   /// public web URL to share.
   HostedBoardProjection? _hostedProjection;
+  RemoteTombstone? _remoteRemoval;
 
   /// True when the board requires a higher tier than the local user has.
   /// Client-side UX only — the relay re-checks at intent acceptance.
@@ -134,12 +135,16 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   }
 
   Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
-  Color get _deep => _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+  Color get _deep =>
+      _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
   Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-  Color get _muted => _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
-  Color get _faint => _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _muted =>
+      _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint =>
+      _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
   Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
-  Color get _ruleSoft => _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _ruleSoft =>
+      _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
   Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
   Color get _moss => _dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
 
@@ -161,6 +166,11 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       widget.db,
     ).getProjectionByLocalBoardId(widget.board.id);
     final postingBlocked = await _checkPostingGate(projection);
+    final remoteRemoval = projection == null
+        ? null
+        : await DriftRemoteTombstoneRepository(
+            widget.db,
+          ).get(projection.forumHostId, 'board', projection.hostedBoardId);
     final moderationEntries = await DriftHostModerationStateRepository(
       widget.db,
     ).listForBoard(widget.board.id);
@@ -189,6 +199,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     setState(() {
       _threads = threads;
       _hostedProjection = projection;
+      _remoteRemoval = remoteRemoval;
       _postingBlocked = postingBlocked;
       _requiredTier = projection?.minPostTier;
       _lockedByThreadId = lockedByThreadId;
@@ -430,6 +441,26 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                if (_remoteRemoval != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                    color: _deep,
+                    child: Text(
+                      context.uiCopy(
+                        zh: '原主機已移除此看板；本機看板與貼文仍完整保留。',
+                        en: 'The original host removed this board. Your local board and posts are preserved.',
+                      ),
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 13,
+                        color: _muted,
+                      ),
+                    ),
+                  ),
                 if (_postingBlocked)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -444,17 +475,10 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _postingBlocked ? null : _createThread,
         tooltip: _postingBlocked
-            ? context.uiCopy(
-                zh: '需通過真人驗證才能發文',
-                en: 'Verified humans only',
-              )
+            ? context.uiCopy(zh: '需通過真人驗證才能發文', en: 'Verified humans only')
             : context.uiCopy(zh: '建立討論串', en: 'Create thread'),
-        backgroundColor: _postingBlocked
-            ? _deep
-            : _fg,
-        foregroundColor: _postingBlocked
-            ? _faint
-            : _bg,
+        backgroundColor: _postingBlocked ? _deep : _fg,
+        foregroundColor: _postingBlocked ? _faint : _bg,
         elevation: 1,
         child: Icon(Icons.add),
       ),
@@ -520,9 +544,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           Container(
             padding: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: _ruleSoft, width: 0.5),
-              ),
+              border: Border(top: BorderSide(color: _ruleSoft, width: 0.5)),
             ),
             child: Row(
               children: [
@@ -572,11 +594,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       padding: const EdgeInsets.symmetric(vertical: 48),
       child: Column(
         children: [
-          Icon(
-            Icons.forum_outlined,
-            size: 48,
-            color: _faint,
-          ),
+          Icon(Icons.forum_outlined, size: 48, color: _faint),
           const SizedBox(height: 14),
           Text(
             context.uiCopy(zh: '還沒有討論串', en: 'No threads yet'),
@@ -593,10 +611,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               zh: '點右下角 + 開始一個新討論',
               en: 'Tap + to start a discussion',
             ),
-            style: TextStyle(
-              fontSize: 13,
-              color: _faint,
-            ),
+            style: TextStyle(fontSize: 13, color: _faint),
           ),
         ],
       ),
@@ -727,8 +742,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                             const SizedBox(width: 5),
                             Tooltip(
                               message: context.uiCopy(
-                                zh:
-                                    '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
+                                zh: '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
                                 en:
                                     'Locked by the board moderators '
                                     '(${moderationReasonLabel(context, lock.reasonCode)})',

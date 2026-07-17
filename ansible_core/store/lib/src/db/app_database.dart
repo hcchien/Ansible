@@ -45,6 +45,7 @@ import '../schema/publication_targets.dart';
 import '../schema/projections.dart';
 import '../schema/reactions.dart';
 import '../schema/remote_nodes.dart';
+import '../schema/remote_tombstones.dart';
 import '../schema/summary_jobs.dart';
 import '../schema/threads.dart';
 import '../schema/transformation_jobs.dart';
@@ -109,13 +110,14 @@ part 'app_database.g.dart';
     Notifications,
     HostModerationStates,
     IdentityAnchors,
+    RemoteTombstones,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -256,6 +258,9 @@ class AppDatabase extends _$AppDatabase {
           remoteNodes.constitutionCompliance,
         );
       }
+      if (from < 27) {
+        await _createTableIfMissing(m, remoteTombstones);
+      }
       await _addColumnIfMissing(
         m,
         boardSyncConfigs,
@@ -304,7 +309,10 @@ class AppDatabase extends _$AppDatabase {
 /// better than the opaque failures that arise from running against an
 /// unexpected schema.
 class DatabaseDowngradeError extends Error {
-  DatabaseDowngradeError({required this.storedVersion, required this.appVersion});
+  DatabaseDowngradeError({
+    required this.storedVersion,
+    required this.appVersion,
+  });
 
   /// Schema version currently stored in the database file (the newer one).
   final int storedVersion;

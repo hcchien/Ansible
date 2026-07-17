@@ -111,6 +111,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   /// projection only — local content rows are never touched.
   HostModerationState? _threadLock;
   Map<String, HostModerationState> _removedByPostId = const {};
+  RemoteTombstone? _remoteRemoval;
 
   String get _authorDid => widget.authorDid ?? widget.thread.authorId;
 
@@ -131,6 +132,11 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       widget.db,
     ).getProjectionByLocalBoardId(widget.thread.boardId);
     final postingBlocked = await _checkPostingGate(projection);
+    final remoteRemoval = projection == null
+        ? null
+        : await DriftRemoteTombstoneRepository(
+            widget.db,
+          ).get(projection.forumHostId, 'thread', widget.thread.id);
     final moderationEntries = await DriftHostModerationStateRepository(
       widget.db,
     ).listForBoard(widget.thread.boardId);
@@ -153,6 +159,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       _postingBlocked = postingBlocked;
       _threadLock = threadLock;
       _removedByPostId = removedByPostId;
+      _remoteRemoval = remoteRemoval;
       _isLoading = false;
     });
   }
@@ -443,6 +450,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                if (_remoteRemoval != null) _remoteRemovalBanner(context),
                 if (_threadLock != null)
                   _threadLockedBanner(context, _threadLock!),
                 Expanded(
@@ -456,6 +464,23 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
             ),
     );
   }
+
+  Widget _remoteRemovalBanner(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+    color: _deep,
+    child: Text(
+      context.uiCopy(
+        zh: '原主機已移除此討論；本機副本仍完整保留。',
+        en: 'The original host removed this discussion. Your local copy is preserved.',
+      ),
+      style: TextStyle(
+        fontFamily: AnsibleDesign.serif,
+        fontSize: 13,
+        color: _muted,
+      ),
+    ),
+  );
 
   List<Widget> _threadItems(BuildContext context) {
     final items = <Widget>[];

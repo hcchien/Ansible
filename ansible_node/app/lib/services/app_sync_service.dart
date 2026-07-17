@@ -84,6 +84,7 @@ class AppSyncService {
     String? followerDid,
     NotificationProjector? notificationProjector,
     HostModerationSyncService? hostModerationSync,
+    RemoteTombstoneRepository? remoteTombstoneRepository,
     OpsQueueRepository? opsQueueRepo,
     OpsDispatchService? opsDispatchService,
     NostrSigningBridge signingBridge = const SchnorrSigningBridge(),
@@ -98,6 +99,7 @@ class AppSyncService {
        _followerDid = followerDid,
        _notificationProjector = notificationProjector,
        _hostModerationSync = hostModerationSync,
+       _remoteTombstoneRepository = remoteTombstoneRepository,
        _opsQueueRepo = opsQueueRepo,
        _opsDispatchService = opsDispatchService,
        _boardSyncConfigRepo = boardSyncConfigRepo,
@@ -122,6 +124,7 @@ class AppSyncService {
   final String? _followerDid;
   final NotificationProjector? _notificationProjector;
   final HostModerationSyncService? _hostModerationSync;
+  final RemoteTombstoneRepository? _remoteTombstoneRepository;
   final OpsQueueRepository? _opsQueueRepo;
   final OpsDispatchService? _opsDispatchService;
   final BoardSyncConfigRepository _boardSyncConfigRepo;
@@ -388,6 +391,7 @@ class AppSyncService {
         didReputationRepo: _didReputationRepo,
         followerDid: _followerDid,
         notificationProjector: _notificationProjector,
+        remoteTombstoneRepository: _remoteTombstoneRepository,
         issuerAttestationService: _attestationServiceFor(node.url),
         identityClient: _identityClient,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);

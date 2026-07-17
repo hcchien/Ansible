@@ -25,6 +25,7 @@ export 'src/entities/identity_anchor_chain.dart'; // Anchor hash-chain verificat
 export 'src/entities/identity_key_backup.dart'; // Passphrase-encrypted identity-key backup (D5-b)
 export 'src/entities/device_key.dart'; // Per-install software device key (recovery design Task 3)
 export 'src/entities/host_moderation_state.dart'; // Host moderation overlay (removed/locked)
+export 'src/entities/remote_tombstone.dart';
 export 'src/entities/identity.dart'; // DID-based identity (replaces User+passwordHash)
 export 'src/entities/ops_queue.dart'; // Local Op queue for offline-first / Comp B
 export 'src/entities/wallet_credential.dart';
@@ -72,6 +73,7 @@ export 'src/repositories/messenger_repository.dart';
 export 'src/repositories/contact_repository.dart';
 export 'src/repositories/notification_repository.dart';
 export 'src/repositories/host_moderation_state_repository.dart';
+export 'src/repositories/remote_tombstone_repository.dart';
 export 'src/repositories/identity_anchor_repository.dart';
 
 // === CRDT Op Builder (V1.1 Comp B) ===
@@ -103,6 +105,7 @@ export 'src/repositories/in_memory/in_memory_context_pack_repository.dart';
 export 'src/repositories/in_memory/in_memory_summary_job_repository.dart';
 export 'src/repositories/in_memory/in_memory_notification_repository.dart';
 export 'src/repositories/in_memory/in_memory_host_moderation_state_repository.dart';
+export 'src/repositories/in_memory/in_memory_remote_tombstone_repository.dart';
 export 'src/repositories/in_memory/in_memory_identity_anchor_repository.dart';
 
 // === Drift (SQLite) implementations ===
@@ -116,6 +119,7 @@ export 'src/repositories/drift/drift_reaction_repository.dart';
 export 'src/repositories/drift/drift_board_acl_repository.dart';
 export 'src/repositories/drift/drift_activity_log_repository.dart';
 export 'src/repositories/drift/drift_remote_node_repository.dart';
+export 'src/repositories/drift/drift_remote_tombstone_repository.dart';
 export 'src/repositories/drift/drift_board_sync_config_repository.dart';
 export 'src/repositories/drift/drift_did_reputation_repository.dart';
 export 'src/repositories/drift/drift_follow_repository.dart';

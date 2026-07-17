@@ -333,6 +333,7 @@ class RemoteSyncService {
   // server request and runs before board filtering so follow ops (which have
   // no board) still notify.
   final NotificationProjector? _notificationProjector;
+  final RemoteTombstoneRepository? _remoteTombstones;
 
   // Portable issuer re-verification (federation trust): the ONLY source of
   // reputation tiers on ingest. Null keeps tiers untouched (everyone basic).
@@ -352,6 +353,7 @@ class RemoteSyncService {
     DidReputationRepository? didReputationRepo,
     String? followerDid,
     NotificationProjector? notificationProjector,
+    RemoteTombstoneRepository? remoteTombstoneRepository,
     IssuerAttestationService? issuerAttestationService,
     RemoteOpSignatureVerifier? opSignatureVerifier,
     RelayIdentityClient? identityClient,
@@ -367,6 +369,7 @@ class RemoteSyncService {
        _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
        _notificationProjector = notificationProjector,
+       _remoteTombstones = remoteTombstoneRepository,
        _issuerAttestations = issuerAttestationService,
        _opSignatureVerifier =
            opSignatureVerifier ??
@@ -484,7 +487,7 @@ class RemoteSyncService {
             await _ensureFollowedContext(activity);
           }
 
-          await _applyActivity(activity);
+          await _applyActivity(activity, remoteNode.id);
           totalProcessed++;
         }
 
@@ -492,7 +495,6 @@ class RemoteSyncService {
         hasMore = delta.hasMore;
       }
 
-      await _pruneExpiredPosts(enabledConfigs, syncTime);
       await _remoteNodeRepo.updateSyncCursor(
         remoteNode.id,
         currentCursor,
@@ -628,37 +630,35 @@ class RemoteSyncService {
     return !activity.createdAt.toUtc().isBefore(cutoff);
   }
 
-  Future<void> _pruneExpiredPosts(
-    List<BoardSyncConfig> enabledConfigs,
-    DateTime now,
-  ) async {
-    for (final config in enabledConfigs) {
-      final retentionDays = config.retentionDays;
-      if (retentionDays == null) {
-        continue;
-      }
-      final cutoff = now.toUtc().subtract(Duration(days: retentionDays));
-      await _postRepo.deleteByBoardOlderThan(config.boardId, cutoff);
+  Future<void> _applyActivity(Activity activity, String sourceNodeId) async {
+    if (activity.type.toLowerCase() == 'delete') {
+      // A remote host controls only its own projection. It must never erase
+      // the user's canonical local copy, including entity kinds this client
+      // does not currently render (for example an account/profile tombstone).
+      await _recordRemoteDelete(activity, sourceNodeId);
+      return;
     }
-  }
-
-  Future<void> _applyActivity(Activity activity) async {
+    await _remoteTombstones?.remove(
+      sourceNodeId,
+      activity.entityType.toLowerCase(),
+      activity.entityId,
+    );
     switch (activity.entityType.toLowerCase()) {
       case 'board':
-        await _applyBoardActivity(activity);
+        await _applyBoardActivity(activity, sourceNodeId);
         break;
       case 'thread':
-        await _applyThreadActivity(activity);
+        await _applyThreadActivity(activity, sourceNodeId);
         break;
       case 'post':
-        await _applyPostActivity(activity);
+        await _applyPostActivity(activity, sourceNodeId);
         break;
       case 'murmur':
       case 'note':
-        await _applyContentItemActivity(activity);
+        await _applyContentItemActivity(activity, sourceNodeId);
         break;
       case 'comment':
-        await _applyCommentActivity(activity);
+        await _applyCommentActivity(activity, sourceNodeId);
         break;
     }
   }
@@ -666,10 +666,13 @@ class RemoteSyncService {
   /// Ingests a comment on standalone content. Stored as a local post keyed by
   /// the target content id ([Activity.threadId]) so the content-detail screen
   /// reads it locally. Board-less, so it never surfaces as a forum thread.
-  Future<void> _applyCommentActivity(Activity activity) async {
+  Future<void> _applyCommentActivity(
+    Activity activity,
+    String sourceNodeId,
+  ) async {
     final payload = activity.payload;
     if (activity.type.toLowerCase() == 'delete') {
-      await _postRepo.delete(activity.entityId);
+      await _recordRemoteDelete(activity, sourceNodeId);
       return;
     }
     final targetId =
@@ -798,12 +801,15 @@ class RemoteSyncService {
     }
   }
 
-  Future<void> _applyContentItemActivity(Activity activity) async {
+  Future<void> _applyContentItemActivity(
+    Activity activity,
+    String sourceNodeId,
+  ) async {
     final repo = _contentItemRepo;
     if (repo == null) return;
 
     if (activity.type.toLowerCase() == 'delete') {
-      await repo.delete(activity.entityId);
+      await _recordRemoteDelete(activity, sourceNodeId);
       return;
     }
 
@@ -859,12 +865,15 @@ class RemoteSyncService {
     return null;
   }
 
-  Future<void> _applyBoardActivity(Activity activity) async {
+  Future<void> _applyBoardActivity(
+    Activity activity,
+    String sourceNodeId,
+  ) async {
     final payload = activity.payload;
     final type = activity.type.toLowerCase();
 
     if (type == 'delete') {
-      await _boardRepo.delete(activity.entityId);
+      await _recordRemoteDelete(activity, sourceNodeId);
     } else {
       final now = DateTime.now();
       final existing = await _boardRepo.getById(activity.entityId);
@@ -919,12 +928,15 @@ class RemoteSyncService {
     return normalized.substring(0, 12);
   }
 
-  Future<void> _applyThreadActivity(Activity activity) async {
+  Future<void> _applyThreadActivity(
+    Activity activity,
+    String sourceNodeId,
+  ) async {
     final payload = activity.payload;
     final type = activity.type.toLowerCase();
 
     if (type == 'delete') {
-      await _threadRepo.delete(activity.entityId);
+      await _recordRemoteDelete(activity, sourceNodeId);
     } else {
       final now = DateTime.now();
       final thread = Thread(
@@ -946,12 +958,15 @@ class RemoteSyncService {
     }
   }
 
-  Future<void> _applyPostActivity(Activity activity) async {
+  Future<void> _applyPostActivity(
+    Activity activity,
+    String sourceNodeId,
+  ) async {
     final payload = activity.payload;
     final type = activity.type.toLowerCase();
 
     if (type == 'delete') {
-      await _postRepo.delete(activity.entityId);
+      await _recordRemoteDelete(activity, sourceNodeId);
     } else {
       final now = DateTime.now();
       DateTime? lastEditAt;
@@ -981,6 +996,24 @@ class RemoteSyncService {
         await _postRepo.update(post);
       }
     }
+  }
+
+  Future<void> _recordRemoteDelete(
+    Activity activity,
+    String sourceNodeId,
+  ) async {
+    await _remoteTombstones?.upsert(
+      RemoteTombstone(
+        sourceNodeId: sourceNodeId,
+        entityType: activity.entityType.toLowerCase(),
+        entityId: activity.entityId,
+        boardId: activity.boardId,
+        authorDid: activity.payload['authorDid'] as String?,
+        deletedByDid: activity.authorId,
+        deletedAt: activity.createdAt,
+        receivedAt: _now(),
+      ),
+    );
   }
 }
 

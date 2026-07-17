@@ -922,7 +922,7 @@ void main() {
     expect(posts.map((post) => post.id), ['post-recent']);
   });
 
-  test('prunes retained board posts older than retention window', () async {
+  test('retention window never prunes existing local posts', () async {
     final boardRepo = InMemoryBoardRepository();
     final threadRepo = InMemoryThreadRepository();
     final postRepo = InMemoryPostRepository();
@@ -988,8 +988,126 @@ void main() {
     final posts = await postRepo.list();
 
     expect(result.success, isTrue);
-    expect(posts.map((post) => post.id), ['post-recent']);
+    expect(
+      posts.map((post) => post.id),
+      containsAll(['post-old', 'post-recent']),
+    );
   });
+
+  test(
+    'remote delete ops create scoped tombstones and preserve local canonical data',
+    () async {
+      final boardRepo = InMemoryBoardRepository();
+      final threadRepo = InMemoryThreadRepository();
+      final postRepo = InMemoryPostRepository();
+      final contentRepo = InMemoryContentItemRepository();
+      final tombstones = InMemoryRemoteTombstoneRepository();
+      final now = DateTime.utc(2026, 7, 17);
+      await boardRepo.create(
+        Board(
+          id: 'board-1',
+          slug: 'local',
+          title: 'Local',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await threadRepo.create(
+        Thread(
+          id: 'thread-1',
+          boardId: 'board-1',
+          title: 'Kept',
+          authorId: 'did:elix:alice',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await postRepo.create(
+        Post(
+          id: 'post-1',
+          threadId: 'thread-1',
+          boardId: 'board-1',
+          authorId: 'did:elix:alice',
+          content: 'Kept locally',
+          createdAt: now,
+          updatedAt: now,
+          lastEditAt: now,
+        ),
+      );
+      await contentRepo.create(
+        ContentItem(
+          id: 'note-1',
+          authorDid: 'did:elix:alice',
+          mode: ContentMode.note,
+          body: 'Local note',
+          status: ContentStatus.active,
+          visibility: ContentVisibility.public,
+          localOnly: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      Map<String, dynamic> deletion(
+        String type,
+        String id, {
+        String? boardId,
+        String? threadId,
+      }) => {
+        'logId': id.hashCode,
+        'activity': {
+          'activityId': 'delete-$id',
+          'type': 'delete',
+          'entityType': type,
+          'entityId': id,
+          'boardId': boardId,
+          'threadId': threadId,
+          'authorId': 'did:elix:alice',
+          'createdAt': now.toIso8601String(),
+          'payload': <String, dynamic>{},
+        },
+      };
+      final client = _FakeRelayApiClient(
+        activities: [
+          deletion('board', 'board-1', boardId: 'board-1'),
+          deletion('thread', 'thread-1', boardId: 'board-1'),
+          deletion('post', 'post-1', boardId: 'board-1', threadId: 'thread-1'),
+          deletion('note', 'note-1'),
+          deletion('account', 'did:elix:alice'),
+        ],
+      );
+      final result =
+          await RemoteSyncService(
+            remoteNodeRepo: _FakeRemoteNodeRepository(),
+            boardSyncConfigRepo: _FakeBoardSyncConfigRepository(
+              configs: const [],
+            ),
+            boardRepo: boardRepo,
+            threadRepo: threadRepo,
+            postRepo: postRepo,
+            contentItemRepo: contentRepo,
+            remoteTombstoneRepository: tombstones,
+            opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+            now: () => now,
+          ).syncFromNode(
+            client,
+            RemoteNode(
+              id: 'relay-1',
+              name: 'Relay',
+              url: 'https://relay.example',
+              createdAt: now,
+              updatedAt: now,
+            ),
+            requireBoardSyncConfig: false,
+          );
+
+      expect(result.success, isTrue);
+      expect(await boardRepo.getById('board-1'), isNotNull);
+      expect(await threadRepo.getById('thread-1'), isNotNull);
+      expect(await postRepo.getById('post-1'), isNotNull);
+      expect(await contentRepo.getById('note-1'), isNotNull);
+      expect(await tombstones.list(sourceNodeId: 'relay-1'), hasLength(5));
+    },
+  );
 }
 
 class _FakeRelayApiClient extends RelayApiClient {

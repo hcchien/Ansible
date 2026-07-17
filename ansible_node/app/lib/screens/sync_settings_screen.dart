@@ -455,6 +455,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         boardRepo: _boardRepo,
         threadRepo: _threadRepo,
         postRepo: _postRepo,
+        remoteTombstoneRepository: DriftRemoteTombstoneRepository(widget.db),
       );
 
       final result = await syncService.syncFromNode(client, node);
