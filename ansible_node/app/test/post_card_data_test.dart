@@ -50,7 +50,10 @@ void main() {
               repository: InMemoryOpsQueueRepository(),
             ),
             onFlushPendingOps: () async {},
-            shareSheet: (text) async => sharedText = text,
+            shareSheet: (text, {sharePositionOrigin}) async {
+              expect(sharePositionOrigin, isNotNull);
+              sharedText = text;
+            },
             data: PostCardData(
               thread: thread,
               category: 'General',

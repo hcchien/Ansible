@@ -27,8 +27,16 @@ import 'posts_view_screen.dart';
 typedef BoardExternalFetcher =
     Future<AppViewExternalPage> Function(String boardId);
 
-Future<void> _defaultBoardShareSheet(String text, {String? subject}) {
-  return Share.share(text, subject: subject);
+Future<void> _defaultBoardShareSheet(
+  String text, {
+  String? subject,
+  Rect? sharePositionOrigin,
+}) {
+  return Share.share(
+    text,
+    subject: subject,
+    sharePositionOrigin: sharePositionOrigin,
+  );
 }
 
 class ThreadsListScreen extends StatefulWidget {
@@ -274,7 +282,15 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   Future<void> _shareBoard() async {
     final url = _boardShareUrl;
     if (url == null) return;
-    await widget.shareSheet(url, subject: widget.board.title);
+    final box = context.findRenderObject();
+    final origin = box is RenderBox && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+    await widget.shareSheet(
+      url,
+      subject: widget.board.title,
+      sharePositionOrigin: origin,
+    );
   }
 
   Future<void> _createThread() async {

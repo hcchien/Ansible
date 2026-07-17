@@ -15,9 +15,11 @@ import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
 import '../posts_view_screen.dart';
 
-typedef PostShareSheet = Future<void> Function(String text);
+typedef PostShareSheet =
+    Future<void> Function(String text, {Rect? sharePositionOrigin});
 
-Future<void> _defaultPostShareSheet(String text) => Share.share(text);
+Future<void> _defaultPostShareSheet(String text, {Rect? sharePositionOrigin}) =>
+    Share.share(text, sharePositionOrigin: sharePositionOrigin);
 
 /// A thread's first stored post is its OP; only subsequent posts are replies.
 int replyCountForPosts(Iterable<Post> posts) {
@@ -213,7 +215,26 @@ class _PostCardState extends State<PostCard> {
     final text = widget.data.content.isNotEmpty
         ? widget.data.content
         : widget.data.title;
-    if (text.isNotEmpty) await widget.shareSheet(text);
+    if (text.isEmpty) return;
+    final box = context.findRenderObject();
+    final origin = box is RenderBox && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+    try {
+      await widget.shareSheet(text, sharePositionOrigin: origin);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '無法開啟分享面板，請稍後再試。',
+              en: 'Could not open the share sheet. Please try again.',
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   /// Avatar: the author's initial (serif), amber-filled when the opening op is

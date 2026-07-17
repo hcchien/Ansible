@@ -78,7 +78,10 @@ void main() {
         ),
         isNull,
       );
-      expect(ElixContentLink.parse(Uri.parse('https://relay.example/')), isNull);
+      expect(
+        ElixContentLink.parse(Uri.parse('https://relay.example/')),
+        isNull,
+      );
     });
   });
 
@@ -143,7 +146,7 @@ void main() {
             db: db,
             thread: thread,
             authorDid: localDid,
-            shareSheet: (text, {subject}) async {
+            shareSheet: (text, {subject, sharePositionOrigin}) async {
               sharedText = text;
               sharedSubject = subject;
             },
@@ -156,10 +159,7 @@ void main() {
       final shareButton = find.byKey(const Key('share_thread_button'));
       expect(shareButton, findsOneWidget);
       // zh-Hant tooltip.
-      expect(
-        tester.widget<IconButton>(shareButton).tooltip,
-        '分享討論串',
-      );
+      expect(tester.widget<IconButton>(shareButton).tooltip, '分享討論串');
 
       await tester.tap(shareButton);
       await tester.pump();
@@ -169,6 +169,14 @@ void main() {
         'https://relay.example/boards/hosted-1/threads/thread-9',
       );
       expect(sharedSubject, '分享測試討論串');
+
+      sharedText = null;
+      await tester.tap(find.byKey(const Key('share_thread_action')));
+      await tester.pump();
+      expect(
+        sharedText,
+        'https://relay.example/boards/hosted-1/threads/thread-9',
+      );
     });
 
     testWidgets('board share invokes the share API with the public board URL', (
@@ -185,7 +193,7 @@ void main() {
             db: db,
             board: board,
             localDid: localDid,
-            shareSheet: (text, {subject}) async {
+            shareSheet: (text, {subject, sharePositionOrigin}) async {
               sharedText = text;
             },
           ),
@@ -248,19 +256,22 @@ void main() {
       expect(resolution.thread.title, '分享測試討論串');
     });
 
-    test('a board URL resolves to the local board via its projection', () async {
-      final db = AppDatabase(NativeDatabase.memory());
-      addTearDown(() => db.close());
-      await seedHostedBoard(db);
+    test(
+      'a board URL resolves to the local board via its projection',
+      () async {
+        final db = AppDatabase(NativeDatabase.memory());
+        addTearDown(() => db.close());
+        await seedHostedBoard(db);
 
-      final ref = ElixContentLink.parse(
-        Uri.parse('trisaura://content/boards/hosted-1'),
-      );
-      final resolution = await ElixContentRouter(db).resolve(ref!);
+        final ref = ElixContentLink.parse(
+          Uri.parse('trisaura://content/boards/hosted-1'),
+        );
+        final resolution = await ElixContentRouter(db).resolve(ref!);
 
-      expect(resolution, isA<ResolvedBoard>());
-      expect((resolution as ResolvedBoard).board.id, 'board-local');
-    });
+        expect(resolution, isA<ResolvedBoard>());
+        expect((resolution as ResolvedBoard).board.id, 'board-local');
+      },
+    );
 
     test('an unknown thread surfaces ContentUnavailable', () async {
       final db = AppDatabase(NativeDatabase.memory());

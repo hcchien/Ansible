@@ -23,10 +23,23 @@ import '../widgets/report_dialog.dart';
 
 /// Seam for invoking the platform share sheet. Defaults to share_plus; tests
 /// inject a fake to assert the constructed URL without a real share sheet.
-typedef ShareSheet = Future<void> Function(String text, {String? subject});
+typedef ShareSheet =
+    Future<void> Function(
+      String text, {
+      String? subject,
+      Rect? sharePositionOrigin,
+    });
 
-Future<void> _defaultShareSheet(String text, {String? subject}) {
-  return Share.share(text, subject: subject);
+Future<void> _defaultShareSheet(
+  String text, {
+  String? subject,
+  Rect? sharePositionOrigin,
+}) {
+  return Share.share(
+    text,
+    subject: subject,
+    sharePositionOrigin: sharePositionOrigin,
+  );
 }
 
 class PostsViewScreen extends StatefulWidget {
@@ -216,7 +229,29 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<void> _shareThread() async {
     final url = _threadShareUrl;
     if (url == null) return;
-    await widget.shareSheet(url, subject: widget.thread.title);
+    final box = context.findRenderObject();
+    final origin = box is RenderBox && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+    try {
+      await widget.shareSheet(
+        url,
+        subject: widget.thread.title,
+        sharePositionOrigin: origin,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '無法開啟分享面板，請稍後再試。',
+              en: 'Could not open the share sheet. Please try again.',
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   /// Reports a post (or, with [post] null, the thread itself) to the Forum
@@ -734,13 +769,23 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         const SizedBox(width: 22),
         _actionIcon(Icons.repeat, onTap: _shareThread),
         const Spacer(),
-        _actionIcon(Icons.send_outlined, onTap: _shareThread),
+        _actionIcon(
+          Icons.ios_share,
+          key: const Key('share_thread_action'),
+          onTap: _shareThread,
+        ),
       ],
     );
   }
 
-  Widget _actionIcon(IconData icon, {int? count, VoidCallback? onTap}) {
+  Widget _actionIcon(
+    IconData icon, {
+    Key? key,
+    int? count,
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(
+      key: key,
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Row(
