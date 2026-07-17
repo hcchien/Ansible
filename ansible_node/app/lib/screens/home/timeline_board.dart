@@ -48,7 +48,8 @@ class TimelineBoardView extends StatelessWidget {
               ? _timelineEmptyState(context)
               : ListView.separated(
                   itemCount: followingPosts.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  padding: const EdgeInsets.only(bottom: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) => PostCard(
                     db: db,
                     data: followingPosts[index],
@@ -81,8 +82,7 @@ class TimelineBoardView extends StatelessWidget {
                             opsDispatchService: opsDispatchService,
                             onFlushPendingOps: onFlushPendingOps,
                             // Carry the feed's Paper/Ink choice into the detail.
-                            screenStyle:
-                                ElixScreenStyleScope.styleOf(context),
+                            screenStyle: ElixScreenStyleScope.styleOf(context),
                           ),
                         ),
                       );
@@ -131,9 +131,11 @@ class TimelineBoardView extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           context.uiCopy(
-            zh: '這裡沒有演算法、沒有機器人 — 動態只有你選擇的人和看板，'
+            zh:
+                '這裡沒有演算法、沒有機器人 — 動態只有你選擇的人和看板，'
                 '按時間排序。三步開始：',
-            en: 'No algorithm, no bots — your feed is only the people and '
+            en:
+                'No algorithm, no bots — your feed is only the people and '
                 'boards you choose, in order. Three steps to start:',
           ),
           style: TextStyle(

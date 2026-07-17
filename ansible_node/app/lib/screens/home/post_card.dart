@@ -279,145 +279,130 @@ class _PostCardState extends State<PostCard> {
         onTap: _openDetail,
         child: Container(
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: style.rule, width: 0.5),
-            ),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AnsibleDesign.darkPaperWhite
+                : AnsibleDesign.paperWhite,
+            border: Border.all(color: style.rule, width: 1),
+            borderRadius: BorderRadius.circular(18),
           ),
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(16, 15, 16, 13),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _avatar(style, data.signatureVerified ||
-                  data.author == widget.authorDid),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              Row(
+                children: [
+                  _avatar(
+                    style,
+                    data.signatureVerified || data.author == widget.authorDid,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Flexible(
-                          child: GestureDetector(
-                            onTap: widget.onOpenAuthor == null
-                                ? null
-                                : () => widget.onOpenAuthor!(data.author),
-                            child: AuthorLabel(
-                              did: data.author,
-                              style: TextStyle(
-                                fontFamily: AnsibleDesign.sans,
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w600,
-                                height: 1.2,
-                                color: style.foreground,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Verified-human check (sage).
-                        if (data.authorTier == 'verified_human') ...[
-                          const SizedBox(width: 5),
-                          Icon(
-                            Icons.verified,
-                            size: 14,
-                            color: AnsibleDesign.spore,
-                          ),
-                        ],
-                        const Spacer(),
-                        // Signed-op amber dot.
-                        if (data.signatureVerified)
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: style.accent,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${data.timeAgo}'
-                      '${data.signatureVerified ? context.uiCopy(zh: ' · 已簽署', en: ' · signed') : ''}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AnsibleDesign.sans,
-                        fontSize: 12,
-                        color: style.faint,
-                      ),
-                    ),
-                    if (data.title.isNotEmpty) ...[
-                      const SizedBox(height: 9),
-                      Text(
-                        data.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.serif,
-                          fontSize: 16.5,
-                          height: 1.4,
-                          fontWeight: FontWeight.w700,
-                          color: _hover ? style.accent : style.foreground,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Text(
-                      data.content.isEmpty
-                          ? context.l10n.noContentYet
-                          : data.content,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AnsibleDesign.serif,
-                        color: style.foreground,
-                        height: 1.72,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _feedAction(
-                          _reacted ? Icons.favorite : Icons.favorite_border,
-                          count: _likeCount,
-                          active: _reacted,
-                          color: style,
-                          onTap: _isReacting
+                        GestureDetector(
+                          onTap: widget.onOpenAuthor == null
                               ? null
-                              : () async {
-                                  setState(() => _isReacting = true);
-                                  try {
-                                    await _toggleThumbsUp(thread.id, _reacted);
-                                  } finally {
-                                    setState(() => _isReacting = false);
-                                  }
-                                },
+                              : () => widget.onOpenAuthor!(data.author),
+                          child: AuthorLabel(
+                            did: data.author,
+                            style: TextStyle(
+                              fontFamily: AnsibleDesign.sans,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.2,
+                              color: style.foreground,
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 26),
-                        _feedAction(
-                          Icons.mode_comment_outlined,
-                          count: data.comments,
-                          color: style,
-                          onTap: _openDetail,
-                        ),
-                        const SizedBox(width: 26),
-                        _feedAction(
-                          Icons.repeat,
-                          color: style,
-                          onTap: _share,
-                        ),
-                        const Spacer(),
-                        _feedAction(
-                          Icons.send_outlined,
-                          color: style,
-                          onTap: _share,
+                        const SizedBox(height: 2),
+                        Text(
+                          '${data.timeAgo}'
+                          '${data.signatureVerified ? context.uiCopy(zh: ' · 已簽署', en: ' · signed') : ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.sans,
+                            fontSize: 12,
+                            color: style.faint,
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                  if (data.authorTier == 'verified_human') ...[
+                    Icon(Icons.verified, size: 14, color: AnsibleDesign.spore),
+                    const SizedBox(width: 8),
                   ],
+                  if (data.signatureVerified)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AnsibleDesign.spore,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+              if (data.title.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  data.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 16.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w700,
+                    color: _hover ? style.accent : style.foreground,
+                  ),
                 ),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                data.content.isEmpty ? context.l10n.noContentYet : data.content,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  color: style.foreground,
+                  height: 1.72,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _feedAction(
+                    _reacted ? Icons.favorite : Icons.favorite_border,
+                    count: _likeCount,
+                    active: _reacted,
+                    color: style,
+                    onTap: _isReacting
+                        ? null
+                        : () async {
+                            setState(() => _isReacting = true);
+                            try {
+                              await _toggleThumbsUp(thread.id, _reacted);
+                            } finally {
+                              setState(() => _isReacting = false);
+                            }
+                          },
+                  ),
+                  const SizedBox(width: 26),
+                  _feedAction(
+                    Icons.mode_comment_outlined,
+                    count: data.comments,
+                    color: style,
+                    onTap: _openDetail,
+                  ),
+                  const SizedBox(width: 26),
+                  _feedAction(Icons.repeat, color: style, onTap: _share),
+                  const Spacer(),
+                  _feedAction(Icons.send_outlined, color: style, onTap: _share),
+                ],
               ),
             ],
           ),
@@ -426,4 +411,3 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
-

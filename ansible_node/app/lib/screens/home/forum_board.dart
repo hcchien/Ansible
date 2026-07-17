@@ -71,7 +71,8 @@ class ForumBoardView extends StatelessWidget {
       children: [
         // Subscribed boards, tappable to enter each board's thread list — so the
         // forum tab itself offers a way into boards (not just the sidebar/sheet).
-        if (boards.isNotEmpty) _BoardStrip(boards: boards, onOpenBoard: onOpenBoard),
+        if (boards.isNotEmpty)
+          _BoardStrip(boards: boards, onOpenBoard: onOpenBoard),
         // Compact (phone): a clear entry to manage subscribed boards. On wide
         // layouts the same action lives in the board-actions row below.
         if (compact)
@@ -170,7 +171,8 @@ class ForumBoardView extends StatelessWidget {
                       ))
               : ListView.separated(
                   itemCount: posts.length,
-                  separatorBuilder: (_, _) => const SizedBox.shrink(),
+                  padding: const EdgeInsets.only(bottom: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) => PostCard(
                     db: db,
                     data: posts[index],
@@ -198,7 +200,9 @@ class ForumBoardView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: styleData.rule, width: 0.5)),
+              border: Border(
+                top: BorderSide(color: styleData.rule, width: 0.5),
+              ),
               color: styleData.background,
             ),
             child: Row(
@@ -259,7 +263,8 @@ class ForumBoardView extends StatelessWidget {
             Text(
               context.uiCopy(
                 zh: '到「探索」尋找討論區追蹤，貼文就會出現在這裡。',
-                en: 'Find boards to follow in Discover — their posts will '
+                en:
+                    'Find boards to follow in Discover — their posts will '
                     'appear here.',
               ),
               textAlign: TextAlign.center,
@@ -273,7 +278,9 @@ class ForumBoardView extends StatelessWidget {
             FilledButton.icon(
               onPressed: onDiscoverBoards,
               icon: const Icon(Icons.explore_outlined, size: 18),
-              label: Text(context.uiCopy(zh: '尋找討論區', en: 'Find boards to follow')),
+              label: Text(
+                context.uiCopy(zh: '尋找討論區', en: 'Find boards to follow'),
+              ),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
@@ -320,10 +327,7 @@ class _BoardStrip extends StatelessWidget {
           itemBuilder: (context, index) {
             final board = boards[index];
             return ActionChip(
-              label: Text(
-                board.title,
-                style: const TextStyle(fontSize: 12.5),
-              ),
+              label: Text(board.title, style: const TextStyle(fontSize: 12.5)),
               avatar: const Icon(Icons.forum_outlined, size: 15),
               onPressed: () => onOpenBoard(board.id),
               visualDensity: VisualDensity.compact,

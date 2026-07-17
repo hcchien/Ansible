@@ -242,8 +242,8 @@ class MainPanel extends StatelessWidget {
                 scopeName: 'timeline',
                 Padding(
                   padding: EdgeInsets.only(
-                    left: compact ? 16 : 28,
-                    right: compact ? 16 : 28,
+                    left: compact ? 14 : 28,
+                    right: compact ? 14 : 28,
                     top: 12,
                   ),
                   child: TimelineBoardView(
@@ -268,8 +268,8 @@ class MainPanel extends StatelessWidget {
                 ElixTab.circle,
                 Padding(
                   padding: EdgeInsets.only(
-                    left: compact ? 16 : 28,
-                    right: compact ? 16 : 28,
+                    left: compact ? 14 : 28,
+                    right: compact ? 14 : 28,
                     top: 12,
                   ),
                   child: ForumBoardView(
@@ -308,32 +308,36 @@ class MainPanel extends StatelessWidget {
   /// The Elix brand header shown on phone (b01 design): constellation mark +
   /// "Elix" wordmark on the left, search + passkey identity chip on the right.
   Widget _compactBrandHeader(BuildContext context) {
-    final s = (screenStyles[selectedTab] ?? ElixScreenStyle.paper)
-        .dataFor(Theme.of(context).brightness);
+    final s = (screenStyles[selectedTab] ?? ElixScreenStyle.paper).dataFor(
+      Theme.of(context).brightness,
+    );
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
-      decoration: BoxDecoration(
-        color: s.background,
-        border: Border(bottom: BorderSide(color: s.rule, width: 0.5)),
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 13, 14, 12),
+      color: s.background,
       child: Row(
         children: [
           AnsibleMark(size: 20, color: s.foreground),
           const SizedBox(width: 9),
           ElixWordmark(fontSize: 21, color: s.foreground),
           const Spacer(),
-          IconButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => SearchScreen(contentItems: contentItems),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: s.surface, shape: BoxShape.circle),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SearchScreen(contentItems: contentItems),
+                ),
               ),
+              icon: const Icon(Icons.search, size: 20),
+              color: s.foreground,
+              tooltip: context.uiCopy(zh: '搜尋', en: 'Search'),
+              visualDensity: VisualDensity.compact,
             ),
-            icon: const Icon(Icons.search, size: 23),
-            color: s.muted,
-            tooltip: context.uiCopy(zh: '搜尋', en: 'Search'),
-            visualDensity: VisualDensity.compact,
           ),
-          const SizedBox(width: 2),
+          const SizedBox(width: 10),
           _sessionChip(s),
         ],
       ),
@@ -347,40 +351,46 @@ class MainPanel extends StatelessWidget {
       builder: (context, snap) {
         final h = (snap.data ?? '').replaceFirst('@', '').trim();
         final initial = h.isEmpty ? '·' : h.substring(0, 1).toUpperCase();
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: s.accent,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                initial,
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.serif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: s.background,
+        return Container(
+          padding: const EdgeInsets.fromLTRB(3, 3, 9, 3),
+          decoration: BoxDecoration(
+            border: Border.all(color: s.rule),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: s.accent,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: s.background,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              'PK',
-              style: TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 10,
-                letterSpacing: 1,
-                fontWeight: FontWeight.w600,
-                color: s.accent,
+              const SizedBox(width: 5),
+              Text(
+                'PK',
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w600,
+                  color: s.accent,
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -430,51 +440,55 @@ class MainPanel extends StatelessWidget {
                 onForumScreenStyleChanged: onForumScreenStyleChanged,
                 onBoardMotionChanged: onBoardMotionChanged,
               ),
-            BoardSwipeHeader(
-              showTabs: !bottomNav,
-              pageController: pageController,
-              selectedBoard: selectedBoard,
-              onTapBoard: onBoardChanged,
-              personalStyle: screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
-              timelineStyle: screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
-              forumStyle: screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
-              personalFilter: personalFilter,
-              onPersonalFilterChanged: onPersonalFilterChanged,
-              feedFilter: feedFilter,
-              onFeedFilterChanged: onFeedFilterChanged,
-              forumPostCount: posts.length,
-              notificationUnreadCount: notificationUnreadCount,
-              onOpenNotifications: onOpenNotifications,
-              onOpenPreferences: null,
-              onOpenSettings: compact
-                  ? () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => SettingsHomeScreen(
-                            db: db,
-                            did: did,
-                            localeController: localeController,
-                            readingPreferencesController:
-                                readingPreferencesController,
-                            onClearIdentity: onClearIdentity,
-                            personalScreenStyle:
-                                screenStyles[ElixTab.feed] ??
-                                ElixScreenStyle.ink,
-                            forumScreenStyle:
-                                screenStyles[ElixTab.circle] ??
-                                ElixScreenStyle.paper,
-                            boardMotion: boardMotion,
-                            onPersonalScreenStyleChanged:
-                                onPersonalScreenStyleChanged,
-                            onForumScreenStyleChanged:
-                                onForumScreenStyleChanged,
-                            onBoardMotionChanged: onBoardMotionChanged,
+            if (!bottomNav)
+              BoardSwipeHeader(
+                showTabs: !bottomNav,
+                pageController: pageController,
+                selectedBoard: selectedBoard,
+                onTapBoard: onBoardChanged,
+                personalStyle:
+                    screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
+                timelineStyle:
+                    screenStyles[ElixTab.feed] ?? ElixScreenStyle.ink,
+                forumStyle:
+                    screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
+                personalFilter: personalFilter,
+                onPersonalFilterChanged: onPersonalFilterChanged,
+                feedFilter: feedFilter,
+                onFeedFilterChanged: onFeedFilterChanged,
+                forumPostCount: posts.length,
+                notificationUnreadCount: notificationUnreadCount,
+                onOpenNotifications: onOpenNotifications,
+                onOpenPreferences: null,
+                onOpenSettings: compact
+                    ? () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SettingsHomeScreen(
+                              db: db,
+                              did: did,
+                              localeController: localeController,
+                              readingPreferencesController:
+                                  readingPreferencesController,
+                              onClearIdentity: onClearIdentity,
+                              personalScreenStyle:
+                                  screenStyles[ElixTab.feed] ??
+                                  ElixScreenStyle.ink,
+                              forumScreenStyle:
+                                  screenStyles[ElixTab.circle] ??
+                                  ElixScreenStyle.paper,
+                              boardMotion: boardMotion,
+                              onPersonalScreenStyleChanged:
+                                  onPersonalScreenStyleChanged,
+                              onForumScreenStyleChanged:
+                                  onForumScreenStyleChanged,
+                              onBoardMotionChanged: onBoardMotionChanged,
+                            ),
                           ),
-                        ),
-                      );
-                    }
-                  : null,
-            ),
+                        );
+                      }
+                    : null,
+              ),
             Expanded(
               child: Stack(
                 children: [
