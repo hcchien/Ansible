@@ -41,7 +41,9 @@ class HomeBottomBar extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AnsibleDesign.paper,
-        border: Border(top: BorderSide(color: AnsibleDesign.ruleSoft, width: 1)),
+        border: Border(
+          top: BorderSide(color: AnsibleDesign.ruleSoft, width: 1),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -162,8 +164,8 @@ class HomeBottomBar extends StatelessWidget {
     );
   }
 
-  /// Center ＋ — a 52×40 rounded-rect sticker: accent fill, lavender outer
-  /// ring, highlight-yellow glyph (matches the yellow-paper tabbar spec).
+  /// Center ＋ — a flat 52×40 rounded-rect sticker: ochre fill and white glyph.
+  /// The latest handoff intentionally removes the old lavender outer ring.
   Widget _compose(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 7),
@@ -174,24 +176,14 @@ class HomeBottomBar extends StatelessWidget {
           onTap: onCompose,
           borderRadius: BorderRadius.circular(13),
           child: Container(
+            key: const Key('home_bottom_compose_button'),
             width: 52,
             height: 40,
             decoration: BoxDecoration(
               color: AnsibleDesign.ochre,
               borderRadius: BorderRadius.circular(13),
-              boxShadow: const [
-                BoxShadow(
-                  color: AnsibleDesign.lavender,
-                  spreadRadius: 3,
-                  blurRadius: 0,
-                ),
-              ],
             ),
-            child: const Icon(
-              Icons.add,
-              size: 23,
-              color: AnsibleDesign.highlight,
-            ),
+            child: const Icon(Icons.add, size: 23, color: Colors.white),
           ),
         ),
       ),

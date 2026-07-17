@@ -8,6 +8,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('first run shows injected relay discovery starter board', (
@@ -239,6 +240,7 @@ void main() {
   testWidgets('startup pull refresh runs when online with active relay', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({'elix-genesis-subscribed': true});
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
     await _seedActiveRelay(db);
@@ -252,6 +254,7 @@ void main() {
           did: 'did:plc:alice',
           networkStatusMonitor: network,
           relayDiscoveryLoader: () async => _emptyDiscovery(),
+          defaultSubscriptionsDiscoveryLoader: () async => _emptyDiscovery(),
           pullRefreshRunner: () async {
             pullCalls += 1;
             return const RelayPullSummary(pulledActivities: 1);
@@ -259,11 +262,50 @@ void main() {
         ),
       ),
     );
-    for (var i = 0; i < 8; i += 1) {
+    for (var i = 0; i < 20; i += 1) {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
     expect(pullCalls, 1);
+  });
+
+  testWidgets('startup creates board subscriptions before history pull', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    await _seedActiveRelay(db);
+    final network = _FakeNetworkStatusMonitor(NetworkStatus.online);
+    var pullCalls = 0;
+    var subscriptionsReadyAtPull = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: network,
+          relayDiscoveryLoader: () async => _starterDiscovery(),
+          defaultSubscriptionsDiscoveryLoader: () async => _starterDiscovery(),
+          pullRefreshRunner: () async {
+            pullCalls += 1;
+            subscriptionsReadyAtPull = (await DriftHostedBoardRepository(
+              db,
+            ).listSubscriptions()).isNotEmpty;
+            return const RelayPullSummary(pulledActivities: 1);
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 20; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(pullCalls, 1);
+    expect(subscriptionsReadyAtPull, isTrue);
+
+    await _disposeWidgetTree(tester);
   });
 
   testWidgets('startup syncs accepted user follows into local contacts', (

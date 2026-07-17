@@ -64,6 +64,32 @@ void main() {
     );
   });
 
+  testWidgets('compact compose tab matches the flat handoff treatment', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpHomeShell(tester, coachmarkSeen: true);
+
+    final container = tester.widget<Container>(
+      find.byKey(const Key('home_bottom_compose_button')),
+    );
+    final decoration = container.decoration! as BoxDecoration;
+    expect(decoration.color, AnsibleDesign.ochre);
+    expect(decoration.boxShadow, isNull);
+
+    final icon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const Key('home_bottom_compose_button')),
+        matching: find.byIcon(Icons.add),
+      ),
+    );
+    expect(icon.color, Colors.white);
+  });
+
   testWidgets('board switcher exposes tap tooltips and first-run guidance', (
     tester,
   ) async {

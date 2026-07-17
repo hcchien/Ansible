@@ -87,6 +87,7 @@ class HomeShell extends StatefulWidget {
     this.syncRunner,
     this.pullRefreshRunner,
     this.relayDiscoveryLoader,
+    this.defaultSubscriptionsDiscoveryLoader,
     this.networkStatusMonitor,
     this.localeController,
     this.readingPreferencesController,
@@ -110,6 +111,7 @@ class HomeShell extends StatefulWidget {
   final Future<AppSyncResult> Function()? syncRunner;
   final Future<RelayPullSummary> Function()? pullRefreshRunner;
   final Future<RelayDiscovery> Function()? relayDiscoveryLoader;
+  final Future<RelayDiscovery> Function()? defaultSubscriptionsDiscoveryLoader;
   final NetworkStatusMonitor? networkStatusMonitor;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
@@ -270,31 +272,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // app can sync out-of-box without the user manually adding a relay.
       await _ensureDefaultRelayNode();
       if (!mounted) return;
-      // Cold start (PM review P0): a brand-new install auto-subscribes the
-      // relay's genesis/featured boards so day one has something to read.
-      unawaited(
-        _ensureDefaultSubscriptions().whenComplete(() {
-          if (mounted) unawaited(_loadData());
-        }),
-      );
       unawaited(_loadScreenStyles());
       unawaited(_loadBoardMotion());
       unawaited(_loadData());
-      // Re-list boards this DID created on its forum hosts and rebuild any
-      // missing local subscriptions (e.g. after a reinstall wiped the local
-      // DB), then refresh so they appear without a manual re-subscribe.
-      unawaited(
-        _reconcileCreatedBoards().whenComplete(() {
-          if (mounted) unawaited(_loadData());
-        }),
-      );
-      // Make sure our DID is anchored on the relay before publishing anything,
-      // otherwise the relay rejects boards/follows/profile/content as unknown_did.
-      unawaited(
-        _ensureAnchored().whenComplete(() {
-          if (mounted) unawaited(_runForegroundPullIfConfigured());
-        }),
-      );
+      // Subscription/projection setup must finish before the first relay pull.
+      // Otherwise the pull filters out historical board ops, then only the
+      // empty local board shells are rendered until a later resume/manual sync.
+      unawaited(_bootstrapForumAndPull());
       unawaited(_murmurIndexingService.indexAllPending());
       unawaited(_checkCoachmark());
       // Hijack resistance (recovery design, conflict-priority #1): if a
@@ -302,6 +286,38 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // immediately with a one-tap veto.
       unawaited(_checkPendingRecovery());
     });
+  }
+
+  /// Restores forum routing state before the first history pull.
+  ///
+  /// Ordering is intentional: [RemoteSyncService] only materializes hosted
+  /// thread/post ops when a matching subscription + projection already exists.
+  /// Keeping this as one awaited chain prevents a fresh install from racing the
+  /// default-subscription and created-board reconciliation tasks against pull.
+  Future<void> _bootstrapForumAndPull() async {
+    await _ensureDefaultSubscriptions();
+    if (!mounted) return;
+    await _loadData();
+    await _runForegroundPullIfConfigured();
+
+    // Creator reconciliation may involve a slower Forum Host query. Do it
+    // after featured boards have already become readable, then pull once more
+    // only when it actually restored additional subscriptions.
+    final subscriptionsBefore =
+        (await _hostedBoardRepo.listSubscriptions()).length;
+    await _reconcileCreatedBoards();
+    final subscriptionsAfter =
+        (await _hostedBoardRepo.listSubscriptions()).length;
+    if (!mounted) return;
+    if (subscriptionsAfter > subscriptionsBefore) {
+      await _loadData();
+      await _runForegroundPullIfConfigured();
+    }
+
+    // Anchoring is required for later writes, not for reading public history.
+    // Keep it best-effort and non-blocking so a slow identity endpoint cannot
+    // delay the first board projection.
+    unawaited(_ensureAnchored());
   }
 
   bool _vetoAlertShowing = false;
@@ -531,12 +547,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         return;
       }
 
-      final hosts =
-          (await _remoteNodeRepo.list()).where((n) => n.isActive).toList();
+      final hosts = (await _remoteNodeRepo.list())
+          .where((n) => n.isActive)
+          .toList();
       if (hosts.isEmpty) return;
       final host = hosts.first;
 
-      final discovery = await _fetchDefaultRelayDiscovery();
+      final loader = widget.defaultSubscriptionsDiscoveryLoader;
+      final discovery = loader == null
+          ? await _fetchDefaultRelayDiscovery()
+          : await loader();
       // Compliance-consuming ranking (compliance-review gap #2): prefer
       // boards on hosts with a higher declared constitution compliance,
       // keeping the relay's featured order within each level.
@@ -554,11 +574,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         for (var i = 0; i < ranked.length; i++) ranked[i]: i,
       };
       ranked.sort((a, b) {
-        final byCompliance = complianceRank(
-          complianceByHostUrl[a.forumHostUrl] ?? 'unknown',
-        ).compareTo(
-          complianceRank(complianceByHostUrl[b.forumHostUrl] ?? 'unknown'),
-        );
+        final byCompliance =
+            complianceRank(
+              complianceByHostUrl[a.forumHostUrl] ?? 'unknown',
+            ).compareTo(
+              complianceRank(complianceByHostUrl[b.forumHostUrl] ?? 'unknown'),
+            );
         if (byCompliance != 0) return byCompliance;
         return originalIndex[a]!.compareTo(originalIndex[b]!);
       });
@@ -1132,8 +1153,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // Compliance-review gap #2: capture the host-declared compliance level
       // at seed time (best-effort).
       final discoveryClient = RelayDiscoveryClient(baseUrl: url);
-      final compliance =
-          await discoveryClient.fetchHostConstitutionCompliance();
+      final compliance = await discoveryClient
+          .fetchHostConstitutionCompliance();
       discoveryClient.close();
       await _remoteNodeRepo.create(
         RemoteNode(
@@ -1834,9 +1855,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     ),
                     const Divider(height: 1),
                     const SizedBox(height: 8),
-                    Flexible(
-                      child: _buildManageBoardsList(setStateDialog),
-                    ),
+                    Flexible(child: _buildManageBoardsList(setStateDialog)),
                   ],
                 ),
               ),
@@ -1885,104 +1904,90 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return _boards.isEmpty
         ? Text(l10n.noBoardsYet)
         : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: _boards.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final board = _boards[index];
-                          return ListTile(
-                            title: Text(board.title),
-                            subtitle: board.description != null
-                                ? Text(board.description!)
-                                : null,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () async {
-                                    final result =
-                                        await showDialog<Map<String, String?>>(
-                                          context: context,
-                                          builder: (context) => BoardFormDialog(
-                                            initialTitle: board.title,
-                                            initialDescription:
-                                                board.description,
-                                          ),
-                                        );
-                                    if (result != null) {
-                                      final now = DateTime.now();
-                                      final updatedSlug = _slugify(
-                                        result['title'] ?? board.title,
-                                      );
-                                      final uniqueUpdatedSlug =
-                                          updatedSlug.isEmpty
-                                          ? board.slug
-                                          : _uniqueLocalBoardSlug(
-                                              updatedSlug,
-                                              board.id,
-                                            );
-                                      final updated = Board(
-                                        id: board.id,
-                                        slug: uniqueUpdatedSlug,
-                                        title: result['title'] ?? board.title,
-                                        description: result['description'],
-                                        createdAt: board.createdAt,
-                                        updatedAt: now,
-                                        isDeleted: board.isDeleted,
-                                      );
-                                      await _boardRepo.update(updated);
-                                      await _loadData();
-                                      setStateDialog(() {});
-                                    }
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.redAccent,
-                                  ),
-                                  onPressed: () async {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: Text(l10n.deleteBoard),
-                                        content: Text(
-                                          l10n.deleteBoardConfirm(board.title),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, false),
-                                            child: Text(l10n.cancel),
-                                          ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, true),
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: Colors.red,
-                                            ),
-                                            child: Text(l10n.delete),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      await _boardRepo.delete(board.id);
-                                      // Also drop the hosted subscription so the
-                                      // board is truly unsubscribed (no resync).
-                                      await _hostedBoardRepo
-                                          .removeForLocalBoard(board.id);
-                                      await _loadData();
-                                      setStateDialog(() {});
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
+            shrinkWrap: true,
+            itemCount: _boards.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final board = _boards[index];
+              return ListTile(
+                title: Text(board.title),
+                subtitle: board.description != null
+                    ? Text(board.description!)
+                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        final result = await showDialog<Map<String, String?>>(
+                          context: context,
+                          builder: (context) => BoardFormDialog(
+                            initialTitle: board.title,
+                            initialDescription: board.description,
+                          ),
+                        );
+                        if (result != null) {
+                          final now = DateTime.now();
+                          final updatedSlug = _slugify(
+                            result['title'] ?? board.title,
                           );
-                        },
-                      );
+                          final uniqueUpdatedSlug = updatedSlug.isEmpty
+                              ? board.slug
+                              : _uniqueLocalBoardSlug(updatedSlug, board.id);
+                          final updated = Board(
+                            id: board.id,
+                            slug: uniqueUpdatedSlug,
+                            title: result['title'] ?? board.title,
+                            description: result['description'],
+                            createdAt: board.createdAt,
+                            updatedAt: now,
+                            isDeleted: board.isDeleted,
+                          );
+                          await _boardRepo.update(updated);
+                          await _loadData();
+                          setStateDialog(() {});
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: Text(l10n.deleteBoard),
+                            content: Text(l10n.deleteBoardConfirm(board.title)),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: Text(l10n.cancel),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                                child: Text(l10n.delete),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await _boardRepo.delete(board.id);
+                          // Also drop the hosted subscription so the
+                          // board is truly unsubscribed (no resync).
+                          await _hostedBoardRepo.removeForLocalBoard(board.id);
+                          await _loadData();
+                          setStateDialog(() {});
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
   }
 
   String _slugify(String input) {
