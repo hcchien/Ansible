@@ -446,6 +446,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
         comments: comments,
         reacted: userReacted[t.id] ?? false,
+        openingPost: firstPosts[t.id],
         signatureVerified: firstPosts[t.id]?.signatureVerified ?? false,
       );
     }).toList();
@@ -1100,6 +1101,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           reactions: {'👍': countMap[store.ReactionType.thumbsUp.name] ?? 0},
           comments: posts.length,
           reacted: reacted,
+          openingPost: entry.post,
           signatureVerified: entry.post.signatureVerified,
         ),
       );

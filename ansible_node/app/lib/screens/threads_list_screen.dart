@@ -636,6 +636,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             builder: (context) => PostsViewScreen(
               db: widget.db,
               thread: thread,
+              openingPost: firstPost,
               authorDid: widget.localDid,
               opsDispatchService: widget.opsDispatchService,
               onFlushPendingOps: widget.onFlushPendingOps,

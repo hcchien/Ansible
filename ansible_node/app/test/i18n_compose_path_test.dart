@@ -37,6 +37,47 @@ void main() {
   });
 
   group('PostsViewScreen zh-Hant empty state', () {
+    testWidgets('opening post renders when repository has no replies', (
+      tester,
+    ) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      final now = DateTime.now().toUtc();
+      final thread = Thread(
+        id: 'thread-with-op',
+        boardId: 'board-1',
+        title: '原 PO 標題',
+        authorId: 'did:plc:author',
+        createdAt: now,
+        updatedAt: now,
+      );
+      final openingPost = Post(
+        id: 'opening-post',
+        threadId: thread.id,
+        boardId: thread.boardId,
+        authorId: thread.authorId,
+        content: '這是原 PO 的內容',
+        createdAt: now,
+        updatedAt: now,
+        lastEditAt: now,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PostsViewScreen(
+            db: db,
+            thread: thread,
+            openingPost: openingPost,
+            authorDid: thread.authorId,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('這是原 PO 的內容'), findsOneWidget);
+      expect(find.text('還沒有貼文'), findsNothing);
+    });
+
     testWidgets('empty board shows Chinese empty-state copy', (tester) async {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(() => db.close());

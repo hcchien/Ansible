@@ -27,6 +27,7 @@ class PostCardData {
     required this.reactions,
     required this.comments,
     required this.reacted,
+    this.openingPost,
     this.authorTier = 'basic',
     this.signatureVerified = false,
     this.openableThread = true,
@@ -42,6 +43,7 @@ class PostCardData {
   final Map<String, int> reactions;
   final int comments;
   final bool reacted;
+  final Post? openingPost;
   final String authorTier;
 
   /// True when the post's authoring op is signature-verified — drives the
@@ -65,6 +67,7 @@ class PostCardData {
     reactions: reactions,
     comments: comments,
     reacted: reacted,
+    openingPost: openingPost,
     authorTier: authorTier ?? this.authorTier,
     signatureVerified: signatureVerified,
     openableThread: openableThread,
@@ -171,6 +174,7 @@ class _PostCardState extends State<PostCard> {
         builder: (_) => PostsViewScreen(
           db: widget.db,
           thread: widget.data.thread,
+          openingPost: widget.data.openingPost,
           authorDid: widget.authorDid,
           opsDispatchService: widget.opsDispatchService,
           onFlushPendingOps: widget.onFlushPendingOps,

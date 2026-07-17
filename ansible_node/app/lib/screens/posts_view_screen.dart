@@ -32,6 +32,7 @@ Future<void> _defaultShareSheet(String text, {String? subject}) {
 class PostsViewScreen extends StatefulWidget {
   final AppDatabase db;
   final Thread thread;
+  final Post? openingPost;
   final String? authorDid;
   final OpsDispatchService? opsDispatchService;
   final Future<void> Function()? onFlushPendingOps;
@@ -54,6 +55,7 @@ class PostsViewScreen extends StatefulWidget {
     super.key,
     required this.db,
     required this.thread,
+    this.openingPost,
     this.authorDid,
     this.opsDispatchService,
     this.onFlushPendingOps,
@@ -124,7 +126,12 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
 
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
-    final posts = await _postRepo.list(threadId: widget.thread.id);
+    final posts = [...await _postRepo.list(threadId: widget.thread.id)];
+    final openingPost = widget.openingPost;
+    if (openingPost != null &&
+        !posts.any((post) => post.id == openingPost.id)) {
+      posts.insert(0, openingPost);
+    }
     final board = await DriftBoardRepository(
       widget.db,
     ).getById(widget.thread.boardId);
