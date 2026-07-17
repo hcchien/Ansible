@@ -124,256 +124,326 @@ void main() {
     expect(await publicationRepo.listTargets(), isEmpty);
   });
 
-  test('syncAll enqueues relay ops for public murmur/note, idempotently', () async {
-    final db = AppDatabase(NativeDatabase.memory());
-    addTearDown(() => db.close());
+  test(
+    'syncAll does not re-sign content owned by a previous local DID',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      final now = DateTime.utc(2026, 7, 17);
+      final contentItems = DriftContentItemRepository(db);
+      final publicationRepo = DriftPublicationRepository(db);
+      final opsQueue = InMemoryOpsQueueRepository();
+      await contentItems.create(
+        ContentItem(
+          id: 'legacy-note',
+          authorDid: 'did:plc:previous',
+          mode: ContentMode.note,
+          title: 'Legacy note',
+          body: 'Keep locally without impersonating its author.',
+          status: ContentStatus.active,
+          visibility: ContentVisibility.public,
+          localOnly: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
-    final now = DateTime.utc(2026, 6, 4, 14);
-    final contentItems = DriftContentItemRepository(db);
-    final opsQueue = InMemoryOpsQueueRepository();
+      final result = await AppSyncService(
+        remoteNodeRepo: DriftRemoteNodeRepository(db),
+        boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+        boardRepo: DriftBoardRepository(db),
+        threadRepo: DriftThreadRepository(db),
+        postRepo: DriftPostRepository(db),
+        contentItemRepo: contentItems,
+        publicationRepo: publicationRepo,
+        relaySettings: const EmptyNostrRelaySettingsStore(),
+        keyStore: const InMemoryNostrKeyStore(),
+        followerDid: 'did:elix:current',
+        opsQueueRepo: opsQueue,
+        opsDispatchService: OpsDispatchService(
+          repository: opsQueue,
+          signer: _FakeDidSigner(),
+        ),
+        didSigner: _FakeDidSigner(),
+        relayPublicationClient: _RecordingRelayPublicationClient(),
+      ).syncAll(pullRemote: false);
 
-    await contentItems.create(
-      ContentItem(
-        id: 'murmur-1',
-        authorDid: 'did:plc:alice',
-        mode: ContentMode.murmur,
-        body: 'a public thought',
-        status: ContentStatus.active,
-        visibility: ContentVisibility.public,
-        localOnly: false,
-        createdAt: now,
-        updatedAt: now,
-        publishedAt: now,
-      ),
-    );
-    // Private content must never become an op.
-    await contentItems.create(
-      ContentItem(
-        id: 'murmur-private',
-        authorDid: 'did:plc:alice',
-        mode: ContentMode.murmur,
-        body: 'secret',
-        status: ContentStatus.active,
-        visibility: ContentVisibility.private,
-        localOnly: false,
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+      expect(result.publishSummary.publicItems, 0);
+      expect(await opsQueue.listAll(), isEmpty);
+      expect(await publicationRepo.listTargets(), isEmpty);
+    },
+  );
 
-    AppSyncService build() => AppSyncService(
-          remoteNodeRepo: DriftRemoteNodeRepository(db),
-          boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
-          boardRepo: DriftBoardRepository(db),
-          threadRepo: DriftThreadRepository(db),
-          postRepo: DriftPostRepository(db),
-          contentItemRepo: contentItems,
-          publicationRepo: DriftPublicationRepository(db),
-          relaySettings: const EmptyNostrRelaySettingsStore(),
-          keyStore: const InMemoryNostrKeyStore(),
-          opsQueueRepo: opsQueue,
-          opsDispatchService: OpsDispatchService(
-            repository: opsQueue,
-            signer: _FakeDidSigner(),
-          ),
-          didSigner: _FakeDidSigner(),
-          relayPublicationClient: _RecordingRelayPublicationClient(),
-        );
+  test(
+    'syncAll enqueues relay ops for public murmur/note, idempotently',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
 
-    await build().syncAll(pullRemote: false);
-    var ops = await opsQueue.listAll();
-    expect(ops.map((o) => o.entityId), contains('murmur-1'));
-    expect(ops.any((o) => o.entityId == 'murmur-private'), isFalse);
-    expect(ops.where((o) => o.entityType == 'murmur').length, 1);
+      final now = DateTime.utc(2026, 6, 4, 14);
+      final contentItems = DriftContentItemRepository(db);
+      final opsQueue = InMemoryOpsQueueRepository();
 
-    // Running again does not duplicate the op for the same entity.
-    await build().syncAll(pullRemote: false);
-    ops = await opsQueue.listAll();
-    expect(ops.where((o) => o.entityId == 'murmur-1').length, 1);
-  });
+      await contentItems.create(
+        ContentItem(
+          id: 'murmur-1',
+          authorDid: 'did:plc:alice',
+          mode: ContentMode.murmur,
+          body: 'a public thought',
+          status: ContentStatus.active,
+          visibility: ContentVisibility.public,
+          localOnly: false,
+          createdAt: now,
+          updatedAt: now,
+          publishedAt: now,
+        ),
+      );
+      // Private content must never become an op.
+      await contentItems.create(
+        ContentItem(
+          id: 'murmur-private',
+          authorDid: 'did:plc:alice',
+          mode: ContentMode.murmur,
+          body: 'secret',
+          status: ContentStatus.active,
+          visibility: ContentVisibility.private,
+          localOnly: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
-  test('syncAll publishes federated follow ops and converges on unfollow', () async {
-    final db = AppDatabase(NativeDatabase.memory());
-    addTearDown(() => db.close());
+      AppSyncService build() => AppSyncService(
+        remoteNodeRepo: DriftRemoteNodeRepository(db),
+        boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+        boardRepo: DriftBoardRepository(db),
+        threadRepo: DriftThreadRepository(db),
+        postRepo: DriftPostRepository(db),
+        contentItemRepo: contentItems,
+        publicationRepo: DriftPublicationRepository(db),
+        relaySettings: const EmptyNostrRelaySettingsStore(),
+        keyStore: const InMemoryNostrKeyStore(),
+        opsQueueRepo: opsQueue,
+        opsDispatchService: OpsDispatchService(
+          repository: opsQueue,
+          signer: _FakeDidSigner(),
+        ),
+        didSigner: _FakeDidSigner(),
+        relayPublicationClient: _RecordingRelayPublicationClient(),
+      );
 
-    final now = DateTime.utc(2026, 6, 4, 14);
-    final opsQueue = InMemoryOpsQueueRepository();
-    final follows = InMemoryFollowRepository();
+      await build().syncAll(pullRemote: false);
+      var ops = await opsQueue.listAll();
+      expect(ops.map((o) => o.entityId), contains('murmur-1'));
+      expect(ops.any((o) => o.entityId == 'murmur-private'), isFalse);
+      expect(ops.where((o) => o.entityType == 'murmur').length, 1);
 
-    await follows.upsertTarget(
-      FollowTarget(
-        targetId: 'target-bob',
-        targetType: FollowTargetType.user,
-        canonicalUri: 'did:plc:bob',
-        displayName: 'bob',
-        did: 'did:plc:bob',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    // A localOnly follow must never be published.
-    await follows.upsertTarget(
-      FollowTarget(
-        targetId: 'target-eve',
-        targetType: FollowTargetType.user,
-        canonicalUri: 'did:plc:eve',
-        displayName: 'eve',
-        did: 'did:plc:eve',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await follows.upsertEdge(
-      FollowEdge(
-        followId: 'f-bob',
-        followerDid: 'did:plc:reader',
-        targetId: 'target-bob',
-        targetType: FollowTargetType.user,
-        direction: FollowDirection.outbound,
-        status: FollowStatus.accepted,
-        visibility: FollowVisibility.federated,
-        createdAt: now,
-        updatedAt: now,
-        acceptedAt: now,
-      ),
-    );
-    await follows.upsertEdge(
-      FollowEdge(
-        followId: 'f-eve',
-        followerDid: 'did:plc:reader',
-        targetId: 'target-eve',
-        targetType: FollowTargetType.user,
-        direction: FollowDirection.outbound,
-        status: FollowStatus.accepted,
-        visibility: FollowVisibility.localOnly,
-        createdAt: now,
-        updatedAt: now,
-        acceptedAt: now,
-      ),
-    );
+      // Running again does not duplicate the op for the same entity.
+      await build().syncAll(pullRemote: false);
+      ops = await opsQueue.listAll();
+      expect(ops.where((o) => o.entityId == 'murmur-1').length, 1);
+    },
+  );
 
-    AppSyncService build() => AppSyncService(
-          remoteNodeRepo: DriftRemoteNodeRepository(db),
-          boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
-          boardRepo: DriftBoardRepository(db),
-          threadRepo: DriftThreadRepository(db),
-          postRepo: DriftPostRepository(db),
-          contentItemRepo: DriftContentItemRepository(db),
-          publicationRepo: DriftPublicationRepository(db),
-          relaySettings: const EmptyNostrRelaySettingsStore(),
-          keyStore: const InMemoryNostrKeyStore(),
-          followRepository: follows,
+  test(
+    'syncAll publishes federated follow ops and converges on unfollow',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+
+      final now = DateTime.utc(2026, 6, 4, 14);
+      final opsQueue = InMemoryOpsQueueRepository();
+      final follows = InMemoryFollowRepository();
+
+      await follows.upsertTarget(
+        FollowTarget(
+          targetId: 'target-bob',
+          targetType: FollowTargetType.user,
+          canonicalUri: 'did:plc:bob',
+          displayName: 'bob',
+          did: 'did:plc:bob',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      // A localOnly follow must never be published.
+      await follows.upsertTarget(
+        FollowTarget(
+          targetId: 'target-eve',
+          targetType: FollowTargetType.user,
+          canonicalUri: 'did:plc:eve',
+          displayName: 'eve',
+          did: 'did:plc:eve',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await follows.upsertEdge(
+        FollowEdge(
+          followId: 'f-bob',
           followerDid: 'did:plc:reader',
-          opsQueueRepo: opsQueue,
-          opsDispatchService: OpsDispatchService(
-            repository: opsQueue,
-            signer: _FakeDidSigner(),
-          ),
-          didSigner: _FakeDidSigner(),
-          relayPublicationClient: _RecordingRelayPublicationClient(),
-        );
-
-    await build().syncAll(pullRemote: false);
-    var followOps =
-        (await opsQueue.listAll()).where((o) => o.entityType == 'follow').toList();
-    expect(followOps.length, 1);
-    expect(followOps.single.opType, 'insert');
-    expect(followOps.single.entityId, 'did:plc:bob');
-    // localOnly follow never produced an op.
-    expect(followOps.any((o) => o.entityId == 'did:plc:eve'), isFalse);
-
-    // Idempotent: re-running does not re-publish the active follow.
-    await build().syncAll(pullRemote: false);
-    expect(
-      (await opsQueue.listAll())
-          .where((o) => o.entityType == 'follow' && o.opType == 'insert')
-          .length,
-      1,
-    );
-
-    // Unfollow: cancel the edge -> a delete op converges the graph.
-    await follows.updateEdgeStatus('f-bob', FollowStatus.cancelled, now);
-    await build().syncAll(pullRemote: false);
-    followOps =
-        (await opsQueue.listAll()).where((o) => o.entityType == 'follow').toList();
-    expect(followOps.any((o) => o.opType == 'delete' && o.entityId == 'did:plc:bob'),
-        isTrue);
-  });
-
-  test('syncAll publishes the self profile op and re-publishes only on change', () async {
-    final db = AppDatabase(NativeDatabase.memory());
-    addTearDown(() => db.close());
-
-    final now = DateTime.utc(2026, 6, 4, 14);
-    final opsQueue = InMemoryOpsQueueRepository();
-    final contacts = DriftContactRepository(db);
-
-    await contacts.upsertContact(
-      ContactRecord(
-        subjectDid: 'did:plc:reader',
-        handle: 'me.example',
-        displayName: 'Me',
-        source: 'self',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-
-    AppSyncService build() => AppSyncService(
-          remoteNodeRepo: DriftRemoteNodeRepository(db),
-          boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
-          boardRepo: DriftBoardRepository(db),
-          threadRepo: DriftThreadRepository(db),
-          postRepo: DriftPostRepository(db),
-          contentItemRepo: DriftContentItemRepository(db),
-          publicationRepo: DriftPublicationRepository(db),
-          relaySettings: const EmptyNostrRelaySettingsStore(),
-          keyStore: const InMemoryNostrKeyStore(),
-          contactRepository: contacts,
+          targetId: 'target-bob',
+          targetType: FollowTargetType.user,
+          direction: FollowDirection.outbound,
+          status: FollowStatus.accepted,
+          visibility: FollowVisibility.federated,
+          createdAt: now,
+          updatedAt: now,
+          acceptedAt: now,
+        ),
+      );
+      await follows.upsertEdge(
+        FollowEdge(
+          followId: 'f-eve',
           followerDid: 'did:plc:reader',
-          opsQueueRepo: opsQueue,
-          opsDispatchService: OpsDispatchService(
-            repository: opsQueue,
-            signer: _FakeDidSigner(),
-          ),
-          didSigner: _FakeDidSigner(),
-          relayPublicationClient: _RecordingRelayPublicationClient(),
-        );
+          targetId: 'target-eve',
+          targetType: FollowTargetType.user,
+          direction: FollowDirection.outbound,
+          status: FollowStatus.accepted,
+          visibility: FollowVisibility.localOnly,
+          createdAt: now,
+          updatedAt: now,
+          acceptedAt: now,
+        ),
+      );
 
-    await build().syncAll(pullRemote: false);
-    var profileOps =
-        (await opsQueue.listAll()).where((o) => o.entityType == 'profile').toList();
-    expect(profileOps.length, 1);
-    expect(profileOps.single.entityId, 'did:plc:reader');
-    expect(
-      CrdtOpBuilder.decodePayload(profileOps.single.payload)['handle'],
-      'me.example',
-    );
+      AppSyncService build() => AppSyncService(
+        remoteNodeRepo: DriftRemoteNodeRepository(db),
+        boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+        boardRepo: DriftBoardRepository(db),
+        threadRepo: DriftThreadRepository(db),
+        postRepo: DriftPostRepository(db),
+        contentItemRepo: DriftContentItemRepository(db),
+        publicationRepo: DriftPublicationRepository(db),
+        relaySettings: const EmptyNostrRelaySettingsStore(),
+        keyStore: const InMemoryNostrKeyStore(),
+        followRepository: follows,
+        followerDid: 'did:plc:reader',
+        opsQueueRepo: opsQueue,
+        opsDispatchService: OpsDispatchService(
+          repository: opsQueue,
+          signer: _FakeDidSigner(),
+        ),
+        didSigner: _FakeDidSigner(),
+        relayPublicationClient: _RecordingRelayPublicationClient(),
+      );
 
-    // Unchanged profile -> no new op.
-    await build().syncAll(pullRemote: false);
-    expect(
-      (await opsQueue.listAll()).where((o) => o.entityType == 'profile').length,
-      1,
-    );
+      await build().syncAll(pullRemote: false);
+      var followOps = (await opsQueue.listAll())
+          .where((o) => o.entityType == 'follow')
+          .toList();
+      expect(followOps.length, 1);
+      expect(followOps.single.opType, 'insert');
+      expect(followOps.single.entityId, 'did:plc:bob');
+      // localOnly follow never produced an op.
+      expect(followOps.any((o) => o.entityId == 'did:plc:eve'), isFalse);
 
-    // Changed display name -> a new profile op is published.
-    await contacts.upsertContact(
-      ContactRecord(
-        subjectDid: 'did:plc:reader',
-        handle: 'me.example',
-        displayName: 'Me Renamed',
-        source: 'self',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await build().syncAll(pullRemote: false);
-    expect(
-      (await opsQueue.listAll()).where((o) => o.entityType == 'profile').length,
-      2,
-    );
-  });
+      // Idempotent: re-running does not re-publish the active follow.
+      await build().syncAll(pullRemote: false);
+      expect(
+        (await opsQueue.listAll())
+            .where((o) => o.entityType == 'follow' && o.opType == 'insert')
+            .length,
+        1,
+      );
+
+      // Unfollow: cancel the edge -> a delete op converges the graph.
+      await follows.updateEdgeStatus('f-bob', FollowStatus.cancelled, now);
+      await build().syncAll(pullRemote: false);
+      followOps = (await opsQueue.listAll())
+          .where((o) => o.entityType == 'follow')
+          .toList();
+      expect(
+        followOps.any(
+          (o) => o.opType == 'delete' && o.entityId == 'did:plc:bob',
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'syncAll publishes the self profile op and re-publishes only on change',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+
+      final now = DateTime.utc(2026, 6, 4, 14);
+      final opsQueue = InMemoryOpsQueueRepository();
+      final contacts = DriftContactRepository(db);
+
+      await contacts.upsertContact(
+        ContactRecord(
+          subjectDid: 'did:plc:reader',
+          handle: 'me.example',
+          displayName: 'Me',
+          source: 'self',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      AppSyncService build() => AppSyncService(
+        remoteNodeRepo: DriftRemoteNodeRepository(db),
+        boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+        boardRepo: DriftBoardRepository(db),
+        threadRepo: DriftThreadRepository(db),
+        postRepo: DriftPostRepository(db),
+        contentItemRepo: DriftContentItemRepository(db),
+        publicationRepo: DriftPublicationRepository(db),
+        relaySettings: const EmptyNostrRelaySettingsStore(),
+        keyStore: const InMemoryNostrKeyStore(),
+        contactRepository: contacts,
+        followerDid: 'did:plc:reader',
+        opsQueueRepo: opsQueue,
+        opsDispatchService: OpsDispatchService(
+          repository: opsQueue,
+          signer: _FakeDidSigner(),
+        ),
+        didSigner: _FakeDidSigner(),
+        relayPublicationClient: _RecordingRelayPublicationClient(),
+      );
+
+      await build().syncAll(pullRemote: false);
+      var profileOps = (await opsQueue.listAll())
+          .where((o) => o.entityType == 'profile')
+          .toList();
+      expect(profileOps.length, 1);
+      expect(profileOps.single.entityId, 'did:plc:reader');
+      expect(
+        CrdtOpBuilder.decodePayload(profileOps.single.payload)['handle'],
+        'me.example',
+      );
+
+      // Unchanged profile -> no new op.
+      await build().syncAll(pullRemote: false);
+      expect(
+        (await opsQueue.listAll())
+            .where((o) => o.entityType == 'profile')
+            .length,
+        1,
+      );
+
+      // Changed display name -> a new profile op is published.
+      await contacts.upsertContact(
+        ContactRecord(
+          subjectDid: 'did:plc:reader',
+          handle: 'me.example',
+          displayName: 'Me Renamed',
+          source: 'self',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await build().syncAll(pullRemote: false);
+      expect(
+        (await opsQueue.listAll())
+            .where((o) => o.entityType == 'profile')
+            .length,
+        2,
+      );
+    },
+  );
 }
 
 class EmptyNostrRelaySettingsStore implements NostrRelaySettingsStore {

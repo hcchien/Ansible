@@ -176,6 +176,7 @@ class AppSyncService {
         final isFeedMode =
             item.mode == ContentMode.murmur || item.mode == ContentMode.note;
         return isFeedMode &&
+            (_followerDid == null || item.authorDid == _followerDid) &&
             item.visibility != ContentVisibility.private &&
             !item.localOnly &&
             item.status == ContentStatus.active &&
@@ -408,7 +409,9 @@ class AppSyncService {
     final publicItems = (await _contentItemRepo.list())
         .where(
           (item) =>
-              item.visibility != ContentVisibility.private && !item.localOnly,
+              (_followerDid == null || item.authorDid == _followerDid) &&
+              item.visibility != ContentVisibility.private &&
+              !item.localOnly,
         )
         .toList();
     if (publicItems.isEmpty) {
