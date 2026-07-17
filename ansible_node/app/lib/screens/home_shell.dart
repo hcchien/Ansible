@@ -531,7 +531,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   static const _genesisSubscribedKey = 'elix-genesis-subscribed';
   static const _hostedBoardHistoryCursorRepairKey =
-      'elix-hosted-board-history-cursor-repair-v1';
+      'elix-hosted-board-history-cursor-repair-v2';
 
   /// Repairs installs where the old node-wide cursor advanced before hosted
   /// board subscriptions existed. Resetting once makes the next pull replay

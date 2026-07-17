@@ -744,6 +744,16 @@ void main() {
         updatedAt: now,
       ),
     );
+    await threadRepo.create(
+      Thread(
+        id: 'thread-x',
+        boardId: '',
+        title: '不見了',
+        authorId: 'did:plc:remote',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
     final client = _FakeRelayApiClient(
       activities: [
         {

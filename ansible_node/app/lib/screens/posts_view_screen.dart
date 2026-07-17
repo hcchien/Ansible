@@ -85,12 +85,16 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   }
 
   Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
-  Color get _deep => _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+  Color get _deep =>
+      _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
   Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-  Color get _muted => _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
-  Color get _faint => _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _muted =>
+      _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint =>
+      _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
   Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
-  Color get _ruleSoft => _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _ruleSoft =>
+      _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
   Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
 
   /// True when the board requires a higher tier than the local user has.
@@ -120,7 +124,9 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
     final posts = await _postRepo.list(threadId: widget.thread.id);
-    final board = await DriftBoardRepository(widget.db).getById(widget.thread.boardId);
+    final board = await DriftBoardRepository(
+      widget.db,
+    ).getById(widget.thread.boardId);
     final projection = await DriftHostedBoardRepository(
       widget.db,
     ).getProjectionByLocalBoardId(widget.thread.boardId);
@@ -213,7 +219,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       final signature = await _signReportPayload(
         utf8.encode(jsonEncode(canonicalPayload)),
       );
-      final client = (widget.reportClientFactory ??
+      final client =
+          (widget.reportClientFactory ??
           (baseUrl) => ForumHostClient(baseUrl: baseUrl))(host.url);
       final ReportSubmission submission;
       try {
@@ -393,8 +400,21 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
+        leadingWidth: 92,
+        leading: TextButton.icon(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: Icon(Icons.chevron_left, size: 22, color: _muted),
+          label: Text(
+            context.uiCopy(zh: '返回', en: 'Back'),
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 14,
+              color: _muted,
+            ),
+          ),
+        ),
         title: Text(
-          context.uiCopy(zh: '討論串', en: 'THREAD'),
+          context.uiCopy(zh: '貼文', en: 'POST'),
           style: TextStyle(
             fontFamily: AnsibleDesign.mono,
             fontSize: 12,
@@ -410,8 +430,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               tooltip: context.uiCopy(zh: '分享討論串', en: 'Share thread'),
               onPressed: _shareThread,
             ),
-          if (_hostedProjection != null &&
-              widget.thread.authorId != _authorDid)
+          if (_hostedProjection != null && widget.thread.authorId != _authorDid)
             IconButton(
               key: const Key('report_thread_button'),
               icon: Icon(Icons.outlined_flag, size: 21),
@@ -439,7 +458,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   }
 
   List<Widget> _threadItems(BuildContext context) {
-    final items = <Widget>[_threadHeader(context)];
+    final items = <Widget>[];
     if (_posts.isEmpty) {
       items.add(_emptyState(context));
       return items;
@@ -451,43 +470,6 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       items.add(_replyRow(context, r));
     }
     return items;
-  }
-
-  /// e16 thread header: board crumb + serif thread title.
-  Widget _threadHeader(BuildContext context) {
-    final crumb = (_board?.slug ?? _board?.title ?? '').trim();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: _ruleSoft, width: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (crumb.isNotEmpty)
-            Text(
-              '# $crumb',
-              style: TextStyle(
-                fontFamily: AnsibleDesign.mono,
-                fontSize: 10,
-                letterSpacing: 1.3,
-                color: _accent,
-              ),
-            ),
-          const SizedBox(height: 3),
-          Text(
-            widget.thread.title,
-            style: TextStyle(
-              fontFamily: AnsibleDesign.serif,
-              fontSize: 20,
-              height: 1.3,
-              fontWeight: FontWeight.w700,
-              color: _fg,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _emptyState(BuildContext context) {
@@ -601,7 +583,31 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
             const SizedBox(height: 8),
             _ownPostRemovalNotice(context, removal),
           ],
-          const SizedBox(height: 11),
+          const SizedBox(height: 12),
+          if ((_board?.slug ?? _board?.title ?? '').trim().isNotEmpty) ...[
+            Text(
+              '# ${(_board?.slug ?? _board?.title ?? '').trim()}',
+              key: const Key('thread_board_crumb'),
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 10,
+                letterSpacing: 1.3,
+                color: _accent,
+              ),
+            ),
+            const SizedBox(height: 5),
+          ],
+          Text(
+            widget.thread.title,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 20,
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+              color: _fg,
+            ),
+          ),
+          const SizedBox(height: 10),
           Text(
             post.content,
             style: TextStyle(
@@ -639,9 +645,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               style: TextStyle(color: _accent),
             ),
           ],
-          TextSpan(text: ' · ${context.uiCopy(zh: '起頭', en: 'OP')}'),
+          TextSpan(
+            text: ' · ${context.uiCopy(zh: '起頭', en: 'OP')}',
+          ),
           if (edited)
-            TextSpan(text: context.uiCopy(zh: '（已編輯）', en: ' (edited)')),
+            TextSpan(
+              text: context.uiCopy(zh: '（已編輯）', en: ' (edited)'),
+            ),
         ],
       ),
       maxLines: 1,
@@ -874,8 +884,6 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               )
             : Row(
                 children: [
-                  _avatar(_authorDid, size: 32, signed: true),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: GestureDetector(
                       onTap: _createPost,
@@ -925,29 +933,21 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: _deep,
-        border: Border(
-          bottom: BorderSide(color: _rule, width: 0.5),
-        ),
+        border: Border(bottom: BorderSide(color: _rule, width: 0.5)),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.lock_outline,
-            size: 16,
-            color: _muted,
-          ),
+          Icon(Icons.lock_outline, size: 16, color: _muted),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               context.uiCopy(
                 zh: '此討論串已被板務鎖定（$reason），暫停回覆',
-                en: 'This thread was locked by the board moderators '
+                en:
+                    'This thread was locked by the board moderators '
                     '($reason); replies are paused',
               ),
-              style: TextStyle(
-                fontSize: 12.5,
-                color: _muted,
-              ),
+              style: TextStyle(fontSize: 12.5, color: _muted),
             ),
           ),
         ],
@@ -956,10 +956,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   }
 
   /// Replaces the reply composer while the thread is locked.
-  Widget _lockedComposerNotice(
-    BuildContext context,
-    HostModerationState lock,
-  ) {
+  Widget _lockedComposerNotice(BuildContext context, HostModerationState lock) {
     final reason = moderationReasonLabel(context, lock.reasonCode);
     return Container(
       key: const Key('thread_locked_composer'),
@@ -972,11 +969,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.lock_outline,
-            size: 16,
-            color: _muted,
-          ),
+          Icon(Icons.lock_outline, size: 16, color: _muted),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -1007,23 +1000,17 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(
-              Icons.visibility_off_outlined,
-              size: 18,
-              color: _faint,
-            ),
+            Icon(Icons.visibility_off_outlined, size: 18, color: _faint),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 context.uiCopy(
                   zh: '此留言已被板務移除（$reason）',
-                  en: 'This post was removed by the board moderators '
+                  en:
+                      'This post was removed by the board moderators '
                       '($reason)',
                 ),
-                style: TextStyle(
-                  color: _muted,
-                  fontStyle: FontStyle.italic,
-                ),
+                style: TextStyle(color: _muted, fontStyle: FontStyle.italic),
               ),
             ),
           ],
@@ -1051,7 +1038,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       child: Text(
         context.uiCopy(
           zh: '你的留言已被板務移除（$reason）。其他人看不到這則內容；你的本地副本不受影響。',
-          en: 'Your post was removed by the board moderators ($reason). '
+          en:
+              'Your post was removed by the board moderators ($reason). '
               'Others no longer see it; your local copy is untouched.',
         ),
         style: TextStyle(fontSize: 12.5, color: _muted),
@@ -1067,16 +1055,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     } else if (difference.inDays > 0) {
       final n = difference.inDays;
-      return context.uiCopy(
-        zh: '$n 天前',
-        en: '$n day${n > 1 ? 's' : ''} ago',
-      );
+      return context.uiCopy(zh: '$n 天前', en: '$n day${n > 1 ? 's' : ''} ago');
     } else if (difference.inHours > 0) {
       final n = difference.inHours;
-      return context.uiCopy(
-        zh: '$n 小時前',
-        en: '$n hour${n > 1 ? 's' : ''} ago',
-      );
+      return context.uiCopy(zh: '$n 小時前', en: '$n hour${n > 1 ? 's' : ''} ago');
     } else if (difference.inMinutes > 0) {
       final n = difference.inMinutes;
       return context.uiCopy(
@@ -1224,8 +1206,9 @@ class _PostReactionBarState extends State<_PostReactionBar> {
     final heartColor = _reacted
         ? (widget.dark ? AnsibleDesign.darkEmber : AnsibleDesign.ember)
         : (widget.dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted);
-    final countColor =
-        widget.dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final countColor = widget.dark
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: (_canReact && !_busy && !_loading) ? _toggle : null,
