@@ -64,7 +64,7 @@ void main() {
   });
 
   testWidgets(
-    'hosted board checkbox pauses sync without deleting local content',
+    'hosted board switch pauses sync without deleting local content',
     (tester) async {
       FlutterSecureStorage.setMockInitialValues({});
       final db = AppDatabase(NativeDatabase.memory());
@@ -122,11 +122,14 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Dev Relay'));
       await tester.pumpAndSettle();
-      final checkbox = find.widgetWithText(CheckboxListTile, 'General');
-      expect(checkbox, findsOneWidget);
-      expect(tester.widget<CheckboxListTile>(checkbox).value, isTrue);
+      final syncSwitch = find.byKey(
+        const Key('board_sync_switch_host-1_local-general'),
+      );
+      expect(syncSwitch, findsOneWidget);
+      expect(tester.widget<SwitchListTile>(syncSwitch).value, isTrue);
+      expect(find.text('同步中 · 關閉後仍保留本機資料'), findsOneWidget);
 
-      await tester.tap(checkbox);
+      await tester.tap(syncSwitch);
       await tester.pumpAndSettle();
 
       final subscriptions = await hostedRepo.listSubscriptions(
@@ -137,6 +140,7 @@ void main() {
         await DriftBoardRepository(db).getById('local-general'),
         isNotNull,
       );
+      expect(find.text('已暫停同步 · 本機資料已保留'), findsOneWidget);
     },
   );
 

@@ -1143,20 +1143,32 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: CheckboxListTile(
+                                child: SwitchListTile(
+                                  key: ValueKey(
+                                    'board_sync_switch_${node.id}_${board.id}',
+                                  ),
                                   value: isEnabled,
-                                  onChanged: (selected) {
+                                  onChanged: (enabled) {
                                     _toggleBoardSync(
                                       node.id,
                                       board.id,
-                                      selected ?? false,
+                                      enabled,
                                     );
                                   },
                                   title: Text(board.title),
+                                  subtitle: Text(
+                                    isEnabled
+                                        ? context.uiCopy(
+                                            zh: '同步中 · 關閉後仍保留本機資料',
+                                            en: 'Syncing · Turn off to keep a local-only copy',
+                                          )
+                                        : context.uiCopy(
+                                            zh: '已暫停同步 · 本機資料已保留',
+                                            en: 'Sync paused · Local data is preserved',
+                                          ),
+                                  ),
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
-                                  controlAffinity:
-                                      ListTileControlAffinity.leading,
                                 ),
                               ),
                               const SizedBox(width: 12),
