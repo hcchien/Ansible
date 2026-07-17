@@ -33,7 +33,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('SYNC'), findsOneWidget);
-    expect(find.text('目前沒有同步的圈'), findsOneWidget);
+    expect(find.text('目前沒有同步的圈'), findsNothing);
     expect(find.text('週四讀書會'), findsNothing);
     expect(find.textContaining('讀書會'), findsNothing);
   });
@@ -126,6 +126,7 @@ void main() {
         const Key('board_sync_switch_host-1_local-general'),
       );
       expect(syncSwitch, findsOneWidget);
+      expect(find.text('General'), findsOneWidget);
       expect(tester.widget<SwitchListTile>(syncSwitch).value, isTrue);
       expect(find.text('同步中 · 關閉後仍保留本機資料'), findsOneWidget);
 

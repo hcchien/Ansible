@@ -830,23 +830,33 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                         _buildServerCard(_remoteNodes[i], theme),
                     ],
                   ),
-                AnsibleMonoLabel(
-                  text.t('syncedCircles'),
-                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-                ),
-                AnsibleRuleGroup(
-                  children: [
-                    for (var i = 0; i < _boards.take(3).length; i += 1)
-                      _CircleSyncRow(
-                        name: _boards[i].title,
-                        subtitle: text.t('hostedBoardProjection'),
-                        status: i == 2
-                            ? _CircleSyncStatus.paused
-                            : _CircleSyncStatus.live,
-                      ),
-                    if (_boards.isEmpty) const _EmptyCircleSyncRow(),
-                  ],
-                ),
+                if (_localOnlyBoards.isNotEmpty) ...[
+                  AnsibleMonoLabel(
+                    context.uiCopy(zh: '僅本機 · LOCAL ONLY', en: 'LOCAL ONLY'),
+                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+                  ),
+                  AnsibleRuleGroup(
+                    children: [
+                      for (final board in _localOnlyBoards)
+                        ListTile(
+                          leading: CircleAvatar(
+                            child: Text(
+                              board.title.trim().isEmpty
+                                  ? '·'
+                                  : board.title.trim().characters.first,
+                            ),
+                          ),
+                          title: Text(board.title),
+                          subtitle: Text(
+                            context.uiCopy(
+                              zh: '只保存在這台裝置，未與 Relay 同步',
+                              en: 'Stored only on this device; not synced with a Relay',
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
                 NostrPublicationRetryPanel(
                   failedTargets: _failedNostrTargets,
                   onRetry: _retryNostrTarget,
@@ -944,6 +954,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final isSyncing = _syncingNodes[node.id] ?? false;
     final boardSyncStatus = _boardSyncStatusByNode[node.id] ?? {};
     final boardRetention = _boardRetentionByNode[node.id] ?? {};
+    final nodeBoards = _boardsForNode(node.id);
     final enabledCount = boardSyncStatus.values.where((v) => v).length;
 
     return Container(
@@ -1093,7 +1104,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       TextButton(
                         onPressed: () async {
                           // Select all
-                          for (final board in _boards) {
+                          for (final board in nodeBoards) {
                             await _toggleBoardSync(node.id, board.id, true);
                           }
                         },
@@ -1102,7 +1113,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                       TextButton(
                         onPressed: () async {
                           // Clear all
-                          for (final board in _boards) {
+                          for (final board in nodeBoards) {
                             await _toggleBoardSync(node.id, board.id, false);
                           }
                         },
@@ -1118,7 +1129,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (_boards.isEmpty)
+                  if (nodeBoards.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
@@ -1130,7 +1141,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                     )
                   else
                     Column(
-                      children: _boards.map((board) {
+                      children: nodeBoards.map((board) {
                         final isEnabled = boardSyncStatus[board.id] ?? false;
                         final retentionDays =
                             boardRetention.containsKey(board.id)
@@ -1235,6 +1246,20 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         ],
       ),
     );
+  }
+
+  List<Board> _boardsForNode(String nodeId) {
+    final boardIds = _boardSyncStatusByNode[nodeId]?.keys.toSet() ?? const {};
+    return _boards.where((board) => boardIds.contains(board.id)).toList();
+  }
+
+  List<Board> get _localOnlyBoards {
+    final remoteBoardIds = <String>{
+      for (final statuses in _boardSyncStatusByNode.values) ...statuses.keys,
+    };
+    return _boards
+        .where((board) => !remoteBoardIds.contains(board.id))
+        .toList();
   }
 
   String _formatDateTime(DateTime dt) {
