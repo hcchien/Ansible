@@ -1151,8 +1151,20 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final now = DateTime.now();
 
       final existing = await _remoteNodeRepo.list();
-      // Already pointed at this build's relay → nothing to do.
-      if (existing.any((n) => _relayOrigin(n.url) == defaultOrigin)) return;
+      // The build-provided dev/staging relay is public. Clear credentials left
+      // behind by an older localhost node; sending an invalid optional Bearer
+      // token makes the otherwise-public delta endpoint return 401.
+      final matching = existing
+          .where((n) => _relayOrigin(n.url) == defaultOrigin)
+          .toList();
+      if (matching.isNotEmpty) {
+        for (final node in matching.where((n) => n.accessToken != null)) {
+          await _remoteNodeRepo.update(
+            _relayNodeWithoutToken(node, url: url, name: name, now: now),
+          );
+        }
+        return;
+      }
 
       // Self-heal build-provided endpoints. Staging/prod can never use a local
       // relay, but older builds accidentally seeded 127.0.0.1 because the
@@ -1171,7 +1183,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (stale.isNotEmpty) {
         for (final node in stale) {
           await _remoteNodeRepo.update(
-            node.copyWith(url: url, name: name, updatedAt: now),
+            _relayNodeWithoutToken(node, url: url, name: name, now: now),
           );
         }
         return;
@@ -1200,6 +1212,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     } catch (_) {
       // Best-effort; the user can still add a relay manually in Sync settings.
     }
+  }
+
+  RemoteNode _relayNodeWithoutToken(
+    RemoteNode node, {
+    required String url,
+    required String name,
+    required DateTime now,
+  }) {
+    return RemoteNode(
+      id: node.id,
+      name: name,
+      url: url,
+      syncCursor: node.syncCursor,
+      lastSyncAt: node.lastSyncAt,
+      createdAt: node.createdAt,
+      updatedAt: now,
+      isActive: node.isActive,
+      constitutionCompliance: node.constitutionCompliance,
+    );
   }
 
   /// scheme://host:port for comparing relay URLs regardless of path/trailing
