@@ -236,7 +236,9 @@ class RemoteOpSignatureVerifier {
     if (resolveKey != null) {
       final authorizedKey = _keyCache[authorDid] ?? await resolveKey(authorDid);
       if (authorizedKey == null) return false; // DID not registered
-      if (authorizedKey.toLowerCase() != publicKeyHex.toLowerCase()) return false; // Key mismatch
+      if (authorizedKey.toLowerCase() != publicKeyHex.toLowerCase()) {
+        return false; // Key mismatch
+      }
       _cacheKey(authorDid, authorizedKey); // Cache hit for future ops
     }
 
@@ -419,7 +421,14 @@ class RemoteSyncService {
       };
 
       int totalProcessed = 0;
-      int currentCursor = remoteNode.syncCursor;
+      // A newly-created hosted-board subscription can legitimately lag behind
+      // the node-wide cursor. Start at the oldest active subscription cursor so
+      // its history is replayed instead of being skipped forever.
+      int currentCursor = hostedSubscriptions.fold(
+        remoteNode.syncCursor,
+        (oldest, subscription) =>
+            subscription.syncCursor < oldest ? subscription.syncCursor : oldest,
+      );
       bool hasMore = true;
       final syncTime = _now();
 
@@ -469,7 +478,9 @@ class RemoteSyncService {
           // A followed-author op whose board is not synced has no local
           // board/thread context; create lightweight stubs so the post/thread is
           // storable and renderable. Standalone murmur/note need no context.
-          if (allowedByFollowedAuthor && !allowedByLegacy && hostedRoute == null) {
+          if (allowedByFollowedAuthor &&
+              !allowedByLegacy &&
+              hostedRoute == null) {
             await _ensureFollowedContext(activity);
           }
 

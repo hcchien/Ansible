@@ -296,6 +296,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// default-subscription and created-board reconciliation tasks against pull.
   Future<void> _bootstrapForumAndPull() async {
     await _ensureDefaultSubscriptions();
+    await _repairHostedBoardHistoryCursors();
     if (!mounted) return;
     await _loadData();
     await _runForegroundPullIfConfigured();
@@ -529,6 +530,29 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   static const _genesisSubscribedKey = 'elix-genesis-subscribed';
+  static const _hostedBoardHistoryCursorRepairKey =
+      'elix-hosted-board-history-cursor-repair-v1';
+
+  /// Repairs installs where the old node-wide cursor advanced before hosted
+  /// board subscriptions existed. Resetting once makes the next pull replay
+  /// history; a failed pull leaves the cursor at zero, so a later pull retries.
+  Future<void> _repairHostedBoardHistoryCursors() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_hostedBoardHistoryCursorRepairKey) ?? false) return;
+
+    final now = DateTime.now();
+    final subscriptions = await _hostedBoardRepo.listSubscriptions();
+    for (final subscription in subscriptions.where(
+      (item) => item.readEnabled,
+    )) {
+      await _hostedBoardRepo.updateSubscriptionCursor(
+        subscription.subscriptionId,
+        0,
+        now,
+      );
+    }
+    await prefs.setBool(_hostedBoardHistoryCursorRepairKey, true);
+  }
 
   /// First-run default subscriptions (cold-start): when this install has no
   /// hosted-board subscriptions yet, subscribe the relay's featured (genesis)

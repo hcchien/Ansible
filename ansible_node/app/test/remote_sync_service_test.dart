@@ -104,7 +104,12 @@ void main() {
     'RemoteOpSignatureVerifier rejects op when DID is not registered in relay',
     () async {
       final verifier = RemoteOpSignatureVerifier(
-        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        verify:
+            ({
+              required publicKeyHex,
+              required message,
+              required signatureHex,
+            }) async => true,
         resolvePublicKey: (did) async => null, // DID not found
       );
       final entry = _signedActivityJson(
@@ -127,7 +132,12 @@ void main() {
     'RemoteOpSignatureVerifier rejects op when relay key does not match signed key',
     () async {
       final verifier = RemoteOpSignatureVerifier(
-        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        verify:
+            ({
+              required publicKeyHex,
+              required message,
+              required signatureHex,
+            }) async => true,
         resolvePublicKey: (did) async => 'c' * 64, // different key from relay
       );
       final entry = _signedActivityJson(
@@ -150,7 +160,12 @@ void main() {
     'RemoteOpSignatureVerifier accepts op when relay key matches signed key',
     () async {
       final verifier = RemoteOpSignatureVerifier(
-        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        verify:
+            ({
+              required publicKeyHex,
+              required message,
+              required signatureHex,
+            }) async => true,
         resolvePublicKey: (did) async => 'b' * 64, // same key as signed
       );
       final entry = _signedActivityJson(
@@ -174,7 +189,12 @@ void main() {
     () async {
       var resolveCalls = 0;
       final verifier = RemoteOpSignatureVerifier(
-        verify: ({required publicKeyHex, required message, required signatureHex}) async => true,
+        verify:
+            ({
+              required publicKeyHex,
+              required message,
+              required signatureHex,
+            }) async => true,
         resolvePublicKey: (did) async {
           resolveCalls++;
           return 'b' * 64;
@@ -238,187 +258,204 @@ void main() {
     expect(await postRepo.list(), isEmpty);
   });
 
-  test('keeps followed-users murmur/note and posts without board opt-in', () async {
-    final boardRepo = InMemoryBoardRepository();
-    final threadRepo = InMemoryThreadRepository();
-    final postRepo = InMemoryPostRepository();
-    final contentRepo = InMemoryContentItemRepository();
-    final followRepo = InMemoryFollowRepository();
-    final remoteNodeRepo = _FakeRemoteNodeRepository();
-    final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(configs: const []);
-    final now = DateTime.utc(2026, 6, 4);
+  test(
+    'keeps followed-users murmur/note and posts without board opt-in',
+    () async {
+      final boardRepo = InMemoryBoardRepository();
+      final threadRepo = InMemoryThreadRepository();
+      final postRepo = InMemoryPostRepository();
+      final contentRepo = InMemoryContentItemRepository();
+      final followRepo = InMemoryFollowRepository();
+      final remoteNodeRepo = _FakeRemoteNodeRepository();
+      final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(
+        configs: const [],
+      );
+      final now = DateTime.utc(2026, 6, 4);
 
-    // Follow alice (accepted user follow with a DID).
-    await followRepo.upsertTarget(
-      FollowTarget(
-        targetId: 'target-alice',
-        targetType: FollowTargetType.user,
-        canonicalUri: 'did:key:alice',
-        displayName: 'Alice',
-        did: 'did:key:alice',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    await followRepo.upsertEdge(
-      FollowEdge(
-        followId: 'f-alice',
-        followerDid: 'did:key:local',
-        targetId: 'target-alice',
-        targetType: FollowTargetType.user,
-        direction: FollowDirection.outbound,
-        status: FollowStatus.accepted,
-        visibility: FollowVisibility.federated,
-        createdAt: now,
-        updatedAt: now,
-        acceptedAt: now,
-      ),
-    );
+      // Follow alice (accepted user follow with a DID).
+      await followRepo.upsertTarget(
+        FollowTarget(
+          targetId: 'target-alice',
+          targetType: FollowTargetType.user,
+          canonicalUri: 'did:key:alice',
+          displayName: 'Alice',
+          did: 'did:key:alice',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await followRepo.upsertEdge(
+        FollowEdge(
+          followId: 'f-alice',
+          followerDid: 'did:key:local',
+          targetId: 'target-alice',
+          targetType: FollowTargetType.user,
+          direction: FollowDirection.outbound,
+          status: FollowStatus.accepted,
+          visibility: FollowVisibility.federated,
+          createdAt: now,
+          updatedAt: now,
+          acceptedAt: now,
+        ),
+      );
 
-    final client = _FakeRelayApiClient(
-      activities: [
-        {
-          'logId': 1,
-          'activity': {
-            'activityId': 'm1',
-            'type': 'create',
-            'entityType': 'murmur',
-            'entityId': 'm1',
-            'authorId': 'did:key:alice',
-            'createdAt': '2026-06-04T09:00:00Z',
-            'payload': {
-              'mode': 'murmur',
-              'body': 'hello',
-              'visibility': 'public',
-              'publishedAt': '2026-06-04T09:00:00Z',
+      final client = _FakeRelayApiClient(
+        activities: [
+          {
+            'logId': 1,
+            'activity': {
+              'activityId': 'm1',
+              'type': 'create',
+              'entityType': 'murmur',
+              'entityId': 'm1',
+              'authorId': 'did:key:alice',
+              'createdAt': '2026-06-04T09:00:00Z',
+              'payload': {
+                'mode': 'murmur',
+                'body': 'hello',
+                'visibility': 'public',
+                'publishedAt': '2026-06-04T09:00:00Z',
+              },
             },
           },
-        },
-        {
-          'logId': 2,
-          'activity': {
-            'activityId': 'm2',
-            'type': 'create',
-            'entityType': 'murmur',
-            'entityId': 'm2',
-            'authorId': 'did:key:bob',
-            'createdAt': '2026-06-04T09:30:00Z',
-            'payload': {'mode': 'murmur', 'body': 'spam', 'visibility': 'public'},
+          {
+            'logId': 2,
+            'activity': {
+              'activityId': 'm2',
+              'type': 'create',
+              'entityType': 'murmur',
+              'entityId': 'm2',
+              'authorId': 'did:key:bob',
+              'createdAt': '2026-06-04T09:30:00Z',
+              'payload': {
+                'mode': 'murmur',
+                'body': 'spam',
+                'visibility': 'public',
+              },
+            },
           },
-        },
-        {
-          'logId': 3,
-          'activity': {
-            'activityId': 'p1',
-            'type': 'create',
-            'entityType': 'post',
-            'entityId': 'p1',
-            'boardId': 'board-x',
-            'threadId': 'thread-x',
-            'authorId': 'did:key:alice',
-            'createdAt': '2026-06-04T08:00:00Z',
-            'payload': {'content': 'in an unsynced board'},
+          {
+            'logId': 3,
+            'activity': {
+              'activityId': 'p1',
+              'type': 'create',
+              'entityType': 'post',
+              'entityId': 'p1',
+              'boardId': 'board-x',
+              'threadId': 'thread-x',
+              'authorId': 'did:key:alice',
+              'createdAt': '2026-06-04T08:00:00Z',
+              'payload': {'content': 'in an unsynced board'},
+            },
           },
-        },
-      ],
-    );
-    final remoteNode = RemoteNode(
-      id: 'remote-1',
-      name: 'Remote',
-      url: 'https://relay.example',
-      syncCursor: 0,
-      createdAt: now,
-      updatedAt: now,
-    );
+        ],
+      );
+      final remoteNode = RemoteNode(
+        id: 'remote-1',
+        name: 'Remote',
+        url: 'https://relay.example',
+        syncCursor: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
 
-    final service = RemoteSyncService(
-      remoteNodeRepo: remoteNodeRepo,
-      boardSyncConfigRepo: boardSyncConfigRepo,
-      boardRepo: boardRepo,
-      threadRepo: threadRepo,
-      postRepo: postRepo,
-      followRepository: followRepo,
-      contentItemRepo: contentRepo,
-      followerDid: 'did:key:local',
-      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
-    );
+      final service = RemoteSyncService(
+        remoteNodeRepo: remoteNodeRepo,
+        boardSyncConfigRepo: boardSyncConfigRepo,
+        boardRepo: boardRepo,
+        threadRepo: threadRepo,
+        postRepo: postRepo,
+        followRepository: followRepo,
+        contentItemRepo: contentRepo,
+        followerDid: 'did:key:local',
+        opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+      );
 
-    final result = await service.syncFromNode(client, remoteNode);
-    expect(result.success, isTrue);
+      final result = await service.syncFromNode(client, remoteNode);
+      expect(result.success, isTrue);
 
-    // Alice's murmur stored; bob's dropped.
-    final items = await contentRepo.list();
-    expect(items.map((i) => i.id), ['m1']);
-    expect(items.single.mode, ContentMode.murmur);
-    expect(items.single.authorDid, 'did:key:alice');
+      // Alice's murmur stored; bob's dropped.
+      final items = await contentRepo.list();
+      expect(items.map((i) => i.id), ['m1']);
+      expect(items.single.mode, ContentMode.murmur);
+      expect(items.single.authorDid, 'did:key:alice');
 
-    // Alice's post stored with stub board + thread.
-    expect((await postRepo.list()).map((p) => p.id), ['p1']);
-    expect(await boardRepo.getById('board-x'), isNotNull);
-    expect(await threadRepo.getById('thread-x'), isNotNull);
-  });
+      // Alice's post stored with stub board + thread.
+      expect((await postRepo.list()).map((p) => p.id), ['p1']);
+      expect(await boardRepo.getById('board-x'), isNotNull);
+      expect(await threadRepo.getById('thread-x'), isNotNull);
+    },
+  );
 
-  test('does NOT trust a peer-asserted reputation tier (fail closed)', () async {
-    final boardRepo = InMemoryBoardRepository();
-    final threadRepo = InMemoryThreadRepository();
-    final postRepo = InMemoryPostRepository();
-    final reputationRepo = InMemoryDidReputationRepository();
-    final remoteNodeRepo = _FakeRemoteNodeRepository();
-    final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(configs: const []);
-    final now = DateTime.utc(2026, 6, 5);
+  test(
+    'does NOT trust a peer-asserted reputation tier (fail closed)',
+    () async {
+      final boardRepo = InMemoryBoardRepository();
+      final threadRepo = InMemoryThreadRepository();
+      final postRepo = InMemoryPostRepository();
+      final reputationRepo = InMemoryDidReputationRepository();
+      final remoteNodeRepo = _FakeRemoteNodeRepository();
+      final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(
+        configs: const [],
+      );
+      final now = DateTime.utc(2026, 6, 5);
 
-    final client = _FakeRelayApiClient(
-      activities: [
-        {
-          'logId': 1,
-          'signedOp': {
-            'opId': 'op-1',
-            'authorDid': 'did:key:alice',
-            'entityType': 'post',
-            'entityId': 'post-1',
-            'opType': 'insert',
-            'payload': 'x',
-            'signature': 'a' * 128,
-            'publicKeyHex': 'b' * 64,
-            'reputationTier': 'verified_human',
+      final client = _FakeRelayApiClient(
+        activities: [
+          {
+            'logId': 1,
+            'signedOp': {
+              'opId': 'op-1',
+              'authorDid': 'did:key:alice',
+              'entityType': 'post',
+              'entityId': 'post-1',
+              'opType': 'insert',
+              'payload': 'x',
+              'signature': 'a' * 128,
+              'publicKeyHex': 'b' * 64,
+              'reputationTier': 'verified_human',
+            },
+            'activity': {
+              'activityId': 'op-1',
+              'type': 'create',
+              'entityType': 'post',
+              'entityId': 'post-1',
+              'boardId': 'board-1',
+              'threadId': 'thread-1',
+              'authorId': 'did:key:alice',
+              'createdAt': '2026-06-05T00:00:00Z',
+              'payload': {'content': 'hi'},
+            },
           },
-          'activity': {
-            'activityId': 'op-1',
-            'type': 'create',
-            'entityType': 'post',
-            'entityId': 'post-1',
-            'boardId': 'board-1',
-            'threadId': 'thread-1',
-            'authorId': 'did:key:alice',
-            'createdAt': '2026-06-05T00:00:00Z',
-            'payload': {'content': 'hi'},
-          },
-        },
-      ],
-    );
-    final remoteNode = RemoteNode(
-      id: 'remote-1',
-      name: 'Remote',
-      url: 'https://relay.example',
-      syncCursor: 0,
-      createdAt: now,
-      updatedAt: now,
-    );
+        ],
+      );
+      final remoteNode = RemoteNode(
+        id: 'remote-1',
+        name: 'Remote',
+        url: 'https://relay.example',
+        syncCursor: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
 
-    await RemoteSyncService(
-      remoteNodeRepo: remoteNodeRepo,
-      boardSyncConfigRepo: boardSyncConfigRepo,
-      boardRepo: boardRepo,
-      threadRepo: threadRepo,
-      postRepo: postRepo,
-      didReputationRepo: reputationRepo,
-      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
-    ).syncFromNode(client, remoteNode, requireBoardSyncConfig: false);
+      await RemoteSyncService(
+        remoteNodeRepo: remoteNodeRepo,
+        boardSyncConfigRepo: boardSyncConfigRepo,
+        boardRepo: boardRepo,
+        threadRepo: threadRepo,
+        postRepo: postRepo,
+        didReputationRepo: reputationRepo,
+        opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+      ).syncFromNode(client, remoteNode, requireBoardSyncConfig: false);
 
-    // The op claims verified_human, but that field is unsigned and relay-
-    // stamped — it must never elevate the author. Fail closed.
-    expect(await reputationRepo.tierFor('did:key:alice'), isNot('verified_human'));
-  });
+      // The op claims verified_human, but that field is unsigned and relay-
+      // stamped — it must never elevate the author. Fail closed.
+      expect(
+        await reputationRepo.tierFor('did:key:alice'),
+        isNot('verified_human'),
+      );
+    },
+  );
 
   test('skips unsigned relay delta entries before applying them', () async {
     final boardRepo = InMemoryBoardRepository();
@@ -628,6 +665,7 @@ void main() {
         id: 'remote-1',
         name: 'Remote',
         url: 'https://relay.example',
+        syncCursor: 123,
         createdAt: now,
         updatedAt: now,
       );
@@ -655,100 +693,100 @@ void main() {
       expect(threads.single.boardId, 'local-general');
       expect(threads.single.title, 'Hosted discussion');
       expect(subscriptions.single.syncCursor, 124);
+      expect(client.requestedCursor, isNull);
     },
   );
 
-  test(
-    'pull routes a thread whose boardId has a foreign install prefix to the '
-    'local board via the hosted_board_id suffix',
-    () async {
-      final boardRepo = InMemoryBoardRepository();
-      final threadRepo = InMemoryThreadRepository();
-      final postRepo = InMemoryPostRepository();
-      final hostedBoards = InMemoryHostedBoardRepository();
-      final remoteNodeRepo = _FakeRemoteNodeRepository();
-      final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(configs: const []);
-      final now = DateTime.utc(2026, 5, 10);
-      await boardRepo.create(
-        Board(
-          id: 'local-fifa',
-          slug: 'fifa2026',
-          title: 'FIFA2026',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      await hostedBoards.upsertProjection(
-        HostedBoardProjection(
-          localBoardId: 'local-fifa',
-          forumHostId: 'remote-1',
-          hostedBoardId: 'fifa2026',
-          canonicalBoardUri: 'https://relay.example/boards/fifa2026',
-          remoteSlug: 'fifa2026',
-          localSlug: 'fifa2026',
-          title: 'FIFA2026',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      await hostedBoards.upsertSubscription(
-        BoardSubscription(
-          subscriptionId: 'remote-1_fifa2026',
-          forumHostId: 'remote-1',
-          hostedBoardId: 'fifa2026',
-          localBoardId: 'local-fifa',
-          readEnabled: true,
-          writeEnabled: true,
-          syncCursor: 0,
-          retentionDays: 45,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      final client = _FakeRelayApiClient(
-        activities: [
-          {
-            'logId': 1,
-            'activity': {
-              'activityId': 'a-thread',
-              'type': 'create',
-              'entityType': 'thread',
-              'entityId': 'thread-x',
-              // Composite boardId minted by a *different* install (its forum-host
-              // node id is a timestamp); only the hosted_board_id suffix is stable.
-              'boardId': '1781793146433_fifa2026',
-              'authorId': 'did:plc:remote',
-              'createdAt': '2026-05-10T00:01:00Z',
-              'payload': {'title': '不見了'},
-            },
-          },
-        ],
-      );
-      final remoteNode = RemoteNode(
-        id: 'remote-1',
-        name: 'Remote',
-        url: 'https://relay.example',
+  test('pull routes a thread whose boardId has a foreign install prefix to the '
+      'local board via the hosted_board_id suffix', () async {
+    final boardRepo = InMemoryBoardRepository();
+    final threadRepo = InMemoryThreadRepository();
+    final postRepo = InMemoryPostRepository();
+    final hostedBoards = InMemoryHostedBoardRepository();
+    final remoteNodeRepo = _FakeRemoteNodeRepository();
+    final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(
+      configs: const [],
+    );
+    final now = DateTime.utc(2026, 5, 10);
+    await boardRepo.create(
+      Board(
+        id: 'local-fifa',
+        slug: 'fifa2026',
+        title: 'FIFA2026',
         createdAt: now,
         updatedAt: now,
-      );
+      ),
+    );
+    await hostedBoards.upsertProjection(
+      HostedBoardProjection(
+        localBoardId: 'local-fifa',
+        forumHostId: 'remote-1',
+        hostedBoardId: 'fifa2026',
+        canonicalBoardUri: 'https://relay.example/boards/fifa2026',
+        remoteSlug: 'fifa2026',
+        localSlug: 'fifa2026',
+        title: 'FIFA2026',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await hostedBoards.upsertSubscription(
+      BoardSubscription(
+        subscriptionId: 'remote-1_fifa2026',
+        forumHostId: 'remote-1',
+        hostedBoardId: 'fifa2026',
+        localBoardId: 'local-fifa',
+        readEnabled: true,
+        writeEnabled: true,
+        syncCursor: 0,
+        retentionDays: 45,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final client = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 1,
+          'activity': {
+            'activityId': 'a-thread',
+            'type': 'create',
+            'entityType': 'thread',
+            'entityId': 'thread-x',
+            // Composite boardId minted by a *different* install (its forum-host
+            // node id is a timestamp); only the hosted_board_id suffix is stable.
+            'boardId': '1781793146433_fifa2026',
+            'authorId': 'did:plc:remote',
+            'createdAt': '2026-05-10T00:01:00Z',
+            'payload': {'title': '不見了'},
+          },
+        },
+      ],
+    );
+    final remoteNode = RemoteNode(
+      id: 'remote-1',
+      name: 'Remote',
+      url: 'https://relay.example',
+      createdAt: now,
+      updatedAt: now,
+    );
 
-      final result = await RemoteSyncService(
-        remoteNodeRepo: remoteNodeRepo,
-        boardSyncConfigRepo: boardSyncConfigRepo,
-        hostedBoardRepo: hostedBoards,
-        boardRepo: boardRepo,
-        threadRepo: threadRepo,
-        postRepo: postRepo,
-        opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
-        now: () => now,
-      ).syncFromNode(client, remoteNode);
+    final result = await RemoteSyncService(
+      remoteNodeRepo: remoteNodeRepo,
+      boardSyncConfigRepo: boardSyncConfigRepo,
+      hostedBoardRepo: hostedBoards,
+      boardRepo: boardRepo,
+      threadRepo: threadRepo,
+      postRepo: postRepo,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+      now: () => now,
+    ).syncFromNode(client, remoteNode);
 
-      final threads = await threadRepo.list();
-      expect(result.success, isTrue);
-      expect(threads.single.boardId, 'local-fifa');
-      expect(threads.single.title, '不見了');
-    },
-  );
+    final threads = await threadRepo.list();
+    expect(result.success, isTrue);
+    expect(threads.single.boardId, 'local-fifa');
+    expect(threads.single.title, '不見了');
+  });
 
   test(
     'remote board slug conflict keeps both boards with unique slugs',
@@ -947,6 +985,7 @@ void main() {
 class _FakeRelayApiClient extends RelayApiClient {
   final List<Map<String, dynamic>> activities;
   int getDeltaCalls = 0;
+  int? requestedCursor;
 
   _FakeRelayApiClient({List<Map<String, dynamic>>? activities})
     : activities =
@@ -971,6 +1010,7 @@ class _FakeRelayApiClient extends RelayApiClient {
   @override
   Future<Map<String, dynamic>> getDelta({int? cursor, int limit = 100}) async {
     getDeltaCalls += 1;
+    requestedCursor = cursor;
     return {'activities': activities, 'nextCursor': 124, 'hasMore': false};
   }
 }
