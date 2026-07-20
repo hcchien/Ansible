@@ -328,7 +328,7 @@ class MainPanel extends StatelessWidget {
               padding: EdgeInsets.zero,
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => SearchScreen(contentItems: contentItems),
+                  builder: (_) => SearchScreen(db: db, localDid: did),
                 ),
               ),
               icon: const Icon(Icons.search, size: 20),

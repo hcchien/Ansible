@@ -119,7 +119,7 @@ class HomeTopBar extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => SearchScreen(contentItems: contentItems),
+                      builder: (_) => SearchScreen(db: db, localDid: did),
                     ),
                   );
                 },
