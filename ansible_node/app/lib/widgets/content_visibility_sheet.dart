@@ -83,58 +83,64 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
                 maxHeight: MediaQuery.sizeOf(context).height * 0.88,
               ),
               padding: const EdgeInsets.only(bottom: 18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: _DistributionSheetMainContent(
-                        subjectLabel: subjectLabel,
-                        picked: picked,
-                        federationEnabled: federationEnabled,
-                        nostrEnabled: nostrEnabled,
-                        activityPubEnabled: activityPubEnabled,
-                        onPickVisibility: (visibility) => setSheetState(() {
-                          picked = visibility;
-                          normalizeDistribution();
-                        }),
-                        onNostrChanged: (value) =>
-                            setDistribution(nostr: value),
-                        onActivityPubChanged: (value) =>
-                            setDistribution(activityPub: value),
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: _DistributionSheetMainContent(
+                          subjectLabel: subjectLabel,
+                          picked: picked,
+                          federationEnabled: federationEnabled,
+                          nostrEnabled: nostrEnabled,
+                          activityPubEnabled: activityPubEnabled,
+                          onPickVisibility: (visibility) => setSheetState(() {
+                            picked = visibility;
+                            normalizeDistribution();
+                          }),
+                          onNostrChanged: (value) =>
+                              setDistribution(nostr: value),
+                          onActivityPubChanged: (value) =>
+                              setDistribution(activityPub: value),
+                        ),
                       ),
                     ),
-                  ),
-                  const Divider(height: 0.5, color: AnsibleDesign.rule),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.of(sheetContext).pop(),
-                            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton(
-                            onPressed: () => Navigator.of(sheetContext).pop(
-                              ContentDistributionChoice(
-                                visibility: picked,
-                                distributionPreference: distributionPreference,
+                    const Divider(height: 0.5, color: AnsibleDesign.rule),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                              child: Text(
+                                context.uiCopy(zh: '取消', en: 'Cancel'),
                               ),
                             ),
-                            child: Text(
-                              context.uiCopy(zh: '確認', en: 'Confirm'),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(
+                                ContentDistributionChoice(
+                                  visibility: picked,
+                                  distributionPreference:
+                                      distributionPreference,
+                                ),
+                              ),
+                              child: Text(
+                                context.uiCopy(zh: '確認', en: 'Confirm'),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
