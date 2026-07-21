@@ -41,14 +41,18 @@ capability.
 
 ## Relying party configuration
 
-- Production RP ID: `elix.cool`.
-- Production origin: `https://elix.cool`.
-- iOS/macOS applications require `webcredentials:elix.cool` in Associated
-  Domains and an AASA response containing the app identifier.
+- Production RP ID: `elix.cool`; production origin: `https://elix.cool`.
+- Development RP ID: `dev.elix.cool`; development origin:
+  `https://dev.elix.cool`.
+- Production and development credentials are intentionally separate trust
+  boundaries. A passkey enrolled against one RP cannot authorize the other.
+- iOS/macOS applications require both `webcredentials:elix.cool` and
+  `webcredentials:dev.elix.cool` in Associated Domains, with an AASA response on
+  each host containing the app identifier.
 - Android requires a valid Digital Asset Links association for
   `com.reviz.elix` and the release signing certificate.
-- Development may override RP ID and permitted origin explicitly; insecure
-  defaults are forbidden in release configuration.
+- Every deployed Relay must set its RP ID and permitted origin explicitly;
+  insecure defaults are forbidden in release configuration.
 
 ## Capability format
 

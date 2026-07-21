@@ -34,8 +34,11 @@ export TAG="$(git rev-parse --short HEAD)"  # image tag for this deploy
 
 # Public hostnames you will map to each service (set up DNS/SSL separately).
 export RELAY_HOST="relay.elix.cool"
+export APPVIEW_HOST="appview.elix.cool"
 export ISSUER_HOST="issuer.elix.cool"
-export WEB_HOST="forum.elix.cool"
+export WEB_HOST="elix.cool"
+export WEBAUTHN_RP_ID="elix.cool"
+export WEBAUTHN_ORIGIN="https://elix.cool"
 
 export ISSUER_DID="did:web:${ISSUER_HOST}"
 export AR="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}"
@@ -89,6 +92,9 @@ openssl rand -hex 32 | gcloud secrets create relay-snapshot-signing-key --data-f
 # Issuer admin bearer token (enables the credential-revocation endpoint).
 openssl rand -hex 32 | gcloud secrets create issuer-admin-token --data-file=-
 
+# HMAC secret for short-lived sync capabilities.
+openssl rand -hex 32 | gcloud secrets create relay-sync-capability-secret --data-file=-
+
 # Relay PostgreSQL connection string (filled in after step 3).
 # Created here as a placeholder; add the real value as a new version in step 3.
 ```
@@ -104,7 +110,8 @@ use a dedicated SA in production):
 export RUNTIME_SA="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
 
 for S in issuer-priv-key subject-commitment-pepper tw-provider-shared-secret \
-  relay-snapshot-signing-key issuer-admin-token relay-database-url; do
+  relay-snapshot-signing-key relay-sync-capability-secret issuer-admin-token \
+  relay-database-url; do
   gcloud secrets add-iam-policy-binding "$S" \
     --member="serviceAccount:${RUNTIME_SA}" \
     --role="roles/secretmanager.secretAccessor" 2>/dev/null || true
@@ -203,8 +210,8 @@ gcloud run deploy ansible-relay \
   --vpc-connector=ansible-conn \
   --vpc-egress=private-ranges-only \
   --min-instances=1 \
-  --set-env-vars="ISSUER_DID=${ISSUER_DID},ISSUER_PUBLIC_KEY_HEX=${ISSUER_PUB_HEX},RELAY_ORIGIN=https://${RELAY_HOST},FORUM_HOST_BASE_URL=https://${RELAY_HOST},WEB_ALLOWED_ORIGINS=https://${WEB_HOST},DATABASE_SSL=false,POOL_SIZE=10" \
-  --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest" \
+  --set-env-vars="ISSUER_DID=${ISSUER_DID},ISSUER_PUBLIC_KEY_HEX=${ISSUER_PUB_HEX},RELAY_ORIGIN=https://${RELAY_HOST},FORUM_HOST_BASE_URL=https://${RELAY_HOST},WEB_ALLOWED_ORIGINS=https://${WEB_HOST},WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID},WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN},WEBAUTHN_SYNC_CAPABILITY_REQUIRED=true,DATABASE_SSL=false,POOL_SIZE=10" \
+  --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest,SYNC_CAPABILITY_SECRET=relay-sync-capability-secret:latest" \
   --allow-unauthenticated
 ```
 

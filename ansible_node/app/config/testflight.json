@@ -1,13 +1,13 @@
 {
   "ANSIBLE_APP_ENV": "staging",
   "ANSIBLE_USES_REAL_RUST_BRIDGE": true,
-  "ANSIBLE_RELAY_BASE_URL": "https://ansible-relay-dev-943588706060.asia-east1.run.app",
-  "ANSIBLE_ISSUER_BASE_URL": "https://issuer-dev-943588706060.asia-east1.run.app",
-  "ANSIBLE_ATPROTO_BASE_URL": "https://ansible-relay-dev-943588706060.asia-east1.run.app",
-  "ANSIBLE_APPVIEW_BASE_URL": "https://ansible-appview-dev-943588706060.asia-east1.run.app",
+  "ANSIBLE_RELAY_BASE_URL": "https://relay-dev.elix.cool",
+  "ANSIBLE_ISSUER_BASE_URL": "https://issuer-dev.elix.cool",
+  "ANSIBLE_ATPROTO_BASE_URL": "https://relay-dev.elix.cool",
+  "ANSIBLE_APPVIEW_BASE_URL": "https://appview-dev.elix.cool",
   "ANSIBLE_USE_APPVIEW_FEED": true,
   "ANSIBLE_USE_APPVIEW_HOME_TIMELINE": true,
-  "ANSIBLE_FORUM_WEB_BASE_URL": "https://ansible-web-943588706060.asia-east1.run.app",
+  "ANSIBLE_FORUM_WEB_BASE_URL": "https://dev.elix.cool",
   "ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK": false,
   "ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK": false,
   "ANSIBLE_RESET_LOCAL_IDENTITY_ON_START": false

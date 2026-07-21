@@ -46,7 +46,7 @@ void main() {
     ]) {
       final uri = Uri.parse(config[key]! as String);
       expect(uri.scheme, 'https', reason: key);
-      expect(uri.host, endsWith('.run.app'), reason: key);
+      expect(uri.host, anyOf('dev.elix.cool', endsWith('-dev.elix.cool')), reason: key);
     }
   });
 
@@ -67,7 +67,8 @@ void main() {
       'ios/Runner/RunnerRelease.entitlements',
     ).readAsStringSync();
     expect(releaseEntitlements, contains('<string>production</string>'));
-    expect(releaseEntitlements, isNot(contains('relay-dev.elix.cool')));
+    expect(releaseEntitlements, contains('webcredentials:dev.elix.cool'));
+    expect(releaseEntitlements, contains('webcredentials:elix.cool'));
 
     final iosInfo = File('ios/Runner/Info.plist').readAsStringSync();
     expect(iosInfo, contains('<key>ITSAppUsesNonExemptEncryption</key>'));

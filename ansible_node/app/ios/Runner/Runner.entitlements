@@ -20,6 +20,9 @@
 		<string>applinks:relay-dev.elix.cool</string>
 		<string>applinks:relay.elix.cool</string>
 		<string>applinks:forum.elix.cool</string>
+		<string>applinks:dev.elix.cool</string>
+		<string>applinks:elix.cool</string>
+		<string>webcredentials:dev.elix.cool</string>
 		<string>webcredentials:elix.cool</string>
 	</array>
 </dict>

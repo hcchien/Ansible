@@ -63,7 +63,8 @@
                 <data android:scheme="https" />
                 <data android:host="relay-dev.elix.cool" />
                 <data android:host="relay.elix.cool" />
-                <data android:host="forum.elix.cool" />
+                <data android:host="dev.elix.cool" />
+                <data android:host="elix.cool" />
                 <data android:pathPrefix="/boards" />
             </intent-filter>
         </activity>

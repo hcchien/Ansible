@@ -11,8 +11,11 @@ Cloud Run. Each step links the doc/script that owns the detail:
 export PROJECT_ID="<your-gcp-project>"
 export REGION="asia-east1"
 export RELAY_HOST="relay.elix.cool"
+export APPVIEW_HOST="appview.elix.cool"
 export ISSUER_HOST="issuer.elix.cool"
-export WEB_HOST="forum.elix.cool"
+export WEB_HOST="elix.cool"
+export WEBAUTHN_RP_ID="elix.cool"
+export WEBAUTHN_ORIGIN="https://elix.cool"
 ```
 
 ---
@@ -41,6 +44,7 @@ suspect was ever exposed.
 | `tw-provider-shared-secret` | issuer `TW_PROVIDER_SHARED_SECRET` | contract-adapter HMAC secret. |
 | `issuer-admin-token` | issuer `ISSUER_ADMIN_TOKEN` | enables the revocation admin endpoint. |
 | `relay-snapshot-signing-key` | relay `ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX` | required — prod boot raises without it. |
+| `relay-sync-capability-secret` | relay `SYNC_CAPABILITY_SECRET` | HMAC key for short-lived, DID-bound sync capabilities. |
 | `relay-database-url`, `appview-database-url` | `DATABASE_URL` | `ecto://relay:<pass>@<private-ip>/<db>` |
 
 - [ ] Derive `ISSUER_PUBLIC_KEY_HEX` from the private seed (no extra deps —
@@ -76,6 +80,8 @@ Relay first (everything else points at it), then issuer (so `did.json` and
   ```bash
   RELAY_HOST=$RELAY_HOST WEB_HOST=$WEB_HOST ISSUER_HOST=$ISSUER_HOST \
   ISSUER_PUBLIC_KEY_HEX=$ISSUER_PUBLIC_KEY_HEX \
+  WEBAUTHN_RP_ID=$WEBAUTHN_RP_ID WEBAUTHN_ORIGIN=$WEBAUTHN_ORIGIN \
+  WEBAUTHN_SYNC_CAPABILITY_REQUIRED=true \
   scripts/gcp/deploy.sh --project "$PROJECT_ID" --region "$REGION" relay
   ```
   (builds via cloudbuild.yaml → runs `ansible-relay-migrate` job → deploys;

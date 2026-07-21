@@ -197,6 +197,8 @@ create_random_secret issuer-admin-token 32
 # Relay op-snapshot Ed25519 signing seed (ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX;
 # required at prod boot).
 create_random_secret relay-snapshot-signing-key 32
+# HMAC key for five-minute, DID-bound sync capabilities.
+create_random_secret relay-sync-capability-secret 32
 
 # --- Issuer state bucket ------------------------------------------------------
 if gcloud storage buckets describe "gs://${BUCKET}" --project "$PROJECT_ID" >/dev/null 2>&1; then
@@ -214,7 +216,7 @@ RUNTIME_SA="$(runtime_service_account)"
 log "granting secret access + bucket write to $RUNTIME_SA"
 for S in relay-database-url appview-database-url issuer-priv-key \
   subject-commitment-pepper tw-provider-shared-secret issuer-admin-token \
-  relay-snapshot-signing-key; do
+  relay-snapshot-signing-key relay-sync-capability-secret; do
   if secret_exists "$S"; then
     gcloud secrets add-iam-policy-binding "$S" \
       --member="serviceAccount:${RUNTIME_SA}" \

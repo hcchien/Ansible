@@ -14,6 +14,7 @@
 	<true/>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
+		<string>webcredentials:dev.elix.cool</string>
 		<string>webcredentials:elix.cool</string>
 	</array>
 </dict>

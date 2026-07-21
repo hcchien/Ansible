@@ -9,6 +9,7 @@
 # Required env per service (values, not secrets — secrets come from Secret
 # Manager; see provision.sh):
 #   relay:    RELAY_HOST WEB_HOST ISSUER_HOST ISSUER_PUBLIC_KEY_HEX
+#             WEBAUTHN_RP_ID WEBAUTHN_ORIGIN
 #             [UNIVERSAL_LINK_IOS_APP_IDS APP_LINK_ANDROID_PACKAGE
 #              APP_LINK_ANDROID_SHA256_CERTS ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS]
 #   appview:  RELAY_HOST
@@ -120,7 +121,8 @@ run_migration_job() {
 # (WEB_ALLOWED_ORIGINS, UNIVERSAL_LINK_IOS_APP_IDS, ...).
 case "$SERVICE" in
   relay)
-    require_env RELAY_HOST WEB_HOST ISSUER_HOST ISSUER_PUBLIC_KEY_HEX
+    require_env RELAY_HOST WEB_HOST ISSUER_HOST ISSUER_PUBLIC_KEY_HEX \
+      WEBAUTHN_RP_ID WEBAUTHN_ORIGIN
     run_migration_job ansible-relay-migrate /app/bin/ansible_relay \
       relay-database-url "AnsibleRelay.Release.migrate()"
 
@@ -131,6 +133,9 @@ case "$SERVICE" in
     ENV_VARS+=";WEB_ALLOWED_ORIGINS=${WEB_ALLOWED_ORIGINS:-https://${WEB_HOST}}"
     ENV_VARS+=";DATABASE_SSL=false"
     ENV_VARS+=";POOL_SIZE=${POOL_SIZE:-10}"
+    ENV_VARS+=";WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID}"
+    ENV_VARS+=";WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN}"
+    ENV_VARS+=";WEBAUTHN_SYNC_CAPABILITY_REQUIRED=${WEBAUTHN_SYNC_CAPABILITY_REQUIRED:-false}"
     # Optional pass-throughs (universal links fail closed when unset; the ZKP
     # verification path stays disabled when unset — placeholders never boot).
     for OPT in UNIVERSAL_LINK_IOS_APP_IDS APP_LINK_ANDROID_PACKAGE \
@@ -149,7 +154,7 @@ case "$SERVICE" in
       --vpc-egress=private-ranges-only \
       --min-instances=1 \
       --set-env-vars="^;^${ENV_VARS}" \
-      --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest" \
+      --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest,SYNC_CAPABILITY_SECRET=relay-sync-capability-secret:latest" \
       --allow-unauthenticated
     ;;
 
