@@ -14,6 +14,8 @@ class ContentItems extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   BoolColumn get localOnly => boolean().withDefault(const Constant(true))();
+  BoolColumn get signatureVerified =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {contentItemId};

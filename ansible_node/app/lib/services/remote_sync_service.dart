@@ -837,6 +837,8 @@ class RemoteSyncService {
       title: payload['title'] as String?,
       publishedAt: _parseContentDate(payload['publishedAt']),
       localOnly: false,
+      // Only signature-verified ops reach _applyActivity.
+      signatureVerified: true,
     );
 
     final existing = await repo.getById(activity.entityId);

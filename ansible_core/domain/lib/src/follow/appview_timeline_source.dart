@@ -163,6 +163,7 @@ class AppViewTimelineSource implements FollowFeedSource {
           createdAt: created,
           updatedAt: created,
           lastEditAt: created,
+          signatureVerified: true,
         );
         final thread = Thread(
           id: raw.threadId!,
@@ -206,6 +207,7 @@ class AppViewTimelineSource implements FollowFeedSource {
             item: item,
             reasons: const {FollowFeedReason.followedUser},
           ),
+          signatureVerified: true,
         );
       default:
         return null;

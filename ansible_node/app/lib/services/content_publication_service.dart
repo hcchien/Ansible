@@ -205,6 +205,7 @@ class ContentPublicationService {
     final signatureScheme = shouldPublishRelay
         ? 'ed25519'
         : 'schnorr-secp256k1';
+    await contentItems.update(item.copyWith(signatureVerified: true));
     final existingTargets = await publications.listTargetsForIntent(intentId);
     final existingByEndpoint = {
       for (final target in existingTargets) target.endpoint: target,

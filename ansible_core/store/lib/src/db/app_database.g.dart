@@ -13042,6 +13042,21 @@ class $ContentItemsTable extends ContentItems
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _signatureVerifiedMeta = const VerificationMeta(
+    'signatureVerified',
+  );
+  @override
+  late final GeneratedColumn<bool> signatureVerified = GeneratedColumn<bool>(
+    'signature_verified',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("signature_verified" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     contentItemId,
@@ -13057,6 +13072,7 @@ class $ContentItemsTable extends ContentItems
     updatedAt,
     isDeleted,
     localOnly,
+    signatureVerified,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -13166,6 +13182,15 @@ class $ContentItemsTable extends ContentItems
         localOnly.isAcceptableOrUnknown(data['local_only']!, _localOnlyMeta),
       );
     }
+    if (data.containsKey('signature_verified')) {
+      context.handle(
+        _signatureVerifiedMeta,
+        signatureVerified.isAcceptableOrUnknown(
+          data['signature_verified']!,
+          _signatureVerifiedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -13227,6 +13252,10 @@ class $ContentItemsTable extends ContentItems
         DriftSqlType.bool,
         data['${effectivePrefix}local_only'],
       )!,
+      signatureVerified: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}signature_verified'],
+      )!,
     );
   }
 
@@ -13250,6 +13279,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
   final DateTime updatedAt;
   final bool isDeleted;
   final bool localOnly;
+  final bool signatureVerified;
   const ContentItem({
     required this.contentItemId,
     required this.authorDid,
@@ -13264,6 +13294,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
     required this.updatedAt,
     required this.isDeleted,
     required this.localOnly,
+    required this.signatureVerified,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -13287,6 +13318,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['local_only'] = Variable<bool>(localOnly);
+    map['signature_verified'] = Variable<bool>(signatureVerified);
     return map;
   }
 
@@ -13311,6 +13343,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
       localOnly: Value(localOnly),
+      signatureVerified: Value(signatureVerified),
     );
   }
 
@@ -13333,6 +13366,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       localOnly: serializer.fromJson<bool>(json['localOnly']),
+      signatureVerified: serializer.fromJson<bool>(json['signatureVerified']),
     );
   }
   @override
@@ -13352,6 +13386,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'localOnly': serializer.toJson<bool>(localOnly),
+      'signatureVerified': serializer.toJson<bool>(signatureVerified),
     };
   }
 
@@ -13369,6 +13404,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
     DateTime? updatedAt,
     bool? isDeleted,
     bool? localOnly,
+    bool? signatureVerified,
   }) => ContentItem(
     contentItemId: contentItemId ?? this.contentItemId,
     authorDid: authorDid ?? this.authorDid,
@@ -13383,6 +13419,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
     updatedAt: updatedAt ?? this.updatedAt,
     isDeleted: isDeleted ?? this.isDeleted,
     localOnly: localOnly ?? this.localOnly,
+    signatureVerified: signatureVerified ?? this.signatureVerified,
   );
   ContentItem copyWithCompanion(ContentItemsCompanion data) {
     return ContentItem(
@@ -13405,6 +13442,9 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       localOnly: data.localOnly.present ? data.localOnly.value : this.localOnly,
+      signatureVerified: data.signatureVerified.present
+          ? data.signatureVerified.value
+          : this.signatureVerified,
     );
   }
 
@@ -13423,7 +13463,8 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('localOnly: $localOnly')
+          ..write('localOnly: $localOnly, ')
+          ..write('signatureVerified: $signatureVerified')
           ..write(')'))
         .toString();
   }
@@ -13443,6 +13484,7 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
     updatedAt,
     isDeleted,
     localOnly,
+    signatureVerified,
   );
   @override
   bool operator ==(Object other) =>
@@ -13460,7 +13502,8 @@ class ContentItem extends DataClass implements Insertable<ContentItem> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted &&
-          other.localOnly == this.localOnly);
+          other.localOnly == this.localOnly &&
+          other.signatureVerified == this.signatureVerified);
 }
 
 class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
@@ -13477,6 +13520,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
   final Value<DateTime> updatedAt;
   final Value<bool> isDeleted;
   final Value<bool> localOnly;
+  final Value<bool> signatureVerified;
   final Value<int> rowid;
   const ContentItemsCompanion({
     this.contentItemId = const Value.absent(),
@@ -13492,6 +13536,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.localOnly = const Value.absent(),
+    this.signatureVerified = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ContentItemsCompanion.insert({
@@ -13508,6 +13553,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.localOnly = const Value.absent(),
+    this.signatureVerified = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : contentItemId = Value(contentItemId),
        authorDid = Value(authorDid),
@@ -13529,6 +13575,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
     Expression<DateTime>? updatedAt,
     Expression<bool>? isDeleted,
     Expression<bool>? localOnly,
+    Expression<bool>? signatureVerified,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -13545,6 +13592,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (localOnly != null) 'local_only': localOnly,
+      if (signatureVerified != null) 'signature_verified': signatureVerified,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -13563,6 +13611,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
     Value<DateTime>? updatedAt,
     Value<bool>? isDeleted,
     Value<bool>? localOnly,
+    Value<bool>? signatureVerified,
     Value<int>? rowid,
   }) {
     return ContentItemsCompanion(
@@ -13579,6 +13628,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       localOnly: localOnly ?? this.localOnly,
+      signatureVerified: signatureVerified ?? this.signatureVerified,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -13625,6 +13675,9 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
     if (localOnly.present) {
       map['local_only'] = Variable<bool>(localOnly.value);
     }
+    if (signatureVerified.present) {
+      map['signature_verified'] = Variable<bool>(signatureVerified.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -13647,6 +13700,7 @@ class ContentItemsCompanion extends UpdateCompanion<ContentItem> {
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('localOnly: $localOnly, ')
+          ..write('signatureVerified: $signatureVerified, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -38013,6 +38067,7 @@ typedef $$ContentItemsTableCreateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> isDeleted,
       Value<bool> localOnly,
+      Value<bool> signatureVerified,
       Value<int> rowid,
     });
 typedef $$ContentItemsTableUpdateCompanionBuilder =
@@ -38030,6 +38085,7 @@ typedef $$ContentItemsTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> isDeleted,
       Value<bool> localOnly,
+      Value<bool> signatureVerified,
       Value<int> rowid,
     });
 
@@ -38420,6 +38476,11 @@ class $$ContentItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get signatureVerified => $composableBuilder(
+    column: $table.signatureVerified,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> murmurMetadataRefs(
     Expression<bool> Function($$MurmurMetadataTableFilterComposer f) f,
   ) {
@@ -38795,6 +38856,11 @@ class $$ContentItemsTableOrderingComposer
     column: $table.localOnly,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get signatureVerified => $composableBuilder(
+    column: $table.signatureVerified,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ContentItemsTableAnnotationComposer
@@ -38850,6 +38916,11 @@ class $$ContentItemsTableAnnotationComposer
 
   GeneratedColumn<bool> get localOnly =>
       $composableBuilder(column: $table.localOnly, builder: (column) => column);
+
+  GeneratedColumn<bool> get signatureVerified => $composableBuilder(
+    column: $table.signatureVerified,
+    builder: (column) => column,
+  );
 
   Expression<T> murmurMetadataRefs<T extends Object>(
     Expression<T> Function($$MurmurMetadataTableAnnotationComposer a) f,
@@ -39209,6 +39280,7 @@ class $$ContentItemsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<bool> localOnly = const Value.absent(),
+                Value<bool> signatureVerified = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ContentItemsCompanion(
                 contentItemId: contentItemId,
@@ -39224,6 +39296,7 @@ class $$ContentItemsTableTableManager
                 updatedAt: updatedAt,
                 isDeleted: isDeleted,
                 localOnly: localOnly,
+                signatureVerified: signatureVerified,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -39241,6 +39314,7 @@ class $$ContentItemsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
                 Value<bool> localOnly = const Value.absent(),
+                Value<bool> signatureVerified = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ContentItemsCompanion.insert(
                 contentItemId: contentItemId,
@@ -39256,6 +39330,7 @@ class $$ContentItemsTableTableManager
                 updatedAt: updatedAt,
                 isDeleted: isDeleted,
                 localOnly: localOnly,
+                signatureVerified: signatureVerified,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

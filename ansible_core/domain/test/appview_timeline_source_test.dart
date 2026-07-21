@@ -126,6 +126,14 @@ void main() {
       expect(requestedDids, ['did:key:alice']);
       expect(page.items.whereType<ContentTimelineItem>().length, 1);
       expect(page.items.whereType<PostTimelineItem>().length, 1);
+      expect(
+        page.items.whereType<ContentTimelineItem>().single.signatureVerified,
+        isTrue,
+      );
+      expect(
+        page.items.whereType<PostTimelineItem>().single.signatureVerified,
+        isTrue,
+      );
       expect(page.nextCursor, 42);
       expect(page.hasMore, isTrue);
     });

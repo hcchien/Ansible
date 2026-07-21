@@ -218,6 +218,9 @@ class AppSyncService {
                 publishedAt: item.publishedAt,
               );
         await dispatch.signAndEnqueue(entry);
+        await _contentItemRepo.update(
+          item.copyWith(signatureVerified: true),
+        );
         enqueued += 1;
       }
       return enqueued;

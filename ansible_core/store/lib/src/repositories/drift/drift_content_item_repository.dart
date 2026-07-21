@@ -28,6 +28,7 @@ class DriftContentItemRepository implements ContentItemRepository {
             updatedAt: Value(item.updatedAt),
             isDeleted: Value(item.isDeleted),
             localOnly: Value(item.localOnly),
+            signatureVerified: Value(item.signatureVerified),
           ),
           mode: InsertMode.insertOrReplace,
         );
@@ -92,6 +93,7 @@ class DriftContentItemRepository implements ContentItemRepository {
         updatedAt: Value(item.updatedAt),
         isDeleted: Value(item.isDeleted),
         localOnly: Value(item.localOnly),
+        signatureVerified: Value(item.signatureVerified),
       ),
     );
   }
@@ -111,6 +113,7 @@ class DriftContentItemRepository implements ContentItemRepository {
       updatedAt: row.updatedAt,
       isDeleted: row.isDeleted,
       localOnly: row.localOnly,
+      signatureVerified: row.signatureVerified,
     );
   }
 }

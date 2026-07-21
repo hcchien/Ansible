@@ -6,6 +6,7 @@ import 'follow_feed_projector.dart';
 sealed class FollowTimelineItem {
   DateTime get timestamp;
   Set<FollowFeedReason> get reasons;
+  bool get signatureVerified;
 }
 
 class PostTimelineItem extends FollowTimelineItem {
@@ -16,11 +17,16 @@ class PostTimelineItem extends FollowTimelineItem {
   DateTime get timestamp => entry.post.lastEditAt;
   @override
   Set<FollowFeedReason> get reasons => entry.reasons;
+  @override
+  bool get signatureVerified => entry.post.signatureVerified;
 }
 
 class ContentTimelineItem extends FollowTimelineItem {
   final ContentFeedEntry entry;
-  ContentTimelineItem(this.entry);
+  @override
+  final bool signatureVerified;
+
+  ContentTimelineItem(this.entry, {this.signatureVerified = false});
 
   @override
   DateTime get timestamp => entry.item.publishedAt ?? entry.item.createdAt;

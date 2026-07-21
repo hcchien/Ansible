@@ -55,6 +55,11 @@ class ContentItem {
   final bool isDeleted;
   final bool localOnly;
 
+  /// True once the content's authoring/publication operation has a valid
+  /// signature. Kept on the local projection so offline UI never has to infer
+  /// provenance from authorship or network state.
+  final bool signatureVerified;
+
   const ContentItem({
     required this.id,
     required this.authorDid,
@@ -69,5 +74,31 @@ class ContentItem {
     this.publishedAt,
     this.isDeleted = false,
     this.localOnly = true,
+    this.signatureVerified = false,
   });
+
+  ContentItem copyWith({
+    ContentStatus? status,
+    ContentVisibility? visibility,
+    DateTime? updatedAt,
+    DateTime? publishedAt,
+    bool? isDeleted,
+    bool? localOnly,
+    bool? signatureVerified,
+  }) => ContentItem(
+    id: id,
+    authorDid: authorDid,
+    mode: mode,
+    body: body,
+    status: status ?? this.status,
+    visibility: visibility ?? this.visibility,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    subjectId: subjectId,
+    title: title,
+    publishedAt: publishedAt ?? this.publishedAt,
+    isDeleted: isDeleted ?? this.isDeleted,
+    localOnly: localOnly ?? this.localOnly,
+    signatureVerified: signatureVerified ?? this.signatureVerified,
+  );
 }

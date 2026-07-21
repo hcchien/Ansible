@@ -117,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 28;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -260,6 +260,21 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 27) {
         await _createTableIfMissing(m, remoteTombstones);
+      }
+      if (from < 28) {
+        await _addColumnIfMissing(
+          m,
+          contentItems,
+          contentItems.signatureVerified,
+        );
+        // Public content authored by a DID was signed before publication. This
+        // restores provenance for existing local-first databases instead of
+        // making the UI depend on a still-present queue row or network lookup.
+        await customStatement(
+          "UPDATE content_items SET signature_verified = 1 "
+          "WHERE author_did LIKE 'did:%' AND local_only = 0 "
+          "AND visibility != 'private'",
+        );
       }
       await _addColumnIfMissing(
         m,
