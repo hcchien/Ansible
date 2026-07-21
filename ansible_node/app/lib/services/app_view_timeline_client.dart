@@ -32,8 +32,7 @@ class AppViewTimelineClient {
     int limit = 50,
   }) async {
     final base = baseUrl.replaceAll(RegExp(r'/+$'), '');
-    final uri =
-        Uri.parse('$base/api/v1/boards/$boardId/external').replace(
+    final uri = Uri.parse('$base/api/v1/boards/$boardId/external').replace(
       queryParameters: {
         if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
         'limit': '$limit',
@@ -122,6 +121,24 @@ class AppViewTimelineClient {
     return _parse('home', response);
   }
 
+  /// Fetches the newest public content used to fill a sparse home feed. The
+  /// AppView applies the same signature, visibility, and deletion gates as its
+  /// other timeline endpoints.
+  Future<AppViewTimelinePage> fetchExplore({
+    int? cursor,
+    int limit = 50,
+  }) async {
+    final base = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$base/api/v1/explore').replace(
+      queryParameters: {
+        if (cursor != null) 'cursor': '$cursor',
+        'limit': '$limit',
+      },
+    );
+    final response = await _client.get(uri, headers: AnsibleProtocol.headers);
+    return _parse('explore', response);
+  }
+
   /// Fetches comments threaded under [threadId] (a content/thread entity id) via
   /// `GET /api/v1/thread/:thread_id`. Used by the content-detail screen to show
   /// replies on a standalone murmur/note.
@@ -131,14 +148,15 @@ class AppViewTimelineClient {
     int limit = 100,
   }) async {
     final base = baseUrl.replaceAll(RegExp(r'/+$'), '');
-    final uri = Uri.parse(
-      '$base/api/v1/thread/${Uri.encodeComponent(threadId)}',
-    ).replace(
-      queryParameters: {
-        if (cursor != null) 'cursor': '$cursor',
-        'limit': '$limit',
-      },
-    );
+    final uri =
+        Uri.parse(
+          '$base/api/v1/thread/${Uri.encodeComponent(threadId)}',
+        ).replace(
+          queryParameters: {
+            if (cursor != null) 'cursor': '$cursor',
+            'limit': '$limit',
+          },
+        );
     final response = await _client.get(uri, headers: AnsibleProtocol.headers);
     return _parse('thread', response);
   }

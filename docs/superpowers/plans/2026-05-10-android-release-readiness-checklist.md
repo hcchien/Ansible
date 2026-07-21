@@ -8,6 +8,16 @@
 
 **Tech Stack:** Flutter, Dart, Android Gradle Plugin, Kotlin, Android Manifest, adaptive launcher icons, Android signing configs, Play Store release checklist.
 
+## Constitution Review
+
+Android packaging and store signing do not change identity custody, local-first
+storage, sync, verification, or federation semantics. Production builds must
+retain the real Rust bridge, disable insecure identity/signing fallbacks, and
+use the explicit HTTPS endpoints in `ansible_node/app/config/production.json`.
+Signing credentials remain outside git and identify only the distributed app
+binary. The broader public-launch blockers remain governed by the current
+engineering constitution compliance review.
+
 ---
 
 ## Current Status Snapshot
@@ -26,7 +36,8 @@ Known release blockers:
 - No Android device smoke test has been completed.
 
 Known non-blocking scaffold state:
-- Android application id and namespace are currently `io.trisaura.ansible_node`.
+- Android namespace remains `io.trisaura.ansible_node`; the Google Play
+  application id is registered as `com.reviz.elix`.
 - Android backup policy is already wired to `noBackupFilesDir` through `ansible_node/backup_policy`.
 - `assets/brand/ansible_app_icon.svg` exists and can be used as the Android icon source.
 
@@ -167,7 +178,7 @@ test('android app uses release product identity instead of Flutter template iden
 
   expect(manifest, contains('android:label="@string/app_name"'));
   expect(manifest, isNot(contains('android:label="ansible_node"')));
-  expect(gradle, contains('applicationId = "io.trisaura.ansible"'));
+  expect(gradle, contains('applicationId = "com.reviz.elix"'));
   expect(gradle, isNot(contains('Specify your own unique Application ID')));
 });
 ```
@@ -179,7 +190,8 @@ cd ansible_node/app
 flutter test test/android_release_readiness_test.dart
 ```
 
-Expected result: FAIL because label is `ansible_node`, app id is `io.trisaura.ansible_node`, and generated comments remain.
+Expected result: FAIL if the label is a generated scaffold value or the app id
+does not match the Google Play registration.
 
 - [ ] **Step 2: Set manifest label to resource**
 
@@ -204,7 +216,7 @@ Change `ansible_node/app/android/app/build.gradle.kts`:
 
 ```kotlin
 defaultConfig {
-    applicationId = "io.trisaura.ansible"
+    applicationId = "com.reviz.elix"
     minSdk = flutter.minSdkVersion
     targetSdk = flutter.targetSdkVersion
     versionCode = flutter.versionCode
@@ -468,7 +480,7 @@ Create `docs/superpowers/specs/2026-05-10-android-play-store-submission.md`:
 
 ## App Identity
 - App name: Ansible
-- Package name: io.trisaura.ansible
+- Package name: com.reviz.elix
 - Category: Social or Productivity, final choice pending product positioning.
 
 ## Required Store Assets

@@ -30,6 +30,18 @@ defmodule AnsibleAppview.Profiles do
 
   def get(did), do: read_repo().get(Profile, did)
 
+  @doc "Lists the most recently published public profiles for discovery."
+  def recent(limit \\ 20) do
+    limit = limit |> min(100) |> max(1)
+
+    read_repo().all(
+      from p in Profile,
+        order_by: [desc: p.updated_log_id],
+        limit: ^limit
+    )
+    |> Enum.map(&to_map/1)
+  end
+
   @doc """
   Prefix/substring search over handle and display name (case-insensitive). Ranks
   exact-handle and handle-prefix matches above display-name matches.

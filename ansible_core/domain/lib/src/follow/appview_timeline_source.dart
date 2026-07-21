@@ -100,17 +100,25 @@ class AppViewTimelineSource implements FollowFeedSource {
       }
       page = await fetcher(dids: dids, cursor: cursor, limit: limit);
     }
-    final items = <FollowTimelineItem>[];
-    for (final raw in page.items) {
-      final mapped = _toTimelineItem(raw);
-      if (mapped != null) items.add(mapped);
-    }
+    final items = mapItems(page.items);
 
     return FollowFeedPage(
       items: items,
       nextCursor: page.nextCursor,
       hasMore: page.hasMore,
     );
+  }
+
+  /// Maps any verified AppView page (home, timeline, or explore) into the
+  /// common feed model. Keeping this here guarantees identical filtering of
+  /// comments and unsupported entity types across all feed surfaces.
+  List<FollowTimelineItem> mapItems(List<AppViewTimelineItem> rawItems) {
+    final items = <FollowTimelineItem>[];
+    for (final raw in rawItems) {
+      final mapped = _toTimelineItem(raw);
+      if (mapped != null) items.add(mapped);
+    }
+    return items;
   }
 
   Future<List<String>> _followDids(String followerDid) async {
@@ -159,7 +167,10 @@ class AppViewTimelineSource implements FollowFeedSource {
         final thread = Thread(
           id: raw.threadId!,
           boardId: raw.boardId!,
-          title: 'Untitled',
+          title:
+              raw.payload['title'] as String? ??
+              raw.payload['threadTitle'] as String? ??
+              'Untitled',
           authorId: raw.authorDid,
           createdAt: created,
           updatedAt: created,
@@ -174,8 +185,9 @@ class AppViewTimelineSource implements FollowFeedSource {
         );
       case 'murmur':
       case 'note':
-        final mode =
-            raw.entityType == 'note' ? ContentMode.note : ContentMode.murmur;
+        final mode = raw.entityType == 'note'
+            ? ContentMode.note
+            : ContentMode.murmur;
         final item = ContentItem(
           id: raw.entityId,
           authorDid: raw.authorDid,

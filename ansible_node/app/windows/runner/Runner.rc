@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "ansible_node" "\0"
+            VALUE "CompanyName", "Reviz" "\0"
+            VALUE "FileDescription", "Elix" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "ansible_node" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "ansible_node.exe" "\0"
-            VALUE "ProductName", "ansible_node" "\0"
+            VALUE "InternalName", "elix" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Reviz. All rights reserved." "\0"
+            VALUE "OriginalFilename", "elix.exe" "\0"
+            VALUE "ProductName", "Elix" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

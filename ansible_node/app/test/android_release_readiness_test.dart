@@ -30,4 +30,35 @@ void main() {
       );
     },
   );
+
+  test('android app uses the registered Google Play identity', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    final strings = File(
+      'android/app/src/main/res/values/strings.xml',
+    ).readAsStringSync();
+
+    expect(manifest, contains('android:label="@string/app_name"'));
+    expect(gradle, contains('applicationId = "com.reviz.elix"'));
+    expect(strings, contains('<string name="app_name">Elix</string>'));
+  });
+
+  test('android release build requires a production signing key', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    final gitignore = File('android/.gitignore').readAsStringSync();
+
+    expect(gradle, contains('create("release")'));
+    expect(
+      gradle,
+      contains('signingConfig = signingConfigs.getByName("release")'),
+    );
+    expect(
+      gradle,
+      isNot(contains('signingConfig = signingConfigs.getByName("debug")')),
+    );
+    expect(gitignore, contains('key.properties'));
+    expect(gitignore, contains('**/*.jks'));
+  });
 }

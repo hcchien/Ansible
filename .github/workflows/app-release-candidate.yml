@@ -1,0 +1,189 @@
+name: App release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Store version, for example 1.0.0
+        required: true
+        default: 1.0.0
+      build_number:
+        description: Monotonically increasing store build number
+        required: true
+        default: "1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: "3.38.3"
+  APP_DIR: ansible_node/app
+
+jobs:
+  verify:
+    name: Verify release configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Verify production release configuration
+        run: >-
+          flutter test
+          test/release_readiness_test.dart
+          test/android_release_readiness_test.dart
+
+  android:
+    name: Signed Android App Bundle
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Require Android upload-key secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD ANDROID_KEY_ALIAS; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required production environment secret: $name" >&2
+              exit 1
+            fi
+          done
+      - name: Materialize ephemeral Android upload key
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          {
+            printf 'storePassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+            printf 'storeFile=upload-keystore.jks\n'
+          } > android/key.properties
+      - run: flutter pub get
+      - name: Build signed production AAB
+        run: >-
+          flutter build appbundle --release
+          --build-name=${{ inputs.version }}
+          --build-number=${{ inputs.build_number }}
+          --dart-define-from-file=config/production.json
+      - name: Upload Android release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: elix-android-${{ inputs.version }}-${{ inputs.build_number }}
+          path: ansible_node/app/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  ios-compile:
+    name: iOS production compile (unsigned)
+    needs: verify
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Compile production iOS app without distribution signing
+        run: >-
+          flutter build ios --release --no-codesign
+          --build-name=${{ inputs.version }}
+          --build-number=${{ inputs.build_number }}
+          --dart-define-from-file=config/production.json
+
+  desktop:
+    name: ${{ matrix.name }} production compile
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            runner: macos-latest
+            target: macos
+          - name: Windows
+            runner: windows-latest
+            target: windows
+          - name: Linux
+            runner: ubuntu-latest
+            target: linux
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Install Linux build dependencies
+        if: matrix.target == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev liblzma-dev
+      - run: flutter pub get
+      - name: Compile desktop release candidate
+        run: >-
+          flutter build ${{ matrix.target }} --release
+          --build-name=${{ inputs.version }}
+          --build-number=${{ inputs.build_number }}
+          --dart-define-from-file=config/production.json
+
+  status:
+    name: App release candidate status
+    if: always()
+    needs:
+      - verify
+      - android
+      - ios-compile
+      - desktop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          for result in "${{ needs.verify.result }}" "${{ needs.android.result }}" "${{ needs.ios-compile.result }}" "${{ needs.desktop.result }}"; do
+            if [[ "$result" != "success" ]]; then
+              echo "Release gate finished with result: $result" >&2
+              exit 1
+            fi
+          done
+          echo "All release-candidate build gates passed."

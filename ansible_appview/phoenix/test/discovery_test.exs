@@ -36,6 +36,29 @@ defmodule AnsibleAppview.DiscoveryTest do
              Enum.find_index(dids, &(&1 == "did:key:dave"))
   end
 
+  test "suggested_follows includes newly published profiles with no follow edges" do
+    {pub, priv} = keypair()
+
+    Folder.apply_ops([
+      signed_op(pub, priv,
+        log_id: 5501,
+        op_id: "prof-newcomer",
+        author_did: "did:key:newcomer",
+        entity_type: "profile",
+        payload: %{
+          "handle" => "newcomer.elix",
+          "displayName" => "Newcomer",
+          "visibility" => "public"
+        }
+      )
+    ])
+
+    items = Discovery.suggested_follows("did:key:reader", 20)
+    newcomer = Enum.find(items, &(&1.did == "did:key:newcomer"))
+    assert newcomer.handle == "newcomer.elix"
+    assert newcomer.display_name == "Newcomer"
+  end
+
   test "explore returns public content newest-first, skipping private and deleted" do
     {pub, priv} = keypair()
 

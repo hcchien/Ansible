@@ -94,9 +94,9 @@ class TimelineBoardView extends StatelessWidget {
     );
   }
 
-  // Guided first session (UX review P1; 行銷策略書「漸進式上手：把一個大門檻
-  // 拆成三個有回報的小台階」): benefit-led welcome + three concrete first
-  // actions instead of a bare "nothing here yet".
+  // A genuinely empty dynamic wall stays lightweight. Discovery and compose
+  // remain available as actions, but onboarding copy must not masquerade as
+  // fixed feed content on every fresh account.
   Widget _timelineEmptyState(BuildContext context) {
     final style = ElixScreenStyleScope.dataOf(context);
 
@@ -120,7 +120,7 @@ class TimelineBoardView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 24, 4, 24),
       children: [
         Text(
-          context.uiCopy(zh: '歡迎來到 Elix', en: 'Welcome to Elix'),
+          context.uiCopy(zh: '動態牆還沒有內容', en: 'Your feed is empty'),
           style: TextStyle(
             fontFamily: AnsibleDesign.serif,
             fontSize: 24,
@@ -131,12 +131,8 @@ class TimelineBoardView extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           context.uiCopy(
-            zh:
-                '這裡沒有演算法、沒有機器人 — 動態只有你選擇的人和看板，'
-                '按時間排序。三步開始：',
-            en:
-                'No algorithm, no bots — your feed is only the people and '
-                'boards you choose, in order. Three steps to start:',
+            zh: '追蹤使用者或看板後，新的公開內容會出現在這裡。',
+            en: 'Follow people or boards and their new public posts appear here.',
           ),
           style: TextStyle(
             fontFamily: AnsibleDesign.serif,
@@ -150,12 +146,12 @@ class TimelineBoardView extends StatelessWidget {
           context,
           style: style,
           key: const Key('first_session_step_boards'),
-          number: '1',
+          number: '',
           icon: Icons.dashboard_outlined,
           title: context.uiCopy(zh: '訂閱一個看板', en: 'Subscribe to a board'),
           subtitle: context.uiCopy(
-            zh: '看看大家在聊什麼，馬上有東西可讀。',
-            en: 'See what people are talking about — instant reading.',
+            zh: '尋找公開討論。',
+            en: 'Find public discussions.',
           ),
           onTap: () => openDiscover(boards: true),
         ),
@@ -163,27 +159,14 @@ class TimelineBoardView extends StatelessWidget {
           context,
           style: style,
           key: const Key('first_session_step_people'),
-          number: '2',
+          number: '',
           icon: Icons.person_add_alt_outlined,
           title: context.uiCopy(zh: '追蹤一個人', en: 'Follow someone'),
           subtitle: context.uiCopy(
-            zh: '他們的貼文會出現在這條時間軸上。',
-            en: 'Their posts show up right here.',
+            zh: '從公開使用者目錄開始。',
+            en: 'Browse the public people directory.',
           ),
           onTap: () => openDiscover(boards: false),
-        ),
-        _guideStep(
-          context,
-          style: style,
-          key: const Key('first_session_step_post'),
-          number: '3',
-          icon: Icons.edit_outlined,
-          title: context.uiCopy(zh: '發第一則貼文', en: 'Write your first post'),
-          subtitle: context.uiCopy(
-            zh: '它永遠是你的 — 存在你的裝置上，平台刪不掉。',
-            en: 'It stays yours — on your device, beyond any platform.',
-          ),
-          onTap: onCompose,
         ),
       ],
     );
@@ -229,7 +212,7 @@ class TimelineBoardView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$number · $title',
+                      number.isEmpty ? title : '$number · $title',
                       style: TextStyle(
                         fontFamily: AnsibleDesign.serif,
                         fontSize: 15.5,

@@ -70,8 +70,14 @@ defmodule AnsibleAppview.Discovery do
         )
       )
 
+    # A newly registered person may not have any follow edges yet. Public
+    # profile ops are the user's explicit opt-in to the actor directory, so
+    # include those profiles without enumerating the relay's private account
+    # registry. This makes a fresh account discoverable from day one.
+    directory = Profiles.recent(limit * 5) |> Enum.map(& &1.did)
+
     candidates =
-      (Map.keys(fof_counts) ++ popular)
+      (Map.keys(fof_counts) ++ popular ++ directory)
       |> Enum.uniq()
       |> Enum.reject(&MapSet.member?(exclude, &1))
 
@@ -82,13 +88,18 @@ defmodule AnsibleAppview.Discovery do
       followers = Map.get(follower_counts, did, 0)
       mutuals = Map.get(fof_counts, did, 0)
 
-      %{
+      suggestion = %{
         did: did,
         follower_count: followers,
         mutual_count: mutuals,
         reason: if(mutuals > 0, do: "followed_by_people_you_follow", else: "popular"),
         score: followers + mutuals * @mutual_weight
       }
+
+      case Profiles.get(did) do
+        nil -> suggestion
+        profile -> Map.merge(Profiles.to_map(profile), suggestion)
+      end
     end)
     |> Enum.sort_by(& &1.score, :desc)
     |> Enum.take(limit)

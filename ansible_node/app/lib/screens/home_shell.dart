@@ -457,10 +457,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // discovery/AppView outage just yields an empty timeline, never an error.
     List<PostCardData> followingCards = const [];
     try {
-      final followingEntries = (await _followFeedSource().fetch(
-        followerDid: widget.did,
-        limit: 100,
-      )).items;
+      final followingEntries = await _dynamicWallItems(limit: 100);
       followingCards = await _buildFollowingPostCards(
         followingEntries,
         boardMap,
@@ -468,6 +465,23 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     } catch (_) {
       followingCards = const [];
     }
+
+    // Local-first home: locally stored public content remains readable without
+    // a network, while online AppView results enrich the same wall. De-duplicate
+    // by content/thread id because a synced local item may also be in AppView.
+    final localWallCards = <PostCardData>[
+      ...forumCards,
+      ...contentItems
+          .where(
+            (item) =>
+                item.status == ContentStatus.active &&
+                !item.localOnly &&
+                (item.visibility == ContentVisibility.public ||
+                    item.visibility == ContentVisibility.unlisted),
+          )
+          .map(_contentFollowCard),
+    ];
+    followingCards = _mergeDynamicWallCards(followingCards, localWallCards);
 
     // Annotate both lists with their author's reputation tier (verified badge).
     final authorTiers = await _didReputationRepo.tiersFor({
@@ -1060,6 +1074,61 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         contentItemRepository: _contentItemRepo,
       ),
     );
+  }
+
+  /// Builds the social home wall. When online, newest verified public content
+  /// fills a sparse following feed so a new account sees a real, changing wall
+  /// instead of static onboarding copy. The combined wall stays chronological.
+  Future<List<FollowTimelineItem>> _dynamicWallItems({int limit = 100}) async {
+    final source = _followFeedSource();
+    final followed = (await source.fetch(
+      followerDid: widget.did,
+      limit: limit,
+    )).items;
+
+    if (!AppEnvironment.useAppViewFeed ||
+        AppEnvironment.appViewBaseUrl.isEmpty ||
+        followed.length >= limit) {
+      return followed;
+    }
+
+    try {
+      final client = AppViewTimelineClient(
+        baseUrl: AppEnvironment.appViewBaseUrl,
+      );
+      final page = await client.fetchExplore(limit: limit - followed.length);
+      final mapper = AppViewTimelineSource(
+        followRepository: _followRepo,
+        fetcher: client.fetch,
+      );
+      final merged = <FollowTimelineItem>[...followed];
+      final seen = followed.map(_timelineItemKey).toSet();
+      for (final item in mapper.mapItems(page.items)) {
+        if (seen.add(_timelineItemKey(item))) merged.add(item);
+      }
+      merged.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return merged.take(limit).toList(growable: false);
+    } catch (_) {
+      return followed;
+    }
+  }
+
+  String _timelineItemKey(FollowTimelineItem item) => switch (item) {
+    PostTimelineItem(:final entry) => 'post:${entry.thread.id}',
+    ContentTimelineItem(:final entry) => 'content:${entry.item.id}',
+  };
+
+  List<PostCardData> _mergeDynamicWallCards(
+    List<PostCardData> remote,
+    List<PostCardData> local,
+  ) {
+    final merged = <PostCardData>[];
+    final seen = <String>{};
+    for (final card in [...remote, ...local]) {
+      if (seen.add(card.thread.id)) merged.add(card);
+    }
+    merged.sort((a, b) => b.thread.updatedAt.compareTo(a.thread.updatedAt));
+    return merged;
   }
 
   Future<List<PostCardData>> _buildFollowingPostCards(
