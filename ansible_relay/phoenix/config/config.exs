@@ -33,6 +33,11 @@ config :ansible_relay, :snapshot_retention_days, :infinity
 config :ansible_relay, :allow_dev_identity_signatures, false
 config :ansible_relay, :allow_dev_publication_signatures, false
 config :ansible_relay, :allow_dev_zkp_proofs, false
+config :ansible_relay, :webauthn_rp_id, "elix.cool"
+config :ansible_relay, :webauthn_origin, "https://elix.cool"
+config :ansible_relay, :webauthn_sync_capability_required, false
+# Overridden by an operator-controlled secret in production.
+config :ansible_relay, :sync_capability_secret, "dev-only-sync-capability-secret"
 
 config :ansible_relay, :zkp_verification_keys, [
   %{

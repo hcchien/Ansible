@@ -12,6 +12,7 @@
 	<array>
 		<string>applinks:relay.elix.cool</string>
 		<string>applinks:forum.elix.cool</string>
+		<string>webcredentials:elix.cool</string>
 	</array>
 </dict>
 </plist>

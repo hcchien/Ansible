@@ -274,6 +274,7 @@ async function handleRequest(request, response, context) {
       return;
     }
     sendJson(response, 200, {
+      webcredentials: { apps: appIds },
       applinks: {
         details: [
           {
@@ -296,7 +297,10 @@ async function handleRequest(request, response, context) {
     }
     sendJson(response, 200, [
       {
-        relation: ['delegate_permission/common.handle_all_urls'],
+        relation: [
+          'delegate_permission/common.handle_all_urls',
+          'delegate_permission/common.get_login_creds',
+        ],
         target: {
           namespace: 'android_app',
           package_name: androidPackage,

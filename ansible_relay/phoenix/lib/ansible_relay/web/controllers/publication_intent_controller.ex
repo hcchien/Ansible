@@ -20,6 +20,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
          :ok <- validate_signature_shape(params["signature"]),
          :ok <- validate_payload_hash(params["payload"], params["payload_hash"]),
          author_did = params["author_did"],
+         :ok <- check_sync_capability(conn, author_did),
          :ok <- check_did_verified(author_did, params["signature"]),
          public_key = IdentityCache.public_key_hex(author_did),
          :ok <- check_signature(public_key, signing_payload(params), params["signature"]),
@@ -54,6 +55,9 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
         log_rejected_signature(:unverified_did, params)
         send_json(conn, 401, %{error: "unverified_did"})
 
+      {:error, :invalid_sync_capability} ->
+        send_json(conn, 401, %{error: "invalid_sync_capability"})
+
       {:error, :bad_signature} ->
         log_rejected_signature(:bad_signature, params)
         send_json(conn, 401, %{error: "invalid_signature"})
@@ -61,6 +65,12 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
       {:error, :duplicate} ->
         send_json(conn, 409, %{error: "duplicate_publication_intent"})
     end
+  end
+
+  defp check_sync_capability(conn, did) do
+    if AnsibleRelay.WebauthnSync.enforcement_enabled?(),
+      do: AnsibleRelay.WebauthnSync.authorize(conn, did),
+      else: :ok
   end
 
   def signing_payload(params) do

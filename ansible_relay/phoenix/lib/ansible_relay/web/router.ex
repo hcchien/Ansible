@@ -327,6 +327,31 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityV2Controller.anchor(conn, conn.body_params)
   end
 
+  post "/api/v2/webauthn/register/options" do
+    AnsibleRelay.Web.Controllers.WebauthnSyncController.registration_options(
+      conn,
+      conn.body_params
+    )
+  end
+
+  post "/api/v2/webauthn/register/finish" do
+    AnsibleRelay.Web.Controllers.WebauthnSyncController.finish_registration(
+      conn,
+      conn.body_params
+    )
+  end
+
+  post "/api/v2/webauthn/authenticate/options" do
+    AnsibleRelay.Web.Controllers.WebauthnSyncController.authentication_options(
+      conn,
+      conn.body_params
+    )
+  end
+
+  post "/api/v2/webauthn/authenticate/exchange" do
+    AnsibleRelay.Web.Controllers.WebauthnSyncController.exchange(conn, conn.body_params)
+  end
+
   # V2 — Reputation / VP presentation
   post "/api/v2/reputation/present" do
     AnsibleRelay.Web.Controllers.ReputationController.present(conn, conn.body_params)

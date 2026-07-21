@@ -36,6 +36,8 @@ defmodule AnsibleRelay.MixProject do
       {:libcluster, "~> 3.3"},
       # Optional shared (cross-instance) abuse limiter backend
       {:redix, "~> 1.2"},
+      # Standards-compliant WebAuthn registration and assertion verification.
+      {:wax_, "~> 0.7.0"}
     ]
   end
 end

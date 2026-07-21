@@ -125,6 +125,30 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert is_integer(body["log_id"])
   end
 
+  test "sync writes require a WebAuthn capability when enforcement is enabled" do
+    original =
+      Application.get_env(:ansible_relay, :webauthn_sync_capability_required, false)
+
+    Application.put_env(:ansible_relay, :webauthn_sync_capability_required, true)
+
+    on_exit(fn ->
+      Application.put_env(
+        :ansible_relay,
+        :webauthn_sync_capability_required,
+        original
+      )
+    end)
+
+    did = "did:key:z6MkCapability#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    response = post_json("/api/v1/ops", valid_op(did, private_key))
+
+    assert response.status == 401
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_sync_capability"
+  end
+
   test "unverified DID gets 401" do
     did = "did:key:z6MkNoAnchor#{System.unique_integer()}"
     {_public_key, private_key} = ed25519_keypair()

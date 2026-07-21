@@ -84,7 +84,8 @@ function get(baseUrl, path) {
     const response = await get(base, path);
     assert.equal(response.status, 200);
     assert.match(response.headers['content-type'] ?? '', /application\/json/);
-    const { applinks } = JSON.parse(response.body);
+    const { applinks, webcredentials } = JSON.parse(response.body);
+    assert.deepEqual(webcredentials.apps, ['T68YYD5V2Y.com.example.ansibleNode']);
     assert.deepEqual(applinks.details[0].appIDs, ['T68YYD5V2Y.com.example.ansibleNode']);
     assert.deepEqual(applinks.details[0].components, [{ '/': '/boards/*' }]);
     assert.deepEqual(applinks.details[0].paths, ['/boards/*']);
@@ -93,7 +94,10 @@ function get(baseUrl, path) {
   const assetlinks = await get(base, '/.well-known/assetlinks.json');
   assert.equal(assetlinks.status, 200);
   const [statement] = JSON.parse(assetlinks.body);
-  assert.deepEqual(statement.relation, ['delegate_permission/common.handle_all_urls']);
+  assert.deepEqual(statement.relation, [
+    'delegate_permission/common.handle_all_urls',
+    'delegate_permission/common.get_login_creds',
+  ]);
   assert.equal(statement.target.package_name, 'io.trisaura.ansible_node');
   assert.deepEqual(statement.target.sha256_cert_fingerprints, ['04:EE:D4:93']);
 

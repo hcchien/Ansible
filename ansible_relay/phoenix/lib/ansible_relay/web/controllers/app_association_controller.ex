@@ -31,6 +31,7 @@ defmodule AnsibleRelay.Web.Controllers.AppAssociationController do
         # `components` is the modern (iOS 13+) matcher; `paths` keeps older
         # AASA parsers working. Both scope to shared-content routes only.
         send_json(conn, 200, %{
+          webcredentials: %{apps: app_ids},
           applinks: %{
             details: [
               %{
@@ -54,7 +55,10 @@ defmodule AnsibleRelay.Web.Controllers.AppAssociationController do
     else
       send_json(conn, 200, [
         %{
-          relation: ["delegate_permission/common.handle_all_urls"],
+          relation: [
+            "delegate_permission/common.handle_all_urls",
+            "delegate_permission/common.get_login_creds"
+          ],
           target: %{
             namespace: "android_app",
             package_name: package,

@@ -80,11 +80,13 @@ abstract class RelayPublicationClient {
 class HttpRelayPublicationClient implements RelayPublicationClient {
   HttpRelayPublicationClient({
     http.Client? client,
+    this.accessToken,
     this.timeout = const Duration(seconds: 10),
   }) : _client = client ?? http.Client();
 
   final http.Client _client;
   final Duration timeout;
+  final String? accessToken;
 
   @override
   Future<RelayPublicationResult> publish({
@@ -98,7 +100,10 @@ class HttpRelayPublicationClient implements RelayPublicationClient {
     final response = await _client
         .post(
           baseUri.replace(path: '$basePath/api/v1/publication-intents'),
-          headers: const {'content-type': 'application/json'},
+          headers: {
+            'content-type': 'application/json',
+            if (accessToken != null) 'authorization': 'Bearer $accessToken',
+          },
           body: jsonEncode(intent.toJson()),
         )
         .timeout(timeout);

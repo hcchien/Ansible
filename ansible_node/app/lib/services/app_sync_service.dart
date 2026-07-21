@@ -10,7 +10,10 @@ import 'nostr_publication_service.dart';
 import 'nostr_relay_settings_store.dart';
 import 'ops_dispatch_service.dart';
 import 'relay_identity_client.dart';
+import 'relay_ops_client.dart';
 import 'remote_sync_service.dart';
+import 'relay_reputation_presentation_service.dart';
+import 'sync_capability_service.dart';
 
 bool isPublishableContentForDid(ContentItem item, String localDid) {
   return item.authorDid == localDid &&
@@ -23,13 +26,18 @@ class AppSyncResult {
     required this.pulledActivities,
     required this.publishSummary,
     this.pullErrors = const [],
+    this.reputationErrors = const [],
   });
 
   final int pulledActivities;
   final PublicPublishSummary publishSummary;
   final List<String> pullErrors;
+  final List<String> reputationErrors;
 
-  bool get success => pullErrors.isEmpty && publishSummary.errorMessage == null;
+  bool get success =>
+      pullErrors.isEmpty &&
+      reputationErrors.isEmpty &&
+      publishSummary.errorMessage == null;
 }
 
 class PublicPublishSummary {
@@ -92,6 +100,8 @@ class AppSyncService {
     NostrRelayClient? relayClient,
     RelayPublicationClient? relayPublicationClient,
     RelayIdentityClient? identityClient,
+    RelayReputationPresentationService? reputationPresentationService,
+    SyncCapabilityService Function(RemoteNode node)? syncCapabilityService,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
        _contactRepository = contactRepository,
@@ -115,7 +125,9 @@ class AppSyncService {
        _didSigner = didSigner,
        _relayClient = relayClient,
        _relayPublicationClient = relayPublicationClient,
-       _identityClient = identityClient;
+       _identityClient = identityClient,
+       _reputationPresentationService = reputationPresentationService,
+       _syncCapabilityService = syncCapabilityService;
 
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
@@ -141,6 +153,8 @@ class AppSyncService {
   final NostrRelayClient? _relayClient;
   final RelayPublicationClient? _relayPublicationClient;
   final RelayIdentityClient? _identityClient;
+  final RelayReputationPresentationService? _reputationPresentationService;
+  final SyncCapabilityService Function(RemoteNode node)? _syncCapabilityService;
 
   // Portable issuer re-verification (federation trust): one service per
   // relay node, kept for the AppSyncService lifetime so its per-DID verified
@@ -154,18 +168,60 @@ class AppSyncService {
     );
   }
 
-  Future<AppSyncResult> syncAll({bool pullRemote = true}) async {
+  Future<AppSyncResult> syncAll({
+    bool pullRemote = true,
+    bool pushLocal = true,
+  }) async {
     final pullSummary = pullRemote
         ? await pullLatestFromRelays()
         : const RelayPullSummary(pulledActivities: 0);
 
-    await _enqueuePublicContentOps();
-    await _enqueueFederatedFollowOps();
-    await _enqueueProfileOp();
-    final publishSummary = await bestEffortPublicPublish(publishPublicContent);
+    final reputationErrors = <String>[];
+    final capabilities = <String, String>{};
+    if (pushLocal) {
+      final presenter = _reputationPresentationService;
+      final holderDid = _followerDid;
+      if (presenter != null && holderDid != null) {
+        final nodes = await _remoteNodeRepo.list();
+        for (final node in nodes.where((item) => item.isActive)) {
+          try {
+            final capabilityService = _syncCapabilityService;
+            if (capabilityService != null) {
+              capabilities[node.id] = (await capabilityService(
+                node,
+              ).authorize()).token;
+            }
+            await presenter.present(holderDid: holderDid, node: node);
+          } on Object catch (error) {
+            reputationErrors.add('${node.name}: $error');
+          }
+        }
+      }
+      await _enqueuePublicContentOps();
+      await _enqueueFederatedFollowOps();
+      await _enqueueProfileOp();
+      final activeNode = await _remoteNodeRepo.getActive();
+      final queue = _opsQueueRepo;
+      if (activeNode != null && queue != null) {
+        await OpsDispatchService(
+          repository: queue,
+          signer: _didSigner,
+          relayClient: RelayOpsClient(
+            baseUrl: activeNode.url,
+            accessToken: capabilities[activeNode.id],
+          ),
+        ).flushPending();
+      }
+    }
+    final publishSummary = pushLocal
+        ? await bestEffortPublicPublish(
+            () => publishPublicContent(syncCapabilities: capabilities),
+          )
+        : const PublicPublishSummary(publicItems: 0);
     return AppSyncResult(
       pulledActivities: pullSummary.pulledActivities,
       pullErrors: pullSummary.pullErrors,
+      reputationErrors: reputationErrors,
       publishSummary: publishSummary,
     );
   }
@@ -218,9 +274,7 @@ class AppSyncService {
                 publishedAt: item.publishedAt,
               );
         await dispatch.signAndEnqueue(entry);
-        await _contentItemRepo.update(
-          item.copyWith(signatureVerified: true),
-        );
+        await _contentItemRepo.update(item.copyWith(signatureVerified: true));
         enqueued += 1;
       }
       return enqueued;
@@ -419,7 +473,9 @@ class AppSyncService {
     );
   }
 
-  Future<PublicPublishSummary> publishPublicContent() async {
+  Future<PublicPublishSummary> publishPublicContent({
+    Map<String, String> syncCapabilities = const {},
+  }) async {
     final publicItems = (await _contentItemRepo.list())
         .where(
           (item) => _followerDid == null
@@ -440,6 +496,14 @@ class AppSyncService {
       );
     }
 
+    final activeNode = await _remoteNodeRepo.getActive();
+    final publicationClient =
+        _relayPublicationClient ??
+        HttpRelayPublicationClient(
+          accessToken: activeNode == null
+              ? null
+              : syncCapabilities[activeNode.id],
+        );
     final service = ContentPublicationService(
       contentItems: _contentItemRepo,
       publications: _publicationRepo,
@@ -449,7 +513,7 @@ class AppSyncService {
       signingBridge: _signingBridge,
       didSigner: _didSigner,
       relayClient: _relayClient,
-      relayPublicationClient: _relayPublicationClient,
+      relayPublicationClient: publicationClient,
     );
 
     var published = 0;
@@ -538,6 +602,9 @@ String appSyncSummaryMessage(AppSyncResult result) {
   ];
   if (result.pullErrors.isNotEmpty) {
     parts.add('pull errors: ${result.pullErrors.join('; ')}');
+  }
+  if (result.reputationErrors.isNotEmpty) {
+    parts.add('credential errors: ${result.reputationErrors.join('; ')}');
   }
   return 'sync complete: ${parts.join('; ')}';
 }

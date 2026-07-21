@@ -66,6 +66,28 @@ if config_env() == :prod do
 
   config :ansible_relay, :relay_origin, relay_origin
 
+  sync_capability_secret =
+    System.get_env("SYNC_CAPABILITY_SECRET") ||
+      raise """
+      environment variable SYNC_CAPABILITY_SECRET is missing.
+      Set it to a high-entropy secret used only for short-lived sync capabilities.
+      """
+
+  if byte_size(sync_capability_secret) < 32 do
+    raise "SYNC_CAPABILITY_SECRET must contain at least 32 bytes"
+  end
+
+  config :ansible_relay, :sync_capability_secret, sync_capability_secret
+  config :ansible_relay, :webauthn_rp_id, System.get_env("WEBAUTHN_RP_ID") || "elix.cool"
+
+  config :ansible_relay,
+         :webauthn_origin,
+         System.get_env("WEBAUTHN_ORIGIN") || "https://elix.cool"
+
+  config :ansible_relay,
+         :webauthn_sync_capability_required,
+         env_bool.("WEBAUTHN_SYNC_CAPABILITY_REQUIRED", false)
+
   forum_host_base_url =
     System.get_env("FORUM_HOST_BASE_URL") ||
       raise """

@@ -14,6 +14,9 @@ import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
+import '../services/relay_reputation_presentation_service.dart';
+import '../services/user_presence_verifier.dart';
+import '../services/sync_capability_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/nostr_publication_retry_panel.dart';
@@ -39,6 +42,7 @@ class SyncSettingsScreen extends StatefulWidget {
   /// Test seam for fetching a host's self-declared constitution compliance
   /// at add time. Defaults to [RelayDiscoveryClient] against the host URL.
   final Future<String?> Function(String url)? complianceFetcher;
+  final UserPresenceVerifier? userPresenceVerifier;
 
   const SyncSettingsScreen({
     super.key,
@@ -46,6 +50,7 @@ class SyncSettingsScreen extends StatefulWidget {
     required this.localDid,
     this.initialForumHostUrl,
     this.complianceFetcher,
+    this.userPresenceVerifier,
   });
 
   @override
@@ -85,6 +90,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   bool _isLoading = true;
   bool _shownInitialForumHostDialog = false;
   final Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
+  final Map<String, String> _syncCapabilitiesByNode = {};
   String? _expandedNodeId;
 
   @override
@@ -472,7 +478,34 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     RemoteNode node, {
     bool showSnackBar = true,
     bool publishPublicContent = true,
+    bool requireUserPresence = true,
   }) async {
+    if (requireUserPresence) {
+      final authenticated =
+          await (widget.userPresenceVerifier ??
+                  LocalDeviceUserPresenceVerifier())
+              .verify(
+                reason: context.uiCopy(
+                  zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
+                  en: 'Authenticate to sync and sign pending uploads.',
+                ),
+              );
+      if (!authenticated) {
+        if (mounted && showSnackBar) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.uiCopy(
+                  zh: '未完成裝置驗證，同步已取消；本機資料未變更。',
+                  en: 'Device authentication was not completed. Sync was cancelled and local data was unchanged.',
+                ),
+              ),
+            ),
+          );
+        }
+        return SyncResult.failure(errorMessage: 'device_auth_cancelled');
+      }
+    }
     setState(() {
       _syncingNodes[node.id] = true;
     });
@@ -494,6 +527,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       );
 
       final result = await syncService.syncFromNode(client, node);
+      final capability = await SyncCapabilityService(
+        baseUrl: node.url,
+        holderDid: widget.localDid,
+      ).authorize();
+      _syncCapabilitiesByNode[node.id] = capability.token;
+      await RelayReputationPresentationService(
+        walletRepository: DriftWalletRepository(widget.db),
+        reputationRepository: DriftDidReputationRepository(widget.db),
+      ).present(holderDid: widget.localDid, node: node);
       final publishSummary = publishPublicContent
           ? await bestEffortPublicPublish(
               () => _publishPublicContent(showSnackBar: false),
@@ -558,6 +600,28 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   }
 
   Future<void> _syncAllNodes() async {
+    final authenticated =
+        await (widget.userPresenceVerifier ?? LocalDeviceUserPresenceVerifier())
+            .verify(
+              reason: context.uiCopy(
+                zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
+                en: 'Authenticate to sync and sign pending uploads.',
+              ),
+            );
+    if (!authenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '未完成裝置驗證，同步已取消；本機資料未變更。',
+              en: 'Device authentication was not completed. Sync was cancelled and local data was unchanged.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     var pulledActivities = 0;
     final pullErrors = <String>[];
     for (final node in _remoteNodes) {
@@ -566,6 +630,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           node,
           showSnackBar: false,
           publishPublicContent: false,
+          requireUserPresence: false,
         );
         if (result.success) {
           pulledActivities += result.activitiesProcessed;
@@ -575,7 +640,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       }
     }
     final publishSummary = await bestEffortPublicPublish(
-      () => _publishPublicContent(showSnackBar: false),
+      () => _publishPublicContent(
+        showSnackBar: false,
+        syncCapability: _activeSyncCapability(),
+      ),
     );
     if (!mounted) return;
     final message = _syncAllSummaryMessage(
@@ -590,6 +658,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
   Future<PublicPublishSummary> _publishPublicContent({
     bool showSnackBar = true,
+    String? syncCapability,
   }) async {
     final publicItems = (await _contentItemRepo.list())
         .where((item) => isPublishableContentForDid(item, widget.localDid))
@@ -613,6 +682,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       remoteNodes: _remoteNodeRepo,
       keyStore: _nostrKeyStore,
       signingBridge: const SchnorrSigningBridge(),
+      relayPublicationClient: HttpRelayPublicationClient(
+        accessToken: syncCapability ?? _activeSyncCapability(),
+      ),
     );
     var published = 0;
     var failed = 0;
@@ -651,6 +723,13 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       context,
     ).showSnackBar(SnackBar(content: Text(_publishSummaryMessage(summary))));
     return summary;
+  }
+
+  String? _activeSyncCapability() {
+    for (final node in _remoteNodes) {
+      if (node.isActive) return _syncCapabilitiesByNode[node.id];
+    }
+    return null;
   }
 
   String _syncAllSummaryMessage({

@@ -24,6 +24,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          :ok <- validate_schema_version(params["schema_version"]),
          :ok <- check_content_visibility(params["entity_type"], params["payload"]),
          author_did = params["author_did"],
+         :ok <- check_sync_capability(conn, author_did),
          :ok <- check_did_verified(author_did),
          :ok <- check_abuse_limit(author_did),
          :ok <- check_op_not_duplicate(params["op_id"]),
@@ -97,6 +98,9 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
           message: "DID not anchored. Complete Phase 1 identity anchoring first."
         })
 
+      {:error, :invalid_sync_capability} ->
+        send_json(conn, 401, %{error: "invalid_sync_capability"})
+
       # DB/infrastructure outage during the verification lookup: this is NOT an
       # unverified DID. Return a retryable 503 so clients back off rather than
       # (destructively) re-anchoring on a transient Postgres blip.
@@ -126,6 +130,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       {:error, :thread_locked, reason_code} ->
         send_json(conn, 403, %{error: "thread_locked", reason_code: reason_code})
     end
+  end
+
+  defp check_sync_capability(conn, did) do
+    if AnsibleRelay.WebauthnSync.enforcement_enabled?(),
+      do: AnsibleRelay.WebauthnSync.authorize(conn, did),
+      else: :ok
   end
 
   # GET /api/v1/ops/delta

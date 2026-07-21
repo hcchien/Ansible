@@ -47,6 +47,9 @@ import '../services/notification_projector.dart';
 import '../services/relay_discovery_client.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/relay_ops_client.dart';
+import '../services/relay_reputation_presentation_service.dart';
+import '../services/user_presence_verifier.dart';
+import '../services/sync_capability_service.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
 import 'notifications_screen.dart';
@@ -89,6 +92,7 @@ class HomeShell extends StatefulWidget {
     this.relayDiscoveryLoader,
     this.defaultSubscriptionsDiscoveryLoader,
     this.networkStatusMonitor,
+    this.userPresenceVerifier,
     this.localeController,
     this.readingPreferencesController,
     this.autoSeedDefaultRelay = true,
@@ -113,6 +117,7 @@ class HomeShell extends StatefulWidget {
   final Future<RelayDiscovery> Function()? relayDiscoveryLoader;
   final Future<RelayDiscovery> Function()? defaultSubscriptionsDiscoveryLoader;
   final NetworkStatusMonitor? networkStatusMonitor;
+  final UserPresenceVerifier? userPresenceVerifier;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
 
@@ -1187,10 +1192,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   /// Render a followed user's standalone murmur/note as a feed card. These have
   /// no board/thread, so a lightweight synthetic thread carries the card.
-  PostCardData _contentFollowCard(
-    ContentItem item, {
-    bool? signatureVerified,
-  }) {
+  PostCardData _contentFollowCard(ContentItem item, {bool? signatureVerified}) {
     final isNote = item.mode == ContentMode.note;
     final label = isNote ? 'NOTE' : 'MURMUR';
     final title = (item.title != null && item.title!.trim().isNotEmpty)
@@ -1788,6 +1790,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       opsQueueRepo: _opsQueueRepo,
       opsDispatchService: _opsDispatchService,
       signingBridge: const SchnorrSigningBridge(),
+      reputationPresentationService: RelayReputationPresentationService(
+        walletRepository: DriftWalletRepository(widget.db),
+        reputationRepository: _didReputationRepo,
+      ),
+      syncCapabilityService: (node) =>
+          SyncCapabilityService(baseUrl: node.url, holderDid: widget.did),
     );
   }
 
@@ -1910,12 +1918,41 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
       return;
     }
+    if (showSnackBar) {
+      if (!mounted) return;
+      final verifier = widget.userPresenceVerifier;
+      final authenticationReason = context.uiCopy(
+        zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
+        en: 'Authenticate to sync and sign pending uploads.',
+      );
+      final authenticated = verifier == null && widget.syncRunner != null
+          ? true
+          : await (verifier ?? LocalDeviceUserPresenceVerifier()).verify(
+              reason: authenticationReason,
+            );
+      if (!authenticated) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.uiCopy(
+                zh: '未完成裝置驗證，同步已取消；本機資料未變更。',
+                en: 'Device authentication was not completed. Sync was cancelled and local data was unchanged.',
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+    }
     setState(() => _syncing = true);
     try {
-      await _flushPendingOps();
       final runner = widget.syncRunner;
       final result = runner == null
-          ? await _appSyncService().syncAll(pullRemote: pullRemote)
+          ? await _appSyncService().syncAll(
+              pullRemote: pullRemote,
+              pushLocal: showSnackBar,
+            )
           : await runner();
       await _loadData();
       if (!mounted) return;

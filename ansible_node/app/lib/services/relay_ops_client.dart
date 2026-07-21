@@ -40,17 +40,21 @@ class RelayOpsClient {
   RelayOpsClient({
     String baseUrl = kDefaultRelayBaseUrl,
     http.Client? client,
+    this.accessToken,
     this.timeout = const Duration(seconds: 10),
   }) : baseUri = Uri.parse(baseUrl),
        _client = client ?? http.Client();
+
+  final String? accessToken;
 
   Future<int> ingest(OpsQueueEntry entry) async {
     final response = await _client
         .post(
           _endpoint('/api/v1/ops'),
-          headers: const {
+          headers: {
             'content-type': 'application/json',
             ...AnsibleProtocol.headers,
+            if (accessToken != null) 'authorization': 'Bearer $accessToken',
           },
           body: jsonEncode(_entryToRelayJson(entry)),
         )

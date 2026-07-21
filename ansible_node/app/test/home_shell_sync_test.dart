@@ -2,6 +2,7 @@ import 'package:ansible_node/screens/home_shell.dart';
 import 'package:ansible_node/services/app_sync_service.dart';
 import 'package:ansible_node/services/network_status_service.dart';
 import 'package:ansible_node/services/relay_discovery_client.dart';
+import 'package:ansible_node/services/user_presence_verifier.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/native.dart';
@@ -164,6 +165,47 @@ void main() {
     expect(syncCalls, 1);
     expect(find.textContaining('public publish 1/1 targets'), findsOneWidget);
 
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('denied device authentication prevents manual sync', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    var syncCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(NetworkStatus.online),
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
+          userPresenceVerifier: _FakeUserPresenceVerifier(false),
+          syncRunner: () async {
+            syncCalls += 1;
+            return const AppSyncResult(
+              pulledActivities: 0,
+              publishSummary: PublicPublishSummary(publicItems: 0),
+            );
+          },
+        ),
+      ),
+    );
+    for (var i = 0; i < 8; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    await tester.tap(find.byTooltip('同步'));
+    await tester.pumpAndSettle();
+
+    expect(syncCalls, 0);
+    expect(find.textContaining('同步已取消'), findsOneWidget);
     await _disposeWidgetTree(tester);
   });
 
@@ -574,6 +616,15 @@ class _FakeNetworkStatusMonitor extends ChangeNotifier
 
   @override
   Future<bool> isUrlReachable(String url) async => true;
+}
+
+class _FakeUserPresenceVerifier implements UserPresenceVerifier {
+  const _FakeUserPresenceVerifier(this.result);
+
+  final bool result;
+
+  @override
+  Future<bool> verify({required String reason}) async => result;
 }
 
 Future<void> _disposeWidgetTree(WidgetTester tester) async {
