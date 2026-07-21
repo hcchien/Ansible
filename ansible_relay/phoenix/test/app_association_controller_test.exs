@@ -66,7 +66,12 @@ defmodule AnsibleRelay.Web.AppAssociationControllerTest do
       assert response.resp_headers |> Map.new() |> Map.get("content-type") =~ "application/json"
 
       %{"applinks" => %{"details" => [detail]}} = Jason.decode!(response.resp_body)
-      assert detail["appIDs"] == ["T68YYD5V2Y.com.example.ansibleNode", "T68YYD5V2Y.cool.elix.app"]
+
+      assert detail["appIDs"] == [
+               "T68YYD5V2Y.com.example.ansibleNode",
+               "T68YYD5V2Y.cool.elix.app"
+             ]
+
       assert detail["components"] == [%{"/" => "/boards/*"}]
       assert detail["paths"] == ["/boards/*"]
     end
@@ -84,7 +89,12 @@ defmodule AnsibleRelay.Web.AppAssociationControllerTest do
     assert response.status == 200
 
     [statement] = Jason.decode!(response.resp_body)
-    assert statement["relation"] == ["delegate_permission/common.handle_all_urls"]
+
+    assert statement["relation"] == [
+             "delegate_permission/common.handle_all_urls",
+             "delegate_permission/common.get_login_creds"
+           ]
+
     assert statement["target"]["namespace"] == "android_app"
     assert statement["target"]["package_name"] == "io.trisaura.ansible_node"
     assert [fingerprint] = statement["target"]["sha256_cert_fingerprints"]
