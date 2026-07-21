@@ -43,6 +43,7 @@ void main() {
     expect(find.text('General'), findsOneWidget);
     expect(find.text('Start here'), findsOneWidget);
     expect(find.text('compatible'), findsOneWidget);
+    expect(find.byKey(const Key('wall_discovery_entry')), findsOneWidget);
 
     await _disposeWidgetTree(tester);
   });

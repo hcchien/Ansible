@@ -19,6 +19,7 @@ class PersonalBoardView extends StatelessWidget {
     required this.firstRunDiscovery,
     required this.firstRunDiscoveryLoading,
     required this.onOpenDiscoveredForumHost,
+    required this.onDiscover,
     required this.onOpenCircle,
     required this.onStartAiAction,
     required this.onComposeTap,
@@ -31,6 +32,7 @@ class PersonalBoardView extends StatelessWidget {
   final RelayDiscovery? firstRunDiscovery;
   final bool firstRunDiscoveryLoading;
   final ValueChanged<String> onOpenDiscoveredForumHost;
+  final VoidCallback onDiscover;
   final void Function(BuildContext, CircleTab) onOpenCircle;
   final Future<void> Function() onStartAiAction;
   final VoidCallback onComposeTap;
@@ -286,6 +288,58 @@ class PersonalBoardView extends StatelessWidget {
       );
     }
 
+    Widget discoveryEntry() {
+      return InkWell(
+        key: const Key('wall_discovery_entry'),
+        onTap: onDiscover,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: bgSoftColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderSoft, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.explore_outlined, size: 20, color: fgColor),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.uiCopy(zh: '探索', en: 'DISCOVER'),
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 11,
+                        letterSpacing: 1.3,
+                        color: fgColor,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      context.uiCopy(
+                        zh: '尋找值得追蹤的人、看板與公開貼文。',
+                        en: 'Find people, boards, and public posts to follow.',
+                      ),
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 13,
+                        height: 1.35,
+                        color: mutedColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward, size: 18, color: faintColor),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -295,6 +349,8 @@ class PersonalBoardView extends StatelessWidget {
         ListView(
           padding: const EdgeInsets.only(bottom: 80),
           children: [
+            discoveryEntry(),
+            const SizedBox(height: 10),
             aiBridge(),
             const SizedBox(height: 14),
             FirstRunDiscoverySection(

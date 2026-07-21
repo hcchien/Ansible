@@ -40,21 +40,33 @@ type Config struct {
 type Issuer struct {
 	issuerDID string
 	issuerURL string
-	privKey   ed25519.PrivateKey
+	signer    Signer
 	pubKey    ed25519.PublicKey
 	ttlDays   int
 	store     CredentialStore
 }
 
 func NewIssuer(cfg Config, store CredentialStore) (*Issuer, error) {
-	seed, err := hex.DecodeString(cfg.PrivKeyHex)
+	signer, err := NewEd25519SeedSigner(cfg.IssuerDID+"#key-1", cfg.PrivKeyHex)
 	if err != nil {
-		return nil, fmt.Errorf("invalid private key hex: %w", err)
+		return nil, err
 	}
-	if len(seed) != ed25519.SeedSize {
-		return nil, fmt.Errorf("private key seed must be %d bytes, got %d", ed25519.SeedSize, len(seed))
+	return NewIssuerWithSigner(cfg, store, signer)
+}
+
+// NewIssuerWithSigner builds an issuer around an explicit key-custody
+// boundary. Hosted issuer tenants use this with a KMS/HSM-backed signer.
+func NewIssuerWithSigner(cfg Config, store CredentialStore, signer Signer) (*Issuer, error) {
+	if signer == nil {
+		return nil, fmt.Errorf("signer is required")
 	}
-	priv := ed25519.NewKeyFromSeed(seed)
+	if signer.Algorithm() != eddsaJCS2022 {
+		return nil, fmt.Errorf("unsupported signer algorithm %q", signer.Algorithm())
+	}
+	pub, ok := signer.PublicKey().(ed25519.PublicKey)
+	if !ok || len(pub) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("signer must expose an Ed25519 public key")
+	}
 	ttl := cfg.TTLDays
 	if ttl <= 0 {
 		ttl = defaultTTLDays
@@ -62,8 +74,8 @@ func NewIssuer(cfg Config, store CredentialStore) (*Issuer, error) {
 	return &Issuer{
 		issuerDID: cfg.IssuerDID,
 		issuerURL: cfg.IssuerURL,
-		privKey:   priv,
-		pubKey:    priv.Public().(ed25519.PublicKey),
+		signer:    signer,
+		pubKey:    append(ed25519.PublicKey(nil), pub...),
 		ttlDays:   ttl,
 		store:     store,
 	}, nil
@@ -307,7 +319,11 @@ func (iss *Issuer) createDataIntegrityProof(cred *Credential, now time.Time) (*P
 	if err != nil {
 		return nil, err
 	}
-	proof.ProofValue = multibaseBase58BTCEncode(ed25519.Sign(iss.privKey, hashData))
+	signature, err := iss.signer.Sign(hashData)
+	if err != nil {
+		return nil, fmt.Errorf("sign proof: %w", err)
+	}
+	proof.ProofValue = multibaseBase58BTCEncode(signature)
 	return proof, nil
 }
 

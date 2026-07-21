@@ -14,7 +14,11 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
              :tags,
              :permissions,
              :posting_policy,
-             :moderation_policy
+             :moderation_policy,
+             :access_policy,
+             :access_policy_version,
+             :content_visibility,
+             :federation_policy
            ]}
   schema "forum_host_boards" do
     field(:slug, :string)
@@ -26,6 +30,10 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
     field(:permissions, :map, default: %{})
     field(:posting_policy, :map, default: %{})
     field(:moderation_policy, :map, default: %{})
+    field(:access_policy, :map, default: AnsibleRelay.ForumHost.BoardAccessPolicy.default())
+    field(:access_policy_version, :integer, default: 1)
+    field(:content_visibility, :string, default: "public")
+    field(:federation_policy, :map, default: %{"mode" => "enabled"})
 
     timestamps(type: :utc_datetime_usec)
   end
@@ -42,14 +50,28 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
       :tags,
       :permissions,
       :posting_policy,
-      :moderation_policy
+      :moderation_policy,
+      :access_policy,
+      :access_policy_version,
+      :content_visibility,
+      :federation_policy
     ])
     |> validate_required([:hosted_board_id, :slug, :canonical_board_uri, :title])
     |> validate_posting_policy()
+    |> validate_access_policy()
     |> validate_external_inclusion()
     |> unique_constraint(:hosted_board_id, name: :forum_host_boards_pkey)
     |> unique_constraint(:slug)
     |> unique_constraint(:canonical_board_uri)
+  end
+
+  defp validate_access_policy(changeset) do
+    validate_change(changeset, :access_policy, fn :access_policy, policy ->
+      case AnsibleRelay.ForumHost.BoardAccessPolicy.validate(policy) do
+        :ok -> []
+        {:error, reason} -> [access_policy: Atom.to_string(reason)]
+      end
+    end)
   end
 
   # posting_policy["min_post_tier"] is optional (absent = no gate) but must be
@@ -104,5 +126,4 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
     end
   end
 
-  defp gated_min_post_tier?(_policy), do: false
 end

@@ -224,6 +224,7 @@ class MainPanel extends StatelessWidget {
                     firstRunDiscovery: firstRunDiscovery,
                     firstRunDiscoveryLoading: firstRunDiscoveryLoading,
                     onOpenDiscoveredForumHost: onOpenDiscoveredForumHost,
+                    onDiscover: onDiscoverBoards,
                     onOpenCircle: onOpenCircle,
                     onStartAiAction: onStartAiAction,
                     onComposeTap: onComposeTap,
