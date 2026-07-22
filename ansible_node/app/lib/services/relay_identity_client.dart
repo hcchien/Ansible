@@ -68,10 +68,12 @@ class RelayIdentityClient {
           .timeout(timeout);
       if (response.statusCode == 404) return null;
       if (response.statusCode != 200) {
+        final decoded = _tryDecodeObject(response.body);
         throw RelayIdentityException(
           statusCode: response.statusCode,
           responseBody: response.body,
-          error: 'public_key_fetch_failed',
+          error: decoded?['error'] as String? ?? 'public_key_fetch_failed',
+          message: decoded?['message'] as String?,
         );
       }
       final decoded = _decodeObject(response.body);
@@ -97,6 +99,14 @@ class RelayIdentityClient {
     final decoded = jsonDecode(responseBody);
     if (decoded is Map<String, dynamic>) return decoded;
     throw FormatException('Expected JSON object from Relay: $responseBody');
+  }
+
+  Map<String, dynamic>? _tryDecodeObject(String responseBody) {
+    try {
+      return _decodeObject(responseBody);
+    } on FormatException {
+      return null;
+    }
   }
 
   Uri _endpoint(String path) {

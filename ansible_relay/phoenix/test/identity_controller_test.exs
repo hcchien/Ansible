@@ -5,7 +5,7 @@ defmodule AnsibleRelay.Web.IdentityControllerTest do
   # The Phase 1 ZKP challenge/anchor flow was retired (did:elix + the
   # self-certifying anchor replaced it). Only the public-key read survives.
 
-  alias AnsibleRelay.IdentityCache
+  alias AnsibleRelay.{DidAccountCache, IdentityCache}
   alias AnsibleRelay.Web.Router
 
   @router_opts Router.init([])
@@ -37,6 +37,25 @@ defmodule AnsibleRelay.Web.IdentityControllerTest do
     body = Jason.decode!(response.resp_body)
     assert body["did"] == did
     assert body["public_key_hex"] == "abcdef0123456789"
+  end
+
+  test "public-key uses the V2 account key used by hardware rotation" do
+    did = "did:elix:v2key#{System.unique_integer([:positive])}"
+    handle = "v2key#{System.unique_integer([:positive])}.elix.cool"
+
+    :ok =
+      DidAccountCache.put(did, "04abcdef", handle,
+        signing_algorithm: "p256-sha256",
+        key_version: 3
+      )
+
+    response = get_req("/api/v1/identity/public-key/#{did}")
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["public_key_hex"] == "04abcdef"
+    assert body["signing_algorithm"] == "p256-sha256"
+    assert body["key_version"] == 3
   end
 
   test "public-key returns 404 for an unknown DID" do

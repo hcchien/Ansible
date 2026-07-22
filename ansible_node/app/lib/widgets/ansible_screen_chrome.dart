@@ -117,6 +117,7 @@ class AnsibleSettingsRow extends StatelessWidget {
     this.last = false,
     this.danger = false,
     this.valueColor,
+    this.trailingIcon = Icons.chevron_right,
   });
 
   final String glyph;
@@ -128,6 +129,7 @@ class AnsibleSettingsRow extends StatelessWidget {
   final bool last;
   final bool danger;
   final Color? valueColor;
+  final IconData trailingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -200,11 +202,7 @@ class AnsibleSettingsRow extends StatelessWidget {
               ),
             ],
             const SizedBox(width: 5),
-            const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: AnsibleDesign.inkFaint,
-            ),
+            Icon(trailingIcon, size: 16, color: AnsibleDesign.inkFaint),
           ],
         ),
       ),

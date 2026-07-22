@@ -47,6 +47,20 @@ String userFacingError(BuildContext context, Object error) {
     final mapped = _anchorErrorCopy(context, error);
     if (mapped != null) return mapped;
   }
+  if (error is RelayIdentityException) {
+    if (error.statusCode == 503 || error.error == 'verification_unavailable') {
+      return context.uiCopy(
+        zh: '身分服務暫時無法使用；金鑰尚未變更，請稍後再試。',
+        en: 'Identity service is temporarily unavailable. Your key was not changed; try again later.',
+      );
+    }
+    if (error.statusCode == 0 || error.error == 'network_error') {
+      return context.uiCopy(
+        zh: '無法連線到身分服務；金鑰尚未變更。請檢查網路後再試。',
+        en: 'Could not reach the identity service. Your key was not changed; check your connection and try again.',
+      );
+    }
+  }
   if (_isPostingRequiresTier(error)) {
     return context.uiCopy(
       zh: '此看板僅限通過真人驗證的成員發文。請先完成真人驗證（升級驗證），再試一次。',

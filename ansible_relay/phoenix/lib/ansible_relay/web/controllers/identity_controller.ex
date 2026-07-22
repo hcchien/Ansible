@@ -14,7 +14,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
 
   # GET /api/v1/identity/public-key/:did
   def public_key(conn, %{"did" => did}) do
-    case IdentityCache.get(did) do
+    case verification_key(did) do
       :not_found ->
         send_json(conn, 404, %{error: "did_not_found"})
 
@@ -28,6 +28,26 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
           signing_algorithm: Map.get(entry, :signing_algorithm, "ed25519"),
           key_version: Map.get(entry, :key_version, 1)
         })
+    end
+  end
+
+  # V2 account registration and hardware key rotation are authoritative in
+  # DidAccountCache. IdentityCache remains as a legacy read path for older
+  # anchors. Looking in the legacy cache first made otherwise healthy V2
+  # accounts impossible to upgrade whenever verified_dids was unavailable.
+  defp verification_key(did) do
+    case DidAccountCache.get(did) do
+      {:ok, entry} ->
+        {:ok, entry}
+
+      :not_found ->
+        IdentityCache.get(did)
+
+      {:error, :unavailable} ->
+        case IdentityCache.get(did) do
+          {:ok, entry} -> {:ok, entry}
+          _ -> {:error, :unavailable}
+        end
     end
   end
 

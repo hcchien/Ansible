@@ -1,5 +1,79 @@
 part of 'settings_home_screen.dart';
 
+class _IssuerToolsFold extends StatefulWidget {
+  const _IssuerToolsFold({required this.did});
+
+  final String did;
+
+  @override
+  State<_IssuerToolsFold> createState() => _IssuerToolsFoldState();
+}
+
+class _IssuerToolsFoldState extends State<_IssuerToolsFold> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AnsibleSettingsRow(
+          key: const Key('settings_issuer_tools_fold'),
+          glyph: '◇',
+          label: context.uiCopy(zh: '簽發憑證與組織工具', en: 'Credential issuer tools'),
+          en: 'ADVANCED',
+          sub: context.uiCopy(
+            zh: '需要自行簽發會員憑證時再設定',
+            en: 'Set up only if you need to issue membership credentials',
+          ),
+          value: _expanded
+              ? context.uiCopy(zh: '收合', en: 'Hide')
+              : context.uiCopy(zh: '展開', en: 'Show'),
+          trailingIcon: _expanded ? Icons.expand_less : Icons.expand_more,
+          onTap: () => setState(() => _expanded = !_expanded),
+        ),
+        if (_expanded) ...[
+          AnsibleSettingsRow(
+            key: const Key('settings_hosted_issuer_row'),
+            glyph: '◇',
+            label: context.uiCopy(zh: '代管簽發者', en: 'Hosted Issuer'),
+            en: 'ISSUER',
+            sub: context.uiCopy(
+              zh: '組織會員憑證與簽章治理',
+              en: 'Organization credentials and signing governance',
+            ),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      HostedIssuerOnboardingScreen(ownerDid: widget.did),
+                ),
+              );
+            },
+          ),
+          AnsibleSettingsRow(
+            key: const Key('settings_hosted_issuer_admins_row'),
+            glyph: '⋮',
+            label: context.uiCopy(zh: '簽發者管理員', en: 'Issuer administrators'),
+            en: 'GOVERNANCE',
+            sub: context.uiCopy(
+              zh: '加入請求、Passkey 與多人核准',
+              en: 'Enrollment, passkeys, and multi-admin approval',
+            ),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      HostedIssuerAdministratorsScreen(localDid: widget.did),
+                ),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _IdentityCustodyRow extends StatefulWidget {
   const _IdentityCustodyRow({required this.did});
   final String did;

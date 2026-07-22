@@ -47,4 +47,24 @@ void main() {
       ),
     );
   });
+
+  test('fetchPublicKey preserves a retryable identity service error', () async {
+    final client = RelayIdentityClient(
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({'error': 'verification_unavailable', 'retryable': true}),
+          503,
+        ),
+      ),
+    );
+
+    expect(
+      () => client.fetchPublicKey('did:elix:test'),
+      throwsA(
+        isA<RelayIdentityException>()
+            .having((e) => e.statusCode, 'statusCode', 503)
+            .having((e) => e.error, 'error', 'verification_unavailable'),
+      ),
+    );
+  });
 }

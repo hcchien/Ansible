@@ -305,45 +305,7 @@ class SettingsHomeScreen extends StatelessWidget {
                   );
                 },
               ),
-              AnsibleSettingsRow(
-                key: const Key('settings_hosted_issuer_row'),
-                glyph: '◇',
-                label: context.uiCopy(zh: '代管簽發者', en: 'Hosted Issuer'),
-                en: 'ISSUER',
-                sub: context.uiCopy(
-                  zh: '組織會員憑證、管理員與簽章治理',
-                  en: 'Organization credentials, admins, and signing governance',
-                ),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          HostedIssuerOnboardingScreen(ownerDid: did),
-                    ),
-                  );
-                },
-              ),
-              AnsibleSettingsRow(
-                key: const Key('settings_hosted_issuer_admins_row'),
-                glyph: '⋮',
-                label: context.uiCopy(
-                  zh: '簽發者管理員',
-                  en: 'Issuer administrators',
-                ),
-                en: 'GOVERNANCE',
-                sub: context.uiCopy(
-                  zh: '加入請求、Passkey 與多人核准',
-                  en: 'Enrollment, passkeys, and multi-admin approval',
-                ),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          HostedIssuerAdministratorsScreen(localDid: did),
-                    ),
-                  );
-                },
-              ),
+              _IssuerToolsFold(did: did),
               _IdentityCustodyRow(did: did),
               AnsibleSettingsRow(
                 key: const Key('settings_approve_recovery_row'),
