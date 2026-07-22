@@ -9,6 +9,11 @@
 > `reply:<postId>`, `follower:<actorDid>`, `messenger:<messageId>`,
 > `moderation:<action>:<targetRef>` (the `moderation_outcome` type landed
 > with the moderation-state sync — always-on, no toggle, per Base Rule 6).
+> 2026-07-22 integration hardening: existing verified replies and decrypted
+> inbound messages are now rebuilt idempotently from SQLite on first app load;
+> manual sync from Sync Settings uses the same projector; notification rows can
+> open the live messenger conversation. Read state remains local and survives
+> rebuilds.
 > Phase B ships end-to-end **except platform credentials**: relay token
 > registry + debounced wake scheduler (payload asserted to be exactly
 > `{"hint":"sync"}`; unregister inside the debounce window cancels the
@@ -182,6 +187,17 @@ Elixir/Phoenix (`mix test`) + platform push setup (APNS key, FCM project).
 - [x] README component table row for notifications; `docs/ROADMAP.md`
       Product Track row updated; architecture plan's Phase 3 note that op
       firehose later replaces poll-on-wake.
+
+## Task 6: Local Projection Integration Hardening
+
+- [x] Backfill verified replies and successfully decrypted inbound messages
+      from existing SQLite state using the same stable dedup keys.
+- [x] Preserve read state during every backfill and exclude unverified local
+      rows from becoming trusted notifications.
+- [x] Run the notification projector for manual Sync Settings pulls as well as
+      the home/background sync path.
+- [x] Pass the messenger service into the navigation tab so message
+      notifications open their local conversation.
 
 ## Definition of Done
 

@@ -15,6 +15,8 @@ import '../services/private_board_key_client.dart';
 import '../services/nostr_publication_service.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
+import '../services/notification_preferences_controller.dart';
+import '../services/notification_projector.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
 import '../services/relay_reputation_presentation_service.dart';
@@ -532,6 +534,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         boardRepo: _boardRepo,
         threadRepo: _threadRepo,
         postRepo: _postRepo,
+        notificationProjector: NotificationProjector(
+          notifications: DriftNotificationRepository(widget.db),
+          localDid: widget.localDid,
+          threadRepository: _threadRepo,
+          postRepository: _postRepo,
+          contactRepository: DriftContactRepository(widget.db),
+          isCategoryEnabled:
+              NotificationPreferencesController().categoryEnabled,
+        ),
         remoteTombstoneRepository: DriftRemoteTombstoneRepository(widget.db),
         authorizeBoardRead: (board, requestUri) async {
           var capability = boardCapabilities[board.hostedBoardId];

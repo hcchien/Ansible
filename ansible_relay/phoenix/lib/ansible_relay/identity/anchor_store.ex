@@ -177,13 +177,14 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   """
   def submit(anchor, opts \\ []) when is_map(anchor) do
     recovery_proof = opts[:recovery_proof] || fetch(anchor, "recovery_proof")
+    recovery_authorized = opts[:recovery_authorized] == true
 
     with {:ok, did, reason} <- validate_shape(anchor),
          :ok <- ensure_not_frozen(did),
          :ok <- verify_device_attestations(anchor),
          body = canonical_body(anchor),
          cid = cid_of_body(body) do
-      dispatch(reason, anchor, did, body, cid, recovery_proof)
+      dispatch(reason, anchor, did, body, cid, recovery_proof, recovery_authorized)
     end
   end
 
@@ -260,7 +261,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   # this anchor's own identity_key + handle (DidElix.matches?), so the canonical
   # identifier can never be claimed for a key that didn't generate it. This is
   # what makes a genesis anchor verifiable by any relay without trusting us.
-  defp dispatch("initial", anchor, did, body, cid, _proof) do
+  defp dispatch("initial", anchor, did, body, cid, _proof, _recovery_authorized) do
     cond do
       not is_nil(fetch(anchor, "prev_anchor_cid")) ->
         {:error, :chain_mismatch}
@@ -284,23 +285,9 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     end
   end
 
-  # did:elix genesis must hash to its own (identity_key, handle, custody_class).
-  # Non-elix DIDs (e.g. a did:plc bridge alias anchoring) are not gated here.
-  defp genesis_did_self_certifies?(anchor, "did:elix:" <> _ = did) do
-    DidElix.matches?(
-      did,
-      fetch(anchor, "identity_key"),
-      fetch(anchor, "handle"),
-      fetch(anchor, "custody_class") || "software",
-      identity_key_algorithm(anchor)
-    )
-  end
-
-  defp genesis_did_self_certifies?(_anchor, _did), do: true
-
   # rotation: new anchor signed by BOTH the prior active identity_key AND the
   # new identity_key. Possession of the old key is full authority → swap now.
-  defp dispatch("rotation", anchor, did, body, cid, _proof) do
+  defp dispatch("rotation", anchor, did, body, cid, _proof, _recovery_authorized) do
     with {:ok, prev} <- require_chain_link(anchor, did),
          new_key = fetch(anchor, "identity_key"),
          old_sig = fetch(anchor, "device_sig"),
@@ -316,9 +303,10 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     end
   end
 
-  # device_change: valid identity_key sig + a sig by an enrolled device key
-  # from the current active anchor. Immediate.
-  defp dispatch("device_change", anchor, did, body, cid, _proof) do
+  # device_change: valid new/current identity signature plus high-authority
+  # approval from the active identity key. A legacy enrolled device signature
+  # remains accepted during migration. Immediate.
+  defp dispatch("device_change", anchor, did, body, cid, _proof, _recovery_authorized) do
     with {:ok, prev} <- require_chain_link(anchor, did),
          true <-
            verify(
@@ -329,17 +317,18 @@ defmodule AnsibleRelay.Identity.AnchorStore do
            ) ||
              {:error, :invalid_signature},
          device_sig = fetch(anchor, "device_sig"),
-         true <- enrolled_device_signed?(prev, body, device_sig) || {:error, :invalid_signature} do
+         true <- active_authority_signed?(prev, body, device_sig) || {:error, :invalid_signature} do
       swap_in_active(anchor, did, body, cid, "device_change", prev)
     else
       {:error, _} = err -> err
     end
   end
 
-  # recovery (path a): old identity key lost. recovery_proof is a signature by
-  # an enrolled device key from the PREVIOUS active anchor. NOT immediate —
-  # held pending for the grace window; all enrolled devices are alerted.
-  defp dispatch("recovery", anchor, did, body, cid, recovery_proof) do
+  # recovery (path a): recovery_proof is a signature by the PREVIOUS active
+  # identity key (or a legacy enrolled device key during migration). Path b is
+  # authorized by an atomically consumed recovery code. Neither is immediate:
+  # both are held pending for the grace window and all devices are alerted.
+  defp dispatch("recovery", anchor, did, body, cid, recovery_proof, recovery_authorized) do
     with {:ok, prev} <- require_chain_link(anchor, did),
          true <-
            verify(
@@ -350,13 +339,27 @@ defmodule AnsibleRelay.Identity.AnchorStore do
            ) ||
              {:error, :invalid_signature},
          true <-
-           enrolled_device_signed?(prev, body, recovery_proof) ||
+           recovery_authorized || active_authority_signed?(prev, body, recovery_proof) ||
              {:error, :invalid_recovery_proof} do
       insert_pending_recovery(anchor, did, body, cid, prev)
     else
       {:error, _} = err -> err
     end
   end
+
+  # did:elix genesis must hash to its own (identity_key, handle, custody_class).
+  # Non-elix DIDs (e.g. a did:plc bridge alias anchoring) are not gated here.
+  defp genesis_did_self_certifies?(anchor, "did:elix:" <> _ = did) do
+    DidElix.matches?(
+      did,
+      fetch(anchor, "identity_key"),
+      fetch(anchor, "handle"),
+      fetch(anchor, "custody_class") || "software",
+      identity_key_algorithm(anchor)
+    )
+  end
+
+  defp genesis_did_self_certifies?(_anchor, _did), do: true
 
   defp require_chain_link(anchor, did) do
     prev = active_anchor(did)
@@ -370,13 +373,14 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     end
   end
 
-  defp enrolled_device_signed?(_prev, _body, nil), do: false
-  defp enrolled_device_signed?(_prev, _body, ""), do: false
+  defp active_authority_signed?(_prev, _body, nil), do: false
+  defp active_authority_signed?(_prev, _body, ""), do: false
 
-  defp enrolled_device_signed?(prev, body, sig) do
-    prev
-    |> enrolled_device_keys()
-    |> Enum.any?(fn key -> verify("ed25519", key, body, sig) end)
+  defp active_authority_signed?(prev, body, sig) do
+    verify(prev.identity_key_algorithm || "ed25519", prev.identity_key, body, sig) or
+      prev
+      |> enrolled_device_keys()
+      |> Enum.any?(fn key -> verify("ed25519", key, body, sig) end)
   end
 
   defp enrolled_device_keys(%IdentityAnchor{devices: %{"records" => records}})
@@ -395,6 +399,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       {:ok, row} ->
         sync_cache(row)
         AnsibleRelay.Metrics.inc("identity_reanchor_total", %{reason: reason})
+        audit_transition(row, reason)
         {:ok, :active, row}
 
       {:error, _changeset} ->
@@ -424,6 +429,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       {:ok, row} ->
         sync_cache(row)
         AnsibleRelay.Metrics.inc("identity_reanchor_total", %{reason: reason})
+        audit_transition(row, reason)
         {:ok, :active, row}
 
       {:error, _} ->
@@ -442,6 +448,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
         # Hijack resistance: alert ALL enrolled devices of the DID via the
         # existing content-free wake push, reason-coded `identity_alert`.
         AnsibleRelay.Identity.AnchorAlerts.recovery_pending(did)
+        audit_transition(row, "recovery_pending")
         {:ok, :pending, row}
 
       {:error, _changeset} ->
@@ -537,6 +544,8 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     case result do
       {:ok, row} ->
         sync_cache(row)
+        audit_transition(row, "recovery_promoted")
+        AnsibleRelay.Identity.AnchorAlerts.recovery_promoted(row.did)
         {:ok, row.anchor_cid}
 
       other ->
@@ -599,6 +608,16 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     end)
 
     AnsibleRelay.Metrics.inc("identity_veto_total")
+
+    AnsibleRelay.Identity.RecoveryStore.audit!(
+      pending.did,
+      "recovery_vetoed",
+      "enrolled_key_veto",
+      pending.anchor_cid
+    )
+
+    AnsibleRelay.Identity.AnchorAlerts.recovery_vetoed(pending.did)
+
     :ok
   end
 
@@ -758,8 +777,28 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     Application.get_env(:ansible_relay, :identity_recovery_grace_seconds, @default_grace_seconds)
   end
 
+  defp audit_transition(row, reason) do
+    event_type =
+      case reason do
+        "device_change" -> "devices_changed"
+        "rotation" -> "identity_rotated"
+        "recovery_pending" -> "recovery_pending"
+        "recovery_promoted" -> "recovery_promoted"
+        _ -> "identity_anchor_created"
+      end
+
+    AnsibleRelay.Identity.RecoveryStore.audit!(
+      row.did,
+      event_type,
+      reason,
+      row.anchor_cid
+    )
+  end
+
   @doc false
   def reset do
+    Repo.delete_all(AnsibleRelay.Db.IdentityRecoveryAuditEvent)
+    Repo.delete_all(AnsibleRelay.Db.IdentityRecoveryCode)
     Repo.delete_all(IdentityAnchor)
     Repo.delete_all(IdentityAccountFreeze)
     :ok

@@ -108,19 +108,26 @@ Specs now align with the break-glass model:
 
 ### Hardware-Backed Key Storage And Reduced-Trust Mode
 
-Status: Not compliant yet.
+Status: Partially implemented.
 
-Current DID, PLC, and Nostr key paths still persist raw private key hex through
-`flutter_secure_storage`-style storage. Some comments describe Secure
-Enclave/StrongBox semantics, but the implementation is not yet a real
-hardware-held signing-key path.
+The mobile identity path now supports non-exportable P-256 keys in Secure
+Enclave/Android Keystore, hardware-authorized device approval and revocation,
+one-time recovery codes, delayed/vetoable recovery, and hardware-scoped private
+board agreement keys. Legacy encrypted-key backup is explicitly reduced trust
+and is not the default recovery authority for a hardware identity.
+
+Some legacy DID, PLC, Nostr, desktop, and compatibility device-key paths still
+persist or accept exportable key material. Those paths prevent a claim of full
+compliance.
 
 Required follow-up:
 
-- Implement platform-backed signing keys where available.
-- Prevent raw private key export from first-party self-custody paths.
-- Add explicit reduced-trust mode when hardware backing is unavailable.
-- Update comments so they do not overclaim hardware custody before it exists.
+- Finish platform-backed signing and attestation for every supported desktop
+  and protocol-specific key path.
+- Remove the legacy enrolled-device signature fallback after existing clients
+  have migrated to hardware identity authorization.
+- Prevent raw private key export from the remaining first-party self-custody
+  paths and retain explicit reduced-trust labeling where hardware is absent.
 
 Constitution rules affected:
 

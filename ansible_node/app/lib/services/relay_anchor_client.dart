@@ -143,6 +143,30 @@ class RelayAnchorClient {
     throw _toException(response, decoded);
   }
 
+  /// Starts the same delayed recovery ceremony with a user-held one-time code
+  /// instead of an enrolled-device signature. The Relay consumes the code only
+  /// after it has accepted the new-key anchor as pending.
+  Future<AnchorSubmitResult> submitAnchorWithRecoveryCode(
+    IdentityAnchor anchor, {
+    required String recoveryCode,
+  }) async {
+    final response = await _post('/api/v1/identity/recovery-code/recover', {
+      'anchor': anchor.toCanonicalMap(),
+      'recovery_code': recoveryCode,
+    });
+    final decoded = _decodeObject(response);
+    if (response.statusCode == 202) {
+      final graceRaw = decoded['grace_until'];
+      return AnchorSubmitResult(
+        state: AnchorState.pending,
+        anchorCid: decoded['anchor_cid'] as String,
+        statusCode: response.statusCode,
+        graceUntil: graceRaw is String ? DateTime.tryParse(graceRaw) : null,
+      );
+    }
+    throw _toException(response, decoded);
+  }
+
   /// GET the active anchor object for [did]. Returns null on 404
   /// (no anchor yet). Throws [RelayAnchorException] on 423 (frozen) / others.
   Future<IdentityAnchor?> fetchActiveAnchor(String did) async {

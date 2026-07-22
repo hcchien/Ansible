@@ -45,6 +45,7 @@ import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
 import '../services/notification_preferences_controller.dart';
 import '../services/notification_projector.dart';
+import '../services/local_notification_rebuilder.dart';
 import '../services/private_board_op_factory.dart';
 import '../services/private_board_crypto_service.dart';
 import '../services/private_board_key_client.dart';
@@ -143,7 +144,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final store.NotificationRepository _notificationRepo;
   late final NotificationPreferencesController _notificationPrefs;
   late final NotificationProjector _notificationProjector;
+  late final LocalNotificationRebuilder _notificationRebuilder;
   int _notificationUnreadCount = 0;
+  bool _notificationBackfillDone = false;
   late final MessengerContactResolver _messengerContactResolver;
   late final ContactResolver _contactResolver;
   late final DriftRemoteNodeRepository _remoteNodeRepo;
@@ -227,6 +230,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       postRepository: _postRepo,
       contactRepository: _contactRepo,
       isCategoryEnabled: _notificationPrefs.categoryEnabled,
+    );
+    _notificationRebuilder = LocalNotificationRebuilder(
+      notifications: _notificationRepo,
+      threads: _threadRepo,
+      posts: _postRepo,
+      messenger: _messengerRepo,
+      localDid: widget.did,
     );
     _messengerSyncService = MessengerSyncService(
       repository: _messengerRepo,
@@ -381,13 +391,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
-    unawaited(_refreshNotificationUnread());
     final l10n = context.l10n;
     await ContactSourceSyncService(
       followRepository: _followRepo,
       contactRepository: _contactRepo,
       messengerRepository: _messengerRepo,
     ).syncForIdentity(widget.did);
+    if (!_notificationBackfillDone) {
+      await _notificationRebuilder.rebuild();
+      _notificationBackfillDone = true;
+    }
+    await _refreshNotificationUnread();
     final remoteNodes = await _remoteNodeRepo.list();
     final hasActiveRemoteNode = remoteNodes.any((node) => node.isActive);
     final hasActiveForumHost = (await _forumHostRepo.listActive()).isNotEmpty;
@@ -1947,6 +1961,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       db: widget.db,
       did: widget.did,
       embedded: embedded,
+      messengerService: _messengerSyncService,
     );
   }
 

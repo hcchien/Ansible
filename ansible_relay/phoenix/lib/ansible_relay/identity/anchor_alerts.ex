@@ -25,6 +25,16 @@ defmodule AnsibleRelay.Identity.AnchorAlerts do
     alert(did, "recovery_pending")
   end
 
+  @doc "Wake every enrolled device after a delayed recovery is promoted."
+  def recovery_promoted(did) when is_binary(did) do
+    alert(did, "recovery_promoted")
+  end
+
+  @doc "Wake every enrolled device after a recovery is vetoed and frozen."
+  def recovery_vetoed(did) when is_binary(did) do
+    alert(did, "recovery_vetoed")
+  end
+
   defp alert(did, reason_code) do
     did
     |> all_devices()

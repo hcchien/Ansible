@@ -1,7 +1,5 @@
 defmodule AnsibleRelay.Web.Router do
   use Plug.Router
-  require Logger
-
   plug(Plug.Logger)
   plug(:put_cors_headers)
   plug(AnsibleRelay.Web.Plugs.RequireProtocolVersion)
@@ -103,6 +101,32 @@ defmodule AnsibleRelay.Web.Router do
 
   post "/api/v1/identity/anchor/veto" do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.veto(conn, conn.body_params)
+  end
+
+  post "/api/v1/identity/recovery-codes" do
+    AnsibleRelay.Web.Controllers.IdentityRecoveryController.configure_codes(
+      conn,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/identity/recovery-codes/:did/status" do
+    AnsibleRelay.Web.Controllers.IdentityRecoveryController.code_status(conn, %{"did" => did})
+  end
+
+  post "/api/v1/identity/recovery-code/recover" do
+    AnsibleRelay.Web.Controllers.IdentityRecoveryController.recover_with_code(
+      conn,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/identity/anchor/:did/devices" do
+    AnsibleRelay.Web.Controllers.IdentityRecoveryController.devices(conn, %{"did" => did})
+  end
+
+  get "/api/v1/identity/anchor/:did/audit" do
+    AnsibleRelay.Web.Controllers.IdentityRecoveryController.audit(conn, %{"did" => did})
   end
 
   # NOTE: declared before the :did route so "pending" is not captured as a DID

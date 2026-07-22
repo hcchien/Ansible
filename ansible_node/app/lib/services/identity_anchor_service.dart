@@ -20,6 +20,7 @@ import 'secure_device_key_store.dart';
 /// [Ed25519Keys] used here.
 abstract class IdentityKey {
   const IdentityKey();
+
   /// The Ed25519 public key hex (the anchor's `identity_key`).
   Future<String> publicKeyHex();
 
@@ -56,6 +57,39 @@ class ActiveIdentityKey implements IdentityKey {
       (await _identity()).custody == 'hardware'
       ? CustodyClass.hardware
       : CustodyClass.software;
+}
+
+/// A non-exportable P-256 identity key used by replacement devices. The
+/// private key remains in Secure Enclave / Android Keystore; this wrapper only
+/// exposes public material and signing operations required by the anchor.
+class HardwareBackedIdentityKey implements IdentityKey {
+  HardwareBackedIdentityKey({HardwareIdentityKey? key})
+    : _key = key ?? HardwareIdentityKey();
+
+  final HardwareIdentityKey _key;
+  IdentityPublicKey? _publicKey;
+
+  Future<IdentityPublicKey> _ensure() async {
+    final existing = _publicKey ?? await _key.load();
+    final value = existing ?? await _key.generate();
+    if (value.custody != IdentityKeyCustody.hardware) {
+      throw StateError('Hardware identity custody is required for recovery.');
+    }
+    return _publicKey = value;
+  }
+
+  @override
+  Future<String> publicKeyHex() async => (await _ensure()).publicKeyHex;
+
+  @override
+  Future<String> sign(List<int> message) async =>
+      (await _key.sign(message)).hex;
+
+  @override
+  Future<String> algorithm() async => IdentityKeyAlgorithm.p256Sha256.wireName;
+
+  @override
+  Future<CustodyClass> custodyClass() async => CustodyClass.hardware;
 }
 
 /// Identity key backed by the same `ansible_did_private_key` secure-storage
@@ -256,6 +290,96 @@ class IdentityAnchorService {
       relayResult: result,
       deviceKey: deviceKey,
     );
+  }
+
+  /// Removes an enrolled device with a self-certifying `device_change`
+  /// anchor. The active identity key and this device's enrolled device key
+  /// co-sign the same canonical body. The current device cannot revoke itself
+  /// through this method because doing so would strand the local session.
+  Future<AnchorSubmitResult> revokeDevice({
+    required String did,
+    required String deviceId,
+    IdentityKey identityKey = const ActiveIdentityKey(),
+  }) async {
+    final previous = await relayClient.fetchActiveAnchor(did);
+    if (previous == null) {
+      throw StateError('No active identity anchor.');
+    }
+    final localDevice = await deviceKeyStore.load();
+    if (localDevice == null) throw StateError('No enrolled device key.');
+    if (localDevice.deviceId == deviceId) {
+      throw StateError('The current device cannot revoke itself.');
+    }
+    if (!previous.devices.any(
+      (device) => device.deviceId == localDevice.deviceId,
+    )) {
+      throw StateError('This device is not enrolled in the active anchor.');
+    }
+    final remainingBeforeAttestation = previous.devices
+        .where((device) => device.deviceId != deviceId)
+        .toList(growable: false);
+    if (remainingBeforeAttestation.length == previous.devices.length) {
+      throw StateError('The selected device is not enrolled.');
+    }
+    final identityCustody = await identityKey.custodyClass();
+    final remaining = <AnchorDeviceRecord>[];
+    for (final device in remainingBeforeAttestation) {
+      final message = DeviceKey.attestationMessageFor(
+        deviceId: device.deviceId,
+        deviceKeyHex: device.deviceKey,
+        custodyClass: device.custodyClass,
+        enrolledAt: device.enrolledAt,
+      );
+      remaining.add(
+        AnchorDeviceRecord(
+          deviceId: device.deviceId,
+          deviceKey: device.deviceKey,
+          custodyClass: device.custodyClass,
+          enrolledAt: device.enrolledAt,
+          attestationSig: await identityKey.sign(message),
+        ),
+      );
+    }
+
+    final unsigned = IdentityAnchor(
+      did: did,
+      handle: previous.handle,
+      identityKey: await identityKey.publicKeyHex(),
+      identityKeyAlgorithm: await identityKey.algorithm(),
+      alsoKnownAs: previous.alsoKnownAs,
+      custodyClass: identityCustody,
+      devices: remaining,
+      prevAnchorCid: previous.computeCid(),
+      reason: AnchorReason.deviceChange,
+      createdAt: now(),
+      sig: '',
+    );
+    final body = utf8.encode(unsigned.canonicalBodyJson());
+    final identitySignature = await identityKey.sign(body);
+    // Hardware identity custody is the primary high-authority approval. The
+    // Relay retains legacy enrolled-device verification for compatibility.
+    final deviceSignature = await identityKey.sign(body);
+    final anchor = IdentityAnchor(
+      schemaVersion: unsigned.schemaVersion,
+      did: unsigned.did,
+      handle: unsigned.handle,
+      identityKey: unsigned.identityKey,
+      identityKeyAlgorithm: unsigned.identityKeyAlgorithm,
+      alsoKnownAs: unsigned.alsoKnownAs,
+      custodyClass: unsigned.custodyClass,
+      devices: unsigned.devices,
+      prevAnchorCid: unsigned.prevAnchorCid,
+      reason: unsigned.reason,
+      createdAt: unsigned.createdAt,
+      sig: identitySignature,
+      deviceSig: deviceSignature,
+    );
+
+    final result = await relayClient.submitAnchor(anchor);
+    if (result.state == AnchorState.active) {
+      await anchorRepository.append(did, anchor);
+    }
+    return result;
   }
 
   Future<DeviceKey> _ensureDeviceKey() async {

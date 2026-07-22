@@ -26,11 +26,11 @@ import 'about_screen.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'identity_backup_screen.dart';
+import 'identity_security_screen.dart';
 import 'hosted_issuer_onboarding_screen.dart';
 import 'hosted_issuer_administrators_screen.dart';
 import 'inbox_screen.dart';
 import 'local_ai_access_screen.dart';
-import 'recovery_approve_scanner_screen.dart';
 import 'recovery_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'edit_profile_screen.dart';
@@ -308,23 +308,22 @@ class SettingsHomeScreen extends StatelessWidget {
               _IssuerToolsFold(did: did),
               _IdentityCustodyRow(did: did),
               AnsibleSettingsRow(
-                key: const Key('settings_approve_recovery_row'),
+                key: const Key('settings_identity_security_row'),
                 glyph: '⇄',
                 label: context.uiCopy(
-                  zh: '核可裝置 / 網頁登入',
-                  en: 'Approve device / web login',
+                  zh: '裝置與帳號復原',
+                  en: 'Devices and account recovery',
                 ),
-                en: 'APPROVE',
+                en: 'RECOVERY',
                 sub: context.uiCopy(
-                  zh: '掃描復原 QR 或網頁登入 QR',
-                  en: 'Scan a recovery QR or web login QR',
+                  zh: '新增、撤銷、恢復碼與安全紀錄',
+                  en: 'Approve, revoke, recovery codes, and audit',
                 ),
                 last: true,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          RecoveryApproveScannerScreen(localDid: did),
+                      builder: (_) => IdentitySecurityScreen(db: db, did: did),
                     ),
                   );
                 },

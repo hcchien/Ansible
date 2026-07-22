@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/atproto_client.dart';
 import '../services/recovery_approval_service.dart';
 import '../services/relay_anchor_client.dart';
@@ -48,6 +49,7 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
   String? _did;
   bool _busy = false;
   bool _approved = false;
+  DateTime? _graceUntil;
   String? _error;
   Timer? _poll;
 
@@ -156,11 +158,77 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
       if (!mounted || pending == null) return;
       if (pending.anchorCid == request.anchor.computeCid()) {
         _poll?.cancel();
-        await widget.installRecoveredKey(request.identitySeedHex);
+        await _service.installApprovedRequest(request);
         if (!mounted) return;
-        setState(() => _approved = true);
+        setState(() {
+          _approved = true;
+          _graceUntil = pending.graceUntil;
+        });
       }
     });
+  }
+
+  Future<void> _useRecoveryCode() async {
+    final request = _request;
+    if (request == null) return;
+    final controller = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.uiCopy(zh: '使用一次性恢復碼', en: 'Use recovery code')),
+        content: TextField(
+          key: const Key('lost_device_recovery_code'),
+          controller: controller,
+          autocorrect: false,
+          textCapitalization: TextCapitalization.characters,
+          decoration: InputDecoration(
+            hintText: 'XXXXX-XXXXX-XXXXX-XXXXX',
+            helperText: context.uiCopy(
+              zh: '恢復仍會等待 72 小時，其他裝置可以否決。',
+              en: 'Recovery still waits 72 hours and can be vetoed.',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(context.uiCopy(zh: '開始復原', en: 'Start recovery')),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (code == null || code.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final result = await _service.approveWithRecoveryCode(
+        request: request,
+        recoveryCode: code,
+      );
+      if (!result.isPending) throw StateError('Recovery was not held pending.');
+      await _service.installApprovedRequest(request);
+      if (!mounted) return;
+      _poll?.cancel();
+      setState(() {
+        _busy = false;
+        _approved = true;
+        _graceUntil = result.graceUntil;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = userFacingError(context, error);
+      });
+    }
   }
 
   @override
@@ -267,6 +335,22 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
             color: AnsibleDesign.inkMuted,
           ),
         ),
+        if (_graceUntil != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            context.uiCopy(
+              zh: '預計生效：${_graceUntil!.toLocal()}',
+              en: 'Expected activation: ${_graceUntil!.toLocal()}',
+            ),
+            key: const Key('recovery_grace_deadline'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 12,
+              color: AnsibleDesign.inkMuted,
+            ),
+          ),
+        ],
       ];
     }
     return [
@@ -330,6 +414,28 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
           ),
         ),
       ),
+      const SizedBox(height: 4),
+      Center(
+        child: TextButton.icon(
+          key: const Key('use_recovery_code_button'),
+          onPressed: _busy ? null : _useRecoveryCode,
+          icon: const Icon(Icons.password_outlined, size: 16),
+          label: Text(
+            context.uiCopy(
+              zh: '舊裝置遺失？使用一次性恢復碼',
+              en: 'Old device lost? Use a recovery code',
+            ),
+          ),
+        ),
+      ),
+      if (_error != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            _error!,
+            style: const TextStyle(color: AnsibleDesign.ember),
+          ),
+        ),
       const SizedBox(height: 8),
       Text(
         context.uiCopy(

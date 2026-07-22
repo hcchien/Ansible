@@ -3,13 +3,14 @@ import 'dart:convert';
 import 'package:ansible_store/ansible_store.dart';
 
 import 'identity_anchor_service.dart';
+import 'canonical_identity_store.dart';
 import 'relay_anchor_client.dart';
 import 'secure_device_key_store.dart';
 
 /// Multi-device QR approve-from-other-device (recovery design flow 3a):
 /// a NEW device with no backup generates a fresh identity key and a
 /// `recovery` re-anchor; an OLD enrolled device scans the request as a QR,
-/// the user confirms, and the old device's DEVICE key signs the
+/// the user confirms, and the old device's active IDENTITY key signs the
 /// `recovery_proof` and submits — the relay then holds the re-anchor in its
 /// 72h grace window (hijack resistance still applies; other enrolled
 /// devices are alerted and can veto).
@@ -21,12 +22,22 @@ class RecoveryApprovalService {
   RecoveryApprovalService({
     required this.relayClient,
     DeviceKeyStore? deviceKeyStore,
+    IdentityKey? approvalIdentityKey,
+    IdentityKey? replacementIdentityKey,
+    CanonicalIdentityStore? identityStore,
     DateTime Function()? now,
   }) : deviceKeyStore = deviceKeyStore ?? const SecureDeviceKeyStore(),
+       approvalIdentityKey = approvalIdentityKey ?? const ActiveIdentityKey(),
+       replacementIdentityKey =
+           replacementIdentityKey ?? HardwareBackedIdentityKey(),
+       identityStore = identityStore ?? const SecureCanonicalIdentityStore(),
        now = now ?? (() => DateTime.now().toUtc());
 
   final RelayAnchorClient relayClient;
   final DeviceKeyStore deviceKeyStore;
+  final IdentityKey approvalIdentityKey;
+  final IdentityKey replacementIdentityKey;
+  final CanonicalIdentityStore identityStore;
   final DateTime Function() now;
 
   static const qrType = 'elix.recovery.approve';
@@ -39,9 +50,8 @@ class RecoveryApprovalService {
   /// the relay's active anchor and signed by the new identity key. Returns
   /// null when the DID has no active anchor on the relay.
   ///
-  /// The caller must hold on to [RecoveryApprovalRequest.identitySeedHex] —
-  /// it becomes this device's identity key once the grace window promotes
-  /// the anchor.
+  /// The replacement identity key is generated in platform hardware. Only its
+  /// public key and signatures enter this request.
   Future<RecoveryApprovalRequest?> buildRequest({
     required String did,
     required String handle,
@@ -49,9 +59,10 @@ class RecoveryApprovalService {
     final previous = await relayClient.fetchActiveAnchor(did);
     if (previous == null) return null;
 
-    final identitySeedHex = await Ed25519Keys.generateSeedHex();
-    final identityKey = InMemoryIdentityKey(identitySeedHex);
+    final identityKey = replacementIdentityKey;
     final identityKeyHex = await identityKey.publicKeyHex();
+    final identityAlgorithm = await identityKey.algorithm();
+    final identityCustody = await identityKey.custodyClass();
     final enrolledAt = now();
 
     final deviceKey = await DeviceKey.generate();
@@ -67,18 +78,41 @@ class RecoveryApprovalService {
       attestationSigHex: attestationSig,
     );
 
+    // Preserve surviving approved devices. Their public records are
+    // re-attested by the replacement hardware identity key, so the promoted
+    // anchor adds this device instead of silently removing every old device.
+    final approvedDevices = <AnchorDeviceRecord>[];
+    for (final existing in previous.devices) {
+      final message = DeviceKey.attestationMessageFor(
+        deviceId: existing.deviceId,
+        deviceKeyHex: existing.deviceKey,
+        custodyClass: existing.custodyClass,
+        enrolledAt: existing.enrolledAt,
+      );
+      approvedDevices.add(
+        AnchorDeviceRecord(
+          deviceId: existing.deviceId,
+          deviceKey: existing.deviceKey,
+          custodyClass: existing.custodyClass,
+          enrolledAt: existing.enrolledAt,
+          attestationSig: await identityKey.sign(message),
+        ),
+      );
+    }
+    approvedDevices.add(deviceRecord);
+
     final unsigned = IdentityAnchor(
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
       // The identity key changes, so the did:key alias is rebuilt for the
       // new key (unlike flow 1, which reinstates the same key).
-      alsoKnownAs: buildAlsoKnownAs(
-        handle: handle,
-        identityKeyHex: identityKeyHex,
-      ),
-      custodyClass: CustodyClass.software,
-      devices: [deviceRecord],
+      alsoKnownAs: identityAlgorithm == 'ed25519'
+          ? buildAlsoKnownAs(handle: handle, identityKeyHex: identityKeyHex)
+          : ['at://$handle'],
+      identityKeyAlgorithm: identityAlgorithm,
+      custodyClass: identityCustody,
+      devices: approvedDevices,
       prevAnchorCid: previous.computeCid(),
       reason: AnchorReason.recovery,
       createdAt: enrolledAt,
@@ -91,20 +125,35 @@ class RecoveryApprovalService {
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
+      identityKeyAlgorithm: identityAlgorithm,
       alsoKnownAs: unsigned.alsoKnownAs,
-      custodyClass: CustodyClass.software,
-      devices: [deviceRecord],
+      custodyClass: identityCustody,
+      devices: approvedDevices,
       prevAnchorCid: unsigned.prevAnchorCid,
       reason: AnchorReason.recovery,
       createdAt: enrolledAt,
       sig: sig,
     );
 
-    return RecoveryApprovalRequest(
-      anchor: anchor,
-      identitySeedHex: identitySeedHex,
-      deviceKey: deviceKey,
+    return RecoveryApprovalRequest(anchor: anchor, deviceKey: deviceKey);
+  }
+
+  /// Installs only public identity metadata plus the new local device key after
+  /// Relay accepts the request as pending. No identity private bytes exist to
+  /// export or persist in hardware mode.
+  Future<void> installApprovedRequest(RecoveryApprovalRequest request) async {
+    await identityStore.save(
+      CanonicalIdentity(
+        did: request.anchor.did,
+        handle: request.anchor.handle,
+        publicKeyHex: request.anchor.identityKey,
+        signingAlgorithm: request.anchor.identityKeyAlgorithm,
+        custody: request.anchor.custodyClass == CustodyClass.hardware
+            ? 'hardware'
+            : 'reduced_trust',
+      ),
     );
+    await deviceKeyStore.save(request.deviceKey);
   }
 
   /// True once the request's anchor is pending on the relay (the old device
@@ -137,7 +186,9 @@ class RecoveryApprovalService {
 
   /// Approves [anchor] as the enrolled device for [localDid]: verifies it is
   /// a recovery of OUR identity chained onto the CURRENT active anchor,
-  /// signs the canonical body with this device's device key, and submits.
+  /// signs the canonical body with the currently active identity key, and
+  /// submits. In hardware-custody mode this requires platform user presence
+  /// (Face ID, Touch ID, or the device passcode).
   /// Returns the relay's pending result (grace window).
   ///
   /// Throws [RecoveryApprovalException] on every refusal so the UI can say
@@ -157,13 +208,7 @@ class RecoveryApprovalService {
       // Stale or replayed request — it must chain onto the CURRENT anchor.
       throw const RecoveryApprovalException('stale_request');
     }
-    final deviceKey = await deviceKeyStore.load();
-    if (deviceKey == null) {
-      throw const RecoveryApprovalException('no_device_key');
-    }
-
-    final recoveryProof = await Ed25519Keys.sign(
-      deviceKey.privateKeyHex,
+    final recoveryProof = await approvalIdentityKey.sign(
       utf8.encode(anchor.canonicalBodyJson()),
     );
 
@@ -173,21 +218,35 @@ class RecoveryApprovalService {
     );
     return result;
   }
+
+  Future<AnchorSubmitResult> approveWithRecoveryCode({
+    required RecoveryApprovalRequest request,
+    required String recoveryCode,
+  }) {
+    if (recoveryCode.trim().isEmpty) {
+      throw const RecoveryApprovalException('missing_recovery_code');
+    }
+    return relayClient.submitAnchorWithRecoveryCode(
+      request.anchor,
+      recoveryCode: recoveryCode,
+    );
+  }
 }
 
 /// The new device's outstanding recovery request.
 class RecoveryApprovalRequest {
   final IdentityAnchor anchor;
 
-  /// The new identity key seed — becomes this device's identity once the
-  /// grace window promotes the anchor. Keep it safe until then.
-  final String identitySeedHex;
   final DeviceKey deviceKey;
+
+  /// Legacy test/compatibility seam. Hardware recovery never sets or persists
+  /// exportable identity material.
+  final String? identitySeedHex;
 
   const RecoveryApprovalRequest({
     required this.anchor,
-    required this.identitySeedHex,
     required this.deviceKey,
+    this.identitySeedHex,
   });
 
   /// The QR payload the old device scans: the full signed anchor object.
