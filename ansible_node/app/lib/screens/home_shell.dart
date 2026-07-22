@@ -6,7 +6,6 @@ import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../config/app_environment.dart';
@@ -2355,14 +2354,28 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return l10n.daysAgo(diff.inDays);
   }
 
-  bool _handleCompactScroll(UserScrollNotification notification) {
+  bool _handleCompactScroll(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.vertical) return false;
 
-    final shouldShow =
-        notification.direction != ScrollDirection.reverse ||
-        notification.metrics.pixels <= 8;
-    if (shouldShow != _mobileNavigationVisible) {
-      setState(() => _mobileNavigationVisible = shouldShow);
+    bool? shouldShow;
+    if (notification.metrics.pixels <= 8) {
+      shouldShow = true;
+    } else if (notification is ScrollUpdateNotification) {
+      final delta = notification.scrollDelta;
+      if (delta != null && delta.abs() >= 0.5) {
+        // Positive delta means the viewport advances into newer content: make
+        // room for reading. Negative delta means the user is returning toward
+        // the top: reveal navigation immediately.
+        shouldShow = delta < 0;
+      }
+    } else if (notification is OverscrollNotification) {
+      if (notification.overscroll < 0) shouldShow = true;
+    }
+
+    if (shouldShow == null) return false;
+    final desiredVisibility = shouldShow;
+    if (desiredVisibility != _mobileNavigationVisible) {
+      setState(() => _mobileNavigationVisible = desiredVisibility);
     }
     return false;
   }
@@ -2505,7 +2518,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   _ShellDest.me => _buildSettings(embedded: true),
                   _ShellDest.board => mainPanel,
                 };
-                return NotificationListener<UserScrollNotification>(
+                return NotificationListener<ScrollNotification>(
                   onNotification: _handleCompactScroll,
                   child: destination,
                 );

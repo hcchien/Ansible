@@ -90,6 +90,31 @@ void main() {
     expect(icon.color, Colors.white);
   });
 
+  testWidgets('vertical content scroll hides and restores compact navigation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpHomeShell(tester, coachmarkSeen: true);
+    await tester.tap(find.byKey(const Key('settings_button')));
+    await tester.pumpAndSettle();
+
+    final reveal = find.byKey(const Key('home_bottom_navigation_reveal'));
+    expect(tester.getSize(reveal).height, greaterThan(0));
+
+    final settingsScroll = find.byType(Scrollable).first;
+    await tester.drag(settingsScroll, const Offset(0, -420));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(reveal).height, 0);
+
+    await tester.drag(settingsScroll, const Offset(0, 180));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(reveal).height, greaterThan(0));
+  });
+
   testWidgets('board switcher exposes tap tooltips and first-run guidance', (
     tester,
   ) async {
@@ -202,6 +227,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settings_style_choice_forum_ink')));
+    await tester.pumpAndSettle();
+    // Returning toward the top reveals the auto-hidden navigation.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('board_switch_forum')));
     await tester.pumpAndSettle();
