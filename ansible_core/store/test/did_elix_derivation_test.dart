@@ -84,6 +84,7 @@ void main() {
       );
       final did = deriveDidElix(identityKey: _vectorPubHex, handle: 'a.elix.cool');
       final anchor = IdentityAnchor(
+        schemaVersion: 2,
         did: did,
         handle: 'a.elix.cool',
         identityKey: _vectorPubHex,
