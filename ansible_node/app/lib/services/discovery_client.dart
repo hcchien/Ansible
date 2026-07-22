@@ -240,9 +240,15 @@ class DiscoveryClient {
     final q = query.trim();
     if (q.isEmpty) return const SearchResults();
 
+    // AppView and Relay are independent discovery sources. One projection
+    // being temporarily unavailable must not erase valid results from the
+    // other source.
     final results = await Future.wait([
-      _searchPeopleAndPosts(q, limit),
-      searchBoards(query: q, limit: limit),
+      _searchPeopleAndPosts(q, limit).onError((_, _) => const SearchResults()),
+      searchBoards(
+        query: q,
+        limit: limit,
+      ).onError((_, _) => const <BoardSearchResult>[]),
     ]);
 
     final peoplePosts = results[0] as SearchResults;

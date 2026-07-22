@@ -115,7 +115,8 @@ class HomeTopBar extends StatelessWidget {
                 },
               ),
               SizedBox(width: compact ? 2 : 8),
-              IconButton(
+              IconButton.filledTonal(
+                key: const Key('home_discovery_button'),
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -143,7 +144,14 @@ class HomeTopBar extends StatelessWidget {
                   );
                 },
                 icon: const Icon(Icons.explore_outlined),
-                color: styleData.muted,
+                color: styleData.foreground,
+                style: IconButton.styleFrom(
+                  backgroundColor: AnsibleDesign.ochre.withValues(alpha: 0.18),
+                  side: const BorderSide(
+                    color: AnsibleDesign.ochre,
+                    width: 0.7,
+                  ),
+                ),
                 tooltip: context.uiCopy(zh: '探索', en: 'Discover'),
               ),
               IconButton(

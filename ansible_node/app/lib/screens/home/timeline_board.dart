@@ -38,6 +38,7 @@ class TimelineBoardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final style = ElixScreenStyleScope.dataOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -47,47 +48,55 @@ class TimelineBoardView extends StatelessWidget {
               : followingPosts.isEmpty
               ? _timelineEmptyState(context)
               : ListView.separated(
-                  itemCount: followingPosts.length,
+                  itemCount: followingPosts.length + 1,
                   padding: const EdgeInsets.only(bottom: 12),
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) => PostCard(
-                    db: db,
-                    data: followingPosts[index],
-                    authorDid: did,
-                    opsDispatchService: opsDispatchService,
-                    onFlushPendingOps: onFlushPendingOps,
-                    onOpenAuthor: (authorDid) {
-                      if (authorDid.isEmpty || authorDid == did) return;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => UserProfileScreen(
-                            db: db,
-                            followerDid: did,
-                            did: authorDid,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _discoveryEntry(context, style);
+                    }
+                    final post = followingPosts[index - 1];
+                    return PostCard(
+                      db: db,
+                      data: post,
+                      authorDid: did,
+                      opsDispatchService: opsDispatchService,
+                      onFlushPendingOps: onFlushPendingOps,
+                      onOpenAuthor: (authorDid) {
+                        if (authorDid.isEmpty || authorDid == did) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => UserProfileScreen(
+                              db: db,
+                              followerDid: did,
+                              did: authorDid,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    onOpenContent: (data) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ContentDetailScreen(
-                            db: db,
-                            localDid: did,
-                            contentId: data.thread.id,
-                            authorDid: data.author,
-                            body: data.content,
-                            title: data.title,
-                            timeAgo: data.timeAgo,
-                            opsDispatchService: opsDispatchService,
-                            onFlushPendingOps: onFlushPendingOps,
-                            // Carry the feed's Paper/Ink choice into the detail.
-                            screenStyle: ElixScreenStyleScope.styleOf(context),
+                        );
+                      },
+                      onOpenContent: (data) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ContentDetailScreen(
+                              db: db,
+                              localDid: did,
+                              contentId: data.thread.id,
+                              authorDid: data.author,
+                              body: data.content,
+                              title: data.title,
+                              timeAgo: data.timeAgo,
+                              opsDispatchService: opsDispatchService,
+                              onFlushPendingOps: onFlushPendingOps,
+                              // Carry the feed's Paper/Ink choice into the detail.
+                              screenStyle: ElixScreenStyleScope.styleOf(
+                                context,
+                              ),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    );
+                  },
                 ),
         ),
       ],
@@ -100,25 +109,11 @@ class TimelineBoardView extends StatelessWidget {
   Widget _timelineEmptyState(BuildContext context) {
     final style = ElixScreenStyleScope.dataOf(context);
 
-    void openDiscover({required bool boards}) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => DiscoverScreen(
-            db: db,
-            localDid: did,
-            startOnBoards: boards,
-            client: DiscoveryClient(
-              appViewBaseUrl: AppEnvironment.appViewBaseUrl,
-              relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
-            ),
-          ),
-        ),
-      );
-    }
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(4, 24, 4, 24),
       children: [
+        _discoveryEntry(context, style),
+        const SizedBox(height: 24),
         Text(
           context.uiCopy(zh: '動態牆還沒有內容', en: 'Your feed is empty'),
           style: TextStyle(
@@ -153,7 +148,7 @@ class TimelineBoardView extends StatelessWidget {
             zh: '尋找公開討論。',
             en: 'Find public discussions.',
           ),
-          onTap: () => openDiscover(boards: true),
+          onTap: () => _openDiscover(context, boards: true),
         ),
         _guideStep(
           context,
@@ -166,9 +161,94 @@ class TimelineBoardView extends StatelessWidget {
             zh: '從公開使用者目錄開始。',
             en: 'Browse the public people directory.',
           ),
-          onTap: () => openDiscover(boards: false),
+          onTap: () => _openDiscover(context, boards: false),
         ),
       ],
+    );
+  }
+
+  void _openDiscover(BuildContext context, {bool boards = false}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DiscoverScreen(
+          db: db,
+          localDid: did,
+          startOnBoards: boards,
+          client: DiscoveryClient(
+            appViewBaseUrl: AppEnvironment.appViewBaseUrl,
+            relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _discoveryEntry(BuildContext context, ElixScreenStyleData style) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+      child: Material(
+        color: AnsibleDesign.ochre.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          key: const Key('timeline_discovery_entry'),
+          onTap: () => _openDiscover(context),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AnsibleDesign.ochre, width: 1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    color: AnsibleDesign.ochre,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.explore_outlined,
+                    color: Colors.white,
+                    size: 23,
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.uiCopy(zh: '探索 Elix', en: 'Discover Elix'),
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.serif,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: style.foreground,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        context.uiCopy(
+                          zh: '尋找使用者、看板與公開貼文',
+                          en: 'Find people, boards, and public posts',
+                        ),
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.serif,
+                          fontSize: 13,
+                          color: style.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward, color: style.foreground, size: 21),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

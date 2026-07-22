@@ -6,6 +6,7 @@ import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../config/app_environment.dart';
@@ -194,6 +195,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late HomeBoard _selectedBoard;
   // Active compact bottom-nav destination (boards pager / notifications / me).
   _ShellDest _dest = _ShellDest.board;
+  bool _mobileNavigationVisible = true;
   ElixBoardMotion _boardMotion = ElixBoardMotion.book;
   bool _showCoachmark = false;
   CircleTab _selectedCircleTab = CircleTab.murmur;
@@ -718,6 +720,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   void _selectBoard(String? boardId) {
     setState(() {
+      _mobileNavigationVisible = true;
       _selectedBoardId = boardId;
       _feedFilter = boardId == null ? FeedFilter.all : FeedFilter.boards;
     });
@@ -814,6 +817,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final tab = board == HomeBoard.forum ? ElixTab.circle : ElixTab.feed;
     if (_selectedBoard == board && _selectedTab == tab) return;
     setState(() {
+      _mobileNavigationVisible = true;
       _selectedBoard = board;
       _selectedTab = tab;
     });
@@ -821,7 +825,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   void _selectTab(ElixTab tab) {
     if (_selectedTab != tab) {
-      setState(() => _selectedTab = tab);
+      setState(() {
+        _mobileNavigationVisible = true;
+        _selectedTab = tab;
+      });
     }
     if (_pageController.hasClients) {
       unawaited(
@@ -837,6 +844,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _selectBoardSwipe(HomeBoard board) {
     if (_selectedBoard != board) {
       setState(() {
+        _mobileNavigationVisible = true;
         _selectedBoard = board;
         _selectedTab = board == HomeBoard.forum ? ElixTab.circle : ElixTab.feed;
       });
@@ -2347,6 +2355,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return l10n.daysAgo(diff.inDays);
   }
 
+  bool _handleCompactScroll(UserScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+
+    final shouldShow =
+        notification.direction != ScrollDirection.reverse ||
+        notification.metrics.pixels <= 8;
+    if (shouldShow != _mobileNavigationVisible) {
+      setState(() => _mobileNavigationVisible = shouldShow);
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentScreenStyle =
@@ -2358,24 +2378,36 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final compactShell = MediaQuery.sizeOf(context).width < 720;
     return Scaffold(
       bottomNavigationBar: compactShell
-          ? HomeBottomBar(
-              selectedBoard: _selectedBoard,
-              boardActive: _dest == _ShellDest.board,
-              notificationsActive: _dest == _ShellDest.notifications,
-              meActive: _dest == _ShellDest.me,
-              onSelectBoard: (board) {
-                setState(() => _dest = _ShellDest.board);
-                _selectBoardSwipe(board);
-              },
-              onCompose: () => _selectedBoard == HomeBoard.forum
-                  ? _createThread()
-                  : _openCompose(context),
-              onNotifications: () {
-                setState(() => _dest = _ShellDest.notifications);
-                unawaited(_refreshNotificationUnread());
-              },
-              onProfile: () => setState(() => _dest = _ShellDest.me),
-              unreadCount: _notificationUnreadCount,
+          ? AutoHidingHomeBottomBar(
+              visible: _mobileNavigationVisible,
+              child: HomeBottomBar(
+                selectedBoard: _selectedBoard,
+                boardActive: _dest == _ShellDest.board,
+                notificationsActive: _dest == _ShellDest.notifications,
+                meActive: _dest == _ShellDest.me,
+                onSelectBoard: (board) {
+                  setState(() {
+                    _mobileNavigationVisible = true;
+                    _dest = _ShellDest.board;
+                  });
+                  _selectBoardSwipe(board);
+                },
+                onCompose: () => _selectedBoard == HomeBoard.forum
+                    ? _createThread()
+                    : _openCompose(context),
+                onNotifications: () {
+                  setState(() {
+                    _mobileNavigationVisible = true;
+                    _dest = _ShellDest.notifications;
+                  });
+                  unawaited(_refreshNotificationUnread());
+                },
+                onProfile: () => setState(() {
+                  _mobileNavigationVisible = true;
+                  _dest = _ShellDest.me;
+                }),
+                unreadCount: _notificationUnreadCount,
+              ),
             )
           : null,
       body: SafeArea(
@@ -2466,14 +2498,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
               if (compact) {
                 // In-shell destinations keep the bottom nav mounted.
-                switch (_dest) {
-                  case _ShellDest.notifications:
-                    return _buildNotifications(embedded: true);
-                  case _ShellDest.me:
-                    return _buildSettings(embedded: true);
-                  case _ShellDest.board:
-                    return mainPanel;
-                }
+                final destination = switch (_dest) {
+                  _ShellDest.notifications => _buildNotifications(
+                    embedded: true,
+                  ),
+                  _ShellDest.me => _buildSettings(embedded: true),
+                  _ShellDest.board => mainPanel,
+                };
+                return NotificationListener<UserScrollNotification>(
+                  onNotification: _handleCompactScroll,
+                  child: destination,
+                );
               }
 
               return Row(

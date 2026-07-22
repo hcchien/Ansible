@@ -4,6 +4,52 @@ import '../../l10n/app_l10n.dart';
 import '../../theme/ansible_design.dart';
 import 'home_types.dart';
 
+/// Collapses the compact navigation out of the layout while keeping its
+/// appearance/disappearance smooth. Hidden controls are also removed from hit
+/// testing and semantics so screen readers cannot focus off-screen actions.
+class AutoHidingHomeBottomBar extends StatelessWidget {
+  const AutoHidingHomeBottomBar({
+    super.key,
+    required this.visible,
+    required this.child,
+  });
+
+  final bool visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: TweenAnimationBuilder<double>(
+        key: const Key('home_bottom_navigation_reveal'),
+        tween: Tween<double>(end: visible ? 1 : 0),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, reveal, navigation) {
+          return Align(
+            alignment: Alignment.bottomCenter,
+            heightFactor: reveal,
+            child: Transform.translate(
+              offset: Offset(0, (1 - reveal) * 12),
+              child: Opacity(
+                opacity: reveal,
+                child: IgnorePointer(
+                  ignoring: reveal < 0.99,
+                  child: ExcludeSemantics(
+                    excluding: reveal < 0.99,
+                    child: navigation!,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Elix "Threads-style" bottom tabbar: icon-only cells — home (時間軸) ·
 /// circle (討論區) · a bordered center ＋ · bell (通知) · eye (我). Active cells
 /// switch to ink; inactive stay faint (no labels, no filled variants). The
