@@ -82,7 +82,8 @@ class _RecoveryApproveScannerScreenState
         setState(
           () => _errorMessage = context.uiCopy(
             zh: '無法解析貼上的內容，請確認複製了完整的請求內容。',
-            en: 'Could not parse the pasted content — make sure the full '
+            en:
+                'Could not parse the pasted content — make sure the full '
                 'request was copied.',
           ),
         );
@@ -305,9 +306,7 @@ class _RecoveryApproveScannerScreenState
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: EdgeInsets.only(
-                bottom: _errorMessage != null ? 64 : 16,
-              ),
+              padding: EdgeInsets.only(bottom: _errorMessage != null ? 64 : 16),
               child: TextButton(
                 key: const Key('recovery_manual_entry_button'),
                 style: TextButton.styleFrom(
@@ -389,7 +388,8 @@ class _ManualEntryDialogState extends State<_ManualEntryDialog> {
           Text(
             context.uiCopy(
               zh: '在新裝置的 QR 畫面點「複製請求內容」，把內容傳給這台裝置後貼上。',
-              en: 'On the new device tap "Copy request" below the QR, '
+              en:
+                  'On the new device tap "Copy request" below the QR, '
                   'transfer it to this device, and paste it here.',
             ),
             style: const TextStyle(
@@ -423,8 +423,7 @@ class _ManualEntryDialogState extends State<_ManualEntryDialog> {
         ),
         FilledButton(
           key: const Key('recovery_manual_entry_submit'),
-          onPressed: () =>
-              Navigator.of(context).pop(_controller.text.trim()),
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
           child: Text(context.uiCopy(zh: '繼續', en: 'Continue')),
         ),
       ],

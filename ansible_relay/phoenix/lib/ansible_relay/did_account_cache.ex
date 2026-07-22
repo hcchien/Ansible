@@ -11,9 +11,10 @@ defmodule AnsibleRelay.DidAccountCache do
   """
 
   use GenServer
+  import Ecto.Query
   require Logger
 
-  alias AnsibleRelay.{Repo, Db.DidAccount}
+  alias AnsibleRelay.{Repo, Db.DidAccount, Db.VerifiedDid}
 
   @table :did_account_cache
   @handle_table :handle_index
@@ -41,9 +42,13 @@ defmodule AnsibleRelay.DidAccountCache do
     expiry = Keyword.get(opts, :expires_at) || DateTime.add(now, ttl_seconds, :second)
     pds_endpoint = Keyword.get(opts, :pds_endpoint, "https://elix.cool")
     reputation_tier = Keyword.get(opts, :reputation_tier, "basic")
+    signing_algorithm = Keyword.get(opts, :signing_algorithm, "ed25519")
+    key_version = Keyword.get(opts, :key_version, 1)
 
     entry = %{
       public_key_hex: public_key_hex,
+      signing_algorithm: signing_algorithm,
+      key_version: key_version,
       handle: handle,
       pds_endpoint: pds_endpoint,
       reputation_tier: reputation_tier,
@@ -59,6 +64,8 @@ defmodule AnsibleRelay.DidAccountCache do
         %DidAccount{
           did: did,
           public_key_hex: public_key_hex,
+          signing_algorithm: signing_algorithm,
+          key_version: key_version,
           handle: handle,
           pds_endpoint: pds_endpoint,
           reputation_tier: reputation_tier,
@@ -66,7 +73,16 @@ defmodule AnsibleRelay.DidAccountCache do
           expires_at: expiry
         },
         on_conflict:
-          {:replace, [:public_key_hex, :handle, :pds_endpoint, :reputation_tier, :expires_at]},
+          {:replace,
+           [
+             :public_key_hex,
+             :signing_algorithm,
+             :key_version,
+             :handle,
+             :pds_endpoint,
+             :reputation_tier,
+             :expires_at
+           ]},
         conflict_target: :did
       )
     end
@@ -102,6 +118,8 @@ defmodule AnsibleRelay.DidAccountCache do
       %DidAccount{} = account ->
         entry = %{
           public_key_hex: account.public_key_hex,
+          signing_algorithm: account.signing_algorithm || "ed25519",
+          key_version: account.key_version || 1,
           handle: account.handle,
           pds_endpoint: account.pds_endpoint,
           reputation_tier: account.reputation_tier,
@@ -160,6 +178,69 @@ defmodule AnsibleRelay.DidAccountCache do
       {:ok, %{public_key_hex: pkh}} -> pkh
       _ -> nil
     end
+  end
+
+  @doc "Verify a signature with the algorithm recorded for the DID account."
+  def verify_signature(did, message, signature_hex) do
+    case get(did) do
+      {:ok, entry} ->
+        AnsibleRelay.SigVerifier.verify_identity(
+          Map.get(entry, :signing_algorithm, "ed25519"),
+          entry.public_key_hex,
+          message,
+          signature_hex
+        )
+
+      _ ->
+        false
+    end
+  end
+
+  @doc "Atomically rotate the verification key in both durable identity rows."
+  def rotate_key(did, expected_version, public_key_hex, signing_algorithm) do
+    result =
+      Repo.transaction(fn ->
+        {account_count, _} =
+          Repo.update_all(
+            from(a in DidAccount,
+              where: a.did == ^did and a.key_version == ^expected_version
+            ),
+            set: [
+              public_key_hex: public_key_hex,
+              signing_algorithm: signing_algorithm,
+              key_version: expected_version + 1
+            ]
+          )
+
+        if account_count != 1, do: Repo.rollback(:stale_key_version)
+
+        {verified_count, _} =
+          Repo.update_all(
+            from(v in VerifiedDid,
+              where: v.did == ^did and v.key_version == ^expected_version
+            ),
+            set: [
+              public_key_hex: public_key_hex,
+              signing_algorithm: signing_algorithm,
+              key_version: expected_version + 1
+            ]
+          )
+
+        if verified_count != 1, do: Repo.rollback(:identity_cache_missing)
+        :ok
+      end)
+
+    case result do
+      {:ok, :ok} ->
+        :ets.delete(@table, did)
+        :ets.delete(:verified_did_cache, did)
+        get(did)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  rescue
+    _ -> {:error, :unavailable}
   end
 
   @doc "Return the reputation tier for a DID, defaulting to \"basic\"."

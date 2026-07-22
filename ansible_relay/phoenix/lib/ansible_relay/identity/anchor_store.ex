@@ -55,8 +55,10 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   # after `identity_key` to match `IdentityAnchor.toCanonicalBody()` in
   # `ansible_core/store/lib/src/entities/identity_anchor.dart`. The relay MUST
   # re-emit it in this exact slot or the CID/signature will not verify.
-  @body_keys ~w(type schema_version did handle identity_key also_known_as
-                custody_class devices prev_anchor_cid reason created_at)
+  @body_keys_v2 ~w(type schema_version did handle identity_key also_known_as
+                   custody_class devices prev_anchor_cid reason created_at)
+  @body_keys_v3 ~w(type schema_version did handle identity_key identity_key_algorithm
+                   also_known_as custody_class devices prev_anchor_cid reason created_at)
   @device_keys ~w(device_id device_key custody_class enrolled_at attestation_sig)
   # The fields an enrolled device's `attestation_sig` actually signs: the
   # device record MINUS `attestation_sig`, in the same order (design
@@ -71,9 +73,13 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
   @doc "Canonical body JSON (no signatures), fixed key order, no whitespace."
   def canonical_body(anchor) when is_map(anchor) do
-    @body_keys
+    body_keys(anchor)
     |> Enum.map(fn key -> encode_pair(key, body_value(key, anchor)) end)
     |> wrap_object()
+  end
+
+  defp body_keys(anchor) do
+    if schema_version(anchor) >= 3, do: @body_keys_v3, else: @body_keys_v2
   end
 
   defp body_value("type", _anchor), do: @anchor_type
@@ -190,22 +196,26 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   # devices trivially passes.
   defp verify_device_attestations(anchor) do
     identity_key = fetch(anchor, "identity_key")
+    algorithm = identity_key_algorithm(anchor)
 
-    if Enum.all?(devices(anchor), &device_attested?(&1, identity_key)) do
+    if Enum.all?(devices(anchor), &device_attested?(&1, algorithm, identity_key)) do
       :ok
     else
       {:error, :invalid_attestation}
     end
   end
 
-  defp device_attested?(device, identity_key) when is_map(device) do
+  defp device_attested?(device, algorithm, identity_key) when is_map(device) do
     sig = fetch(device, "attestation_sig")
 
     is_binary(sig) and sig != "" and
-      verify(identity_key, device_attestation_message(device), sig)
+      verify(algorithm, identity_key, device_attestation_message(device), sig)
   end
 
-  defp device_attested?(_device, _identity_key), do: false
+  defp device_attested?(_device, _algorithm, _identity_key), do: false
+
+  defp identity_key_algorithm(anchor),
+    do: fetch(anchor, "identity_key_algorithm") || "ed25519"
 
   defp ensure_not_frozen(did) do
     if frozen?(did), do: {:error, :locked}, else: :ok
@@ -261,7 +271,12 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       active_anchor(did) != nil ->
         {:error, :conflict}
 
-      not verify(fetch(anchor, "identity_key"), body, fetch(anchor, "sig")) ->
+      not verify(
+        identity_key_algorithm(anchor),
+        fetch(anchor, "identity_key"),
+        body,
+        fetch(anchor, "sig")
+      ) ->
         {:error, :invalid_signature}
 
       true ->
@@ -276,7 +291,8 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       did,
       fetch(anchor, "identity_key"),
       fetch(anchor, "handle"),
-      fetch(anchor, "custody_class") || "software"
+      fetch(anchor, "custody_class") || "software",
+      identity_key_algorithm(anchor)
     )
   end
 
@@ -288,9 +304,12 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     with {:ok, prev} <- require_chain_link(anchor, did),
          new_key = fetch(anchor, "identity_key"),
          old_sig = fetch(anchor, "device_sig"),
-         true <- verify(new_key, body, fetch(anchor, "sig")) || {:error, :invalid_signature},
          true <-
-           verify(prev.identity_key, body, old_sig) || {:error, :invalid_signature} do
+           verify(identity_key_algorithm(anchor), new_key, body, fetch(anchor, "sig")) ||
+             {:error, :invalid_signature},
+         true <-
+           verify(prev.identity_key_algorithm || "ed25519", prev.identity_key, body, old_sig) ||
+             {:error, :invalid_signature} do
       swap_in_active(anchor, did, body, cid, "rotation", prev)
     else
       {:error, _} = err -> err
@@ -302,7 +321,12 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp dispatch("device_change", anchor, did, body, cid, _proof) do
     with {:ok, prev} <- require_chain_link(anchor, did),
          true <-
-           verify(fetch(anchor, "identity_key"), body, fetch(anchor, "sig")) ||
+           verify(
+             identity_key_algorithm(anchor),
+             fetch(anchor, "identity_key"),
+             body,
+             fetch(anchor, "sig")
+           ) ||
              {:error, :invalid_signature},
          device_sig = fetch(anchor, "device_sig"),
          true <- enrolled_device_signed?(prev, body, device_sig) || {:error, :invalid_signature} do
@@ -318,7 +342,12 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp dispatch("recovery", anchor, did, body, cid, recovery_proof) do
     with {:ok, prev} <- require_chain_link(anchor, did),
          true <-
-           verify(fetch(anchor, "identity_key"), body, fetch(anchor, "sig")) ||
+           verify(
+             identity_key_algorithm(anchor),
+             fetch(anchor, "identity_key"),
+             body,
+             fetch(anchor, "sig")
+           ) ||
              {:error, :invalid_signature},
          true <-
            enrolled_device_signed?(prev, body, recovery_proof) ||
@@ -347,7 +376,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp enrolled_device_signed?(prev, body, sig) do
     prev
     |> enrolled_device_keys()
-    |> Enum.any?(fn key -> verify(key, body, sig) end)
+    |> Enum.any?(fn key -> verify("ed25519", key, body, sig) end)
   end
 
   defp enrolled_device_keys(%IdentityAnchor{devices: %{"records" => records}})
@@ -427,6 +456,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       prev_anchor_cid: fetch(anchor, "prev_anchor_cid"),
       reason: reason,
       identity_key: fetch(anchor, "identity_key"),
+      identity_key_algorithm: identity_key_algorithm(anchor),
       handle: fetch(anchor, "handle"),
       also_known_as: also_known_as(anchor),
       custody_class: fetch(anchor, "custody_class") || "software",
@@ -577,7 +607,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp veto_sig_valid?(did, body, sig) do
     did
     |> previously_enrolled_keys()
-    |> Enum.any?(fn key -> verify(key, body, sig) end)
+    |> Enum.any?(fn key -> verify("ed25519", key, body, sig) end)
   end
 
   defp previously_enrolled_keys(did) do
@@ -665,6 +695,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       "did" => a.did,
       "handle" => a.handle,
       "identity_key" => a.identity_key,
+      "identity_key_algorithm" => a.identity_key_algorithm || "ed25519",
       "also_known_as" => a.also_known_as || [],
       "custody_class" => a.custody_class,
       "devices" => device_records(a),
@@ -695,7 +726,19 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   # (design: `did_accounts` becomes a cache of the latest anchor). Existing
   # readers (`DidAccountCache.public_key_hex/1`, handle index) keep working.
   defp sync_cache(%IdentityAnchor{} = a) do
-    AnsibleRelay.DidAccountCache.put(a.did, a.identity_key, a.handle)
+    previous = AnsibleRelay.DidAccountCache.get(a.did)
+
+    key_version =
+      case previous do
+        {:ok, entry} -> Map.get(entry, :key_version, 1)
+        _ -> 1
+      end
+
+    AnsibleRelay.DidAccountCache.put(a.did, a.identity_key, a.handle,
+      signing_algorithm: a.identity_key_algorithm || "ed25519",
+      key_version: key_version
+    )
+
     :ok
   rescue
     _ -> :ok
@@ -703,12 +746,13 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
   # --- Signature primitive ---
 
-  defp verify(public_key_hex, message, sig_hex)
-       when is_binary(public_key_hex) and is_binary(message) and is_binary(sig_hex) do
-    SigVerifier.verify_ed25519(public_key_hex, message, sig_hex)
+  defp verify(algorithm, public_key_hex, message, sig_hex)
+       when is_binary(algorithm) and is_binary(public_key_hex) and is_binary(message) and
+              is_binary(sig_hex) do
+    SigVerifier.verify_identity(algorithm, public_key_hex, message, sig_hex)
   end
 
-  defp verify(_pk, _msg, _sig), do: false
+  defp verify(_algorithm, _pk, _msg, _sig), do: false
 
   defp grace_seconds do
     Application.get_env(:ansible_relay, :identity_recovery_grace_seconds, @default_grace_seconds)

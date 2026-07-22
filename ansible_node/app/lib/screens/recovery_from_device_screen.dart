@@ -74,10 +74,11 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
       _error = null;
     });
     try {
-      final resolve = widget.handleResolver ??
+      final resolve =
+          widget.handleResolver ??
           (h) => AtProtoClient(
-                baseUrl: AppEnvironment.defaultRelayBaseUrl,
-              ).resolveHandle(h);
+            baseUrl: AppEnvironment.defaultRelayBaseUrl,
+          ).resolveHandle(h);
       final did = await resolve(handle);
       final request = await _service.buildRequest(did: did, handle: handle);
       if (!mounted) return;
@@ -106,7 +107,9 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
           error.statusCode == 404 && error.error == 'handle_not_found';
       setState(() {
         _busy = false;
-        _error = handleNotFound ? _handleNotFoundMessage() : _relayErrorMessage();
+        _error = handleNotFound
+            ? _handleNotFoundMessage()
+            : _relayErrorMessage();
       });
     } catch (_) {
       // SocketException / TimeoutException / http ClientException: the relay
@@ -121,23 +124,27 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
   }
 
   String _handleNotFoundMessage() => context.uiCopy(
-        zh: '找不到這個 handle。請確認拼字，或這個帳號是否在這個 relay 上。',
-        en: 'No such handle. Check the spelling, or whether this account lives '
-            'on this relay.',
-      );
+    zh: '找不到這個 handle。請確認拼字，或這個帳號是否在這個 relay 上。',
+    en:
+        'No such handle. Check the spelling, or whether this account lives '
+        'on this relay.',
+  );
 
   String _relayErrorMessage() => context.uiCopy(
-        zh: '連不到伺服器。請確認網路，以及 app 指向的 relay 設定是否正確。',
-        en: 'Could not reach the server. Check your connection and which relay '
-            'this app is pointed at.',
-      );
+    zh: '連不到伺服器。請確認網路，以及 app 指向的 relay 設定是否正確。',
+    en:
+        'Could not reach the server. Check your connection and which relay '
+        'this app is pointed at.',
+  );
 
   String _noAnchorMessage() => context.uiCopy(
-        zh: '這個帳號在此 relay 上還沒有身分 anchor（可能是舊版帳號），'
-            '無法用「另一台裝置核可」的方式登入。',
-        en: 'This account has no identity anchor on this relay (it may be a '
-            'legacy account), so it cannot be added via device approval.',
-      );
+    zh:
+        '這個帳號在此 relay 上還沒有身分 anchor（可能是舊版帳號），'
+        '無法用「另一台裝置核可」的方式登入。',
+    en:
+        'This account has no identity anchor on this relay (it may be a '
+        'legacy account), so it cannot be added via device approval.',
+  );
 
   void _startPolling() {
     _poll?.cancel();
@@ -174,9 +181,11 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
     return [
       Text(
         context.uiCopy(
-          zh: '沒有備份也沒關係 — 只要你的舊裝置還在。輸入你的 handle，'
+          zh:
+              '沒有備份也沒關係 — 只要你的舊裝置還在。輸入你的 handle，'
               '用舊裝置掃描下一步出現的 QR 即可核可這台新裝置。',
-          en: 'No backup needed — as long as your old device survives. Enter '
+          en:
+              'No backup needed — as long as your old device survives. Enter '
               'your handle, then scan the QR on the next step with the old '
               'device to approve this one.',
         ),
@@ -222,8 +231,11 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
     final request = _request!;
     if (_approved) {
       return [
-        const Icon(Icons.verified_outlined,
-            size: 44, color: AnsibleDesign.spore),
+        const Icon(
+          Icons.verified_outlined,
+          size: 44,
+          color: AnsibleDesign.spore,
+        ),
         const SizedBox(height: 14),
         Text(
           context.uiCopy(zh: '已核可', en: 'Approved'),
@@ -239,9 +251,11 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
         const SizedBox(height: 8),
         Text(
           context.uiCopy(
-            zh: '為了防止劫持，復原會有 72 小時的寬限期 — 期間你其他的裝置都'
+            zh:
+                '為了防止劫持，復原會有 72 小時的寬限期 — 期間你其他的裝置都'
                 '可以否決。寬限期過後，這台裝置就能用你的身分發文。',
-            en: 'To resist hijacking, recovery waits out a 72-hour grace '
+            en:
+                'To resist hijacking, recovery waits out a 72-hour grace '
                 'window during which your other devices can veto. After '
                 'that, this device posts as you.',
           ),
@@ -275,7 +289,8 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
       Text(
         context.uiCopy(
           zh: '用舊裝置開啟 設定 → 核可另一台裝置的復原，掃描這個 QR。',
-          en: 'On the old device open Settings → Approve a device recovery '
+          en:
+              'On the old device open Settings → Approve a device recovery '
               'and scan this QR.',
         ),
         textAlign: TextAlign.center,
@@ -319,7 +334,8 @@ class _RecoveryFromDeviceScreenState extends State<RecoveryFromDeviceScreen> {
       Text(
         context.uiCopy(
           zh: '金鑰指紋（兩台裝置應一致）\n${request.newKeyFingerprint}',
-          en: 'Key fingerprint (must match on both devices)\n'
+          en:
+              'Key fingerprint (must match on both devices)\n'
               '${request.newKeyFingerprint}',
         ),
         key: const Key('recovery_from_device_fingerprint'),

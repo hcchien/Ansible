@@ -2,7 +2,7 @@ defmodule AnsibleRelay.WebauthnSync do
   @moduledoc "Persistent WebAuthn ceremonies and short-lived sync capabilities."
 
   import Ecto.Query
-  alias AnsibleRelay.{IdentityCache, Repo, SigVerifier}
+  alias AnsibleRelay.{IdentityCache, Repo}
   alias AnsibleRelay.Db.{WebauthnChallenge, WebauthnCredential}
 
   @challenge_ttl 120
@@ -229,10 +229,9 @@ defmodule AnsibleRelay.WebauthnSync do
   end
 
   defp verify_enrollment_did_proof(did, challenge_id, credential_id, signature) do
-    public_key = IdentityCache.public_key_hex(did)
     message = challenge_id <> "." <> b64(credential_id)
 
-    if is_binary(public_key) and SigVerifier.verify_ed25519(public_key, message, signature),
+    if IdentityCache.verify_signature(did, message, signature),
       do: :ok,
       else: {:error, :invalid_did_proof}
   end

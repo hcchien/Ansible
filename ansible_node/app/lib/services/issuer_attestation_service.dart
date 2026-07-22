@@ -28,11 +28,13 @@ class IssuerAttestationService {
     http.Client? client,
     this.timeout = const Duration(seconds: 8),
     DateTime Function()? now,
-  })  : _relayBaseUri = Uri.parse(relayBaseUrl),
-        _issuerBaseUri = Uri.parse(issuerBaseUrl ?? AppEnvironment.issuerBaseUrl),
-        _pinnedIssuerKeyHex = pinnedIssuerKeyHex,
-        _client = client ?? http.Client(),
-        _now = now ?? (() => DateTime.now().toUtc());
+  }) : _relayBaseUri = Uri.parse(relayBaseUrl),
+       _issuerBaseUri = Uri.parse(
+         issuerBaseUrl ?? AppEnvironment.issuerBaseUrl,
+       ),
+       _pinnedIssuerKeyHex = pinnedIssuerKeyHex,
+       _client = client ?? http.Client(),
+       _now = now ?? (() => DateTime.now().toUtc());
 
   final Uri _relayBaseUri;
   final Uri _issuerBaseUri;
@@ -111,9 +113,9 @@ class IssuerAttestationService {
     final types = vc['type'];
     if (types is! List) return null;
     final credentialType = types.whereType<String>().firstWhere(
-          _tierForCredential.containsKey,
-          orElse: () => '',
-        );
+      _tierForCredential.containsKey,
+      orElse: () => '',
+    );
     if (credentialType.isEmpty) return null;
 
     // Validity window.
@@ -180,8 +182,9 @@ class IssuerAttestationService {
   }
 
   Uri _endpoint(Uri base, String path) {
-    final basePath =
-        base.path.endsWith('/') ? base.path.substring(0, base.path.length - 1) : base.path;
+    final basePath = base.path.endsWith('/')
+        ? base.path.substring(0, base.path.length - 1)
+        : base.path;
     return base.replace(path: '$basePath$path');
   }
 

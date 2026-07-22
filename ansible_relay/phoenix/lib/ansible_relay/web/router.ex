@@ -156,6 +156,10 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.OpsController.delta(conn, conn.query_params)
   end
 
+  get "/api/v1/forum-host/boards/:board_id/ops/delta" do
+    AnsibleRelay.Web.Controllers.OpsController.board_delta(conn, board_id, conn.query_params)
+  end
+
   # Phase 2.3 — Signed snapshot: consumers fold this then apply the delta after
   # snapshot.cursor to rebuild a read model without replaying full op history.
   get "/api/v1/ops/snapshot" do
@@ -198,6 +202,70 @@ defmodule AnsibleRelay.Web.Router do
       conn,
       board_id,
       conn.body_params
+    )
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/policy" do
+    AnsibleRelay.Web.Controllers.ForumHostController.update_board_policy(
+      conn,
+      board_id,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/forum-host/boards/:board_id/access-requirements" do
+    AnsibleRelay.Web.Controllers.ForumHostController.access_requirements(conn, board_id)
+  end
+
+  get "/api/v1/forum-host/boards/:board_id/policy-history" do
+    AnsibleRelay.Web.Controllers.ForumHostController.policy_history(conn, board_id)
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/presentation/options" do
+    AnsibleRelay.Web.Controllers.ForumHostController.presentation_options(
+      conn,
+      board_id,
+      conn.body_params
+    )
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/presentation/verify" do
+    AnsibleRelay.Web.Controllers.ForumHostController.verify_presentation(
+      conn,
+      board_id,
+      conn.body_params
+    )
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/encryption/device-keys" do
+    AnsibleRelay.Web.Controllers.PrivateBoardController.register_device(
+      conn,
+      board_id,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/forum-host/boards/:board_id/encryption/device-keys" do
+    AnsibleRelay.Web.Controllers.PrivateBoardController.devices(conn, board_id)
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/encryption/epochs" do
+    AnsibleRelay.Web.Controllers.PrivateBoardController.activate_epoch(
+      conn,
+      board_id,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/forum-host/boards/:board_id/encryption/epochs/current/envelope" do
+    AnsibleRelay.Web.Controllers.PrivateBoardController.current_envelope(conn, board_id)
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/encryption/device-keys/:device_key_id/revoke" do
+    AnsibleRelay.Web.Controllers.PrivateBoardController.revoke_device(
+      conn,
+      board_id,
+      device_key_id
     )
   end
 
@@ -325,6 +393,10 @@ defmodule AnsibleRelay.Web.Router do
 
   post "/api/v2/identity/anchor" do
     AnsibleRelay.Web.Controllers.IdentityV2Controller.anchor(conn, conn.body_params)
+  end
+
+  post "/api/v2/identity/rotate-key" do
+    AnsibleRelay.Web.Controllers.IdentityV2Controller.rotate_key(conn, conn.body_params)
   end
 
   post "/api/v2/webauthn/register/options" do

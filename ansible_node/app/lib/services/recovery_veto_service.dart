@@ -10,10 +10,8 @@ import 'relay_anchor_client.dart';
 /// our DID and, on the user's 否決, sign the relay's stored canonical body
 /// with this device's identity key.
 class RecoveryVetoService {
-  RecoveryVetoService({
-    required this.relayClient,
-    IdentityKey? identityKey,
-  }) : identityKey = identityKey ?? const SecureStorageIdentityKey();
+  RecoveryVetoService({required this.relayClient, IdentityKey? identityKey})
+    : identityKey = identityKey ?? const SecureStorageIdentityKey();
 
   final RelayAnchorClient relayClient;
   final IdentityKey identityKey;

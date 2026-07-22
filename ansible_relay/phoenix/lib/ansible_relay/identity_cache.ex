@@ -28,12 +28,20 @@ defmodule AnsibleRelay.IdentityCache do
   end
 
   @doc "Store a verified DID identity, indexed by nullifier for dedup."
-  def put(did, public_key_hex, nullifier \\ nil, expires_at \\ nil) do
+  def put(
+        did,
+        public_key_hex,
+        nullifier \\ nil,
+        expires_at \\ nil,
+        signing_algorithm \\ "ed25519"
+      ) do
     ttl_seconds = Application.get_env(:ansible_relay, :did_cache_ttl_seconds, 7_776_000)
     expiry = expires_at || DateTime.add(DateTime.utc_now(), ttl_seconds, :second)
 
     entry = %{
       public_key_hex: public_key_hex,
+      signing_algorithm: signing_algorithm,
+      key_version: 1,
       nullifier: nullifier,
       verified_at: DateTime.utc_now(),
       expires_at: expiry
@@ -50,11 +58,13 @@ defmodule AnsibleRelay.IdentityCache do
       %VerifiedDid{
         did: did,
         public_key_hex: public_key_hex,
+        signing_algorithm: signing_algorithm,
+        key_version: 1,
         nullifier: nullifier || "",
         verified_at: DateTime.utc_now(),
         expires_at: expiry
       },
-      on_conflict: {:replace, [:public_key_hex, :expires_at]},
+      on_conflict: {:replace, [:public_key_hex, :signing_algorithm, :key_version, :expires_at]},
       conflict_target: :did
     )
 
@@ -89,6 +99,8 @@ defmodule AnsibleRelay.IdentityCache do
         if DateTime.compare(DateTime.utc_now(), row.expires_at) == :lt do
           entry = %{
             public_key_hex: row.public_key_hex,
+            signing_algorithm: row.signing_algorithm || "ed25519",
+            key_version: row.key_version || 1,
             nullifier: blank_to_nil(row.nullifier),
             verified_at: row.verified_at,
             expires_at: row.expires_at
@@ -171,6 +183,22 @@ defmodule AnsibleRelay.IdentityCache do
     case get(did) do
       {:ok, %{public_key_hex: pkh}} -> pkh
       _ -> nil
+    end
+  end
+
+  @doc "Verify a signature with the algorithm recorded for the DID."
+  def verify_signature(did, message, signature_hex) do
+    case get(did) do
+      {:ok, entry} ->
+        AnsibleRelay.SigVerifier.verify_identity(
+          Map.get(entry, :signing_algorithm, "ed25519"),
+          entry.public_key_hex,
+          message,
+          signature_hex
+        )
+
+      _ ->
+        false
     end
   end
 

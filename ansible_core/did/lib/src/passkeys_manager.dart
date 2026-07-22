@@ -13,10 +13,13 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'did_manager.dart';
+import 'identity_key.dart';
 
 const _kPasskeysHandleKey = 'ansible_passkeys_handle';
 const _kPasskeysDidKey = 'ansible_passkeys_did';
 const _kPasskeysPublicKeyKey = 'ansible_passkeys_public_key';
+const _kIdentitySigningAlgorithmKey = 'ansible_identity_signing_algorithm';
+const _kIdentityCustodyKey = 'ansible_identity_custody';
 
 /// A passkeys-style credential anchored in the device secure enclave.
 class PasskeysCredential {
@@ -28,11 +31,15 @@ class PasskeysCredential {
 
   /// Human-readable handle (username) associated with this credential
   final String handle;
+  final IdentityKeyAlgorithm signingAlgorithm;
+  final IdentityKeyCustody custody;
 
   const PasskeysCredential({
     required this.did,
     required this.publicKeyHex,
     required this.handle,
+    this.signingAlgorithm = IdentityKeyAlgorithm.ed25519,
+    this.custody = IdentityKeyCustody.reducedTrust,
   });
 }
 
@@ -61,6 +68,7 @@ class PasskeysManagerImpl implements PasskeysManager {
   final FlutterSecureStorage _secureStorage;
   final LocalAuthentication _localAuth;
   final bool _allowInsecureFallback;
+  final HardwareIdentityKey _hardwareKey;
 
   PasskeysManagerImpl({
     DidManagerImpl? didManager,
@@ -70,10 +78,12 @@ class PasskeysManagerImpl implements PasskeysManager {
       'ANSIBLE_ALLOW_INSECURE_DEV_FALLBACK',
       defaultValue: false,
     ),
+    HardwareIdentityKey? hardwareIdentityKey,
   }) : _didManager = didManager ?? DidManagerImpl(),
        _secureStorage = secureStorage ?? const FlutterSecureStorage(),
        _localAuth = localAuthentication ?? LocalAuthentication(),
-       _allowInsecureFallback = allowInsecureFallback;
+       _allowInsecureFallback = allowInsecureFallback,
+       _hardwareKey = hardwareIdentityKey ?? HardwareIdentityKey();
 
   Future<bool> _authenticateWithBiometrics({required String reason}) async {
     try {
@@ -123,19 +133,44 @@ class PasskeysManagerImpl implements PasskeysManager {
       throw PasskeysAuthException('Biometric authentication was not confirmed');
     }
 
-    final ownedDid = await _didManager.generate();
+    IdentityPublicKey identityKey;
+    String did;
+    try {
+      identityKey = await _hardwareKey.generate();
+      did = 'did:key:p256:${identityKey.publicKeyHex.substring(0, 24)}';
+    } on PlatformException {
+      if (!_allowInsecureFallback) rethrow;
+      final ownedDid = await _didManager.generate();
+      identityKey = IdentityPublicKey(
+        algorithm: IdentityKeyAlgorithm.ed25519,
+        publicKeyHex: ownedDid.publicKeyHex,
+        custody: IdentityKeyCustody.reducedTrust,
+        hardwareSecurityLevel: 'software_dev_fallback',
+      );
+      did = ownedDid.did;
+    }
 
     await _secureStorage.write(key: _kPasskeysHandleKey, value: username);
-    await _secureStorage.write(key: _kPasskeysDidKey, value: ownedDid.did);
+    await _secureStorage.write(key: _kPasskeysDidKey, value: did);
     await _secureStorage.write(
       key: _kPasskeysPublicKeyKey,
-      value: ownedDid.publicKeyHex,
+      value: identityKey.publicKeyHex,
+    );
+    await _secureStorage.write(
+      key: _kIdentitySigningAlgorithmKey,
+      value: identityKey.algorithm.wireName,
+    );
+    await _secureStorage.write(
+      key: _kIdentityCustodyKey,
+      value: identityKey.custody.wireName,
     );
 
     return PasskeysCredential(
-      did: ownedDid.did,
-      publicKeyHex: ownedDid.publicKeyHex,
+      did: did,
+      publicKeyHex: identityKey.publicKeyHex,
       handle: username,
+      signingAlgorithm: identityKey.algorithm,
+      custody: identityKey.custody,
     );
   }
 
@@ -153,6 +188,10 @@ class PasskeysManagerImpl implements PasskeysManager {
 
     final publicKeyHex = await _secureStorage.read(key: _kPasskeysPublicKeyKey);
     final handle = await _secureStorage.read(key: _kPasskeysHandleKey);
+    final algorithm = await _secureStorage.read(
+      key: _kIdentitySigningAlgorithmKey,
+    );
+    final custody = await _secureStorage.read(key: _kIdentityCustodyKey);
 
     if (publicKeyHex == null || handle == null) return null;
 
@@ -160,6 +199,12 @@ class PasskeysManagerImpl implements PasskeysManager {
       did: did,
       publicKeyHex: publicKeyHex,
       handle: handle,
+      signingAlgorithm: algorithm == null
+          ? IdentityKeyAlgorithm.ed25519
+          : IdentityKeyAlgorithm.parse(algorithm),
+      custody: custody == IdentityKeyCustody.hardware.wireName
+          ? IdentityKeyCustody.hardware
+          : IdentityKeyCustody.reducedTrust,
     );
   }
 
@@ -178,6 +223,9 @@ class PasskeysManagerImpl implements PasskeysManager {
     await _secureStorage.delete(key: _kPasskeysHandleKey);
     await _secureStorage.delete(key: _kPasskeysDidKey);
     await _secureStorage.delete(key: _kPasskeysPublicKeyKey);
+    await _secureStorage.delete(key: _kIdentitySigningAlgorithmKey);
+    await _secureStorage.delete(key: _kIdentityCustodyKey);
+    await _hardwareKey.delete();
     await _didManager.delete();
   }
 }

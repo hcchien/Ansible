@@ -50,10 +50,9 @@ class HostModerationSyncService {
   /// on [node] (the node is the board's Forum Host). Best-effort.
   Future<void> syncForNode(RemoteNode node) async {
     try {
-      final subscriptions =
-          (await _hostedBoardRepo.listSubscriptions(forumHostId: node.id))
-              .where((subscription) => subscription.readEnabled)
-              .toList();
+      final subscriptions = (await _hostedBoardRepo.listSubscriptions(
+        forumHostId: node.id,
+      )).where((subscription) => subscription.readEnabled).toList();
       if (subscriptions.isEmpty) return;
 
       final projections = await _hostedBoardRepo.listProjections(

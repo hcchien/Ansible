@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+2026072102
+version: 1.0.0+2026072201
 
 environment:
   sdk: ^3.10.0
@@ -71,6 +71,7 @@ dependencies:
   qr_flutter: ^4.1.0
   intl: any
   shared_preferences: ^2.3.0
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:
@@ -79,9 +80,6 @@ dev_dependencies:
   # Drives the on-simulator screenshot harness (integration_test/screens_tour).
   integration_test:
     sdk: flutter
-
-  # Standard Ed25519 for tool/seed_user_b.dart (dev/test seeding only).
-  cryptography: ^2.9.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

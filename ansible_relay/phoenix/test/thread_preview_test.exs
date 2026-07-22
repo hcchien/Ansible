@@ -8,7 +8,7 @@ defmodule AnsibleRelay.Web.ThreadPreviewTest do
   use ExUnit.Case, async: false
   use Plug.Test
 
-  alias AnsibleRelay.Db.ForumHostModerationAction
+  alias AnsibleRelay.Db.{ForumHostBoard, ForumHostModerationAction}
   alias AnsibleRelay.Web.Router
   alias AnsibleRelay.{OpStore, Repo}
 
@@ -22,6 +22,13 @@ defmodule AnsibleRelay.Web.ThreadPreviewTest do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
     end
+
+    Repo.insert!(%ForumHostBoard{
+      hosted_board_id: "board-1",
+      slug: "board-1",
+      canonical_board_uri: "http://localhost:4001/boards/board-1",
+      title: "Public fixture board"
+    })
 
     :ok
   end

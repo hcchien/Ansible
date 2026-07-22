@@ -2,13 +2,16 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/subpage_l10n.dart';
+import '../l10n/app_l10n.dart';
 import '../services/external_url_launcher.dart';
 import '../services/oid4vp_presentation_service.dart';
+import '../services/oid4vci_wallet_client.dart';
 import '../services/vc_issuer_client.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/elix_focus_route.dart';
 import 'credential_issuance_wizard.dart';
+import 'membership_credential_screen.dart';
 import 'wallet_verifier_scanner_screen.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -19,6 +22,7 @@ class WalletScreen extends StatefulWidget {
     this.vcIssuerClient,
     this.urlLauncher,
     this.oid4vpPresentationService,
+    this.oid4vciWalletClient,
     this.verifierScannerBuilder,
     this.pollInterval = const Duration(seconds: 2),
     this.pollTimeout = const Duration(minutes: 2),
@@ -29,6 +33,7 @@ class WalletScreen extends StatefulWidget {
   final VcIssuerClient? vcIssuerClient;
   final ExternalUrlLauncher? urlLauncher;
   final Oid4vpPresentationApprover? oid4vpPresentationService;
+  final Oid4vciWalletClient? oid4vciWalletClient;
   final WidgetBuilder? verifierScannerBuilder;
   final Duration pollInterval;
   final Duration pollTimeout;
@@ -165,6 +170,29 @@ class _WalletScreenState extends State<WalletScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    key: const Key('wallet_membership_credential'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MembershipCredentialScreen(
+                          client:
+                              widget.oid4vciWalletClient ??
+                              Oid4vciWalletClient(
+                                walletRepository: widget.repository,
+                              ),
+                          onCredentialStored: _reload,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.badge_outlined, size: 18),
+                    label: Text(
+                      context.uiCopy(
+                        zh: '申請或接收會員憑證',
+                        en: 'Apply for a membership credential',
+                      ),
                     ),
                   ),
                 ],

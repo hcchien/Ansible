@@ -50,14 +50,16 @@ String userFacingError(BuildContext context, Object error) {
   if (_isPostingRequiresTier(error)) {
     return context.uiCopy(
       zh: '此看板僅限通過真人驗證的成員發文。請先完成真人驗證（升級驗證），再試一次。',
-      en: 'Only verified humans can post in this board. Complete identity '
+      en:
+          'Only verified humans can post in this board. Complete identity '
           'verification first, then try again.',
     );
   }
   if (error is SocketException || error is HttpException) {
     return context.uiCopy(
       zh: '無法連線到伺服器，請檢查網路或同步設定後再試一次。',
-      en: 'Could not reach the server. Check your network or sync settings '
+      en:
+          'Could not reach the server. Check your network or sync settings '
           'and try again.',
     );
   }
@@ -70,7 +72,8 @@ String userFacingError(BuildContext context, Object error) {
   if (error is FormatException) {
     return context.uiCopy(
       zh: '伺服器回應格式不正確，請稍後再試。',
-      en: 'The server returned an unexpected response. Please try again '
+      en:
+          'The server returned an unexpected response. Please try again '
           'later.',
     );
   }
@@ -126,13 +129,15 @@ String? _anchorErrorCopy(BuildContext context, RelayAnchorException error) {
     case 'invalid_recovery_proof':
       return context.uiCopy(
         zh: '簽章驗證失敗，無法完成這次身分重新錨定。',
-        en: 'Signature verification failed; the re-anchor could not be '
+        en:
+            'Signature verification failed; the re-anchor could not be '
             'completed.',
       );
     case 'conflict':
       return context.uiCopy(
         zh: '與目前的身分錨定狀態衝突，請重新整理後再試一次。',
-        en: 'This conflicts with the current anchor state. Refresh and try '
+        en:
+            'This conflicts with the current anchor state. Refresh and try '
             'again.',
       );
     case 'chain_mismatch':
@@ -152,7 +157,8 @@ String? _anchorErrorCopy(BuildContext context, RelayAnchorException error) {
   if (error.statusCode == 409) {
     return context.uiCopy(
       zh: '與目前的身分錨定狀態衝突，請重新整理後再試一次。',
-      en: 'This conflicts with the current anchor state. Refresh and try '
+      en:
+          'This conflicts with the current anchor state. Refresh and try '
           'again.',
     );
   }

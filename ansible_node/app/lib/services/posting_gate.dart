@@ -15,10 +15,7 @@ abstract final class PostingGate {
 
   /// Tier ordering. Unknown tiers rank below `basic` so a future tier the
   /// client does not understand fails closed (relay still decides for real).
-  static const Map<String, int> _rank = {
-    basicTier: 0,
-    verifiedHumanTier: 1,
-  };
+  static const Map<String, int> _rank = {basicTier: 0, verifiedHumanTier: 1};
 
   /// Minimum tier required by [postingPolicy], or null when ungated.
   static String? minPostTier(Map<String, Object?> postingPolicy) {

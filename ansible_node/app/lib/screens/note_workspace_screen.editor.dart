@@ -811,4 +811,3 @@ class _EditorDot extends StatelessWidget {
     );
   }
 }
-

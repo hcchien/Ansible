@@ -80,6 +80,14 @@ class DriftHostedBoardRepository implements HostedBoardRepository {
             description: Value(projection.description),
             permissionsJson: Value(jsonEncode(projection.permissions)),
             postingPolicyJson: Value(jsonEncode(projection.postingPolicy)),
+            accessPolicyJson: Value(jsonEncode(projection.accessPolicy)),
+            accessPolicyVersion: Value(projection.accessPolicyVersion),
+            contentVisibility: Value(projection.contentVisibility),
+            encryptionEpoch: Value(projection.encryptionEpoch),
+            encryptionState: Value(projection.encryptionState),
+            federationPolicyJson: Value(
+              jsonEncode(projection.federationPolicy),
+            ),
             lastSeenCursor: Value(projection.lastSeenCursor),
             createdAt: Value(projection.createdAt),
             updatedAt: Value(projection.updatedAt),
@@ -158,12 +166,12 @@ class DriftHostedBoardRepository implements HostedBoardRepository {
 
   @override
   Future<void> removeForLocalBoard(String localBoardId) async {
-    await (_db.delete(_db.boardSubscriptions)
-          ..where((table) => table.localBoardId.equals(localBoardId)))
-        .go();
-    await (_db.delete(_db.hostedBoardProjections)
-          ..where((table) => table.localBoardId.equals(localBoardId)))
-        .go();
+    await (_db.delete(
+      _db.boardSubscriptions,
+    )..where((table) => table.localBoardId.equals(localBoardId))).go();
+    await (_db.delete(
+      _db.hostedBoardProjections,
+    )..where((table) => table.localBoardId.equals(localBoardId))).go();
   }
 
   @override
@@ -204,6 +212,12 @@ class DriftHostedBoardRepository implements HostedBoardRepository {
       description: row.description,
       permissions: _decodeObjectMap(row.permissionsJson),
       postingPolicy: _decodeObjectMap(row.postingPolicyJson),
+      accessPolicy: _decodeObjectMap(row.accessPolicyJson),
+      accessPolicyVersion: row.accessPolicyVersion,
+      contentVisibility: row.contentVisibility,
+      encryptionEpoch: row.encryptionEpoch,
+      encryptionState: row.encryptionState,
+      federationPolicy: _decodeObjectMap(row.federationPolicyJson),
       lastSeenCursor: row.lastSeenCursor,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

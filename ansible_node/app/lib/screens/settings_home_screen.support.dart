@@ -96,7 +96,9 @@ class _SettingsSection extends StatelessWidget {
     // trailing ASCII tag on mono, per the design's glabel.
     final parts = label.split(' · ');
     final en = parts.length > 1 && _isAscii(parts.last) ? parts.last : null;
-    final zh = en == null ? label : parts.sublist(0, parts.length - 1).join(' · ');
+    final zh = en == null
+        ? label
+        : parts.sublist(0, parts.length - 1).join(' · ');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

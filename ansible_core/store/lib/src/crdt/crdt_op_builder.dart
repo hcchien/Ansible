@@ -75,6 +75,37 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Builds a private-board post op. Only routing metadata is cleartext; the
+  /// title/body lives inside [privateEnvelope] and is never sent separately.
+  static OpsQueueEntry createPrivatePost({
+    required String authorDid,
+    required String entityId,
+    required String boardId,
+    required String threadId,
+    required Map<String, Object?> privateEnvelope,
+    String? parentPostId,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'boardId': boardId,
+      'threadId': threadId,
+      'parentPostId': parentPostId,
+      'private_envelope': privateEnvelope,
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'post',
+      entityId: entityId,
+      opType: 'insert',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: createdAt,
+    );
+  }
+
   /// Build an Op for a comment on standalone content (murmur/note).
   ///
   /// A distinct `comment` entity type — NOT a `post` — so comments never collide
@@ -168,6 +199,32 @@ class CrdtOpBuilder {
       'title': title,
       'description': description,
       'createdAt': createdAt.toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'thread',
+      entityId: entityId,
+      opType: 'insert',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: createdAt,
+    );
+  }
+
+  static OpsQueueEntry createPrivateThread({
+    required String authorDid,
+    required String entityId,
+    required String boardId,
+    required Map<String, Object?> privateEnvelope,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'boardId': boardId,
+      'threadId': entityId,
+      'private_envelope': privateEnvelope,
     });
     return OpsQueueEntry(
       opId: opId,

@@ -1,6 +1,6 @@
 # Hosted Issuer 與 Credential-Gated Boards Implementation Plan
 
-> **Status:** proposed — 尚未開始實作
+> **Status:** in progress — foundation landed; hardware-backed mobile/desktop custody is part of the required release scope as of 2026-07-22
 > **Scope:** Issuer、Wallet、Relay／Forum Host、AppView、mobile／desktop app、營運與金鑰治理
 > **Primary scenario:**「時代力量」不需自行部署 Issuer，由 Elix 代管簽發黨員 VC；只有持有有效黨員 VC 的使用者能發現、讀取或參與指定討論區。
 
@@ -278,6 +278,27 @@ Issuer admin capability audience/scope 必須和 Relay `sync:write` capability �
 
 每一 phase 先寫 failing tests，再做最小實作；每個服務的 feature flag、migration rollback 與 backward compatibility 都必須在同一 phase 完成。
 
+### Phase H — Hardware-backed identity and holder-key custody
+
+This phase is a required part of the complete implementation, not a follow-up
+hardening task. A release cannot claim the high-sensitivity membership scenario
+until the supported platform reports hardware custody for every required key
+purpose and the server-side policy rejects reduced-trust substitutes.
+
+- [x] 定義 `ed25519` 舊帳號與 `p256-sha256` 硬體帳號的顯式演算法協商；未知演算法 fail closed。
+- [x] iOS 使用 Secure Enclave P-256 signing key；private key 不跨 native boundary，Keychain blob 採 ThisDeviceOnly 與 user-presence access control。
+- [x] Android 使用 Keystore P-256，優先 StrongBox、不可用時退至 TEE，並回報實際 security level。
+- [x] Relay registration、DID cache 與 PostgreSQL 加入 signing algorithm；保留既有 Ed25519 相容性。
+- [x] Relay/Dart 支援 P-256 DER signature verification，signed-op delta 帶演算法資訊。
+- [x] 建立既有 Ed25519 → hardware P-256 的雙簽 key-rotation intent；Relay 接受後才切換本機 active key，舊 key暫留供 rollback（待補同步確認後 retirement job）。
+- [ ] Desktop 明確提供 `reduced_trust` software custody（含 UI、export/recovery 警示），不得標成 hardware-backed。
+- [x] Wallet holder binding、Issuer root admin、board device key使用同一 custody abstraction，並以不同 alias／purpose 隔離，不共用簽署金鑰。
+- [ ] 將 board device key由目前的簽署用途擴充為獨立的 hardware-backed P-256 ECDH key agreement API；不得把 signing key拿來解密內容。
+- [ ] recovery 改為多裝置／threshold recovery；hardware private key不可備份、不可匯出，舊 raw-key backup僅供 legacy recovery並標示 reduced trust。
+- [ ] device tests 驗證 biometric cancellation、key invalidation、StrongBox fallback、Secure Enclave restore failure及 rotation rollback。
+
+**Exit criteria:** 新 mobile identity 的 content signature 與 holder binding均由不可匯出硬體 key完成；舊帳號可保留 DID安全升級；desktop 清楚標示 reduced trust且敏感政治組織管理功能 fail closed。
+
 ### Phase 0 — Protocol specs, threat model, and launch gates
 
 - [ ] 新增 `docs/protocol/hosted_issuer_v1.md`：delegation、tenant、admin approval、OID4VCI profile、status 與 migration/export。
@@ -291,9 +312,9 @@ Issuer admin capability audience/scope 必須和 Relay `sync:write` capability �
 
 ### Phase 1 — Refactor Issuer into signer and tenant boundaries
 
-- [ ] 在 `ansible_issuer/go/internal/vc` 抽出 `Signer` interface（public key、algorithm、sign、key ID）；保留 software signer 僅供 tests/local dev。
-- [ ] 新增 GCP KMS signer adapter、fake signer 與錯誤分類；production config 禁止 `ISSUER_PRIVATE_KEY_HEX`。
-- [ ] 建立上述 tenant migrations、repository interface 與 mandatory tenant context。
+- [x] 在 `ansible_issuer/go/internal/vc` 抽出 `Signer` interface（public key、algorithm、sign、key ID）；保留 software signer僅供 tests/local dev。
+- [x] 新增 GCP KMS signer adapter、REST/metadata client、CRC32C/回傳簽章驗證與 fake signer；production config禁止 `ISSUER_PRIVATE_KEY_HEX`。
+- [x] 建立 tenant schema、repository interface 與 mandatory tenant context；memory contract tests覆蓋跨 tenant拒絕、threshold及 sequence replay（PostgreSQL repository仍待接線）。
 - [ ] 將現有 first-party issuer 遷移成 bootstrap tenant，不改變現有 credential verification。
 - [ ] 所有 audit event append-only；credential payload、raw claims與 private key 不得進 log。
 - [ ] 測試 signer contract、KMS transient error/idempotency、tenant isolation、legacy migration與 config fail-closed。

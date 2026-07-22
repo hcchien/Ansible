@@ -13,7 +13,8 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   def register(conn, params) do
     with {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
          {:ok, handle_suffix} <- require_field(params, "handle_suffix"),
-         :ok <- validate_public_key_hex(public_key_hex),
+         signing_algorithm = Map.get(params, "signing_algorithm", "ed25519"),
+         :ok <- validate_public_key(signing_algorithm, public_key_hex),
          :ok <- validate_handle_suffix(handle_suffix) do
       handle = "#{handle_suffix}.#{@handle_domain}"
 
@@ -41,7 +42,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
       {:error, :invalid_public_key_hex} ->
         send_json(conn, 422, %{
           error: "missing_fields",
-          detail: "public_key_hex must be 64 hex chars"
+          detail: "public_key_hex does not match signing_algorithm"
         })
 
       {:error, :invalid_handle_suffix} ->
@@ -58,17 +59,23 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
          {:ok, handle} <- require_field(params, "handle"),
          {:ok, registration_sig} <- require_field(params, "registration_sig"),
          {:ok, nonce} <- require_field(params, "nonce"),
+         signing_algorithm = Map.get(params, "signing_algorithm", "ed25519"),
          :ok <- validate_did(did),
-         :ok <- validate_public_key_hex(public_key_hex),
+         :ok <- validate_public_key(signing_algorithm, public_key_hex),
          :ok <- validate_handle(handle) do
       # Verify signature BEFORE consuming the nonce so an invalid sig does not
       # burn the nonce — the client can retry without requesting a new one.
-      if not valid_registration_signature?(public_key_hex, nonce, registration_sig) do
+      if not valid_registration_signature?(
+           signing_algorithm,
+           public_key_hex,
+           nonce,
+           registration_sig
+         ) do
         send_json(conn, 401, %{error: "invalid_sig"})
       else
         case DidAccountCache.consume_nonce(public_key_hex, nonce, handle) do
           :ok ->
-            anchor_verified_did(conn, did, public_key_hex, handle)
+            anchor_verified_did(conn, did, public_key_hex, signing_algorithm, handle)
 
           {:error, :handle_mismatch} ->
             send_json(conn, 401, %{error: "handle_mismatch"})
@@ -95,9 +102,94 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
     end
   end
 
+  @doc "Rotate an existing DID to a new hardware-held verification key."
+  def rotate_key(conn, params) do
+    with {:ok, did} <- require_field(params, "did"),
+         {:ok, new_public_key_hex} <- require_field(params, "new_public_key_hex"),
+         {:ok, new_algorithm} <- require_field(params, "new_signing_algorithm"),
+         {:ok, old_signature} <- require_field(params, "old_signature"),
+         {:ok, new_signature} <- require_field(params, "new_signature"),
+         {:ok, issued_at} <- require_field(params, "issued_at"),
+         expected_version when is_integer(expected_version) <- params["expected_key_version"],
+         "hardware" <- params["new_custody"],
+         :ok <- validate_public_key(new_algorithm, new_public_key_hex),
+         :ok <- validate_rotation_time(issued_at),
+         {:ok, current} <- DidAccountCache.get(did),
+         true <- Map.get(current, :key_version, 1) == expected_version,
+         payload = rotation_payload(params),
+         true <-
+           SigVerifier.verify_identity(
+             Map.get(current, :signing_algorithm, "ed25519"),
+             current.public_key_hex,
+             payload,
+             old_signature
+           ),
+         true <-
+           SigVerifier.verify_identity(
+             new_algorithm,
+             new_public_key_hex,
+             payload,
+             new_signature
+           ),
+         {:ok, updated} <-
+           DidAccountCache.rotate_key(
+             did,
+             expected_version,
+             new_public_key_hex,
+             new_algorithm
+           ) do
+      send_json(conn, 200, %{
+        did: did,
+        signing_algorithm: updated.signing_algorithm,
+        public_key_hex: updated.public_key_hex,
+        key_version: updated.key_version,
+        custody: "hardware"
+      })
+    else
+      :not_found ->
+        send_json(conn, 404, %{error: "did_not_found"})
+
+      {:error, :stale_key_version} ->
+        send_json(conn, 409, %{error: "stale_key_version"})
+
+      {:error, :invalid_rotation_time} ->
+        send_json(conn, 422, %{error: "invalid_rotation_time"})
+
+      {:error, :invalid_public_key_hex} ->
+        send_json(conn, 422, %{error: "invalid_public_key"})
+
+      {:error, :unavailable} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
+
+      {:error, {:missing_field, field}} ->
+        send_json(conn, 422, %{error: "missing_fields", field: field})
+
+      _ ->
+        send_json(conn, 401, %{error: "invalid_key_rotation"})
+    end
+  end
+
+  def rotation_payload(params) do
+    fields = [
+      {"did", params["did"]},
+      {"expected_key_version", params["expected_key_version"]},
+      {"issued_at", params["issued_at"]},
+      {"new_custody", params["new_custody"]},
+      {"new_public_key_hex", params["new_public_key_hex"]},
+      {"new_signing_algorithm", params["new_signing_algorithm"]},
+      {"type", "io.trisaura.identity.keyRotation"},
+      {"version", 1}
+    ]
+
+    "{" <>
+      Enum.map_join(fields, ",", fn {key, value} ->
+        Jason.encode!(key) <> ":" <> Jason.encode!(value)
+      end) <> "}"
+  end
+
   # --- Helpers ---
 
-  defp anchor_verified_did(conn, did, public_key_hex, handle) do
+  defp anchor_verified_did(conn, did, public_key_hex, signing_algorithm, handle) do
     case {DidAccountCache.get(did), DidAccountCache.get_by_handle(handle)} do
       {{:ok, _entry}, _} ->
         send_json(conn, 409, %{error: "duplicate_did"})
@@ -106,8 +198,10 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
         send_json(conn, 409, %{error: "handle_taken"})
 
       {:not_found, _} ->
-        :ok = DidAccountCache.put(did, public_key_hex, handle)
-        :ok = IdentityCache.put(did, public_key_hex, "v2:#{did}")
+        :ok =
+          DidAccountCache.put(did, public_key_hex, handle, signing_algorithm: signing_algorithm)
+
+        :ok = IdentityCache.put(did, public_key_hex, "v2:#{did}", nil, signing_algorithm)
         {:ok, entry} = DidAccountCache.get(did)
 
         send_json(conn, 200, %{
@@ -140,6 +234,18 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   end
 
   defp validate_public_key_hex(_), do: {:error, :invalid_public_key_hex}
+
+  defp validate_public_key("ed25519", public_key_hex), do: validate_public_key_hex(public_key_hex)
+
+  defp validate_public_key("p256-sha256", <<"04", rest::binary>> = public_key_hex) do
+    if byte_size(rest) == 128 and String.match?(public_key_hex, ~r/\A[0-9a-fA-F]+\z/) do
+      :ok
+    else
+      {:error, :invalid_public_key_hex}
+    end
+  end
+
+  defp validate_public_key(_, _), do: {:error, :invalid_public_key_hex}
 
   defp validate_handle_suffix(suffix) when is_binary(suffix) do
     # DNS label rules: 1–63 chars, alphanumeric or internal hyphens,
@@ -176,12 +282,25 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
   defp validate_handle(_), do: {:error, :invalid_handle}
 
-  defp valid_registration_signature?(public_key_hex, nonce, registration_sig) do
+  defp validate_rotation_time(value) when is_binary(value) do
+    with {:ok, issued_at, 0} <- DateTime.from_iso8601(value),
+         seconds <- abs(DateTime.diff(DateTime.utc_now(), issued_at, :second)),
+         true <- seconds <= 300 do
+      :ok
+    else
+      _ -> {:error, :invalid_rotation_time}
+    end
+  end
+
+  defp validate_rotation_time(_), do: {:error, :invalid_rotation_time}
+
+  defp valid_registration_signature?(algorithm, public_key_hex, nonce, registration_sig) do
     accepts_dev_signature? =
       Application.get_env(:ansible_relay, :allow_dev_identity_signatures, false) &&
         String.starts_with?(registration_sig, "dev-sig-")
 
-    accepts_dev_signature? || SigVerifier.verify_ed25519(public_key_hex, nonce, registration_sig)
+    accepts_dev_signature? ||
+      SigVerifier.verify_identity(algorithm, public_key_hex, nonce, registration_sig)
   end
 
   defp send_json(conn, status, body) do

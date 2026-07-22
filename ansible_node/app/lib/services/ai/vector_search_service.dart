@@ -17,9 +17,9 @@ class VectorSearchService {
     required EmbeddingService embeddingService,
     required DriftMurmurEmbeddingRepository embeddingRepository,
     required DriftContentItemRepository contentItemRepository,
-  })  : _embedding = embeddingService,
-        _embeddingRepo = embeddingRepository,
-        _contentItems = contentItemRepository;
+  }) : _embedding = embeddingService,
+       _embeddingRepo = embeddingRepository,
+       _contentItems = contentItemRepository;
 
   Future<List<MurmurSearchResult>> search({
     required String query,

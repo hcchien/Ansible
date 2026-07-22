@@ -10,7 +10,7 @@ class SecureDeviceKeyStore implements DeviceKeyStore {
   final FlutterSecureStorage _storage;
 
   const SecureDeviceKeyStore({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   /// Dedicated secure-storage keys. These are intentionally distinct from the
   /// identity key so the device key is never swept into an identity backup.

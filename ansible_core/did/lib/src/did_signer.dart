@@ -11,6 +11,7 @@
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'rust_api.dart';
+import 'identity_key.dart';
 
 /// A detached Ed25519 signature.
 class Ed25519Signature {
@@ -52,18 +53,28 @@ class DidSignerImpl implements DidSigner {
   final FlutterSecureStorage _secureStorage;
 
   DidSignerImpl({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   @override
   Future<Ed25519Signature> sign(List<int> message) async {
-    final privateKeyHex =
-        await _secureStorage.read(key: 'ansible_did_private_key');
+    final algorithm = await _secureStorage.read(
+      key: 'ansible_identity_signing_algorithm',
+    );
+    if (algorithm == IdentityKeyAlgorithm.p256Sha256.wireName) {
+      final signature = await HardwareIdentityKey().sign(message);
+      return Ed25519Signature(signature.hex);
+    }
+    final privateKeyHex = await _secureStorage.read(
+      key: 'ansible_did_private_key',
+    );
     if (privateKeyHex == null) {
       throw StateError(
-          'No local DID keypair found. Run Identity Anchoring first.');
+        'No local DID keypair found. Run Identity Anchoring first.',
+      );
     }
-    final messageHex =
-        message.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    final messageHex = message
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
 
     final sigHex = await RustLib.instance.apiSignMessage(
       privateKeyHex: privateKeyHex,
@@ -77,8 +88,16 @@ class DidSignerImpl implements DidSigner {
     required List<int> message,
     required Ed25519Signature signature,
   }) async {
-    final messageHex =
-        message.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    if (publicKeyHex.length == 130 && publicKeyHex.startsWith('04')) {
+      return HardwareIdentityKey().verify(
+        publicKeyHex: publicKeyHex,
+        message: message,
+        signatureHex: signature.hex,
+      );
+    }
+    final messageHex = message
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
     return RustLib.instance.apiVerifySignature(
       publicKeyHex: publicKeyHex,
       messageHex: messageHex,

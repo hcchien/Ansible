@@ -118,10 +118,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 _label(context, context.uiCopy(zh: 'HANDLE', en: 'HANDLE')),
-                _field(
-                  controller: _handleController,
-                  hint: 'name.example',
-                ),
+                _field(controller: _handleController, hint: 'name.example'),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _saving ? null : _save,
@@ -137,9 +134,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _label(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: AnsibleMonoLabel(text, padding: EdgeInsets.zero),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: AnsibleMonoLabel(text, padding: EdgeInsets.zero),
+  );
 
   Widget _field({
     required TextEditingController controller,

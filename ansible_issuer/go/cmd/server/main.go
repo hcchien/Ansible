@@ -20,6 +20,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/trisaura/ansible_issuer/internal/api"
 	"github.com/trisaura/ansible_issuer/internal/commitment"
+	"github.com/trisaura/ansible_issuer/internal/hostedapi"
+	"github.com/trisaura/ansible_issuer/internal/hostedissuer"
+	"github.com/trisaura/ansible_issuer/internal/oid4vci"
 	"github.com/trisaura/ansible_issuer/internal/otp"
 	"github.com/trisaura/ansible_issuer/internal/pgstore"
 	"github.com/trisaura/ansible_issuer/internal/provider"
@@ -30,7 +33,7 @@ func main() {
 	cfg := vc.Config{
 		IssuerDID:  mustEnv("ISSUER_DID"),
 		IssuerURL:  mustEnv("ISSUER_URL"),
-		PrivKeyHex: mustEnv("ISSUER_PRIVATE_KEY_HEX"),
+		PrivKeyHex: os.Getenv("ISSUER_PRIVATE_KEY_HEX"),
 		TTLDays:    envInt("VC_TTL_DAYS", 90),
 	}
 	pepper := mustEnv("SUBJECT_COMMITMENT_PEPPER")
@@ -54,9 +57,6 @@ func main() {
 			if err := validateCommitmentPepper(prev); err != nil {
 				log.Fatalf("SUBJECT_COMMITMENT_PEPPER_PREVIOUS entry rejected: %v", err)
 			}
-		}
-		if err := validateIssuerPrivateKeyHex(cfg.PrivKeyHex); err != nil {
-			log.Fatalf("ISSUER_PRIVATE_KEY_HEX rejected: %v", err)
 		}
 	}
 	peppers := commitment.NewSet(pepper, previousPeppers)
@@ -86,7 +86,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	issuer, err := vc.NewIssuer(cfg, store)
+	signer, err := buildIssuerSigner(context.Background(), cfg, mockMode)
+	if err != nil {
+		log.Fatalf("issuer signer init: %v", err)
+	}
+	issuer, err := vc.NewIssuerWithSigner(cfg, store, signer)
 	if err != nil {
 		log.Fatalf("issuer init: %v", err)
 	}
@@ -118,6 +122,7 @@ func main() {
 		log.Println("credential revocation endpoint disabled: set ISSUER_ADMIN_TOKEN to enable")
 	}
 	handler.Register(mux)
+	configureHostedIssuer(mux, pgPool)
 
 	// Bound every phase of a connection's lifetime so a slow or idle client
 	// cannot pin a connection (slowloris). ReadHeaderTimeout is the key
@@ -153,6 +158,72 @@ func main() {
 		log.Fatal(err)
 	}
 	<-idleClosed
+}
+
+func configureHostedIssuer(mux *http.ServeMux, pool *pgxpool.Pool) {
+	enabled := os.Getenv("HOSTED_ISSUER_ENABLED") == "true"
+	if !enabled {
+		if isProductionEnvironment() {
+			log.Fatal("HOSTED_ISSUER_ENABLED=true is required in production")
+		}
+		log.Println("hosted issuer control plane disabled")
+		return
+	}
+	if pool == nil {
+		log.Fatal("hosted issuer requires DATABASE_URL")
+	}
+	rpID := mustEnv("ISSUER_WEBAUTHN_RP_ID")
+	origins := splitCSV(mustEnv("ISSUER_WEBAUTHN_ORIGINS"))
+	store := hostedissuer.NewPostgresStore(pool)
+	capabilities := hostedissuer.NewAdminCapabilityService(store, time.Now)
+	webauthnService, err := hostedissuer.NewAdminWebAuthnService(rpID, origins, store, capabilities, time.Now)
+	if err != nil {
+		log.Fatalf("hosted issuer WebAuthn init: %v", err)
+	}
+	control := hostedissuer.NewControlPlane(store, time.Now)
+	governance := hostedissuer.NewGovernance(store, time.Now)
+	kmsClient := vc.NewGCPKMSRESTClient(nil)
+	keys := hostedissuer.NewKeyManager(store, kmsClient, time.Now)
+	hostedapi.NewHandler(store, control, governance, webauthnService, capabilities, keys, time.Now).Register(mux)
+	oidState := oid4vci.NewStateService(oid4vci.NewPostgresStateStore(pool), time.Now)
+	oidIssuer := oid4vci.NewIssuer(oidState, store, keys, strings.TrimSuffix(mustEnv("ISSUER_URL"), "/"), time.Now)
+	oid4vci.NewHandler(oidIssuer, capabilities, governance).Register(mux)
+	log.Printf("hosted issuer control plane enabled (WebAuthn RP %s)", rpID)
+}
+
+// buildIssuerSigner makes raw seed custody an explicit local-development
+// exception. Production must use a versioned HSM key and fails closed if the
+// old secret is still configured, preventing accidental dual custody.
+func buildIssuerSigner(ctx context.Context, cfg vc.Config, mockMode bool) (vc.Signer, error) {
+	keyVersion := strings.TrimSpace(os.Getenv("ISSUER_KMS_KEY_VERSION"))
+	production := isProductionEnvironment()
+	if production && cfg.PrivKeyHex != "" {
+		return nil, errors.New("ISSUER_PRIVATE_KEY_HEX is forbidden in production; remove it and configure ISSUER_KMS_KEY_VERSION")
+	}
+	if production && keyVersion == "" {
+		return nil, errors.New("ISSUER_KMS_KEY_VERSION is required in production")
+	}
+	if keyVersion != "" {
+		return vc.NewGCPKMSEd25519Signer(ctx, keyVersion, vc.NewGCPKMSRESTClient(nil), true)
+	}
+	if !mockMode && cfg.PrivKeyHex == "" {
+		return nil, errors.New("configure ISSUER_KMS_KEY_VERSION, or ISSUER_PRIVATE_KEY_HEX for non-production development only")
+	}
+	if err := validateIssuerPrivateKeyHex(cfg.PrivKeyHex); err != nil {
+		return nil, fmt.Errorf("ISSUER_PRIVATE_KEY_HEX rejected: %w", err)
+	}
+	return vc.NewEd25519SeedSigner(cfg.IssuerDID+"#key-1", cfg.PrivKeyHex)
+}
+
+func isProductionEnvironment() bool {
+	for _, key := range []string{"ANSIBLE_APP_ENV", "APP_ENV", "ENVIRONMENT"} {
+		switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+		case "prod", "production":
+			return true
+		}
+	}
+	service := strings.ToLower(os.Getenv("K_SERVICE"))
+	return strings.HasSuffix(service, "-prod") || service == "issuer-prod" || service == "ansible-issuer-prod"
 }
 
 // isProdLikeEnvironment reports whether the process appears to be running in a

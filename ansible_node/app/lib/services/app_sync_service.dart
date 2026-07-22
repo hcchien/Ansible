@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
@@ -102,6 +104,8 @@ class AppSyncService {
     RelayIdentityClient? identityClient,
     RelayReputationPresentationService? reputationPresentationService,
     SyncCapabilityService Function(RemoteNode node)? syncCapabilityService,
+    BoardReadAuthorization? authorizeBoardRead,
+    BoardWriteAuthorization? authorizeBoardWrite,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
        _contactRepository = contactRepository,
@@ -127,7 +131,9 @@ class AppSyncService {
        _relayPublicationClient = relayPublicationClient,
        _identityClient = identityClient,
        _reputationPresentationService = reputationPresentationService,
-       _syncCapabilityService = syncCapabilityService;
+       _syncCapabilityService = syncCapabilityService,
+       _authorizeBoardRead = authorizeBoardRead,
+       _authorizeBoardWrite = authorizeBoardWrite;
 
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
@@ -155,6 +161,8 @@ class AppSyncService {
   final RelayIdentityClient? _identityClient;
   final RelayReputationPresentationService? _reputationPresentationService;
   final SyncCapabilityService Function(RemoteNode node)? _syncCapabilityService;
+  final BoardReadAuthorization? _authorizeBoardRead;
+  final BoardWriteAuthorization? _authorizeBoardWrite;
 
   // Portable issuer re-verification (federation trust): one service per
   // relay node, kept for the AppSyncService lifetime so its per-DID verified
@@ -209,6 +217,7 @@ class AppSyncService {
           relayClient: RelayOpsClient(
             baseUrl: activeNode.url,
             accessToken: capabilities[activeNode.id],
+            requestHeaders: _boardWriteHeaders,
           ),
         ).flushPending();
       }
@@ -224,6 +233,40 @@ class AppSyncService {
       reputationErrors: reputationErrors,
       publishSummary: publishSummary,
     );
+  }
+
+  Future<Map<String, String>> _boardWriteHeaders(
+    OpsQueueEntry entry,
+    Uri requestUri,
+  ) async {
+    final authorize = _authorizeBoardWrite;
+    final hostedBoards = _hostedBoardRepo;
+    if (authorize == null || hostedBoards == null) return const {};
+    Object? decoded;
+    try {
+      decoded = jsonDecode(utf8.decode(base64Decode(entry.payload)));
+    } on Object {
+      return const {};
+    }
+    if (decoded is! Map || decoded['boardId'] is! String) return const {};
+    final rawBoardId = decoded['boardId'] as String;
+    final projections = await hostedBoards.listProjections();
+    HostedBoardProjection? projection;
+    for (final candidate in projections) {
+      if (rawBoardId == candidate.hostedBoardId ||
+          rawBoardId.endsWith('_${candidate.hostedBoardId}')) {
+        projection = candidate;
+        break;
+      }
+    }
+    if (projection == null) return const {};
+    final post = projection.accessPolicy['post'];
+    if (post is! Map ||
+        post['requirement'] == 'public' ||
+        post['requirement'] == 'posting_policy') {
+      return const {};
+    }
+    return authorize(projection, requestUri);
   }
 
   /// Enqueues relay ops for the user's public/unlisted murmur and note content
@@ -451,6 +494,7 @@ class AppSyncService {
         remoteTombstoneRepository: _remoteTombstoneRepository,
         issuerAttestationService: _attestationServiceFor(node.url),
         identityClient: _identityClient,
+        authorizeBoardRead: _authorizeBoardRead,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);
       if (result.success) {
         pulledActivities += result.activitiesProcessed;

@@ -52,10 +52,17 @@ class RelayIdentityClient {
   /// Fetch the verified public key hex for a registered DID from the relay.
   /// Returns null if the DID is not registered (404).
   Future<String?> fetchPublicKey(String did) async {
+    final key = await fetchVerificationKey(did);
+    return key?.publicKeyHex;
+  }
+
+  Future<RelayVerificationKey?> fetchVerificationKey(String did) async {
     try {
       final response = await _client
           .get(
-            _endpoint('/api/v1/identity/public-key/${Uri.encodeComponent(did)}'),
+            _endpoint(
+              '/api/v1/identity/public-key/${Uri.encodeComponent(did)}',
+            ),
             headers: AnsibleProtocol.headers,
           )
           .timeout(timeout);
@@ -68,7 +75,13 @@ class RelayIdentityClient {
         );
       }
       final decoded = _decodeObject(response.body);
-      return decoded['public_key_hex'] as String?;
+      final publicKeyHex = decoded['public_key_hex'] as String?;
+      if (publicKeyHex == null) return null;
+      return RelayVerificationKey(
+        publicKeyHex: publicKeyHex,
+        signingAlgorithm: decoded['signing_algorithm'] as String? ?? 'ed25519',
+        keyVersion: decoded['key_version'] as int? ?? 1,
+      );
     } on RelayIdentityException {
       rethrow;
     } catch (e) {
@@ -96,4 +109,16 @@ class RelayIdentityClient {
   void close() {
     _client.close();
   }
+}
+
+class RelayVerificationKey {
+  const RelayVerificationKey({
+    required this.publicKeyHex,
+    required this.signingAlgorithm,
+    required this.keyVersion,
+  });
+
+  final String publicKeyHex;
+  final String signingAlgorithm;
+  final int keyVersion;
 }

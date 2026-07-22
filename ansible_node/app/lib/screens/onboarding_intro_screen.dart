@@ -102,7 +102,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   // 「不要賣機制，要賣機制帶來的感受」).
                   context.uiCopy(
                     zh: '一個每個人都是真人的討論社群。沒有機器人、沒有網軍，你的帳號和內容永遠是你的。',
-                    en: 'A community where everyone is a real person. No bots, '
+                    en:
+                        'A community where everyone is a real person. No bots, '
                         'no troll armies — and your account and words stay '
                         'yours, always.',
                   ),
@@ -122,7 +123,10 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
           padding: const EdgeInsets.fromLTRB(22, 14, 22, 10),
           child: Column(
             children: [
-              _cta(context.uiCopy(zh: '進入', en: 'Enter'), trailing: '→'),
+              _cta(
+                context.uiCopy(zh: '進入', en: 'Enter'),
+                trailing: '→',
+              ),
               const SizedBox(height: 14),
               Text(
                 context.uiCopy(
@@ -171,7 +175,12 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _mono(context.uiCopy(zh: '三條承諾 · THREE PROMISES', en: 'THREE PROMISES')),
+                _mono(
+                  context.uiCopy(
+                    zh: '三條承諾 · THREE PROMISES',
+                    en: 'THREE PROMISES',
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   context.uiCopy(
@@ -191,7 +200,8 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                 Text(
                   context.uiCopy(
                     zh: '所有寫下來的東西，預設只在你的裝置裡。不上雲，不索引，不分析。要送出去之前，會先問你。',
-                    en: 'Everything you write stays on your device by default — '
+                    en:
+                        'Everything you write stays on your device by default — '
                         'no cloud, no indexing, no analysis. Before anything leaves, it asks you.',
                   ),
                   style: const TextStyle(
@@ -222,7 +232,11 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                         dot: AnsibleDesign.accent,
                         zh: '送出前會先問你',
                         en: 'ASKS FIRST',
-                        items: const ['請 AI 整理一段內容', '把筆記分享到圈子或公開', '把 murmur 編入別人的討論'],
+                        items: const [
+                          '請 AI 整理一段內容',
+                          '把筆記分享到圈子或公開',
+                          '把 murmur 編入別人的討論',
+                        ],
                       ),
                     ],
                   ),
@@ -265,7 +279,10 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: dot,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(

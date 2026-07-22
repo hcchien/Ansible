@@ -2,8 +2,15 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   @moduledoc "Phase 2 — Op ingestion and delta pull endpoints."
 
   import Plug.Conn
-  alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SigVerifier, SnapshotStore}
-  alias AnsibleRelay.ForumHost.{Moderation, PostingGate}
+  alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SnapshotStore}
+
+  alias AnsibleRelay.ForumHost.{
+    BoardCapabilityRequest,
+    Moderation,
+    PostingGate,
+    PrivateBoardKeys,
+    Store
+  }
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
   @valid_entity_types ~w(board thread post reaction murmur note follow profile comment)
@@ -28,15 +35,22 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          :ok <- check_did_verified(author_did),
          :ok <- check_abuse_limit(author_did),
          :ok <- check_op_not_duplicate(params["op_id"]),
-         public_key = IdentityCache.public_key_hex(author_did),
          message = signing_payload(params),
-         :ok <- check_signature(public_key, message, params["signature"]),
+         :ok <- check_signature(author_did, message, params["signature"]),
          :ok <-
            check_posting_gate(
+             conn,
              params["entity_type"],
              params["op_type"],
              params["payload"],
              author_did
+           ),
+         :ok <-
+           check_board_content_encryption(
+             params["entity_type"],
+             params["entity_id"],
+             params["op_type"],
+             params["payload"]
            ),
          # Lock gate: a locked thread accepts no new post intents. Runs at
          # the same chokepoint as the posting gate so signed ops and
@@ -127,8 +141,26 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
           current_tier: current_tier
         })
 
+      {:error, reason}
+      when reason in [
+             :board_capability_required,
+             :invalid_board_capability,
+             :capability_expired,
+             :board_capability_replay
+           ] ->
+        send_json(conn, 403, %{error: Atom.to_string(reason)})
+
       {:error, :thread_locked, reason_code} ->
         send_json(conn, 403, %{error: "thread_locked", reason_code: reason_code})
+
+      {:error, reason}
+      when reason in [
+             :encrypted_content_not_allowed,
+             :private_board_rotation_required,
+             :private_board_plaintext_forbidden,
+             :invalid_private_content_envelope
+           ] ->
+        send_json(conn, 422, %{error: Atom.to_string(reason)})
     end
   end
 
@@ -155,10 +187,11 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     # Fetch one extra to determine has_more
     ops = OpStore.list(after_log_id: cursor, limit: limit + 1)
     has_more = length(ops) > limit
-    visible = Enum.take(ops, limit)
+    scanned = Enum.take(ops, limit)
+    visible = Enum.filter(scanned, &public_op?/1)
 
     next_cursor =
-      case visible do
+      case scanned do
         [] -> cursor
         list -> List.last(list).log_id
       end
@@ -178,6 +211,97 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     })
   end
 
+  def board_delta(conn, board_id, params) do
+    with board when not is_nil(board) <- PostingGate.get_board(board_id),
+         {:ok, requirement} <-
+           AnsibleRelay.ForumHost.BoardAccessPolicy.requirement_for(board.access_policy, :read),
+         :ok <- authorize_board_read(conn, board, requirement) do
+      cursor = parse_int(params["cursor"], 0)
+      limit = min(parse_int(params["limit"], 100), 500)
+
+      {board_ops, next_cursor, has_more} =
+        scan_board_ops(board.hosted_board_id, cursor, limit, [])
+
+      page =
+        board_ops
+        |> Enum.take(limit)
+        |> Enum.map(&attach_public_key/1)
+
+      send_json(conn, 200, %{
+        ops: Moderation.overlay_ops(page),
+        next_cursor: next_cursor,
+        has_more: has_more
+      })
+    else
+      nil -> send_json(conn, 404, %{error: "board_not_found"})
+      {:error, reason} -> send_json(conn, 403, %{error: Atom.to_string(reason)})
+    end
+  end
+
+  # Board ops are encoded inside the signed payload rather than indexed in a
+  # dedicated SQL column. Scan the global cursor monotonically until this
+  # board has a full page (plus one) or the settled log ends. The returned
+  # cursor always represents every row inspected, including unrelated rows,
+  # so sparse boards cannot stall forever and no matching op is skipped.
+  defp scan_board_ops(board_id, cursor, target, collected) do
+    batch = OpStore.list(after_log_id: cursor, limit: 500)
+
+    {matches, scanned_cursor, full?} =
+      Enum.reduce_while(batch, {collected, cursor, false}, fn op, {items, _cursor, _} ->
+        items = if op_board_id(op) == board_id, do: [op | items], else: items
+
+        if length(items) >= target do
+          {:halt, {items, op.log_id, true}}
+        else
+          {:cont, {items, op.log_id, false}}
+        end
+      end)
+
+    cond do
+      full? -> {Enum.reverse(matches), scanned_cursor, true}
+      length(batch) < 500 -> {Enum.reverse(matches), scanned_cursor, false}
+      true -> scan_board_ops(board_id, scanned_cursor, target, matches)
+    end
+  end
+
+  defp authorize_board_read(_conn, _board, "public"), do: :ok
+
+  defp authorize_board_read(conn, board, _requirement) do
+    case BoardCapabilityRequest.authorize(conn, board.hosted_board_id, "read") do
+      {:ok, _} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp public_op?(op) do
+    case op_board_id(op) do
+      nil ->
+        true
+
+      board_id ->
+        case PostingGate.get_board(board_id) do
+          nil ->
+            true
+
+          %{
+            content_visibility: "public",
+            access_policy: %{"read" => %{"requirement" => "public"}}
+          } ->
+            true
+
+          _ ->
+            false
+        end
+    end
+  end
+
+  defp op_board_id(op) do
+    case decode_payload(op.payload) do
+      {:ok, %{} = decoded} -> decoded["boardId"] || decoded["board_id"]
+      _ -> nil
+    end
+  end
+
   # GET /api/v1/ops/snapshot
   #
   # Phase 2.3 — returns the latest relay-signed snapshot (or the newest snapshot
@@ -187,6 +311,14 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   # recompute the digest from the ops + recompute the CID + check the Ed25519
   # signature against `signing_public_key_hex`.
   def snapshot(conn, params) do
+    if Store.protected_boards_exist?() do
+      send_json(conn, 409, %{error: "public_snapshot_unavailable_with_protected_boards"})
+    else
+      do_snapshot(conn, params)
+    end
+  end
+
+  defp do_snapshot(conn, params) do
     snapshot =
       case parse_optional_int(params["cursor"]) do
         nil -> SnapshotStore.latest()
@@ -318,7 +450,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   # acceptance time (never cached); ops that do not target a board hosted
   # here pass through untouched. Runs after signature verification so the
   # response never discloses a tier for an unauthenticated DID.
-  defp check_posting_gate(entity_type, "insert", payload, author_did)
+  defp check_posting_gate(conn, entity_type, "insert", payload, author_did)
        when entity_type in @gated_entity_types do
     board_id =
       case decode_payload(payload) do
@@ -327,13 +459,39 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       end
 
     if is_binary(board_id) do
-      PostingGate.authorize_post(board_id, author_did)
+      case PostingGate.get_board(board_id) do
+        nil -> :ok
+        board -> PostingGate.authorize_board_post(conn, board, author_did)
+      end
     else
       :ok
     end
   end
 
-  defp check_posting_gate(_entity_type, _op_type, _payload, _author_did), do: :ok
+  defp check_posting_gate(_conn, _entity_type, _op_type, _payload, _author_did), do: :ok
+
+  defp check_board_content_encryption(entity_type, entity_id, op_type, payload)
+       when entity_type in @gated_entity_types and op_type != "delete" do
+    case decode_payload(payload) do
+      {:ok, %{} = decoded} ->
+        board_id = decoded["boardId"] || decoded["board_id"]
+
+        case PostingGate.get_board(board_id) do
+          nil ->
+            :ok
+
+          board ->
+            PrivateBoardKeys.validate_content_envelope(board, entity_type, entity_id, decoded)
+        end
+
+      _ ->
+        # Legacy/non-board ops may contain opaque payloads. Encryption rules
+        # apply only after a hosted board can be resolved from a JSON object.
+        :ok
+    end
+  end
+
+  defp check_board_content_encryption(_entity_type, _entity_id, _op_type, _payload), do: :ok
 
   # New post inserts into a locked thread are rejected with the lock's reason
   # code. Thread inserts are new threads, which cannot be locked yet.
@@ -349,8 +507,8 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   defp check_thread_lock(_entity_type, _op_type, _payload), do: :ok
 
-  defp check_signature(public_key, message, sig_hex) do
-    if SigVerifier.verify_ed25519(public_key, message, sig_hex) do
+  defp check_signature(author_did, message, sig_hex) do
+    if IdentityCache.verify_signature(author_did, message, sig_hex) do
       AnsibleRelay.Metrics.inc("relay_signature_verifications_total", %{result: "pass"})
       :ok
     else
@@ -360,8 +518,15 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   end
 
   defp attach_public_key(%{author_did: author_did} = op) do
+    signing_algorithm =
+      case IdentityCache.get(author_did) do
+        {:ok, entry} -> Map.get(entry, :signing_algorithm, "ed25519")
+        _ -> "ed25519"
+      end
+
     op
     |> Map.put(:public_key_hex, IdentityCache.public_key_hex(author_did))
+    |> Map.put(:signing_algorithm, signing_algorithm)
     |> Map.put(:reputation_tier, AnsibleRelay.DidAccountCache.reputation_tier(author_did))
   end
 

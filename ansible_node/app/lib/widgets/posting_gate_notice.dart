@@ -50,8 +50,11 @@ class PostingGateNotice extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.verified_outlined,
-                  size: 18, color: AnsibleDesign.accent),
+              const Icon(
+                Icons.verified_outlined,
+                size: 18,
+                color: AnsibleDesign.accent,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -72,7 +75,8 @@ class PostingGateNotice extends StatelessWidget {
           Text(
             context.uiCopy(
               zh: '完成真人驗證後即可在此發文，閱讀不受影響。',
-              en: 'Complete identity verification to post here. '
+              en:
+                  'Complete identity verification to post here. '
                   'Reading is not affected.',
             ),
             style: const TextStyle(
@@ -106,7 +110,8 @@ class PostingGateNotice extends StatelessWidget {
                     Text(
                       context.uiCopy(
                         zh: '驗證服務尚未開通。開放後即可在這裡完成升級。',
-                        en: 'The verification service is not live yet. '
+                        en:
+                            'The verification service is not live yet. '
                             'You can upgrade here once it opens.',
                       ),
                       style: const TextStyle(

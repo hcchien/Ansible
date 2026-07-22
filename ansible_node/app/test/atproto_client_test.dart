@@ -21,6 +21,7 @@ void main() {
           expect(jsonDecode(request.body), {
             'public_key_hex': '00' * 32,
             'handle_suffix': 'alice',
+            'signing_algorithm': 'ed25519',
           });
 
           return http.Response(
@@ -59,6 +60,7 @@ void main() {
             'handle': 'alice.elix.cool',
             'registration_sig': 'sig-hex',
             'nonce': 'nonce-1',
+            'signing_algorithm': 'ed25519',
           });
 
           return http.Response(

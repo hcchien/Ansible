@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/forum_host_client.dart';
+import '../services/board_access_presentation_service.dart';
+import '../services/private_board_rotation_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/board_form_dialog.dart';
@@ -23,9 +25,14 @@ class HostedBoardEntry {
   String get hostedBoardId => board['hosted_board_id'] as String? ?? '';
   String get title => board['title'] as String? ?? hostedBoardId;
   String? get description => board['description'] as String?;
+  String get contentVisibility =>
+      board['content_visibility'] as String? ?? 'public';
 
   Map<String, Object?> get postingPolicy =>
       Map<String, Object?>.from(board['posting_policy'] as Map? ?? const {});
+
+  Map<String, Object?> get accessPolicy =>
+      Map<String, Object?>.from(board['access_policy'] as Map? ?? const {});
 
   String? get minPostTier {
     final tier = postingPolicy['min_post_tier'];
@@ -40,6 +47,7 @@ class HostedBoardEntry {
 /// `update_board` intent. Successful updates refresh the local
 /// [HostedBoardProjection] cache and the mirrored local [Board] row.
 class HostedBoardsScreen extends StatefulWidget {
+  final AppDatabase? db;
   final String did;
   final RemoteNodeRepository remoteNodeRepo;
   final HostedBoardRepository hostedBoardRepo;
@@ -61,6 +69,7 @@ class HostedBoardsScreen extends StatefulWidget {
     required this.remoteNodeRepo,
     required this.hostedBoardRepo,
     required this.boardRepo,
+    this.db,
     this.clientFactory,
     this.signIntent,
     this.onCreateBoard,
@@ -85,7 +94,9 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
 
   ForumHostClient _clientFor(String baseUrl) {
     final factory = widget.clientFactory;
-    return factory == null ? ForumHostClient(baseUrl: baseUrl) : factory(baseUrl);
+    return factory == null
+        ? ForumHostClient(baseUrl: baseUrl)
+        : factory(baseUrl);
   }
 
   Future<String> _sign(List<int> message) {
@@ -222,9 +233,233 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(userFacingError(context, error))),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
+    }
+  }
+
+  Future<void> _rotatePrivateBoard(HostedBoardEntry entry) async {
+    final db = widget.db;
+    final projection = await widget.hostedBoardRepo.getProjection(
+      entry.host.id,
+      entry.hostedBoardId,
+    );
+    if (db == null || projection == null) return;
+    try {
+      final epoch = await PrivateBoardRotationService(
+        access: BoardAccessPresentationService(
+          walletRepository: DriftWalletRepository(db),
+        ),
+      ).rotate(forumHost: Uri.parse(entry.host.url), board: projection);
+      await widget.hostedBoardRepo.upsertProjection(
+        projection.copyWith(encryptionEpoch: epoch, encryptionState: 'ready'),
       );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '私密看板金鑰已輪替至第 $epoch 版',
+              en: 'Private-board key rotated to epoch $epoch',
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
+    }
+  }
+
+  Future<void> _editAccessPolicy(HostedBoardEntry entry) async {
+    var visibility = entry.contentVisibility;
+    final issuerController = TextEditingController();
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(context.uiCopy(zh: '看板存取政策', en: 'Board access policy')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: visibility,
+                decoration: InputDecoration(
+                  labelText: context.uiCopy(zh: '內容可見性', en: 'Visibility'),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'public',
+                    child: Text(context.uiCopy(zh: '公開', en: 'Public')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'host_visible',
+                    child: Text(context.uiCopy(zh: '會員限定', en: 'Members only')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'end_to_end_encrypted',
+                    child: Text(
+                      context.uiCopy(zh: '端對端加密', en: 'End-to-end encrypted'),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => visibility = value);
+                },
+              ),
+              if (visibility != 'public') ...[
+                const SizedBox(height: 14),
+                TextField(
+                  controller: issuerController,
+                  decoration: InputDecoration(
+                    labelText: context.uiCopy(
+                      zh: '信任的 Issuer DID',
+                      en: 'Trusted issuer DID',
+                    ),
+                    hintText: 'did:web:issuer.example',
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Text(
+                context.uiCopy(
+                  zh: '存取範圍或信任來源的變更會延遲至少 24 小時生效，並保留不可變更的政策歷史。',
+                  en: 'Access-scope and trust changes take effect after at least 24 hours and remain in immutable policy history.',
+                ),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AnsibleDesign.inkMuted,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                final issuer = issuerController.text.trim();
+                if (visibility != 'public' && !issuer.startsWith('did:')) {
+                  return;
+                }
+                Navigator.pop(context, {
+                  'visibility': visibility,
+                  if (issuer.isNotEmpty) 'issuer': issuer,
+                });
+              },
+              child: Text(context.uiCopy(zh: '排程變更', en: 'Schedule change')),
+            ),
+          ],
+        ),
+      ),
+    );
+    issuerController.dispose();
+    if (result == null || !mounted) return;
+
+    final selectedVisibility = result['visibility']!;
+    final public = selectedVisibility == 'public';
+    final accessPolicy = public
+        ? <String, Object?>{
+            'version': 1,
+            'discovery': 'public',
+            'read': {'requirement': 'public'},
+            'post': {'requirement': 'posting_policy'},
+            'moderate': {'requirement': 'board_moderator'},
+            'requirements': <String, Object?>{},
+            'capability_ttl_seconds': 300,
+            'content_visibility': 'public',
+            'federation': 'enabled',
+          }
+        : <String, Object?>{
+            'version': 1,
+            'discovery': 'credential_required',
+            'read': {'requirement': 'member'},
+            'post': {'requirement': 'member'},
+            'moderate': {'requirement': 'board_moderator'},
+            'requirements': {
+              'member': {
+                'credential_type': 'PoliticalPartyMembershipCredential',
+                'trusted_issuers': [result['issuer']!],
+                'claims': [
+                  {'path': 'membership', 'op': 'equals', 'value': true},
+                ],
+                'holder_binding': 'required',
+                'status': {'required': true, 'max_age_seconds': 300},
+              },
+            },
+            'capability_ttl_seconds': 300,
+            'content_visibility': selectedVisibility,
+            'federation': 'disabled',
+          };
+    final newPolicy = <String, Object?>{
+      'access_policy': accessPolicy,
+      'content_visibility': selectedVisibility,
+      'federation_policy': {'mode': public ? 'enabled' : 'disabled'},
+    };
+
+    final client = _clientFor(entry.host.url);
+    try {
+      final history = await client.getHostedBoardPolicyHistory(
+        entry.hostedBoardId,
+      );
+      if (history.isEmpty || history.first['policy_hash'] is! String) {
+        throw const FormatException('Missing current board policy hash');
+      }
+      final createdAt = DateTime.now().toUtc();
+      final effectiveAt = createdAt.add(const Duration(hours: 24, seconds: 10));
+      final expiresAt = createdAt.add(const Duration(minutes: 5));
+      final intentId = _uuid.v4();
+      final previousHash = history.first['policy_hash'] as String;
+      final canonical = UpdateHostedBoardPolicyIntent.canonicalPayload(
+        intentId: intentId,
+        authorDid: widget.did,
+        boardId: entry.hostedBoardId,
+        previousPolicyHash: previousHash,
+        targetForumHost: entry.host.url,
+        newPolicy: newPolicy,
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+        effectiveAt: effectiveAt,
+      );
+      final signature = await _sign(utf8.encode(jsonEncode(canonical)));
+      await client.updateHostedBoardPolicy(
+        UpdateHostedBoardPolicyIntent(
+          intentId: intentId,
+          authorDid: widget.did,
+          boardId: entry.hostedBoardId,
+          previousPolicyHash: previousHash,
+          targetForumHost: entry.host.url,
+          newPolicy: newPolicy,
+          createdAt: createdAt,
+          expiresAt: expiresAt,
+          effectiveAt: effectiveAt,
+          signature: signature,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '政策變更已排程，將於 24 小時後生效',
+              en: 'Policy change scheduled to take effect in 24 hours',
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
+    } finally {
+      client.close();
     }
   }
 
@@ -260,6 +495,12 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
         description: description,
         permissions: projection.permissions,
         postingPolicy: postingPolicy,
+        accessPolicy: projection.accessPolicy,
+        accessPolicyVersion: projection.accessPolicyVersion,
+        contentVisibility: projection.contentVisibility,
+        encryptionEpoch: projection.encryptionEpoch,
+        encryptionState: projection.encryptionState,
+        federationPolicy: projection.federationPolicy,
         lastSeenCursor: projection.lastSeenCursor,
         createdAt: projection.createdAt,
         updatedAt: now,
@@ -310,7 +551,8 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
             Text(
               context.uiCopy(
                 zh: '無法載入你主持的看板，請檢查網路後再試一次。',
-                en: 'Could not load the boards you host. Check your network '
+                en:
+                    'Could not load the boards you host. Check your network '
                     'and try again.',
               ),
               textAlign: TextAlign.center,
@@ -352,7 +594,43 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            trailing: const Icon(Icons.edit_outlined, size: 18),
+            trailing: PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'rotate') {
+                  _rotatePrivateBoard(entry);
+                } else if (value == 'policy') {
+                  _editAccessPolicy(entry);
+                } else {
+                  _editBoard(entry);
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Text(context.uiCopy(zh: '編輯看板', en: 'Edit board')),
+                ),
+                PopupMenuItem(
+                  value: 'policy',
+                  child: Text(
+                    context.uiCopy(
+                      zh: '存取與隱私政策',
+                      en: 'Access & privacy policy',
+                    ),
+                  ),
+                ),
+                if (entry.contentVisibility == 'end_to_end_encrypted' &&
+                    widget.db != null)
+                  PopupMenuItem(
+                    value: 'rotate',
+                    child: Text(
+                      context.uiCopy(
+                        zh: '輪替私密看板金鑰',
+                        en: 'Rotate private-board key',
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             onTap: () => _editBoard(entry),
           );
         },
@@ -385,7 +663,8 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
             Text(
               context.uiCopy(
                 zh: '建立看板後，你可以在這裡編輯標題、描述與發文資格。',
-                en: 'Create a board and manage its title, description, and '
+                en:
+                    'Create a board and manage its title, description, and '
                     'posting rules here.',
               ),
               textAlign: TextAlign.center,

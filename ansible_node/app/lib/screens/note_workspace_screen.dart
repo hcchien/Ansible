@@ -276,4 +276,3 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
     ).showSnackBar(SnackBar(content: Text(context.l10n.noteCreated)));
   }
 }
-

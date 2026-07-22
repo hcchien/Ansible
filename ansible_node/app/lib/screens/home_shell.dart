@@ -27,6 +27,7 @@ import '../services/ai/vector_search_service.dart';
 import '../services/app_locale_controller.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/app_sync_service.dart';
+import '../services/board_access_presentation_service.dart';
 import '../services/contact_resolver.dart';
 import '../services/discovery_client.dart';
 import '../services/contact_source_sync_service.dart';
@@ -44,6 +45,9 @@ import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
 import '../services/notification_preferences_controller.dart';
 import '../services/notification_projector.dart';
+import '../services/private_board_op_factory.dart';
+import '../services/private_board_crypto_service.dart';
+import '../services/private_board_key_client.dart';
 import '../services/relay_discovery_client.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/relay_ops_client.dart';
@@ -1404,6 +1408,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         postingPolicy: Map<String, Object?>.from(
           board['posting_policy'] as Map? ?? const {},
         ),
+        accessPolicy: Map<String, Object?>.from(
+          board['access_policy'] as Map? ?? const {},
+        ),
+        accessPolicyVersion: board['access_policy_version'] as int? ?? 1,
+        contentVisibility: board['content_visibility'] as String? ?? 'public',
+        encryptionEpoch: board['encryption_epoch'] as int? ?? 0,
+        encryptionState: board['encryption_state'] as String? ?? 'disabled',
+        federationPolicy: Map<String, Object?>.from(
+          board['federation_policy'] as Map? ?? const {'mode': 'enabled'},
+        ),
         createdAt: now,
         updatedAt: now,
       ),
@@ -1502,6 +1516,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final postingPolicy = minPostTier == null
         ? null
         : <String, Object?>{'min_post_tier': minPostTier};
+    final accessPolicy = Map<String, Object?>.from(
+      jsonDecode(result['accessPolicyJson']!) as Map,
+    );
+    final contentVisibility = result['contentVisibility']!;
+    final federationPolicy = Map<String, Object?>.from(
+      jsonDecode(result['federationPolicyJson']!) as Map,
+    );
     final intentId = _uuid.v4();
     final createdAt = now.toUtc();
     final expiresAt = createdAt.add(const Duration(minutes: 5));
@@ -1512,6 +1533,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       title: title,
       description: result['description'],
       postingPolicy: postingPolicy,
+      accessPolicy: accessPolicy,
+      contentVisibility: contentVisibility,
+      federationPolicy: federationPolicy,
       createdAt: createdAt,
       expiresAt: expiresAt,
     );
@@ -1531,6 +1555,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             title: title,
             description: result['description'],
             postingPolicy: postingPolicy,
+            accessPolicy: accessPolicy,
+            contentVisibility: contentVisibility,
+            federationPolicy: federationPolicy,
             createdAt: createdAt,
             expiresAt: expiresAt,
           ),
@@ -1568,6 +1595,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ),
           postingPolicy: Map<String, Object?>.from(
             remoteBoard['posting_policy'] as Map? ?? postingPolicy ?? const {},
+          ),
+          accessPolicy: Map<String, Object?>.from(
+            remoteBoard['access_policy'] as Map? ?? accessPolicy,
+          ),
+          accessPolicyVersion:
+              remoteBoard['access_policy_version'] as int? ?? 1,
+          contentVisibility:
+              remoteBoard['content_visibility'] as String? ?? contentVisibility,
+          encryptionEpoch: remoteBoard['encryption_epoch'] as int? ?? 0,
+          encryptionState:
+              remoteBoard['encryption_state'] as String? ?? 'disabled',
+          federationPolicy: Map<String, Object?>.from(
+            remoteBoard['federation_policy'] as Map? ?? federationPolicy,
           ),
           createdAt: now,
           updatedAt: now,
@@ -1639,14 +1679,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       createdAt: now,
       updatedAt: now,
     );
+    final projection = await _hostedBoardRepo.getProjectionByLocalBoardId(
+      boardId,
+    );
     await _threadRepo.create(thread);
     await _enqueueAndFlush(
-      CrdtOpBuilder.createThread(
-        authorDid: widget.did,
-        entityId: thread.id,
-        boardId: boardId,
-        title: thread.title,
-      ),
+      projection?.contentVisibility == 'end_to_end_encrypted'
+          ? await PrivateBoardOpFactory().createThread(
+              board: projection!,
+              authorDid: widget.did,
+              entityId: thread.id,
+              title: thread.title,
+              createdAt: now,
+            )
+          : CrdtOpBuilder.createThread(
+              authorDid: widget.did,
+              entityId: thread.id,
+              boardId: boardId,
+              title: thread.title,
+            ),
     );
     // 建立首帖
     final post = Post(
@@ -1663,13 +1714,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
     await _postRepo.create(post);
     await _enqueueAndFlush(
-      CrdtOpBuilder.createPost(
-        authorDid: widget.did,
-        entityId: post.id,
-        boardId: boardId,
-        threadId: thread.id,
-        content: post.content,
-      ),
+      projection?.contentVisibility == 'end_to_end_encrypted'
+          ? await PrivateBoardOpFactory().createPost(
+              board: projection!,
+              authorDid: widget.did,
+              entityId: post.id,
+              threadId: thread.id,
+              content: post.content,
+              createdAt: now,
+            )
+          : CrdtOpBuilder.createPost(
+              authorDid: widget.did,
+              entityId: post.id,
+              boardId: boardId,
+              threadId: thread.id,
+              content: post.content,
+            ),
     );
     await _recordThreadPublicationTargets(
       threadId: thread.id,
@@ -1762,6 +1822,68 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   AppSyncService _appSyncService() {
+    final boardAccess = BoardAccessPresentationService(
+      walletRepository: DriftWalletRepository(widget.db),
+    );
+    final boardCapabilities = <String, BoardAccessCapability>{};
+    final preparedPrivateBoards = <String>{};
+    final privateCrypto = PrivateBoardCryptoService();
+    Future<Map<String, String>> authorizeBoard(
+      HostedBoardProjection board,
+      Uri requestUri,
+      String action,
+      String method,
+    ) async {
+      final cacheKey = '${board.hostedBoardId}:$action';
+      var capability = boardCapabilities[cacheKey];
+      if (capability == null ||
+          capability.policyVersion != board.accessPolicyVersion ||
+          !capability.expiresAt.isAfter(
+            DateTime.now().toUtc().add(const Duration(seconds: 5)),
+          )) {
+        capability = await boardAccess.authorize(
+          forumHost: requestUri.replace(path: '', query: null, fragment: null),
+          boardId: board.hostedBoardId,
+          action: action,
+        );
+        boardCapabilities[cacheKey] = capability;
+      }
+      final privateKey =
+          '${board.hostedBoardId}:${board.encryptionEpoch}:${board.accessPolicyVersion}';
+      if (action == 'read' &&
+          board.contentVisibility == 'end_to_end_encrypted' &&
+          !preparedPrivateBoards.contains(privateKey)) {
+        final host = requestUri.replace(path: '', query: null, fragment: null);
+        final keyClient = PrivateBoardKeyClient(
+          forumHost: host,
+          boardId: board.hostedBoardId,
+          access: boardAccess,
+        );
+        final publicKey = await privateCrypto.ensureDeviceKey(
+          board.hostedBoardId,
+        );
+        await keyClient.registerDevice(
+          capability: capability,
+          publicKeyHex: publicKey.publicKeyHex,
+        );
+        final envelope = await keyClient.currentEnvelope(
+          capability: capability,
+        );
+        if (envelope.epoch != board.encryptionEpoch ||
+            envelope.policyVersion != board.accessPolicyVersion) {
+          throw const PrivateBoardCryptoException('stale_epoch_envelope');
+        }
+        await privateCrypto.unwrapEpochKey(envelope);
+        preparedPrivateBoards.add(privateKey);
+      }
+      return boardAccess.proofHeaders(
+        capability: capability,
+        method: method,
+        requestUri: requestUri,
+        scope: action,
+      );
+    }
+
     return AppSyncService(
       remoteNodeRepo: _remoteNodeRepo,
       boardSyncConfigRepo: DriftBoardSyncConfigRepository(widget.db),
@@ -1796,6 +1918,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
       syncCapabilityService: (node) =>
           SyncCapabilityService(baseUrl: node.url, holderDid: widget.did),
+      authorizeBoardRead: (board, requestUri) =>
+          authorizeBoard(board, requestUri, 'read', 'GET'),
+      authorizeBoardWrite: (board, requestUri) =>
+          authorizeBoard(board, requestUri, 'post', 'POST'),
     );
   }
 
@@ -2069,6 +2195,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => HostedBoardsScreen(
+          db: widget.db,
           did: widget.did,
           remoteNodeRepo: _remoteNodeRepo,
           hostedBoardRepo: _hostedBoardRepo,

@@ -43,8 +43,9 @@ class TrisAuraCredential {
   final DateTime validFrom;
   final DateTime validUntil;
   final Map<String, Object?> claims;
-  final Map<String, Object?>? credentialStatus;
+  final List<Map<String, Object?>> credentialStatus;
   final Map<String, Object?>? proof;
+  final String? compactJwt;
 
   TrisAuraCredential._({
     required this.json,
@@ -57,9 +58,27 @@ class TrisAuraCredential {
     required this.claims,
     required this.credentialStatus,
     required this.proof,
+    required this.compactJwt,
   });
 
   factory TrisAuraCredential.fromJson(Map<String, Object?> json) {
+    final compact = json['compact'];
+    final wrapped = json['vc'];
+    if (json['format'] == 'jwt_vc_json' &&
+        compact is String &&
+        wrapped is Map) {
+      return TrisAuraCredential._fromCredentialJson(
+        Map<String, Object?>.from(wrapped),
+        compactJwt: compact,
+      );
+    }
+    return TrisAuraCredential._fromCredentialJson(json);
+  }
+
+  factory TrisAuraCredential._fromCredentialJson(
+    Map<String, Object?> json, {
+    String? compactJwt,
+  }) {
     final subject = _requiredMap(json, 'credentialSubject');
     final prohibitedClaim = _findProhibitedClaim(subject);
     if (prohibitedClaim != null) {
@@ -80,8 +99,9 @@ class TrisAuraCredential {
       validFrom: DateTime.parse(_requiredString(json, 'validFrom')).toUtc(),
       validUntil: DateTime.parse(_requiredString(json, 'validUntil')).toUtc(),
       claims: Map<String, Object?>.unmodifiable(subject),
-      credentialStatus: _optionalMap(json, 'credentialStatus'),
+      credentialStatus: _credentialStatusList(json),
       proof: _optionalMap(json, 'proof'),
+      compactJwt: compactJwt,
     );
   }
 
@@ -122,6 +142,27 @@ class TrisAuraCredential {
     throw TrisAuraCredentialException(
       'invalid_credential',
       'Credential field "$key" must be an object.',
+    );
+  }
+
+  static List<Map<String, Object?>> _credentialStatusList(
+    Map<String, Object?> json,
+  ) {
+    final value = json['credentialStatus'];
+    if (value == null) return const [];
+    if (value is Map) {
+      return [Map<String, Object?>.unmodifiable(Map.from(value))];
+    }
+    if (value is List && value.every((entry) => entry is Map)) {
+      return List<Map<String, Object?>>.unmodifiable(
+        value.map(
+          (entry) => Map<String, Object?>.unmodifiable(Map.from(entry as Map)),
+        ),
+      );
+    }
+    throw TrisAuraCredentialException(
+      'invalid_credential',
+      'Credential field "credentialStatus" must be an object or object list.',
     );
   }
 

@@ -155,8 +155,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            PostsViewScreen(db: widget.db, thread: thread, authorDid: widget.did),
+        builder: (_) => PostsViewScreen(
+          db: widget.db,
+          thread: thread,
+          authorDid: widget.did,
+        ),
       ),
     );
   }
@@ -218,10 +221,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) {
     final reasonCode = _moderationReasons[notification.id];
     if (reasonCode == null) {
-      return context.uiCopy(
-        zh: '你的內容已被板務處理',
-        en: 'Your content was moderated',
-      );
+      return context.uiCopy(zh: '你的內容已被板務處理', en: 'Your content was moderated');
     }
     final reason = moderationReasonLabel(context, reasonCode);
     return context.uiCopy(
@@ -356,10 +356,7 @@ class _NotificationRow extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AnsibleDesign.paperElev,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AnsibleDesign.ruleSoft,
-                  width: 0.5,
-                ),
+                border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
               ),
               alignment: Alignment.center,
               child: Icon(icon, size: 20, color: AnsibleDesign.inkMuted),
@@ -454,7 +451,8 @@ class _EmptyNotifications extends StatelessWidget {
               Text(
                 context.uiCopy(
                   zh: '有人回覆你、追蹤你或傳訊息給你時，會出現在這裡。',
-                  en: 'When someone replies to you, follows you, or sends '
+                  en:
+                      'When someone replies to you, follows you, or sends '
                       'you a message, it shows up here.',
                 ),
                 textAlign: TextAlign.center,

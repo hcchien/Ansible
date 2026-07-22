@@ -37,16 +37,16 @@ class DiscoveredActor {
   }
 
   factory DiscoveredActor.fromJson(Map<String, dynamic> m) => DiscoveredActor(
-        did: m['did'] as String? ?? '',
-        handle: m['handle'] as String?,
-        displayName: m['display_name'] as String?,
-        bio: m['bio'] as String?,
-        avatarUrl: m['avatar_url'] as String?,
-        reputationTier: m['reputation_tier'] as String?,
-        followerCount: m['follower_count'] as int?,
-        mutualCount: m['mutual_count'] as int?,
-        reason: m['reason'] as String?,
-      );
+    did: m['did'] as String? ?? '',
+    handle: m['handle'] as String?,
+    displayName: m['display_name'] as String?,
+    bio: m['bio'] as String?,
+    avatarUrl: m['avatar_url'] as String?,
+    reputationTier: m['reputation_tier'] as String?,
+    followerCount: m['follower_count'] as int?,
+    mutualCount: m['mutual_count'] as int?,
+    reason: m['reason'] as String?,
+  );
 }
 
 /// A board surfaced by board discovery/search (relay forum-host).
@@ -60,6 +60,12 @@ class BoardSearchResult {
 
   /// Host-declared posting policy, e.g. `{"min_post_tier": "verified_human"}`.
   final Map<String, Object?> postingPolicy;
+  final Map<String, Object?> accessPolicy;
+  final int accessPolicyVersion;
+  final String contentVisibility;
+  final int encryptionEpoch;
+  final String encryptionState;
+  final Map<String, Object?> federationPolicy;
 
   const BoardSearchResult({
     required this.hostedBoardId,
@@ -69,6 +75,12 @@ class BoardSearchResult {
     this.canonicalBoardUri,
     this.tags = const [],
     this.postingPolicy = const {},
+    this.accessPolicy = const {},
+    this.accessPolicyVersion = 1,
+    this.contentVisibility = 'public',
+    this.encryptionEpoch = 0,
+    this.encryptionState = 'disabled',
+    this.federationPolicy = const {'mode': 'enabled'},
   });
 
   /// Minimum reputation tier required to post, or null when ungated.
@@ -78,7 +90,8 @@ class BoardSearchResult {
     return null;
   }
 
-  factory BoardSearchResult.fromJson(Map<String, dynamic> m) => BoardSearchResult(
+  factory BoardSearchResult.fromJson(Map<String, dynamic> m) =>
+      BoardSearchResult(
         hostedBoardId: m['hosted_board_id'] as String? ?? '',
         slug: m['slug'] as String?,
         title: m['title'] as String? ?? '',
@@ -89,6 +102,16 @@ class BoardSearchResult {
             .toList(),
         postingPolicy: Map<String, Object?>.from(
           (m['posting_policy'] as Map?) ?? const {},
+        ),
+        accessPolicy: Map<String, Object?>.from(
+          (m['access_policy'] as Map?) ?? const {},
+        ),
+        accessPolicyVersion: m['access_policy_version'] as int? ?? 1,
+        contentVisibility: m['content_visibility'] as String? ?? 'public',
+        encryptionEpoch: m['encryption_epoch'] as int? ?? 0,
+        encryptionState: m['encryption_state'] as String? ?? 'disabled',
+        federationPolicy: Map<String, Object?>.from(
+          (m['federation_policy'] as Map?) ?? const {'mode': 'enabled'},
         ),
       );
 }
@@ -118,8 +141,7 @@ class DiscoveredPost {
     this.threadId,
   });
 
-  String get body =>
-      (payload['body'] ?? payload['content'] ?? '').toString();
+  String get body => (payload['body'] ?? payload['content'] ?? '').toString();
 
   /// True when this is a forum post that can be opened as a thread.
   bool get isThreadPost =>
@@ -127,7 +149,9 @@ class DiscoveredPost {
       (boardId != null && boardId!.isNotEmpty);
 
   factory DiscoveredPost.fromJson(Map<String, dynamic> m) {
-    final payload = Map<String, dynamic>.from((m['payload'] as Map?) ?? const {});
+    final payload = Map<String, dynamic>.from(
+      (m['payload'] as Map?) ?? const {},
+    );
     String? str(Object? v) {
       final s = v?.toString();
       return (s == null || s.isEmpty) ? null : s;
@@ -175,8 +199,9 @@ class DiscoveryClient {
 
   bool get appViewEnabled => appViewBaseUrl.trim().isNotEmpty;
 
-  Uri _appView(String path, [Map<String, String>? query]) =>
-      Uri.parse('${_trim(appViewBaseUrl)}$path').replace(queryParameters: query);
+  Uri _appView(String path, [Map<String, String>? query]) => Uri.parse(
+    '${_trim(appViewBaseUrl)}$path',
+  ).replace(queryParameters: query);
 
   Uri _relay(String path, [Map<String, String>? query]) =>
       Uri.parse('${_trim(relayBaseUrl)}$path').replace(queryParameters: query);

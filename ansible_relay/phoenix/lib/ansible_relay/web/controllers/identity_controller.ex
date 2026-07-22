@@ -14,12 +14,20 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
 
   # GET /api/v1/identity/public-key/:did
   def public_key(conn, %{"did" => did}) do
-    case IdentityCache.public_key_hex(did) do
-      nil ->
+    case IdentityCache.get(did) do
+      :not_found ->
         send_json(conn, 404, %{error: "did_not_found"})
 
-      hex ->
-        send_json(conn, 200, %{did: did, public_key_hex: hex})
+      {:error, :unavailable} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
+
+      {:ok, entry} ->
+        send_json(conn, 200, %{
+          did: did,
+          public_key_hex: entry.public_key_hex,
+          signing_algorithm: Map.get(entry, :signing_algorithm, "ed25519"),
+          key_version: Map.get(entry, :key_version, 1)
+        })
     end
   end
 
@@ -68,7 +76,10 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
       not is_binary(handle) or handle == "" or not is_binary(did) or did == "" ->
         send_json(conn, 422, %{error: "missing_handle_or_did"})
 
-      match?({:error, :rate_limited, _}, AnsibleRelay.AbuseDetector.check_peer("verify_handle:" <> peer_hash(conn))) ->
+      match?(
+        {:error, :rate_limited, _},
+        AnsibleRelay.AbuseDetector.check_peer("verify_handle:" <> peer_hash(conn))
+      ) ->
         send_json(conn, 429, %{error: "rate_limited"})
 
       true ->

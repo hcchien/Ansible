@@ -57,7 +57,8 @@ class IdentityBackupScreen extends StatefulWidget {
     required String identityPrivateKeyHex,
     String? did,
     String? handle,
-  }) encryptBackup;
+  })
+  encryptBackup;
 
   /// Called after a backup blob is successfully created (e.g. to refresh the
   /// settings readiness indicator).
@@ -84,17 +85,21 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
   Future<void> _create() async {
     final pass = _passphrase.text;
     if (pass.isEmpty) {
-      setState(() => _error = context.uiCopy(
-            zh: '請先輸入備份密語。',
-            en: 'Enter a backup passphrase first.',
-          ));
+      setState(
+        () => _error = context.uiCopy(
+          zh: '請先輸入備份密語。',
+          en: 'Enter a backup passphrase first.',
+        ),
+      );
       return;
     }
     if (pass != _confirm.text) {
-      setState(() => _error = context.uiCopy(
-            zh: '兩次輸入的密語不一致。',
-            en: 'The two passphrases do not match.',
-          ));
+      setState(
+        () => _error = context.uiCopy(
+          zh: '兩次輸入的密語不一致。',
+          en: 'The two passphrases do not match.',
+        ),
+      );
       return;
     }
     setState(() {
@@ -143,9 +148,11 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
         children: [
           Text(
             context.uiCopy(
-              zh: '用一句只有你知道的密語，把你的身分金鑰加密成一份備份。'
+              zh:
+                  '用一句只有你知道的密語，把你的身分金鑰加密成一份備份。'
                   '備份只會以加密形式存在——沒有密語就無法解開。',
-              en: 'Encrypt your identity key with a passphrase only you know. '
+              en:
+                  'Encrypt your identity key with a passphrase only you know. '
                   'The backup exists only in encrypted form — without the '
                   'passphrase it cannot be opened.',
             ),
@@ -229,9 +236,11 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
             const SizedBox(height: 10),
             Text(
               context.uiCopy(
-                zh: '把這份備份存到安全的地方（密碼管理器、離線檔案）。'
+                zh:
+                    '把這份備份存到安全的地方（密碼管理器、離線檔案）。'
                     '記住你的密語——遺失密語就無法復原。',
-                en: 'Save this backup somewhere safe (a password manager, an '
+                en:
+                    'Save this backup somewhere safe (a password manager, an '
                     'offline file). Remember your passphrase — if you lose it '
                     'the backup cannot be recovered.',
               ),
@@ -290,9 +299,7 @@ class _PrimaryButton extends StatelessWidget {
           backgroundColor: AnsibleDesign.accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(
           label,

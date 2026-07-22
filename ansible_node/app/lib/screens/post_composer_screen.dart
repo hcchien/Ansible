@@ -58,7 +58,11 @@ class _PostComposerScreenState extends State<PostComposerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(isEdit: _isEdit, onCancel: () => Navigator.of(context).pop(), onDone: _submit),
+            _TopBar(
+              isEdit: _isEdit,
+              onCancel: () => Navigator.of(context).pop(),
+              onDone: _submit,
+            ),
             if (_error != null) _ErrorBanner(message: _error!),
             Expanded(
               child: SingleChildScrollView(
@@ -225,7 +229,10 @@ class _Footer extends StatelessWidget {
           ] else
             const Spacer(),
           Text(
-            context.uiCopy(zh: '$characterCount 字', en: '$characterCount chars'),
+            context.uiCopy(
+              zh: '$characterCount 字',
+              en: '$characterCount chars',
+            ),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 13,

@@ -19,11 +19,11 @@ class DidVerificationMethod {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type,
-        'controller': controller,
-        'publicKeyMultibase': publicKeyMultibase,
-      };
+    'id': id,
+    'type': type,
+    'controller': controller,
+    'publicKeyMultibase': publicKeyMultibase,
+  };
 }
 
 class DidDocument {
@@ -52,7 +52,8 @@ class DidDocument {
           id: vmId,
           type: 'Ed25519VerificationKey2020',
           controller: did,
-          publicKeyMultibase: 'z$publicKeyHex', // simplified; real impl uses base58btc
+          publicKeyMultibase:
+              'z$publicKeyHex', // simplified; real impl uses base58btc
         ),
       ],
       authentication: [vmId],
@@ -60,9 +61,9 @@ class DidDocument {
   }
 
   Map<String, dynamic> toJson() => {
-        '@context': context,
-        'id': id,
-        'verificationMethod': verificationMethod.map((v) => v.toJson()).toList(),
-        'authentication': authentication,
-      };
+    '@context': context,
+    'id': id,
+    'verificationMethod': verificationMethod.map((v) => v.toJson()).toList(),
+    'authentication': authentication,
+  };
 }

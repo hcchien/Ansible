@@ -41,6 +41,7 @@ class AnchorRequest {
   final String handle;
   final String registrationSig;
   final String nonce;
+  final String signingAlgorithm;
 
   const AnchorRequest({
     required this.did,
@@ -48,6 +49,7 @@ class AnchorRequest {
     required this.handle,
     required this.registrationSig,
     required this.nonce,
+    this.signingAlgorithm = 'ed25519',
   });
 
   Map<String, Object?> toJson() => {
@@ -57,6 +59,7 @@ class AnchorRequest {
     'handle': handle,
     'registration_sig': registrationSig,
     'nonce': nonce,
+    'signing_algorithm': signingAlgorithm,
   };
 }
 
@@ -78,6 +81,28 @@ class AnchoredDid {
       expiresAt: json['expires_at'] as String,
     );
   }
+}
+
+class KeyRotationResult {
+  const KeyRotationResult({
+    required this.did,
+    required this.publicKeyHex,
+    required this.signingAlgorithm,
+    required this.keyVersion,
+  });
+
+  final String did;
+  final String publicKeyHex;
+  final String signingAlgorithm;
+  final int keyVersion;
+
+  factory KeyRotationResult.fromJson(Map<String, dynamic> json) =>
+      KeyRotationResult(
+        did: json['did'] as String,
+        publicKeyHex: json['public_key_hex'] as String,
+        signingAlgorithm: json['signing_algorithm'] as String,
+        keyVersion: json['key_version'] as int,
+      );
 }
 
 class CreateRecordRequest {
@@ -152,10 +177,12 @@ class AtProtoClient {
   Future<RegistrationChallenge> register({
     required String publicKeyHex,
     required String handleSuffix,
+    String signingAlgorithm = 'ed25519',
   }) async {
     final body = await _postJson('/api/v2/identity/register', {
       'public_key_hex': publicKeyHex,
       'handle_suffix': handleSuffix,
+      'signing_algorithm': signingAlgorithm,
     });
     return RegistrationChallenge.fromJson(body);
   }
@@ -165,6 +192,13 @@ class AtProtoClient {
   Future<AnchoredDid> anchor(AnchorRequest req) async {
     final body = await _postJson('/api/v2/identity/anchor', req.toJson());
     return AnchoredDid.fromJson(body);
+  }
+
+  Future<KeyRotationResult> rotateIdentityKey(
+    Map<String, Object?> request,
+  ) async {
+    final body = await _postJson('/api/v2/identity/rotate-key', request);
+    return KeyRotationResult.fromJson(body);
   }
 
   /// POST /xrpc/com.atproto.repo.createRecord

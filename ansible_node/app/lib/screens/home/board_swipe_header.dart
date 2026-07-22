@@ -95,120 +95,120 @@ class BoardSwipeHeader extends StatelessWidget {
                 Builder(
                   builder: (context) {
                     Widget btn(
-                    HomeBoard board,
-                    String label,
-                    String tooltip, {
-                    bool showMark = false,
-                  }) {
-                    final dist = (page - board.index).abs().clamp(0.0, 1.0);
-                    return _boardButton(
-                      board: board,
-                      label: label,
-                      tooltip: tooltip,
-                      active: activeIndex == board.index,
-                      showMark: showMark && activeIndex == board.index,
-                      underlineOpacity: 1 - dist,
-                      textColor: Color.lerp(fgColor, faintColor, dist)!,
-                      ochreColor: ochreColor,
-                    );
-                  }
+                      HomeBoard board,
+                      String label,
+                      String tooltip, {
+                      bool showMark = false,
+                    }) {
+                      final dist = (page - board.index).abs().clamp(0.0, 1.0);
+                      return _boardButton(
+                        board: board,
+                        label: label,
+                        tooltip: tooltip,
+                        active: activeIndex == board.index,
+                        showMark: showMark && activeIndex == board.index,
+                        underlineOpacity: 1 - dist,
+                        textColor: Color.lerp(fgColor, faintColor, dist)!,
+                        ochreColor: ochreColor,
+                      );
+                    }
 
-                  // Right-side icon buttons (settings, optional preferences).
-                  final iconButtons = <Widget>[
-                    if (onOpenNotifications != null)
-                      _NotificationBell(
-                        unreadCount: notificationUnreadCount,
-                        color: faintColor,
-                        onPressed: onOpenNotifications!,
-                      ),
-                    if (onOpenPreferences != null)
-                      IconButton(
-                        key: const Key('screen_style_button'),
-                        onPressed: onOpenPreferences,
-                        icon: const Icon(Icons.palette_outlined, size: 23),
-                        color: faintColor,
-                        tooltip: context.uiCopy(
-                          zh: '介面與動態',
-                          en: 'Interface and motion',
+                    // Right-side icon buttons (settings, optional preferences).
+                    final iconButtons = <Widget>[
+                      if (onOpenNotifications != null)
+                        _NotificationBell(
+                          unreadCount: notificationUnreadCount,
+                          color: faintColor,
+                          onPressed: onOpenNotifications!,
                         ),
-                        constraints: const BoxConstraints.tightFor(
-                          width: 44,
-                          height: 44,
+                      if (onOpenPreferences != null)
+                        IconButton(
+                          key: const Key('screen_style_button'),
+                          onPressed: onOpenPreferences,
+                          icon: const Icon(Icons.palette_outlined, size: 23),
+                          color: faintColor,
+                          tooltip: context.uiCopy(
+                            zh: '介面與動態',
+                            en: 'Interface and motion',
+                          ),
+                          constraints: const BoxConstraints.tightFor(
+                            width: 44,
+                            height: 44,
+                          ),
+                          padding: EdgeInsets.zero,
                         ),
-                        padding: EdgeInsets.zero,
-                      ),
-                    if (onOpenSettings != null)
-                      IconButton(
-                        key: const Key('settings_button'),
-                        onPressed: onOpenSettings,
-                        icon: const Icon(Icons.person_outline, size: 24),
-                        color: faintColor,
-                        tooltip: l10n.settingsNav,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 44,
-                          height: 44,
+                      if (onOpenSettings != null)
+                        IconButton(
+                          key: const Key('settings_button'),
+                          onPressed: onOpenSettings,
+                          icon: const Icon(Icons.person_outline, size: 24),
+                          color: faintColor,
+                          tooltip: l10n.settingsNav,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 44,
+                            height: 44,
+                          ),
+                          padding: EdgeInsets.zero,
                         ),
-                        padding: EdgeInsets.zero,
-                      ),
-                  ];
-                  // Equal side widths keep the board tabs visually centered while
-                  // the icons sit at the far right (normal flow → always tappable).
-                  // 48 = Material minimum tap target per icon.
-                  final sideWidth = iconButtons.length * 48.0;
+                    ];
+                    // Equal side widths keep the board tabs visually centered while
+                    // the icons sit at the far right (normal flow → always tappable).
+                    // 48 = Material minimum tap target per icon.
+                    final sideWidth = iconButtons.length * 48.0;
 
-                  return Row(
-                    children: [
-                      SizedBox(width: sideWidth),
-                      Expanded(
-                        child: Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                btn(
-                                  HomeBoard.personal,
-                                  context.uiCopy(zh: '個人版', en: 'Personal'),
-                                  context.uiCopy(
-                                    zh: '個人版 · 你的 Note 和 Murmur',
-                                    en: 'Personal · your Notes and Murmurs',
+                    return Row(
+                      children: [
+                        SizedBox(width: sideWidth),
+                        Expanded(
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  btn(
+                                    HomeBoard.personal,
+                                    context.uiCopy(zh: '個人版', en: 'Personal'),
+                                    context.uiCopy(
+                                      zh: '個人版 · 你的 Note 和 Murmur',
+                                      en: 'Personal · your Notes and Murmurs',
+                                    ),
+                                    showMark: true,
                                   ),
-                                  showMark: true,
-                                ),
-                                const SizedBox(width: 24),
-                                btn(
-                                  HomeBoard.timeline,
-                                  context.uiCopy(zh: '時間軸', en: 'Timeline'),
-                                  context.uiCopy(
-                                    zh: '時間軸 · 你追蹤的人的貼文',
-                                    en: 'Timeline · posts from people you follow',
+                                  const SizedBox(width: 24),
+                                  btn(
+                                    HomeBoard.timeline,
+                                    context.uiCopy(zh: '時間軸', en: 'Timeline'),
+                                    context.uiCopy(
+                                      zh: '時間軸 · 你追蹤的人的貼文',
+                                      en: 'Timeline · posts from people you follow',
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 24),
-                                btn(
-                                  HomeBoard.forum,
-                                  context.uiCopy(zh: '討論區', en: 'Forum'),
-                                  context.uiCopy(
-                                    zh: '討論區 · 看板',
-                                    en: 'Forum · boards',
+                                  const SizedBox(width: 24),
+                                  btn(
+                                    HomeBoard.forum,
+                                    context.uiCopy(zh: '討論區', en: 'Forum'),
+                                    context.uiCopy(
+                                      zh: '討論區 · 看板',
+                                      en: 'Forum · boards',
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(
-                        width: sideWidth,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: iconButtons,
+                        SizedBox(
+                          width: sideWidth,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: iconButtons,
+                          ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                      ],
+                    );
+                  },
+                ),
               Container(
                 margin: EdgeInsets.only(top: showTabs ? 8 : 0),
                 padding: const EdgeInsets.only(top: 6, bottom: 6),

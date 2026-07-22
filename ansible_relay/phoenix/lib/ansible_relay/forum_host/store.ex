@@ -4,7 +4,13 @@ defmodule AnsibleRelay.ForumHost.Store do
   import Ecto.Query
 
   alias AnsibleRelay.Repo
-  alias AnsibleRelay.Db.{ForumHostAcceptedIntent, ForumHostAnnouncement, ForumHostBoard}
+
+  alias AnsibleRelay.Db.{
+    ForumHostAcceptedIntent,
+    ForumHostAnnouncement,
+    ForumHostBoard,
+    ForumHostBoardPolicyVersion
+  }
 
   @default_base_url "http://localhost:4001"
   @max_slug_attempts 20
@@ -46,6 +52,36 @@ defmodule AnsibleRelay.ForumHost.Store do
     |> Repo.all()
   end
 
+  def list_public_boards do
+    ensure_seeded!()
+
+    ForumHostBoard
+    |> where(
+      [board],
+      board.content_visibility == "public" and
+        fragment("?->>'discovery' = 'public'", board.access_policy)
+    )
+    |> order_by([board], asc: board.title)
+    |> Repo.all()
+  end
+
+  def protected_boards_exist? do
+    ForumHostBoard
+    |> where(
+      [board],
+      board.content_visibility != "public" or
+        fragment("?->'read'->>'requirement' != 'public'", board.access_policy)
+    )
+    |> Repo.exists?()
+  end
+
+  def list_board_policy_versions(board_id) when is_binary(board_id) do
+    ForumHostBoardPolicyVersion
+    |> where([version], version.hosted_board_id == ^board_id)
+    |> order_by([version], desc: version.version)
+    |> Repo.all()
+  end
+
   @doc """
   Boards created by `did`, derived from the accepted create_board intents
   (subscriptions are client-local, but board authorship is recorded host-side).
@@ -69,6 +105,11 @@ defmodule AnsibleRelay.ForumHost.Store do
     else
       ForumHostBoard
       |> where([board], board.hosted_board_id in ^created_ids)
+      |> where(
+        [board],
+        board.content_visibility == "public" and
+          fragment("?->>'discovery' = 'public'", board.access_policy)
+      )
       |> order_by([board], asc: board.title)
       |> Repo.all()
     end
@@ -87,11 +128,24 @@ defmodule AnsibleRelay.ForumHost.Store do
     limit = limit |> min(50) |> max(1)
 
     if q == "" do
-      ForumHostBoard |> order_by([b], asc: b.title) |> limit(^limit) |> Repo.all()
+      ForumHostBoard
+      |> where(
+        [b],
+        b.content_visibility == "public" and
+          fragment("?->>'discovery' = 'public'", b.access_policy)
+      )
+      |> order_by([b], asc: b.title)
+      |> limit(^limit)
+      |> Repo.all()
     else
       like = "%" <> escape_like(q) <> "%"
 
       ForumHostBoard
+      |> where(
+        [b],
+        b.content_visibility == "public" and
+          fragment("?->>'discovery' = 'public'", b.access_policy)
+      )
       |> where(
         [b],
         ilike(b.title, ^like) or ilike(b.description, ^like) or
@@ -147,7 +201,7 @@ defmodule AnsibleRelay.ForumHost.Store do
           {:ok, board} ->
             case insert_accepted_intent(update_board_intent_attrs(request, payload_hash)) do
               :inserted ->
-                update_board_or_rollback(board, request.changes)
+                update_board_or_rollback(board, request)
 
               :conflict ->
                 resolve_accepted_update_intent(request.intent_id, payload_hash, request.board_id)
@@ -165,6 +219,80 @@ defmodule AnsibleRelay.ForumHost.Store do
         {:error, {:error, reason}} -> {:error, reason}
         {:error, reason} -> {:error, reason}
       end
+    end
+  end
+
+  @doc "Applies or schedules an independently governed board access policy update."
+  def update_board_policy(attrs) do
+    with {:ok, request} <- normalize_board_policy_attrs(attrs) do
+      payload_hash = board_policy_payload_hash(request)
+
+      Repo.transaction(fn ->
+        case fetch_board_for_creator(request.board_id, request.author_did) do
+          {:ok, board} ->
+            case insert_accepted_intent(board_policy_intent_attrs(request, payload_hash)) do
+              :inserted ->
+                with :ok <- require_no_pending_policy(board),
+                     :ok <- require_previous_policy_hash(board, request.previous_policy_hash),
+                     :ok <- verify_policy_approvals(board, request),
+                     :ok <- require_sensitive_delay(board, request),
+                     {:ok, result} <- persist_board_policy_update(board, request) do
+                  result
+                else
+                  {:error, reason} -> Repo.rollback({:error, reason})
+                end
+
+              :conflict ->
+                case resolve_accepted_policy_intent(
+                       request.intent_id,
+                       payload_hash,
+                       request.board_id
+                     ) do
+                  {:ok, result} -> result
+                  {:error, reason} -> Repo.rollback({:error, reason})
+                end
+
+              {:error, changeset} ->
+                Repo.rollback({:error, changeset})
+            end
+
+          {:error, reason} ->
+            Repo.rollback({:error, reason})
+        end
+      end)
+      |> case do
+        {:ok, result} -> {:ok, result}
+        {:error, {:error, reason}} -> {:error, reason}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  def activate_due_board_policy(%ForumHostBoard{} = board) do
+    now = DateTime.utc_now()
+
+    case from(version in ForumHostBoardPolicyVersion,
+           where:
+             version.hosted_board_id == ^board.hosted_board_id and
+               version.version == ^(board.access_policy_version + 1) and
+               version.effective_at <= ^now and is_nil(version.superseded_at),
+           limit: 1
+         )
+         |> Repo.one() do
+      nil ->
+        board
+
+      version ->
+        Repo.transaction(fn ->
+          case activate_policy_version(board, version.version, version.canonical_policy, now) do
+            {:ok, updated} -> updated
+            {:error, reason} -> Repo.rollback(reason)
+          end
+        end)
+        |> case do
+          {:ok, updated} -> updated
+          _ -> board
+        end
     end
   end
 
@@ -314,7 +442,10 @@ defmodule AnsibleRelay.ForumHost.Store do
     Repo.transaction(fn ->
       case insert_accepted_intent(accepted_intent_attrs) do
         :inserted ->
-          insert_board_or_rollback(board_attrs)
+          with {:ok, board} <- insert_board_or_rollback(board_attrs),
+               :ok <- insert_policy_version(board, request.author_did, %{}) do
+            {:ok, board}
+          end
 
         :conflict ->
           resolve_accepted_intent(request.intent_id, payload_hash)
@@ -477,12 +608,94 @@ defmodule AnsibleRelay.ForumHost.Store do
     |> Repo.one()
   end
 
-  defp update_board_or_rollback(board, changes) do
-    board
-    |> ForumHostBoard.changeset(changes)
-    |> Repo.update()
+  defp update_board_or_rollback(board, request) do
+    with :ok <- require_expected_policy_version(board, request),
+         changes <- apply_policy_version(board, request.changes),
+         {:ok, updated} <- board |> ForumHostBoard.changeset(changes) |> Repo.update(),
+         :ok <- maybe_record_policy_version(board, updated, request) do
+      {:ok, updated}
+    else
+      {:error, %Ecto.Changeset{} = changeset} -> Repo.rollback({:error, changeset})
+      {:error, reason} -> Repo.rollback({:error, reason})
+    end
+  end
+
+  defp require_expected_policy_version(board, %{policy_update?: true} = request) do
+    if request.expected_policy_version == board.access_policy_version,
+      do: :ok,
+      else: {:error, :policy_version_conflict}
+  end
+
+  defp require_expected_policy_version(_board, _request), do: :ok
+
+  defp apply_policy_version(board, changes) do
+    policy_changed? =
+      Enum.any?(
+        [:access_policy, :content_visibility, :federation_policy],
+        &Map.has_key?(changes, &1)
+      )
+
+    changes =
+      if policy_changed?,
+        do: Map.put(changes, :access_policy_version, board.access_policy_version + 1),
+        else: changes
+
+    next_visibility = Map.get(changes, :content_visibility, board.content_visibility)
+
+    cond do
+      next_visibility != "end_to_end_encrypted" ->
+        Map.put(changes, :encryption_state, "disabled")
+
+      board.content_visibility != "end_to_end_encrypted" or policy_changed? ->
+        Map.put(changes, :encryption_state, "rotation_required")
+
+      true ->
+        changes
+    end
+  end
+
+  defp maybe_record_policy_version(_previous, _updated, %{policy_update?: false}), do: :ok
+
+  defp maybe_record_policy_version(previous, updated, request) do
+    now = DateTime.utc_now()
+
+    from(version in ForumHostBoardPolicyVersion,
+      where:
+        version.hosted_board_id == ^previous.hosted_board_id and
+          is_nil(version.superseded_at)
+    )
+    |> Repo.update_all(set: [superseded_at: now])
+
+    insert_policy_version(updated, request.author_did, request.approvals, now)
+  end
+
+  defp insert_policy_version(board, actor_did, approvals, now \\ DateTime.utc_now()) do
+    canonical_policy = %{
+      "access_policy" => board.access_policy,
+      "content_visibility" => board.content_visibility,
+      "federation_policy" => board.federation_policy
+    }
+
+    policy_hash =
+      canonical_policy
+      |> canonical_payload()
+      |> Jason.encode!()
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+
+    %ForumHostBoardPolicyVersion{}
+    |> ForumHostBoardPolicyVersion.changeset(%{
+      policy_hash: policy_hash,
+      hosted_board_id: board.hosted_board_id,
+      version: board.access_policy_version,
+      canonical_policy: canonical_policy,
+      actor_did: actor_did,
+      approvals: approvals,
+      effective_at: now
+    })
+    |> Repo.insert()
     |> case do
-      {:ok, updated} -> {:ok, updated}
+      {:ok, _version} -> :ok
       {:error, changeset} -> Repo.rollback({:error, changeset})
     end
   end
@@ -503,7 +716,9 @@ defmodule AnsibleRelay.ForumHost.Store do
       intent_id: request.intent_id,
       author_did: request.author_did,
       board_id: request.board_id,
-      board: request.changes
+      board: request.changes,
+      expected_policy_version: request.expected_policy_version,
+      approvals: request.approvals
     }
     |> canonical_payload()
     |> Jason.encode!()
@@ -544,25 +759,293 @@ defmodule AnsibleRelay.ForumHost.Store do
           external_inclusion_conflicts_with_trust_gate?(changes[:posting_policy]) ->
         {:error, :external_inclusion_conflicts_with_trust_gate}
 
+      Map.has_key?(changes, :access_policy) and
+          AnsibleRelay.ForumHost.BoardAccessPolicy.validate(changes[:access_policy]) != :ok ->
+        {:error, :invalid_access_policy}
+
       true ->
+        policy_update? =
+          Enum.any?(
+            [:access_policy, :content_visibility, :federation_policy],
+            &Map.has_key?(changes, &1)
+          )
+
         {:ok,
          %{
            intent_id: get_attr(attrs, :intent_id),
            author_did: get_attr(attrs, :author_did),
            board_id: get_attr(attrs, :board_id),
-           changes: changes
+           changes: changes,
+           policy_update?: policy_update?,
+           expected_policy_version: get_attr(attrs, :expected_policy_version),
+           approvals: get_attr(attrs, :approvals, %{})
          }}
     end
   end
 
   defp update_board_changes(attrs) do
-    Enum.reduce([:title, :description, :posting_policy], %{}, fn field, changes ->
-      if has_attr?(attrs, field) do
-        Map.put(changes, field, get_attr(attrs, field))
-      else
-        changes
+    Enum.reduce(
+      [
+        :title,
+        :description,
+        :posting_policy
+      ],
+      %{},
+      fn field, changes ->
+        if has_attr?(attrs, field) do
+          Map.put(changes, field, get_attr(attrs, field))
+        else
+          changes
+        end
       end
-    end)
+    )
+  end
+
+  defp normalize_board_policy_attrs(attrs) do
+    policy = get_attr(attrs, :new_policy)
+    approvals = get_attr(attrs, :approvals, %{})
+
+    with true <- is_map(policy),
+         true <- is_map(approvals),
+         access when is_map(access) <- get_attr(policy, :access_policy),
+         :ok <- AnsibleRelay.ForumHost.BoardAccessPolicy.validate(access),
+         visibility when visibility in ["public", "host_visible", "end_to_end_encrypted"] <-
+           get_attr(policy, :content_visibility),
+         federation when is_map(federation) <- get_attr(policy, :federation_policy),
+         true <- get_attr(access, :content_visibility) == visibility,
+         true <- get_attr(access, :federation) == get_attr(federation, :mode),
+         {:ok, effective_at, _} <- DateTime.from_iso8601(get_attr(attrs, :effective_at, "")) do
+      {:ok,
+       %{
+         intent_id: get_attr(attrs, :intent_id),
+         author_did: get_attr(attrs, :author_did),
+         board_id: get_attr(attrs, :board_id),
+         previous_policy_hash: get_attr(attrs, :previous_policy_hash),
+         access_policy: access,
+         content_visibility: visibility,
+         federation_policy: federation,
+         effective_at: effective_at,
+         approvals: approvals
+       }}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_access_policy}
+    end
+  end
+
+  defp require_previous_policy_hash(board, expected) do
+    if board_policy_hash(board) == expected,
+      do: :ok,
+      else: {:error, :policy_hash_conflict}
+  end
+
+  defp require_no_pending_policy(board) do
+    pending? =
+      from(version in ForumHostBoardPolicyVersion,
+        where:
+          version.hosted_board_id == ^board.hosted_board_id and
+            version.version > ^board.access_policy_version and
+            is_nil(version.superseded_at)
+      )
+      |> Repo.exists?()
+
+    if pending?, do: {:error, :policy_change_pending}, else: :ok
+  end
+
+  defp verify_policy_approvals(board, request) do
+    creator = board_creator(board.hosted_board_id)
+    governance = get_attr(board.moderation_policy || %{}, :governance, %{})
+    admins = get_attr(governance, :administrators, [creator])
+    threshold = get_attr(governance, :threshold, 1)
+
+    valid_governance? =
+      is_list(admins) and admins != [] and Enum.all?(admins, &non_empty_string?/1) and
+        is_integer(threshold) and threshold in 1..length(admins) and creator in admins
+
+    approval_payload =
+      %{
+        "type" => "io.trisaura.forum.boardPolicyApproval",
+        "version" => 1,
+        "board_id" => request.board_id,
+        "previous_policy_hash" => request.previous_policy_hash,
+        "new_policy" => %{
+          "access_policy" => request.access_policy,
+          "content_visibility" => request.content_visibility,
+          "federation_policy" => request.federation_policy
+        },
+        "effective_at" => DateTime.to_iso8601(request.effective_at)
+      }
+      |> canonical_payload()
+      |> Jason.encode!()
+
+    additional =
+      request.approvals
+      |> Enum.count(fn {did, signature} ->
+        did in admins and did != request.author_did and is_binary(signature) and
+          AnsibleRelay.IdentityCache.verify_signature(did, approval_payload, signature)
+      end)
+
+    cond do
+      not valid_governance? -> {:error, :invalid_board_governance}
+      request.author_did not in admins -> {:error, :not_board_governor}
+      1 + additional < threshold -> {:error, :policy_approval_threshold_not_met}
+      true -> :ok
+    end
+  end
+
+  defp require_sensitive_delay(board, request) do
+    minimum = DateTime.add(DateTime.utc_now(), 86_400, :second)
+
+    if sensitive_policy_change?(board, request) and
+         DateTime.compare(request.effective_at, minimum) == :lt do
+      {:error, :sensitive_policy_delay_required}
+    else
+      :ok
+    end
+  end
+
+  defp sensitive_policy_change?(board, request) do
+    old = board.access_policy || %{}
+    new = request.access_policy
+    old_issuers = policy_issuers(old)
+    new_issuers = policy_issuers(new)
+
+    not MapSet.subset?(new_issuers, old_issuers) or
+      (protected_requirement?(get_attr(old, :read)) and
+         not protected_requirement?(get_attr(new, :read))) or
+      (board.content_visibility != "public" and request.content_visibility == "public") or
+      (get_attr(board.federation_policy || %{}, :mode) == "disabled" and
+         get_attr(request.federation_policy, :mode) == "enabled")
+  end
+
+  defp protected_requirement?(action) when is_map(action) do
+    get_attr(action, :requirement) not in ["public", "posting_policy"]
+  end
+
+  defp protected_requirement?(_), do: false
+
+  defp policy_issuers(policy) do
+    policy
+    |> get_attr(:requirements, %{})
+    |> Map.values()
+    |> Enum.flat_map(&get_attr(&1, :trusted_issuers, []))
+    |> MapSet.new()
+  end
+
+  defp persist_board_policy_update(board, request) do
+    next_version = board.access_policy_version + 1
+    now = DateTime.utc_now()
+    future? = DateTime.compare(request.effective_at, now) == :gt
+
+    policy = %{
+      "access_policy" => request.access_policy,
+      "content_visibility" => request.content_visibility,
+      "federation_policy" => request.federation_policy
+    }
+
+    with {:ok, _} <-
+           %ForumHostBoardPolicyVersion{}
+           |> ForumHostBoardPolicyVersion.changeset(%{
+             policy_hash: policy_hash(policy),
+             hosted_board_id: board.hosted_board_id,
+             version: next_version,
+             canonical_policy: policy,
+             actor_did: request.author_did,
+             approvals: request.approvals,
+             effective_at: request.effective_at
+           })
+           |> Repo.insert() do
+      if future? do
+        {:ok, board}
+      else
+        activate_policy_version(board, next_version, policy, now)
+      end
+    end
+  end
+
+  defp board_policy_payload_hash(request) do
+    %{
+      action: "update_board_policy",
+      intent_id: request.intent_id,
+      author_did: request.author_did,
+      board_id: request.board_id,
+      previous_policy_hash: request.previous_policy_hash,
+      new_policy: %{
+        access_policy: request.access_policy,
+        content_visibility: request.content_visibility,
+        federation_policy: request.federation_policy
+      },
+      effective_at: DateTime.to_iso8601(request.effective_at),
+      approvals: request.approvals
+    }
+    |> canonical_payload()
+    |> Jason.encode!()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp board_policy_intent_attrs(request, payload_hash) do
+    %{
+      intent_id: request.intent_id,
+      author_did: request.author_did,
+      action: "update_board_policy",
+      payload_hash: payload_hash,
+      result_kind: "forum_host_board_policy",
+      result_id: request.board_id
+    }
+  end
+
+  defp resolve_accepted_policy_intent(intent_id, payload_hash, board_id) do
+    case Repo.get(ForumHostAcceptedIntent, intent_id) do
+      %ForumHostAcceptedIntent{
+        payload_hash: ^payload_hash,
+        result_kind: "forum_host_board_policy",
+        result_id: ^board_id
+      } ->
+        {:ok, Repo.get!(ForumHostBoard, board_id)}
+
+      _other ->
+        {:error, :duplicate_intent}
+    end
+  end
+
+  defp activate_policy_version(board, version, policy, now) do
+    changes = %{
+      access_policy: policy["access_policy"],
+      access_policy_version: version,
+      content_visibility: policy["content_visibility"],
+      federation_policy: policy["federation_policy"]
+    }
+
+    with {:ok, updated} <-
+           board
+           |> ForumHostBoard.changeset(apply_policy_version(board, changes))
+           |> Repo.update() do
+      from(previous in ForumHostBoardPolicyVersion,
+        where:
+          previous.hosted_board_id == ^board.hosted_board_id and previous.version < ^version and
+            is_nil(previous.superseded_at)
+      )
+      |> Repo.update_all(set: [superseded_at: now])
+
+      {:ok, updated}
+    end
+  end
+
+  defp board_policy_hash(board) do
+    policy_hash(%{
+      "access_policy" => board.access_policy,
+      "content_visibility" => board.content_visibility,
+      "federation_policy" => board.federation_policy
+    })
+  end
+
+  defp policy_hash(policy) do
+    policy
+    |> canonical_payload()
+    |> Jason.encode!()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
   end
 
   defp missing_update_board_fields(attrs) do
@@ -650,7 +1133,17 @@ defmodule AnsibleRelay.ForumHost.Store do
 
   defp submitted_board_payload(attrs) do
     Enum.reduce(
-      [:description, :language, :tags, :permissions, :posting_policy, :moderation_policy],
+      [
+        :description,
+        :language,
+        :tags,
+        :permissions,
+        :posting_policy,
+        :moderation_policy,
+        :access_policy,
+        :content_visibility,
+        :federation_policy
+      ],
       %{title: get_attr(attrs, :title)},
       fn field, payload ->
         if has_attr?(attrs, field) do
@@ -670,7 +1163,16 @@ defmodule AnsibleRelay.ForumHost.Store do
       tags: get_attr(attrs, :tags, []),
       permissions: get_attr(attrs, :permissions, %{"read" => true, "write" => true}),
       posting_policy: get_attr(attrs, :posting_policy, posting_policy()),
-      moderation_policy: get_attr(attrs, :moderation_policy, moderation_policy())
+      moderation_policy: get_attr(attrs, :moderation_policy, moderation_policy()),
+      access_policy:
+        get_attr(attrs, :access_policy, AnsibleRelay.ForumHost.BoardAccessPolicy.default()),
+      content_visibility: get_attr(attrs, :content_visibility, "public"),
+      encryption_state:
+        if(get_attr(attrs, :content_visibility, "public") == "end_to_end_encrypted",
+          do: "rotation_required",
+          else: "disabled"
+        ),
+      federation_policy: get_attr(attrs, :federation_policy, %{"mode" => "enabled"})
     }
   end
 

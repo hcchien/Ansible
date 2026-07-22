@@ -186,7 +186,8 @@ class _NotificationSettingsScreenState
                 child: Text(
                   context.uiCopy(
                     zh: '通知只存在這台裝置上，伺服器不會知道你看了什麼。',
-                    en: 'Notifications live only on this device; the server '
+                    en:
+                        'Notifications live only on this device; the server '
                         'never learns what you saw.',
                   ),
                   style: const TextStyle(
@@ -204,9 +205,7 @@ class _NotificationSettingsScreenState
                 children: [
                   for (final category in NotificationCategory.values)
                     _CategoryToggleRow(
-                      key: Key(
-                        'notification_toggle_${category.storageValue}',
-                      ),
+                      key: Key('notification_toggle_${category.storageValue}'),
                       label: _categoryLabel(context, category),
                       subtitle: _categorySubtitle(context, category),
                       value: _controller.isEnabled(category),
@@ -231,9 +230,11 @@ class _NotificationSettingsScreenState
                         en: 'Background wake pushes',
                       ),
                       subtitle: context.uiCopy(
-                        zh: '伺服器只會推送「去同步」的空訊號，通知內容一律在'
+                        zh:
+                            '伺服器只會推送「去同步」的空訊號，通知內容一律在'
                             '裝置上組合，不經過 Apple/Google。',
-                        en: 'The server only pushes an empty "go sync" '
+                        en:
+                            'The server only pushes an empty "go sync" '
                             'signal; notification content is composed '
                             'on-device and never passes through '
                             'Apple/Google.',

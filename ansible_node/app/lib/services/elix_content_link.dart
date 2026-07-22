@@ -123,7 +123,10 @@ class ElixContentLink {
 
   /// Extracts the `boards/...` path segments for a recognised content link, or
   /// null when the URI is not an Elix content link.
-  static List<String>? _contentSegments(Uri uri, {required bool allowLocalHttp}) {
+  static List<String>? _contentSegments(
+    Uri uri, {
+    required bool allowLocalHttp,
+  }) {
     if (uri.scheme == customScheme) {
       if (uri.host != customContentHost) return null;
       return uri.pathSegments.where((s) => s.isNotEmpty).toList();

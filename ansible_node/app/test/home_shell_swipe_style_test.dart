@@ -167,13 +167,21 @@ void main() {
       120,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(
+      find.byKey(const Key('settings_style_choice_personal_paper')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('settings_style_choice_personal_paper')),
     );
     await tester.pumpAndSettle();
     // Scroll the settings list back to top so the (lazily-built) 個人版 entry
     // is mounted, then tap it to return to the personal board.
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, 1200));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('settings_open_personal_board')),
+      -240,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settings_open_personal_board')));
     await tester.pumpAndSettle();

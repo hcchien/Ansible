@@ -7,7 +7,8 @@ import 'relay_identity_client.dart';
 
 class CreateHostedBoardIntent {
   static const type = 'io.trisaura.forum.createBoard';
-  static const version = 1;
+  static const legacyVersion = 1;
+  static const policyVersion = 2;
 
   final String intentId;
   final String authorDid;
@@ -19,6 +20,9 @@ class CreateHostedBoardIntent {
   /// Optional board posting policy, e.g. `{"min_post_tier": "verified_human"}`.
   /// Omitted from the payload when null or empty (ungated default).
   final Map<String, Object?>? postingPolicy;
+  final Map<String, Object?>? accessPolicy;
+  final String? contentVisibility;
+  final Map<String, Object?>? federationPolicy;
   final DateTime createdAt;
   final DateTime expiresAt;
 
@@ -32,6 +36,9 @@ class CreateHostedBoardIntent {
     required this.expiresAt,
     this.description,
     this.postingPolicy,
+    this.accessPolicy,
+    this.contentVisibility,
+    this.federationPolicy,
   });
 
   static Map<String, Object?> canonicalPayload({
@@ -43,7 +50,17 @@ class CreateHostedBoardIntent {
     required DateTime expiresAt,
     String? description,
     Map<String, Object?>? postingPolicy,
+    Map<String, Object?>? accessPolicy,
+    String? contentVisibility,
+    Map<String, Object?>? federationPolicy,
   }) {
+    final usesAccessPolicy = accessPolicy != null;
+    if (usesAccessPolicy &&
+        (contentVisibility == null || federationPolicy == null)) {
+      throw ArgumentError(
+        'createBoard v2 requires access policy, content visibility, and federation policy.',
+      );
+    }
     return {
       'action': 'create_board',
       'author_did': authorDid,
@@ -52,6 +69,9 @@ class CreateHostedBoardIntent {
           'description': description,
         if (postingPolicy != null && postingPolicy.isNotEmpty)
           'posting_policy': postingPolicy,
+        if (accessPolicy != null) 'access_policy': accessPolicy,
+        if (contentVisibility != null) 'content_visibility': contentVisibility,
+        if (federationPolicy != null) 'federation_policy': federationPolicy,
         'title': title,
       },
       'created_at': createdAt.toUtc().toIso8601String(),
@@ -59,7 +79,7 @@ class CreateHostedBoardIntent {
       'intent_id': intentId,
       'target_forum_host': targetForumHost,
       'type': type,
-      'version': version,
+      'version': usesAccessPolicy ? policyVersion : legacyVersion,
     };
   }
 
@@ -72,6 +92,9 @@ class CreateHostedBoardIntent {
         title: title,
         description: description,
         postingPolicy: postingPolicy,
+        accessPolicy: accessPolicy,
+        contentVisibility: contentVisibility,
+        federationPolicy: federationPolicy,
         createdAt: createdAt,
         expiresAt: expiresAt,
       ),
@@ -169,6 +192,95 @@ class UpdateHostedBoardIntent {
       'signature': signature,
     };
   }
+}
+
+/// Independently governed access-policy change. This is deliberately not part
+/// of [UpdateHostedBoardIntent]: changing who may discover/read/post and
+/// whether content is encrypted or federated has its own hash-chained,
+/// threshold-approved history on the Forum Host.
+class UpdateHostedBoardPolicyIntent {
+  static const type = 'io.trisaura.forum.updateBoardPolicy';
+  static const version = 1;
+
+  final String intentId;
+  final String authorDid;
+  final String boardId;
+  final String previousPolicyHash;
+  final String targetForumHost;
+  final Map<String, Object?> newPolicy;
+  final Map<String, Object?> approvals;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final DateTime effectiveAt;
+  final String signature;
+
+  const UpdateHostedBoardPolicyIntent({
+    required this.intentId,
+    required this.authorDid,
+    required this.boardId,
+    required this.previousPolicyHash,
+    required this.targetForumHost,
+    required this.newPolicy,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.effectiveAt,
+    required this.signature,
+    this.approvals = const {},
+  });
+
+  static Map<String, Object?> canonicalPayload({
+    required String intentId,
+    required String authorDid,
+    required String boardId,
+    required String previousPolicyHash,
+    required String targetForumHost,
+    required Map<String, Object?> newPolicy,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+    required DateTime effectiveAt,
+    Map<String, Object?> approvals = const {},
+  }) {
+    final requiredKeys = {
+      'access_policy',
+      'content_visibility',
+      'federation_policy',
+    };
+    if (newPolicy.keys.toSet().difference(requiredKeys).isNotEmpty ||
+        requiredKeys.difference(newPolicy.keys.toSet()).isNotEmpty) {
+      throw ArgumentError('newPolicy must contain the complete board policy');
+    }
+    return {
+      'action': 'update_board_policy',
+      'approvals': approvals,
+      'author_did': authorDid,
+      'board_id': boardId,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'effective_at': effectiveAt.toUtc().toIso8601String(),
+      'expires_at': expiresAt.toUtc().toIso8601String(),
+      'intent_id': intentId,
+      'new_policy': newPolicy,
+      'previous_policy_hash': previousPolicyHash,
+      'target_forum_host': targetForumHost,
+      'type': type,
+      'version': version,
+    };
+  }
+
+  Map<String, Object?> toJson() => {
+    ...canonicalPayload(
+      intentId: intentId,
+      authorDid: authorDid,
+      boardId: boardId,
+      previousPolicyHash: previousPolicyHash,
+      targetForumHost: targetForumHost,
+      newPolicy: newPolicy,
+      approvals: approvals,
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+      effectiveAt: effectiveAt,
+    ),
+    'signature': signature,
+  };
 }
 
 /// Signed `report_content` intent — the app rail for reporting hosted
@@ -389,6 +501,32 @@ class ForumHostClient {
       intent.toJson(),
       expectedStatus: 200,
     );
+  }
+
+  Future<Map<String, dynamic>> updateHostedBoardPolicy(
+    UpdateHostedBoardPolicyIntent intent,
+  ) async {
+    return _postJson(
+      '/api/v1/forum-host/boards/${Uri.encodeComponent(intent.boardId)}/policy',
+      intent.toJson(),
+      expectedStatus: 200,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getHostedBoardPolicyHistory(
+    String boardId,
+  ) async {
+    final body = await _getJson(
+      '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/policy-history',
+    );
+    final versions = body['versions'];
+    if (versions is! List) {
+      throw const FormatException('Expected board policy version list');
+    }
+    return versions
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList();
   }
 
   /// Submits a signed content report. 201 = created, 200 = collapsed into

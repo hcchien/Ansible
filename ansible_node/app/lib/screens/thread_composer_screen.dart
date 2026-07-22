@@ -487,7 +487,10 @@ class _Footer extends StatelessWidget {
           ] else
             const Spacer(),
           Text(
-            context.uiCopy(zh: '$characterCount 字', en: '$characterCount chars'),
+            context.uiCopy(
+              zh: '$characterCount 字',
+              en: '$characterCount chars',
+            ),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 10,
@@ -536,7 +539,8 @@ class _PostingGateBanner extends StatelessWidget {
             child: Text(
               context.uiCopy(
                 zh: '此看板僅限已驗證真人發文。完成真人驗證後才能在這裡發佈，閱讀不受影響。',
-                en: 'Only verified humans can post in this board. Complete '
+                en:
+                    'Only verified humans can post in this board. Complete '
                     'identity verification to publish here; reading is not '
                     'affected.',
               ),
@@ -601,10 +605,7 @@ class _CrossPostSelector extends StatelessWidget {
                   backgroundColor: AnsibleDesign.paper,
                   selectedColor: AnsibleDesign.paperDeep,
                   checkmarkColor: AnsibleDesign.accent,
-                  side: const BorderSide(
-                    color: AnsibleDesign.rule,
-                    width: 0.5,
-                  ),
+                  side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
                   visualDensity: VisualDensity.compact,
                 ),
             ],

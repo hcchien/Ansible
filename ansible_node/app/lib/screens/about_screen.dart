@@ -94,7 +94,10 @@ class _AboutScreenState extends State<AboutScreen> {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              context.uiCopy(zh: '去中心化、身分自主的討論社群', en: 'A decentralized, self-sovereign discussion community'),
+              context.uiCopy(
+                zh: '去中心化、身分自主的討論社群',
+                en: 'A decentralized, self-sovereign discussion community',
+              ),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: AnsibleDesign.serif,
@@ -119,9 +122,7 @@ class _AboutScreenState extends State<AboutScreen> {
             ),
           ],
           const SizedBox(height: 24),
-          AnsibleMonoLabel(
-            context.uiCopy(zh: '政策與條款 · LEGAL', en: 'LEGAL'),
-          ),
+          AnsibleMonoLabel(context.uiCopy(zh: '政策與條款 · LEGAL', en: 'LEGAL')),
           const SizedBox(height: 8),
           AnsibleRuleGroup(
             children: [

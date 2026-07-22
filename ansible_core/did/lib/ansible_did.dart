@@ -19,6 +19,7 @@ library ansible_did;
 
 export 'src/did_manager.dart';
 export 'src/did_signer.dart';
+export 'src/identity_key.dart';
 export 'src/did_document.dart';
 export 'src/passkeys_manager.dart';
 export 'src/did_plc_manager.dart';

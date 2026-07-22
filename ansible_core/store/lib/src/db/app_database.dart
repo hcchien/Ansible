@@ -117,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 28;
+  int get schemaVersion => 30;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -274,6 +274,40 @@ class AppDatabase extends _$AppDatabase {
           "UPDATE content_items SET signature_verified = 1 "
           "WHERE author_did LIKE 'did:%' AND local_only = 0 "
           "AND visibility != 'private'",
+        );
+      }
+      if (from < 29) {
+        await _addColumnIfMissing(
+          m,
+          hostedBoardProjections,
+          hostedBoardProjections.accessPolicyJson,
+        );
+        await _addColumnIfMissing(
+          m,
+          hostedBoardProjections,
+          hostedBoardProjections.accessPolicyVersion,
+        );
+        await _addColumnIfMissing(
+          m,
+          hostedBoardProjections,
+          hostedBoardProjections.contentVisibility,
+        );
+        await _addColumnIfMissing(
+          m,
+          hostedBoardProjections,
+          hostedBoardProjections.federationPolicyJson,
+        );
+      }
+      if (from < 30) {
+        await _addColumnIfMissing(
+          m,
+          hostedBoardProjections,
+          hostedBoardProjections.encryptionEpoch,
+        );
+        await _addColumnIfMissing(
+          m,
+          hostedBoardProjections,
+          hostedBoardProjections.encryptionState,
         );
       }
       await _addColumnIfMissing(

@@ -121,12 +121,18 @@ class _PasskeysRegistrationScreenState
       final did = deriveDidElix(
         identityKey: credential.publicKeyHex,
         handle: handle,
+        custodyClass: credential.custody == IdentityKeyCustody.hardware
+            ? CustodyClass.hardware
+            : CustodyClass.software,
+        identityKeyAlgorithm: credential.signingAlgorithm.wireName,
       );
       await _canonicalIdentityStore.save(
         CanonicalIdentity(
           did: did,
           handle: handle,
           publicKeyHex: credential.publicKeyHex,
+          signingAlgorithm: credential.signingAlgorithm.wireName,
+          custody: credential.custody.wireName,
         ),
       );
 
@@ -137,6 +143,7 @@ class _PasskeysRegistrationScreenState
         final challenge = await _atProtoClient.register(
           publicKeyHex: credential.publicKeyHex,
           handleSuffix: handleSuffix,
+          signingAlgorithm: credential.signingAlgorithm.wireName,
         );
         if (challenge.handle != null && challenge.handle != handle) {
           throw StateError(
@@ -146,10 +153,16 @@ class _PasskeysRegistrationScreenState
 
         // Sign the nonce with the DID private key so the Relay can verify
         // ownership of the public key presented during register().
-        final registrationSig = await (widget.nonceSigner ?? _signNonce)(
-          challenge.nonce,
-          credential.publicKeyHex,
-        );
+        final registrationSig = widget.nonceSigner == null
+            ? await _signNonce(
+                challenge.nonce,
+                credential.publicKeyHex,
+                credential.signingAlgorithm,
+              )
+            : await widget.nonceSigner!(
+                challenge.nonce,
+                credential.publicKeyHex,
+              );
 
         final result = await _atProtoClient.anchor(
           AnchorRequest(
@@ -158,6 +171,7 @@ class _PasskeysRegistrationScreenState
             handle: handle,
             registrationSig: registrationSig,
             nonce: challenge.nonce,
+            signingAlgorithm: credential.signingAlgorithm.wireName,
           ),
         );
 
@@ -208,8 +222,14 @@ class _PasskeysRegistrationScreenState
   /// Falls back to a dev stub when the Rust bridge is not yet initialised
   /// (UnimplementedError) or when no keypair has been written to storage yet
   /// (StateError). The stub is accepted by the Relay only in dev/local mode.
-  Future<String> _signNonce(String nonce, String publicKeyHex) async {
-    if (!RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(publicKeyHex)) {
+  Future<String> _signNonce(
+    String nonce,
+    String publicKeyHex,
+    IdentityKeyAlgorithm algorithm,
+  ) async {
+    final expectedLength = algorithm == IdentityKeyAlgorithm.ed25519 ? 64 : 130;
+    if (publicKeyHex.length != expectedLength ||
+        !RegExp(r'^[0-9a-fA-F]+$').hasMatch(publicKeyHex)) {
       throw const FormatException(
         'Registration public key must be 32-byte hex.',
       );
@@ -217,7 +237,10 @@ class _PasskeysRegistrationScreenState
     try {
       final signer = DidSignerImpl(secureStorage: const FlutterSecureStorage());
       final sig = await signer.sign(utf8.encode(nonce));
-      if (!RegExp(r'^[0-9a-fA-F]{128}$').hasMatch(sig.hex)) {
+      final valid = algorithm == IdentityKeyAlgorithm.ed25519
+          ? RegExp(r'^[0-9a-fA-F]{128}$').hasMatch(sig.hex)
+          : RegExp(r'^[0-9a-fA-F]{136,144}$').hasMatch(sig.hex);
+      if (!valid) {
         if (widget.allowInsecureDevFallback) {
           return _devSignatureForNonce(nonce);
         }

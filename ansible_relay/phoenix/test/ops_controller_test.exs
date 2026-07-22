@@ -407,6 +407,24 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
            }
   end
 
+  test "composite local board id cannot bypass a hosted board posting policy" do
+    did = "did:key:z6MkCompositeBasic#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+    board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
+
+    op =
+      content_op(did, private_key, "thread", %{
+        "boardId" => "relay-node_#{board_id}",
+        "title" => "Must still be gated"
+      })
+
+    response = post_json("/api/v1/ops", op)
+
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "posting_requires_tier"
+  end
+
   test "post insert (reply) into a tier-gated board is gated by the same key" do
     did = "did:key:z6MkGatedReply#{System.unique_integer()}"
     {public_key, private_key} = ed25519_keypair()

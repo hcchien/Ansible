@@ -196,9 +196,9 @@ class _InboxBodyState extends State<_InboxBody> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(userFacingError(context, error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
     } finally {
       if (mounted) setState(() => _composing = false);
     }

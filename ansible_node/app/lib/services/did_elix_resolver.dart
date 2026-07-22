@@ -40,13 +40,15 @@ class DidElixResolver {
   final http.Client _client;
 
   DidElixResolver({required this.relays, http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   /// Resolve [did], trying each relay in order; returns the first verified
   /// answer, or null if none verify.
   Future<ResolvedIdentity?> resolve(String did) async {
     for (final relay in relays) {
-      final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
+      final base = relay.endsWith('/')
+          ? relay.substring(0, relay.length - 1)
+          : relay;
       try {
         final resp = await _client.get(
           Uri.parse('$base/api/v1/identity/anchor/$did'),

@@ -48,7 +48,8 @@ class RecoveryWizardScreen extends StatefulWidget {
   final Future<String> Function({
     required String passphrase,
     required String blobJson,
-  }) decryptBackup;
+  })
+  decryptBackup;
 
   /// Builds an [IdentityKey] from the decrypted private key hex.
   final IdentityKey Function(String privateKeyHex) identityKeyFactory;
@@ -83,17 +84,21 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
     final blobJson = _blob.text.trim();
     final passphrase = _passphrase.text;
     if (blobJson.isEmpty) {
-      setState(() => _error = context.uiCopy(
-            zh: '請先貼上你的加密備份。',
-            en: 'Paste your encrypted backup first.',
-          ));
+      setState(
+        () => _error = context.uiCopy(
+          zh: '請先貼上你的加密備份。',
+          en: 'Paste your encrypted backup first.',
+        ),
+      );
       return;
     }
     if (passphrase.isEmpty) {
-      setState(() => _error = context.uiCopy(
-            zh: '請輸入備份密語。',
-            en: 'Enter your backup passphrase.',
-          ));
+      setState(
+        () => _error = context.uiCopy(
+          zh: '請輸入備份密語。',
+          en: 'Enter your backup passphrase.',
+        ),
+      );
       return;
     }
 
@@ -102,18 +107,22 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
     try {
       parsed = IdentityKeyBackup.parse(blobJson);
     } on BackupFormatException {
-      setState(() => _error = context.uiCopy(
-            zh: '這不是有效的 Elix 身分備份。',
-            en: 'This is not a valid Elix identity backup.',
-          ));
+      setState(
+        () => _error = context.uiCopy(
+          zh: '這不是有效的 Elix 身分備份。',
+          en: 'This is not a valid Elix identity backup.',
+        ),
+      );
       return;
     }
     final did = parsed.did;
     if (did == null) {
-      setState(() => _error = context.uiCopy(
-            zh: '備份缺少身分資訊，無法復原。',
-            en: 'The backup is missing identity information.',
-          ));
+      setState(
+        () => _error = context.uiCopy(
+          zh: '備份缺少身分資訊，無法復原。',
+          en: 'The backup is missing identity information.',
+        ),
+      );
       return;
     }
 
@@ -213,10 +222,12 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
     return [
       Text(
         context.uiCopy(
-          zh: '貼上你之前建立的加密備份，並輸入備份密語。'
+          zh:
+              '貼上你之前建立的加密備份，並輸入備份密語。'
               '我們會在這台裝置上解開你的身分金鑰，'
               '並為這台裝置產生一把全新的裝置金鑰，重新錨定你的帳號。',
-          en: 'Paste the encrypted backup you created earlier and enter its '
+          en:
+              'Paste the encrypted backup you created earlier and enter its '
               'passphrase. We unlock your identity key on this device, '
               'generate a fresh device key for it, and re-anchor your account.',
         ),
@@ -305,8 +316,11 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
   List<Widget> _recoveredContent(BuildContext context) {
     return [
       const SizedBox(height: 12),
-      const Icon(Icons.verified_user_outlined,
-          size: 40, color: AnsibleDesign.spore),
+      const Icon(
+        Icons.verified_user_outlined,
+        size: 40,
+        color: AnsibleDesign.spore,
+      ),
       const SizedBox(height: 16),
       Text(
         context.uiCopy(zh: '帳號已復原', en: 'Account recovered'),
@@ -321,9 +335,11 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
       const SizedBox(height: 12),
       Text(
         context.uiCopy(
-          zh: '你的身分金鑰已重新安裝到這台裝置，並已產生一把新的裝置金鑰。'
+          zh:
+              '你的身分金鑰已重新安裝到這台裝置，並已產生一把新的裝置金鑰。'
               '舊裝置的金鑰不會被復原（它從不備份）。',
-          en: 'Your identity key has been reinstalled on this device and a new '
+          en:
+              'Your identity key has been reinstalled on this device and a new '
               'device key has been enrolled. The old device key is not '
               'recovered (it is never backed up).',
         ),
@@ -372,9 +388,7 @@ class _PrimaryButton extends StatelessWidget {
           backgroundColor: AnsibleDesign.accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(
           label,

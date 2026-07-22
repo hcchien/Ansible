@@ -83,12 +83,12 @@ defmodule AnsibleRelay.VpVerifier do
 
   defp resolve_holder_key(did) do
     case DidAccountCache.get(did) do
-      {:ok, %{public_key_hex: pkh}} -> {:ok, pkh}
+      {:ok, entry} -> {:ok, entry}
       _ -> {:error, :holder_not_found}
     end
   end
 
-  defp verify_vp_proof(vp, pub_key_hex, expected_holder, opts) do
+  defp verify_vp_proof(vp, identity_key, expected_holder, opts) do
     proof = Map.get(vp, "proof", %{})
     proof_value = Map.get(proof, "proofValue", "")
     actual_holder = Map.get(vp, "holder", "")
@@ -101,7 +101,12 @@ defmodule AnsibleRelay.VpVerifier do
       proof_options = Map.delete(proof, "proofValue")
       canonical = vp |> Map.put("proof", proof_options) |> deep_sort_keys() |> Jason.encode!()
 
-      if SigVerifier.verify_ed25519(pub_key_hex, canonical, proof_value) do
+      if SigVerifier.verify_identity(
+           Map.get(identity_key, :signing_algorithm, "ed25519"),
+           identity_key.public_key_hex,
+           canonical,
+           proof_value
+         ) do
         :ok
       else
         {:error, :invalid_vp_proof}

@@ -19,6 +19,7 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
     field(:prev_anchor_cid, :string)
     field(:reason, :string)
     field(:identity_key, :string)
+    field(:identity_key_algorithm, :string, default: "ed25519")
     field(:handle, :string)
     # v2: verifiable aliases (at://handle, did:key, optional did:plc). Part of
     # the signed body, so stored to keep `to_object` consistent with
@@ -37,7 +38,7 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
     timestamps()
   end
 
-  @castable ~w(did anchor_cid prev_anchor_cid reason identity_key handle
+  @castable ~w(did anchor_cid prev_anchor_cid reason identity_key identity_key_algorithm handle
                also_known_as custody_class schema_version devices sig device_sig
                canonical_body state grace_until created_at)a
 

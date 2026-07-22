@@ -110,11 +110,14 @@ void main() {
     );
     await tester.pump();
 
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('settings_language_row')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('語言'), findsOneWidget);
     expect(find.text('跟隨系統'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('語言'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('語言'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('English'));
@@ -153,6 +156,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Wallet'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('settings_language_row')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('Language'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
   });

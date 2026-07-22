@@ -7,7 +7,7 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.{IdentityCache, MessengerStore, SigVerifier}
+  alias AnsibleRelay.{IdentityCache, MessengerStore}
 
   @plaintext_fields ["plaintext", "body", "message", "text"]
 
@@ -168,16 +168,10 @@ defmodule AnsibleRelay.Web.Controllers.MessengerController do
   end
 
   defp verify_subject_signature(subject_did, payload, signature) do
-    case IdentityCache.public_key_hex(subject_did) do
-      nil ->
-        {:error, :unverified_did}
-
-      public_key ->
-        if SigVerifier.verify_ed25519(public_key, canonical_json(payload), signature) do
-          :ok
-        else
-          {:error, :invalid_signature}
-        end
+    cond do
+      not IdentityCache.verified?(subject_did) -> {:error, :unverified_did}
+      IdentityCache.verify_signature(subject_did, canonical_json(payload), signature) -> :ok
+      true -> {:error, :invalid_signature}
     end
   end
 

@@ -10,9 +10,9 @@ class MurmurIndexingService {
     required EmbeddingService embeddingService,
     required DriftMurmurEmbeddingRepository embeddingRepository,
     required DriftContentItemRepository contentItemRepository,
-  })  : _embedding = embeddingService,
-        _embeddingRepo = embeddingRepository,
-        _contentItems = contentItemRepository;
+  }) : _embedding = embeddingService,
+       _embeddingRepo = embeddingRepository,
+       _contentItems = contentItemRepository;
 
   /// Index a single murmur immediately after it is saved.
   Future<void> index(ContentItem item) async {

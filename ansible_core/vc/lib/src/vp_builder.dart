@@ -42,7 +42,7 @@ class VpBuilder {
       '@context': ['https://www.w3.org/ns/credentials/v2'],
       'type': ['VerifiablePresentation'],
       'holder': holderDid,
-      'verifiableCredential': [credential.json],
+      'verifiableCredential': [credential.compactJwt ?? credential.json],
       'proof': {
         'type': 'DataIntegrityProof',
         'cryptosuite': 'eddsa-jcs-2022',

@@ -12,8 +12,10 @@ void main() {
     'registration mints a self-certifying did:elix and anchors it with the relay',
     (tester) async {
       final passkeyPublicKey = 'ab' * 32;
-      final expectedDid =
-          deriveDidElix(identityKey: passkeyPublicKey, handle: 'user.elix.cool');
+      final expectedDid = deriveDidElix(
+        identityKey: passkeyPublicKey,
+        handle: 'user.elix.cool',
+      );
       final passkeys = _FakePasskeysManager(passkeyPublicKey);
       final store = InMemoryCanonicalIdentityStore();
       final atProto = _FakeAtProtoClient();
@@ -124,7 +126,10 @@ void main() {
     }
 
     expect(atProto.anchorRequest?.registrationSig, startsWith('dev-sig-'));
-    expect(registeredDid, deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'));
+    expect(
+      registeredDid,
+      deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'),
+    );
   });
 
   testWidgets('registration can complete locally when dev relay is offline', (
@@ -153,7 +158,10 @@ void main() {
     }
 
     expect(atProto.registerCalled, isTrue);
-    expect(registeredDid, deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'));
+    expect(
+      registeredDid,
+      deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'),
+    );
     expect(await store.load(), isNotNull);
     expect(passkeys.deleteCalled, isFalse);
   });
@@ -218,25 +226,24 @@ void main() {
     },
   );
 
-  testWidgets(
-    'recover affordance is hidden when no handler is wired',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: PasskeysRegistrationScreen(
-            passkeysManager: _FakePasskeysManager('ab' * 32),
-            canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
-            atProtoClient: _FakeAtProtoClient(),
-            onRegistered: (did, handle) {},
-          ),
+  testWidgets('recover affordance is hidden when no handler is wired', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PasskeysRegistrationScreen(
+          passkeysManager: _FakePasskeysManager('ab' * 32),
+          canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+          atProtoClient: _FakeAtProtoClient(),
+          onRegistered: (did, handle) {},
         ),
-      );
-      expect(
-        find.byKey(const Key('recover_existing_account_button')),
-        findsNothing,
-      );
-    },
-  );
+      ),
+    );
+    expect(
+      find.byKey(const Key('recover_existing_account_button')),
+      findsNothing,
+    );
+  });
 
   testWidgets('registration validates handle suffix before generating keys', (
     tester,
@@ -307,6 +314,7 @@ class _FakeAtProtoClient extends AtProtoClient {
   Future<RegistrationChallenge> register({
     required String publicKeyHex,
     required String handleSuffix,
+    String signingAlgorithm = 'ed25519',
   }) async {
     final error = registerError;
     if (error != null) throw error;
@@ -338,6 +346,7 @@ class _OfflineAtProtoClient extends AtProtoClient {
   Future<RegistrationChallenge> register({
     required String publicKeyHex,
     required String handleSuffix,
+    String signingAlgorithm = 'ed25519',
   }) async {
     registerCalled = true;
     throw Exception('Relay is offline');

@@ -111,8 +111,8 @@ class RelayAnchorClient {
     String baseUrl = kDefaultRelayBaseUrl,
     http.Client? client,
     this.timeout = const Duration(seconds: 10),
-  })  : baseUri = Uri.parse(baseUrl),
-        _client = client ?? http.Client();
+  }) : baseUri = Uri.parse(baseUrl),
+       _client = client ?? http.Client();
 
   /// Submits [anchor] to the relay. When [recoveryProof] is non-null it is sent
   /// as the sibling `recovery_proof` field (the enrolled device-key signature

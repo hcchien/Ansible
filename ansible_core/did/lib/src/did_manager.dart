@@ -58,13 +58,15 @@ class DidManagerImpl implements DidManager {
   final FlutterSecureStorage _secureStorage;
 
   DidManagerImpl({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   @override
   Future<OwnedDid> generate() async {
     final kp = RustLib.instance.apiGenerateKeypair();
     await _secureStorage.write(
-        key: _kPrivateKeyStorageKey, value: kp.privateKeyHex);
+      key: _kPrivateKeyStorageKey,
+      value: kp.privateKeyHex,
+    );
     await _secureStorage.write(key: _kDidStorageKey, value: kp.did);
     return OwnedDid(did: kp.did, publicKeyHex: kp.publicKeyHex);
   }

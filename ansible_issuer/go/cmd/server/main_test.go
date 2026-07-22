@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/trisaura/ansible_issuer/internal/provider"
+	"github.com/trisaura/ansible_issuer/internal/vc"
 )
 
 func TestIsProdLikeEnvironment(t *testing.T) {
@@ -323,5 +325,42 @@ func TestValidateIssuerPrivateKeyHex(t *testing.T) {
 				t.Fatalf("unexpected error for %q: %v", tc.key, err)
 			}
 		})
+	}
+}
+
+func TestProductionIssuerSignerRequiresKMSAndForbidsRawSeed(t *testing.T) {
+	t.Setenv("ANSIBLE_APP_ENV", "prod")
+	t.Setenv("K_SERVICE", "")
+	t.Setenv("ISSUER_KMS_KEY_VERSION", "")
+	validSeed := strings.Repeat("12", 32)
+
+	_, err := buildIssuerSigner(context.Background(), vc.Config{
+		IssuerDID: "did:web:issuer.example", PrivKeyHex: validSeed,
+	}, false)
+	if err == nil || !strings.Contains(err.Error(), "forbidden") {
+		t.Fatalf("expected raw seed to be forbidden, got %v", err)
+	}
+
+	_, err = buildIssuerSigner(context.Background(), vc.Config{
+		IssuerDID: "did:web:issuer.example",
+	}, false)
+	if err == nil || !strings.Contains(err.Error(), "ISSUER_KMS_KEY_VERSION is required") {
+		t.Fatalf("expected KMS requirement, got %v", err)
+	}
+}
+
+func TestDevelopmentIssuerSignerAllowsExplicitSeed(t *testing.T) {
+	t.Setenv("ANSIBLE_APP_ENV", "dev")
+	t.Setenv("K_SERVICE", "issuer-dev")
+	t.Setenv("ISSUER_KMS_KEY_VERSION", "")
+	seed := strings.Repeat("12", 32)
+	signer, err := buildIssuerSigner(context.Background(), vc.Config{
+		IssuerDID: "did:web:issuer-dev.example", PrivKeyHex: seed,
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if signer.KeyID() != "did:web:issuer-dev.example#key-1" {
+		t.Fatalf("unexpected key id %q", signer.KeyID())
 	}
 }

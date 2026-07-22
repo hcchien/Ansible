@@ -51,21 +51,26 @@ defmodule AnsibleRelay.Web.Controllers.XrpcController do
          collection,
          record,
          commit_sig,
-         %{public_key_hex: pub_key_hex}
+         entry
        ) do
     case AbuseDetector.check_did(repo) do
       {:error, :rate_limited, detail} ->
         send_json(conn, 429, %{error: "rate_limited", detail: detail})
 
       :ok ->
-        do_create_record(conn, repo, collection, record, commit_sig, pub_key_hex)
+        do_create_record(conn, repo, collection, record, commit_sig, entry)
     end
   end
 
-  defp do_create_record(conn, repo, collection, record, commit_sig, pub_key_hex) do
+  defp do_create_record(conn, repo, collection, record, commit_sig, entry) do
     record_json = Jason.encode!(record)
 
-    if SigVerifier.verify_ed25519(pub_key_hex, record_json, commit_sig) do
+    if SigVerifier.verify_identity(
+         Map.get(entry, :signing_algorithm, "ed25519"),
+         entry.public_key_hex,
+         record_json,
+         commit_sig
+       ) do
       rkey = tid()
       # TODO(P2): replace with real DAG-CBOR CID from Rustler NIF
       cid = "bafyreistub#{:crypto.strong_rand_bytes(8) |> Base.url_encode64(padding: false)}"

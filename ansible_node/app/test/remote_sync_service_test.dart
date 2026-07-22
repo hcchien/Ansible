@@ -697,6 +697,111 @@ void main() {
     },
   );
 
+  test(
+    'protected board uses scoped delta and advances only its cursor',
+    () async {
+      final boardRepo = InMemoryBoardRepository();
+      final threadRepo = InMemoryThreadRepository();
+      final postRepo = InMemoryPostRepository();
+      final hostedBoards = InMemoryHostedBoardRepository();
+      final now = DateTime.utc(2026, 7, 22);
+      await boardRepo.create(
+        Board(
+          id: 'local-members',
+          slug: 'members',
+          title: 'Members',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await hostedBoards.upsertProjection(
+        HostedBoardProjection(
+          localBoardId: 'local-members',
+          forumHostId: 'remote-1',
+          hostedBoardId: 'members',
+          canonicalBoardUri: 'https://relay.example/boards/members',
+          remoteSlug: 'members',
+          localSlug: 'members',
+          title: 'Members',
+          accessPolicy: const {
+            'read': {'requirement': 'party-member'},
+          },
+          contentVisibility: 'host_visible',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await hostedBoards.upsertSubscription(
+        BoardSubscription(
+          subscriptionId: 'remote-1_members',
+          forumHostId: 'remote-1',
+          hostedBoardId: 'members',
+          localBoardId: 'local-members',
+          readEnabled: true,
+          writeEnabled: true,
+          syncCursor: 40,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final client = _FakeRelayApiClient(
+        boardActivities: [
+          {
+            'logId': 42,
+            'activity': {
+              'activityId': 'thread-42',
+              'type': 'create',
+              'entityType': 'thread',
+              'entityId': 'thread-42',
+              'boardId': 'members',
+              'authorId': 'did:key:member',
+              'createdAt': '2026-07-22T00:00:00Z',
+              'payload': {'title': 'Private discussion'},
+            },
+          },
+        ],
+      );
+      var authorizationCalls = 0;
+      final result =
+          await RemoteSyncService(
+            remoteNodeRepo: _FakeRemoteNodeRepository(),
+            boardSyncConfigRepo: _FakeBoardSyncConfigRepository(
+              configs: const [],
+            ),
+            hostedBoardRepo: hostedBoards,
+            boardRepo: boardRepo,
+            threadRepo: threadRepo,
+            postRepo: postRepo,
+            opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+            authorizeBoardRead: (board, uri) async {
+              authorizationCalls++;
+              expect(board.hostedBoardId, 'members');
+              expect(uri.path, '/api/v1/forum-host/boards/members/ops/delta');
+              return const {'x-elix-board-capability': 'capability'};
+            },
+            now: () => now,
+          ).syncFromNode(
+            client,
+            RemoteNode(
+              id: 'remote-1',
+              name: 'Remote',
+              url: 'https://relay.example',
+              syncCursor: 100,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      expect(result.success, isTrue);
+      expect(client.getDeltaCalls, 1);
+      expect(client.getBoardDeltaCalls, 1);
+      expect(client.requestedBoardCursor, 40);
+      expect(authorizationCalls, 1);
+      expect((await threadRepo.list()).single.boardId, 'local-members');
+      expect((await hostedBoards.listSubscriptions()).single.syncCursor, 142);
+    },
+  );
+
   test('pull routes a thread whose boardId has a foreign install prefix to the '
       'local board via the hosted_board_id suffix', () async {
     final boardRepo = InMemoryBoardRepository();
@@ -1112,34 +1217,53 @@ void main() {
 
 class _FakeRelayApiClient extends RelayApiClient {
   final List<Map<String, dynamic>> activities;
+  final List<Map<String, dynamic>> boardActivities;
   int getDeltaCalls = 0;
+  int getBoardDeltaCalls = 0;
   int? requestedCursor;
+  int? requestedBoardCursor;
 
-  _FakeRelayApiClient({List<Map<String, dynamic>>? activities})
-    : activities =
-          activities ??
-          [
-            {
-              'logId': 1,
-              'activity': {
-                'activityId': 'activity-board-1',
-                'type': 'create',
-                'entityType': 'board',
-                'entityId': 'board-1',
-                'boardId': 'board-1',
-                'authorId': 'did:key:remote',
-                'createdAt': '2026-05-04T00:00:00Z',
-                'payload': {'slug': 'general', 'title': 'General'},
-              },
-            },
-          ],
-      super(baseUrl: 'https://relay.example');
+  _FakeRelayApiClient({
+    List<Map<String, dynamic>>? activities,
+    this.boardActivities = const [],
+  }) : activities =
+           activities ??
+           [
+             {
+               'logId': 1,
+               'activity': {
+                 'activityId': 'activity-board-1',
+                 'type': 'create',
+                 'entityType': 'board',
+                 'entityId': 'board-1',
+                 'boardId': 'board-1',
+                 'authorId': 'did:key:remote',
+                 'createdAt': '2026-05-04T00:00:00Z',
+                 'payload': {'slug': 'general', 'title': 'General'},
+               },
+             },
+           ],
+       super(baseUrl: 'https://relay.example');
 
   @override
   Future<Map<String, dynamic>> getDelta({int? cursor, int limit = 100}) async {
     getDeltaCalls += 1;
     requestedCursor = cursor;
     return {'activities': activities, 'nextCursor': 124, 'hasMore': false};
+  }
+
+  @override
+  Future<Map<String, dynamic>> getBoardDelta({
+    required String boardId,
+    required Map<String, String> proofHeaders,
+    int? cursor,
+    int limit = 100,
+  }) async {
+    getBoardDeltaCalls += 1;
+    requestedBoardCursor = cursor;
+    expect(boardId, 'members');
+    expect(proofHeaders['x-elix-board-capability'], 'capability');
+    return {'activities': boardActivities, 'nextCursor': 142, 'hasMore': false};
   }
 }
 

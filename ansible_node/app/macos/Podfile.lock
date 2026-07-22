@@ -4,11 +4,18 @@ PODS:
   - flutter_secure_storage_macos (6.1.3):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
+  - passkeys_darwin (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - ua_client_hints (1.7.0):
+    - FlutterMacOS
 
 DEPENDENCIES:
   - ansible_did (from `Flutter/ephemeral/.symlinks/plugins/ansible_did/macos`)
   - flutter_secure_storage_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - passkeys_darwin (from `Flutter/ephemeral/.symlinks/plugins/passkeys_darwin/darwin`)
+  - ua_client_hints (from `Flutter/ephemeral/.symlinks/plugins/ua_client_hints/macos`)
 
 EXTERNAL SOURCES:
   ansible_did:
@@ -17,12 +24,18 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  passkeys_darwin:
+    :path: Flutter/ephemeral/.symlinks/plugins/passkeys_darwin/darwin
+  ua_client_hints:
+    :path: Flutter/ephemeral/.symlinks/plugins/ua_client_hints/macos
 
 SPEC CHECKSUMS:
   ansible_did: d2ce9314862243d04b085f86cd679165cf79698f
   flutter_secure_storage_macos: 7f45e30f838cf2659862a4e4e3ee1c347c2b3b54
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  passkeys_darwin: 0a09d3b26cea8de1ec3bb8f8c7c159981f63bbc7
+  ua_client_hints: bb84da85d9d5d605d40598b3c1ae3bfd2598e201
 
-PODFILE CHECKSUM: e4b2a46c768c18841bdda7c2538f463d46e74389
+PODFILE CHECKSUM: be5e732942f125e53aa9eec1714242c47016da1d
 
 COCOAPODS: 1.17.0

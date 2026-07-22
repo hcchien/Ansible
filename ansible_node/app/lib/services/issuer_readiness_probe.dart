@@ -14,8 +14,8 @@ class IssuerReadinessProbe {
     String? issuerBaseUrl,
     http.Client? client,
     this.timeout = const Duration(seconds: 5),
-  })  : _baseUri = Uri.parse(issuerBaseUrl ?? AppEnvironment.issuerBaseUrl),
-        _client = client ?? http.Client();
+  }) : _baseUri = Uri.parse(issuerBaseUrl ?? AppEnvironment.issuerBaseUrl),
+       _client = client ?? http.Client();
 
   final Uri _baseUri;
   final http.Client _client;

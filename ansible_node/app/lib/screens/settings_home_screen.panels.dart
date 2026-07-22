@@ -378,4 +378,3 @@ class _MotionChoice extends StatelessWidget {
     );
   }
 }
-

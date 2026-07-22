@@ -90,7 +90,7 @@ class _OnboardingBackupStepScreenState
   Future<void> _publishInitialAnchor() async {
     try {
       final identityKey =
-          widget.identityKeyForAnchor ?? const SecureStorageIdentityKey();
+          widget.identityKeyForAnchor ?? const ActiveIdentityKey();
       await widget.anchorService.publishInitialAnchor(
         did: widget.did,
         handle: widget.handle,
@@ -145,8 +145,11 @@ class _OnboardingBackupStepScreenState
       child: ListView(
         padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
         children: [
-          const Icon(Icons.verified_user_outlined,
-              size: 40, color: AnsibleDesign.spore),
+          const Icon(
+            Icons.verified_user_outlined,
+            size: 40,
+            color: AnsibleDesign.spore,
+          ),
           const SizedBox(height: 16),
           Text(
             _copy(zh: '帳號已建立', en: 'Account created'),
@@ -170,9 +173,11 @@ class _OnboardingBackupStepScreenState
           const SizedBox(height: 20),
           Text(
             _copy(
-              zh: '現在做一份加密備份。沒有備份的話，'
+              zh:
+                  '現在做一份加密備份。沒有備份的話，'
                   '如果你弄丟這台裝置，就無法復原這個帳號。',
-              en: 'Make an encrypted backup now. Without a backup you cannot '
+              en:
+                  'Make an encrypted backup now. Without a backup you cannot '
                   'recover this account if you lose this device.',
             ),
             style: const TextStyle(
@@ -196,9 +201,11 @@ class _OnboardingBackupStepScreenState
               ),
               child: Text(
                 _copy(
-                  zh: '⚠ 復原機制尚未在伺服器上完成設定，帳號仍可正常使用。'
+                  zh:
+                      '⚠ 復原機制尚未在伺服器上完成設定，帳號仍可正常使用。'
                       '之後可在「設定 → 復原」重試。',
-                  en: '⚠ Account recovery is not fully set up on the server yet. '
+                  en:
+                      '⚠ Account recovery is not fully set up on the server yet. '
                       'Your account still works; you can retry later in '
                       'Settings → Recovery.',
                 ),
@@ -252,9 +259,7 @@ class _PrimaryButton extends StatelessWidget {
           backgroundColor: AnsibleDesign.accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(
           label,

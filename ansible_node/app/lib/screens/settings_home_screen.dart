@@ -8,9 +8,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/app_locale_controller.dart';
 import '../services/external_content_preferences_controller.dart';
 import '../services/identity_anchor_service.dart';
+import '../services/hardware_key_upgrade_service.dart';
+import '../services/canonical_identity_store.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/recovery_readiness_store.dart';
 import '../services/relay_anchor_client.dart';
@@ -23,6 +26,8 @@ import 'about_screen.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'identity_backup_screen.dart';
+import 'hosted_issuer_onboarding_screen.dart';
+import 'hosted_issuer_administrators_screen.dart';
 import 'inbox_screen.dart';
 import 'local_ai_access_screen.dart';
 import 'recovery_approve_scanner_screen.dart';
@@ -300,6 +305,46 @@ class SettingsHomeScreen extends StatelessWidget {
                   );
                 },
               ),
+              AnsibleSettingsRow(
+                key: const Key('settings_hosted_issuer_row'),
+                glyph: '◇',
+                label: context.uiCopy(zh: '代管簽發者', en: 'Hosted Issuer'),
+                en: 'ISSUER',
+                sub: context.uiCopy(
+                  zh: '組織會員憑證、管理員與簽章治理',
+                  en: 'Organization credentials, admins, and signing governance',
+                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          HostedIssuerOnboardingScreen(ownerDid: did),
+                    ),
+                  );
+                },
+              ),
+              AnsibleSettingsRow(
+                key: const Key('settings_hosted_issuer_admins_row'),
+                glyph: '⋮',
+                label: context.uiCopy(
+                  zh: '簽發者管理員',
+                  en: 'Issuer administrators',
+                ),
+                en: 'GOVERNANCE',
+                sub: context.uiCopy(
+                  zh: '加入請求、Passkey 與多人核准',
+                  en: 'Enrollment, passkeys, and multi-admin approval',
+                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          HostedIssuerAdministratorsScreen(localDid: did),
+                    ),
+                  );
+                },
+              ),
+              _IdentityCustodyRow(did: did),
               AnsibleSettingsRow(
                 key: const Key('settings_approve_recovery_row'),
                 glyph: '⇄',

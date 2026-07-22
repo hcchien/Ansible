@@ -178,9 +178,7 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
 
   @override
   Future<MessengerDeviceBundle> createDevice(String subjectDid) async {
-    final device = frb.apiMessengerCreateDevice(
-      subjectDid: subjectDid,
-    );
+    final device = frb.apiMessengerCreateDevice(subjectDid: subjectDid);
     return _deviceFromRust(device);
   }
 
@@ -217,12 +215,12 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
   ) async {
     final localDevice = await _deviceToRust(request.localDevice);
     final ciphertext = await frb.apiMessengerEncryptInitialMessage(
-          input: frb.MessengerEncryptInput(
-            localDevice: localDevice,
-            remoteBundle: _remoteBundleToRust(request.remoteBundle),
-            plaintext: request.plaintext,
-          ),
-        );
+      input: frb.MessengerEncryptInput(
+        localDevice: localDevice,
+        remoteBundle: _remoteBundleToRust(request.remoteBundle),
+        plaintext: request.plaintext,
+      ),
+    );
     return MessengerCiphertextEnvelope(
       protocolVersion: ciphertext.protocolVersion,
       ciphertextType: ciphertext.ciphertextType,
@@ -237,14 +235,14 @@ class RustMessengerCryptoBridge implements MessengerCryptoBridge {
   ) async {
     final localDevice = await _deviceToRust(request.localDevice);
     final plaintext = await frb.apiMessengerDecryptInboundMessage(
-          localDevice: localDevice,
-          ciphertext: frb.MessengerCiphertext(
-            protocolVersion: request.ciphertext.protocolVersion,
-            ciphertextType: request.ciphertext.ciphertextType,
-            ciphertext: request.ciphertext.ciphertext,
-            updatedSessionState: request.ciphertext.updatedSessionState,
-          ),
-        );
+      localDevice: localDevice,
+      ciphertext: frb.MessengerCiphertext(
+        protocolVersion: request.ciphertext.protocolVersion,
+        ciphertextType: request.ciphertext.ciphertextType,
+        ciphertext: request.ciphertext.ciphertext,
+        updatedSessionState: request.ciphertext.updatedSessionState,
+      ),
+    );
     return MessengerPlaintextEnvelope(
       body: plaintext.body,
       updatedSessionState: plaintext.updatedSessionState,

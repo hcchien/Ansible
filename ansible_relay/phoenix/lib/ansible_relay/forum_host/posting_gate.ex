@@ -11,6 +11,7 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
 
   alias AnsibleRelay.{DidAccountCache, Repo, ReputationTier}
   alias AnsibleRelay.Db.ForumHostBoard
+  alias AnsibleRelay.ForumHost.{BoardAccessPolicy, BoardCapabilityRequest, Store}
 
   @doc """
   Authorizes a thread/post write for `author_did`.
@@ -42,6 +43,30 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
     end
   end
 
+  def authorize_board_post(conn, %ForumHostBoard{} = board, author_did) do
+    with :ok <- authorize_post(board, author_did),
+         {:ok, requirement} <- BoardAccessPolicy.requirement_for(board.access_policy, :post) do
+      case requirement do
+        "public" ->
+          :ok
+
+        "posting_policy" ->
+          :ok
+
+        "board_moderator" ->
+          {:error, :board_capability_required}
+
+        _credential_requirement ->
+          case BoardCapabilityRequest.authorize(conn, board.hosted_board_id, "post") do
+            {:ok, _grant} -> :ok
+            {:error, reason} -> {:error, reason}
+          end
+      end
+    end
+  end
+
+  def authorize_board_post(_conn, nil, _author_did), do: :ok
+
   @doc "Extracts `min_post_tier` from a board or posting policy map (nil = ungated)."
   def min_post_tier(%ForumHostBoard{posting_policy: policy}), do: min_post_tier(policy)
 
@@ -56,8 +81,28 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
 
   @doc "Looks up a hosted board by hosted_board_id, falling back to slug. Nil when not hosted here."
   def get_board(board_id) when is_binary(board_id) do
-    Repo.get(ForumHostBoard, board_id) || Repo.get_by(ForumHostBoard, slug: board_id)
+    (Repo.get(ForumHostBoard, board_id) ||
+       Repo.get_by(ForumHostBoard, slug: board_id) ||
+       get_composite_board(board_id))
+    |> then(fn
+      %ForumHostBoard{} = board -> Store.activate_due_board_policy(board)
+      nil -> nil
+    end)
   end
 
   def get_board(_board_id), do: nil
+
+  # App projections use `<forum-host-node-id>_<hosted-board-id>` locally.
+  # Signed ops preserve that local id, so resolve only the suffix after the
+  # first separator. This lookup is deliberately exact; fuzzy suffix queries
+  # could let a crafted id select the wrong board policy.
+  defp get_composite_board(board_id) do
+    case String.split(board_id, "_", parts: 2) do
+      [_prefix, hosted_board_id] when hosted_board_id != "" ->
+        Repo.get(ForumHostBoard, hosted_board_id)
+
+      _ ->
+        nil
+    end
+  end
 end

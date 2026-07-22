@@ -60,6 +60,36 @@ void main() {
     },
   );
 
+  test('RelayOpsClient attaches board-scoped DPoP headers per op', () async {
+    late OpsQueueEntry authorizedEntry;
+    final client = RelayOpsClient(
+      baseUrl: 'https://relay.example',
+      requestHeaders: (entry, uri) async {
+        authorizedEntry = entry;
+        expect(uri.path, '/api/v1/ops');
+        return const {
+          'x-elix-board-capability': 'capability',
+          'x-elix-board-proof': 'proof',
+        };
+      },
+      client: MockClient((request) async {
+        expect(request.headers['x-elix-board-capability'], 'capability');
+        expect(request.headers['x-elix-board-proof'], 'proof');
+        return http.Response(jsonEncode({'log_id': 8}), 202);
+      }),
+    );
+    final entry = CrdtOpBuilder.createPost(
+      authorDid: 'did:key:alice',
+      entityId: 'post-2',
+      boardId: 'members',
+      threadId: 'thread-2',
+      content: 'members only',
+    );
+
+    expect(await client.ingest(entry), 8);
+    expect(authorizedEntry.opId, entry.opId);
+  });
+
   testWidgets('426 upgrade_required maps to the friendly update message', (
     tester,
   ) async {
@@ -101,46 +131,41 @@ void main() {
     expect(fromCode, fromStatus);
   });
 
-  test(
-    'delta sync skips ops with an unknown future schema_version',
-    () async {
-      final client = RelayApiClient(
-        baseUrl: 'http://relay.local',
-        client: MockClient((request) async {
-          expect(
-            request.headers[AnsibleProtocol.headerName],
-            '${AnsibleProtocol.currentVersion}',
-          );
-          return http.Response(
-            jsonEncode({
-              'ops': [
-                _deltaOp(opId: 'op-known', schemaVersion: 1),
-                _deltaOp(
-                  opId: 'op-future',
-                  schemaVersion: AnsibleProtocol.currentVersion + 1,
-                ),
-                _deltaOp(opId: 'op-legacy', schemaVersion: null),
-              ],
-              'next_cursor': 3,
-              'has_more': false,
-            }),
-            200,
-          );
-        }),
-      );
+  test('delta sync skips ops with an unknown future schema_version', () async {
+    final client = RelayApiClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async {
+        expect(
+          request.headers[AnsibleProtocol.headerName],
+          '${AnsibleProtocol.currentVersion}',
+        );
+        return http.Response(
+          jsonEncode({
+            'ops': [
+              _deltaOp(opId: 'op-known', schemaVersion: 1),
+              _deltaOp(
+                opId: 'op-future',
+                schemaVersion: AnsibleProtocol.currentVersion + 1,
+              ),
+              _deltaOp(opId: 'op-legacy', schemaVersion: null),
+            ],
+            'next_cursor': 3,
+            'has_more': false,
+          }),
+          200,
+        );
+      }),
+    );
 
-      final delta = await client.getDelta();
-      final activities = delta['activities'] as List<dynamic>;
+    final delta = await client.getDelta();
+    final activities = delta['activities'] as List<dynamic>;
 
-      // The future-format op is skipped without throwing; known and legacy
-      // (no schema_version) ops still sync.
-      expect(activities, hasLength(2));
-      final opIds = activities
-          .map((entry) => entry['signedOp']['opId'])
-          .toList();
-      expect(opIds, ['op-known', 'op-legacy']);
-    },
-  );
+    // The future-format op is skipped without throwing; known and legacy
+    // (no schema_version) ops still sync.
+    expect(activities, hasLength(2));
+    final opIds = activities.map((entry) => entry['signedOp']['opId']).toList();
+    expect(opIds, ['op-known', 'op-legacy']);
+  });
 }
 
 Map<String, Object?> _deltaOp({required String opId, int? schemaVersion}) {

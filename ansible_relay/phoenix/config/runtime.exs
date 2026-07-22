@@ -33,7 +33,10 @@ if config_env() == :prod do
 
   repo_config = [
     url: database_url,
-    pool_size: env_int.("POOL_SIZE", 10)
+    pool_size: env_int.("POOL_SIZE", 10),
+    # Query parameter logs can contain encrypted envelopes and device public
+    # keys. Production emits aggregate application metrics instead.
+    log: false
   ]
 
   repo_config =
@@ -87,6 +90,12 @@ if config_env() == :prod do
   config :ansible_relay,
          :webauthn_sync_capability_required,
          env_bool.("WEBAUTHN_SYNC_CAPABILITY_REQUIRED", false)
+
+  # Remains off in production until the private-board protocol has completed
+  # its independent cryptographic review. Dev/test can opt in explicitly.
+  config :ansible_relay,
+         :encrypted_boards_enabled,
+         env_bool.("ENCRYPTED_BOARDS_ENABLED", false)
 
   forum_host_base_url =
     System.get_env("FORUM_HOST_BASE_URL") ||

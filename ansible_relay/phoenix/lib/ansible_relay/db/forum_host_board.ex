@@ -18,6 +18,8 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
              :access_policy,
              :access_policy_version,
              :content_visibility,
+             :encryption_epoch,
+             :encryption_state,
              :federation_policy
            ]}
   schema "forum_host_boards" do
@@ -33,6 +35,8 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
     field(:access_policy, :map, default: AnsibleRelay.ForumHost.BoardAccessPolicy.default())
     field(:access_policy_version, :integer, default: 1)
     field(:content_visibility, :string, default: "public")
+    field(:encryption_epoch, :integer, default: 0)
+    field(:encryption_state, :string, default: "disabled")
     field(:federation_policy, :map, default: %{"mode" => "enabled"})
 
     timestamps(type: :utc_datetime_usec)
@@ -54,11 +58,14 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
       :access_policy,
       :access_policy_version,
       :content_visibility,
+      :encryption_epoch,
+      :encryption_state,
       :federation_policy
     ])
     |> validate_required([:hosted_board_id, :slug, :canonical_board_uri, :title])
     |> validate_posting_policy()
     |> validate_access_policy()
+    |> validate_policy_projection()
     |> validate_external_inclusion()
     |> unique_constraint(:hosted_board_id, name: :forum_host_boards_pkey)
     |> unique_constraint(:slug)
@@ -71,6 +78,30 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
         :ok -> []
         {:error, reason} -> [access_policy: Atom.to_string(reason)]
       end
+    end)
+  end
+
+  defp validate_policy_projection(changeset) do
+    policy = get_field(changeset, :access_policy) || %{}
+    visibility = get_field(changeset, :content_visibility)
+    federation = get_field(changeset, :federation_policy) || %{}
+
+    policy_visibility =
+      Map.get(policy, "content_visibility") || Map.get(policy, :content_visibility)
+
+    policy_federation = Map.get(policy, "federation") || Map.get(policy, :federation)
+    federation_mode = Map.get(federation, "mode") || Map.get(federation, :mode)
+
+    changeset
+    |> then(fn current ->
+      if policy_visibility == visibility,
+        do: current,
+        else: add_error(current, :content_visibility, "access_policy_visibility_mismatch")
+    end)
+    |> then(fn current ->
+      if policy_federation == federation_mode,
+        do: current,
+        else: add_error(current, :federation_policy, "access_policy_federation_mismatch")
     end)
   end
 
@@ -125,5 +156,4 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
         false
     end
   end
-
 end

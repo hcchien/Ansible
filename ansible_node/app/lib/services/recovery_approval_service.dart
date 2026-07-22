@@ -22,8 +22,8 @@ class RecoveryApprovalService {
     required this.relayClient,
     DeviceKeyStore? deviceKeyStore,
     DateTime Function()? now,
-  })  : deviceKeyStore = deviceKeyStore ?? const SecureDeviceKeyStore(),
-        now = now ?? (() => DateTime.now().toUtc());
+  }) : deviceKeyStore = deviceKeyStore ?? const SecureDeviceKeyStore(),
+       now = now ?? (() => DateTime.now().toUtc());
 
   final RelayAnchorClient relayClient;
   final DeviceKeyStore deviceKeyStore;
@@ -84,7 +84,9 @@ class RecoveryApprovalService {
       createdAt: enrolledAt,
       sig: '',
     );
-    final sig = await identityKey.sign(utf8.encode(unsigned.canonicalBodyJson()));
+    final sig = await identityKey.sign(
+      utf8.encode(unsigned.canonicalBodyJson()),
+    );
     final anchor = IdentityAnchor(
       did: did,
       handle: handle,
@@ -125,8 +127,7 @@ class RecoveryApprovalService {
       }
       final anchorMap = decoded['anchor'];
       if (anchorMap is! Map) return null;
-      final anchor =
-          IdentityAnchor.fromMap(anchorMap.cast<String, Object?>());
+      final anchor = IdentityAnchor.fromMap(anchorMap.cast<String, Object?>());
       if (anchor.reason != AnchorReason.recovery) return null;
       return anchor;
     } catch (_) {
@@ -166,8 +167,10 @@ class RecoveryApprovalService {
       utf8.encode(anchor.canonicalBodyJson()),
     );
 
-    final result =
-        await relayClient.submitAnchor(anchor, recoveryProof: recoveryProof);
+    final result = await relayClient.submitAnchor(
+      anchor,
+      recoveryProof: recoveryProof,
+    );
     return result;
   }
 }

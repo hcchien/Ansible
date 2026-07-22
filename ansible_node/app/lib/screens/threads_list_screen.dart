@@ -15,6 +15,7 @@ import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
 import '../services/forum_publication_service.dart';
 import '../services/posting_gate.dart';
+import '../services/private_board_op_factory.dart';
 import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
 import '../widgets/external_content_section.dart';
@@ -331,13 +332,22 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       updatedAt: now,
     );
     await _threadRepo.create(thread);
+    final projection = _hostedProjection;
     await _enqueueAndFlush(
-      CrdtOpBuilder.createThread(
-        authorDid: authorDid,
-        entityId: thread.id,
-        boardId: boardId,
-        title: thread.title,
-      ),
+      projection?.contentVisibility == 'end_to_end_encrypted'
+          ? await PrivateBoardOpFactory().createThread(
+              board: projection!,
+              authorDid: authorDid,
+              entityId: thread.id,
+              title: thread.title,
+              createdAt: now,
+            )
+          : CrdtOpBuilder.createThread(
+              authorDid: authorDid,
+              entityId: thread.id,
+              boardId: boardId,
+              title: thread.title,
+            ),
     );
     if (content.isNotEmpty) {
       final post = Post(
@@ -354,14 +364,24 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       );
       await _postRepo.create(post);
       await _enqueueAndFlush(
-        CrdtOpBuilder.createPost(
-          authorDid: authorDid,
-          entityId: post.id,
-          boardId: boardId,
-          threadId: thread.id,
-          content: post.content,
-          parentPostId: null,
-        ),
+        projection?.contentVisibility == 'end_to_end_encrypted'
+            ? await PrivateBoardOpFactory().createPost(
+                board: projection!,
+                authorDid: authorDid,
+                entityId: post.id,
+                threadId: thread.id,
+                content: post.content,
+                parentPostId: null,
+                createdAt: now,
+              )
+            : CrdtOpBuilder.createPost(
+                authorDid: authorDid,
+                entityId: post.id,
+                boardId: boardId,
+                threadId: thread.id,
+                content: post.content,
+                parentPostId: null,
+              ),
       );
     }
     await _recordPublicationTargets(

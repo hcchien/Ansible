@@ -41,6 +41,27 @@ defmodule AnsibleRelay.SigVerifier do
 
   def verify_ed25519(_public_key_hex, _message, _signature_hex), do: false
 
+  @doc "Verify a signature using an explicitly negotiated identity algorithm."
+  @spec verify_identity(String.t(), String.t(), binary(), String.t()) :: boolean()
+  def verify_identity("ed25519", public_key_hex, message, signature_hex),
+    do: verify_ed25519(public_key_hex, message, signature_hex)
+
+  def verify_identity("p256-sha256", public_key_hex, message, signature_hex)
+      when is_binary(public_key_hex) and is_binary(message) and is_binary(signature_hex) do
+    with {:ok, public_key} <- decode_hex(public_key_hex, 65),
+         <<4, _::binary-size(64)>> <- public_key,
+         {:ok, signature} <- decode_variable_hex(signature_hex),
+         true <- byte_size(signature) in 68..72 do
+      :crypto.verify(:ecdsa, :sha256, message, signature, [public_key, :secp256r1]) === true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def verify_identity(_algorithm, _public_key_hex, _message, _signature_hex), do: false
+
   @secp256k1_p 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
   @secp256k1_n 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
   @secp256k1_g {
@@ -100,6 +121,13 @@ defmodule AnsibleRelay.SigVerifier do
       {:ok, bytes}
     else
       _ -> :error
+    end
+  end
+
+  defp decode_variable_hex(hex) when is_binary(hex) do
+    case Base.decode16(hex, case: :mixed) do
+      {:ok, bytes} -> {:ok, bytes}
+      :error -> :error
     end
   end
 

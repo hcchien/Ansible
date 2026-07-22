@@ -13,6 +13,7 @@ import '../services/elix_content_link.dart';
 import '../services/forum_host_client.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
+import '../services/private_board_op_factory.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../services/handle_resolver.dart';
@@ -360,15 +361,26 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         signatureVerified: true, // signed locally via the ops dispatch below
       );
       await _postRepo.create(post);
+      final projection = _hostedProjection;
       await _enqueueAndFlush(
-        CrdtOpBuilder.createPost(
-          authorDid: _authorDid,
-          entityId: post.id,
-          boardId: post.boardId,
-          threadId: post.threadId,
-          content: post.content,
-          parentPostId: post.parentPostId,
-        ),
+        projection?.contentVisibility == 'end_to_end_encrypted'
+            ? await PrivateBoardOpFactory().createPost(
+                board: projection!,
+                authorDid: _authorDid,
+                entityId: post.id,
+                threadId: post.threadId,
+                content: post.content,
+                parentPostId: post.parentPostId,
+                createdAt: now,
+              )
+            : CrdtOpBuilder.createPost(
+                authorDid: _authorDid,
+                entityId: post.id,
+                boardId: post.boardId,
+                threadId: post.threadId,
+                content: post.content,
+                parentPostId: post.parentPostId,
+              ),
       );
       _loadPosts();
     }

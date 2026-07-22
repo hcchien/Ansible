@@ -434,7 +434,11 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
   end
 
   test "GET /api/v1/forum-host/boards/created-by/:did is empty for an unknown DID" do
-    response = get_json("/api/v1/forum-host/boards/created-by/did:plc:nobody#{System.unique_integer([:positive])}")
+    response =
+      get_json(
+        "/api/v1/forum-host/boards/created-by/did:plc:nobody#{System.unique_integer([:positive])}"
+      )
+
     assert response.status == 200
     assert Jason.decode!(response.resp_body)["boards"] == []
   end
@@ -496,6 +500,43 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     Map.put(payload, "signature", sign(private_key, SignedIntent.canonical_json(payload)))
   end
 
+  defp signed_update_board_policy_intent(
+         did,
+         private_key,
+         board_id,
+         previous_policy_hash,
+         new_policy,
+         attrs \\ %{}
+       ) do
+    payload =
+      Map.merge(
+        %{
+          "type" => "io.trisaura.forum.updateBoardPolicy",
+          "version" => 1,
+          "intent_id" => "intent-policy-#{System.unique_integer([:positive])}",
+          "author_did" => did,
+          "board_id" => board_id,
+          "previous_policy_hash" => previous_policy_hash,
+          "target_forum_host" => "http://localhost:4001",
+          "action" => "update_board_policy",
+          "created_at" => DateTime.to_iso8601(DateTime.utc_now()),
+          "expires_at" => DateTime.to_iso8601(DateTime.add(DateTime.utc_now(), 300, :second)),
+          "effective_at" => DateTime.to_iso8601(DateTime.utc_now()),
+          "new_policy" => new_policy,
+          "approvals" => %{}
+        },
+        attrs
+      )
+
+    Map.put(payload, "signature", sign(private_key, SignedIntent.canonical_json(payload)))
+  end
+
+  defp current_policy(board_id) do
+    response = get_json("/api/v1/forum-host/boards/#{board_id}/policy-history")
+    assert response.status == 200
+    response.resp_body |> Jason.decode!() |> Map.fetch!("versions") |> hd()
+  end
+
   defp create_board_as(did, private_key, title) do
     response =
       post_json(
@@ -512,7 +553,9 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     {public_key_hex, private_key} = ed25519_keypair()
     did = "did:plc:updateowner#{System.unique_integer([:positive])}"
     :ok = cache_identity(did, public_key_hex)
-    board_id = create_board_as(did, private_key, "Update Me #{System.unique_integer([:positive])}")
+
+    board_id =
+      create_board_as(did, private_key, "Update Me #{System.unique_integer([:positive])}")
 
     response =
       post_json(
@@ -582,7 +625,9 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     {owner_public_key, owner_private_key} = ed25519_keypair()
     owner_did = "did:plc:updateauthor#{System.unique_integer([:positive])}"
     :ok = cache_identity(owner_did, owner_public_key)
-    board_id = create_board_as(owner_did, owner_private_key, "Owned #{System.unique_integer([:positive])}")
+
+    board_id =
+      create_board_as(owner_did, owner_private_key, "Owned #{System.unique_integer([:positive])}")
 
     {other_public_key, other_private_key} = ed25519_keypair()
     other_did = "did:plc:updatestranger#{System.unique_integer([:positive])}"
@@ -779,6 +824,191 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
 
     assert response.status == 422
     assert Jason.decode!(response.resp_body)["error"] == "invalid_board"
+  end
+
+  test "policy fields cannot be smuggled through a normal board update" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updatepolicyv1#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    board_id =
+      create_board_as(did, private_key, "Policy v1 #{System.unique_integer([:positive])}")
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/update",
+        signed_update_board_intent(did, private_key, board_id, %{
+          "board" => %{"content_visibility" => "host_visible"}
+        }),
+        []
+      )
+
+    assert response.status == 422
+
+    assert Jason.decode!(response.resp_body)["error"] ==
+             "policy_update_requires_separate_intent"
+  end
+
+  test "independent policy update increments version and publishes immutable history" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:updatepolicyv2#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    board_id =
+      create_board_as(did, private_key, "Policy v2 #{System.unique_integer([:positive])}")
+
+    current = current_policy(board_id)
+
+    access_policy =
+      AnsibleRelay.ForumHost.BoardAccessPolicy.default()
+      |> Map.put("capability_ttl_seconds", 240)
+
+    policy = %{
+      "access_policy" => access_policy,
+      "content_visibility" => "public",
+      "federation_policy" => %{"mode" => "enabled"}
+    }
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/policy",
+        signed_update_board_policy_intent(
+          did,
+          private_key,
+          board_id,
+          current["policy_hash"],
+          policy
+        ),
+        []
+      )
+
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["access_policy_version"] == 2
+
+    history = get_json("/api/v1/forum-host/boards/#{board_id}/policy-history")
+    assert history.status == 200
+    versions = Jason.decode!(history.resp_body)["versions"]
+    assert Enum.map(versions, & &1["version"]) == [2, 1]
+    refute Map.has_key?(hd(versions), "actor_did")
+  end
+
+  test "independent policy update rejects a stale policy hash" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:stalepolicy#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    board_id =
+      create_board_as(did, private_key, "Stale policy #{System.unique_integer([:positive])}")
+
+    policy = %{
+      "access_policy" => AnsibleRelay.ForumHost.BoardAccessPolicy.default(),
+      "content_visibility" => "public",
+      "federation_policy" => %{"mode" => "enabled"}
+    }
+
+    response =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/policy",
+        signed_update_board_policy_intent(
+          did,
+          private_key,
+          board_id,
+          String.duplicate("0", 64),
+          policy
+        ),
+        []
+      )
+
+    assert response.status == 409
+    assert Jason.decode!(response.resp_body)["error"] == "policy_hash_conflict"
+  end
+
+  test "sensitive policy updates are delayed, replay-safe, and block competing changes" do
+    {public_key_hex, private_key} = ed25519_keypair()
+    did = "did:plc:delayedpolicy#{System.unique_integer([:positive])}"
+    :ok = cache_identity(did, public_key_hex)
+
+    board_id =
+      create_board_as(did, private_key, "Delayed policy #{System.unique_integer([:positive])}")
+
+    current = current_policy(board_id)
+
+    access_policy = %{
+      "version" => 1,
+      "discovery" => "credential_required",
+      "read" => %{"requirement" => "member"},
+      "post" => %{"requirement" => "member"},
+      "moderate" => %{"requirement" => "board_moderator"},
+      "requirements" => %{
+        "member" => %{
+          "credential_type" => "PoliticalPartyMembershipCredential",
+          "trusted_issuers" => ["did:web:issuer.example"],
+          "claims" => [
+            %{"path" => "membership", "op" => "equals", "value" => true}
+          ],
+          "holder_binding" => "required",
+          "status" => %{"required" => true, "max_age_seconds" => 300}
+        }
+      },
+      "capability_ttl_seconds" => 300,
+      "content_visibility" => "host_visible",
+      "federation" => "disabled"
+    }
+
+    policy = %{
+      "access_policy" => access_policy,
+      "content_visibility" => "host_visible",
+      "federation_policy" => %{"mode" => "disabled"}
+    }
+
+    effective_at =
+      DateTime.utc_now()
+      |> DateTime.add(86_410, :second)
+      |> DateTime.to_iso8601()
+
+    intent_id = "intent-delayed-policy-#{System.unique_integer([:positive])}"
+
+    intent =
+      signed_update_board_policy_intent(
+        did,
+        private_key,
+        board_id,
+        current["policy_hash"],
+        policy,
+        %{"intent_id" => intent_id, "effective_at" => effective_at}
+      )
+
+    first = post_json("/api/v1/forum-host/boards/#{board_id}/policy", intent, [])
+    replay = post_json("/api/v1/forum-host/boards/#{board_id}/policy", intent, [])
+
+    competing =
+      post_json(
+        "/api/v1/forum-host/boards/#{board_id}/policy",
+        signed_update_board_policy_intent(
+          did,
+          private_key,
+          board_id,
+          current["policy_hash"],
+          policy,
+          %{"effective_at" => effective_at}
+        ),
+        []
+      )
+
+    assert first.status == 200
+    assert Jason.decode!(first.resp_body)["access_policy_version"] == 1
+    assert replay.status == 200
+    assert competing.status == 409
+    assert Jason.decode!(competing.resp_body)["error"] == "policy_change_pending"
+
+    versions =
+      get_json("/api/v1/forum-host/boards/#{board_id}/policy-history")
+      |> Map.fetch!(:resp_body)
+      |> Jason.decode!()
+      |> Map.fetch!("versions")
+
+    assert Enum.map(versions, & &1["version"]) == [2, 1]
+    assert hd(versions)["superseded_at"] == nil
   end
 
   test "web session must include forum:post to create a hosted web thread" do

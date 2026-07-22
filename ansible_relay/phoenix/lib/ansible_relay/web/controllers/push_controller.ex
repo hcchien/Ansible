@@ -14,7 +14,7 @@ defmodule AnsibleRelay.Web.Controllers.PushController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.{IdentityCache, SigVerifier}
+  alias AnsibleRelay.IdentityCache
   alias AnsibleRelay.Push.TokenRegistry
 
   @valid_platforms ~w(fcm apns)
@@ -108,16 +108,10 @@ defmodule AnsibleRelay.Web.Controllers.PushController do
     signature = params["request_signature"]
     message = params |> Map.delete("request_signature") |> canonical_json()
 
-    case IdentityCache.public_key_hex(params["subject_did"]) do
-      nil ->
-        {:error, :unverified_did}
-
-      public_key ->
-        if SigVerifier.verify_ed25519(public_key, message, signature) do
-          :ok
-        else
-          {:error, :invalid_signature}
-        end
+    cond do
+      not IdentityCache.verified?(params["subject_did"]) -> {:error, :unverified_did}
+      IdentityCache.verify_signature(params["subject_did"], message, signature) -> :ok
+      true -> {:error, :invalid_signature}
     end
   end
 

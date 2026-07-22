@@ -85,7 +85,8 @@ class ForumPublicationService {
       localSourceId: localDraftId,
       sourceType: BoardPublicationSourceType.threadDraft,
       targetModes: {
-        if (primary != null) primary.subscriptionId: BoardPublicationMode.primary,
+        if (primary != null)
+          primary.subscriptionId: BoardPublicationMode.primary,
         for (final targetId in crossPostTargetIds)
           if (targetId != primary?.subscriptionId)
             targetId: BoardPublicationMode.crossPost,

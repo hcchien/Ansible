@@ -4,12 +4,12 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
   import Plug.Conn
   require Logger
 
-  alias AnsibleRelay.{IdentityCache, PublicationIntentStore, SigVerifier}
+  alias AnsibleRelay.{IdentityCache, PublicationIntentStore}
 
   @required_fields ~w(intent_id author_did content_item_id action visibility payload payload_hash signature)
   @valid_actions ~w(publish update delete)
   @valid_visibility ~w(public unlisted)
-  @signature_scheme "ed25519"
+  @signature_schemes ~w(ed25519 p256-sha256)
 
   def create(conn, params) do
     with :ok <- validate_fields(params, @required_fields),
@@ -22,8 +22,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
          author_did = params["author_did"],
          :ok <- check_sync_capability(conn, author_did),
          :ok <- check_did_verified(author_did, params["signature"]),
-         public_key = IdentityCache.public_key_hex(author_did),
-         :ok <- check_signature(public_key, signing_payload(params), params["signature"]),
+         :ok <- check_signature(author_did, signing_payload(params), params["signature"]),
          {:ok, intent} <- PublicationIntentStore.accept(normalize(params)) do
       send_json(conn, 202, %{
         accepted: true,
@@ -42,7 +41,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
         send_json(conn, 422, %{error: "private_visibility_not_federated"})
 
       {:error, :invalid_signature_scheme} ->
-        send_json(conn, 422, %{error: "invalid_signature_scheme", expected: @signature_scheme})
+        send_json(conn, 422, %{error: "invalid_signature_scheme", expected: @signature_schemes})
 
       {:error, :malformed_signature} ->
         log_rejected_signature(:malformed_signature, params)
@@ -98,7 +97,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
   defp reject_private_visibility(_visibility), do: :ok
 
   defp validate_signature_scheme(nil), do: :ok
-  defp validate_signature_scheme(@signature_scheme), do: :ok
+  defp validate_signature_scheme(scheme) when scheme in @signature_schemes, do: :ok
   defp validate_signature_scheme(_scheme), do: {:error, :invalid_signature_scheme}
 
   defp validate_signature_shape(signature) when is_binary(signature) do
@@ -146,18 +145,14 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
     end
   end
 
-  defp check_signature(public_key, message, signature) when is_binary(signature) do
+  defp check_signature(author_did, message, signature) when is_binary(signature) do
     if dev_publication_signature?(signature) do
       :ok
     else
-      check_signature_with_public_key(public_key, message, signature)
+      if IdentityCache.verify_signature(author_did, message, signature),
+        do: :ok,
+        else: {:error, :bad_signature}
     end
-  end
-
-  defp check_signature_with_public_key(public_key, message, signature) do
-    if SigVerifier.verify_ed25519(public_key, message, signature),
-      do: :ok,
-      else: {:error, :bad_signature}
   end
 
   defp dev_publication_signature?(signature) when is_binary(signature) do
@@ -198,7 +193,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
       payload: params["payload"],
       payload_hash: String.downcase(params["payload_hash"]),
       signature: String.downcase(params["signature"]),
-      signature_scheme: params["signature_scheme"] || @signature_scheme
+      signature_scheme: params["signature_scheme"] || "ed25519"
     }
   end
 

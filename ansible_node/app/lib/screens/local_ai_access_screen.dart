@@ -189,7 +189,9 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
       SwitchListTile(
         key: const Key('local_ai_murmurs_switch'),
         contentPadding: EdgeInsets.zero,
-        title: Text(context.uiCopy(zh: '包含 murmur / 筆記', en: 'Include murmurs / notes')),
+        title: Text(
+          context.uiCopy(zh: '包含 murmur / 筆記', en: 'Include murmurs / notes'),
+        ),
         subtitle: Text(
           context.uiCopy(
             zh: '他人的私密或僅本機內容永不包含',
@@ -210,7 +212,9 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
       FilledButton(
         key: const Key('local_ai_enable_button'),
         onPressed: _allBoards || _selectedBoardIds.isNotEmpty ? _enable : null,
-        child: Text(context.uiCopy(zh: '啟用本機 AI 存取', en: 'Enable Local AI Access')),
+        child: Text(
+          context.uiCopy(zh: '啟用本機 AI 存取', en: 'Enable Local AI Access'),
+        ),
       ),
     ];
   }
@@ -229,7 +233,10 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
         key: const Key('local_ai_status_tile'),
         contentPadding: EdgeInsets.zero,
         title: Text(
-          context.uiCopy(zh: '已啟用 · $scopeSummary', en: 'Enabled · $scopeSummary'),
+          context.uiCopy(
+            zh: '已啟用 · $scopeSummary',
+            en: 'Enabled · $scopeSummary',
+          ),
         ),
         subtitle: Text(
           context.uiCopy(zh: '有效至 $expires', en: 'Valid until $expires'),
@@ -294,7 +301,13 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
         (entry) => ListTile(
           dense: true,
           contentPadding: EdgeInsets.zero,
-          title: Text(entry.tool, style: const TextStyle(fontFamily: AnsibleDesign.mono, fontSize: 13)),
+          title: Text(
+            entry.tool,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 13,
+            ),
+          ),
           trailing: Text(
             '${entry.rowCount} rows',
             style: const TextStyle(color: AnsibleDesign.inkMuted, fontSize: 12),
@@ -315,7 +328,9 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
         key: const Key('local_ai_revoke_button'),
         style: FilledButton.styleFrom(foregroundColor: AnsibleDesign.danger),
         onPressed: _revoke,
-        child: Text(context.uiCopy(zh: '停用並撤銷存取', en: 'Disable and revoke access')),
+        child: Text(
+          context.uiCopy(zh: '停用並撤銷存取', en: 'Disable and revoke access'),
+        ),
       ),
     ];
   }
@@ -381,7 +396,10 @@ class _LocalAiAccessScreenState extends State<LocalAiAccessScreen> {
           SelectableText(
             snippet,
             key: Key(keyName),
-            style: const TextStyle(fontFamily: AnsibleDesign.mono, fontSize: 12),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 12,
+            ),
           ),
         ],
       ),

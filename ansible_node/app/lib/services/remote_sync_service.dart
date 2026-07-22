@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import '../config/protocol.dart';
 import 'issuer_attestation_service.dart';
 import 'notification_projector.dart';
+import 'private_board_crypto_service.dart';
 import 'op_signature_payload.dart';
 import 'relay_identity_client.dart';
 
@@ -18,6 +19,18 @@ typedef RemoteOpEd25519Verifier =
       required List<int> message,
       required String signatureHex,
     });
+
+typedef BoardReadAuthorization =
+    Future<Map<String, String>> Function(
+      HostedBoardProjection board,
+      Uri requestUri,
+    );
+
+typedef BoardWriteAuthorization =
+    Future<Map<String, String>> Function(
+      HostedBoardProjection board,
+      Uri requestUri,
+    );
 
 /// Compatibility client for the legacy board delta endpoint.
 ///
@@ -69,6 +82,31 @@ class RelayApiClient {
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     return _normalizeDelta(body);
+  }
+
+  Future<Map<String, dynamic>> getBoardDelta({
+    required String boardId,
+    required Map<String, String> proofHeaders,
+    int? cursor,
+    int limit = 100,
+  }) async {
+    final uri =
+        Uri.parse(
+          '$baseUrl/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/ops/delta',
+        ).replace(
+          queryParameters: {
+            if (cursor != null) 'cursor': cursor.toString(),
+            'limit': limit.toString(),
+          },
+        );
+    final response = await _client.get(
+      uri,
+      headers: {...authHeaders, ...proofHeaders},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Board delta failed: ${response.statusCode}');
+    }
+    return _normalizeDelta(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Map<String, String> get authHeaders {
@@ -209,7 +247,12 @@ class RemoteOpSignatureVerifier {
     ].any((value) => value == null || value.isEmpty)) {
       return false;
     }
-    if (!_isHex(publicKeyHex!, 64) || !_isHex(signature!, 128)) {
+    final isEd25519 = _isHex(publicKeyHex!, 64) && _isHex(signature!, 128);
+    final isP256 =
+        _isHex(publicKeyHex, 130) &&
+        publicKeyHex.startsWith('04') &&
+        RegExp(r'^[0-9a-fA-F]{136,144}$').hasMatch(signature!);
+    if (!isEd25519 && !isP256) {
       return false;
     }
     if (!_matchesActivity(entry, signedOp)) {
@@ -339,6 +382,8 @@ class RemoteSyncService {
   // reputation tiers on ingest. Null keeps tiers untouched (everyone basic).
   final IssuerAttestationService? _issuerAttestations;
   final RemoteOpSignatureVerifier _opSignatureVerifier;
+  final BoardReadAuthorization? _authorizeBoardRead;
+  final PrivateBoardCryptoService _privateBoardCrypto;
   final DateTime Function() _now;
 
   RemoteSyncService({
@@ -357,6 +402,8 @@ class RemoteSyncService {
     IssuerAttestationService? issuerAttestationService,
     RemoteOpSignatureVerifier? opSignatureVerifier,
     RelayIdentityClient? identityClient,
+    BoardReadAuthorization? authorizeBoardRead,
+    PrivateBoardCryptoService? privateBoardCrypto,
     DateTime Function()? now,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _boardSyncConfigRepo = boardSyncConfigRepo,
@@ -378,6 +425,8 @@ class RemoteSyncService {
                  ? (did) => identityClient.fetchPublicKey(did)
                  : null,
            ),
+       _authorizeBoardRead = authorizeBoardRead,
+       _privateBoardCrypto = privateBoardCrypto ?? PrivateBoardCryptoService(),
        _now = now ?? DateTime.now;
 
   Future<SyncResult> syncFromNode(
@@ -403,6 +452,22 @@ class RemoteSyncService {
         for (final projection in hostedProjections)
           projection.hostedBoardId: projection,
       };
+      final protectedHostedBoardIds = {
+        for (final projection in hostedProjections)
+          if (_requiresBoardCapability(projection)) projection.hostedBoardId,
+      };
+      final publicHostedSubscriptions = hostedSubscriptions
+          .where(
+            (subscription) =>
+                !protectedHostedBoardIds.contains(subscription.hostedBoardId),
+          )
+          .toList();
+      final protectedHostedSubscriptions = hostedSubscriptions
+          .where(
+            (subscription) =>
+                protectedHostedBoardIds.contains(subscription.hostedBoardId),
+          )
+          .toList();
       final hostedSubscriptionByBoardId = {
         for (final subscription in hostedSubscriptions)
           subscription.hostedBoardId: subscription,
@@ -427,7 +492,7 @@ class RemoteSyncService {
       // A newly-created hosted-board subscription can legitimately lag behind
       // the node-wide cursor. Start at the oldest active subscription cursor so
       // its history is replayed instead of being skipped forever.
-      int currentCursor = hostedSubscriptions.fold(
+      int currentCursor = publicHostedSubscriptions.fold(
         remoteNode.syncCursor,
         (oldest, subscription) =>
             subscription.syncCursor < oldest ? subscription.syncCursor : oldest,
@@ -500,10 +565,73 @@ class RemoteSyncService {
         currentCursor,
         syncTime,
       );
-      for (final subscription in hostedSubscriptions) {
+      for (final subscription in publicHostedSubscriptions) {
         await _hostedBoardRepo?.updateSubscriptionCursor(
           subscription.subscriptionId,
           currentCursor,
+          syncTime,
+        );
+      }
+
+      for (final subscription in protectedHostedSubscriptions) {
+        final projection =
+            hostedProjectionByBoardId[subscription.hostedBoardId];
+        final authorize = _authorizeBoardRead;
+        if (projection == null || authorize == null) {
+          throw StateError('credential_required');
+        }
+        var boardCursor = subscription.syncCursor;
+        var boardHasMore = true;
+        while (boardHasMore) {
+          final endpoint = Uri.parse(
+            '${remoteClient.baseUrl}/api/v1/forum-host/boards/'
+            '${Uri.encodeComponent(subscription.hostedBoardId)}/ops/delta',
+          );
+          final proofHeaders = await authorize(projection, endpoint);
+          final deltaJson = await remoteClient.getBoardDelta(
+            boardId: subscription.hostedBoardId,
+            proofHeaders: proofHeaders,
+            cursor: boardCursor > 0 ? boardCursor : null,
+            limit: 100,
+          );
+          final trusted = await _trustedActivities(deltaJson);
+          final readable =
+              projection.contentVisibility == 'end_to_end_encrypted'
+              ? await _decryptPrivateActivities(trusted, projection)
+              : trusted;
+          await _captureAuthorTiers(readable);
+          final delta = DeltaResponse.fromJson({
+            ...deltaJson,
+            'activities': readable,
+          });
+          for (final entry in delta.activities) {
+            final route = _routeHostedActivity(
+              entry.activity,
+              hostedSubscriptionByBoardId,
+              hostedProjectionByBoardId,
+            );
+            if (route == null ||
+                route.subscription.subscriptionId !=
+                    subscription.subscriptionId) {
+              continue;
+            }
+            await _notificationProjector?.onSyncedActivity(entry.activity);
+            if (!_isWithinRetention(
+              route.activity,
+              subscription.retentionDays,
+              syncTime,
+            )) {
+              continue;
+            }
+            await _applyActivity(route.activity, remoteNode.id);
+            totalProcessed++;
+          }
+          boardCursor = delta.nextCursor;
+          boardHasMore = delta.hasMore;
+        }
+        await _hostedBoardRepo?.updateSubscriptionCursor(
+          subscription.subscriptionId,
+          boardCursor,
           syncTime,
         );
       }
@@ -515,6 +643,12 @@ class RemoteSyncService {
     } catch (e) {
       return SyncResult.failure(errorMessage: e.toString());
     }
+  }
+
+  bool _requiresBoardCapability(HostedBoardProjection projection) {
+    if (projection.contentVisibility != 'public') return true;
+    final read = projection.accessPolicy['read'];
+    return read is Map && read['requirement'] != 'public';
   }
 
   Future<List<dynamic>> _trustedActivities(
@@ -531,6 +665,58 @@ class RemoteSyncService {
       }
     }
     return trusted;
+  }
+
+  Future<List<dynamic>> _decryptPrivateActivities(
+    List<dynamic> activities,
+    HostedBoardProjection board,
+  ) async {
+    if (board.encryptionState != 'ready' || board.encryptionEpoch < 1) {
+      throw const PrivateBoardCryptoException('private_board_not_ready');
+    }
+    final result = <dynamic>[];
+    for (final raw in activities) {
+      if (raw is! Map) {
+        throw const PrivateBoardCryptoException('invalid_private_activity');
+      }
+      final entry = Map<String, dynamic>.from(raw);
+      final activityRaw = entry['activity'];
+      if (activityRaw is! Map) {
+        throw const PrivateBoardCryptoException('invalid_private_activity');
+      }
+      final activity = Map<String, dynamic>.from(activityRaw);
+      final entityType = activity['entityType'];
+      if (entityType != 'thread' && entityType != 'post') {
+        result.add(entry);
+        continue;
+      }
+      final payloadRaw = activity['payload'];
+      final payload = payloadRaw is Map
+          ? Map<String, dynamic>.from(payloadRaw)
+          : <String, dynamic>{};
+      final envelopeRaw = payload['private_envelope'];
+      if (envelopeRaw is! Map) {
+        throw const PrivateBoardCryptoException('missing_content_envelope');
+      }
+      final envelope = PrivateBoardContentEnvelope.fromJson(
+        Map<String, Object?>.from(envelopeRaw),
+      );
+      if (envelope.boardId != board.hostedBoardId ||
+          envelope.epoch != board.encryptionEpoch ||
+          envelope.policyVersion != board.accessPolicyVersion ||
+          envelope.recordId != activity['entityId'] ||
+          envelope.recordType != entityType) {
+        throw const PrivateBoardCryptoException('stale_content_envelope');
+      }
+      final clear = await _privateBoardCrypto.decryptContent(envelope);
+      entry['activity'] = {
+        ...activity,
+        'createdAt': envelope.createdAt.toIso8601String(),
+        'payload': {...payload, ...clear}..remove('private_envelope'),
+      };
+      result.add(entry);
+    }
+    return result;
   }
 
   _HostedActivityRoute? _routeHostedActivity(

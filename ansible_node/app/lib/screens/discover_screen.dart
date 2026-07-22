@@ -81,8 +81,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       _feedError = null;
     });
     try {
-      final suggestions = await widget.client
-          .suggestFollows(readerDid: widget.localDid, limit: 20);
+      final suggestions = await widget.client.suggestFollows(
+        readerDid: widget.localDid,
+        limit: 20,
+      );
       final explore = await widget.client.explore(limit: 30);
       // Empty query => browse popular boards for the 看板 tab.
       final boards = await widget.client.searchBoards(query: '', limit: 30);
@@ -139,8 +141,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   /// host to attach the subscription to.
   Future<Board?> _subscribeToBoard(BoardSearchResult board) async {
     // Capture localized strings before any await (no BuildContext across gaps).
-    final addHostMsg =
-        context.uiCopy(zh: '請先新增 Forum Host', en: 'Add a forum host first');
+    final addHostMsg = context.uiCopy(
+      zh: '請先新增 Forum Host',
+      en: 'Add a forum host first',
+    );
     final alreadyMsg = context.uiCopy(
       zh: '已訂閱「${board.title}」',
       en: 'Already following "${board.title}"',
@@ -150,9 +154,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       en: 'Following "${board.title}"',
     );
 
-    final hosts = (await DriftRemoteNodeRepository(widget.db).list())
-        .where((n) => n.isActive)
-        .toList();
+    final hosts = (await DriftRemoteNodeRepository(
+      widget.db,
+    ).list()).where((n) => n.isActive).toList();
     if (hosts.isEmpty) {
       _toast(addHostMsg);
       return null;
@@ -161,7 +165,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final hostedRepo = DriftHostedBoardRepository(widget.db);
     final subscriptionId = '${host.id}_${board.hostedBoardId}';
     final now = DateTime.now();
-    final localBoardId = subscriptionId; // also used as slug → guaranteed unique
+    final localBoardId =
+        subscriptionId; // also used as slug → guaranteed unique
     final localBoard = Board(
       id: localBoardId,
       slug: localBoardId,
@@ -172,8 +177,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
 
     final subs = await hostedRepo.listSubscriptions();
-    final alreadySubscribed =
-        subs.any((s) => s.subscriptionId == subscriptionId);
+    final alreadySubscribed = subs.any(
+      (s) => s.subscriptionId == subscriptionId,
+    );
 
     try {
       await DriftBoardRepository(widget.db).create(localBoard);
@@ -192,6 +198,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         description: board.description,
         permissions: const {'read': true, 'write': true},
         postingPolicy: board.postingPolicy,
+        accessPolicy: board.accessPolicy,
+        accessPolicyVersion: board.accessPolicyVersion,
+        contentVisibility: board.contentVisibility,
+        encryptionEpoch: board.encryptionEpoch,
+        encryptionState: board.encryptionState,
+        federationPolicy: board.federationPolicy,
         createdAt: now,
         updatedAt: now,
       ),
@@ -234,7 +246,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openActor(String did) {
@@ -395,9 +409,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _loader() => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
+    padding: EdgeInsets.symmetric(vertical: 40),
+    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+  );
 
   Widget _searchField(BuildContext context) {
     return Padding(
@@ -473,12 +487,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _empty(BuildContext context, String label) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 12.5, color: AnsibleDesign.inkMuted),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+    child: Text(
+      label,
+      style: const TextStyle(fontSize: 12.5, color: AnsibleDesign.inkMuted),
+    ),
+  );
 
   Widget _actorRow(BuildContext context, DiscoveredActor actor) {
     final subtitle = [
@@ -523,8 +537,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       ),
                       if (actor.reputationTier == 'verified_human') ...[
                         const SizedBox(width: 5),
-                        const Icon(Icons.verified,
-                            size: 13, color: AnsibleDesign.accent),
+                        const Icon(
+                          Icons.verified,
+                          size: 13,
+                          color: AnsibleDesign.accent,
+                        ),
                       ],
                     ],
                   ),
@@ -543,7 +560,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, size: 18, color: AnsibleDesign.inkFaint),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: AnsibleDesign.inkFaint,
+            ),
           ],
         ),
       ),
@@ -603,8 +624,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Icon(Icons.add_circle_outline,
-                size: 18, color: AnsibleDesign.accent),
+            const Icon(
+              Icons.add_circle_outline,
+              size: 18,
+              color: AnsibleDesign.accent,
+            ),
           ],
         ),
       ),

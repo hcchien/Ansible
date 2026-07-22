@@ -17,16 +17,28 @@ defmodule AnsibleRelay.DidElix do
   """
 
   @doc "Derive the did:elix for an identity key + handle (+ custody class)."
-  def derive(identity_key, handle, custody_class \\ "software")
+  def derive(identity_key, handle, custody_class \\ "software", algorithm \\ "ed25519")
       when is_binary(identity_key) and is_binary(handle) and is_binary(custody_class) do
     body =
-      ~s({"method":"did:elix","v":1,"identity_key":) <>
-        Jason.encode!(identity_key) <>
-        ~s(,"handle":) <>
-        Jason.encode!(handle) <>
-        ~s(,"custody_class":) <>
-        Jason.encode!(custody_class) <>
-        "}"
+      if algorithm == "ed25519" do
+        ~s({"method":"did:elix","v":1,"identity_key":) <>
+          Jason.encode!(identity_key) <>
+          ~s(,"handle":) <>
+          Jason.encode!(handle) <>
+          ~s(,"custody_class":) <>
+          Jason.encode!(custody_class) <>
+          "}"
+      else
+        ~s({"method":"did:elix","v":2,"identity_key":) <>
+          Jason.encode!(identity_key) <>
+          ~s(,"identity_key_algorithm":) <>
+          Jason.encode!(algorithm) <>
+          ~s(,"handle":) <>
+          Jason.encode!(handle) <>
+          ~s(,"custody_class":) <>
+          Jason.encode!(custody_class) <>
+          "}"
+      end
 
     suffix =
       :sha256
@@ -49,4 +61,8 @@ defmodule AnsibleRelay.DidElix do
   end
 
   def matches?(_did, _identity_key, _handle, _custody_class), do: false
+
+  def matches?(did, identity_key, handle, custody_class, algorithm)
+      when is_binary(did) and is_binary(identity_key) and is_binary(handle),
+      do: derive(identity_key, handle, custody_class, algorithm) == did
 end

@@ -9,6 +9,9 @@ import '../l10n/subpage_l10n.dart';
 import '../services/content_publication_service.dart';
 import '../services/relay_discovery_client.dart';
 import '../services/app_sync_service.dart';
+import '../services/board_access_presentation_service.dart';
+import '../services/private_board_crypto_service.dart';
+import '../services/private_board_key_client.dart';
 import '../services/nostr_publication_service.dart';
 import '../services/nostr_relay_settings_store.dart';
 import '../services/nostr_secure_key_store.dart';
@@ -515,6 +518,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       if (node.accessToken != null) {
         client.setAccessToken(node.accessToken);
       }
+      final boardAccess = BoardAccessPresentationService(
+        walletRepository: DriftWalletRepository(widget.db),
+      );
+      final boardCapabilities = <String, BoardAccessCapability>{};
+      final preparedPrivateBoards = <String>{};
+      final privateCrypto = PrivateBoardCryptoService();
 
       final syncService = RemoteSyncService(
         remoteNodeRepo: _remoteNodeRepo,
@@ -524,6 +533,62 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         threadRepo: _threadRepo,
         postRepo: _postRepo,
         remoteTombstoneRepository: DriftRemoteTombstoneRepository(widget.db),
+        authorizeBoardRead: (board, requestUri) async {
+          var capability = boardCapabilities[board.hostedBoardId];
+          if (capability == null ||
+              capability.policyVersion != board.accessPolicyVersion ||
+              !capability.expiresAt.isAfter(
+                DateTime.now().toUtc().add(const Duration(seconds: 5)),
+              )) {
+            capability = await boardAccess.authorize(
+              forumHost: requestUri.replace(
+                path: '',
+                query: null,
+                fragment: null,
+              ),
+              boardId: board.hostedBoardId,
+              action: 'read',
+            );
+            boardCapabilities[board.hostedBoardId] = capability;
+          }
+          final privateKey =
+              '${board.hostedBoardId}:${board.encryptionEpoch}:${board.accessPolicyVersion}';
+          if (board.contentVisibility == 'end_to_end_encrypted' &&
+              !preparedPrivateBoards.contains(privateKey)) {
+            final host = requestUri.replace(
+              path: '',
+              query: null,
+              fragment: null,
+            );
+            final keyClient = PrivateBoardKeyClient(
+              forumHost: host,
+              boardId: board.hostedBoardId,
+              access: boardAccess,
+            );
+            final publicKey = await privateCrypto.ensureDeviceKey(
+              board.hostedBoardId,
+            );
+            await keyClient.registerDevice(
+              capability: capability,
+              publicKeyHex: publicKey.publicKeyHex,
+            );
+            final envelope = await keyClient.currentEnvelope(
+              capability: capability,
+            );
+            if (envelope.epoch != board.encryptionEpoch ||
+                envelope.policyVersion != board.accessPolicyVersion) {
+              throw const PrivateBoardCryptoException('stale_epoch_envelope');
+            }
+            await privateCrypto.unwrapEpochKey(envelope);
+            preparedPrivateBoards.add(privateKey);
+          }
+          return boardAccess.proofHeaders(
+            capability: capability,
+            method: 'GET',
+            requestUri: requestUri,
+            scope: 'read',
+          );
+        },
       );
 
       final result = await syncService.syncFromNode(client, node);

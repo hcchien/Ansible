@@ -74,24 +74,22 @@ extension RustLibCompat on RustLib {
     required String publicKeyHex,
     required String messageHex,
     required String signatureHex,
-  }) =>
-      _api.apiVerifySignature(
-        publicKeyHex: publicKeyHex,
-        messageHex: messageHex,
-        signatureHex: signatureHex,
-      );
+  }) => _api.apiVerifySignature(
+    publicKeyHex: publicKeyHex,
+    messageHex: messageHex,
+    signatureHex: signatureHex,
+  );
 
   // ── atproto (api_atproto.dart) ───────────────────────────────────────────
   PlcGenesisOp apiCreateDidPlc({
     required String signingKeyHex,
     required String handle,
     required String pdsEndpoint,
-  }) =>
-      _atproto.apiCreateDidPlc(
-        signingKeyHex: signingKeyHex,
-        handle: handle,
-        pdsEndpoint: pdsEndpoint,
-      );
+  }) => _atproto.apiCreateDidPlc(
+    signingKeyHex: signingKeyHex,
+    handle: handle,
+    pdsEndpoint: pdsEndpoint,
+  );
 
   Future<Uint8List> apiCborEncodeRecord({required LexiconRecord record}) =>
       _atproto.apiCborEncodeRecord(record: record);
@@ -102,20 +100,20 @@ extension RustLibCompat on RustLib {
   Future<String> apiSignCommit({
     required List<int> cborBytes,
     required String privateKeyHex,
-  }) =>
-      _atproto.apiSignCommit(cborBytes: cborBytes, privateKeyHex: privateKeyHex);
+  }) => _atproto.apiSignCommit(
+    cborBytes: cborBytes,
+    privateKeyHex: privateKeyHex,
+  );
 
   // ── zkp (api_zkp.dart) ───────────────────────────────────────────────────
   Future<_zkp.ZkpResult> apiZkpGenerateProof({
     required String passportSecretHex,
-  }) =>
-      _zkp.apiZkpGenerateProof(passportSecretHex: passportSecretHex);
+  }) => _zkp.apiZkpGenerateProof(passportSecretHex: passportSecretHex);
 
   Future<bool> apiZkpVerifyProof({
     required String proofHex,
     required String nullifierHex,
-  }) =>
-      _zkp.apiZkpVerifyProof(proofHex: proofHex, nullifierHex: nullifierHex);
+  }) => _zkp.apiZkpVerifyProof(proofHex: proofHex, nullifierHex: nullifierHex);
 
   String apiZkpComputeNullifier({required String passportSecretHex}) =>
       _zkp.apiZkpComputeNullifier(passportSecretHex: passportSecretHex);
@@ -128,21 +126,21 @@ extension RustLibCompat on RustLib {
     required String entityId,
     required String fieldName,
     required String content,
-  }) =>
-      _crdt.apiCrdtInsertText(
-        entityId: entityId,
-        fieldName: fieldName,
-        content: content,
-      );
+  }) => _crdt.apiCrdtInsertText(
+    entityId: entityId,
+    fieldName: fieldName,
+    content: content,
+  );
 
   void apiCrdtApplyDelta({
     required String entityId,
     required String payloadB64,
-  }) =>
-      _crdt.apiCrdtApplyDelta(entityId: entityId, payloadB64: payloadB64);
+  }) => _crdt.apiCrdtApplyDelta(entityId: entityId, payloadB64: payloadB64);
 
-  String apiCrdtGetText({required String entityId, required String fieldName}) =>
-      _crdt.apiCrdtGetText(entityId: entityId, fieldName: fieldName);
+  String apiCrdtGetText({
+    required String entityId,
+    required String fieldName,
+  }) => _crdt.apiCrdtGetText(entityId: entityId, fieldName: fieldName);
 
   // ── messenger (api_messenger.dart) ───────────────────────────────────────
   MessengerDevice apiMessengerCreateDevice({required String subjectDid}) =>
@@ -151,20 +149,17 @@ extension RustLibCompat on RustLib {
   List<MessengerPreKey> apiMessengerGeneratePreKeys({
     required MessengerDevice device,
     required int count,
-  }) =>
-      _msg.apiMessengerGeneratePreKeys(device: device, count: count);
+  }) => _msg.apiMessengerGeneratePreKeys(device: device, count: count);
 
   Future<MessengerCiphertext> apiMessengerEncryptInitialMessage({
     required MessengerEncryptInput input,
-  }) =>
-      _msg.apiMessengerEncryptInitialMessage(input: input);
+  }) => _msg.apiMessengerEncryptInitialMessage(input: input);
 
   Future<MessengerPlaintext> apiMessengerDecryptInboundMessage({
     required MessengerDevice localDevice,
     required MessengerCiphertext ciphertext,
-  }) =>
-      _msg.apiMessengerDecryptInboundMessage(
-        localDevice: localDevice,
-        ciphertext: ciphertext,
-      );
+  }) => _msg.apiMessengerDecryptInboundMessage(
+    localDevice: localDevice,
+    ciphertext: ciphertext,
+  );
 }

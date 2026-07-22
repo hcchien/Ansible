@@ -1172,6 +1172,80 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
         requiredDuringInsert: false,
         defaultValue: const Constant('{}'),
       );
+  static const VerificationMeta _accessPolicyJsonMeta = const VerificationMeta(
+    'accessPolicyJson',
+  );
+  @override
+  late final GeneratedColumn<String> accessPolicyJson = GeneratedColumn<String>(
+    'access_policy_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(
+      '{"version":1,"discovery":"public","read":{"requirement":"public"},"post":{"requirement":"posting_policy"},"moderate":{"requirement":"board_moderator"},"requirements":{},"capability_ttl_seconds":300,"content_visibility":"public","federation":"enabled"}',
+    ),
+  );
+  static const VerificationMeta _accessPolicyVersionMeta =
+      const VerificationMeta('accessPolicyVersion');
+  @override
+  late final GeneratedColumn<int> accessPolicyVersion = GeneratedColumn<int>(
+    'access_policy_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _contentVisibilityMeta = const VerificationMeta(
+    'contentVisibility',
+  );
+  @override
+  late final GeneratedColumn<String> contentVisibility =
+      GeneratedColumn<String>(
+        'content_visibility',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('public'),
+      );
+  static const VerificationMeta _encryptionEpochMeta = const VerificationMeta(
+    'encryptionEpoch',
+  );
+  @override
+  late final GeneratedColumn<int> encryptionEpoch = GeneratedColumn<int>(
+    'encryption_epoch',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _encryptionStateMeta = const VerificationMeta(
+    'encryptionState',
+  );
+  @override
+  late final GeneratedColumn<String> encryptionState = GeneratedColumn<String>(
+    'encryption_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('disabled'),
+  );
+  static const VerificationMeta _federationPolicyJsonMeta =
+      const VerificationMeta('federationPolicyJson');
+  @override
+  late final GeneratedColumn<String> federationPolicyJson =
+      GeneratedColumn<String>(
+        'federation_policy_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('{"mode":"enabled"}'),
+      );
   static const VerificationMeta _lastSeenCursorMeta = const VerificationMeta(
     'lastSeenCursor',
   );
@@ -1235,6 +1309,12 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
     description,
     permissionsJson,
     postingPolicyJson,
+    accessPolicyJson,
+    accessPolicyVersion,
+    contentVisibility,
+    encryptionEpoch,
+    encryptionState,
+    federationPolicyJson,
     lastSeenCursor,
     createdAt,
     updatedAt,
@@ -1347,6 +1427,60 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
         ),
       );
     }
+    if (data.containsKey('access_policy_json')) {
+      context.handle(
+        _accessPolicyJsonMeta,
+        accessPolicyJson.isAcceptableOrUnknown(
+          data['access_policy_json']!,
+          _accessPolicyJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('access_policy_version')) {
+      context.handle(
+        _accessPolicyVersionMeta,
+        accessPolicyVersion.isAcceptableOrUnknown(
+          data['access_policy_version']!,
+          _accessPolicyVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('content_visibility')) {
+      context.handle(
+        _contentVisibilityMeta,
+        contentVisibility.isAcceptableOrUnknown(
+          data['content_visibility']!,
+          _contentVisibilityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('encryption_epoch')) {
+      context.handle(
+        _encryptionEpochMeta,
+        encryptionEpoch.isAcceptableOrUnknown(
+          data['encryption_epoch']!,
+          _encryptionEpochMeta,
+        ),
+      );
+    }
+    if (data.containsKey('encryption_state')) {
+      context.handle(
+        _encryptionStateMeta,
+        encryptionState.isAcceptableOrUnknown(
+          data['encryption_state']!,
+          _encryptionStateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('federation_policy_json')) {
+      context.handle(
+        _federationPolicyJsonMeta,
+        federationPolicyJson.isAcceptableOrUnknown(
+          data['federation_policy_json']!,
+          _federationPolicyJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('last_seen_cursor')) {
       context.handle(
         _lastSeenCursorMeta,
@@ -1427,6 +1561,30 @@ class $HostedBoardProjectionsTable extends HostedBoardProjections
         DriftSqlType.string,
         data['${effectivePrefix}posting_policy_json'],
       )!,
+      accessPolicyJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}access_policy_json'],
+      )!,
+      accessPolicyVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}access_policy_version'],
+      )!,
+      contentVisibility: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_visibility'],
+      )!,
+      encryptionEpoch: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}encryption_epoch'],
+      )!,
+      encryptionState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}encryption_state'],
+      )!,
+      federationPolicyJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}federation_policy_json'],
+      )!,
       lastSeenCursor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}last_seen_cursor'],
@@ -1464,6 +1622,12 @@ class HostedBoardProjection extends DataClass
   final String? description;
   final String permissionsJson;
   final String postingPolicyJson;
+  final String accessPolicyJson;
+  final int accessPolicyVersion;
+  final String contentVisibility;
+  final int encryptionEpoch;
+  final String encryptionState;
+  final String federationPolicyJson;
   final int lastSeenCursor;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1479,6 +1643,12 @@ class HostedBoardProjection extends DataClass
     this.description,
     required this.permissionsJson,
     required this.postingPolicyJson,
+    required this.accessPolicyJson,
+    required this.accessPolicyVersion,
+    required this.contentVisibility,
+    required this.encryptionEpoch,
+    required this.encryptionState,
+    required this.federationPolicyJson,
     required this.lastSeenCursor,
     required this.createdAt,
     required this.updatedAt,
@@ -1499,6 +1669,12 @@ class HostedBoardProjection extends DataClass
     }
     map['permissions_json'] = Variable<String>(permissionsJson);
     map['posting_policy_json'] = Variable<String>(postingPolicyJson);
+    map['access_policy_json'] = Variable<String>(accessPolicyJson);
+    map['access_policy_version'] = Variable<int>(accessPolicyVersion);
+    map['content_visibility'] = Variable<String>(contentVisibility);
+    map['encryption_epoch'] = Variable<int>(encryptionEpoch);
+    map['encryption_state'] = Variable<String>(encryptionState);
+    map['federation_policy_json'] = Variable<String>(federationPolicyJson);
     map['last_seen_cursor'] = Variable<int>(lastSeenCursor);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1520,6 +1696,12 @@ class HostedBoardProjection extends DataClass
           : Value(description),
       permissionsJson: Value(permissionsJson),
       postingPolicyJson: Value(postingPolicyJson),
+      accessPolicyJson: Value(accessPolicyJson),
+      accessPolicyVersion: Value(accessPolicyVersion),
+      contentVisibility: Value(contentVisibility),
+      encryptionEpoch: Value(encryptionEpoch),
+      encryptionState: Value(encryptionState),
+      federationPolicyJson: Value(federationPolicyJson),
       lastSeenCursor: Value(lastSeenCursor),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1543,6 +1725,16 @@ class HostedBoardProjection extends DataClass
       description: serializer.fromJson<String?>(json['description']),
       permissionsJson: serializer.fromJson<String>(json['permissionsJson']),
       postingPolicyJson: serializer.fromJson<String>(json['postingPolicyJson']),
+      accessPolicyJson: serializer.fromJson<String>(json['accessPolicyJson']),
+      accessPolicyVersion: serializer.fromJson<int>(
+        json['accessPolicyVersion'],
+      ),
+      contentVisibility: serializer.fromJson<String>(json['contentVisibility']),
+      encryptionEpoch: serializer.fromJson<int>(json['encryptionEpoch']),
+      encryptionState: serializer.fromJson<String>(json['encryptionState']),
+      federationPolicyJson: serializer.fromJson<String>(
+        json['federationPolicyJson'],
+      ),
       lastSeenCursor: serializer.fromJson<int>(json['lastSeenCursor']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1563,6 +1755,12 @@ class HostedBoardProjection extends DataClass
       'description': serializer.toJson<String?>(description),
       'permissionsJson': serializer.toJson<String>(permissionsJson),
       'postingPolicyJson': serializer.toJson<String>(postingPolicyJson),
+      'accessPolicyJson': serializer.toJson<String>(accessPolicyJson),
+      'accessPolicyVersion': serializer.toJson<int>(accessPolicyVersion),
+      'contentVisibility': serializer.toJson<String>(contentVisibility),
+      'encryptionEpoch': serializer.toJson<int>(encryptionEpoch),
+      'encryptionState': serializer.toJson<String>(encryptionState),
+      'federationPolicyJson': serializer.toJson<String>(federationPolicyJson),
       'lastSeenCursor': serializer.toJson<int>(lastSeenCursor),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1581,6 +1779,12 @@ class HostedBoardProjection extends DataClass
     Value<String?> description = const Value.absent(),
     String? permissionsJson,
     String? postingPolicyJson,
+    String? accessPolicyJson,
+    int? accessPolicyVersion,
+    String? contentVisibility,
+    int? encryptionEpoch,
+    String? encryptionState,
+    String? federationPolicyJson,
     int? lastSeenCursor,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1596,6 +1800,12 @@ class HostedBoardProjection extends DataClass
     description: description.present ? description.value : this.description,
     permissionsJson: permissionsJson ?? this.permissionsJson,
     postingPolicyJson: postingPolicyJson ?? this.postingPolicyJson,
+    accessPolicyJson: accessPolicyJson ?? this.accessPolicyJson,
+    accessPolicyVersion: accessPolicyVersion ?? this.accessPolicyVersion,
+    contentVisibility: contentVisibility ?? this.contentVisibility,
+    encryptionEpoch: encryptionEpoch ?? this.encryptionEpoch,
+    encryptionState: encryptionState ?? this.encryptionState,
+    federationPolicyJson: federationPolicyJson ?? this.federationPolicyJson,
     lastSeenCursor: lastSeenCursor ?? this.lastSeenCursor,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1631,6 +1841,24 @@ class HostedBoardProjection extends DataClass
       postingPolicyJson: data.postingPolicyJson.present
           ? data.postingPolicyJson.value
           : this.postingPolicyJson,
+      accessPolicyJson: data.accessPolicyJson.present
+          ? data.accessPolicyJson.value
+          : this.accessPolicyJson,
+      accessPolicyVersion: data.accessPolicyVersion.present
+          ? data.accessPolicyVersion.value
+          : this.accessPolicyVersion,
+      contentVisibility: data.contentVisibility.present
+          ? data.contentVisibility.value
+          : this.contentVisibility,
+      encryptionEpoch: data.encryptionEpoch.present
+          ? data.encryptionEpoch.value
+          : this.encryptionEpoch,
+      encryptionState: data.encryptionState.present
+          ? data.encryptionState.value
+          : this.encryptionState,
+      federationPolicyJson: data.federationPolicyJson.present
+          ? data.federationPolicyJson.value
+          : this.federationPolicyJson,
       lastSeenCursor: data.lastSeenCursor.present
           ? data.lastSeenCursor.value
           : this.lastSeenCursor,
@@ -1653,6 +1881,12 @@ class HostedBoardProjection extends DataClass
           ..write('description: $description, ')
           ..write('permissionsJson: $permissionsJson, ')
           ..write('postingPolicyJson: $postingPolicyJson, ')
+          ..write('accessPolicyJson: $accessPolicyJson, ')
+          ..write('accessPolicyVersion: $accessPolicyVersion, ')
+          ..write('contentVisibility: $contentVisibility, ')
+          ..write('encryptionEpoch: $encryptionEpoch, ')
+          ..write('encryptionState: $encryptionState, ')
+          ..write('federationPolicyJson: $federationPolicyJson, ')
           ..write('lastSeenCursor: $lastSeenCursor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1673,6 +1907,12 @@ class HostedBoardProjection extends DataClass
     description,
     permissionsJson,
     postingPolicyJson,
+    accessPolicyJson,
+    accessPolicyVersion,
+    contentVisibility,
+    encryptionEpoch,
+    encryptionState,
+    federationPolicyJson,
     lastSeenCursor,
     createdAt,
     updatedAt,
@@ -1692,6 +1932,12 @@ class HostedBoardProjection extends DataClass
           other.description == this.description &&
           other.permissionsJson == this.permissionsJson &&
           other.postingPolicyJson == this.postingPolicyJson &&
+          other.accessPolicyJson == this.accessPolicyJson &&
+          other.accessPolicyVersion == this.accessPolicyVersion &&
+          other.contentVisibility == this.contentVisibility &&
+          other.encryptionEpoch == this.encryptionEpoch &&
+          other.encryptionState == this.encryptionState &&
+          other.federationPolicyJson == this.federationPolicyJson &&
           other.lastSeenCursor == this.lastSeenCursor &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -1710,6 +1956,12 @@ class HostedBoardProjectionsCompanion
   final Value<String?> description;
   final Value<String> permissionsJson;
   final Value<String> postingPolicyJson;
+  final Value<String> accessPolicyJson;
+  final Value<int> accessPolicyVersion;
+  final Value<String> contentVisibility;
+  final Value<int> encryptionEpoch;
+  final Value<String> encryptionState;
+  final Value<String> federationPolicyJson;
   final Value<int> lastSeenCursor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1726,6 +1978,12 @@ class HostedBoardProjectionsCompanion
     this.description = const Value.absent(),
     this.permissionsJson = const Value.absent(),
     this.postingPolicyJson = const Value.absent(),
+    this.accessPolicyJson = const Value.absent(),
+    this.accessPolicyVersion = const Value.absent(),
+    this.contentVisibility = const Value.absent(),
+    this.encryptionEpoch = const Value.absent(),
+    this.encryptionState = const Value.absent(),
+    this.federationPolicyJson = const Value.absent(),
     this.lastSeenCursor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1743,6 +2001,12 @@ class HostedBoardProjectionsCompanion
     this.description = const Value.absent(),
     this.permissionsJson = const Value.absent(),
     this.postingPolicyJson = const Value.absent(),
+    this.accessPolicyJson = const Value.absent(),
+    this.accessPolicyVersion = const Value.absent(),
+    this.contentVisibility = const Value.absent(),
+    this.encryptionEpoch = const Value.absent(),
+    this.encryptionState = const Value.absent(),
+    this.federationPolicyJson = const Value.absent(),
     this.lastSeenCursor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1766,6 +2030,12 @@ class HostedBoardProjectionsCompanion
     Expression<String>? description,
     Expression<String>? permissionsJson,
     Expression<String>? postingPolicyJson,
+    Expression<String>? accessPolicyJson,
+    Expression<int>? accessPolicyVersion,
+    Expression<String>? contentVisibility,
+    Expression<int>? encryptionEpoch,
+    Expression<String>? encryptionState,
+    Expression<String>? federationPolicyJson,
     Expression<int>? lastSeenCursor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1783,6 +2053,14 @@ class HostedBoardProjectionsCompanion
       if (description != null) 'description': description,
       if (permissionsJson != null) 'permissions_json': permissionsJson,
       if (postingPolicyJson != null) 'posting_policy_json': postingPolicyJson,
+      if (accessPolicyJson != null) 'access_policy_json': accessPolicyJson,
+      if (accessPolicyVersion != null)
+        'access_policy_version': accessPolicyVersion,
+      if (contentVisibility != null) 'content_visibility': contentVisibility,
+      if (encryptionEpoch != null) 'encryption_epoch': encryptionEpoch,
+      if (encryptionState != null) 'encryption_state': encryptionState,
+      if (federationPolicyJson != null)
+        'federation_policy_json': federationPolicyJson,
       if (lastSeenCursor != null) 'last_seen_cursor': lastSeenCursor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1802,6 +2080,12 @@ class HostedBoardProjectionsCompanion
     Value<String?>? description,
     Value<String>? permissionsJson,
     Value<String>? postingPolicyJson,
+    Value<String>? accessPolicyJson,
+    Value<int>? accessPolicyVersion,
+    Value<String>? contentVisibility,
+    Value<int>? encryptionEpoch,
+    Value<String>? encryptionState,
+    Value<String>? federationPolicyJson,
     Value<int>? lastSeenCursor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1819,6 +2103,12 @@ class HostedBoardProjectionsCompanion
       description: description ?? this.description,
       permissionsJson: permissionsJson ?? this.permissionsJson,
       postingPolicyJson: postingPolicyJson ?? this.postingPolicyJson,
+      accessPolicyJson: accessPolicyJson ?? this.accessPolicyJson,
+      accessPolicyVersion: accessPolicyVersion ?? this.accessPolicyVersion,
+      contentVisibility: contentVisibility ?? this.contentVisibility,
+      encryptionEpoch: encryptionEpoch ?? this.encryptionEpoch,
+      encryptionState: encryptionState ?? this.encryptionState,
+      federationPolicyJson: federationPolicyJson ?? this.federationPolicyJson,
       lastSeenCursor: lastSeenCursor ?? this.lastSeenCursor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1860,6 +2150,26 @@ class HostedBoardProjectionsCompanion
     if (postingPolicyJson.present) {
       map['posting_policy_json'] = Variable<String>(postingPolicyJson.value);
     }
+    if (accessPolicyJson.present) {
+      map['access_policy_json'] = Variable<String>(accessPolicyJson.value);
+    }
+    if (accessPolicyVersion.present) {
+      map['access_policy_version'] = Variable<int>(accessPolicyVersion.value);
+    }
+    if (contentVisibility.present) {
+      map['content_visibility'] = Variable<String>(contentVisibility.value);
+    }
+    if (encryptionEpoch.present) {
+      map['encryption_epoch'] = Variable<int>(encryptionEpoch.value);
+    }
+    if (encryptionState.present) {
+      map['encryption_state'] = Variable<String>(encryptionState.value);
+    }
+    if (federationPolicyJson.present) {
+      map['federation_policy_json'] = Variable<String>(
+        federationPolicyJson.value,
+      );
+    }
     if (lastSeenCursor.present) {
       map['last_seen_cursor'] = Variable<int>(lastSeenCursor.value);
     }
@@ -1891,6 +2201,12 @@ class HostedBoardProjectionsCompanion
           ..write('description: $description, ')
           ..write('permissionsJson: $permissionsJson, ')
           ..write('postingPolicyJson: $postingPolicyJson, ')
+          ..write('accessPolicyJson: $accessPolicyJson, ')
+          ..write('accessPolicyVersion: $accessPolicyVersion, ')
+          ..write('contentVisibility: $contentVisibility, ')
+          ..write('encryptionEpoch: $encryptionEpoch, ')
+          ..write('encryptionState: $encryptionState, ')
+          ..write('federationPolicyJson: $federationPolicyJson, ')
           ..write('lastSeenCursor: $lastSeenCursor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -30774,6 +31090,12 @@ typedef $$HostedBoardProjectionsTableCreateCompanionBuilder =
       Value<String?> description,
       Value<String> permissionsJson,
       Value<String> postingPolicyJson,
+      Value<String> accessPolicyJson,
+      Value<int> accessPolicyVersion,
+      Value<String> contentVisibility,
+      Value<int> encryptionEpoch,
+      Value<String> encryptionState,
+      Value<String> federationPolicyJson,
       Value<int> lastSeenCursor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -30792,6 +31114,12 @@ typedef $$HostedBoardProjectionsTableUpdateCompanionBuilder =
       Value<String?> description,
       Value<String> permissionsJson,
       Value<String> postingPolicyJson,
+      Value<String> accessPolicyJson,
+      Value<int> accessPolicyVersion,
+      Value<String> contentVisibility,
+      Value<int> encryptionEpoch,
+      Value<String> encryptionState,
+      Value<String> federationPolicyJson,
       Value<int> lastSeenCursor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -30855,6 +31183,36 @@ class $$HostedBoardProjectionsTableFilterComposer
 
   ColumnFilters<String> get postingPolicyJson => $composableBuilder(
     column: $table.postingPolicyJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accessPolicyJson => $composableBuilder(
+    column: $table.accessPolicyJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get accessPolicyVersion => $composableBuilder(
+    column: $table.accessPolicyVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentVisibility => $composableBuilder(
+    column: $table.contentVisibility,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get encryptionEpoch => $composableBuilder(
+    column: $table.encryptionEpoch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get encryptionState => $composableBuilder(
+    column: $table.encryptionState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get federationPolicyJson => $composableBuilder(
+    column: $table.federationPolicyJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -30938,6 +31296,36 @@ class $$HostedBoardProjectionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get accessPolicyJson => $composableBuilder(
+    column: $table.accessPolicyJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get accessPolicyVersion => $composableBuilder(
+    column: $table.accessPolicyVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentVisibility => $composableBuilder(
+    column: $table.contentVisibility,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get encryptionEpoch => $composableBuilder(
+    column: $table.encryptionEpoch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get encryptionState => $composableBuilder(
+    column: $table.encryptionState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get federationPolicyJson => $composableBuilder(
+    column: $table.federationPolicyJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get lastSeenCursor => $composableBuilder(
     column: $table.lastSeenCursor,
     builder: (column) => ColumnOrderings(column),
@@ -31014,6 +31402,36 @@ class $$HostedBoardProjectionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get accessPolicyJson => $composableBuilder(
+    column: $table.accessPolicyJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get accessPolicyVersion => $composableBuilder(
+    column: $table.accessPolicyVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentVisibility => $composableBuilder(
+    column: $table.contentVisibility,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get encryptionEpoch => $composableBuilder(
+    column: $table.encryptionEpoch,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get encryptionState => $composableBuilder(
+    column: $table.encryptionState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get federationPolicyJson => $composableBuilder(
+    column: $table.federationPolicyJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get lastSeenCursor => $composableBuilder(
     column: $table.lastSeenCursor,
     builder: (column) => column,
@@ -31085,6 +31503,12 @@ class $$HostedBoardProjectionsTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String> permissionsJson = const Value.absent(),
                 Value<String> postingPolicyJson = const Value.absent(),
+                Value<String> accessPolicyJson = const Value.absent(),
+                Value<int> accessPolicyVersion = const Value.absent(),
+                Value<String> contentVisibility = const Value.absent(),
+                Value<int> encryptionEpoch = const Value.absent(),
+                Value<String> encryptionState = const Value.absent(),
+                Value<String> federationPolicyJson = const Value.absent(),
                 Value<int> lastSeenCursor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -31101,6 +31525,12 @@ class $$HostedBoardProjectionsTableTableManager
                 description: description,
                 permissionsJson: permissionsJson,
                 postingPolicyJson: postingPolicyJson,
+                accessPolicyJson: accessPolicyJson,
+                accessPolicyVersion: accessPolicyVersion,
+                contentVisibility: contentVisibility,
+                encryptionEpoch: encryptionEpoch,
+                encryptionState: encryptionState,
+                federationPolicyJson: federationPolicyJson,
                 lastSeenCursor: lastSeenCursor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -31119,6 +31549,12 @@ class $$HostedBoardProjectionsTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String> permissionsJson = const Value.absent(),
                 Value<String> postingPolicyJson = const Value.absent(),
+                Value<String> accessPolicyJson = const Value.absent(),
+                Value<int> accessPolicyVersion = const Value.absent(),
+                Value<String> contentVisibility = const Value.absent(),
+                Value<int> encryptionEpoch = const Value.absent(),
+                Value<String> encryptionState = const Value.absent(),
+                Value<String> federationPolicyJson = const Value.absent(),
                 Value<int> lastSeenCursor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -31135,6 +31571,12 @@ class $$HostedBoardProjectionsTableTableManager
                 description: description,
                 permissionsJson: permissionsJson,
                 postingPolicyJson: postingPolicyJson,
+                accessPolicyJson: accessPolicyJson,
+                accessPolicyVersion: accessPolicyVersion,
+                contentVisibility: contentVisibility,
+                encryptionEpoch: encryptionEpoch,
+                encryptionState: encryptionState,
+                federationPolicyJson: federationPolicyJson,
                 lastSeenCursor: lastSeenCursor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

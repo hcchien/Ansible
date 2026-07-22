@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:ansible_store/ansible_store.dart';
+import 'package:ansible_did/ansible_did.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'recovery_readiness_store.dart';
+import 'canonical_identity_store.dart';
 import 'relay_anchor_client.dart';
 import 'secure_device_key_store.dart';
 
@@ -17,21 +19,53 @@ import 'secure_device_key_store.dart';
 /// whether they were produced via the rust signer or the pure-Dart
 /// [Ed25519Keys] used here.
 abstract class IdentityKey {
+  const IdentityKey();
   /// The Ed25519 public key hex (the anchor's `identity_key`).
   Future<String> publicKeyHex();
 
   /// Signs [message] bytes with the identity key. Hex Ed25519 signature.
   Future<String> sign(List<int> message);
+
+  Future<String> algorithm() async => 'ed25519';
+  Future<CustodyClass> custodyClass() async => CustodyClass.software;
+}
+
+class ActiveIdentityKey implements IdentityKey {
+  const ActiveIdentityKey({
+    this.identityStore = const SecureCanonicalIdentityStore(),
+  });
+
+  final CanonicalIdentityStore identityStore;
+
+  Future<CanonicalIdentity> _identity() async =>
+      await identityStore.load() ??
+      (throw StateError('Canonical identity not found.'));
+
+  @override
+  Future<String> publicKeyHex() async => (await _identity()).publicKeyHex;
+
+  @override
+  Future<String> sign(List<int> message) async =>
+      (await DidSignerImpl().sign(message)).hex;
+
+  @override
+  Future<String> algorithm() async => (await _identity()).signingAlgorithm;
+
+  @override
+  Future<CustodyClass> custodyClass() async =>
+      (await _identity()).custody == 'hardware'
+      ? CustodyClass.hardware
+      : CustodyClass.software;
 }
 
 /// Identity key backed by the same `ansible_did_private_key` secure-storage
 /// entry the rest of the app uses. Derives the public key from the stored seed
 /// and signs with [Ed25519Keys] (standard Ed25519).
-class SecureStorageIdentityKey implements IdentityKey {
+class SecureStorageIdentityKey extends IdentityKey {
   final FlutterSecureStorage _storage;
 
   const SecureStorageIdentityKey({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   static const String identityPrivateKeyStorageKey = 'ansible_did_private_key';
 
@@ -56,7 +90,7 @@ class SecureStorageIdentityKey implements IdentityKey {
 
 /// In-memory [IdentityKey] for tests (and the recovery flow, which constructs
 /// one from the just-decrypted private key).
-class InMemoryIdentityKey implements IdentityKey {
+class InMemoryIdentityKey extends IdentityKey {
   final String privateKeyHex;
   String? _publicKeyHex;
 
@@ -109,10 +143,10 @@ class IdentityAnchorService {
     DeviceKeyStore? deviceKeyStore,
     RecoveryReadinessStore? readinessStore,
     DateTime Function()? now,
-  })  : deviceKeyStore = deviceKeyStore ?? const SecureDeviceKeyStore(),
-        readinessStore =
-            readinessStore ?? const SharedPreferencesRecoveryReadinessStore(),
-        now = now ?? (() => DateTime.now().toUtc());
+  }) : deviceKeyStore = deviceKeyStore ?? const SecureDeviceKeyStore(),
+       readinessStore =
+           readinessStore ?? const SharedPreferencesRecoveryReadinessStore(),
+       now = now ?? (() => DateTime.now().toUtc());
 
   /// Builds and publishes the genesis (`reason: initial`) anchor for [did]:
   /// generates this device's software device key (if absent), has the identity
@@ -124,6 +158,8 @@ class IdentityAnchorService {
     required IdentityKey identityKey,
   }) async {
     final identityKeyHex = await identityKey.publicKeyHex();
+    final identityAlgorithm = await identityKey.algorithm();
+    final identityCustody = await identityKey.custodyClass();
     final deviceKey = await _ensureDeviceKey();
     final enrolledAt = now();
 
@@ -136,12 +172,13 @@ class IdentityAnchorService {
     final anchor = await _signAnchor(
       identityKey: identityKey,
       identityKeyHex: identityKeyHex,
+      identityKeyAlgorithm: identityAlgorithm,
+      identityCustody: identityCustody,
       did: did,
       handle: handle,
-      alsoKnownAs: buildAlsoKnownAs(
-        handle: handle,
-        identityKeyHex: identityKeyHex,
-      ),
+      alsoKnownAs: identityAlgorithm == 'ed25519'
+          ? buildAlsoKnownAs(handle: handle, identityKeyHex: identityKeyHex)
+          : ['at://$handle'],
       devices: [deviceRecord],
       prevAnchorCid: null,
       reason: AnchorReason.initial,
@@ -249,6 +286,8 @@ class IdentityAnchorService {
   Future<IdentityAnchor> _signAnchor({
     required IdentityKey identityKey,
     required String identityKeyHex,
+    String identityKeyAlgorithm = 'ed25519',
+    CustodyClass identityCustody = CustodyClass.software,
     required String did,
     required String handle,
     required List<String> alsoKnownAs,
@@ -263,8 +302,9 @@ class IdentityAnchorService {
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
+      identityKeyAlgorithm: identityKeyAlgorithm,
       alsoKnownAs: alsoKnownAs,
-      custodyClass: CustodyClass.software,
+      custodyClass: identityCustody,
       devices: devices,
       prevAnchorCid: prevAnchorCid,
       reason: reason,
@@ -277,8 +317,9 @@ class IdentityAnchorService {
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
+      identityKeyAlgorithm: identityKeyAlgorithm,
       alsoKnownAs: alsoKnownAs,
-      custodyClass: CustodyClass.software,
+      custodyClass: identityCustody,
       devices: devices,
       prevAnchorCid: prevAnchorCid,
       reason: reason,

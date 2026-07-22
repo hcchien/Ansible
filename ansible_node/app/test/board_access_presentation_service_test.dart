@@ -1,0 +1,185 @@
+import 'dart:convert';
+
+import 'package:ansible_did/ansible_did.dart';
+import 'package:ansible_node/services/board_access_presentation_service.dart';
+import 'package:ansible_node/services/oid4vci_wallet_client.dart';
+import 'package:ansible_node/services/wallet_holder_key_service.dart';
+import 'package:ansible_store/ansible_store.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+void main() {
+  test('hardware holder JWT binds a canonical P-256 JWK', () async {
+    final key = _FakeHolderKey();
+    final signer = HardwareHolderJwtSigner(key: key);
+    final compact = await signer.signJwt(
+      typ: 'openid4vp+jwt',
+      claims: {'aud': 'https://relay.example', 'nonce': 'n', 'iat': 1},
+    );
+
+    final parts = compact.split('.');
+    expect(parts, hasLength(3));
+    final header =
+        jsonDecode(
+              utf8.decode(base64Url.decode(base64Url.normalize(parts.first))),
+            )
+            as Map<String, dynamic>;
+    expect(header['alg'], 'ES256');
+    expect(header['typ'], 'openid4vp+jwt');
+    expect(header['jwk']['kty'], 'EC');
+    expect(base64Url.decode(base64Url.normalize(parts.last)), hasLength(64));
+  });
+
+  test(
+    'proof headers bind method path board scope nonce and token hash',
+    () async {
+      final key = _FakeHolderKey();
+      final service = BoardAccessPresentationService(
+        walletRepository: InMemoryWalletRepository(),
+        holderKey: key,
+        now: () => DateTime.utc(2026, 7, 22, 10),
+      );
+      final headers = await service.proofHeaders(
+        capability: BoardAccessCapability(
+          token: 'elix_board_v1_secret',
+          boardId: 'members',
+          host: Uri.parse('https://relay.example'),
+          scopes: const ['read'],
+          expiresAt: DateTime.utc(2026, 7, 22, 10, 5),
+          policyVersion: 3,
+        ),
+        method: 'get',
+        requestUri: Uri.parse(
+          'https://relay.example/api/v1/forum-host/boards/members/ops/delta',
+        ),
+        scope: 'read',
+      );
+
+      expect(headers['x-elix-board-capability'], 'elix_board_v1_secret');
+      expect(headers['x-elix-board-jwk'], isNotEmpty);
+      expect(
+        key.lastMessage,
+        startsWith(
+          'GET\n/api/v1/forum-host/boards/members/ops/delta\nmembers\nread\n',
+        ),
+      );
+      expect(headers['x-elix-board-proof'], key.signature.hex);
+    },
+  );
+
+  test('a credential issued for one board cannot authorize another', () async {
+    final key = _FakeHolderKey();
+    final holder = await HardwareHolderJwtSigner(key: key).pairwiseDid();
+    final now = DateTime.utc(2026, 7, 22, 10);
+    final wallet = InMemoryWalletRepository();
+    await wallet.saveCredential(
+      metadata: WalletCredential(
+        credentialId: 'credential-a',
+        issuerDid: 'did:elix:org:party',
+        holderDid: holder,
+        credentialType: 'PoliticalPartyMembershipCredential',
+        status: WalletCredentialStatus.active,
+        validFrom: now.subtract(const Duration(minutes: 1)),
+        validUntil: now.add(const Duration(days: 30)),
+        displayName: 'Membership',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      encryptedPayload: jsonEncode({
+        'format': 'jwt_vc_json',
+        'compact': 'header.payload.signature',
+        'board_id': 'board-a',
+        'vc': {
+          'type': [
+            'VerifiableCredential',
+            'PoliticalPartyMembershipCredential',
+          ],
+          'issuer': 'did:elix:org:party',
+          'credentialSubject': {
+            'id': holder,
+            'membership': true,
+            'board_id': 'board-a',
+          },
+        },
+      }),
+      encryptionVersion: 'test-json',
+    );
+    final service = BoardAccessPresentationService(
+      walletRepository: wallet,
+      holderKey: key,
+      now: () => now,
+      httpClient: MockClient((request) async {
+        if (request.url.path.endsWith('/access-requirements')) {
+          return http.Response(
+            jsonEncode({
+              'host': 'https://relay.example',
+              'policy': {
+                'read': {'requirement': 'member'},
+                'requirements': {
+                  'member': {
+                    'credential_type': 'PoliticalPartyMembershipCredential',
+                    'trusted_issuers': ['did:elix:org:party'],
+                    'claims': [
+                      {'path': 'membership', 'op': 'equals', 'value': true},
+                    ],
+                  },
+                },
+              },
+            }),
+            200,
+          );
+        }
+        return http.Response(jsonEncode({'nonce': 'n', 'state': 's'}), 200);
+      }),
+    );
+
+    await expectLater(
+      service.authorize(
+        forumHost: Uri.parse('https://relay.example'),
+        boardId: 'board-b',
+        action: 'read',
+      ),
+      throwsA(
+        isA<BoardAccessException>().having(
+          (error) => error.code,
+          'code',
+          'no_matching_credential',
+        ),
+      ),
+    );
+  });
+}
+
+class _FakeHolderKey implements HolderBindingKey {
+  final signature = IdentitySignature(
+    algorithm: IdentityKeyAlgorithm.p256Sha256,
+    hex: _derSignatureHex(),
+  );
+  String? lastMessage;
+
+  @override
+  Future<IdentityPublicKey> ensureKey() async => IdentityPublicKey(
+    algorithm: IdentityKeyAlgorithm.p256Sha256,
+    publicKeyHex: '04${'11' * 32}${'22' * 32}',
+    custody: IdentityKeyCustody.hardware,
+    hardwareSecurityLevel: 'secure_enclave',
+  );
+
+  @override
+  Future<IdentitySignature> sign(List<int> message) async {
+    lastMessage = utf8.decode(message);
+    return signature;
+  }
+
+  static String _derSignatureHex() => [
+    0x30,
+    0x44,
+    0x02,
+    0x20,
+    ...List<int>.filled(32, 1),
+    0x02,
+    0x20,
+    ...List<int>.filled(32, 2),
+  ].map((value) => value.toRadixString(16).padLeft(2, '0')).join();
+}

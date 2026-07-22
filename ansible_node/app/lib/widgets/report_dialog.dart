@@ -73,7 +73,8 @@ class _ReportDialogState extends State<_ReportDialog> {
             Text(
               context.uiCopy(
                 zh: '檢舉會以你的身分簽章送交看板的管理者，由板務依板規處理。',
-                en: 'Reports are signed with your identity and handled by '
+                en:
+                    'Reports are signed with your identity and handled by '
                     'the board moderators under the board rules.',
               ),
               style: const TextStyle(fontSize: 12.5, height: 1.5),

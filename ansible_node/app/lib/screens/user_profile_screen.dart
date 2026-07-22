@@ -269,8 +269,9 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trimmed = seed.replaceFirst('@', '').trim();
-    final initial =
-        trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
+    final initial = trimmed.isEmpty
+        ? '?'
+        : trimmed.substring(0, 1).toUpperCase();
     return Container(
       width: 64,
       height: 64,

@@ -43,11 +43,14 @@ String deriveDidElix({
   required String identityKey,
   required String handle,
   CustodyClass custodyClass = CustodyClass.software,
+  String identityKeyAlgorithm = 'ed25519',
 }) {
   final fingerprint = <String, Object?>{
     'method': 'did:elix',
-    'v': 1,
+    'v': identityKeyAlgorithm == 'ed25519' ? 1 : 2,
     'identity_key': identityKey,
+    if (identityKeyAlgorithm != 'ed25519')
+      'identity_key_algorithm': identityKeyAlgorithm,
     'handle': handle,
     'custody_class': custodyClass.storageValue,
   };
@@ -148,11 +151,8 @@ enum AnchorReason {
   static AnchorReason parse(String value) {
     return AnchorReason.values.firstWhere(
       (r) => r.storageValue == value,
-      orElse: () => throw ArgumentError.value(
-        value,
-        'value',
-        'Unknown anchor reason',
-      ),
+      orElse: () =>
+          throw ArgumentError.value(value, 'value', 'Unknown anchor reason'),
     );
   }
 }
@@ -170,11 +170,8 @@ enum CustodyClass {
   static CustodyClass parse(String value) {
     return CustodyClass.values.firstWhere(
       (c) => c.storageValue == value,
-      orElse: () => throw ArgumentError.value(
-        value,
-        'value',
-        'Unknown custody class',
-      ),
+      orElse: () =>
+          throw ArgumentError.value(value, 'value', 'Unknown custody class'),
     );
   }
 }
@@ -204,12 +201,12 @@ class AnchorDeviceRecord {
 
   /// Canonical map (keys emitted in a fixed order by [IdentityAnchor]).
   Map<String, Object?> toCanonicalMap() => {
-        'device_id': deviceId,
-        'device_key': deviceKey,
-        'custody_class': custodyClass.storageValue,
-        'enrolled_at': enrolledAt.toUtc().toIso8601String(),
-        'attestation_sig': attestationSig,
-      };
+    'device_id': deviceId,
+    'device_key': deviceKey,
+    'custody_class': custodyClass.storageValue,
+    'enrolled_at': enrolledAt.toUtc().toIso8601String(),
+    'attestation_sig': attestationSig,
+  };
 
   factory AnchorDeviceRecord.fromMap(Map<String, Object?> map) {
     return AnchorDeviceRecord(
@@ -229,7 +226,7 @@ class IdentityAnchor {
 
   /// v2 (2026-06-16): adds `also_known_as` and makes `did` a `did:elix`
   /// (was the `did:plc` stub). Bumped together with the layered-identity work.
-  static const int currentSchemaVersion = 2;
+  static const int currentSchemaVersion = 3;
 
   final int schemaVersion;
 
@@ -241,6 +238,7 @@ class IdentityAnchor {
 
   /// Ed25519 identity (content) public key, hex-encoded.
   final String identityKey;
+  final String identityKeyAlgorithm;
 
   /// Verifiable aliases of this same identity, bound by being inside the
   /// signed anchor body: `at://<handle>`, the wallet `did:key:…` (the same
@@ -272,6 +270,7 @@ class IdentityAnchor {
     required this.did,
     required this.handle,
     required this.identityKey,
+    this.identityKeyAlgorithm = 'ed25519',
     this.alsoKnownAs = const [],
     required this.custodyClass,
     this.devices = const [],
@@ -286,25 +285,26 @@ class IdentityAnchor {
   /// signatures), keys in a fixed order. Used both for the CID and as the
   /// message the signatures cover.
   Map<String, Object?> toCanonicalBody() => {
-        'type': typeName,
-        'schema_version': schemaVersion,
-        'did': did,
-        'handle': handle,
-        'identity_key': identityKey,
-        'also_known_as': alsoKnownAs,
-        'custody_class': custodyClass.storageValue,
-        'devices': devices.map((d) => d.toCanonicalMap()).toList(),
-        'prev_anchor_cid': prevAnchorCid,
-        'reason': reason.storageValue,
-        'created_at': createdAt.toUtc().toIso8601String(),
-      };
+    'type': typeName,
+    'schema_version': schemaVersion,
+    'did': did,
+    'handle': handle,
+    'identity_key': identityKey,
+    if (schemaVersion >= 3) 'identity_key_algorithm': identityKeyAlgorithm,
+    'also_known_as': alsoKnownAs,
+    'custody_class': custodyClass.storageValue,
+    'devices': devices.map((d) => d.toCanonicalMap()).toList(),
+    'prev_anchor_cid': prevAnchorCid,
+    'reason': reason.storageValue,
+    'created_at': createdAt.toUtc().toIso8601String(),
+  };
 
   /// Full canonical map including signatures (the on-the-wire / stored form).
   Map<String, Object?> toCanonicalMap() => {
-        ...toCanonicalBody(),
-        'sig': sig,
-        if (deviceSig != null) 'device_sig': deviceSig,
-      };
+    ...toCanonicalBody(),
+    'sig': sig,
+    if (deviceSig != null) 'device_sig': deviceSig,
+  };
 
   /// Canonical JSON of the *signed body* — stable, no insignificant
   /// whitespace, fixed key order. This is what gets hashed to a CID and what
@@ -339,18 +339,20 @@ class IdentityAnchor {
     }
     final rawDevices = (map['devices'] as List?) ?? const [];
     return IdentityAnchor(
-      schemaVersion: (map['schema_version'] as num?)?.toInt() ??
-          currentSchemaVersion,
+      schemaVersion:
+          (map['schema_version'] as num?)?.toInt() ?? currentSchemaVersion,
       did: map['did']! as String,
       handle: map['handle']! as String,
       identityKey: map['identity_key']! as String,
-      alsoKnownAs:
-          ((map['also_known_as'] as List?) ?? const []).cast<String>(),
+      identityKeyAlgorithm:
+          map['identity_key_algorithm'] as String? ?? 'ed25519',
+      alsoKnownAs: ((map['also_known_as'] as List?) ?? const []).cast<String>(),
       custodyClass: CustodyClass.parse(map['custody_class']! as String),
       devices: rawDevices
-          .map((d) => AnchorDeviceRecord.fromMap(
-                (d as Map).cast<String, Object?>(),
-              ))
+          .map(
+            (d) =>
+                AnchorDeviceRecord.fromMap((d as Map).cast<String, Object?>()),
+          )
           .toList(),
       prevAnchorCid: map['prev_anchor_cid'] as String?,
       reason: AnchorReason.parse(map['reason']! as String),

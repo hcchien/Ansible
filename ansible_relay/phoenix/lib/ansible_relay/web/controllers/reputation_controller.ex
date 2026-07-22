@@ -124,7 +124,9 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
               holder_did,
               entry.public_key_hex,
               entry.handle,
-              reputation_tier: tier
+              reputation_tier: tier,
+              signing_algorithm: Map.get(entry, :signing_algorithm, "ed25519"),
+              key_version: Map.get(entry, :key_version, 1)
             )
         end
 

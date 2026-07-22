@@ -45,7 +45,7 @@ class DidPlcManagerImpl implements DidPlcManager {
   final FlutterSecureStorage _secureStorage;
 
   DidPlcManagerImpl({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   @override
   Future<DidPlcResult?> loadDid() async {

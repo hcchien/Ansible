@@ -1,5 +1,114 @@
 part of 'settings_home_screen.dart';
 
+class _IdentityCustodyRow extends StatefulWidget {
+  const _IdentityCustodyRow({required this.did});
+  final String did;
+
+  @override
+  State<_IdentityCustodyRow> createState() => _IdentityCustodyRowState();
+}
+
+class _IdentityCustodyRowState extends State<_IdentityCustodyRow> {
+  late Future<CanonicalIdentity?> _identity;
+  bool _upgrading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _identity = const SecureCanonicalIdentityStore().load();
+  }
+
+  bool get _mobile => !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+
+  Future<void> _upgrade() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.uiCopy(zh: '升級身分金鑰', en: 'Upgrade identity key')),
+        content: Text(
+          context.uiCopy(
+            zh: '新私鑰會留在裝置安全硬體中且無法匯出。Elix 會用舊、新金鑰共同簽署 rotation；伺服器確認前不會切換。',
+            en: 'The new private key stays non-exportable in device hardware. Elix dual-signs the rotation and switches only after relay confirmation.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.uiCopy(zh: '升級', en: 'Upgrade')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _upgrading = true);
+    try {
+      await HardwareKeyUpgradeService().upgrade();
+      if (!mounted) return;
+      setState(() {
+        _identity = const SecureCanonicalIdentityStore().load();
+        _upgrading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(zh: '硬體金鑰升級完成', en: 'Hardware key upgrade complete'),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _upgrading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<CanonicalIdentity?>(
+      future: _identity,
+      builder: (context, snapshot) {
+        final hardware = snapshot.data?.custody == 'hardware';
+        final value = hardware
+            ? context.uiCopy(zh: '硬體保護', en: 'Hardware-backed')
+            : _mobile
+            ? context.uiCopy(zh: '可升級', en: 'Upgrade available')
+            : context.uiCopy(zh: '降低信任', en: 'Reduced trust');
+        return AnsibleSettingsRow(
+          key: const Key('settings_identity_custody_row'),
+          glyph: '◇',
+          label: context.uiCopy(zh: '身分金鑰保管', en: 'Identity key custody'),
+          en: 'KEY CUSTODY',
+          sub: hardware
+              ? context.uiCopy(
+                  zh: '私鑰不可匯出；簽章需要裝置授權',
+                  en: 'Non-exportable; signing requires device authorization',
+                )
+              : _mobile
+              ? context.uiCopy(
+                  zh: '將舊軟體金鑰安全輪替至裝置硬體',
+                  en: 'Safely rotate the legacy software key into device hardware',
+                )
+              : context.uiCopy(
+                  zh: 'Desktop 私鑰可匯出，不可管理高敏感 Issuer',
+                  en: 'Desktop keys are exportable and cannot administer sensitive issuers',
+                ),
+          value: _upgrading
+              ? context.uiCopy(zh: '升級中…', en: 'Upgrading…')
+              : value,
+          valueColor: hardware ? AnsibleDesign.spore : AnsibleDesign.ochre,
+          onTap: !hardware && _mobile && !_upgrading ? _upgrade : null,
+        );
+      },
+    );
+  }
+}
+
 class _LanguageSettingsRow extends StatelessWidget {
   const _LanguageSettingsRow({
     required this.localeController,
@@ -16,6 +125,7 @@ class _LanguageSettingsRow extends StatelessWidget {
     final controller = localeController;
     if (controller == null) {
       return AnsibleSettingsRow(
+        key: const Key('settings_language_row'),
         glyph: text.languageGlyph,
         label: text.language,
         en: 'LANGUAGE',
@@ -28,6 +138,7 @@ class _LanguageSettingsRow extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         return AnsibleSettingsRow(
+          key: const Key('settings_language_row'),
           glyph: text.languageGlyph,
           label: text.language,
           en: 'LANGUAGE',
@@ -443,8 +554,7 @@ class _ExternalContentSettingsRowState
   @override
   void initState() {
     super.initState();
-    _controller =
-        widget.controller ?? ExternalContentPreferencesController();
+    _controller = widget.controller ?? ExternalContentPreferencesController();
     if (!_controller.loaded) {
       _controller.load();
     }
@@ -461,10 +571,7 @@ class _ExternalContentSettingsRowState
             border: Border(
               bottom: widget.last
                   ? BorderSide.none
-                  : const BorderSide(
-                      color: AnsibleDesign.ruleSoft,
-                      width: 0.5,
-                    ),
+                  : const BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
             ),
           ),
           child: Row(
@@ -503,7 +610,8 @@ class _ExternalContentSettingsRowState
                     Text(
                       context.uiCopy(
                         zh: '在開放引入的看板顯示站外（未驗證）內容；預設關閉',
-                        en: 'Show unverified fediverse content on boards that '
+                        en:
+                            'Show unverified fediverse content on boards that '
                             'opt in; off by default',
                       ),
                       style: const TextStyle(
@@ -519,8 +627,7 @@ class _ExternalContentSettingsRowState
               Switch(
                 key: const Key('settings_show_external_switch'),
                 value: _controller.showExternal,
-                onChanged: (enabled) =>
-                    _controller.setShowExternal(enabled),
+                onChanged: (enabled) => _controller.setShowExternal(enabled),
               ),
             ],
           ),
@@ -529,4 +636,3 @@ class _ExternalContentSettingsRowState
     );
   }
 }
-

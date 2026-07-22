@@ -2,15 +2,18 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @moduledoc "Canonical JSON and verification for app-originated Forum Host intents."
 
   alias AnsibleRelay.ForumHost.Store
-  alias AnsibleRelay.{IdentityCache, SigVerifier}
+  alias AnsibleRelay.IdentityCache
 
   @create_board_type "io.trisaura.forum.createBoard"
   @create_board_action "create_board"
-  @create_board_version 1
+  @create_board_versions [1, 2]
   @update_board_type "io.trisaura.forum.updateBoard"
   @update_board_action "update_board"
-  @update_board_version 1
+  @update_board_versions [1, 2]
   @update_board_updatable_fields ~w(title description posting_policy)
+  @update_policy_type "io.trisaura.forum.updateBoardPolicy"
+  @update_policy_action "update_board_policy"
+  @update_policy_version 1
   @report_content_type "io.trisaura.forum.reportContent"
   @report_content_action "report_content"
   @report_content_version 1
@@ -27,14 +30,15 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
          :ok <- require_string(params, "created_at", :missing_created_at),
          :ok <- require_board_title(params),
          :ok <- require_type(params, @create_board_type),
-         :ok <- require_version(params, @create_board_version),
+         :ok <- require_version_in(params, @create_board_versions),
+         :ok <- require_create_board_policy(params),
          :ok <- require_action(params, @create_board_action),
          :ok <- require_target_host(params["target_forum_host"]),
          :ok <- require_timestamp_window(params),
-         {:ok, public_key_hex} <- public_key(params["author_did"]),
+         :ok <- known_did(params["author_did"]),
          true <-
-           SigVerifier.verify_ed25519(
-             public_key_hex,
+           IdentityCache.verify_signature(
+             params["author_did"],
              canonical_json(params),
              params["signature"]
            ) do
@@ -65,14 +69,15 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
          :ok <- require_string(params, "created_at", :missing_created_at),
          :ok <- require_update_board_payload(params),
          :ok <- require_type(params, @update_board_type),
-         :ok <- require_version(params, @update_board_version),
+         :ok <- require_version_in(params, @update_board_versions),
+         :ok <- require_policy_update_version(params),
          :ok <- require_action(params, @update_board_action),
          :ok <- require_target_host(params["target_forum_host"]),
          :ok <- require_timestamp_window(params),
-         {:ok, public_key_hex} <- public_key(params["author_did"]),
+         :ok <- known_did(params["author_did"]),
          true <-
-           SigVerifier.verify_ed25519(
-             public_key_hex,
+           IdentityCache.verify_signature(
+             params["author_did"],
              canonical_json(params),
              params["signature"]
            ) do
@@ -84,6 +89,49 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   def verify_update_board(_params), do: {:error, :invalid_intent}
+
+  def verify_update_board_policy(params) when is_map(params) do
+    with :ok <- require_string(params, "signature", :missing_signature),
+         :ok <- require_string(params, "author_did", :missing_author_did),
+         :ok <- require_string(params, "intent_id", :missing_intent_id),
+         :ok <- require_string(params, "board_id", :missing_board_id),
+         :ok <- require_string(params, "previous_policy_hash", :missing_previous_policy_hash),
+         :ok <- require_string(params, "target_forum_host", :missing_target_forum_host),
+         :ok <- require_string(params, "action", :missing_action),
+         :ok <- require_string(params, "created_at", :missing_created_at),
+         :ok <- require_string(params, "effective_at", :missing_effective_at),
+         :ok <- require_type(params, @update_policy_type),
+         :ok <- require_version(params, @update_policy_version),
+         :ok <- require_action(params, @update_policy_action),
+         :ok <- require_target_host(params["target_forum_host"]),
+         :ok <- require_timestamp_window(params),
+         {:ok, _effective_at, _} <- DateTime.from_iso8601(params["effective_at"]),
+         :ok <- require_policy_payload(params),
+         :ok <- known_did(params["author_did"]),
+         true <-
+           IdentityCache.verify_signature(
+             params["author_did"],
+             canonical_json(params),
+             params["signature"]
+           ) do
+      {:ok,
+       %{
+         intent_id: params["intent_id"],
+         author_did: params["author_did"],
+         board_id: params["board_id"],
+         previous_policy_hash: params["previous_policy_hash"],
+         new_policy: params["new_policy"],
+         effective_at: params["effective_at"],
+         approvals: params["approvals"] || %{}
+       }}
+    else
+      false -> {:error, :invalid_signature}
+      {:error, error} -> {:error, error}
+      _ -> {:error, :invalid_effective_at}
+    end
+  end
+
+  def verify_update_board_policy(_params), do: {:error, :invalid_intent}
 
   @doc """
   Verifies a `report_content` intent (the app rail for content reports).
@@ -103,10 +151,10 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
          :ok <- require_action(params, @report_content_action),
          :ok <- require_target_host(params["target_forum_host"]),
          :ok <- require_timestamp_window(params),
-         {:ok, public_key_hex} <- public_key(params["author_did"]),
+         :ok <- known_did(params["author_did"]),
          true <-
-           SigVerifier.verify_ed25519(
-             public_key_hex,
+           IdentityCache.verify_signature(
+             params["author_did"],
              canonical_json(params),
              params["signature"]
            ) do
@@ -137,7 +185,10 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
       {"tags", :tags},
       {"permissions", :permissions},
       {"posting_policy", :posting_policy},
-      {"moderation_policy", :moderation_policy}
+      {"moderation_policy", :moderation_policy},
+      {"access_policy", :access_policy},
+      {"content_visibility", :content_visibility},
+      {"federation_policy", :federation_policy}
     ]
     |> Enum.reduce(
       %{
@@ -167,7 +218,9 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
       %{
         intent_id: params["intent_id"],
         author_did: params["author_did"],
-        board_id: params["board_id"]
+        board_id: params["board_id"],
+        expected_policy_version: params["expected_policy_version"],
+        approvals: params["approvals"] || %{}
       },
       fn {payload_key, attr_key}, attrs ->
         # `has_key?` (not nil-check): an explicit empty description clears the
@@ -186,6 +239,9 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   # never applied.
   defp require_update_board_payload(%{"board" => %{} = board}) do
     cond do
+      Enum.any?(~w(access_policy content_visibility federation_policy), &Map.has_key?(board, &1)) ->
+        {:error, :policy_update_requires_separate_intent}
+
       not Enum.any?(@update_board_updatable_fields, &Map.has_key?(board, &1)) ->
         {:error, :invalid_board}
 
@@ -205,6 +261,33 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   defp require_update_board_payload(_params), do: {:error, :invalid_board}
+
+  defp require_policy_update_version(_params), do: :ok
+
+  defp require_policy_payload(%{"new_policy" => %{} = policy, "approvals" => approvals})
+       when is_map(approvals) do
+    expected = MapSet.new(~w(access_policy content_visibility federation_policy))
+    keys = policy |> Map.keys() |> Enum.map(&to_string/1) |> MapSet.new()
+
+    cond do
+      keys != expected ->
+        {:error, :invalid_access_policy}
+
+      not is_map(policy["access_policy"]) ->
+        {:error, :invalid_access_policy}
+
+      policy["content_visibility"] not in ["public", "host_visible", "end_to_end_encrypted"] ->
+        {:error, :invalid_access_policy}
+
+      not is_map(policy["federation_policy"]) ->
+        {:error, :invalid_access_policy}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp require_policy_payload(_), do: {:error, :invalid_access_policy}
 
   defp report_content_attrs(params) do
     report = params["report"]
@@ -264,11 +347,35 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
 
   defp require_board_title(_params), do: {:error, :invalid_board}
 
+  defp require_create_board_policy(%{"version" => 1}), do: :ok
+
+  defp require_create_board_policy(%{"version" => 2, "board" => %{} = board}) do
+    with %{} = policy <- board["access_policy"],
+         :ok <- AnsibleRelay.ForumHost.BoardAccessPolicy.validate(policy),
+         visibility when is_binary(visibility) <- board["content_visibility"],
+         true <- visibility == policy["content_visibility"],
+         %{} = federation <- board["federation_policy"],
+         true <- federation["mode"] == policy["federation"] do
+      :ok
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_access_policy}
+    end
+  end
+
+  defp require_create_board_policy(_params), do: {:error, :invalid_access_policy}
+
   defp require_type(%{"type" => expected}, expected), do: :ok
   defp require_type(_params, _expected), do: {:error, :invalid_intent_type}
 
   defp require_version(%{"version" => expected}, expected), do: :ok
   defp require_version(_params, _expected), do: {:error, :invalid_intent_version}
+
+  defp require_version_in(%{"version" => version}, allowed) do
+    if version in allowed, do: :ok, else: {:error, :invalid_intent_version}
+  end
+
+  defp require_version_in(_params, _allowed), do: {:error, :invalid_intent_version}
 
   defp require_action(%{"action" => expected}, expected), do: :ok
   defp require_action(_params, _expected), do: {:error, :invalid_action}
@@ -347,16 +454,7 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
     )
   end
 
-  defp public_key(did) do
-    if IdentityCache.verified?(did) do
-      case IdentityCache.public_key_hex(did) do
-        public_key_hex when is_binary(public_key_hex) -> {:ok, public_key_hex}
-        _missing -> {:error, :unknown_did}
-      end
-    else
-      {:error, :unknown_did}
-    end
-  end
+  defp known_did(did), do: if(IdentityCache.verified?(did), do: :ok, else: {:error, :unknown_did})
 
   # Loopback hosts are treated as one identity so that an app pointed at
   # `127.0.0.1` and a relay self-reporting `localhost` (or `::1`) still agree

@@ -63,9 +63,9 @@ class _RecoveryVetoDialogState extends State<_RecoveryVetoDialog> {
       await widget.vetoService.veto(did: widget.did, pending: widget.pending);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text(doneMessage)),
-      );
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(doneMessage)));
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -108,9 +108,11 @@ class _RecoveryVetoDialogState extends State<_RecoveryVetoDialog> {
         children: [
           Text(
             context.uiCopy(
-              zh: '有人正在用備份復原這個身分。如果是你自己在另一台裝置上發起的，可以忽略；'
+              zh:
+                  '有人正在用備份復原這個身分。如果是你自己在另一台裝置上發起的，可以忽略；'
                   '如果不是，請立即否決 — 帳號會被凍結，復原將無法完成。',
-              en: 'Someone is recovering this identity from a backup. If you '
+              en:
+                  'Someone is recovering this identity from a backup. If you '
                   'started this on another device, you can ignore it; if not, '
                   'veto now — the account freezes and the recovery cannot '
                   'complete.',
@@ -125,10 +127,7 @@ class _RecoveryVetoDialogState extends State<_RecoveryVetoDialog> {
           if (grace != null) ...[
             const SizedBox(height: 12),
             Text(
-              context.uiCopy(
-                zh: '寬限期至 $grace',
-                en: 'Grace window ends $grace',
-              ),
+              context.uiCopy(zh: '寬限期至 $grace', en: 'Grace window ends $grace'),
               style: const TextStyle(
                 fontFamily: AnsibleDesign.mono,
                 fontSize: 11,
@@ -141,10 +140,7 @@ class _RecoveryVetoDialogState extends State<_RecoveryVetoDialog> {
             Text(
               _error!,
               key: const Key('recovery_veto_error'),
-              style: const TextStyle(
-                fontSize: 13,
-                color: AnsibleDesign.ember,
-              ),
+              style: const TextStyle(fontSize: 13, color: AnsibleDesign.ember),
             ),
           ],
         ],

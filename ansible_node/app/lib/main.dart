@@ -47,12 +47,9 @@ void main() {
   // backend once via `ErrorReporter.instance = ...` (see error_reporter.dart).
   // Framework errors (build/layout/paint) and async/platform errors both flow
   // here, so there is one place to plug in crash reporting.
-  runZonedGuarded(
-    _bootstrap,
-    (error, stack) {
-      ErrorReporter.instance.report(error, stack, fatal: true, context: 'zone');
-    },
-  );
+  runZonedGuarded(_bootstrap, (error, stack) {
+    ErrorReporter.instance.report(error, stack, fatal: true, context: 'zone');
+  });
 }
 
 Future<void> _bootstrap() async {
@@ -74,7 +71,12 @@ Future<void> _bootstrap() async {
   // channels / microtasks outside a guarded zone). Returning true marks them
   // handled so they don't also crash the isolate.
   PlatformDispatcher.instance.onError = (error, stack) {
-    ErrorReporter.instance.report(error, stack, fatal: true, context: 'platform');
+    ErrorReporter.instance.report(
+      error,
+      stack,
+      fatal: true,
+      context: 'platform',
+    );
     return true;
   };
 
@@ -102,7 +104,12 @@ Future<void> _bootstrap() async {
   } catch (error, stack) {
     // A failure before runApp() otherwise shows a blank screen with no clue.
     // Surface it on-device so startup problems are diagnosable, and report it.
-    ErrorReporter.instance.report(error, stack, fatal: true, context: 'startup');
+    ErrorReporter.instance.report(
+      error,
+      stack,
+      fatal: true,
+      context: 'startup',
+    );
     runApp(_BootErrorApp(error: error, stack: stack));
   }
 }

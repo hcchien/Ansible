@@ -9,7 +9,19 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
   import Plug.Conn
   alias AnsibleRelay.AbuseDetector
-  alias AnsibleRelay.ForumHost.{Moderation, PostingGate, SignedIntent, Store}
+
+  alias AnsibleRelay.ForumHost.{
+    BoardAccessPolicy,
+    BoardCapability,
+    BoardVpVerifier,
+    Moderation,
+    PostingGate,
+    PresentationSession,
+    SignedIntent,
+    Store,
+    TrustedMembershipIssuer
+  }
+
   alias AnsibleRelay.Web.Plugs.VerifyWebSession
 
   def info(conn, _params) do
@@ -17,7 +29,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   end
 
   def boards(conn, _params) do
-    send_json(conn, 200, %{boards: Store.list_boards()})
+    send_json(conn, 200, %{boards: Store.list_public_boards()})
   end
 
   # GET /api/v1/forum-host/boards/created-by/:did — boards this DID authored, so
@@ -37,12 +49,20 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
         send_json(conn, 404, %{error: "thread_not_found"})
 
       op ->
-        case Moderation.overlay_ops([op]) do
-          [%{removed: true, reason_code: reason}] ->
-            send_json(conn, 404, %{error: "thread_removed", reason_code: reason})
+        board_id = decode_op_payload(op.payload)["boardId"]
 
-          [visible] ->
-            send_json(conn, 200, thread_preview_body(thread_id, visible))
+        case PostingGate.get_board(board_id) do
+          %{content_visibility: "public", access_policy: %{"discovery" => "public"}} ->
+            case Moderation.overlay_ops([op]) do
+              [%{removed: true, reason_code: reason}] ->
+                send_json(conn, 404, %{error: "thread_removed", reason_code: reason})
+
+              [visible] ->
+                send_json(conn, 200, thread_preview_body(thread_id, visible))
+            end
+
+          _ ->
+            send_json(conn, 404, %{error: "board_hidden"})
         end
     end
   end
@@ -108,6 +128,118 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     send_json(conn, 200, %{announcements: Store.list_announcements("forum_host")})
   end
 
+  def access_requirements(conn, board_id) do
+    case PostingGate.get_board(board_id) do
+      nil ->
+        send_json(conn, 404, %{error: "board_not_found"})
+
+      board ->
+        send_json(conn, 200, %{
+          board_id: board.hosted_board_id,
+          host: Store.base_url(),
+          policy: board.access_policy,
+          policy_version: board.access_policy_version,
+          content_visibility: board.content_visibility
+        })
+    end
+  end
+
+  def policy_history(conn, board_id) do
+    case PostingGate.get_board(board_id) do
+      nil ->
+        send_json(conn, 404, %{error: "board_not_found"})
+
+      board ->
+        versions =
+          board.hosted_board_id
+          |> Store.list_board_policy_versions()
+          |> Enum.map(fn version ->
+            %{
+              version: version.version,
+              policy_hash: version.policy_hash,
+              policy: version.canonical_policy,
+              approval_count: map_size(version.approvals),
+              effective_at: version.effective_at,
+              superseded_at: version.superseded_at
+            }
+          end)
+
+        send_json(conn, 200, %{board_id: board.hosted_board_id, versions: versions})
+    end
+  end
+
+  def presentation_options(conn, board_id, params) do
+    action = parse_access_action(params["action"] || "read")
+
+    with board when not is_nil(board) <- PostingGate.get_board(board_id),
+         {:ok, requirement} <- BoardAccessPolicy.requirement_for(board.access_policy, action),
+         false <- requirement in ["public", "posting_policy", "board_moderator"],
+         {:ok, nonce, state} <- PresentationSession.issue(board, Store.base_url(), action) do
+      definition = presentation_definition(board, requirement)
+      request_uri = oid4vp_request_uri(board, nonce, state, definition)
+
+      send_json(conn, 200, %{
+        request_uri: request_uri,
+        nonce: nonce,
+        state: state,
+        expires_in: 120,
+        policy_version: board.access_policy_version
+      })
+    else
+      nil -> send_json(conn, 404, %{error: "board_not_found"})
+      true -> send_json(conn, 409, %{error: "credential_not_required"})
+      {:error, reason} -> send_json(conn, 422, %{error: error_string(reason)})
+    end
+  end
+
+  def verify_presentation(conn, board_id, params) do
+    action = parse_access_action(params["action"] || "read")
+    state = params["state"]
+    vp_token = params["vp_token"]
+
+    with true <- is_binary(state) and is_binary(vp_token),
+         board when not is_nil(board) <- PostingGate.get_board(board_id),
+         {:ok, session} <- PresentationSession.consume(state, board_id),
+         true <-
+           session.policy_version == board.access_policy_version and
+             session.audience == Store.base_url() and
+             session.action == Atom.to_string(action),
+         {:ok, nonce} <- BoardVpVerifier.nonce(vp_token),
+         true <- PresentationSession.matches_nonce?(session, nonce),
+         {:ok, requirement} <- BoardAccessPolicy.requirement_for(board.access_policy, action),
+         {:ok, result} <-
+           BoardVpVerifier.verify(
+             vp_token,
+             board.access_policy,
+             requirement,
+             nonce,
+             Store.base_url(),
+             board_id: board.hosted_board_id,
+             issuer_resolver: &TrustedMembershipIssuer.resolve/2,
+             status_checker: &credential_status/2
+           ),
+         {:ok, capability, grant} <-
+           BoardCapability.issue(
+             board,
+             result.pairwise_subject,
+             result.device_key_thumbprint,
+             capability_scopes(board, action)
+           ) do
+      send_json(conn, 200, %{
+        board_capability: capability,
+        token_type: "Bearer",
+        expires_at: grant.expires_at,
+        scopes: grant.scopes,
+        policy_version: grant.policy_version,
+        device_key_thumbprint: grant.device_key_thumbprint
+      })
+    else
+      nil -> send_json(conn, 404, %{error: "board_not_found"})
+      {:error, reason} -> send_json(conn, 403, %{error: error_string(reason)})
+      _ -> send_json(conn, 400, %{error: "invalid_presentation"})
+    end
+  end
+
   def create_board(conn, params) do
     case SignedIntent.verify_create_board(params) do
       {:ok, intent} ->
@@ -151,13 +283,60 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     end
   end
 
+  def update_board_policy(conn, board_id, params) do
+    case SignedIntent.verify_update_board_policy(params) do
+      {:ok, intent} when intent.board_id == board_id ->
+        case Store.update_board_policy(intent) do
+          {:ok, board} ->
+            send_json(conn, 200, board)
+
+          {:error, :board_not_found} ->
+            send_json(conn, 404, %{error: "board_not_found"})
+
+          {:error, reason}
+          when reason in [:policy_hash_conflict, :policy_change_pending, :duplicate_intent] ->
+            send_json(conn, 409, %{error: error_string(reason)})
+
+          {:error, reason} when reason in [:not_board_creator, :not_board_governor] ->
+            send_json(conn, 403, %{error: error_string(reason)})
+
+          {:error, reason} ->
+            send_json(conn, 422, %{error: error_string(reason)})
+        end
+
+      {:ok, _intent} ->
+        send_json(conn, 422, %{error: "board_id_mismatch"})
+
+      {:error, error} when error in [:invalid_signature, :missing_signature, :unknown_did] ->
+        send_json(conn, 401, %{error: "invalid_signature"})
+
+      {:error, :audience_mismatch} ->
+        send_json(conn, 403, %{error: "audience_mismatch"})
+
+      {:error, error} ->
+        send_json(conn, 422, %{error: error_string(error)})
+    end
+  end
+
   defp apply_board_update(conn, intent) do
     case Store.update_board(intent) do
-      {:ok, board} -> send_json(conn, 200, board)
-      {:error, :board_not_found} -> send_json(conn, 404, %{error: "board_not_found"})
-      {:error, :not_board_creator} -> send_json(conn, 403, %{error: "not_board_creator"})
-      {:error, :duplicate_intent} -> send_json(conn, 409, %{error: "duplicate_intent"})
-      {:error, error} -> send_json(conn, 422, %{error: error_string(error)})
+      {:ok, board} ->
+        send_json(conn, 200, board)
+
+      {:error, :board_not_found} ->
+        send_json(conn, 404, %{error: "board_not_found"})
+
+      {:error, :not_board_creator} ->
+        send_json(conn, 403, %{error: "not_board_creator"})
+
+      {:error, :duplicate_intent} ->
+        send_json(conn, 409, %{error: "duplicate_intent"})
+
+      {:error, :policy_version_conflict} ->
+        send_json(conn, 409, %{error: "policy_version_conflict"})
+
+      {:error, error} ->
+        send_json(conn, 422, %{error: error_string(error)})
     end
   end
 
@@ -173,7 +352,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
         with {:ok, board} <- resolve_web_thread_board(params),
              # Tier gate runs at acceptance time on the session DID — cookie
              # writes get the identical posting_policy check as signed ops.
-             :ok <- PostingGate.authorize_post(board, conn.assigns.verified_did),
+             :ok <- PostingGate.authorize_board_post(conn, board, conn.assigns.verified_did),
              # Lock gate: posting into a locked thread is rejected at the
              # same chokepoint, with the lock's reason code.
              :ok <- authorize_web_thread_lock(params),
@@ -199,6 +378,15 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
           {:error, :rate_limited, detail} ->
             send_json(conn, 429, %{error: "rate_limited", detail: detail})
+
+          {:error, reason}
+          when reason in [
+                 :board_capability_required,
+                 :invalid_board_capability,
+                 :capability_expired,
+                 :board_capability_replay
+               ] ->
+            send_json(conn, 403, %{error: Atom.to_string(reason)})
         end
       else
         send_json(conn, 422, %{error: "invalid_thread"})
@@ -354,6 +542,81 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   end
 
   defp parse_report_id(_value), do: nil
+
+  defp parse_access_action("discover"), do: :discovery
+  defp parse_access_action("read"), do: :read
+  defp parse_access_action("post"), do: :post
+  defp parse_access_action("moderate"), do: :moderate
+  defp parse_access_action(_), do: :invalid
+
+  defp scope_for(:discovery), do: "discover"
+  defp scope_for(action), do: Atom.to_string(action)
+
+  defp capability_scopes(%{content_visibility: "end_to_end_encrypted"}, action)
+       when action in [:read, :moderate],
+       do: [scope_for(action), "key:read"]
+
+  defp capability_scopes(_board, action), do: [scope_for(action)]
+
+  defp presentation_definition(board, requirement) do
+    rule = board.access_policy["requirements"][requirement]
+
+    claim_fields =
+      Enum.map(rule["claims"], fn claim ->
+        %{
+          "path" => ["$.vc.credentialSubject.#{claim["path"]}"],
+          "filter" => %{"const" => claim["value"]}
+        }
+      end)
+
+    %{
+      "id" => "board-#{board.hosted_board_id}-policy-#{board.access_policy_version}",
+      "input_descriptors" => [
+        %{
+          "id" => requirement,
+          "format" => %{"jwt_vc_json" => %{"alg" => ["EdDSA"]}},
+          "constraints" => %{
+            "fields" => [
+              %{
+                "path" => ["$.vc.type"],
+                "filter" => %{"contains" => %{"const" => rule["credential_type"]}}
+              }
+              | claim_fields
+            ]
+          }
+        }
+      ]
+    }
+  end
+
+  defp oid4vp_request_uri(board, nonce, state, definition) do
+    query =
+      URI.encode_query(%{
+        "client_id" => Store.base_url(),
+        "response_type" => "vp_token",
+        "response_mode" => "direct_post",
+        "response_uri" =>
+          "#{Store.base_url()}/api/v1/forum-host/boards/#{board.hosted_board_id}/presentation/verify",
+        "nonce" => nonce,
+        "state" => state,
+        "presentation_definition" => Jason.encode!(definition)
+      })
+
+    "openid4vp://authorize?" <> query
+  end
+
+  defp credential_status(status, now) do
+    module =
+      Application.get_env(
+        :ansible_relay,
+        :board_credential_status_checker,
+        AnsibleRelay.ForumHost.BitstringStatusChecker
+      )
+
+    if is_atom(module) and function_exported?(module, :check, 2),
+      do: module.check(status, now),
+      else: :unavailable
+  end
 
   # board_id is optional for backward compatibility (the endpoint predates
   # board-scoped web threads), but when present it must resolve to a hosted

@@ -81,12 +81,16 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   }
 
   Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
-  Color get _deep => _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
+  Color get _deep =>
+      _dark ? AnsibleDesign.darkPaperDeep : AnsibleDesign.paperDeep;
   Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
-  Color get _muted => _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
-  Color get _faint => _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _muted =>
+      _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint =>
+      _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
   Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
-  Color get _ruleSoft => _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _ruleSoft =>
+      _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
   Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
   Color get _danger => _dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
 
@@ -382,48 +386,45 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     return ElixScreenStyleScope(
       style: widget.screenStyle,
       child: AnsibleScreenScaffold(
-      title: context.uiCopy(zh: '貼文', en: 'POST'),
-      leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
-      child: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 16),
-              children: [
-                _head(context),
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 28),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+        title: context.uiCopy(zh: '貼文', en: 'POST'),
+        leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 16),
+                children: [
+                  _head(context),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 28),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                    ),
-                  )
-                else if (_comments.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                    child: Text(
-                      context.uiCopy(
-                        zh: '還沒有留言，搶頭香！',
-                        en: 'No comments yet — be the first.',
+                    )
+                  else if (_comments.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                      child: Text(
+                        context.uiCopy(
+                          zh: '還沒有留言，搶頭香！',
+                          en: 'No comments yet — be the first.',
+                        ),
+                        style: TextStyle(fontSize: 13, color: _faint),
                       ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: _faint,
-                      ),
-                    ),
-                  )
-                else
-                  for (final c in _comments) _commentRow(context, c),
-              ],
+                    )
+                  else
+                    for (final c in _comments) _commentRow(context, c),
+                ],
+              ),
             ),
-          ),
-          _composerBar(context),
-        ],
-      ),
+            _composerBar(context),
+          ],
+        ),
       ),
     );
   }
@@ -433,9 +434,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: _rule, width: 0.5),
-        ),
+        border: Border(bottom: BorderSide(color: _rule, width: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,10 +542,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           width: 40,
           height: 40,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: _accent,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: _accent, shape: BoxShape.circle),
           child: Text(
             initial,
             style: TextStyle(
@@ -595,9 +591,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: _ruleSoft, width: 0.5),
-        ),
+        border: Border(bottom: BorderSide(color: _ruleSoft, width: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,11 +614,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   height: 22,
                   child: PopupMenuButton<String>(
                     padding: EdgeInsets.zero,
-                    icon: Icon(
-                      Icons.more_horiz,
-                      size: 18,
-                      color: _faint,
-                    ),
+                    icon: Icon(Icons.more_horiz, size: 18, color: _faint),
                     onSelected: (v) {
                       if (v == 'edit') _editComment(c);
                       if (v == 'delete') _deleteComment(c);

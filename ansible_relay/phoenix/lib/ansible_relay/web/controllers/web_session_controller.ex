@@ -3,7 +3,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.{AbuseDetector, IdentityCache, SigVerifier, WebSessionStore}
+  alias AnsibleRelay.{AbuseDetector, IdentityCache, WebSessionStore}
 
   @allowed_scopes MapSet.new(["forum:read", "forum:post", "forum:reply", "identity:display"])
   @max_challenge_ttl_seconds 900
@@ -72,8 +72,8 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
          :ok <- validate_grant(challenge, grant, subject_did),
          {:ok, grant_expires_at} <- parse_datetime(grant["expires_at"]),
          :ok <- validate_session_lifetime(grant_expires_at),
-         {:ok, public_key} <- public_key_for(subject_did),
-         true <- SigVerifier.verify_ed25519(public_key, canonical_json(grant), signature),
+         :ok <- verified_did(subject_did),
+         true <- IdentityCache.verify_signature(subject_did, canonical_json(grant), signature),
          {:ok, session} <-
            WebSessionStore.approve_challenge(challenge_id, %{
              subject_did: subject_did,
@@ -436,12 +436,8 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
     end
   end
 
-  defp public_key_for(did) do
-    case IdentityCache.public_key_hex(did) do
-      nil -> {:error, :unverified_did}
-      public_key -> {:ok, public_key}
-    end
-  end
+  defp verified_did(did),
+    do: if(IdentityCache.verified?(did), do: :ok, else: {:error, :unverified_did})
 
   defp require_string(params, key) do
     case Map.get(params, key) do
