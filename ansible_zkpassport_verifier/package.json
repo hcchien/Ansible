@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "esbuild src/server.js --bundle --platform=node --format=cjs --target=node22 --outfile=dist/server.cjs",
+    "build": "esbuild src/server.js --bundle --packages=external --platform=node --format=cjs --target=node22 --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "test": "node --test"
   },

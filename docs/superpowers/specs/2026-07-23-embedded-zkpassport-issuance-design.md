@@ -271,6 +271,10 @@ consistent with actual behavior.
 The feature is not complete until:
 
 - no release path calls the placeholder Groth16 prover;
+- the verifier container preserves the SDK package layout and its pinned
+  Barretenberg WASM assets; bundling must not rewrite WASM lookup paths, and a
+  packaging regression test must fail when the SDK is folded into the server
+  bundle;
 - challenge replay, mutation, wrong-DID, wrong-origin, wrong-key, wrong-root,
   expired-document, and malformed-proof tests fail closed;
 - a real supported passport succeeds end to end in dev;
