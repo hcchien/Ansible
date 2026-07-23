@@ -87,14 +87,16 @@ import UIKit
         }
       case "prepare":
         guard let manifest = args["manifest_json"] as? String,
-              let size = args["circuit_size"] as? Int else {
+              let size = args["circuit_size"] as? Int,
+              let srsPath = args["srs_path"] as? String,
+              !srsPath.isEmpty else {
           result(FlutterError(code: "invalid_arguments", message: "Missing pinned circuit artifacts", details: nil))
           return
         }
         self.zkPassportProver.prepare(
           manifestJSON: manifest,
           circuitSize: UInt32(size),
-          srsPath: Bundle.main.path(forResource: "srs_21", ofType: "local") ?? ""
+          srsPath: srsPath
         ) { outcome in complete(outcome.map { $0 as Any }) }
       case "prove":
         guard let circuitID = args["circuit_id"] as? String,

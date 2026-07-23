@@ -72,6 +72,23 @@ abstract class ZkpProver {
   });
 }
 
+abstract class ZkpSrsProvider {
+  Future<String> acquire();
+
+  Future<void> release(String path);
+}
+
+class MissingZkpSrsProvider implements ZkpSrsProvider {
+  const MissingZkpSrsProvider();
+
+  @override
+  Future<String> acquire() =>
+      Future.error(StateError('No ZKPassport SRS provider is configured.'));
+
+  @override
+  Future<void> release(String path) async {}
+}
+
 class ZkpProverException implements Exception {
   const ZkpProverException(this.stage, this.cause);
 
@@ -84,9 +101,13 @@ class ZkpProverException implements Exception {
 
 /// Embedded ZKPassport prover backed by the native iOS Swoir runtime.
 class ZkpProverImpl implements ZkpProver {
-  const ZkpProverImpl({this.backend = const SwoirZkPassportBackend()});
+  const ZkpProverImpl({
+    this.backend = const SwoirZkPassportBackend(),
+    this.srsProvider = const MissingZkpSrsProvider(),
+  });
 
   final SwoirZkPassportBackend backend;
+  final ZkpSrsProvider srsProvider;
 
   @override
   Future<ZkpProof> prove({
@@ -134,7 +155,13 @@ class ZkpProverImpl implements ZkpProver {
       throw StateError('ZKPassport proof plan is incomplete.');
     }
     final proofResults = <Map<String, Object?>>[];
+    String? srsPath;
     try {
+      try {
+        srsPath = await srsProvider.acquire();
+      } on Object catch (error) {
+        throw ZkpProverException('srs-download', error);
+      }
       for (final rawCircuit in circuits) {
         final circuit = Map<String, Object?>.from(
           rawCircuit! as Map<Object?, Object?>,
@@ -152,6 +179,7 @@ class ZkpProverImpl implements ZkpProver {
           circuitId = await backend.prepare(
             manifestJson: jsonEncode(manifest),
             circuitSize: max(500000, circuit['size']! as int),
+            srsPath: srsPath!,
           );
         } on Object catch (error) {
           throw ZkpProverException('prepare:$name', error);
@@ -190,6 +218,10 @@ class ZkpProverImpl implements ZkpProver {
       }
     } finally {
       await backend.clear();
+      final acquiredSrsPath = srsPath;
+      if (acquiredSrsPath != null) {
+        await srsProvider.release(acquiredSrsPath);
+      }
     }
     final envelope = jsonEncode({
       'proofs': proofResults,

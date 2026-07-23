@@ -173,13 +173,36 @@ No React Native UI, analytics, activity reporting, cloud prover, sanctions
 service, FaceMatch, bridge, dashboard, or ZKPassport account dependency is
 included in the initial Elix integration.
 
+### On-demand SRS lifecycle
+
+The approximately 128 MB public SRS is not bundled in the iOS or Android
+application. It is fetched only when the user starts the one-time passport
+proof flow:
+
+1. the app clearly discloses the download size and shows progress;
+2. the Flutter artifact manager downloads from the pinned HTTPS origin without
+   attaching identity, passport, challenge, or analytics data;
+3. it checks the exact byte length and pinned SHA-256 before giving the local
+   path to the native prover;
+4. it stores the verified file only in the application's temporary private
+   directory; and
+5. it deletes both complete and partial files after proof completion or
+   failure. A later retry downloads and verifies a fresh copy.
+
+Failure to download, verify, or remove the SRS must never cause passport data to
+be sent to a cloud prover. An interrupted process may leave an OS-managed
+temporary file; the next acquisition deletes stale complete and partial files
+before downloading, and the operating system may independently purge the
+temporary directory.
+
 ## Artifact Supply Chain
 
 - A signed Elix manifest maps protocol versions to allowed circuit names,
   artifact SHA-256 values, verification-key hashes, SRS hash, and registry root.
 - Dev and production use separate signed manifests.
 - Updates require an app-supported protocol version and an Elix signature.
-- Previously verified artifacts may be cached with file protection.
+- Small, previously verified circuit artifacts may be cached with file
+  protection. The SRS follows the stricter one-attempt lifecycle above.
 - Circuit download failure must not fall back to the old Groth16 placeholder.
 - The existing placeholder prover and `dev-*` proof acceptance must be removed
   from all release paths.
@@ -214,4 +237,3 @@ The feature is not complete until:
 - logs and crash reports are checked for forbidden fields;
 - iOS and Android release artifacts use pinned prover and circuit material;
 - Issuer readiness reports the exact enabled passport protocol version.
-

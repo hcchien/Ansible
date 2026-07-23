@@ -21,7 +21,6 @@
 		A11CE0032F00000100000001 /* ZKPassportProver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0042F00000100000001 /* ZKPassportProver.swift */; };
 		A11CE0062F00000100000001 /* PassportMRZScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0072F00000100000001 /* PassportMRZScanner.swift */; };
 		A11CE0082F00000100000001 /* ZKPassportInputRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0092F00000100000001 /* ZKPassportInputRuntime.swift */; };
-		A11CE00A2F00000100000001 /* srs_21.local in Resources */ = {isa = PBXBuildFile; fileRef = A11CE00B2F00000100000001 /* srs_21.local */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,7 +74,6 @@
 		A11CE0042F00000100000001 /* ZKPassportProver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZKPassportProver.swift; sourceTree = "<group>"; };
 		A11CE0072F00000100000001 /* PassportMRZScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassportMRZScanner.swift; sourceTree = "<group>"; };
 		A11CE0092F00000100000001 /* ZKPassportInputRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZKPassportInputRuntime.swift; sourceTree = "<group>"; };
-		A11CE00B2F00000100000001 /* srs_21.local */ = {isa = PBXFileReference; lastKnownFileType = file; path = srs_21.local; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,7 +123,6 @@
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
-				A11CE00B2F00000100000001 /* srs_21.local */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				9D3D24EA0EEAB062F45AB5D1 /* Pods */,
@@ -289,7 +286,6 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
-				A11CE00A2F00000100000001 /* srs_21.local in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

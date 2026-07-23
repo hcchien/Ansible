@@ -3,7 +3,6 @@
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-"$APP_DIR/scripts/prepare_zkpassport_srs.sh"
 
 IOS_DEVICE_ID="${IOS_DEVICE_ID:-}"
 IOS_DEVICE_CONNECTION="${IOS_DEVICE_CONNECTION:-wireless}"

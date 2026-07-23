@@ -29,6 +29,7 @@ void main() {
     final circuit = await backend.prepare(
       manifestJson: '{"version":"0.20.0"}',
       circuitSize: 1024,
+      srsPath: '/tmp/srs-21.local',
     );
     final proof = await backend.prove(
       circuitId: circuit,
@@ -86,7 +87,8 @@ void main() {
           return null;
         });
 
-    final proof = await const ZkpProverImpl().prove(
+    final srsProvider = _FakeZkpSrsProvider();
+    final proof = await ZkpProverImpl(srsProvider: srsProvider).prove(
       passport: const PassportData(
         documentNumber: '123456789',
         dateOfBirth: '720129',
@@ -113,6 +115,14 @@ void main() {
     expect(calls.where((call) => call.method == 'prove'), hasLength(5));
     expect(calls.where((call) => call.method == 'verify'), hasLength(5));
     expect(calls.where((call) => call.method == 'clear'), hasLength(1));
+    expect(srsProvider.acquisitions, 1);
+    expect(srsProvider.releases, ['/tmp/srs-21.local']);
+    for (final call in calls.where((call) => call.method == 'prepare')) {
+      expect(
+        (call.arguments as Map<Object?, Object?>)['srs_path'],
+        '/tmp/srs-21.local',
+      );
+    }
 
     final request = Map<Object?, Object?>.from(
       planArguments!['request']! as Map<Object?, Object?>,
@@ -124,4 +134,20 @@ void main() {
     expect(proof.proofHex, isNot(contains('123456789')));
     expect(proof.proofHex, isNot(contains('single-use-nonce')));
   });
+}
+
+class _FakeZkpSrsProvider implements ZkpSrsProvider {
+  int acquisitions = 0;
+  final List<String> releases = [];
+
+  @override
+  Future<String> acquire() async {
+    acquisitions += 1;
+    return '/tmp/srs-21.local';
+  }
+
+  @override
+  Future<void> release(String path) async {
+    releases.add(path);
+  }
 }

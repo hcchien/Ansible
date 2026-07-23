@@ -11,6 +11,7 @@ import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/passport_local_id_service.dart';
 import '../services/vc_issuer_client.dart';
+import '../services/zkpassport_srs_service.dart';
 import 'mobilemoica_rp_credential_screen.dart';
 
 enum CredentialIssuanceFlow { twProvider, passportNfc, emailOtp }
@@ -220,9 +221,11 @@ class _PassportNfcCredentialPanelState
   late final PassportMrzScanner _passportMrzScanner;
   late final PassportLocalIdService _passportLocalIdService;
   late final ZkpProver _passportZkpProver;
+  ZkpSrsProvider? _passportSrsProvider;
 
   _PassportNfcPhase _phase = _PassportNfcPhase.idle;
   String? _errorMessage;
+  double? _srsDownloadProgress;
   bool _scanningMrz = false;
   final _documentNumberController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
@@ -245,7 +248,20 @@ class _PassportNfcCredentialPanelState
         widget.passportMrzScanner ?? const PlatformPassportMrzScanner();
     _passportLocalIdService =
         widget.passportLocalIdService ?? const PassportLocalIdService();
-    _passportZkpProver = widget.passportZkpProver ?? const ZkpProverImpl();
+    final injectedProver = widget.passportZkpProver;
+    if (injectedProver != null) {
+      _passportZkpProver = injectedProver;
+    } else {
+      _passportSrsProvider = ZkPassportSrsService(
+        onProgress: (received, total) {
+          if (!mounted || total <= 0) return;
+          setState(() {
+            _srsDownloadProgress = (received / total).clamp(0, 1);
+          });
+        },
+      );
+      _passportZkpProver = ZkpProverImpl(srsProvider: _passportSrsProvider!);
+    }
   }
 
   String _copy({required String zh, required String en}) =>
@@ -266,6 +282,7 @@ class _PassportNfcCredentialPanelState
       dateOfBirth: _dateOfBirthController.text,
       dateOfExpiry: _dateOfExpiryController.text,
     );
+    String? preloadedSrsPath;
     try {
       accessData.validate();
     } on FormatException {
@@ -290,6 +307,7 @@ class _PassportNfcCredentialPanelState
     setState(() {
       _phase = _PassportNfcPhase.scanning;
       _errorMessage = null;
+      _srsDownloadProgress = null;
     });
 
     try {
@@ -352,6 +370,9 @@ class _PassportNfcCredentialPanelState
       if (!mounted) return;
       setState(() => _phase = _PassportNfcPhase.issuing);
 
+      // Download the large public parameter file before requesting the
+      // five-minute, single-use Issuer challenge.
+      preloadedSrsPath = await _passportSrsProvider?.acquire();
       final challenge = await _vcIssuerClient.requestPassportChallenge(
         did: widget.holderDid,
       );
@@ -434,6 +455,11 @@ class _PassportNfcCredentialPanelState
         _phase = _PassportNfcPhase.idle;
         _errorMessage = _formatError(error);
       });
+    } finally {
+      final path = preloadedSrsPath;
+      if (path != null) {
+        await _passportSrsProvider?.release(path);
+      }
     }
   }
 
@@ -567,6 +593,17 @@ class _PassportNfcCredentialPanelState
             context,
           ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
         ),
+        const SizedBox(height: 8),
+        Text(
+          _copy(
+            zh: '產生一次性護照證明時會下載約 128 MB 的公開密碼學參數；驗證雜湊後只在本機暫存，完成或失敗後立即刪除。',
+            en: 'Creating the one-time passport proof downloads about 128 MB of public cryptographic parameters. They are hash-verified, kept temporarily on this device, and deleted after success or failure.',
+          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+        ),
         const SizedBox(height: 16),
         TextField(
           key: const ValueKey('passport-document-number'),
@@ -628,6 +665,20 @@ class _PassportNfcCredentialPanelState
               _errorMessage!,
               style: TextStyle(color: Colors.red.shade800),
             ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (_phase == _PassportNfcPhase.issuing &&
+            _srsDownloadProgress != null) ...[
+          LinearProgressIndicator(value: _srsDownloadProgress),
+          const SizedBox(height: 8),
+          Text(
+            _copy(
+              zh: '下載本機證明參數 ${(_srsDownloadProgress! * 100).round()}%',
+              en: 'Downloading local proof parameters ${(_srsDownloadProgress! * 100).round()}%',
+            ),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
         ],

@@ -120,8 +120,6 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Prepare pinned ZKPassport SRS
-        run: bash scripts/prepare_zkpassport_srs.sh
       - name: Compile production iOS app without distribution signing
         run: >-
           flutter build ios --release --no-codesign

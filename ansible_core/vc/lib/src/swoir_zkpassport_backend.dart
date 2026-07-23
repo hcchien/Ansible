@@ -14,10 +14,12 @@ class SwoirZkPassportBackend {
   Future<String> prepare({
     required String manifestJson,
     required int circuitSize,
+    required String srsPath,
   }) async {
     final id = await _channel.invokeMethod<String>('prepare', {
       'manifest_json': manifestJson,
       'circuit_size': circuitSize,
+      'srs_path': srsPath,
     });
     if (id == null || id.isEmpty) {
       throw StateError('Swoir did not return a circuit identifier.');
