@@ -15,6 +15,9 @@ import UIKit
   /// notification payload ever crosses this channel.
   private var pendingPushTokenResults: [FlutterResult] = []
   private var pushTokenChannel: FlutterMethodChannel?
+  private let zkPassportProver = ZKPassportProver()
+  private let zkPassportInputRuntime = ZKPassportInputRuntime()
+  private var passportMRZScanner: PassportMRZScanner?
 
   override func application(
     _ application: UIApplication,
@@ -26,7 +29,104 @@ import UIKit
     registerPushTokenChannel()
     registerHardwareIdentityKeyChannel()
     registerPassportNfcChannel()
+    registerZKPassportProverChannel()
+    registerPassportMRZChannel()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private func registerPassportMRZChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else { return }
+    let scanner = PassportMRZScanner(presenter: controller)
+    passportMRZScanner = scanner
+    let channel = FlutterMethodChannel(
+      name: "elix/passport_mrz",
+      binaryMessenger: controller.binaryMessenger
+    )
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "scan" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      scanner.scan(result: result)
+    }
+  }
+
+  private func registerZKPassportProverChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else { return }
+    let channel = FlutterMethodChannel(
+      name: "elix/zkpassport_prover",
+      binaryMessenger: controller.binaryMessenger
+    )
+    channel.setMethodCallHandler { call, result in
+      guard let args = call.arguments as? [String: Any] else {
+        result(FlutterError(code: "invalid_arguments", message: "Missing prover arguments", details: nil))
+        return
+      }
+      let complete: (Result<Any, Error>) -> Void = { outcome in
+        DispatchQueue.main.async {
+          switch outcome {
+          case .success(let value): result(value)
+          case .failure(let error):
+            result(FlutterError(code: "zkpassport_prover_failed", message: error.localizedDescription, details: nil))
+          }
+        }
+      }
+      switch call.method {
+      case "plan":
+        guard #available(iOS 15.0, *),
+              let runtime = args["runtime_javascript"] as? String,
+              let request = args["request"] as? [String: Any] else {
+          result(FlutterError(code: "invalid_arguments", message: "Missing ZKPassport runtime input", details: nil))
+          return
+        }
+        Task { @MainActor in
+          self.zkPassportInputRuntime.createProofPlan(
+            runtimeJavaScript: runtime,
+            request: request
+          ) { outcome in complete(outcome.map { $0 as Any }) }
+        }
+      case "prepare":
+        guard let manifest = args["manifest_json"] as? String,
+              let size = args["circuit_size"] as? Int else {
+          result(FlutterError(code: "invalid_arguments", message: "Missing pinned circuit artifacts", details: nil))
+          return
+        }
+        self.zkPassportProver.prepare(
+          manifestJSON: manifest,
+          circuitSize: UInt32(size),
+          srsPath: Bundle.main.path(forResource: "srs_21", ofType: "local") ?? ""
+        ) { outcome in complete(outcome.map { $0 as Any }) }
+      case "prove":
+        guard let circuitID = args["circuit_id"] as? String,
+              let inputs = args["inputs"] as? [String: Any],
+              let vkey = args["verification_key"] as? FlutterStandardTypedData else {
+          result(FlutterError(code: "invalid_arguments", message: "Missing proof input", details: nil))
+          return
+        }
+        self.zkPassportProver.prove(
+          circuitID: circuitID,
+          inputs: inputs,
+          verificationKey: vkey.data
+        ) { outcome in complete(outcome.map { FlutterStandardTypedData(bytes: $0) as Any }) }
+      case "verify":
+        guard let circuitID = args["circuit_id"] as? String,
+              let proof = args["proof"] as? FlutterStandardTypedData,
+              let vkey = args["verification_key"] as? FlutterStandardTypedData else {
+          result(FlutterError(code: "invalid_arguments", message: "Missing verification input", details: nil))
+          return
+        }
+        self.zkPassportProver.verify(
+          circuitID: circuitID,
+          proof: proof.data,
+          verificationKey: vkey.data
+        ) { outcome in complete(outcome.map { $0 as Any }) }
+      case "clear":
+        self.zkPassportProver.clear()
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 
   private func registerPassportNfcChannel() {

@@ -1,0 +1,68 @@
+# Cloud Build trigger:
+#   Build config: ansible_zkpassport_verifier/cloudbuild.yaml
+#   Included files: ansible_zkpassport_verifier/**
+
+substitutions:
+  _REGION: asia-east1
+  _REPOSITORY: ansible
+  _IMAGE_NAME: ansible-zkpassport-verifier
+  _SERVICE_NAME: ansible-zkpassport-verifier-dev
+
+steps:
+  - id: test-and-build
+    name: node:22-bookworm-slim
+    dir: ansible_zkpassport_verifier
+    entrypoint: bash
+    args:
+      - -euc
+      - |
+        corepack enable
+        pnpm install --frozen-lockfile
+        pnpm build
+        node --test
+
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+      - ansible_zkpassport_verifier
+    waitFor: ["test-and-build"]
+
+  - id: push-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+    waitFor: ["build-image"]
+
+  - id: deploy-dev
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --port=8080
+      - --min-instances=1
+      - --max-instances=3
+      - --memory=2Gi
+      - --cpu=2
+      - --timeout=120
+      - --allow-unauthenticated
+      - --labels=managed-by=cloud-build,commit-sha=$COMMIT_SHA
+      - --quiet
+    waitFor: ["push-image"]
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -107,14 +107,25 @@ func main() {
 	handler := api.NewHandler(otp.NewStore(otpTTL), prov, issuer, peppers, mockMode)
 	configureTWProvider(handler, mockMode, pgPool)
 	configureMobileMoicaRP(handler, mockMode, pgPool)
-	// Passport issuance is intentionally left UNCONFIGURED: there is no real
-	// PassportBindingVerifier (a ZKP/NFC verifier) in this service yet, and we
-	// will not wire a fake one. handler.ConfigurePassport is therefore never
-	// called, so POST /api/v1/vc/passport/issue fails closed with 503
-	// passport_verifier_unconfigured (see handler.passportIssue). This is a
-	// deliberate scope limit, not an oversight — do not enable it until a
-	// genuine verifier exists.
-	log.Println("passport issuance disabled: no PassportBindingVerifier configured (fails closed 503)")
+	var passportChallenges api.PassportChallengeStore = api.NewMemoryPassportChallengeStore()
+	if pgPool != nil {
+		passportChallenges = api.NewPostgresPassportChallengeStore(pgPool)
+	}
+	passportConfig := api.PassportConfig{
+		Challenges: passportChallenges,
+		IssuerURL:  cfg.IssuerURL,
+	}
+	if verifierURL := strings.TrimSpace(os.Getenv("PASSPORT_VERIFIER_URL")); verifierURL != "" {
+		verifier, err := api.NewHTTPPassportBindingVerifier(verifierURL, nil)
+		if err != nil {
+			log.Fatalf("passport verifier init: %v", err)
+		}
+		passportConfig.Verifier = verifier
+		log.Println("passport challenge/replay protection and ZKPassport verifier enabled")
+	} else {
+		log.Println("passport challenge/replay protection enabled; issuance disabled until PASSPORT_VERIFIER_URL is configured")
+	}
+	handler.ConfigurePassport(passportConfig)
 	if adminToken := os.Getenv("ISSUER_ADMIN_TOKEN"); adminToken != "" {
 		handler.ConfigureAdmin(adminToken)
 		log.Println("credential revocation endpoint enabled (bearer-token guarded)")

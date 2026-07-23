@@ -88,6 +88,34 @@ class MobileMoicaRPStatus {
   bool get isVerified => status == 'verified';
 }
 
+class PassportIssuanceChallenge {
+  final String challengeId;
+  final String nonce;
+  final Uri issuer;
+  final String scope;
+  final String circuitManifestVersion;
+  final DateTime expiresAt;
+
+  const PassportIssuanceChallenge({
+    required this.challengeId,
+    required this.nonce,
+    required this.issuer,
+    required this.scope,
+    required this.circuitManifestVersion,
+    required this.expiresAt,
+  });
+
+  factory PassportIssuanceChallenge.fromJson(Map<String, dynamic> json) =>
+      PassportIssuanceChallenge(
+        challengeId: json['challenge_id'] as String,
+        nonce: json['nonce'] as String,
+        issuer: Uri.parse(json['issuer'] as String),
+        scope: json['scope'] as String,
+        circuitManifestVersion: json['circuit_manifest_version'] as String,
+        expiresAt: DateTime.parse(json['expires_at'] as String),
+      );
+}
+
 class VcIssuerException implements Exception {
   final int statusCode;
   final String error;
@@ -209,6 +237,8 @@ class VcIssuerClient {
 
   Future<Map<String, dynamic>> issuePassportCredential({
     required String did,
+    required String challengeId,
+    required String challengeNonce,
     required String nationality,
     required String nationalIdHash,
     required String passportNumberHash,
@@ -218,6 +248,8 @@ class VcIssuerClient {
   }) async {
     final body = await _postJson('/api/v1/vc/passport/issue', {
       'did': did,
+      'challenge_id': challengeId,
+      'challenge_nonce': challengeNonce,
       'nationality': nationality,
       'national_id_hash': nationalIdHash,
       'passport_number_hash': passportNumberHash,
@@ -226,6 +258,15 @@ class VcIssuerClient {
       'verification_key_hash': verificationKeyHash,
     });
     return body['vc'] as Map<String, dynamic>;
+  }
+
+  Future<PassportIssuanceChallenge> requestPassportChallenge({
+    required String did,
+  }) async {
+    final body = await _postJson('/api/v1/vc/passport/challenges', {
+      'did': did,
+    });
+    return PassportIssuanceChallenge.fromJson(body);
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

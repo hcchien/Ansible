@@ -54,7 +54,9 @@ type Handler struct {
 	mobileMoicaReturnURL string
 	mobileMoicaTTL       time.Duration
 
-	passportVerifier PassportBindingVerifier
+	passportVerifier   PassportBindingVerifier
+	passportChallenges PassportChallengeStore
+	passportIssuerURL  string
 
 	metrics *metrics.Registry
 }
@@ -128,6 +130,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/vc/mobilemoica/status/{offer_id}", h.instrument("vc_mobilemoica_status", h.mobileMoicaStatus))
 	mux.HandleFunc("POST /api/v1/vc/mobilemoica/issue", h.instrument("vc_mobilemoica_issue", h.mobileMoicaIssue))
 	mux.HandleFunc("POST /api/v1/vc/passport/issue", h.instrument("vc_passport_issue", h.passportIssue))
+	mux.HandleFunc("POST /api/v1/vc/passport/challenges", h.instrument("vc_passport_challenge", h.passportChallenge))
 }
 
 // instrument wraps a handler with request counting and error counting (4xx/5xx)
@@ -198,6 +201,34 @@ func (h *Handler) ConfigureMobileMoicaRP(config MobileMoicaRPConfig) {
 
 func (h *Handler) ConfigurePassport(config PassportConfig) {
 	h.passportVerifier = config.Verifier
+	h.passportChallenges = config.Challenges
+	h.passportIssuerURL = strings.TrimRight(config.IssuerURL, "/")
+}
+
+func (h *Handler) passportChallenge(w http.ResponseWriter, r *http.Request) {
+	if h.passportChallenges == nil || h.passportIssuerURL == "" {
+		writeError(w, http.StatusServiceUnavailable, "passport_challenge_unconfigured")
+		return
+	}
+	var body struct {
+		DID string `json:"did"`
+	}
+	if !decodeJSON(w, r, &body) || !validateDID(w, body.DID) {
+		return
+	}
+	challenge, nonce, err := newPassportChallenge(body.DID, h.passportIssuerURL, h.now())
+	if err != nil || h.passportChallenges.PutPassportChallenge(challenge) != nil {
+		writeError(w, http.StatusInternalServerError, "passport_challenge_error")
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"challenge_id":             challenge.ID,
+		"nonce":                    nonce,
+		"issuer":                   challenge.Issuer,
+		"scope":                    challenge.Scope,
+		"circuit_manifest_version": challenge.CircuitVersion,
+		"expires_at":               challenge.ExpiresAt.UTC().Format(time.RFC3339),
+	})
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
@@ -555,6 +586,8 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		DID                 string `json:"did"`
+		ChallengeID         string `json:"challenge_id"`
+		ChallengeNonce      string `json:"challenge_nonce"`
 		Nationality         string `json:"nationality"`
 		NationalIDHash      string `json:"national_id_hash"`
 		PassportNumberHash  string `json:"passport_number_hash"`
@@ -565,10 +598,22 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &body) {
 		return
 	}
+	var passportChallenge PassportChallenge
+	if h.passportChallenges != nil {
+		if body.ChallengeID == "" || body.ChallengeNonce == "" {
+			writeError(w, http.StatusUnauthorized, "invalid_passport_challenge")
+			return
+		}
+		var err error
+		passportChallenge, err = h.passportChallenges.GetPassportChallenge(body.ChallengeID, h.now())
+		if err != nil || passportChallenge.DID != body.DID ||
+			passportChallenge.NonceHash != hashPassportNonce(body.ChallengeNonce) {
+			writeError(w, http.StatusUnauthorized, "invalid_passport_challenge")
+			return
+		}
+	}
 	if !validateDID(w, body.DID) ||
 		!validateNationality(w, body.Nationality) ||
-		!validatePersonhoodHash(w, body.NationalIDHash, "invalid_national_id_hash") ||
-		!validatePersonhoodHash(w, body.PassportNumberHash, "invalid_passport_number_hash") ||
 		!validateRequired(w, body.ZKPProof) ||
 		!validateRequired(w, body.ZKPCircuitVersion) ||
 		!validateRequired(w, body.VerificationKeyHash) {
@@ -577,6 +622,10 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 
 	binding, err := h.passportVerifier.VerifyPassportBinding(PassportBindingProof{
 		DID:                 body.DID,
+		ChallengeID:         body.ChallengeID,
+		ChallengeNonce:      body.ChallengeNonce,
+		ChallengeIssuer:     passportChallenge.Issuer,
+		ChallengeScope:      passportChallenge.Scope,
 		Nationality:         body.Nationality,
 		NationalIDHash:      body.NationalIDHash,
 		PassportNumberHash:  body.PassportNumberHash,
@@ -588,11 +637,19 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
 	}
-	if binding.NationalIDHash != body.NationalIDHash ||
-		binding.PassportNumberHash != body.PassportNumberHash ||
+	if !rePersonhoodHash.MatchString(binding.NationalIDHash) ||
+		!rePersonhoodHash.MatchString(binding.PassportNumberHash) ||
 		binding.Nationality != body.Nationality {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
+	}
+	if h.passportChallenges != nil {
+		if err := h.passportChallenges.ConsumePassportChallenge(
+			body.ChallengeID, body.DID, hashPassportNonce(body.ChallengeNonce), h.now(),
+		); err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid_passport_challenge")
+			return
+		}
 	}
 
 	credMap, err := h.issuer.IssuePassport(

@@ -4,7 +4,7 @@
 #
 # Usage:
 #   scripts/gcp/deploy.sh --project <id> [--region asia-east1] [--tag <sha>] <service>
-#   service: relay | appview | issuer | frontend
+#   service: relay | appview | issuer | verifier | frontend
 #
 # Required env per service (values, not secrets — secrets come from Secret
 # Manager; see provision.sh):
@@ -13,7 +13,9 @@
 #             [UNIVERSAL_LINK_IOS_APP_IDS APP_LINK_ANDROID_PACKAGE
 #              APP_LINK_ANDROID_SHA256_CERTS ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS]
 #   appview:  RELAY_HOST
-#   issuer:   ISSUER_HOST TW_PROVIDER_AUTH_URL [TW_PROVIDER_AUDIENCE]
+#   issuer:   ISSUER_HOST TW_PROVIDER_AUTH_URL [TW_PROVIDER_AUDIENCE
+#              PASSPORT_VERIFIER_URL]
+#   verifier: no additional variables
 #   frontend: RELAY_HOST [APPVIEW_HOST UNIVERSAL_LINK_IOS_APP_IDS
 #              APP_LINK_ANDROID_PACKAGE APP_LINK_ANDROID_SHA256_CERTS]
 #
@@ -35,12 +37,12 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --tag) TAG="${2:?--tag needs a value}"; shift 2 ;;
     --tag=*) TAG="${1#*=}"; shift ;;
-    relay | appview | issuer | frontend) SERVICE="$1"; shift ;;
-    *) die "unknown argument: $1 (expected relay|appview|issuer|frontend)" ;;
+    relay | appview | issuer | verifier | frontend) SERVICE="$1"; shift ;;
+    *) die "unknown argument: $1 (expected relay|appview|issuer|verifier|frontend)" ;;
   esac
 done
 
-[ -n "${SERVICE:-}" ] || die "usage: deploy.sh --project <id> [--region <r>] [--tag <sha>] <relay|appview|issuer|frontend>"
+[ -n "${SERVICE:-}" ] || die "usage: deploy.sh --project <id> [--region <r>] [--tag <sha>] <relay|appview|issuer|verifier|frontend>"
 require_project
 [ -n "$TAG" ] || TAG="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 
@@ -59,6 +61,10 @@ case "$SERVICE" in
   issuer)
     CLOUDBUILD="ansible_issuer/go/cloudbuild.yaml"
     IMAGE="${AR}/ansible-issuer:${TAG}"
+    ;;
+  verifier)
+    CLOUDBUILD="ansible_zkpassport_verifier/cloudbuild.yaml"
+    IMAGE="${AR}/ansible-zkpassport-verifier:${TAG}"
     ;;
   frontend)
     CLOUDBUILD="ansible_distribution_frontend/cloudbuild.yaml"
@@ -195,6 +201,8 @@ case "$SERVICE" in
     ENV_VARS+=";TW_PROVIDER_AUDIENCE=${TW_PROVIDER_AUDIENCE:-trisaura-issuer}"
     ENV_VARS+=";VC_TTL_DAYS=${VC_TTL_DAYS:-90}"
     ENV_VARS+=";OTP_TTL_SECONDS=${OTP_TTL_SECONDS:-300}"
+    [ -z "${PASSPORT_VERIFIER_URL:-}" ] ||
+      ENV_VARS+=";PASSPORT_VERIFIER_URL=${PASSPORT_VERIFIER_URL}"
     # Pepper rotation: previous peppers stay valid for existing commitments.
     [ -z "${SUBJECT_COMMITMENT_PEPPER_PREVIOUS:-}" ] ||
       ENV_VARS+=";SUBJECT_COMMITMENT_PEPPER_PREVIOUS=${SUBJECT_COMMITMENT_PEPPER_PREVIOUS}"
@@ -215,6 +223,21 @@ case "$SERVICE" in
       --add-volume-mount="volume=issuer-state,mount-path=/var/issuer-state" \
       --set-env-vars="^;^${ENV_VARS}" \
       --set-secrets="ISSUER_PRIVATE_KEY_HEX=issuer-priv-key:latest,SUBJECT_COMMITMENT_PEPPER=subject-commitment-pepper:latest,TW_PROVIDER_SHARED_SECRET=tw-provider-shared-secret:latest,ISSUER_ADMIN_TOKEN=issuer-admin-token:latest" \
+      --allow-unauthenticated
+    ;;
+
+  verifier)
+    log "deploying ansible-zkpassport-verifier"
+    gcloud run deploy ansible-zkpassport-verifier \
+      --image="$IMAGE" \
+      --region "$REGION" \
+      --project "$PROJECT_ID" \
+      --platform=managed \
+      --port=8080 \
+      --min-instances=1 \
+      --memory=2Gi \
+      --cpu=2 \
+      --timeout=120 \
       --allow-unauthenticated
     ;;
 

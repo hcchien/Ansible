@@ -19,9 +19,9 @@ class PassportAccessData {
       documentNumber.trim().toUpperCase().padRight(9, '<');
 
   void validate() {
-    if (!RegExp(r'^[A-Z0-9<]{1,9}$').hasMatch(
-      documentNumber.trim().toUpperCase(),
-    )) {
+    if (!RegExp(
+      r'^[A-Z0-9<]{1,9}$',
+    ).hasMatch(documentNumber.trim().toUpperCase())) {
       throw const FormatException('Invalid passport document number.');
     }
     if (!RegExp(r'^\d{6}$').hasMatch(dateOfBirth) ||
@@ -51,6 +51,67 @@ class PassportAccessData {
       sum += numeric * weights[index % weights.length];
     }
     return sum % 10;
+  }
+
+  factory PassportAccessData.fromTd3Mrz(String line1, String line2) {
+    final first = _normalizeMrzLine(line1);
+    final second = _normalizeMrzLine(line2);
+    if (first.length != 44 || second.length != 44 || !first.startsWith('P<')) {
+      throw const FormatException('Expected two 44-character TD3 MRZ lines.');
+    }
+    final documentNumber = second.substring(0, 9);
+    final dateOfBirth = second.substring(13, 19);
+    final dateOfExpiry = second.substring(21, 27);
+    if (second[9] != _checkDigit(documentNumber).toString() ||
+        second[19] != _checkDigit(dateOfBirth).toString() ||
+        second[27] != _checkDigit(dateOfExpiry).toString()) {
+      throw const FormatException('MRZ check digits do not match.');
+    }
+    return PassportAccessData(
+      documentNumber: documentNumber.replaceAll('<', ''),
+      dateOfBirth: dateOfBirth,
+      dateOfExpiry: dateOfExpiry,
+    );
+  }
+
+  static String _normalizeMrzLine(String value) => value
+      .toUpperCase()
+      .replaceAll('«', '<')
+      .replaceAll(RegExp(r'[^A-Z0-9<]'), '');
+}
+
+abstract class PassportMrzScanner {
+  Future<PassportAccessData> scan();
+}
+
+class PlatformPassportMrzScanner implements PassportMrzScanner {
+  const PlatformPassportMrzScanner();
+  static const _channel = MethodChannel('elix/passport_mrz');
+
+  @override
+  Future<PassportAccessData> scan() async {
+    if (!Platform.isIOS) {
+      throw UnsupportedError('MRZ camera scanning is not available.');
+    }
+    final recognized = await _channel.invokeMethod<String>('scan');
+    if (recognized == null || recognized.trim().isEmpty) {
+      throw const FormatException('No MRZ text was recognized.');
+    }
+    final lines = recognized
+        .split(RegExp(r'[\r\n]+'))
+        .map(PassportAccessData._normalizeMrzLine)
+        .where((line) => line.length >= 40)
+        .toList();
+    for (var index = 0; index + 1 < lines.length; index++) {
+      final first = lines[index];
+      final second = lines[index + 1];
+      if (first.startsWith('P<') && first.length == 44 && second.length == 44) {
+        return PassportAccessData.fromTd3Mrz(first, second);
+      }
+    }
+    throw const FormatException(
+      'Could not find a valid two-line passport MRZ.',
+    );
   }
 }
 

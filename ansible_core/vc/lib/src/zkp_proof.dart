@@ -1,18 +1,25 @@
-import 'package:ansible_did/ansible_did.dart';
+import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
+
+import 'passport_data.dart';
+import 'swoir_zkpassport_backend.dart';
 
 // ZkpProof — the proof artifact uploaded to the Relay during Phase 1.
 class ZkpProof {
-  /// Proof backend: "groth16_bn254" for Q2
+  /// Proof backend used by the pinned ZKPassport circuit manifest.
   final String backend;
 
-  /// Hex-encoded compressed Groth16 proof bytes (~128 bytes)
+  /// JSON ZKPassport proof envelope accepted by the Issuer verifier.
   final String proofHex;
 
   /// Hex-encoded 32-byte anti-Sybil nullifier (public output of the circuit)
   final String nullifierHex;
 
-  /// Hex-encoded SHA-256 hash of the Groth16 verifying key.
-  /// The Relay uses this to confirm the circuit version.
+  /// SHA-256 digest of the complete proof envelope for diagnostics.
   final String vkHash;
 
   /// Server-verifiable commitment for the passport holder's national ID.
@@ -31,7 +38,7 @@ class ZkpProof {
   });
 
   /// Circuit version string sent to the Relay as `zkp_circuit_version`.
-  static const kCircuitVersion = 'passport_v1_groth16_bn254';
+  static const kCircuitVersion = '0.20.0';
 
   Map<String, Object?> toRelayJson() => {
     'zkp_proof': proofHex,
@@ -41,67 +48,143 @@ class ZkpProof {
   };
 }
 
-abstract class ZkpProver {
-  /// Generate a ZKP for the given [passportSecretHex].
-  ///
-  /// [passportSecretHex] — 32-byte hex string (SHA-256 of MRZ fields),
-  ///   computed by `PassportData.passportSecret`.
-  Future<ZkpProof> prove({required String passportSecretHex});
+class ZkpChallengeBinding {
+  const ZkpChallengeBinding({
+    required this.challengeId,
+    required this.nonce,
+    required this.did,
+    required this.issuer,
+    required this.scope,
+  });
+
+  final String challengeId;
+  final String nonce;
+  final String did;
+  final String issuer;
+  final String scope;
 }
 
-/// Concrete ZKP prover backed by the Rust core (arkworks-rs Groth16).
+abstract class ZkpProver {
+  /// Generate challenge-bound ZKPassport proofs from ephemeral chip data.
+  Future<ZkpProof> prove({
+    required PassportData passport,
+    required ZkpChallengeBinding challenge,
+  });
+}
+
+/// Embedded ZKPassport prover backed by the native iOS Swoir runtime.
 class ZkpProverImpl implements ZkpProver {
-  const ZkpProverImpl();
+  const ZkpProverImpl({this.backend = const SwoirZkPassportBackend()});
+
+  final SwoirZkPassportBackend backend;
 
   @override
-  Future<ZkpProof> prove({required String passportSecretHex}) async {
-    try {
-      final result = await apiZkpGenerateProof(
-        passportSecretHex: passportSecretHex,
-      );
-      return ZkpProof(
-        backend: 'groth16_bn254',
-        proofHex: result.proofHex,
-        nullifierHex: result.nullifierHex,
-        vkHash: result.vkHash,
-        // The Rust ZkpResult exposes only proof/nullifier/vkHash; the per-field
-        // MRZ hashes are not surfaced by the circuit output.
-        nationalIdHash: '',
-        passportNumberHash: '',
-      );
-    } on UnimplementedError {
-      // Codegen not yet run — return a dev stub proof so the UI flow can be
-      // exercised without native crypto.
-      return _devStubProof(passportSecretHex);
+  Future<ZkpProof> prove({
+    required PassportData passport,
+    required ZkpChallengeBinding challenge,
+  }) async {
+    final runtime = await rootBundle.loadString('assets/zkpassport/runtime.js');
+    final bindingPayload = jsonEncode({
+      'challenge_id': challenge.challengeId,
+      'challenge_nonce': challenge.nonce,
+      'did': challenge.did,
+      'issuer': challenge.issuer,
+      'scope': challenge.scope,
+    });
+    final challengeBinding = sha256
+        .convert(utf8.encode(bindingPayload))
+        .toString();
+    final random = Random.secure();
+    final saltBytes = Uint8List.fromList(
+      List<int>.generate(31, (_) => random.nextInt(256)),
+    );
+    final salt = _bytesToBigInt(saltBytes);
+    final plan = await backend.createProofPlan(
+      runtimeJavaScript: runtime,
+      request: {
+        'version': ZkpProof.kCircuitVersion,
+        'salt': salt.toString(),
+        'dg1': passport.dg1Bytes.toList(growable: false),
+        'sod': passport.sodBytes.toList(growable: false),
+        'issuer': challenge.issuer,
+        'scope': challenge.scope,
+        'challenge_binding': challengeBinding,
+      },
+    );
+    if (plan['version'] != ZkpProof.kCircuitVersion) {
+      throw StateError('ZKPassport circuit manifest version mismatch.');
     }
-  }
-
-  static ZkpProof _devStubProof(String passportSecretHex) {
+    final circuits = (plan['circuits'] as List<Object?>?) ?? const [];
+    if (circuits.length != 5) {
+      throw StateError('ZKPassport proof plan is incomplete.');
+    }
+    final proofResults = <Map<String, Object?>>[];
+    try {
+      for (final rawCircuit in circuits) {
+        final circuit = Map<String, Object?>.from(
+          rawCircuit! as Map<Object?, Object?>,
+        );
+        final manifest = Map<String, Object?>.from(
+          circuit['manifest']! as Map<Object?, Object?>,
+        );
+        final inputs = Map<String, Object?>.from(
+          circuit['inputs']! as Map<Object?, Object?>,
+        );
+        final verificationKey = base64Decode(circuit['vkey']! as String);
+        final circuitId = await backend.prepare(
+          manifestJson: jsonEncode(manifest),
+          circuitSize: max(500000, circuit['size']! as int),
+        );
+        final proof = await backend.prove(
+          circuitId: circuitId,
+          inputs: inputs,
+          verificationKey: verificationKey,
+        );
+        final locallyVerified = await backend.verify(
+          circuitId: circuitId,
+          proof: proof,
+          verificationKey: verificationKey,
+        );
+        if (!locallyVerified) {
+          throw StateError(
+            'A generated ZKPassport proof failed local verification.',
+          );
+        }
+        proofResults.add({
+          'proof': _hex(proof),
+          'vkeyHash': circuit['vkey_hash'],
+          'version': plan['version'],
+          'name': circuit['name'],
+        });
+      }
+    } finally {
+      await backend.clear();
+    }
+    final envelope = jsonEncode({
+      'proofs': proofResults,
+      'query_result': plan['query_result'],
+    });
+    final envelopeHash = sha256.convert(utf8.encode(envelope)).toString();
     return ZkpProof(
-      backend: 'groth16_bn254_dev_stub',
-      proofHex: 'dev-proof-' + passportSecretHex.substring(0, 8),
-      nullifierHex: 'dev-nullifier-' + passportSecretHex.substring(0, 16),
-      vkHash: 'dev-vk-hash-placeholder',
-      nationalIdHash:
-          'dev-national-id-hash-' + passportSecretHex.substring(0, 16),
-      passportNumberHash:
-          'dev-passport-number-hash-' + passportSecretHex.substring(0, 16),
+      backend: 'ultra_honk',
+      proofHex: envelope,
+      nullifierHex: '',
+      vkHash: envelopeHash,
+      // These values are deliberately not authoritative. The Issuer derives
+      // private duplicate-prevention commitments from verified public inputs.
+      nationalIdHash: 'issuer-derived-$envelopeHash',
+      passportNumberHash: 'issuer-derived-$envelopeHash',
     );
   }
-}
 
-class ZkpVerifier {
-  const ZkpVerifier._();
-
-  /// Verify a [ZkpProof] locally (dev / test use only).
-  static Future<bool> verify(ZkpProof proof) async {
-    try {
-      return await apiZkpVerifyProof(
-        proofHex: proof.proofHex,
-        nullifierHex: proof.nullifierHex,
-      );
-    } on UnimplementedError {
-      return true; // dev stub — treat as valid
+  static BigInt _bytesToBigInt(Uint8List bytes) {
+    var value = BigInt.zero;
+    for (final byte in bytes) {
+      value = (value << 8) | BigInt.from(byte);
     }
+    return value;
   }
+
+  static String _hex(Uint8List bytes) =>
+      bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
 }

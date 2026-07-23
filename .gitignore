@@ -39,6 +39,7 @@ build/Release
 
 # Dependency directories
 node_modules/
+ansible_node/app/ios/srs_21.local
 jspm_packages/
 
 # Snowpack dependency directory (https://snowpack.dev/)
@@ -154,6 +155,7 @@ vite.config.ts.timestamp-*
 **/.pub/
 **/build/
 **/ios/Flutter/.last_build_id
+.pnpm-store/
 
 # Elixir / Phoenix
 **/_build/

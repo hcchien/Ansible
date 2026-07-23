@@ -222,6 +222,12 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		`CREATE TABLE IF NOT EXISTS oid4vci_nonces (
 			nonce_hash text PRIMARY KEY, expires_at timestamptz NOT NULL, consumed_at timestamptz
 		)`,
+		`CREATE TABLE IF NOT EXISTS passport_challenges (
+			id text PRIMARY KEY, did text NOT NULL, nonce_hash text NOT NULL UNIQUE,
+			issuer text NOT NULL, scope text NOT NULL, circuit_version text NOT NULL,
+			expires_at timestamptz NOT NULL, consumed_at timestamptz
+		)`,
+		`CREATE INDEX IF NOT EXISTS passport_challenges_expiry ON passport_challenges (expires_at)`,
 	}
 
 	// Serialize schema creation across concurrent callers: `IF NOT EXISTS`

@@ -335,6 +335,39 @@ void main() {
     );
   });
 
+  group('VcIssuerClient passport challenge', () {
+    test('requests a DID-bound, short-lived ZKPassport challenge', () async {
+      final client = VcIssuerClient(
+        baseUrl: 'https://issuer-dev.elix.cool',
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/v1/vc/passport/challenges');
+          expect(jsonDecode(request.body), {'did': 'did:plc:abcdefghijklmnop'});
+          return http.Response(
+            jsonEncode({
+              'challenge_id': 'challenge-1',
+              'nonce': 'nonce-1',
+              'issuer': 'https://issuer-dev.elix.cool',
+              'scope': 'elix-passport-personhood-v1',
+              'circuit_manifest_version': '0.20.0',
+              'expires_at': '2026-07-23T04:05:00Z',
+            }),
+            201,
+          );
+        }),
+      );
+
+      final challenge = await client.requestPassportChallenge(
+        did: 'did:plc:abcdefghijklmnop',
+      );
+      expect(challenge.challengeId, 'challenge-1');
+      expect(challenge.nonce, 'nonce-1');
+      expect(challenge.issuer.host, 'issuer-dev.elix.cool');
+      expect(challenge.scope, 'elix-passport-personhood-v1');
+      expect(challenge.circuitManifestVersion, '0.20.0');
+    });
+  });
+
   group('VcIssuerClient passport flow', () {
     test(
       'issuePassportCredential posts personhood hashes and proof fields',
@@ -347,6 +380,8 @@ void main() {
             final body = jsonDecode(request.body) as Map<String, dynamic>;
             expect(body, {
               'did': 'did:plc:abcdefghijklmnop',
+              'challenge_id': 'challenge-1',
+              'challenge_nonce': 'nonce-1',
               'nationality': 'TWN',
               'national_id_hash': 'national-id-hash-abc123',
               'passport_number_hash': 'passport-number-hash-abc123',
@@ -369,6 +404,8 @@ void main() {
 
         final vc = await client.issuePassportCredential(
           did: 'did:plc:abcdefghijklmnop',
+          challengeId: 'challenge-1',
+          challengeNonce: 'nonce-1',
           nationality: 'TWN',
           nationalIdHash: 'national-id-hash-abc123',
           passportNumberHash: 'passport-number-hash-abc123',

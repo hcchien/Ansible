@@ -46,6 +46,14 @@ func configurePassportVerifier(h *api.Handler) {
 	h.ConfigurePassport(api.PassportConfig{Verifier: fakePassportVerifier{}})
 }
 
+func configurePassportChallengeVerifier(h *api.Handler) {
+	h.ConfigurePassport(api.PassportConfig{
+		Verifier:   fakePassportVerifier{},
+		Challenges: api.NewMemoryPassportChallengeStore(),
+		IssuerURL:  "https://issuer.elix.cool",
+	})
+}
+
 func newTestHandler(t *testing.T) *api.Handler {
 	t.Helper()
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -329,6 +337,58 @@ func TestPassportIssue_ReturnsPassportCredentialWithoutPassportIdentifiers(t *te
 		if _, ok := cs[prohibited]; ok {
 			t.Fatalf("credentialSubject must not contain %q", prohibited)
 		}
+	}
+}
+
+func TestPassportChallengeIsRequiredAndCannotBeReplayed(t *testing.T) {
+	h := newTestHandler(t)
+	configurePassportChallengeVerifier(h)
+	start := call(h, http.MethodPost, "/api/v1/vc/passport/challenges", map[string]any{
+		"did": testDID,
+	})
+	if start.Code != http.StatusCreated {
+		t.Fatalf("challenge failed: %d %s", start.Code, start.Body)
+	}
+	challenge := bodyJSON(t, start)
+	body := map[string]any{
+		"did":                   testDID,
+		"challenge_id":          challenge["challenge_id"],
+		"challenge_nonce":       challenge["nonce"],
+		"nationality":           "TWN",
+		"national_id_hash":      "national-id-hash-challenge",
+		"passport_number_hash":  "passport-number-hash-challenge",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "0.20.0",
+		"verification_key_hash": "sha256:pinned-key",
+	}
+	first := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first issue failed: %d %s", first.Code, first.Body)
+	}
+	replay := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
+	if replay.Code != http.StatusUnauthorized || bodyJSON(t, replay)["error"] != "invalid_passport_challenge" {
+		t.Fatalf("replay was not rejected as challenge replay: %d %s", replay.Code, replay.Body)
+	}
+}
+
+func TestPassportChallengeRejectsWrongDID(t *testing.T) {
+	h := newTestHandler(t)
+	configurePassportChallengeVerifier(h)
+	start := call(h, http.MethodPost, "/api/v1/vc/passport/challenges", map[string]any{"did": testDID})
+	challenge := bodyJSON(t, start)
+	response := call(h, http.MethodPost, "/api/v1/vc/passport/issue", map[string]any{
+		"did":                   "did:plc:bcdefghijklmnopq",
+		"challenge_id":          challenge["challenge_id"],
+		"challenge_nonce":       challenge["nonce"],
+		"nationality":           "TWN",
+		"national_id_hash":      "national-id-hash-challenge",
+		"passport_number_hash":  "passport-number-hash-challenge",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "0.20.0",
+		"verification_key_hash": "sha256:pinned-key",
+	})
+	if response.Code != http.StatusUnauthorized || bodyJSON(t, response)["error"] != "invalid_passport_challenge" {
+		t.Fatalf("wrong DID accepted: %d %s", response.Code, response.Body)
 	}
 }
 

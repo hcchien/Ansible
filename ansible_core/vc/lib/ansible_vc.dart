@@ -21,3 +21,4 @@ export 'src/lexicon_signer.dart';
 export 'src/passport_data.dart';
 export 'src/nfc_passport_reader.dart';
 export 'src/zkp_proof.dart';
+export 'src/swoir_zkpassport_backend.dart';

@@ -1,0 +1,8 @@
+This runtime bundles portions of ZKPassport packages:
+
+- @zkpassport/utils 0.37.3
+- @zkpassport/registry 0.14.0
+
+Copyright their respective contributors. Licensed under Apache License 2.0.
+Source pins and integration review are documented in
+docs/superpowers/specs/2026-07-23-embedded-zkpassport-issuance-design.md.

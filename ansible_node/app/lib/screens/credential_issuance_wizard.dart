@@ -30,6 +30,7 @@ class CredentialIssuanceWizard extends StatefulWidget {
     this.urlLauncher,
     this.walletRepository,
     this.passportReader,
+    this.passportMrzScanner,
     this.passportLocalIdService,
     this.passportZkpProver,
     this.pollInterval = const Duration(seconds: 2),
@@ -46,6 +47,7 @@ class CredentialIssuanceWizard extends StatefulWidget {
   final ExternalUrlLauncher? urlLauncher;
   final WalletRepository? walletRepository;
   final NfcPassportReader? passportReader;
+  final PassportMrzScanner? passportMrzScanner;
   final PassportLocalIdService? passportLocalIdService;
   final ZkpProver? passportZkpProver;
   final Duration pollInterval;
@@ -160,6 +162,7 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
           vcIssuerClient: widget.vcIssuerClient,
           walletRepository: widget.walletRepository,
           passportReader: widget.passportReader,
+          passportMrzScanner: widget.passportMrzScanner,
           passportLocalIdService: widget.passportLocalIdService,
           passportZkpProver: widget.passportZkpProver,
           onCredentialStored: widget.onCredentialStored,
@@ -189,6 +192,7 @@ class PassportNfcCredentialPanel extends StatefulWidget {
     this.vcIssuerClient,
     this.walletRepository,
     this.passportReader,
+    this.passportMrzScanner,
     this.passportLocalIdService,
     this.passportZkpProver,
     this.onCredentialStored,
@@ -198,6 +202,7 @@ class PassportNfcCredentialPanel extends StatefulWidget {
   final VcIssuerClient? vcIssuerClient;
   final WalletRepository? walletRepository;
   final NfcPassportReader? passportReader;
+  final PassportMrzScanner? passportMrzScanner;
   final PassportLocalIdService? passportLocalIdService;
   final ZkpProver? passportZkpProver;
   final VoidCallback? onCredentialStored;
@@ -212,11 +217,13 @@ class _PassportNfcCredentialPanelState
   late final VcIssuerClient _vcIssuerClient;
   late final WalletRepository _walletRepository;
   late final NfcPassportReader _passportReader;
+  late final PassportMrzScanner _passportMrzScanner;
   late final PassportLocalIdService _passportLocalIdService;
   late final ZkpProver _passportZkpProver;
 
   _PassportNfcPhase _phase = _PassportNfcPhase.idle;
   String? _errorMessage;
+  bool _scanningMrz = false;
   final _documentNumberController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
   final _dateOfExpiryController = TextEditingController();
@@ -234,6 +241,8 @@ class _PassportNfcCredentialPanelState
     _walletRepository = walletRepository;
     _passportReader =
         widget.passportReader ?? const PlatformNfcPassportReader();
+    _passportMrzScanner =
+        widget.passportMrzScanner ?? const PlatformPassportMrzScanner();
     _passportLocalIdService =
         widget.passportLocalIdService ?? const PassportLocalIdService();
     _passportZkpProver = widget.passportZkpProver ?? const ZkpProverImpl();
@@ -343,11 +352,26 @@ class _PassportNfcCredentialPanelState
       if (!mounted) return;
       setState(() => _phase = _PassportNfcPhase.issuing);
 
+      final challenge = await _vcIssuerClient.requestPassportChallenge(
+        did: widget.holderDid,
+      );
+      if (!challenge.expiresAt.isAfter(DateTime.now().toUtc())) {
+        throw StateError('Issuer returned an expired passport challenge.');
+      }
       final passportProof = await _passportZkpProver.prove(
-        passportSecretHex: data.passportSecret,
+        passport: data,
+        challenge: ZkpChallengeBinding(
+          challengeId: challenge.challengeId,
+          nonce: challenge.nonce,
+          did: widget.holderDid,
+          issuer: challenge.issuer.toString(),
+          scope: challenge.scope,
+        ),
       );
       final vcJson = await _vcIssuerClient.issuePassportCredential(
         did: widget.holderDid,
+        challengeId: challenge.challengeId,
+        challengeNonce: challenge.nonce,
         nationality: data.nationality,
         nationalIdHash: passportProof.nationalIdHash,
         passportNumberHash: passportProof.passportNumberHash,
@@ -413,6 +437,30 @@ class _PassportNfcCredentialPanelState
     }
   }
 
+  Future<void> _scanMrz() async {
+    setState(() {
+      _scanningMrz = true;
+      _errorMessage = null;
+    });
+    try {
+      final accessData = await _passportMrzScanner.scan();
+      if (!mounted) return;
+      _documentNumberController.text = accessData.documentNumber;
+      _dateOfBirthController.text = accessData.dateOfBirth;
+      _dateOfExpiryController.text = accessData.dateOfExpiry;
+      setState(() => _scanningMrz = false);
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _scanningMrz = false;
+        _errorMessage = _copy(
+          zh: '無法辨識護照資料頁。請保持文字清晰、完整入鏡後再試一次。',
+          en: 'The passport data page could not be recognized. Keep the MRZ sharp and fully in frame, then try again.',
+        );
+      });
+    }
+  }
+
   String _formatError(Object error) {
     if (error is VcIssuerException) {
       if (error.error == 'personhood_already_bound') {
@@ -456,6 +504,7 @@ class _PassportNfcCredentialPanelState
   @override
   Widget build(BuildContext context) {
     final busy =
+        _scanningMrz ||
         _phase == _PassportNfcPhase.scanning ||
         _phase == _PassportNfcPhase.issuing;
     return Column(
@@ -483,6 +532,32 @@ class _PassportNfcCredentialPanelState
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
         ),
         const SizedBox(height: 24),
+        OutlinedButton.icon(
+          key: const ValueKey('passport-scan-mrz'),
+          onPressed: busy ? null : _scanMrz,
+          icon: _scanningMrz
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.document_scanner_outlined),
+          label: Text(
+            _copy(zh: '先掃描護照資料頁（MRZ）', en: 'Scan passport data page (MRZ)'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _copy(
+            zh: 'MRZ 只在本機辨識，用來開啟護照晶片；無法掃描時才需要手動輸入下列資料。',
+            en: 'MRZ recognition stays on device and is used only to unlock the chip. Enter the fields below only if scanning is unavailable.',
+          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 16),
         TextField(
           key: const ValueKey('passport-document-number'),
           controller: _documentNumberController,

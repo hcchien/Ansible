@@ -150,6 +150,7 @@ void main() {
     await tester.tap(find.text('Passport NFC'));
     await tester.pumpAndSettle();
     await _enterPassportAccessData(tester);
+    await tester.ensureVisible(find.text('掃描護照 NFC'));
     await tester.tap(find.text('掃描護照 NFC'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -229,6 +230,7 @@ void main() {
       await tester.tap(find.text('Passport NFC'));
       await tester.pumpAndSettle();
       await _enterPassportAccessData(tester);
+      await tester.ensureVisible(find.text('掃描護照 NFC'));
       await tester.tap(find.text('掃描護照 NFC'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
@@ -245,6 +247,18 @@ class _FakeVcIssuerClient extends VcIssuerClient {
   String? passportIssuedNationality;
   String? passportIssuedNationalIdHash;
   String? passportIssuedPassportNumberHash;
+
+  @override
+  Future<PassportIssuanceChallenge> requestPassportChallenge({
+    required String did,
+  }) async => PassportIssuanceChallenge(
+    challengeId: 'challenge-1',
+    nonce: 'nonce-1',
+    issuer: Uri.parse('https://issuer.elix.cool'),
+    scope: 'elix-passport-personhood-v1',
+    circuitManifestVersion: '0.20.0',
+    expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+  );
 
   @override
   Future<VcIssuanceChallenge> requestEmailVerification({
@@ -271,6 +285,8 @@ class _FakeVcIssuerClient extends VcIssuerClient {
   @override
   Future<Map<String, dynamic>> issuePassportCredential({
     required String did,
+    required String challengeId,
+    required String challengeNonce,
     required String nationality,
     required String nationalIdHash,
     required String passportNumberHash,
@@ -279,6 +295,8 @@ class _FakeVcIssuerClient extends VcIssuerClient {
     required String verificationKeyHash,
   }) async {
     passportIssueCalls += 1;
+    expect(challengeId, 'challenge-1');
+    expect(challengeNonce, 'nonce-1');
     passportIssuedDid = did;
     passportIssuedNationality = nationality;
     passportIssuedNationalIdHash = nationalIdHash;
@@ -360,8 +378,13 @@ class _FakeZkpProver implements ZkpProver {
   const _FakeZkpProver();
 
   @override
-  Future<ZkpProof> prove({required String passportSecretHex}) async {
-    expect(passportSecretHex, _passportData.passportSecret);
+  Future<ZkpProof> prove({
+    required PassportData passport,
+    required ZkpChallengeBinding challenge,
+  }) async {
+    expect(passport.passportSecret, _passportData.passportSecret);
+    expect(challenge.challengeId, 'challenge-1');
+    expect(challenge.nonce, 'nonce-1');
     return const ZkpProof(
       backend: 'groth16_bn254',
       proofHex: 'proof-abc123',

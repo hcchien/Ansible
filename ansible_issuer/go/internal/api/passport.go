@@ -11,6 +11,10 @@ var ErrInvalidPassportProof = errors.New("invalid_passport_proof")
 // treats it as untrusted input until PassportBindingVerifier accepts it.
 type PassportBindingProof struct {
 	DID                 string
+	ChallengeID         string
+	ChallengeNonce      string
+	ChallengeIssuer     string
+	ChallengeScope      string
 	Nationality         string
 	NationalIDHash      string
 	PassportNumberHash  string
@@ -33,5 +37,7 @@ type PassportBindingVerifier interface {
 }
 
 type PassportConfig struct {
-	Verifier PassportBindingVerifier
+	Verifier   PassportBindingVerifier
+	Challenges PassportChallengeStore
+	IssuerURL  string
 }
