@@ -33150,10 +33150,12 @@ ${values.join("\n")}` : `${blockName} :`;
     if (!circuit?.name || !circuit?.hash || !circuit?.noir_version || !circuit?.bb_version) {
       throw new Error(`Invalid packaged circuit returned for ${name}`);
     }
-    if (!await O3.validatePackagedCircuit(circuit, expectedHash)) {
-      throw new Error(`Validation failed for packaged circuit: ${name}`);
+    report(`downloaded:${name}`);
+    const normalizeHash = (value) => String(value || "").toLowerCase().replace(/^0x/, "").padStart(64, "0");
+    if (circuit.name !== name || normalizeHash(circuit.vkey_hash) !== normalizeHash(expectedHash)) {
+      throw new Error(`Pinned circuit identity mismatch: ${name}`);
     }
-    report(`validated:${name}`);
+    report(`pinned:${name}`);
     return {
       name,
       size: circuit.size,
@@ -33249,7 +33251,7 @@ ${values.join("\n")}` : `${blockName} :`;
     const integrityName = `data_check_integrity_sa_${passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "")}_dg_${passport.sod.encapContentInfo.eContent.hashAlgorithm.toLowerCase().replace("-", "")}`;
     let validatedPackageCount = 0;
     const reportPackageProgress = (stage) => {
-      if (stage.startsWith("validated:")) {
+      if (stage.startsWith("pinned:")) {
         validatedPackageCount += 1;
         report(`packages:${validatedPackageCount}/5`);
       } else {

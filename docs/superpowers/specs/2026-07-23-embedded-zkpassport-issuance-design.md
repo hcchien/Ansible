@@ -207,9 +207,10 @@ SHA-256 values are release-tested. This avoids recomputing the 790-circuit and
 
 Proof planning retrieves only the five independent, public circuit packages
 selected from the passport's signing algorithms. Those package requests run
-concurrently and each package must still pass the hash recorded in the bundled
-manifest before use. Neither the requests nor their cache keys may contain MRZ,
-DG, SOD, document number, holder DID, challenge, or proof inputs.
+concurrently. Before use, each response's circuit name and declared
+verification-key hash must match the circuit identity recorded in the bundled,
+signed-release manifest. Neither the requests nor their cache keys may contain
+MRZ, DG, SOD, document number, holder DID, challenge, or proof inputs.
 
 The Wallet shows a monotonic elapsed timer for planning, SRS initialization,
 preparation, proving, and local verification. Planning additionally reports
@@ -228,7 +229,19 @@ connections. The primary content-hash URL may fail over to the IPFS CID pinned
 in the same signed manifest. WebKit supplies only those manifest URLs and
 receives the downloaded public JSON; document fields, holder identity,
 challenge, and proof inputs never enter the request. Content from either
-source is still hash-validated against the signed app's manifest before use.
+source is constrained to the content-addressed URL or CID recorded in the
+signed app's manifest, and its circuit identity must match that manifest before
+use.
+
+The app does not recompute ZKPassport's Poseidon2 verification-key hash inside
+WKWebView. That duplicate pure-JavaScript `BigInt` operation takes minutes on
+an iPhone and is not an independent trust check. Instead, the signed app pins
+the manifest and allowed content-addressed sources, checks the returned circuit
+name and declared verification-key hash, keeps all private passport inputs
+inside the native proving boundary, and treats the Issuer's independent proof
+verification against its own registry verification key as the authoritative
+fail-closed integrity check. A modified or mismatched circuit therefore cannot
+produce an accepted credential.
 Moving this bridge into the cross-platform Flutter artifact manager remains
 required before declaring the artifact boundary fully implemented; no cloud
 proving or raw-passport fallback is allowed in the interim. Updating the

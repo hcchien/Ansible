@@ -88,10 +88,16 @@ async function packaged(
   if (!circuit?.name || !circuit?.hash || !circuit?.noir_version || !circuit?.bb_version) {
     throw new Error(`Invalid packaged circuit returned for ${name}`)
   }
-  if (!await RegistryClient.validatePackagedCircuit(circuit, expectedHash)) {
-    throw new Error(`Validation failed for packaged circuit: ${name}`)
+  report(`downloaded:${name}`)
+  const normalizeHash = (value) =>
+    String(value || "").toLowerCase().replace(/^0x/, "").padStart(64, "0")
+  if (
+    circuit.name !== name ||
+    normalizeHash(circuit.vkey_hash) !== normalizeHash(expectedHash)
+  ) {
+    throw new Error(`Pinned circuit identity mismatch: ${name}`)
   }
-  report(`validated:${name}`)
+  report(`pinned:${name}`)
   return {
     name,
     size: circuit.size,
@@ -197,7 +203,9 @@ export async function createProofPlan(
   // These public registry snapshots are reviewed and pinned by the signed app
   // release. Recomputing their 790-circuit and 584-certificate Merkle roots in
   // mobile WebKit dominated proof planning. Individual passport-specific
-  // circuit packages remain downloaded on demand and hash-validated below.
+  // circuit packages remain downloaded on demand and checked against the
+  // signed release's pinned circuit identity below. The issuer independently
+  // verifies the resulting proof with its own registry verification key.
   const registry = new RegistryClient({ chainId: 1 })
   const manifest = pinnedManifest
   const certificates = pinnedCertificates
@@ -223,7 +231,7 @@ export async function createProofPlan(
 
   let validatedPackageCount = 0
   const reportPackageProgress = (stage) => {
-    if (stage.startsWith("validated:")) {
+    if (stage.startsWith("pinned:")) {
       validatedPackageCount += 1
       report(`packages:${validatedPackageCount}/5`)
     } else {
@@ -232,8 +240,8 @@ export async function createProofPlan(
   }
 
   // The five circuit packages are independent public artifacts. Fetch and
-  // hash-validate them concurrently so mobile proof planning pays one network
-  // round-trip window instead of five consecutive windows.
+  // check their pinned identities concurrently so mobile proof planning pays
+  // one network round-trip window instead of five consecutive windows.
   const [dsc, id, integrity, disclose, bind] = await Promise.all([
     buildDSCCircuit(
       passport,

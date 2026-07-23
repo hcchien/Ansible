@@ -51,3 +51,15 @@ test("browser bundle injects Buffer into modules when the host has no Node globa
     "454c4958",
   )
 })
+
+test("mobile planning checks pinned circuit identity without WebKit Poseidon recomputation", async () => {
+  const source = await readFile(
+    new URL("../src/runtime.js", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(source, /circuit\.name !== name/)
+  assert.match(source, /circuit\.vkey_hash/)
+  assert.match(source, /normalizeHash\(expectedHash\)/)
+  assert.doesNotMatch(source, /validatePackagedCircuit/)
+})
