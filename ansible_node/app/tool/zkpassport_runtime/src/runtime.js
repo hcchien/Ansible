@@ -1,5 +1,6 @@
 import { sha256 } from "@noble/hashes/sha2.js"
 import { RegistryClient } from "@zkpassport/registry"
+import { Buffer } from "buffer"
 import {
   Binary,
   OPRF_ZERO_PROOF,
@@ -22,6 +23,11 @@ import {
   getTBSMaxLen,
   isIDSupported,
 } from "@zkpassport/utils"
+
+// WebKit does not expose Node's Buffer global. Some transitive ZKPassport
+// registry/ASN.1 paths still access it directly even in their browser build.
+// Install the pinned browser polyfill before any proof-plan work begins.
+globalThis.Buffer = Buffer
 
 function bytesToBigInt(bytes) {
   let value = 0n

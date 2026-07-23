@@ -10,7 +10,8 @@
   "dependencies": {
     "@noble/hashes": "2.0.1",
     "@zkpassport/registry": "0.14.0",
-    "@zkpassport/utils": "0.37.3"
+    "@zkpassport/utils": "0.37.3",
+    "buffer": "6.0.3"
   },
   "devDependencies": {
     "esbuild": "0.27.4"
