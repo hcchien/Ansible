@@ -61,5 +61,6 @@ test("mobile planning checks pinned circuit identity without WebKit Poseidon rec
   assert.match(source, /circuit\.name !== name/)
   assert.match(source, /circuit\.vkey_hash/)
   assert.match(source, /normalizeHash\(expectedHash\)/)
+  assert.match(source, /loadPackage\(\{ name, expectedHash, urls \}\)/)
   assert.doesNotMatch(source, /validatePackagedCircuit/)
 })

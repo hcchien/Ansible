@@ -4,9 +4,19 @@ import XCTest
 
 class RunnerTests: XCTestCase {
 
-  func testExample() {
-    // If you add code to the Runner application, consider adding tests here.
-    // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
+  func testZKPassportRuntimeUsesPinnedArtifactCacheAndSerializedDelivery() throws {
+    let sourceURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+      .appendingPathComponent("Runner/ZKPassportInputRuntime.swift")
+    let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+    XCTAssertTrue(source.contains("ElixZKPassportCircuits-v0.20.0"))
+    XCTAssertTrue(source.contains("completeFileProtection"))
+    XCTAssertTrue(source.contains("sourceTimeoutNanoseconds"))
+    XCTAssertTrue(source.contains("packageResolutionQueue"))
+    XCTAssertTrue(source.contains("deliverNextPackageResolution"))
+    XCTAssertFalse(source.contains("packageSession.dataTask"))
   }
 
 }

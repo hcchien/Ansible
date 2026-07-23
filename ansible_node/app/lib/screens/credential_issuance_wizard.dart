@@ -806,6 +806,12 @@ class _PassportNfcCredentialPanelState
     if (stage.startsWith('download:')) {
       return zh ? '下載護照證明電路' : 'Downloading proof circuit';
     }
+    if (stage.startsWith('cache:')) {
+      return zh ? '從本機快取載入護照電路' : 'Loading proof circuit from cache';
+    }
+    if (stage.startsWith('network:')) {
+      return zh ? '護照證明電路下載完成' : 'Proof circuit downloaded';
+    }
     if (stage.startsWith('downloaded:')) {
       return zh ? '檢查護照證明電路' : 'Checking proof circuit';
     }

@@ -223,15 +223,18 @@ failure, or disposal. Native proving remains serialized until measured device
 memory limits demonstrate that parallel proving is safe.
 
 On iOS, the five public circuit-package requests use an ephemeral native
-`URLSession` with a strict HTTPS host/path allowlist, bounded response size,
-an app-enforced thirty-second deadline per source, and at most five
-connections. The primary content-hash URL may fail over to the IPFS CID pinned
-in the same signed manifest. WebKit supplies only those manifest URLs and
-receives the downloaded public JSON; document fields, holder identity,
-challenge, and proof inputs never enter the request. Content from either
-source is constrained to the content-addressed URL or CID recorded in the
-signed app's manifest, and its circuit identity must match that manifest before
-use.
+`URLSession` artifact manager with a strict HTTPS host/path allowlist, bounded
+response size, an app-enforced fifteen-second deadline per source, and at most
+five connections. Successfully checked public packages are persisted in the
+OS caches directory under the pinned verification-key hash, protected with
+complete file protection, and are revalidated before every cache hit. The
+primary content-hash URL may fail over to the IPFS CID pinned in the same signed
+manifest. WebKit supplies only the circuit name, pinned hash, and manifest
+URLs, and receives the downloaded public JSON through a serialized result
+queue; document fields, holder identity, challenge, and proof inputs never
+enter the request or cache key. Content from either source is constrained to
+the content-addressed URL or CID recorded in the signed app's manifest, and
+its circuit identity must match that manifest before use.
 
 The app does not recompute ZKPassport's Poseidon2 verification-key hash inside
 WKWebView. That duplicate pure-JavaScript `BigInt` operation takes minutes on

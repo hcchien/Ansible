@@ -84,7 +84,7 @@ async function packaged(
     urls.push(`https://ipfs.zkpassport.id/ipfs/${manifestEntry.cid}`)
   }
   report(`download:${name}`)
-  const circuit = await loadPackage({ name, urls })
+  const circuit = await loadPackage({ name, expectedHash, urls })
   if (!circuit?.name || !circuit?.hash || !circuit?.noir_version || !circuit?.bb_version) {
     throw new Error(`Invalid packaged circuit returned for ${name}`)
   }
