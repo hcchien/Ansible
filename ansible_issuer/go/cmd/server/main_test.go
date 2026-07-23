@@ -269,8 +269,8 @@ func TestBuildMobileMoicaRPConfigProductionModeFailsClosed(t *testing.T) {
 	t.Setenv("MOBILEMOICA_CONSTITUTION_APPROVAL_ID", "constitution-exception")
 
 	_, _, err := buildMobileMoicaRPConfigFromEnv(false, time.Now, nil)
-	if !errors.Is(err, provider.ErrMobileMoicaProductionUnavailable) {
-		t.Fatalf("expected production unavailable error, got %v", err)
+	if !errors.Is(err, errMobileMoicaRPConfigMissing) {
+		t.Fatalf("expected missing production configuration error, got %v", err)
 	}
 }
 

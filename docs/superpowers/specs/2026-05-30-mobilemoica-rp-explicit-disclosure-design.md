@@ -1,6 +1,6 @@
 # MobileMoica RP Explicit Disclosure Design
 
-> Status: Draft, not approved for implementation
+> Status: Implementation-ready behind approval and deployment gates
 > Date: 2026-05-30
 
 ## Goal
@@ -504,6 +504,17 @@ status, and stores the issued VC.
 Implement MobileMoica APP2APP PKCS#7 ticket creation, result polling using the
 provider checksum and `sp_ticket` helpers, PKCS#7 validation, chain validation,
 and revocation checking.
+
+Implementation note (2026-07-23): the production broker now implements the
+Phase 4 protocol boundary, including HTTPS-only endpoints, ticket/result
+checksums, ticket/offer binding, exact signed-content verification, approved
+root validation, certificate-time validation, CRL checking, and replay
+identifiers. It remains disabled by default. A deployment is not complete until
+actual relying-party credentials, provider endpoint values, approved root/CRL
+files, and the four approval artifact IDs are provisioned. In-flight provider
+transactions are short-lived process memory in this release; therefore
+MobileMoica-enabled revisions must use one active Issuer instance until
+encrypted shared transaction storage is implemented.
 
 ### Phase 5: Limited Pilot
 

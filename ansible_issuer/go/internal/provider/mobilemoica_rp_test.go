@@ -1,9 +1,14 @@
 package provider_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -11,6 +16,25 @@ import (
 
 	"github.com/trisaura/ansible_issuer/internal/provider"
 )
+
+type acceptingMobileMoicaVerifier struct{}
+
+type mobileMoicaRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f mobileMoicaRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
+func (acceptingMobileMoicaVerifier) Verify(
+	_ context.Context,
+	encoded string,
+	expected []byte,
+) (string, string, error) {
+	if encoded != base64.StdEncoding.EncodeToString(expected) {
+		return "", "", provider.ErrMobileMoicaSignedContentInvalid
+	}
+	return "ephemeral-provider-subject", "provider-replay-1", nil
+}
 
 func validMobileMoicaApprovalConfig() provider.MobileMoicaApprovalConfig {
 	return provider.MobileMoicaApprovalConfig{
@@ -281,15 +305,115 @@ func TestContractMobileMoicaRPBrokerVerifiesSyntheticResult(t *testing.T) {
 }
 
 func TestProductionMobileMoicaRPBrokerFailsClosed(t *testing.T) {
-	broker := provider.NewProductionMobileMoicaRPBroker(provider.ProductionMobileMoicaRPConfig{})
-
-	_, startErr := broker.Start(context.Background(), validMobileMoicaStartRequest())
-	if !errors.Is(startErr, provider.ErrMobileMoicaProductionUnavailable) {
-		t.Fatalf("expected production unavailable on start, got %v", startErr)
+	broker, err := provider.NewProductionMobileMoicaRPBroker(provider.ProductionMobileMoicaRPConfig{})
+	if broker != nil || !errors.Is(err, provider.ErrMobileMoicaProductionUnavailable) {
+		t.Fatalf("expected fail-closed construction, got broker=%v err=%v", broker, err)
 	}
+}
 
-	_, verifyErr := broker.Verify(context.Background(), "offer-1", "state-1")
-	if !errors.Is(verifyErr, provider.ErrMobileMoicaProductionUnavailable) {
-		t.Fatalf("expected production unavailable on verify, got %v", verifyErr)
+func TestProductionMobileMoicaRPBrokerExchangesTicketAndResult(t *testing.T) {
+	var signedContent string
+	var transactionID string
+	transport := mobileMoicaRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+		var request map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		var payload map[string]string
+		switch r.URL.Path {
+		case "/ticket":
+			transactionID = request["transaction_id"]
+			signedContent = request["sign_data"]
+			if request["id_num"] != "Z123000000" ||
+				request["op_code"] != "SIGN" ||
+				request["op_mode"] != "APP2APP" ||
+				request["sign_type"] != "PKCS#7" {
+				t.Fatalf("unexpected ticket request: %+v", request)
+			}
+			ticket := syntheticSPTicket(transactionID, "svc-1", "ticket-1")
+			checksum, err := provider.GenerateMobileMoicaSPChecksum(
+				provider.MobileMoicaTicketResponseChecksumPayload(transactionID, "0", ticket),
+				syntheticMobileMoicaChecksumKey,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload = map[string]string{
+				"transaction_id": transactionID, "error_code": "0",
+				"sp_ticket": ticket, "idp_checksum": checksum,
+			}
+		case "/result":
+			content, err := base64.StdEncoding.DecodeString(signedContent)
+			if err != nil {
+				t.Fatal(err)
+			}
+			signed := base64.StdEncoding.EncodeToString(content)
+			checksum, err := provider.GenerateMobileMoicaSPChecksum(
+				provider.MobileMoicaSignResultResponseChecksumPayload(transactionID, "0", "provider-hash", signed),
+				syntheticMobileMoicaChecksumKey,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload = map[string]string{
+				"transaction_id": transactionID, "error_code": "0",
+				"hashed_id_num": "provider-hash", "signed_response": signed,
+				"idp_checksum": checksum,
+			}
+		default:
+			t.Fatalf("unexpected endpoint: %s", r.URL)
+		}
+		encoded, _ := json.Marshal(payload)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(encoded)),
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	broker, err := provider.NewProductionMobileMoicaRPBroker(provider.ProductionMobileMoicaRPConfig{
+		TicketEndpoint: "https://mobilemoica.example/ticket",
+		ResultEndpoint: "https://mobilemoica.example/result",
+		ServiceID:      "svc-1",
+		EncodedAPIKey:  syntheticMobileMoicaChecksumKey,
+		ReturnURL:      "trisaura://mobilemoica/callback",
+		HTTPClient:     &http.Client{Transport: transport},
+		Verifier:       acceptingMobileMoicaVerifier{},
+		Now: func() time.Time {
+			return time.Date(2026, 5, 30, 12, 0, 0, 0, time.UTC)
+		},
+	})
+	if err != nil {
+		t.Fatalf("construct production broker: %v", err)
 	}
+	start, err := broker.Start(context.Background(), validMobileMoicaStartRequest())
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	if strings.Contains(start.DeepLinkURL, "Z123000000") {
+		t.Fatal("deep link leaked national ID")
+	}
+	result, err := broker.Verify(context.Background(), "offer-1", "state-1")
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	if result.ReplayID != "provider-replay-1" ||
+		result.AssuranceContext != "mobilemoica_rp_explicit_disclosure" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+func syntheticSPTicket(transactionID, serviceID, ticketID string) string {
+	payload, _ := json.Marshal(map[string]string{
+		"transaction_id":  transactionID,
+		"op_code":         "SIGN",
+		"op_mode":         "APP2APP",
+		"sp_service_id":   serviceID,
+		"sp_ticket_id":    ticketID,
+		"expiration_time": "2026-05-30T12:05:00Z",
+		"hashed_id_num":   "provider-hash",
+	})
+	encoded := base64.RawURLEncoding.EncodeToString(payload)
+	digest := sha256.Sum256([]byte(encoded))
+	return encoded + "." + base64.RawURLEncoding.EncodeToString(digest[:])
 }

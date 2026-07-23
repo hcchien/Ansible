@@ -178,7 +178,7 @@ class ZkpProverImpl implements ZkpProver {
           'salt': salt.toString(),
           'dg1': passport.dg1Bytes.toList(growable: false),
           'sod': passport.sodBytes.toList(growable: false),
-          'issuer': challenge.issuer,
+          'issuer_host': Uri.parse(challenge.issuer).host,
           'scope': challenge.scope,
           'challenge_binding': challengeBinding,
         },
@@ -192,7 +192,7 @@ class ZkpProverImpl implements ZkpProver {
       throw StateError('ZKPassport circuit manifest version mismatch.');
     }
     final circuits = (plan['circuits'] as List<Object?>?) ?? const [];
-    if (circuits.length != 5) {
+    if (circuits.length != 6) {
       throw StateError('ZKPassport proof plan is incomplete.');
     }
     final proofResults = <Map<String, Object?>>[];
@@ -287,11 +287,18 @@ class ZkpProverImpl implements ZkpProver {
             'A generated ZKPassport proof failed local verification.',
           );
         }
+        final envelopeProof = name == 'tw_person_binding'
+            ? proof
+            : Uint8List.sublistView(proof, 4);
         proofResults.add({
-          'proof': _hex(proof),
+          'proof': _hex(envelopeProof),
           'vkeyHash': circuit['vkey_hash'],
           'version': plan['version'],
           'name': circuit['name'],
+          'index': index,
+          'total': circuits.length,
+          'committedInputs':
+              circuit['committed_inputs'] ?? const <String, Object?>{},
         });
       }
     } finally {

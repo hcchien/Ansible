@@ -138,6 +138,7 @@ flutter:
   assets:
     - assets/trusted_csca/taiwan.pem
     - assets/zkpassport/runtime.js
+    - assets/zkpassport/circuits/tw_person_binding.json
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

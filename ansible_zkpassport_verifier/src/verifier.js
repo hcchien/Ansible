@@ -1,5 +1,6 @@
 import { ZKPassport } from "@zkpassport/sdk"
-import { challengeBinding, personhoodHashes } from "./binding.js"
+import { challengeBinding, passportBindingHash } from "./binding.js"
+import { verifyTwPersonBindingProof } from "./tw-person-binding.js"
 
 function alpha3(value) {
   if (typeof value !== "string") return undefined
@@ -31,8 +32,12 @@ export async function verifyPassportRequest(input) {
     .bind("custom_data", binding)
     .done()
 
+  const standardProofs = envelope.proofs.filter(
+    (proof) => proof?.name !== "tw_person_binding",
+  ).map((proof) => ({ ...proof, total: 5 }))
+  if (standardProofs.length !== 5) return { verified: false }
   const result = await zkPassport.verify({
-    proofs: envelope.proofs,
+    proofs: standardProofs,
     originalQuery: query,
     queryResult: envelope.query_result,
     validity: 300,
@@ -49,9 +54,11 @@ export async function verifyPassportRequest(input) {
   if (!disclosedNationality || disclosedNationality !== input.nationality) {
     return { verified: false }
   }
+  const twPersonBindingInput = await verifyTwPersonBindingProof(envelope.proofs)
   return {
     verified: true,
     nationality: disclosedNationality,
-    ...personhoodHashes(result.uniqueIdentifier),
+    tw_person_binding_input: twPersonBindingInput,
+    ...passportBindingHash(result.uniqueIdentifier),
   }
 }

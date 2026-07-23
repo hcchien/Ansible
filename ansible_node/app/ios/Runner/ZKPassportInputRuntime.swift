@@ -1,5 +1,5 @@
 import Foundation
-import WebKit
+import JavaScriptCore
 
 private struct CircuitPackageArtifact: Sendable {
   let data: Data
@@ -40,6 +40,20 @@ private actor CircuitPackageArtifactManager {
     guard normalizedHash.count == 64,
           normalizedHash.allSatisfy(\.isHexDigit) else {
       throw ArtifactError.invalidIdentity
+    }
+    if let bundledURL = urls.first(where: { $0.scheme == "elix-asset" }) {
+      let relativePath = bundledURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+      guard let frameworkURL = Bundle.main.privateFrameworksURL?
+              .appendingPathComponent("App.framework", isDirectory: true),
+            !relativePath.contains("..") else {
+        throw ArtifactError.invalidPackage
+      }
+      let assetURL = frameworkURL
+        .appendingPathComponent("flutter_assets", isDirectory: true)
+        .appendingPathComponent(relativePath, isDirectory: false)
+      let data = try Data(contentsOf: assetURL)
+      try validate(data, name: name, expectedHash: normalizedHash)
+      return CircuitPackageArtifact(data: data, cacheHit: true)
     }
     try fileManager.createDirectory(
       at: cacheDirectory,
@@ -151,22 +165,22 @@ private actor CircuitPackageArtifactManager {
   }
 }
 
-/// Ephemeral, on-device JavaScript runtime for the pinned ZKPassport parser
-/// and circuit-input generator. Public circuit downloads use the constrained
-/// native URLSession bridge below; WebKit never navigates to remote content
-/// and uses no persistent website storage.
+/// In-process JavaScriptCore runtime for the reviewed ZKPassport parser and
+/// witness-input generator. It has no DOM, website storage, navigation, or
+/// network API. Swift resolves and verifies every public circuit artifact
+/// after the private input descriptor has been generated.
 @available(iOS 15.0, *)
-final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
-  private static let resultHandlerName = "elixZkPassportPlan"
-
-  private var webView: WKWebView?
+final class ZKPassportInputRuntime: @unchecked Sendable {
   private var planCompletion: ((Result<[String: Any], Error>) -> Void)?
   private var planProgress: ((String) -> Void)?
   private var timeoutWorkItem: DispatchWorkItem?
+  private var runtimeContext: JSContext?
+  private var planTask: Task<Void, Never>?
   private let artifactManager = CircuitPackageArtifactManager()
-  private var packageLoadTasks: [String: Task<Void, Never>] = [:]
-  private var packageResolutionQueue: [(id: String, data: Data?, error: String?)] = []
-  private var isDeliveringPackageResolution = false
+  private let runtimeQueue = DispatchQueue(
+    label: "cool.elix.zkpassport.planner",
+    qos: .userInitiated
+  )
 
   @MainActor
   func createProofPlan(
@@ -180,29 +194,11 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    let requestJSON: String
-    do {
-      let data = try JSONSerialization.data(withJSONObject: request)
-      guard let encoded = String(data: data, encoding: .utf8) else {
-        completion(.failure(RuntimeError.invalidRequest))
-        return
-      }
-      requestJSON = encoded
-    } catch {
+    guard JSONSerialization.isValidJSONObject(request) else {
       completion(.failure(RuntimeError.invalidRequest))
       return
     }
 
-    let configuration = WKWebViewConfiguration()
-    configuration.websiteDataStore = .nonPersistent()
-    configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-    configuration.userContentController.add(
-      self,
-      name: Self.resultHandlerName
-    )
-    let webView = WKWebView(frame: .zero, configuration: configuration)
-    webView.navigationDelegate = self
-    self.webView = webView
     planCompletion = completion
     planProgress = progress
 
@@ -213,180 +209,176 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
     }
     timeoutWorkItem = timeout
     DispatchQueue.main.asyncAfter(deadline: .now() + 600, execute: timeout)
-
-    webView.loadHTMLString("<!doctype html><meta charset=\"utf-8\">", baseURL: nil)
-
-    func waitUntilReady(_ attempts: Int) {
-      guard attempts > 0 else {
-        self.finish(.failure(RuntimeError.initializationFailed))
-        return
-      }
-      webView.evaluateJavaScript("document.readyState") { _, error in
-        if error != nil {
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            waitUntilReady(attempts - 1)
-          }
-          return
-        }
-
-        // evaluateJavaScript only starts the async work. The durable script
-        // message handler delivers the result later, avoiding WebKit dropping
-        // callAsyncJavaScript's completion during long registry downloads.
-        let invocation = runtimeJavaScript + "\n" + """
-        (() => {
-          const packageResolvers = new Map();
-          let nextPackageId = 0;
-          const send = (payload) => {
-            window.webkit.messageHandlers.\(Self.resultHandlerName).postMessage(
-              JSON.stringify(payload)
-            );
-          };
-          globalThis.__elixResolveCircuitPackage = (id, payload, error) => {
-            const pending = packageResolvers.get(id);
-            if (!pending) return;
-            packageResolvers.delete(id);
-            if (error) pending.reject(new Error(String(error)));
-            else pending.resolve(JSON.parse(atob(payload)));
-          };
-          const loadPackage = ({ name, expectedHash, urls }) => new Promise((resolve, reject) => {
-            const id = `package-${++nextPackageId}`;
-            packageResolvers.set(id, { resolve, reject });
-            send({ package_request: { id, name, expected_hash: expectedHash, urls } });
-          });
-          Promise.resolve().then(async () => {
-            const runtime = globalThis.ElixZKPassport;
-            if (!runtime || typeof runtime.createProofPlan !== "function") {
-              throw new Error("ZKPassport runtime did not install its global API");
-            }
-            const plan = await runtime.createProofPlan(
-              \(requestJSON),
-              (stage) => send({ progress: String(stage) }),
-              loadPackage
-            );
-            const encodedPlan = JSON.stringify(plan, (_key, value) => {
-              if (typeof value === "bigint") return value.toString(10);
-              if (ArrayBuffer.isView(value)) return Array.from(value);
-              return value;
-            });
-            send({ ok: true, plan: JSON.parse(encodedPlan) });
-          }).catch((error) => {
-            send({
-              ok: false,
-              error: String(error?.message || error || "Unknown JavaScript error"),
-            });
-          });
-        })();
-        """
-        webView.evaluateJavaScript(invocation) { _, loadError in
-          if let loadError {
-            self.finish(.failure(RuntimeError.javaScript(
-              Self.javaScriptMessage(from: loadError)
-            )))
-          }
-        }
-      }
+    runtimeQueue.async { [weak self] in
+      self?.runJavaScriptCore(
+        runtimeJavaScript: runtimeJavaScript,
+        request: request
+      )
     }
-    waitUntilReady(20)
   }
 
-  @MainActor
-  func userContentController(
-    _ userContentController: WKUserContentController,
-    didReceive message: WKScriptMessage
+  private func runJavaScriptCore(
+    runtimeJavaScript: String,
+    request: [String: Any]
   ) {
-    guard message.name == Self.resultHandlerName,
-          let encoded = message.body as? String,
-          let data = encoded.data(using: .utf8),
-          let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-      finish(.failure(RuntimeError.invalidPlan))
+    guard let context = JSContext() else {
+      finishOnMain(.failure(RuntimeError.initializationFailed))
       return
     }
-    if let progress = envelope["progress"] as? String {
-      planProgress?(progress)
+    runtimeContext = context
+    var uncaughtException: String?
+    context.exceptionHandler = { _, exception in
+      uncaughtException = exception?.toString()
+    }
+    context.evaluateScript(Self.javaScriptCorePolyfills)
+    context.evaluateScript(runtimeJavaScript)
+    if let uncaughtException {
+      finishOnMain(.failure(RuntimeError.javaScript(uncaughtException)))
       return
     }
-    if let packageRequest = envelope["package_request"] as? [String: Any] {
-      downloadPackage(packageRequest)
+    guard let runtime = context.objectForKeyedSubscript("ElixZKPassport"),
+          !runtime.isUndefined,
+          let createProofPlan = runtime.objectForKeyedSubscript("createProofPlan"),
+          !createProofPlan.isUndefined,
+          let normalize = context.evaluateScript(
+            """
+            (value) => JSON.stringify(value, (_key, item) => {
+              if (typeof item === "bigint") return item.toString(10);
+              if (ArrayBuffer.isView(item)) return Array.from(item);
+              return item;
+            })
+            """
+          ) else {
+      finishOnMain(.failure(RuntimeError.initializationFailed))
       return
     }
-    guard envelope["ok"] as? Bool == true else {
-      finish(.failure(RuntimeError.javaScript(
-        envelope["error"] as? String ?? "Unknown JavaScript error"
+
+    let progressBlock: @convention(block) (String) -> Void = { [weak self] stage in
+      DispatchQueue.main.async {
+        self?.planProgress?(stage)
+      }
+    }
+    let successBlock: @convention(block) (JSValue) -> Void = { [weak self] value in
+      guard let encoded = normalize.call(withArguments: [value])?.toString(),
+            let data = encoded.data(using: .utf8),
+            let descriptor = try? JSONSerialization.jsonObject(with: data)
+              as? [String: Any] else {
+        self?.finishOnMain(.failure(RuntimeError.invalidPlan))
+        return
+      }
+      self?.resolveArtifacts(in: descriptor)
+    }
+    let failureBlock: @convention(block) (JSValue) -> Void = { [weak self] error in
+      self?.finishOnMain(.failure(RuntimeError.javaScript(
+        error.toString() ?? "Unknown JavaScriptCore error"
       )))
+    }
+    guard let promise = createProofPlan.call(
+      withArguments: [request, progressBlock]
+    ), !promise.isUndefined,
+      let chained = promise.invokeMethod("then", withArguments: [successBlock]),
+      !chained.isUndefined else {
+      finishOnMain(.failure(RuntimeError.initializationFailed))
       return
     }
-    guard let plan = envelope["plan"] as? [String: Any] else {
-      finish(.failure(RuntimeError.invalidPlan))
-      return
+    chained.invokeMethod("catch", withArguments: [failureBlock])
+  }
+
+  private func resolveArtifacts(in descriptor: [String: Any]) {
+    planTask = Task { [weak self, artifactManager] in
+      guard let self else { return }
+      do {
+        guard let rawCircuits = descriptor["circuits"] as? [[String: Any]],
+              rawCircuits.count == 6 else {
+          throw RuntimeError.invalidPlan
+        }
+        var resolved = Array<[String: Any]?>(repeating: nil, count: rawCircuits.count)
+        try await withThrowingTaskGroup(
+          of: (Int, CircuitPackageArtifact).self
+        ) { group in
+          for (index, circuit) in rawCircuits.enumerated() {
+            guard let name = circuit["name"] as? String,
+                  let expectedHash = circuit["expected_hash"] as? String,
+                  let rawURLs = circuit["urls"] as? [String],
+                  !rawURLs.isEmpty else {
+              throw RuntimeError.invalidPlan
+            }
+            let urls = rawURLs.compactMap(URL.init(string:))
+              .filter(Self.isAllowedPackageURL)
+            guard urls.count == rawURLs.count else {
+              throw RuntimeError.invalidPlan
+            }
+            group.addTask {
+              let artifact = try await artifactManager.load(
+                name: name,
+                expectedHash: expectedHash,
+                urls: urls
+              )
+              return (index, artifact)
+            }
+          }
+          for try await (index, artifact) in group {
+            guard var package = try JSONSerialization.jsonObject(
+              with: artifact.data
+            ) as? [String: Any] else {
+              throw RuntimeError.invalidPlan
+            }
+            let descriptorCircuit = rawCircuits[index]
+            package["manifest"] = package
+            package["inputs"] = descriptorCircuit["inputs"]
+            package["committed_inputs"] =
+              descriptorCircuit["committed_inputs"] ?? [String: Any]()
+            resolved[index] = package
+            let name = descriptorCircuit["name"] as? String ?? "circuit"
+            await MainActor.run {
+              self.planProgress?(
+                "\(artifact.cacheHit ? "cache" : "network"):\(name)"
+              )
+            }
+          }
+        }
+        guard resolved.allSatisfy({ $0 != nil }) else {
+          throw RuntimeError.invalidPlan
+        }
+        var plan = descriptor
+        plan["circuits"] = resolved.compactMap { $0 }
+        let completedPlan = plan
+        await MainActor.run {
+          self.finish(.success(completedPlan))
+        }
+      } catch {
+        await MainActor.run {
+          self.finish(.failure(error))
+        }
+      }
     }
-    finish(.success(plan))
+  }
+
+  private func finishOnMain(_ result: Result<[String: Any], Error>) {
+    DispatchQueue.main.async { [weak self] in
+      self?.finish(result)
+    }
   }
 
   @MainActor
   private func finish(_ result: Result<[String: Any], Error>) {
-    guard let completion = planCompletion else {
-      return
-    }
+    guard let completion = planCompletion else { return }
     planCompletion = nil
     planProgress = nil
-    packageLoadTasks.values.forEach { $0.cancel() }
-    packageLoadTasks.removeAll()
-    packageResolutionQueue.removeAll()
-    isDeliveringPackageResolution = false
+    planTask?.cancel()
+    planTask = nil
     timeoutWorkItem?.cancel()
     timeoutWorkItem = nil
-    webView?.configuration.userContentController.removeScriptMessageHandler(
-      forName: Self.resultHandlerName
-    )
-    webView = nil
+    runtimeContext = nil
     completion(result)
   }
 
-  @MainActor
-  private func downloadPackage(_ request: [String: Any]) {
-    guard let id = request["id"] as? String,
-          let name = request["name"] as? String,
-          let expectedHash = request["expected_hash"] as? String,
-          let rawURLs = request["urls"] as? [String],
-          !rawURLs.isEmpty else {
-      resolvePackage(
-        id: request["id"] as? String ?? "",
-        data: nil,
-        error: "Missing circuit package URLs"
-      )
-      return
-    }
-    let urls = rawURLs.compactMap(URL.init(string:)).filter(Self.isAllowedPackageURL)
-    guard urls.count == rawURLs.count else {
-      resolvePackage(id: id, data: nil, error: "Rejected circuit package URL")
-      return
-    }
-    packageLoadTasks[id] = Task { [weak self, artifactManager] in
-      do {
-        let artifact = try await artifactManager.load(
-          name: name,
-          expectedHash: expectedHash,
-          urls: urls
-        )
-        guard !Task.isCancelled else { return }
-        await MainActor.run {
-          guard let self else { return }
-          self.packageLoadTasks.removeValue(forKey: id)
-          self.planProgress?("\(artifact.cacheHit ? "cache" : "network"):\(name)")
-          self.resolvePackage(id: id, data: artifact.data, error: nil)
-        }
-      } catch {
-        guard !Task.isCancelled else { return }
-        await MainActor.run {
-          guard let self else { return }
-          self.packageLoadTasks.removeValue(forKey: id)
-          self.resolvePackage(id: id, data: nil, error: error.localizedDescription)
-        }
-      }
-    }
-  }
-
   private static func isAllowedPackageURL(_ url: URL) -> Bool {
+    if url.scheme == "elix-asset" {
+      return url.host == nil && url.query == nil && url.fragment == nil &&
+        url.path.hasPrefix("/assets/zkpassport/circuits/") &&
+        !url.path.contains("..")
+    }
     guard url.scheme == "https", url.query == nil, url.fragment == nil else {
       return false
     }
@@ -399,70 +391,33 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
     return false
   }
 
-  @MainActor
-  private func resolvePackage(id: String, data: Data?, error: String?) {
-    packageResolutionQueue.append((id: id, data: data, error: error))
-    deliverNextPackageResolution()
-  }
-
-  @MainActor
-  private func deliverNextPackageResolution() {
-    guard !isDeliveringPackageResolution,
-          !packageResolutionQueue.isEmpty,
-          let webView else {
-      return
-    }
-    isDeliveringPackageResolution = true
-    let resolution = packageResolutionQueue.removeFirst()
-    let idJSON = Self.jsonLiteral(resolution.id)
-    let errorJSON = Self.jsonLiteral(resolution.error)
-    let payloadJSON = Self.jsonLiteral(resolution.data?.base64EncodedString())
-    webView.evaluateJavaScript(
-      "globalThis.__elixResolveCircuitPackage(\(idJSON), \(payloadJSON), \(errorJSON))"
-    ) { [weak self] _, evaluationError in
-      Task { @MainActor in
-        guard let self else { return }
-        self.isDeliveringPackageResolution = false
-        if let evaluationError {
-          self.finish(.failure(RuntimeError.javaScript(
-            Self.javaScriptMessage(from: evaluationError)
-          )))
-          return
+  private static let javaScriptCorePolyfills = """
+  (() => {
+    if (typeof globalThis.TextEncoder === "undefined") {
+      globalThis.TextEncoder = class {
+        encode(value = "") {
+          const encoded = unescape(encodeURIComponent(String(value)));
+          return Uint8Array.from(encoded, character => character.charCodeAt(0));
         }
-        self.deliverNextPackageResolution()
-      }
+      };
     }
-  }
-
-  private static func jsonLiteral(_ value: String?) -> String {
-    guard let value,
-          let data = try? JSONSerialization.data(withJSONObject: [value]),
-          let array = String(data: data, encoding: .utf8) else {
-      return "null"
+    if (typeof globalThis.TextDecoder === "undefined") {
+      globalThis.TextDecoder = class {
+        decode(value = new Uint8Array()) {
+          const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+          let binary = "";
+          for (let offset = 0; offset < bytes.length; offset += 8192) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+          }
+          return decodeURIComponent(escape(binary));
+        }
+      };
     }
-    return String(array.dropFirst().dropLast())
-  }
-
-  private static func javaScriptMessage(from error: Error) -> String {
-    let cocoaError = error as NSError
-    return cocoaError.userInfo["WKJavaScriptExceptionMessage"] as? String ??
-      cocoaError.localizedDescription
-  }
-
-  func webView(
-    _ webView: WKWebView,
-    decidePolicyFor navigationAction: WKNavigationAction,
-    decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
-  ) {
-    // Registry fetch() requests are subresources and do not pass here as
-    // top-level navigation. Reject every attempted document navigation.
-    if navigationAction.navigationType == .other,
-       navigationAction.request.url?.scheme == "about" {
-      decisionHandler(.allow)
-    } else {
-      decisionHandler(.cancel)
+    if (typeof globalThis.console === "undefined") {
+      globalThis.console = { log() {}, warn() {}, error() {} };
     }
-  }
+  })();
+  """
 
   enum RuntimeError: LocalizedError {
     case alreadyRunning
@@ -477,11 +432,11 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
       case .alreadyRunning:
         return "A ZKPassport proof plan is already running."
       case .initializationFailed:
-        return "ZKPassport JavaScript runtime initialization failed."
+        return "ZKPassport JavaScriptCore runtime initialization failed."
       case .invalidPlan:
-        return "ZKPassport JavaScript runtime returned an invalid proof plan."
+        return "ZKPassport JavaScriptCore runtime returned an invalid proof plan."
       case .invalidRequest:
-        return "ZKPassport JavaScript runtime received an invalid request."
+        return "ZKPassport JavaScriptCore runtime received an invalid request."
       case .timedOut:
         return "ZKPassport proof planning timed out."
       case .javaScript(let message):

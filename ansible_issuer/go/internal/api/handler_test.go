@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -35,11 +36,16 @@ func (v fakePassportVerifier) VerifyPassportBinding(
 		return api.PassportBindingResult{}, v.err
 	}
 	return api.PassportBindingResult{
-		NationalIDHash:     proof.NationalIDHash,
-		PassportNumberHash: proof.PassportNumberHash,
-		Nationality:        proof.Nationality,
-		VerifiedAt:         time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
+		TWPersonBindingInput: testTWPersonBindingInput("Z123000000"),
+		PassportNumberHash:   proof.PassportNumberHash,
+		Nationality:          proof.Nationality,
+		VerifiedAt:           time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
 	}, nil
+}
+
+func testTWPersonBindingInput(nationalID string) string {
+	digest := sha256.Sum256([]byte("tris-aura:person-binding:tw:v1" + nationalID))
+	return "0x00" + hex.EncodeToString(digest[:31])
 }
 
 func configurePassportVerifier(h *api.Handler) {
@@ -456,7 +462,7 @@ func TestPassportIssue_RejectsDuplicatePassportBinding(t *testing.T) {
 	}
 }
 
-func TestPassportIssue_RejectsNationalIDAlreadyBoundByTWProvider(t *testing.T) {
+func TestPassportIssue_DoesNotTreatLegacyProviderSubjectAsNationalID(t *testing.T) {
 	now := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
 	h := newTWHandler(t, now)
 	configurePassportVerifier(h)
@@ -498,10 +504,7 @@ func TestPassportIssue_RejectsNationalIDAlreadyBoundByTWProvider(t *testing.T) {
 	}
 
 	response := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
-	if response.Code != http.StatusConflict {
-		t.Fatalf("expected 409, got %d: %s", response.Code, response.Body)
-	}
-	if bodyJSON(t, response)["error"] != "personhood_already_bound" {
-		t.Fatalf("unexpected error: %v", bodyJSON(t, response))
+	if response.Code != http.StatusOK {
+		t.Fatalf("legacy provider subject must not impersonate a national-ID binding: %d %s", response.Code, response.Body)
 	}
 }

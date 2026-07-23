@@ -2,8 +2,8 @@ import 'package:flutter/services.dart';
 
 /// Minimal Dart facade over the pinned native Swoir/Swoirenberg backend.
 ///
-/// Callers must verify artifact hashes before [prepare]. This backend performs
-/// no network I/O and keeps witness inputs only for the duration of [prove].
+/// The native planner verifies pinned public artifacts before [prepare]. This
+/// facade performs no network I/O and keeps witness inputs only for [prove].
 class SwoirZkPassportBackend {
   const SwoirZkPassportBackend();
 

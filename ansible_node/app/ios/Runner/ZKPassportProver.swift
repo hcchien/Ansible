@@ -74,9 +74,10 @@ final class ZKPassportProver {
           // SDK envelope omits noir_rs's 4-byte public-input-count prefix, so
           // retain the native form only until the local verification finishes.
           self.nativeProofs[circuitID] = encoded
-          // noir_rs prefixes a 4-byte big-endian public-input count. The
-          // ZKPassport SDK verifier expects the raw bb layout without it.
-          completion(.success(Data(encoded.dropFirst(4))))
+          // Return the native prefix as well. Dart removes it for upstream
+          // ZKPassport proofs, but retains it for the Elix extension so the
+          // verifier can split and validate its public inputs explicitly.
+          completion(.success(encoded))
         } catch {
           completion(.failure(error))
         }

@@ -4,7 +4,7 @@ import XCTest
 
 class RunnerTests: XCTestCase {
 
-  func testZKPassportRuntimeUsesPinnedArtifactCacheAndSerializedDelivery() throws {
+  func testZKPassportRuntimeUsesPinnedNativeArtifactsWithoutWebKit() throws {
     let sourceURL = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent()
       .deletingLastPathComponent()
@@ -14,8 +14,13 @@ class RunnerTests: XCTestCase {
     XCTAssertTrue(source.contains("ElixZKPassportCircuits-v0.20.0"))
     XCTAssertTrue(source.contains("completeFileProtection"))
     XCTAssertTrue(source.contains("sourceTimeoutNanoseconds"))
-    XCTAssertTrue(source.contains("packageResolutionQueue"))
-    XCTAssertTrue(source.contains("deliverNextPackageResolution"))
+    XCTAssertTrue(source.contains("import JavaScriptCore"))
+    XCTAssertTrue(source.contains("JSContext"))
+    XCTAssertTrue(source.contains("resolveArtifacts"))
+    XCTAssertFalse(source.contains("import WebKit"))
+    XCTAssertFalse(source.contains("WKWebView"))
+    XCTAssertFalse(source.contains("WKScriptMessageHandler"))
+    XCTAssertFalse(source.contains("base64EncodedString"))
     XCTAssertFalse(source.contains("packageSession.dataTask"))
   }
 

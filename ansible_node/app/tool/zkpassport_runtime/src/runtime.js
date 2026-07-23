@@ -1,5 +1,4 @@
 import { sha256 } from "@noble/hashes/sha2.js"
-import { RegistryClient } from "@zkpassport/registry"
 import pinnedCertificates from "./pinned-certificates-mainnet.json"
 import pinnedManifest from "./pinned-circuit-manifest-0.20.0.json"
 import {
@@ -10,6 +9,7 @@ import {
   getBitSize,
   getBindCircuitInputs,
   getCscaForPassportAsync,
+  getDisclosedBytesFromMrzAndMask,
   getDiscloseCircuitInputs,
   getDSCCircuitInputs,
   getECDSAInfo,
@@ -64,16 +64,7 @@ function sodHashAlgorithm(passport) {
   return passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "")
 }
 
-async function packaged(
-  registry,
-  manifest,
-  name,
-  report = () => {},
-  loadPackage,
-) {
-  if (typeof loadPackage !== "function") {
-    throw new Error("Native circuit package loader is unavailable")
-  }
+async function packaged(manifest, name, report = () => {}) {
   const manifestEntry = manifest.circuits[name]
   const expectedHash = manifestEntry?.hash
   if (!expectedHash) throw new Error(`Circuit ${name} is absent from the pinned manifest`)
@@ -83,38 +74,43 @@ async function packaged(
   if (manifestEntry.cid) {
     urls.push(`https://ipfs.zkpassport.id/ipfs/${manifestEntry.cid}`)
   }
-  report(`download:${name}`)
-  const circuit = await loadPackage({ name, expectedHash, urls })
-  if (!circuit?.name || !circuit?.hash || !circuit?.noir_version || !circuit?.bb_version) {
-    throw new Error(`Invalid packaged circuit returned for ${name}`)
-  }
-  report(`downloaded:${name}`)
-  const normalizeHash = (value) =>
-    String(value || "").toLowerCase().replace(/^0x/, "").padStart(64, "0")
-  if (
-    circuit.name !== name ||
-    normalizeHash(circuit.vkey_hash) !== normalizeHash(expectedHash)
-  ) {
-    throw new Error(`Pinned circuit identity mismatch: ${name}`)
-  }
-  report(`pinned:${name}`)
+  report(`selected:${name}`)
   return {
     name,
-    size: circuit.size,
-    manifest: circuit,
-    vkey: circuit.vkey,
-    vkey_hash: circuit.vkey_hash,
+    expected_hash: expectedHash,
+    urls,
     inputs: null,
+  }
+}
+
+async function twPersonBindingCircuit(passport, salts, serviceScope, serviceSubscope, timestamp, report) {
+  report("tw-person-binding:inputs")
+  const inputs = await getDiscloseCircuitInputs(
+    passport,
+    {},
+    salts,
+    0n,
+    serviceScope,
+    serviceSubscope,
+    timestamp,
+    OPRF_ZERO_PROOF,
+  )
+  delete inputs.disclose_mask
+  report("tw-person-binding:ready")
+  return {
+    name: "tw_person_binding",
+    expected_hash: "02c79897440f6ec265c1c79a70f414e642d09fe464a2d1dbd1540cf586940c9e",
+    urls: ["elix-asset:///assets/zkpassport/circuits/tw_person_binding.json"],
+    inputs,
+    committed_inputs: { tw_person_binding: { version: 1 } },
   }
 }
 
 async function buildDSCCircuit(
   passport,
-  registry,
   manifest,
   certificates,
   report,
-  loadPackage,
 ) {
   report("dsc:select")
   const csc = await getCscaForPassportAsync(passport.sod.certificate, certificates.certificates)
@@ -136,14 +132,14 @@ async function buildDSCCircuit(
     const scheme = csc.signature_algorithm === "RSA-PSS" ? "pss" : "pkcs"
     name = `sig_check_dsc_tbs_${tbs}_rsa_${scheme}_${bits}_${hash}`
   }
-  const circuit = await packaged(registry, manifest, name, report, loadPackage)
+  const circuit = await packaged(manifest, name, report)
   report("dsc:inputs")
   circuit.inputs = await getDSCCircuitInputs(passport, privateState.salt, certificates)
   report("dsc:ready")
   return circuit
 }
 
-async function buildIDCircuit(passport, registry, manifest, report, loadPackage) {
+async function buildIDCircuit(passport, manifest, report) {
   report("id:select")
   const certificate = extractTBS(passport)
   if (!certificate) throw new Error("Passport document-signing certificate is missing")
@@ -173,7 +169,7 @@ async function buildIDCircuit(passport, registry, manifest, report, loadPackage)
   } else {
     throw new Error("Unsupported passport document-signing algorithm")
   }
-  const circuit = await packaged(registry, manifest, name, report, loadPackage)
+  const circuit = await packaged(manifest, name, report)
   report("id:inputs")
   circuit.inputs = await getIDDataCircuitInputs(
     passport,
@@ -189,7 +185,6 @@ const privateState = { salt: 0n }
 export async function createProofPlan(
   request,
   report = () => {},
-  loadPackage,
 ) {
   if (request.version !== "0.20.0") throw new Error("Unsupported circuit version")
   report("passport:parse")
@@ -206,7 +201,6 @@ export async function createProofPlan(
   // circuit packages remain downloaded on demand and checked against the
   // signed release's pinned circuit identity below. The issuer independently
   // verifies the resulting proof with its own registry verification key.
-  const registry = new RegistryClient({ chainId: 1 })
   const manifest = pinnedManifest
   const certificates = pinnedCertificates
   if (manifest.version !== request.version) {
@@ -218,7 +212,8 @@ export async function createProofPlan(
     nationality: { disclose: true },
     bind: { custom_data: request.challenge_binding },
   }
-  const serviceScope = getServiceScopeHash(new URL(request.issuer).host)
+  if (!request.issuer_host) throw new Error("Issuer host is missing")
+  const serviceScope = getServiceScopeHash(request.issuer_host)
   const serviceSubscope = getServiceSubscopeHash(request.scope)
   const timestamp = getNowTimestamp()
 
@@ -229,32 +224,22 @@ export async function createProofPlan(
       .toLowerCase()
       .replace("-", "")}`
 
-  let validatedPackageCount = 0
-  const reportPackageProgress = (stage) => {
-    if (stage.startsWith("pinned:")) {
-      validatedPackageCount += 1
-      report(`packages:${validatedPackageCount}/5`)
-    } else {
-      report(stage)
-    }
-  }
-
-  // The five circuit packages are independent public artifacts. Fetch and
-  // check their pinned identities concurrently so mobile proof planning pays
-  // one network round-trip window instead of five consecutive windows.
-  const [dsc, id, integrity, disclose, bind] = await Promise.all([
+  // Return pinned circuit identities with the private witness inputs. The
+  // native app process resolves, validates, and caches the public packages
+  // after JavaScriptCore completes; no WebKit or JavaScript network bridge is
+  // involved.
+  const [dsc, id, integrity, disclose, bind, twPersonBinding] = await Promise.all([
     buildDSCCircuit(
       passport,
-      registry,
       manifest,
       certificates,
-      reportPackageProgress,
-      loadPackage,
+      report,
     ),
-    buildIDCircuit(passport, registry, manifest, reportPackageProgress, loadPackage),
-    packaged(registry, manifest, integrityName, reportPackageProgress, loadPackage),
-    packaged(registry, manifest, "disclose_bytes", reportPackageProgress, loadPackage),
-    packaged(registry, manifest, "bind", reportPackageProgress, loadPackage),
+    buildIDCircuit(passport, manifest, report),
+    packaged(manifest, integrityName, report),
+    packaged(manifest, "disclose_bytes", report),
+    packaged(manifest, "bind", report),
+    twPersonBindingCircuit(passport, salts, serviceScope, serviceSubscope, timestamp, report),
   ])
   report("integrity:inputs")
   integrity.inputs = await getIntegrityCheckCircuitInputs(passport, privateState.salt, salts)
@@ -270,6 +255,15 @@ export async function createProofPlan(
     timestamp,
     OPRF_ZERO_PROOF,
   )
+  disclose.committed_inputs = {
+    disclose_bytes: {
+      discloseMask: disclose.inputs.disclose_mask,
+      disclosedBytes: getDisclosedBytesFromMrzAndMask(
+        passport.mrz,
+        disclose.inputs.disclose_mask,
+      ),
+    },
+  }
   report("bind:inputs")
   bind.inputs = await getBindCircuitInputs(
     passport,
@@ -281,10 +275,15 @@ export async function createProofPlan(
     timestamp,
     OPRF_ZERO_PROOF,
   )
+  bind.committed_inputs = {
+    bind: {
+      data: query.bind,
+    },
+  }
   report("plan:ready")
   return {
     version: manifest.version,
-    circuits: [dsc, id, integrity, disclose, bind],
+    circuits: [dsc, id, integrity, disclose, bind, twPersonBinding],
     query_result: {
       nationality: { disclose: { result: passport.nationality } },
       bind: { custom_data: request.challenge_binding },

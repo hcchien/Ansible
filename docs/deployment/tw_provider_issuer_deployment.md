@@ -2,10 +2,11 @@
 
 ## Scope
 
-This document covers deploying the Go issuer with the production-shaped TW
-provider flow. The real TW provider API is not wired yet. Production adapter
-mode intentionally fails closed until approved provider API details, callback
-fixtures, and trust-anchor verification are implemented.
+This document covers deploying the Go issuer with the TW provider and
+MobileMoica relying-party flows. The generic TW provider production adapter
+remains fail-closed. MobileMoica has a production APP2APP adapter, but it also
+fails closed unless approved endpoints, credentials, trust anchors, current
+CRLs, and all review artifacts are configured.
 
 ## Required Core Environment
 
@@ -51,10 +52,20 @@ deployment explicitly records the approval artifacts for this exception path.
   - `contract`: local/dev contract broker. Builds a `mobilemoica://` deep link
     with a synthetic ticket, Base64URL-encoded APP2APP return parameters, and
     verifies a synthetic result.
-  - `production`: currently fails closed. The provided APP2APP notes identify
-    endpoints and scheme, and the Issuer provider includes MobileMoica checksum
-    and `sp_ticket` helpers. The production HTTP adapter, PKCS#7 validation,
-    and approved trust-anchor / revocation behavior are not implemented yet.
+  - `production`: calls the approved ticket and result APIs over HTTPS,
+    validates both provider checksums, validates the `sp_ticket` binding, and
+    verifies the returned PKCS#7 content, chain, validity, and CRL status.
+- `MOBILEMOICA_TICKET_ENDPOINT`: approved HTTPS SP ticket endpoint.
+- `MOBILEMOICA_RESULT_ENDPOINT`: approved HTTPS signing-result endpoint.
+- `MOBILEMOICA_SERVICE_ID`: relying-party service ID.
+- `MOBILEMOICA_API_KEY_BASE64`: MobileMoica AES API key. Supply through Secret
+  Manager; never put it in source, build substitutions, or ordinary env dumps.
+- `MOBILEMOICA_HINT`: provider-approved display hint, if required.
+- `MOBILEMOICA_TRUST_ANCHOR_FILES`: comma-separated mounted PEM certificate
+  files containing only approved MobileMoica roots.
+- `MOBILEMOICA_CRL_FILES`: comma-separated mounted PEM CRL files. Startup fails
+  if no CRL can be parsed, and issuance fails closed when no current,
+  correctly-signed CRL covers the signer.
 - `MOBILEMOICA_SESSION_STORE_PATH`: durable JSON session store path.
 - `MOBILEMOICA_LEGAL_APPROVAL_ID`: legal approval artifact ID.
 - `MOBILEMOICA_PRIVACY_APPROVAL_ID`: privacy approval artifact ID.
@@ -92,9 +103,15 @@ Outside mock mode:
 
 For MobileMoica RP, startup config only enables the path when
 `MOBILEMOICA_RP_ENABLED=true` and all legal/privacy/security/constitution
-approval artifact IDs are present. Production mode returns an explicit
-unavailable error until the real MobileMoica HTTP adapter, PKCS#7 validation,
-and certificate revocation verification are implemented.
+approval artifact IDs are present. Production mode additionally validates all
+provider configuration, HTTPS endpoints, API-key format, trust anchors, and
+CRLs before the issuer becomes ready.
+
+The production broker keeps only the short-lived ticket transaction and exact
+signed-content binding in process memory, and never keeps the raw national ID.
+An issuer restart invalidates an in-flight offer; the user must restart that
+offer. Until broker transaction state is moved to an encrypted shared store,
+run MobileMoica-enabled issuer revisions with one active instance.
 
 ## Durable Storage And Cloud Run
 

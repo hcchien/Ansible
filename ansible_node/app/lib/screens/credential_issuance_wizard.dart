@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../l10n/app_l10n.dart';
 import '../services/atproto_client.dart';
@@ -215,6 +216,7 @@ class PassportNfcCredentialPanel extends StatefulWidget {
 
 class _PassportNfcCredentialPanelState
     extends State<PassportNfcCredentialPanel> {
+  static const _passportRuntimeRevision = 'Passport JSC 2';
   late final VcIssuerClient _vcIssuerClient;
   late final WalletRepository _walletRepository;
   late final NfcPassportReader _passportReader;
@@ -227,10 +229,11 @@ class _PassportNfcCredentialPanelState
   String? _errorMessage;
   double? _srsDownloadProgress;
   ZkpProverProgress? _proofProgress;
-  DateTime? _proofProgressObservedAt;
+  DateTime? _proofStartedAt;
   Timer? _proofProgressTicker;
   bool _submittingToIssuer = false;
   bool _scanningMrz = false;
+  String? _buildLabel;
   final _documentNumberController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
   final _dateOfExpiryController = TextEditingController();
@@ -238,6 +241,7 @@ class _PassportNfcCredentialPanelState
   @override
   void initState() {
     super.initState();
+    unawaited(_loadBuildLabel());
     _vcIssuerClient = widget.vcIssuerClient ?? VcIssuerClient();
     final walletRepository = widget.walletRepository;
     if (walletRepository == null) {
@@ -271,22 +275,36 @@ class _PassportNfcCredentialPanelState
     }
   }
 
+  Future<void> _loadBuildLabel() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() {
+        _buildLabel =
+            'v${info.version} (${info.buildNumber}) · $_passportRuntimeRevision';
+      });
+    } on Object {
+      if (!mounted) return;
+      setState(() => _buildLabel = _passportRuntimeRevision);
+    }
+  }
+
   void _recordProofProgress(ZkpProverProgress progress) {
     if (!mounted) return;
+    _proofStartedAt ??= DateTime.now().subtract(progress.elapsed);
     _proofProgressTicker ??= Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {});
     });
     setState(() {
       _proofProgress = progress;
-      _proofProgressObservedAt = DateTime.now();
     });
   }
 
   void _stopProofProgressTicker() {
     _proofProgressTicker?.cancel();
     _proofProgressTicker = null;
-    _proofProgressObservedAt = null;
+    _proofStartedAt = null;
   }
 
   String _copy({required String zh, required String en}) =>
@@ -335,7 +353,7 @@ class _PassportNfcCredentialPanelState
       _errorMessage = null;
       _srsDownloadProgress = null;
       _proofProgress = null;
-      _proofProgressObservedAt = null;
+      _proofStartedAt = null;
       _submittingToIssuer = false;
     });
 
@@ -591,6 +609,18 @@ class _PassportNfcCredentialPanelState
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
+        if (_buildLabel != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            _buildLabel!,
+            key: const ValueKey('passport-build-label'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Colors.grey[600],
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         Text(
           _copy(
@@ -765,12 +795,10 @@ class _PassportNfcCredentialPanelState
     if (progress == null) {
       return _copy(zh: '準備本機證明', en: 'Preparing local proof');
     }
-    final observedAt = _proofProgressObservedAt;
-    final elapsed =
-        progress.elapsed +
-        (observedAt == null
-            ? Duration.zero
-            : DateTime.now().difference(observedAt));
+    final startedAt = _proofStartedAt;
+    final elapsed = startedAt == null
+        ? progress.elapsed
+        : DateTime.now().difference(startedAt);
     final elapsedSeconds = elapsed.inSeconds;
     final suffix = progress.circuitCount > 0
         ? ' ${progress.circuitIndex}/${progress.circuitCount}'

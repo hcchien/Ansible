@@ -3,6 +3,7 @@ module github.com/trisaura/ansible_issuer
 go 1.25.0
 
 require (
+	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/jackc/pgx/v5 v5.10.0
 )

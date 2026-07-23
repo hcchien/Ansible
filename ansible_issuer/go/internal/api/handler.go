@@ -29,10 +29,11 @@ var (
 			`web:[A-Za-z0-9._%:-]+` +
 			`)$`,
 	)
-	reEmail          = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
-	reNationality    = regexp.MustCompile(`^[A-Z]{3}$`)
-	reNationalID     = regexp.MustCompile(`^[A-Z][0-9]{9}$`)
-	rePersonhoodHash = regexp.MustCompile(`^[A-Za-z0-9:_-]{16,128}$`)
+	reEmail                = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+	reNationality          = regexp.MustCompile(`^[A-Z]{3}$`)
+	reNationalID           = regexp.MustCompile(`^[A-Z][0-9]{9}$`)
+	rePersonhoodHash       = regexp.MustCompile(`^[A-Za-z0-9:_-]{16,128}$`)
+	reTWPersonBindingInput = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
 )
 
 // Handler wires all VC HTTP endpoints.
@@ -596,7 +597,6 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		ChallengeID         string `json:"challenge_id"`
 		ChallengeNonce      string `json:"challenge_nonce"`
 		Nationality         string `json:"nationality"`
-		NationalIDHash      string `json:"national_id_hash"`
 		PassportNumberHash  string `json:"passport_number_hash"`
 		ZKPProof            string `json:"zkp_proof"`
 		ZKPCircuitVersion   string `json:"zkp_circuit_version"`
@@ -634,7 +634,6 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		ChallengeIssuer:     passportChallenge.Issuer,
 		ChallengeScope:      passportChallenge.Scope,
 		Nationality:         body.Nationality,
-		NationalIDHash:      body.NationalIDHash,
 		PassportNumberHash:  body.PassportNumberHash,
 		ZKPProof:            body.ZKPProof,
 		ZKPCircuitVersion:   body.ZKPCircuitVersion,
@@ -644,7 +643,7 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
 	}
-	if !rePersonhoodHash.MatchString(binding.NationalIDHash) ||
+	if !reTWPersonBindingInput.MatchString(binding.TWPersonBindingInput) ||
 		!rePersonhoodHash.MatchString(binding.PassportNumberHash) ||
 		binding.Nationality != body.Nationality {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
@@ -659,10 +658,22 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	personBindings := h.peppers.ComputeAll(
+		binding.TWPersonBindingInput,
+		vc.PersonhoodBindingTWNationalIDContext,
+	)
+	if err := h.issuer.CheckDuplicate(personBindings); err != nil {
+		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
+			writeError(w, http.StatusConflict, "personhood_already_bound")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "issuance_error")
+		return
+	}
 	credMap, err := h.issuer.IssuePassport(
 		body.DID,
 		binding.Nationality,
-		binding.NationalIDHash,
+		personBindings[0],
 		binding.PassportNumberHash,
 	)
 	if err != nil {

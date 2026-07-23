@@ -52,15 +52,22 @@ test("browser bundle injects Buffer into modules when the host has no Node globa
   )
 })
 
-test("mobile planning checks pinned circuit identity without WebKit Poseidon recomputation", async () => {
+test("mobile planning returns pinned identities for native artifact resolution", async () => {
   const source = await readFile(
     new URL("../src/runtime.js", import.meta.url),
     "utf8",
   )
 
-  assert.match(source, /circuit\.name !== name/)
-  assert.match(source, /circuit\.vkey_hash/)
-  assert.match(source, /normalizeHash\(expectedHash\)/)
-  assert.match(source, /loadPackage\(\{ name, expectedHash, urls \}\)/)
+  assert.match(source, /expected_hash: expectedHash/)
+  assert.match(source, /getServiceScopeHash\(request\.issuer_host\)/)
+  assert.doesNotMatch(source, /new URL\(request\.issuer\)/)
+  assert.match(source, /urls,/)
+  assert.match(source, /selected:/)
+  assert.match(source, /getDisclosedBytesFromMrzAndMask/)
+  assert.match(source, /discloseMask: disclose\.inputs\.disclose_mask/)
+  assert.match(source, /committed_inputs/)
+  assert.match(source, /data: query\.bind/)
+  assert.doesNotMatch(source, /loadPackage/)
+  assert.doesNotMatch(source, /RegistryClient/)
   assert.doesNotMatch(source, /validatePackagedCircuit/)
 })

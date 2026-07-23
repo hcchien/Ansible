@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
@@ -554,7 +556,46 @@ func buildMobileMoicaRPConfigFromEnv(mockMode bool, now func() time.Time, pool *
 			AutoVerify: contractAutoVerify,
 		})
 	case "production":
-		return api.MobileMoicaRPConfig{}, false, provider.ErrMobileMoicaProductionUnavailable
+		productionRequired := []string{
+			"MOBILEMOICA_TICKET_ENDPOINT",
+			"MOBILEMOICA_RESULT_ENDPOINT",
+			"MOBILEMOICA_SERVICE_ID",
+			"MOBILEMOICA_API_KEY_BASE64",
+			"MOBILEMOICA_TRUST_ANCHOR_FILES",
+			"MOBILEMOICA_CRL_FILES",
+		}
+		if missing := missingEnv(productionRequired); len(missing) > 0 {
+			return api.MobileMoicaRPConfig{}, false,
+				fmt.Errorf("%w: %s", errMobileMoicaRPConfigMissing, strings.Join(missing, ", "))
+		}
+		roots, err := loadCertificatePool(splitCSV(os.Getenv("MOBILEMOICA_TRUST_ANCHOR_FILES")))
+		if err != nil {
+			return api.MobileMoicaRPConfig{}, false, fmt.Errorf("MobileMoica trust anchors: %w", err)
+		}
+		crls, err := loadRevocationLists(splitCSV(os.Getenv("MOBILEMOICA_CRL_FILES")))
+		if err != nil {
+			return api.MobileMoicaRPConfig{}, false, fmt.Errorf("MobileMoica CRLs: %w", err)
+		}
+		broker, err = provider.NewProductionMobileMoicaRPBroker(provider.ProductionMobileMoicaRPConfig{
+			TicketEndpoint: os.Getenv("MOBILEMOICA_TICKET_ENDPOINT"),
+			ResultEndpoint: os.Getenv("MOBILEMOICA_RESULT_ENDPOINT"),
+			ServiceID:      os.Getenv("MOBILEMOICA_SERVICE_ID"),
+			EncodedAPIKey:  os.Getenv("MOBILEMOICA_API_KEY_BASE64"),
+			ReturnURL:      returnURL,
+			Hint:           os.Getenv("MOBILEMOICA_HINT"),
+			Now:            now,
+			Verifier: provider.PKCS7MobileMoicaVerifier{
+				Roots: roots,
+				Revocation: provider.StaticCRLMobileMoicaChecker{
+					Lists: crls,
+					Now:   now,
+				},
+				Now: now,
+			},
+		})
+		if err != nil {
+			return api.MobileMoicaRPConfig{}, false, err
+		}
 	default:
 		return api.MobileMoicaRPConfig{}, false, fmt.Errorf("%w: MOBILEMOICA_RP_ADAPTER_MODE", errMobileMoicaRPConfigMissing)
 	}
@@ -567,6 +608,55 @@ func buildMobileMoicaRPConfigFromEnv(mockMode bool, now func() time.Time, pool *
 		ReturnURL: returnURL,
 		TTL:       time.Duration(envInt("MOBILEMOICA_SESSION_TTL_SECONDS", 300)) * time.Second,
 	}, true, nil
+}
+
+func loadCertificatePool(paths []string) (*x509.CertPool, error) {
+	if len(paths) == 0 {
+		return nil, errors.New("no trust anchors")
+	}
+	pool := x509.NewCertPool()
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if !pool.AppendCertsFromPEM(data) {
+			return nil, fmt.Errorf("no certificate in %s", filepath.Base(path))
+		}
+	}
+	return pool, nil
+}
+
+func loadRevocationLists(paths []string) ([]*x509.RevocationList, error) {
+	if len(paths) == 0 {
+		return nil, errors.New("no revocation lists")
+	}
+	var lists []*x509.RevocationList
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		for len(data) > 0 {
+			block, rest := pem.Decode(data)
+			if block == nil {
+				break
+			}
+			data = rest
+			if block.Type != "X509 CRL" && block.Type != "CRL" {
+				continue
+			}
+			list, err := x509.ParseRevocationList(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+			lists = append(lists, list)
+		}
+	}
+	if len(lists) == 0 {
+		return nil, errors.New("no parseable revocation lists")
+	}
+	return lists, nil
 }
 
 func missingEnv(keys []string) []string {

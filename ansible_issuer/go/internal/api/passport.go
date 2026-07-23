@@ -16,7 +16,6 @@ type PassportBindingProof struct {
 	ChallengeIssuer     string
 	ChallengeScope      string
 	Nationality         string
-	NationalIDHash      string
 	PassportNumberHash  string
 	ZKPProof            string
 	ZKPCircuitVersion   string
@@ -26,10 +25,10 @@ type PassportBindingProof struct {
 // PassportBindingResult is the verifier-approved binding material the Issuer is
 // allowed to persist for duplicate prevention.
 type PassportBindingResult struct {
-	NationalIDHash     string
-	PassportNumberHash string
-	Nationality        string
-	VerifiedAt         time.Time
+	TWPersonBindingInput string
+	PassportNumberHash   string
+	Nationality          string
+	VerifiedAt           time.Time
 }
 
 type PassportBindingVerifier interface {

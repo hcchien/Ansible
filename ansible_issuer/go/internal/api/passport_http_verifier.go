@@ -61,7 +61,6 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		ChallengeIssuer     string          `json:"challenge_issuer"`
 		ChallengeScope      string          `json:"challenge_scope"`
 		Nationality         string          `json:"nationality"`
-		NationalIDHash      string          `json:"national_id_hash"`
 		PassportNumberHash  string          `json:"passport_number_hash"`
 		CircuitVersion      string          `json:"circuit_version"`
 		VerificationKeyHash string          `json:"verification_key_hash"`
@@ -73,7 +72,6 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		ChallengeIssuer:     proof.ChallengeIssuer,
 		ChallengeScope:      proof.ChallengeScope,
 		Nationality:         proof.Nationality,
-		NationalIDHash:      proof.NationalIDHash,
 		PassportNumberHash:  proof.PassportNumberHash,
 		CircuitVersion:      proof.ZKPCircuitVersion,
 		VerificationKeyHash: proof.VerificationKeyHash,
@@ -109,24 +107,24 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		return PassportBindingResult{}, ErrInvalidPassportProof
 	}
 	var result struct {
-		Verified           bool   `json:"verified"`
-		Nationality        string `json:"nationality"`
-		NationalIDHash     string `json:"national_id_hash"`
-		PassportNumberHash string `json:"passport_number_hash"`
+		Verified             bool   `json:"verified"`
+		Nationality          string `json:"nationality"`
+		TWPersonBindingInput string `json:"tw_person_binding_input"`
+		PassportNumberHash   string `json:"passport_number_hash"`
 	}
 	if json.Unmarshal(limited, &result) != nil || !result.Verified {
 		return PassportBindingResult{}, ErrInvalidPassportProof
 	}
 	if result.Nationality != proof.Nationality ||
-		result.NationalIDHash == "" ||
+		result.TWPersonBindingInput == "" ||
 		result.PassportNumberHash == "" {
 		return PassportBindingResult{}, ErrInvalidPassportProof
 	}
 	return PassportBindingResult{
-		Nationality:        result.Nationality,
-		NationalIDHash:     result.NationalIDHash,
-		PassportNumberHash: result.PassportNumberHash,
-		VerifiedAt:         time.Now().UTC(),
+		Nationality:          result.Nationality,
+		TWPersonBindingInput: result.TWPersonBindingInput,
+		PassportNumberHash:   result.PassportNumberHash,
+		VerifiedAt:           time.Now().UTC(),
 	}, nil
 }
 

@@ -169,8 +169,10 @@ clear()
 On iOS the plugin uses Swoir/Swoirenberg's UltraHonk backend. Android uses the
 corresponding Noir native backend. TypeScript input-generation behavior must be
 ported or executed in an isolated bundled runtime with no network or storage
-access. Network artifact retrieval belongs to the Flutter artifact manager,
-which verifies pinned hashes before the prover sees a file.
+access. On iOS, public circuit retrieval belongs to the native artifact
+manager; it validates the signed manifest identity before the prover sees a
+package. The large SRS remains managed by the cross-platform Flutter artifact
+manager.
 
 No React Native UI, analytics, activity reporting, cloud prover, sanctions
 service, FaceMatch, bridge, dashboard, or ZKPassport account dependency is
@@ -203,7 +205,7 @@ temporary directory.
 The signed app bundles the reviewed circuit manifest and certificate registry
 snapshot for the supported protocol version. Their exact roots and file
 SHA-256 values are release-tested. This avoids recomputing the 790-circuit and
-584-certificate registry Merkle roots in mobile WebKit for every issuance.
+584-certificate registry Merkle roots for every issuance.
 
 Proof planning retrieves only the five independent, public circuit packages
 selected from the passport's signing algorithms. Those package requests run
@@ -216,8 +218,8 @@ The Wallet shows a monotonic elapsed timer for planning, SRS initialization,
 preparation, proving, and local verification. Planning additionally reports
 local parsing, circuit selection, public package download and validation, DSC
 inputs, ID inputs, integrity inputs, disclosure inputs, and holder/challenge
-binding. These stage names travel only from the local WebKit process to the
-local Flutter UI; they contain no document values, circuit inputs, or network
+binding. These stage names travel only from the in-process JavaScriptCore
+planner to the local Flutter UI; they contain no document values, circuit inputs, or network
 telemetry. The timer is diagnostic UI only; it must be cancelled after success,
 failure, or disposal. Native proving remains serialized until measured device
 memory limits demonstrate that parallel proving is safe.
@@ -229,25 +231,30 @@ five connections. Successfully checked public packages are persisted in the
 OS caches directory under the pinned verification-key hash, protected with
 complete file protection, and are revalidated before every cache hit. The
 primary content-hash URL may fail over to the IPFS CID pinned in the same signed
-manifest. WebKit supplies only the circuit name, pinned hash, and manifest
-URLs, and receives the downloaded public JSON through a serialized result
-queue; document fields, holder identity, challenge, and proof inputs never
-enter the request or cache key. Content from either source is constrained to
-the content-addressed URL or CID recorded in the signed app's manifest, and
-its circuit identity must match that manifest before use.
+manifest. The isolated, in-process JavaScriptCore planner has no DOM,
+navigation, website storage, or network API. It returns only the five pinned
+circuit identities, their allowed URLs, and ephemeral witness inputs. Swift
+downloads and validates the public packages, merges them with the descriptor
+inside the app process, and passes the result directly to Swoir. No package or
+private witness crosses a WebKit process boundary; document fields, holder
+identity, challenge, and proof inputs never enter a request or cache key.
+Content from either source is constrained to the content-addressed URL or CID
+recorded in the signed app's manifest, and its circuit identity must match that
+manifest before use.
 
-The app does not recompute ZKPassport's Poseidon2 verification-key hash inside
-WKWebView. That duplicate pure-JavaScript `BigInt` operation takes minutes on
-an iPhone and is not an independent trust check. Instead, the signed app pins
+The app does not recompute ZKPassport's Poseidon2 verification-key hash in the
+input planner. That duplicate pure-JavaScript `BigInt` operation takes minutes
+on an iPhone and is not an independent trust check. Instead, the signed app pins
 the manifest and allowed content-addressed sources, checks the returned circuit
 name and declared verification-key hash, keeps all private passport inputs
 inside the native proving boundary, and treats the Issuer's independent proof
 verification against its own registry verification key as the authoritative
 fail-closed integrity check. A modified or mismatched circuit therefore cannot
 produce an accepted credential.
-Moving this bridge into the cross-platform Flutter artifact manager remains
-required before declaring the artifact boundary fully implemented; no cloud
-proving or raw-passport fallback is allowed in the interim. Updating the
+Moving the remaining pinned TypeScript witness-generation behavior to a
+reviewed memory-safe native library remains a defense-in-depth option, but is
+not allowed to change circuit semantics without differential test vectors. No
+cloud proving or raw-passport fallback is allowed. Updating the
 certificate registry or manifest requires a reviewed app release; it must
 never be silently refreshed at runtime.
 

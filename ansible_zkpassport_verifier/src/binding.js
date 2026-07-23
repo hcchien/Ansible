@@ -14,13 +14,10 @@ export function challengeBinding(input) {
     .digest("hex")
 }
 
-export function personhoodHashes(uniqueIdentifier) {
-  const derive = (label) =>
-    `${label}_${createHash("sha256")
-      .update(`${label}\0${uniqueIdentifier}`)
-      .digest("hex")}`
+export function passportBindingHash(uniqueIdentifier) {
   return {
-    national_id_hash: derive("zkp-national-v1"),
-    passport_number_hash: derive("zkp-passport-v1"),
+    passport_number_hash: `zkp-passport-v1_${createHash("sha256")
+      .update(`zkp-passport-v1\0${uniqueIdentifier}`)
+      .digest("hex")}`,
   }
 }

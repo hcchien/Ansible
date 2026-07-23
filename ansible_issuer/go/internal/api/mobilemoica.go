@@ -54,7 +54,7 @@ func (h *Handler) mobileMoicaStart(w http.ResponseWriter, r *http.Request) {
 	// rotation cannot re-issue a second credential to an enrolled person. Only
 	// the primary commitment (element 0) is persisted for the write path.
 	comms := h.peppers.ComputeAll(
-		body.NationalID,
+		twPersonBindingInput(body.NationalID),
 		vc.PersonhoodBindingTWNationalIDContext,
 	)
 	if err := h.issuer.CheckDuplicate(comms); err != nil {
@@ -107,6 +107,14 @@ func (h *Handler) mobileMoicaStart(w http.ResponseWriter, r *http.Request) {
 		"expires_at":    startResult.ExpiresAt.Format(time.RFC3339),
 		"deep_link_url": startResult.DeepLinkURL,
 	})
+}
+
+func twPersonBindingInput(nationalID string) string {
+	digest := sha256.Sum256([]byte("tris-aura:person-binding:tw:v1" + nationalID))
+	// The Noir circuit packs the first 31 SHA-256 bytes into a BN254 field.
+	// Public fields are serialized as 32-byte big-endian hex, hence the leading
+	// zero byte here.
+	return "0x00" + hex.EncodeToString(digest[:31])
 }
 
 func (h *Handler) mobileMoicaStatus(w http.ResponseWriter, r *http.Request) {
@@ -275,6 +283,14 @@ func (h *Handler) writeMobileMoicaBrokerError(w http.ResponseWriter, err error) 
 		writeError(w, http.StatusServiceUnavailable, "mobilemoica_production_unavailable")
 	case errors.Is(err, provider.ErrMobileMoicaOfferNotFound):
 		writeError(w, http.StatusNotFound, "not_found")
+	case errors.Is(err, provider.ErrMobileMoicaResultPending):
+		writeError(w, http.StatusConflict, "provider_not_verified")
+	case errors.Is(err, provider.ErrMobileMoicaCertificateRevoked):
+		writeError(w, http.StatusUnauthorized, "revoked_certificate")
+	case errors.Is(err, provider.ErrMobileMoicaCertificateInvalid):
+		writeError(w, http.StatusUnauthorized, "invalid_signature")
+	case errors.Is(err, provider.ErrMobileMoicaProviderUnavailable):
+		writeError(w, http.StatusServiceUnavailable, "mobilemoica_provider_unavailable")
 	default:
 		writeError(w, http.StatusUnauthorized, "invalid_provider_proof")
 	}
@@ -308,6 +324,14 @@ func mobileMoicaRPErrorKind(err error) string {
 		return "checksum_invalid"
 	case errors.Is(err, provider.ErrMobileMoicaTicketInvalid):
 		return "ticket_invalid"
+	case errors.Is(err, provider.ErrMobileMoicaSignedContentInvalid):
+		return "signed_content_invalid"
+	case errors.Is(err, provider.ErrMobileMoicaCertificateInvalid):
+		return "certificate_invalid"
+	case errors.Is(err, provider.ErrMobileMoicaCertificateRevoked):
+		return "certificate_revoked"
+	case errors.Is(err, provider.ErrMobileMoicaProviderUnavailable):
+		return "provider_unavailable"
 	case errors.Is(err, provider.ErrStateNotFound):
 		return "state_not_found"
 	case errors.Is(err, provider.ErrExpiredSessionState):

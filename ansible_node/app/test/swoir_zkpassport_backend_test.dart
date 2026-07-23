@@ -55,7 +55,7 @@ void main() {
     ]);
   });
 
-  test('produces a complete challenge-bound five-proof envelope', () async {
+  test('produces a complete challenge-bound six-proof envelope', () async {
     final calls = <MethodCall>[];
     Map<Object?, Object?>? planArguments;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -72,21 +72,36 @@ void main() {
                   },
                 },
                 'circuits': List<Map<String, Object?>>.generate(
-                  5,
+                  6,
                   (index) => {
-                    'name': 'circuit-$index',
+                    'name': index == 5
+                        ? 'tw_person_binding'
+                        : 'circuit-$index',
                     'size': 100000 + (index * 1000),
                     'manifest': {'name': 'circuit-$index', 'bytecode': 'AA=='},
                     'inputs': {'witness': '$index'},
                     'vkey': base64Encode([index + 1]),
                     'vkey_hash': 'hash-$index',
+                    if (index == 3)
+                      'committed_inputs': {
+                        'disclose_bytes': {
+                          'discloseMask': List<int>.filled(90, 0),
+                          'disclosedBytes': List<int>.filled(90, 0),
+                        },
+                      },
+                    if (index == 4)
+                      'committed_inputs': {
+                        'bind': {
+                          'data': {'custom_data': 'challenge-binding'},
+                        },
+                      },
                   },
                 ),
               };
             case 'prepare':
               return 'prepared-${calls.where((item) => item.method == 'prepare').length}';
             case 'prove':
-              return Uint8List.fromList([0xca, 0xfe]);
+              return Uint8List.fromList([0, 0, 0, 8, 0xca, 0xfe]);
             case 'verify':
               return true;
             case 'clear':
@@ -123,14 +138,33 @@ void main() {
         );
 
     final envelope = jsonDecode(proof.proofHex) as Map<String, Object?>;
-    expect((envelope['proofs'] as List<Object?>), hasLength(5));
-    expect(calls.where((call) => call.method == 'prepare'), hasLength(5));
+    final envelopeProofs = envelope['proofs'] as List<Object?>;
+    expect(envelopeProofs, hasLength(6));
+    final discloseProof = Map<String, Object?>.from(
+      envelopeProofs[3]! as Map<Object?, Object?>,
+    );
+    final bindProof = Map<String, Object?>.from(
+      envelopeProofs[4]! as Map<Object?, Object?>,
+    );
+    final personBindingProof = Map<String, Object?>.from(
+      envelopeProofs[5]! as Map<Object?, Object?>,
+    );
+    expect(discloseProof['index'], 3);
+    expect(discloseProof['total'], 6);
+    expect(
+      jsonEncode(discloseProof['committedInputs']),
+      contains('discloseMask'),
+    );
+    expect(jsonEncode(bindProof['committedInputs']), contains('custom_data'));
+    expect(discloseProof['proof'], 'cafe');
+    expect(personBindingProof['proof'], '00000008cafe');
+    expect(calls.where((call) => call.method == 'prepare'), hasLength(6));
     expect(
       calls.where((call) => call.method == 'initialize_srs'),
       hasLength(1),
     );
-    expect(calls.where((call) => call.method == 'prove'), hasLength(5));
-    expect(calls.where((call) => call.method == 'verify'), hasLength(5));
+    expect(calls.where((call) => call.method == 'prove'), hasLength(6));
+    expect(calls.where((call) => call.method == 'verify'), hasLength(6));
     expect(calls.where((call) => call.method == 'clear'), hasLength(1));
     expect(srsProvider.acquisitions, 1);
     expect(srsProvider.releases, ['/tmp/srs-21.local']);
@@ -143,17 +177,18 @@ void main() {
     );
     expect(
       (srsCall.arguments as Map<Object?, Object?>)['circuit_size'],
-      104000,
+      105000,
     );
     expect(
       progress.where((item) => item.stage == ZkpProverStage.proving),
-      hasLength(5),
+      hasLength(6),
     );
 
     final request = Map<Object?, Object?>.from(
       planArguments!['request']! as Map<Object?, Object?>,
     );
     expect(request['challenge_binding'], matches(RegExp(r'^[0-9a-f]{64}$')));
+    expect(request['issuer_host'], 'issuer-dev.elix.cool');
     expect(request['scope'], 'elix-passport-personhood-v1');
     expect(request['dg1'], [0x61, 0x01]);
     expect(request['sod'], [0x77, 0x01]);

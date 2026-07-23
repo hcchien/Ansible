@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { challengeBinding, personhoodHashes } from "../src/binding.js"
+import { challengeBinding, passportBindingHash } from "../src/binding.js"
 
 const challenge = {
   challenge_id: "challenge",
@@ -19,8 +19,11 @@ test("challenge binding is deterministic and nonce-bound", () => {
   )
 })
 
-test("personhood outputs are domain-separated", () => {
-  const hashes = personhoodHashes("unique-passport")
-  assert.notEqual(hashes.national_id_hash, hashes.passport_number_hash)
-  assert.match(hashes.national_id_hash, /^zkp-national-v1_[a-f0-9]{64}$/)
+test("passport identifier never masquerades as a national-ID binding", () => {
+  const binding = passportBindingHash("unique-passport")
+  assert.deepEqual(Object.keys(binding), ["passport_number_hash"])
+  assert.match(
+    binding.passport_number_hash,
+    /^zkp-passport-v1_[a-f0-9]{64}$/,
+  )
 })

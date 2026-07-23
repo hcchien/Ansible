@@ -1,0 +1,13 @@
+[package]
+name = "tw_person_binding"
+type = "bin"
+compiler_version = ">=1.0.0"
+
+# This package is overlaid into zkpassport/circuits at the pinned upstream
+# revision recorded in README.md. The relative dependencies intentionally
+# target that workspace.
+[dependencies]
+commitment = { path = "../../../lib/commitment/scoped-nullifier" }
+utils = { path = "../../../lib/utils" }
+data_check_expiry = { path = "../../../lib/data-check/expiry" }
+sha256 = { tag = "v0.3.0", git = "https://github.com/noir-lang/sha256" }
