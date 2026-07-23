@@ -496,9 +496,13 @@ class _PassportNfcCredentialPanelState
       return error.message;
     }
     if (error is ZkpProverException) {
+      final diagnostic = error.cause
+          .toString()
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
       return _copy(
-        zh: '護照零知識證明在 ${error.stage} 階段失敗，請稍候再試。',
-        en: 'The passport zero-knowledge proof failed during ${error.stage}. Please try again later.',
+        zh: '護照零知識證明在 ${error.stage} 階段失敗：$diagnostic',
+        en: 'The passport zero-knowledge proof failed during ${error.stage}: $diagnostic',
       );
     }
     return _copy(

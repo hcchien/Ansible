@@ -46,12 +46,19 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate {
             do {
               let value = try await webView.callAsyncJavaScript(
                 """
-                const plan = await ElixZKPassport.createProofPlan(request);
-                return JSON.stringify(plan, (_key, value) => {
-                  if (typeof value === "bigint") return value.toString(10);
-                  if (ArrayBuffer.isView(value)) return Array.from(value);
-                  return value;
-                });
+                try {
+                  const plan = await ElixZKPassport.createProofPlan(request);
+                  return JSON.stringify({ ok: true, plan }, (_key, value) => {
+                    if (typeof value === "bigint") return value.toString(10);
+                    if (ArrayBuffer.isView(value)) return Array.from(value);
+                    return value;
+                  });
+                } catch (error) {
+                  return JSON.stringify({
+                    ok: false,
+                    error: String(error?.message || error || "Unknown JavaScript error"),
+                  });
+                }
                 """,
                 arguments: ["request": request],
                 in: nil,
@@ -59,13 +66,27 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate {
               )
               guard let encoded = value as? String,
                     let data = encoded.data(using: .utf8),
-                    let plan = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    let envelope = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                completion(.failure(RuntimeError.invalidPlan))
+                return
+              }
+              guard envelope["ok"] as? Bool == true else {
+                completion(.failure(RuntimeError.javaScript(
+                  envelope["error"] as? String ?? "Unknown JavaScript error"
+                )))
+                return
+              }
+              guard let plan = envelope["plan"] as? [String: Any] else {
                 completion(.failure(RuntimeError.invalidPlan))
                 return
               }
               completion(.success(plan))
             } catch {
-              completion(.failure(error))
+              let cocoaError = error as NSError
+              let message =
+                cocoaError.userInfo["WKJavaScriptExceptionMessage"] as? String ??
+                cocoaError.localizedDescription
+              completion(.failure(RuntimeError.javaScript(message)))
             }
           }
         }
@@ -89,8 +110,20 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate {
     }
   }
 
-  enum RuntimeError: Error {
+  enum RuntimeError: LocalizedError {
     case initializationFailed
     case invalidPlan
+    case javaScript(String)
+
+    var errorDescription: String? {
+      switch self {
+      case .initializationFailed:
+        return "ZKPassport JavaScript runtime initialization failed."
+      case .invalidPlan:
+        return "ZKPassport JavaScript runtime returned an invalid proof plan."
+      case .javaScript(let message):
+        return message
+      }
+    }
   }
 }
