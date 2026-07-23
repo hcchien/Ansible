@@ -45,12 +45,21 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate {
             defer { self.webView = nil }
             do {
               let value = try await webView.callAsyncJavaScript(
-                "return await ElixZKPassport.createProofPlan(request)",
+                """
+                const plan = await ElixZKPassport.createProofPlan(request);
+                return JSON.stringify(plan, (_key, value) => {
+                  if (typeof value === "bigint") return value.toString(10);
+                  if (ArrayBuffer.isView(value)) return Array.from(value);
+                  return value;
+                });
+                """,
                 arguments: ["request": request],
                 in: nil,
                 contentWorld: .page
               )
-              guard let plan = value as? [String: Any] else {
+              guard let encoded = value as? String,
+                    let data = encoded.data(using: .utf8),
+                    let plan = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 completion(.failure(RuntimeError.invalidPlan))
                 return
               }
