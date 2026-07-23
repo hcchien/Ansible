@@ -221,13 +221,17 @@ telemetry. The timer is diagnostic UI only; it must be cancelled after success,
 failure, or disposal. Native proving remains serialized until measured device
 memory limits demonstrate that parallel proving is safe.
 
-The current Beta runtime performs the five public circuit-package requests
-inside an ephemeral on-device WebKit process. Moving those remaining requests
-into the Flutter artifact manager remains required before declaring the
-artifact boundary fully implemented; no cloud proving or raw-passport fallback
-is allowed in the interim. Updating the certificate registry or manifest
-requires a reviewed app release; it must never be silently refreshed at
-runtime.
+On iOS, the five public circuit-package requests use an ephemeral native
+`URLSession` with a strict HTTPS host/path allowlist, bounded response size,
+timeouts, and at most five connections. WebKit supplies only the manifest
+content hash URL and receives the downloaded public JSON; document fields,
+holder identity, challenge, and proof inputs never enter the request. The
+package is still hash-validated against the signed app's manifest before use.
+Moving this bridge into the cross-platform Flutter artifact manager remains
+required before declaring the artifact boundary fully implemented; no cloud
+proving or raw-passport fallback is allowed in the interim. Updating the
+certificate registry or manifest requires a reviewed app release; it must
+never be silently refreshed at runtime.
 
 ## Artifact Supply Chain
 

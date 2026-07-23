@@ -33132,9 +33132,21 @@ ${values.join("\n")}` : `${blockName} :`;
     return passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "");
   }
   async function packaged(registry, manifest, name, report = () => {
-  }) {
+  }, loadPackage) {
+    if (typeof loadPackage !== "function") {
+      throw new Error("Native circuit package loader is unavailable");
+    }
+    const expectedHash = manifest.circuits[name]?.hash;
+    if (!expectedHash) throw new Error(`Circuit ${name} is absent from the pinned manifest`);
+    const url = `https://circuits2.zkpassport.id/mainnet/by-hash/${expectedHash}.json`;
     report(`download:${name}`);
-    const circuit = await registry.getPackagedCircuit(name, manifest, { validate: true });
+    const circuit = await loadPackage({ name, url });
+    if (!circuit?.name || !circuit?.hash || !circuit?.noir_version || !circuit?.bb_version) {
+      throw new Error(`Invalid packaged circuit returned for ${name}`);
+    }
+    if (!await O3.validatePackagedCircuit(circuit, expectedHash)) {
+      throw new Error(`Validation failed for packaged circuit: ${name}`);
+    }
     report(`validated:${name}`);
     return {
       name,
@@ -33145,7 +33157,7 @@ ${values.join("\n")}` : `${blockName} :`;
       inputs: null
     };
   }
-  async function buildDSCCircuit(passport, registry, manifest, certificates, report) {
+  async function buildDSCCircuit(passport, registry, manifest, certificates, report, loadPackage) {
     report("dsc:select");
     const csc = await On2(passport.sod.certificate, certificates.certificates);
     if (!csc) throw new Error("The passport CSCA is absent from the trusted registry");
@@ -33162,13 +33174,13 @@ ${values.join("\n")}` : `${blockName} :`;
       const scheme = csc.signature_algorithm === "RSA-PSS" ? "pss" : "pkcs";
       name = `sig_check_dsc_tbs_${tbs}_rsa_${scheme}_${bits}_${hash}`;
     }
-    const circuit = await packaged(registry, manifest, name, report);
+    const circuit = await packaged(registry, manifest, name, report, loadPackage);
     report("dsc:inputs");
     circuit.inputs = await K22(passport, privateState.salt, certificates);
     report("dsc:ready");
     return circuit;
   }
-  async function buildIDCircuit(passport, registry, manifest, report) {
+  async function buildIDCircuit(passport, registry, manifest, report, loadPackage) {
     report("id:select");
     const certificate = Ye2(passport);
     if (!certificate) throw new Error("Passport document-signing certificate is missing");
@@ -33192,7 +33204,7 @@ ${values.join("\n")}` : `${blockName} :`;
     } else {
       throw new Error("Unsupported passport document-signing algorithm");
     }
-    const circuit = await packaged(registry, manifest, name, report);
+    const circuit = await packaged(registry, manifest, name, report, loadPackage);
     report("id:inputs");
     circuit.inputs = await k22(
       passport,
@@ -33204,7 +33216,7 @@ ${values.join("\n")}` : `${blockName} :`;
   }
   var privateState = { salt: 0n };
   async function createProofPlan(request, report = () => {
-  }) {
+  }, loadPackage) {
     if (request.version !== "0.20.0") throw new Error("Unsupported circuit version");
     report("passport:parse");
     privateState.salt = BigInt(request.salt);
@@ -33230,11 +33242,18 @@ ${values.join("\n")}` : `${blockName} :`;
     const timestamp = Wo();
     const integrityName = `data_check_integrity_sa_${passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "")}_dg_${passport.sod.encapContentInfo.eContent.hashAlgorithm.toLowerCase().replace("-", "")}`;
     const [dsc, id, integrity, disclose, bind] = await Promise.all([
-      buildDSCCircuit(passport, registry, manifest, certificates, report),
-      buildIDCircuit(passport, registry, manifest, report),
-      packaged(registry, manifest, integrityName, report),
-      packaged(registry, manifest, "disclose_bytes", report),
-      packaged(registry, manifest, "bind", report)
+      buildDSCCircuit(
+        passport,
+        registry,
+        manifest,
+        certificates,
+        report,
+        loadPackage
+      ),
+      buildIDCircuit(passport, registry, manifest, report, loadPackage),
+      packaged(registry, manifest, integrityName, report, loadPackage),
+      packaged(registry, manifest, "disclose_bytes", report, loadPackage),
+      packaged(registry, manifest, "bind", report, loadPackage)
     ]);
     report("integrity:inputs");
     integrity.inputs = await F22(passport, privateState.salt, salts);
