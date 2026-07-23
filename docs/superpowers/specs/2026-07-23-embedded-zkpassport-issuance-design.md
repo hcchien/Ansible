@@ -111,8 +111,11 @@ Response:
 }
 ```
 
-Challenges are random, single-use, stored as hashes, expire after five minutes,
-and are atomically consumed only by a successful proof verification.
+Challenges are random, single-use, stored as hashes, expire after fifteen
+minutes, and are atomically consumed only by a successful proof verification.
+The bounded window accommodates foreground-only proving on current mobile
+hardware; the DID, issuer, scope, nonce, and proof remain cryptographically
+bound, and replay protection remains fail closed.
 
 ### 2. Local acquisition
 

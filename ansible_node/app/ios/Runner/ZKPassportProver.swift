@@ -9,26 +9,44 @@ final class ZKPassportProver {
   private let swoir = Swoir(backend: Swoirenberg.self)
   private var circuits: [String: Circuit] = [:]
   private var nativeProofs: [String: Data] = [:]
+  private var srsPoints: UInt32 = 0
   private let queue = DispatchQueue(label: "cool.elix.zkpassport.prover", qos: .userInitiated)
 
-  func prepare(manifestJSON: String, circuitSize: UInt32, srsPath: String,
+  func initializeSrs(circuitSize: UInt32, srsPath: String,
+                     completion: @escaping (Result<Void, Error>) -> Void) {
+    queue.async {
+      autoreleasepool {
+        do {
+          guard !srsPath.isEmpty else {
+            throw ProverError.missingSRS
+          }
+          self.srsPoints = try Swoirenberg.setup_srs(
+            circuit_size: circuitSize,
+            srs_path: srsPath
+          )
+          completion(.success(()))
+        } catch {
+          completion(.failure(error))
+        }
+      }
+    }
+  }
+
+  func prepare(manifestJSON: String, circuitSize: UInt32,
                completion: @escaping (Result<String, Error>) -> Void) {
     queue.async {
       autoreleasepool {
         do {
+          guard self.srsPoints > 0 else {
+            throw ProverError.missingSRS
+          }
           let circuit = try self.swoir.createCircuit(
             manifest: Data(manifestJSON.utf8),
             size: circuitSize,
             lowMemoryMode: false,
             storageCap: 0
           )
-          guard !srsPath.isEmpty else {
-            throw ProverError.missingSRS
-          }
-          circuit.num_points = try Swoirenberg.setup_srs(
-            circuit_size: circuitSize,
-            srs_path: srsPath
-          )
+          circuit.num_points = self.srsPoints
           let id = circuit.manifest.hash.description
           self.circuits[id] = circuit
           completion(.success(id))

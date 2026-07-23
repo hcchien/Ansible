@@ -16,7 +16,7 @@ import (
 var ErrInvalidPassportChallenge = errors.New("invalid_passport_challenge")
 
 const (
-	passportChallengeTTL   = 5 * time.Minute
+	passportChallengeTTL   = 15 * time.Minute
 	passportScope          = "elix-passport-personhood-v1"
 	passportCircuitVersion = "0.20.0"
 )

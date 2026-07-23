@@ -70,6 +70,26 @@ abstract class ZkpProver {
   });
 }
 
+enum ZkpProverStage { planning, initializingSrs, preparing, proving, verifying }
+
+class ZkpProverProgress {
+  const ZkpProverProgress({
+    required this.stage,
+    this.circuitName,
+    this.circuitIndex = 0,
+    this.circuitCount = 0,
+    required this.elapsed,
+  });
+
+  final ZkpProverStage stage;
+  final String? circuitName;
+  final int circuitIndex;
+  final int circuitCount;
+  final Duration elapsed;
+}
+
+typedef ZkpProverProgressCallback = void Function(ZkpProverProgress progress);
+
 abstract class ZkpSrsProvider {
   Future<String> acquire();
 
@@ -102,16 +122,37 @@ class ZkpProverImpl implements ZkpProver {
   const ZkpProverImpl({
     this.backend = const SwoirZkPassportBackend(),
     this.srsProvider = const MissingZkpSrsProvider(),
+    this.onProgress,
   });
 
   final SwoirZkPassportBackend backend;
   final ZkpSrsProvider srsProvider;
+  final ZkpProverProgressCallback? onProgress;
 
   @override
   Future<ZkpProof> prove({
     required PassportData passport,
     required ZkpChallengeBinding challenge,
   }) async {
+    final stopwatch = Stopwatch()..start();
+    void report(
+      ZkpProverStage stage, {
+      String? circuitName,
+      int circuitIndex = 0,
+      int circuitCount = 0,
+    }) {
+      onProgress?.call(
+        ZkpProverProgress(
+          stage: stage,
+          circuitName: circuitName,
+          circuitIndex: circuitIndex,
+          circuitCount: circuitCount,
+          elapsed: stopwatch.elapsed,
+        ),
+      );
+    }
+
+    report(ZkpProverStage.planning);
     final runtime = await rootBundle.loadString('assets/zkpassport/runtime.js');
     final bindingPayload = jsonEncode({
       'challenge_id': challenge.challengeId,
@@ -160,7 +201,27 @@ class ZkpProverImpl implements ZkpProver {
       } on Object catch (error) {
         throw ZkpProverException('srs-download', error);
       }
-      for (final rawCircuit in circuits) {
+      final circuitSizes = circuits
+          .map(
+            (raw) =>
+                Map<String, Object?>.from(
+                      raw! as Map<Object?, Object?>,
+                    )['size']!
+                    as int,
+          )
+          .toList(growable: false);
+      final maximumCircuitSize = circuitSizes.reduce(max);
+      report(ZkpProverStage.initializingSrs);
+      try {
+        await backend.initializeSrs(
+          circuitSize: maximumCircuitSize,
+          srsPath: srsPath,
+        );
+      } on Object catch (error) {
+        throw ZkpProverException('srs-initialize', error);
+      }
+      for (var index = 0; index < circuits.length; index += 1) {
+        final rawCircuit = circuits[index];
         final circuit = Map<String, Object?>.from(
           rawCircuit! as Map<Object?, Object?>,
         );
@@ -173,16 +234,27 @@ class ZkpProverImpl implements ZkpProver {
         final verificationKey = base64Decode(circuit['vkey']! as String);
         final name = circuit['name']! as String;
         late final String circuitId;
+        report(
+          ZkpProverStage.preparing,
+          circuitName: name,
+          circuitIndex: index + 1,
+          circuitCount: circuits.length,
+        );
         try {
           circuitId = await backend.prepare(
             manifestJson: jsonEncode(manifest),
-            circuitSize: max(500000, circuit['size']! as int),
-            srsPath: srsPath,
+            circuitSize: circuitSizes[index],
           );
         } on Object catch (error) {
           throw ZkpProverException('prepare:$name', error);
         }
         late final Uint8List proof;
+        report(
+          ZkpProverStage.proving,
+          circuitName: name,
+          circuitIndex: index + 1,
+          circuitCount: circuits.length,
+        );
         try {
           proof = await backend.prove(
             circuitId: circuitId,
@@ -193,6 +265,12 @@ class ZkpProverImpl implements ZkpProver {
           throw ZkpProverException('prove:$name', error);
         }
         late final bool locallyVerified;
+        report(
+          ZkpProverStage.verifying,
+          circuitName: name,
+          circuitIndex: index + 1,
+          circuitCount: circuits.length,
+        );
         try {
           locallyVerified = await backend.verify(
             circuitId: circuitId,

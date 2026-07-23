@@ -226,6 +226,8 @@ class _PassportNfcCredentialPanelState
   _PassportNfcPhase _phase = _PassportNfcPhase.idle;
   String? _errorMessage;
   double? _srsDownloadProgress;
+  ZkpProverProgress? _proofProgress;
+  bool _submittingToIssuer = false;
   bool _scanningMrz = false;
   final _documentNumberController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
@@ -260,7 +262,13 @@ class _PassportNfcCredentialPanelState
           });
         },
       );
-      _passportZkpProver = ZkpProverImpl(srsProvider: _passportSrsProvider!);
+      _passportZkpProver = ZkpProverImpl(
+        srsProvider: _passportSrsProvider!,
+        onProgress: (progress) {
+          if (!mounted) return;
+          setState(() => _proofProgress = progress);
+        },
+      );
     }
   }
 
@@ -308,6 +316,8 @@ class _PassportNfcCredentialPanelState
       _phase = _PassportNfcPhase.scanning;
       _errorMessage = null;
       _srsDownloadProgress = null;
+      _proofProgress = null;
+      _submittingToIssuer = false;
     });
 
     try {
@@ -371,7 +381,7 @@ class _PassportNfcCredentialPanelState
       setState(() => _phase = _PassportNfcPhase.issuing);
 
       // Download the large public parameter file before requesting the
-      // five-minute, single-use Issuer challenge.
+      // bounded, single-use Issuer challenge.
       preloadedSrsPath = await _passportSrsProvider?.acquire();
       final challenge = await _vcIssuerClient.requestPassportChallenge(
         did: widget.holderDid,
@@ -389,6 +399,8 @@ class _PassportNfcCredentialPanelState
           scope: challenge.scope,
         ),
       );
+      if (!mounted) return;
+      setState(() => _submittingToIssuer = true);
       final vcJson = await _vcIssuerClient.issuePassportCredential(
         did: widget.holderDid,
         challengeId: challenge.challengeId,
@@ -453,6 +465,7 @@ class _PassportNfcCredentialPanelState
       if (!mounted) return;
       setState(() {
         _phase = _PassportNfcPhase.idle;
+        _submittingToIssuer = false;
         _errorMessage = _formatError(error);
       });
     } finally {
@@ -682,6 +695,18 @@ class _PassportNfcCredentialPanelState
           ),
           const SizedBox(height: 16),
         ],
+        if (_phase == _PassportNfcPhase.issuing &&
+            _srsDownloadProgress == 1 &&
+            (_proofProgress != null || _submittingToIssuer)) ...[
+          const LinearProgressIndicator(),
+          const SizedBox(height: 8),
+          Text(
+            _passportProgressLabel(),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+        ],
         if (_phase == _PassportNfcPhase.done)
           FilledButton.icon(
             onPressed: null,
@@ -700,7 +725,7 @@ class _PassportNfcCredentialPanelState
                 : const Icon(Icons.nfc),
             label: Text(
               _phase == _PassportNfcPhase.issuing
-                  ? _copy(zh: '發行憑證中', en: 'Issuing credential')
+                  ? _passportProgressLabel()
                   : _phase == _PassportNfcPhase.scanning
                   ? _copy(zh: '讀取護照中', en: 'Reading passport')
                   : _copy(zh: '掃描護照 NFC', en: 'Scan passport NFC'),
@@ -708,6 +733,42 @@ class _PassportNfcCredentialPanelState
           ),
       ],
     );
+  }
+
+  String _passportProgressLabel() {
+    if (_submittingToIssuer) {
+      return _copy(zh: '向簽發者送出證明', en: 'Submitting proof to issuer');
+    }
+    final progress = _proofProgress;
+    if (progress == null) {
+      return _copy(zh: '準備本機證明', en: 'Preparing local proof');
+    }
+    final elapsed = progress.elapsed.inSeconds;
+    final suffix = progress.circuitCount > 0
+        ? ' ${progress.circuitIndex}/${progress.circuitCount}'
+        : '';
+    return switch (progress.stage) {
+      ZkpProverStage.planning => _copy(
+        zh: '準備護照證明資料 · ${elapsed}s',
+        en: 'Planning passport proof · ${elapsed}s',
+      ),
+      ZkpProverStage.initializingSrs => _copy(
+        zh: '初始化證明參數 · ${elapsed}s',
+        en: 'Initializing proof parameters · ${elapsed}s',
+      ),
+      ZkpProverStage.preparing => _copy(
+        zh: '準備本機證明$suffix · ${elapsed}s',
+        en: 'Preparing local proof$suffix · ${elapsed}s',
+      ),
+      ZkpProverStage.proving => _copy(
+        zh: '產生本機證明$suffix · ${elapsed}s',
+        en: 'Generating local proof$suffix · ${elapsed}s',
+      ),
+      ZkpProverStage.verifying => _copy(
+        zh: '驗證本機證明$suffix · ${elapsed}s',
+        en: 'Verifying local proof$suffix · ${elapsed}s',
+      ),
+    };
   }
 }
 

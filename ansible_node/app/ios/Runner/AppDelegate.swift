@@ -85,18 +85,26 @@ import UIKit
             request: request
           ) { outcome in complete(outcome.map { $0 as Any }) }
         }
-      case "prepare":
-        guard let manifest = args["manifest_json"] as? String,
-              let size = args["circuit_size"] as? Int,
+      case "initialize_srs":
+        guard let size = args["circuit_size"] as? Int,
               let srsPath = args["srs_path"] as? String,
               !srsPath.isEmpty else {
+          result(FlutterError(code: "invalid_arguments", message: "Missing pinned SRS", details: nil))
+          return
+        }
+        self.zkPassportProver.initializeSrs(
+          circuitSize: UInt32(size),
+          srsPath: srsPath
+        ) { outcome in complete(outcome.map { _ in NSNull() as Any }) }
+      case "prepare":
+        guard let manifest = args["manifest_json"] as? String,
+              let size = args["circuit_size"] as? Int else {
           result(FlutterError(code: "invalid_arguments", message: "Missing pinned circuit artifacts", details: nil))
           return
         }
         self.zkPassportProver.prepare(
           manifestJSON: manifest,
-          circuitSize: UInt32(size),
-          srsPath: srsPath
+          circuitSize: UInt32(size)
         ) { outcome in complete(outcome.map { $0 as Any }) }
       case "prove":
         guard let circuitID = args["circuit_id"] as? String,

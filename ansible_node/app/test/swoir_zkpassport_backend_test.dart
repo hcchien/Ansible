@@ -26,10 +26,13 @@ void main() {
           };
         });
     const backend = SwoirZkPassportBackend();
+    await backend.initializeSrs(
+      circuitSize: 2048,
+      srsPath: '/tmp/srs-21.local',
+    );
     final circuit = await backend.prepare(
       manifestJson: '{"version":"0.20.0"}',
       circuitSize: 1024,
-      srsPath: '/tmp/srs-21.local',
     );
     final proof = await backend.prove(
       circuitId: circuit,
@@ -44,7 +47,12 @@ void main() {
       ),
       isTrue,
     );
-    expect(calls.map((call) => call.method), ['prepare', 'prove', 'verify']);
+    expect(calls.map((call) => call.method), [
+      'initialize_srs',
+      'prepare',
+      'prove',
+      'verify',
+    ]);
   });
 
   test('produces a complete challenge-bound five-proof envelope', () async {
@@ -67,7 +75,7 @@ void main() {
                   5,
                   (index) => {
                     'name': 'circuit-$index',
-                    'size': 500000,
+                    'size': 100000 + (index * 1000),
                     'manifest': {'name': 'circuit-$index', 'bytecode': 'AA=='},
                     'inputs': {'witness': '$index'},
                     'vkey': base64Encode([index + 1]),
@@ -88,41 +96,59 @@ void main() {
         });
 
     final srsProvider = _FakeZkpSrsProvider();
-    final proof = await ZkpProverImpl(srsProvider: srsProvider).prove(
-      passport: const PassportData(
-        documentNumber: '123456789',
-        dateOfBirth: '720129',
-        dateOfExpiry: '330613',
-        nationality: 'TWN',
-        dg1Bytes: [0x61, 0x01],
-        sodBytes: [0x77, 0x01],
-        passportSecret: 'not-uploaded',
-        sodSignatureVerified: true,
-        dataGroupHashesVerified: true,
-      ),
-      challenge: const ZkpChallengeBinding(
-        challengeId: 'challenge-id',
-        nonce: 'single-use-nonce',
-        did: 'did:key:test',
-        issuer: 'https://issuer-dev.elix.cool',
-        scope: 'elix-passport-personhood-v1',
-      ),
-    );
+    final progress = <ZkpProverProgress>[];
+    final proof =
+        await ZkpProverImpl(
+          srsProvider: srsProvider,
+          onProgress: progress.add,
+        ).prove(
+          passport: const PassportData(
+            documentNumber: '123456789',
+            dateOfBirth: '720129',
+            dateOfExpiry: '330613',
+            nationality: 'TWN',
+            dg1Bytes: [0x61, 0x01],
+            sodBytes: [0x77, 0x01],
+            passportSecret: 'not-uploaded',
+            sodSignatureVerified: true,
+            dataGroupHashesVerified: true,
+          ),
+          challenge: const ZkpChallengeBinding(
+            challengeId: 'challenge-id',
+            nonce: 'single-use-nonce',
+            did: 'did:key:test',
+            issuer: 'https://issuer-dev.elix.cool',
+            scope: 'elix-passport-personhood-v1',
+          ),
+        );
 
     final envelope = jsonDecode(proof.proofHex) as Map<String, Object?>;
     expect((envelope['proofs'] as List<Object?>), hasLength(5));
     expect(calls.where((call) => call.method == 'prepare'), hasLength(5));
+    expect(
+      calls.where((call) => call.method == 'initialize_srs'),
+      hasLength(1),
+    );
     expect(calls.where((call) => call.method == 'prove'), hasLength(5));
     expect(calls.where((call) => call.method == 'verify'), hasLength(5));
     expect(calls.where((call) => call.method == 'clear'), hasLength(1));
     expect(srsProvider.acquisitions, 1);
     expect(srsProvider.releases, ['/tmp/srs-21.local']);
-    for (final call in calls.where((call) => call.method == 'prepare')) {
-      expect(
-        (call.arguments as Map<Object?, Object?>)['srs_path'],
-        '/tmp/srs-21.local',
-      );
-    }
+    final srsCall = calls.singleWhere(
+      (call) => call.method == 'initialize_srs',
+    );
+    expect(
+      (srsCall.arguments as Map<Object?, Object?>)['srs_path'],
+      '/tmp/srs-21.local',
+    );
+    expect(
+      (srsCall.arguments as Map<Object?, Object?>)['circuit_size'],
+      104000,
+    );
+    expect(
+      progress.where((item) => item.stage == ZkpProverStage.proving),
+      hasLength(5),
+    );
 
     final request = Map<Object?, Object?>.from(
       planArguments!['request']! as Map<Object?, Object?>,

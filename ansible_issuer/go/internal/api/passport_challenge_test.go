@@ -34,6 +34,9 @@ func TestPassportChallengeExpires(t *testing.T) {
 	now := time.Date(2026, 7, 23, 4, 0, 0, 0, time.UTC)
 	store := NewMemoryPassportChallengeStore()
 	challenge, nonce, _ := newPassportChallenge("did:plc:abcdefghijklmnop", "https://issuer-dev.elix.cool", now)
+	if got := challenge.ExpiresAt.Sub(now); got != 15*time.Minute {
+		t.Fatalf("challenge TTL = %v, want 15m", got)
+	}
 	if err := store.PutPassportChallenge(challenge); err != nil {
 		t.Fatal(err)
 	}
