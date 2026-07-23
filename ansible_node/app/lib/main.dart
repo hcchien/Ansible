@@ -40,6 +40,9 @@ import 'services/web_session_grant_service.dart';
 import 'theme/ansible_design.dart';
 
 final ElixThemeController themeController = ElixThemeController();
+final ValueNotifier<String> _bootstrapStage = ValueNotifier<String>(
+  'Starting Elix',
+);
 
 void main() {
   // Route every uncaught error through the single ErrorReporter seam. By
@@ -81,6 +84,15 @@ Future<void> _bootstrap() async {
   };
 
   try {
+    // Mount a Flutter frame before touching native identity/storage bridges.
+    // Otherwise a stalled platform call leaves iOS displaying the static
+    // launch storyboard forever, with no indication of which stage is stuck.
+    runApp(const _BootstrapProgressApp());
+    await WidgetsBinding.instance.endOfFrame.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {},
+    );
+
     AppEnvironment.validateRuntimeReadiness(
       isReleaseBuild: kReleaseMode,
       usesDevelopmentRustBridge: !AppEnvironment.hasRealRustBridge,
@@ -89,16 +101,36 @@ Future<void> _bootstrap() async {
     // Initialise the Rust native library (Ed25519, did:key, signing).
     // initRustBridge() picks the right loader per platform: iOS resolves the
     // statically-linked symbols from the process, others open the dynamic lib.
-    await initRustBridge();
-    await _resetLocalIdentityIfRequested();
+    await _runBootstrapStage(
+      'Initializing secure identity runtime',
+      initRustBridge,
+      timeout: const Duration(seconds: 20),
+    );
+    await _runBootstrapStage(
+      'Loading local identity',
+      _resetLocalIdentityIfRequested,
+      timeout: const Duration(seconds: 15),
+    );
 
     // Load persisted theme before the first frame.
-    await themeController.load();
+    await _runBootstrapStage(
+      'Loading appearance',
+      themeController.load,
+      timeout: const Duration(seconds: 10),
+    );
 
     // Initialise local SQLite store (Drift schema v7).
     // No username/password — identity is DID-based.
-    final storagePaths = await BackupPolicyService().prepareStorage();
-    final db = await _openAppDatabase(storagePaths: storagePaths);
+    final storagePaths = await _runBootstrapStage(
+      'Preparing local-first storage',
+      BackupPolicyService().prepareStorage,
+      timeout: const Duration(seconds: 15),
+    );
+    final db = await _runBootstrapStage(
+      'Opening local database',
+      () => _openAppDatabase(storagePaths: storagePaths),
+      timeout: const Duration(seconds: 15),
+    );
 
     runApp(MyApp(db: db, webSessionLinks: AppLinks().uriLinkStream));
   } catch (error, stack) {
@@ -111,6 +143,76 @@ Future<void> _bootstrap() async {
       context: 'startup',
     );
     runApp(_BootErrorApp(error: error, stack: stack));
+  }
+}
+
+Future<T> _runBootstrapStage<T>(
+  String stage,
+  Future<T> Function() operation, {
+  required Duration timeout,
+}) async {
+  _bootstrapStage.value = stage;
+  // Give the progress frame a chance to paint before invoking a native bridge.
+  await Future<void>.delayed(Duration.zero);
+  try {
+    return await operation().timeout(timeout);
+  } on TimeoutException {
+    throw TimeoutException('$stage timed out', timeout);
+  }
+}
+
+class _BootstrapProgressApp extends StatelessWidget {
+  const _BootstrapProgressApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFFFFFDD0),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Elix',
+                    style: TextStyle(
+                      color: Color(0xFF232307),
+                      fontSize: 44,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF232307),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ValueListenableBuilder<String>(
+                    valueListenable: _bootstrapStage,
+                    builder: (context, stage, child) => Text(
+                      stage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF6E6D53),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

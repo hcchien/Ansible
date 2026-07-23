@@ -42,8 +42,8 @@ export function parseTwPersonBindingProof(proof) {
     !proof ||
     proof.name !== CIRCUIT_NAME ||
     proof.vkeyHash !== EXPECTED_VKEY_HASH ||
-    proof.index !== 5 ||
-    proof.total !== 6
+    proof.index !== 6 ||
+    proof.total !== 7
   ) {
     throw new Error("invalid TW person-binding proof metadata")
   }
@@ -72,7 +72,7 @@ function sameChain(disclosureInputs, bindingInputs) {
 }
 
 export async function verifyTwPersonBindingProof(envelopeProofs) {
-  if (!Array.isArray(envelopeProofs) || envelopeProofs.length !== 6) {
+  if (!Array.isArray(envelopeProofs) || envelopeProofs.length !== 7) {
     throw new Error("incomplete passport proof envelope")
   }
   const custom = envelopeProofs.find((proof) => proof?.name === CIRCUIT_NAME)

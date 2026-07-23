@@ -439,7 +439,7 @@ class _PassportNfcCredentialPanelState
       if (!mounted) return;
       _stopProofProgressTicker();
       setState(() => _submittingToIssuer = true);
-      final vcJson = await _vcIssuerClient.issuePassportCredential(
+      final vcJsonList = await _vcIssuerClient.issuePassportCredential(
         did: widget.holderDid,
         challengeId: challenge.challengeId,
         challengeNonce: challenge.nonce,
@@ -450,43 +450,70 @@ class _PassportNfcCredentialPanelState
         zkpCircuitVersion: ZkpProof.kCircuitVersion,
         verificationKeyHash: 'sha256:${passportProof.vkHash}',
       );
-      final credential = TrisAuraCredential.fromJson(
-        Map<String, Object?>.from(vcJson),
-      );
-      if (credential.claims['assuranceMethod'] != 'passport_nfc') {
+      final credentials = vcJsonList
+          .map(
+            (value) =>
+                TrisAuraCredential.fromJson(Map<String, Object?>.from(value)),
+          )
+          .toList(growable: false);
+      final citizenship = credentials
+          .where(
+            (credential) =>
+                credential.types.contains('TaiwanCitizenshipCredential'),
+          )
+          .single;
+      if (credentials.any(
+        (credential) => credential.claims['assuranceMethod'] != 'passport_nfc',
+      )) {
         throw StateError('Issuer returned an unsupported passport credential.');
       }
-      if (credential.claims['nationality'] != data.nationality) {
+      if (citizenship.claims['nationality'] != data.nationality ||
+          citizenship.claims['citizenshipVerified'] != true) {
         throw StateError('Issuer returned a mismatched passport credential.');
+      }
+      final ageCredentials = credentials.where(
+        (credential) => credential.types.contains('AgeOver18Credential'),
+      );
+      if (ageCredentials.length > 1 ||
+          ageCredentials.any(
+            (credential) => credential.claims['ageOver18'] != true,
+          )) {
+        throw StateError('Issuer returned an invalid age credential.');
       }
 
       final now = DateTime.now().toUtc();
-      final payloadEnvelope = await const SecureCredentialPayloadCodec().seal(
-        credentialId: credential.id,
-        payloadJson: jsonEncode(credential.json),
-      );
-      await _walletRepository.saveCredential(
-        metadata: WalletCredential(
+      for (final credential in credentials) {
+        final payloadEnvelope = await const SecureCredentialPayloadCodec().seal(
           credentialId: credential.id,
-          issuerDid: credential.issuerDid,
-          holderDid: credential.holderDid,
-          credentialType:
-              credential.types.contains('TrisAuraHumanityCredential')
-              ? 'TrisAuraHumanityCredential'
-              : credential.types.last,
-          status: WalletCredentialStatus.active,
-          validFrom: credential.validFrom,
-          validUntil: credential.validUntil,
-          displayName: 'Passport Verified Human',
-          createdAt: now,
-          updatedAt: now,
-        ),
-        encryptedPayload: payloadEnvelope.encodedPayload,
-        encryptionVersion: payloadEnvelope.encryptionVersion,
-      );
+          payloadJson: jsonEncode(credential.json),
+        );
+        final isCitizenship = credential.types.contains(
+          'TaiwanCitizenshipCredential',
+        );
+        await _walletRepository.saveCredential(
+          metadata: WalletCredential(
+            credentialId: credential.id,
+            issuerDid: credential.issuerDid,
+            holderDid: credential.holderDid,
+            credentialType: isCitizenship
+                ? 'TaiwanCitizenshipCredential'
+                : 'AgeOver18Credential',
+            status: WalletCredentialStatus.active,
+            validFrom: credential.validFrom,
+            validUntil: credential.validUntil,
+            displayName: isCitizenship
+                ? 'Taiwan Citizenship'
+                : 'Age 18 or Older',
+            createdAt: now,
+            updatedAt: now,
+          ),
+          encryptedPayload: payloadEnvelope.encodedPayload,
+          encryptionVersion: payloadEnvelope.encryptionVersion,
+        );
+      }
       await _walletRepository.savePassportExtension(
         PassportWalletExtension(
-          credentialId: credential.id,
+          credentialId: citizenship.id,
           passportLocalUniqueId: passportLocalUniqueId,
           nationalIdHash: passportProof.nationalIdHash,
           passportNumberHash: passportProof.passportNumberHash,

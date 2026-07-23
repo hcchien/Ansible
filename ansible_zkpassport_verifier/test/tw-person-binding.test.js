@@ -16,8 +16,8 @@ test("parses native Swoir proof prefix and eight public inputs", () => {
   const parsed = parseTwPersonBindingProof({
     name: "tw_person_binding",
     vkeyHash: twPersonBindingCircuit.vkeyHash,
-    index: 5,
-    total: 6,
+    index: 6,
+    total: 7,
     proof: encoded,
   })
 
@@ -31,8 +31,8 @@ test("rejects a proof that does not pin the shipped verification key", () => {
     parseTwPersonBindingProof({
       name: "tw_person_binding",
       vkeyHash: "0xdeadbeef",
-      index: 5,
-      total: 6,
+      index: 6,
+      total: 7,
       proof: "00000008",
     }),
   )

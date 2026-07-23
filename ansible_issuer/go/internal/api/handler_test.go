@@ -39,6 +39,7 @@ func (v fakePassportVerifier) VerifyPassportBinding(
 		TWPersonBindingInput: testTWPersonBindingInput("Z123000000"),
 		PassportNumberHash:   proof.PassportNumberHash,
 		Nationality:          proof.Nationality,
+		AgeOver18:            true,
 		VerifiedAt:           time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
 	}, nil
 }
@@ -346,10 +347,11 @@ func TestPassportIssue_ReturnsPassportCredentialWithoutPassportIdentifiers(t *te
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
 	}
-	vcMap, ok := bodyJSON(t, w)["vc"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected vc key, got %v", bodyJSON(t, w))
+	credentials, ok := bodyJSON(t, w)["credentials"].([]any)
+	if !ok || len(credentials) != 2 {
+		t.Fatalf("expected citizenship and age credentials, got %v", bodyJSON(t, w))
 	}
+	vcMap := credentials[0].(map[string]any)
 	cs, _ := vcMap["credentialSubject"].(map[string]any)
 	if cs["nationality"] != "TWN" {
 		t.Fatalf("expected nationality claim, got %v", cs)
@@ -361,6 +363,31 @@ func TestPassportIssue_ReturnsPassportCredentialWithoutPassportIdentifiers(t *te
 		if _, ok := cs[prohibited]; ok {
 			t.Fatalf("credentialSubject must not contain %q", prohibited)
 		}
+	}
+}
+
+func TestPassportIssue_DoesNotResignCompletedCredentialBundle(t *testing.T) {
+	h := newTestHandler(t)
+	configurePassportVerifier(h)
+	body := map[string]any{
+		"did":                   testDID,
+		"nationality":           "TWN",
+		"national_id_hash":      "national-id-hash-abc123",
+		"passport_number_hash":  "passport-number-hash-abc123",
+		"zkp_proof":             "proof-abc123",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	}
+	first := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first issue failed: %d %s", first.Code, first.Body)
+	}
+	second := call(h, http.MethodPost, "/api/v1/vc/passport/issue", body)
+	if second.Code != http.StatusConflict {
+		t.Fatalf("expected 409 on repeat issuance, got %d: %s", second.Code, second.Body)
+	}
+	if bodyJSON(t, second)["error"] != "personhood_already_bound" {
+		t.Fatalf("expected personhood_already_bound, got %v", bodyJSON(t, second))
 	}
 }
 

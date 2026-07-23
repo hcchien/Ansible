@@ -55,7 +55,7 @@ void main() {
     ]);
   });
 
-  test('produces a complete challenge-bound six-proof envelope', () async {
+  test('produces a complete challenge-bound seven-proof envelope', () async {
     final calls = <MethodCall>[];
     Map<Object?, Object?>? planArguments;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -70,13 +70,14 @@ void main() {
                   'nationality': {
                     'disclose': {'result': 'TWN'},
                   },
+                  'age': {
+                    'gte': {'result': true, 'expected': 18},
+                  },
                 },
                 'circuits': List<Map<String, Object?>>.generate(
-                  6,
+                  7,
                   (index) => {
-                    'name': index == 5
-                        ? 'tw_person_binding'
-                        : 'circuit-$index',
+                    'name': index == 6 ? 'tw_person_binding' : 'circuit-$index',
                     'size': 100000 + (index * 1000),
                     'manifest': {'name': 'circuit-$index', 'bytecode': 'AA=='},
                     'inputs': {'witness': '$index'},
@@ -90,6 +91,10 @@ void main() {
                         },
                       },
                     if (index == 4)
+                      'committed_inputs': {
+                        'compare_age': {'minAge': 18, 'maxAge': 0},
+                      },
+                    if (index == 5)
                       'committed_inputs': {
                         'bind': {
                           'data': {'custom_data': 'challenge-binding'},
@@ -139,18 +144,18 @@ void main() {
 
     final envelope = jsonDecode(proof.proofHex) as Map<String, Object?>;
     final envelopeProofs = envelope['proofs'] as List<Object?>;
-    expect(envelopeProofs, hasLength(6));
+    expect(envelopeProofs, hasLength(7));
     final discloseProof = Map<String, Object?>.from(
       envelopeProofs[3]! as Map<Object?, Object?>,
     );
     final bindProof = Map<String, Object?>.from(
-      envelopeProofs[4]! as Map<Object?, Object?>,
-    );
-    final personBindingProof = Map<String, Object?>.from(
       envelopeProofs[5]! as Map<Object?, Object?>,
     );
+    final personBindingProof = Map<String, Object?>.from(
+      envelopeProofs[6]! as Map<Object?, Object?>,
+    );
     expect(discloseProof['index'], 3);
-    expect(discloseProof['total'], 6);
+    expect(discloseProof['total'], 7);
     expect(
       jsonEncode(discloseProof['committedInputs']),
       contains('discloseMask'),
@@ -158,13 +163,13 @@ void main() {
     expect(jsonEncode(bindProof['committedInputs']), contains('custom_data'));
     expect(discloseProof['proof'], 'cafe');
     expect(personBindingProof['proof'], '00000008cafe');
-    expect(calls.where((call) => call.method == 'prepare'), hasLength(6));
+    expect(calls.where((call) => call.method == 'prepare'), hasLength(7));
     expect(
       calls.where((call) => call.method == 'initialize_srs'),
       hasLength(1),
     );
-    expect(calls.where((call) => call.method == 'prove'), hasLength(6));
-    expect(calls.where((call) => call.method == 'verify'), hasLength(6));
+    expect(calls.where((call) => call.method == 'prove'), hasLength(7));
+    expect(calls.where((call) => call.method == 'verify'), hasLength(7));
     expect(calls.where((call) => call.method == 'clear'), hasLength(1));
     expect(srsProvider.acquisitions, 1);
     expect(srsProvider.releases, ['/tmp/srs-21.local']);
@@ -177,11 +182,11 @@ void main() {
     );
     expect(
       (srsCall.arguments as Map<Object?, Object?>)['circuit_size'],
-      105000,
+      106000,
     );
     expect(
       progress.where((item) => item.stage == ZkpProverStage.proving),
-      hasLength(6),
+      hasLength(7),
     );
 
     final request = Map<Object?, Object?>.from(

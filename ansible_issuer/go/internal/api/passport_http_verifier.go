@@ -111,6 +111,7 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		Nationality          string `json:"nationality"`
 		TWPersonBindingInput string `json:"tw_person_binding_input"`
 		PassportNumberHash   string `json:"passport_number_hash"`
+		AgeOver18            bool   `json:"age_over_18"`
 	}
 	if json.Unmarshal(limited, &result) != nil || !result.Verified {
 		return PassportBindingResult{}, ErrInvalidPassportProof
@@ -124,6 +125,7 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		Nationality:          result.Nationality,
 		TWPersonBindingInput: result.TWPersonBindingInput,
 		PassportNumberHash:   result.PassportNumberHash,
+		AgeOver18:            result.AgeOver18,
 		VerifiedAt:           time.Now().UTC(),
 	}, nil
 }

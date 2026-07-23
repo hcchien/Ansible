@@ -8,6 +8,8 @@ import {
   extractTBS,
   getBitSize,
   getBindCircuitInputs,
+  getAgeCircuitInputs,
+  calculateAge,
   getCscaForPassportAsync,
   getDisclosedBytesFromMrzAndMask,
   getDiscloseCircuitInputs,
@@ -210,6 +212,7 @@ export async function createProofPlan(
   const salts = disclosureSalts(privateState.salt)
   const query = {
     nationality: { disclose: true },
+    age: { gte: 18 },
     bind: { custom_data: request.challenge_binding },
   }
   if (!request.issuer_host) throw new Error("Issuer host is missing")
@@ -228,7 +231,7 @@ export async function createProofPlan(
   // native app process resolves, validates, and caches the public packages
   // after JavaScriptCore completes; no WebKit or JavaScript network bridge is
   // involved.
-  const [dsc, id, integrity, disclose, bind, twPersonBinding] = await Promise.all([
+  const [dsc, id, integrity, disclose, age, bind, twPersonBinding] = await Promise.all([
     buildDSCCircuit(
       passport,
       manifest,
@@ -238,6 +241,7 @@ export async function createProofPlan(
     buildIDCircuit(passport, manifest, report),
     packaged(manifest, integrityName, report),
     packaged(manifest, "disclose_bytes", report),
+    packaged(manifest, "compare_age", report),
     packaged(manifest, "bind", report),
     twPersonBindingCircuit(passport, salts, serviceScope, serviceSubscope, timestamp, report),
   ])
@@ -264,6 +268,23 @@ export async function createProofPlan(
       ),
     },
   }
+  report("age:inputs")
+  age.inputs = await getAgeCircuitInputs(
+    passport,
+    query,
+    salts,
+    0n,
+    serviceScope,
+    serviceSubscope,
+    timestamp,
+    OPRF_ZERO_PROOF,
+  )
+  age.committed_inputs = {
+    compare_age: {
+      minAge: 18,
+      maxAge: 0,
+    },
+  }
   report("bind:inputs")
   bind.inputs = await getBindCircuitInputs(
     passport,
@@ -283,9 +304,10 @@ export async function createProofPlan(
   report("plan:ready")
   return {
     version: manifest.version,
-    circuits: [dsc, id, integrity, disclose, bind, twPersonBinding],
+    circuits: [dsc, id, integrity, disclose, age, bind, twPersonBinding],
     query_result: {
       nationality: { disclose: { result: passport.nationality } },
+      age: { gte: { result: calculateAge(passport) >= 18, expected: 18 } },
       bind: { custom_data: request.challenge_binding },
     },
   }

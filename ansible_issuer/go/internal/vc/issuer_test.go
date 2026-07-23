@@ -167,15 +167,21 @@ func TestIssuer_IssuePassportCredential(t *testing.T) {
 		"TWN",
 		"national-id-hash-abc123",
 		"passport-number-hash-abc123",
+		true,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !iss.VerifyProof(raw) {
-		t.Fatal("expected proof to be valid")
+	if len(raw) != 2 {
+		t.Fatalf("expected citizenship and age credentials, got %d", len(raw))
+	}
+	for _, credential := range raw {
+		if !iss.VerifyProof(credential) {
+			t.Fatal("expected proof to be valid")
+		}
 	}
 
-	cs, _ := raw["credentialSubject"].(map[string]any)
+	cs, _ := raw[0]["credentialSubject"].(map[string]any)
 	if cs["nationality"] != "TWN" {
 		t.Fatalf("expected nationality claim, got %v", cs)
 	}
@@ -303,6 +309,7 @@ func TestIssuer_RefusesDuplicateNationalIDBinding(t *testing.T) {
 		"TWN",
 		"national-id-hash-abc123",
 		"passport-number-hash-other",
+		false,
 	)
 	if !errors.Is(err, vc.ErrDuplicatePersonhoodBinding) {
 		t.Fatalf("expected ErrDuplicatePersonhoodBinding, got %v", err)
@@ -316,6 +323,7 @@ func TestIssuer_RefusesDuplicatePassportNumberBinding(t *testing.T) {
 		"TWN",
 		"national-id-hash-abc123",
 		"passport-number-hash-abc123",
+		false,
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -324,6 +332,7 @@ func TestIssuer_RefusesDuplicatePassportNumberBinding(t *testing.T) {
 		"TWN",
 		"national-id-hash-other",
 		"passport-number-hash-abc123",
+		false,
 	)
 	if !errors.Is(err, vc.ErrDuplicatePersonhoodBinding) {
 		t.Fatalf("expected ErrDuplicatePersonhoodBinding, got %v", err)
@@ -354,6 +363,7 @@ func TestIssuer_FileStorePersistsActivePersonhoodBinding(t *testing.T) {
 		"TWN",
 		"tw-national-id-commitment-abc123",
 		"passport-number-hash-other",
+		false,
 	)
 	if !errors.Is(err, vc.ErrDuplicatePersonhoodBinding) {
 		t.Fatalf("expected persisted duplicate personhood binding, got %v", err)

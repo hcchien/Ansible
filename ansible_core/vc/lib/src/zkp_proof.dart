@@ -192,7 +192,7 @@ class ZkpProverImpl implements ZkpProver {
       throw StateError('ZKPassport circuit manifest version mismatch.');
     }
     final circuits = (plan['circuits'] as List<Object?>?) ?? const [];
-    if (circuits.length != 6) {
+    if (circuits.length != 7) {
       throw StateError('ZKPassport proof plan is incomplete.');
     }
     final proofResults = <Map<String, Object?>>[];

@@ -28,6 +28,7 @@ type PassportBindingResult struct {
 	TWPersonBindingInput string
 	PassportNumberHash   string
 	Nationality          string
+	AgeOver18            bool
 	VerifiedAt           time.Time
 }
 

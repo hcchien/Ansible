@@ -29,13 +29,14 @@ export async function verifyPassportRequest(input) {
   const { query } = zkPassport
     .createQuery()
     .disclose("nationality")
+    .gte("age", 18)
     .bind("custom_data", binding)
     .done()
 
   const standardProofs = envelope.proofs.filter(
     (proof) => proof?.name !== "tw_person_binding",
-  ).map((proof) => ({ ...proof, total: 5 }))
-  if (standardProofs.length !== 5) return { verified: false }
+  ).map((proof) => ({ ...proof, total: 6 }))
+  if (standardProofs.length !== 6) return { verified: false }
   const result = await zkPassport.verify({
     proofs: standardProofs,
     originalQuery: query,
@@ -54,10 +55,18 @@ export async function verifyPassportRequest(input) {
   if (!disclosedNationality || disclosedNationality !== input.nationality) {
     return { verified: false }
   }
+  const ageOver18 = envelope.query_result?.age?.gte
+  if (
+    ageOver18?.expected !== 18 ||
+    typeof ageOver18?.result !== "boolean"
+  ) {
+    return { verified: false }
+  }
   const twPersonBindingInput = await verifyTwPersonBindingProof(envelope.proofs)
   return {
     verified: true,
     nationality: disclosedNationality,
+    age_over_18: ageOver18.result,
     tw_person_binding_input: twPersonBindingInput,
     ...passportBindingHash(result.uniqueIdentifier),
   }

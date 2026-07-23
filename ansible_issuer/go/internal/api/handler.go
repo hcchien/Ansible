@@ -645,7 +645,8 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 	}
 	if !reTWPersonBindingInput.MatchString(binding.TWPersonBindingInput) ||
 		!rePersonhoodHash.MatchString(binding.PassportNumberHash) ||
-		binding.Nationality != body.Nationality {
+		binding.Nationality != body.Nationality ||
+		binding.Nationality != "TWN" {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
 	}
@@ -675,6 +676,7 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		binding.Nationality,
 		personBindings[0],
 		binding.PassportNumberHash,
+		binding.AgeOver18,
 	)
 	if err != nil {
 		if errors.Is(err, vc.ErrDuplicatePersonhoodBinding) {
@@ -687,7 +689,7 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.metrics.IncCredentialIssued("passport")
-	writeJSON(w, http.StatusOK, map[string]any{"vc": credMap})
+	writeJSON(w, http.StatusOK, map[string]any{"credentials": credMap})
 }
 
 func validateNationality(w http.ResponseWriter, nationality string) bool {

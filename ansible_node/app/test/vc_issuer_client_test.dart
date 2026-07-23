@@ -395,7 +395,10 @@ void main() {
             expect(body.keys, isNot(contains('passportLocalUniqueId')));
             return http.Response(
               jsonEncode({
-                'vc': {'id': 'passport-vc-1'},
+                'credentials': [
+                  {'id': 'passport-vc-1'},
+                  {'id': 'passport-age-vc-1'},
+                ],
               }),
               200,
             );
@@ -414,7 +417,10 @@ void main() {
           verificationKeyHash: 'sha256:vk-hash-abc123',
         );
 
-        expect(vc['id'], 'passport-vc-1');
+        expect(vc.map((item) => item['id']), [
+          'passport-vc-1',
+          'passport-age-vc-1',
+        ]);
       },
     );
   });

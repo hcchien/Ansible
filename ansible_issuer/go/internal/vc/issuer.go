@@ -10,18 +10,20 @@ import (
 )
 
 const (
-	credentialType             = "TrisAuraHumanityCredential"
-	emailCredentialType        = "EmailCredential"
-	assuranceLevel             = "tw_natural_person_certificate"
-	assuranceMethod            = "tw_fido_or_moica"
-	emailAssuranceLevel        = "email_contact"
-	emailAssuranceMethod       = "email_otp"
-	passportAssuranceLevel     = "passport_document"
-	passportAssuranceMethod    = "passport_nfc"
-	mobileMoicaAssuranceMethod = "mobilemoica_rp_explicit_disclosure"
-	mobileMoicaDisclosureModel = "explicit_rp"
-	jurisdiction               = "TW"
-	defaultTTLDays             = 90
+	credentialType                  = "TrisAuraHumanityCredential"
+	taiwanCitizenshipCredentialType = "TaiwanCitizenshipCredential"
+	ageOver18CredentialType         = "AgeOver18Credential"
+	emailCredentialType             = "EmailCredential"
+	assuranceLevel                  = "tw_natural_person_certificate"
+	assuranceMethod                 = "tw_fido_or_moica"
+	emailAssuranceLevel             = "email_contact"
+	emailAssuranceMethod            = "email_otp"
+	passportAssuranceLevel          = "passport_document"
+	passportAssuranceMethod         = "passport_nfc"
+	mobileMoicaAssuranceMethod      = "mobilemoica_rp_explicit_disclosure"
+	mobileMoicaDisclosureModel      = "explicit_rp"
+	jurisdiction                    = "TW"
+	defaultTTLDays                  = 90
 	// credentialStatusType names the issuer's status-endpoint check. The status
 	// URL in each credential's credentialStatus resolves via
 	// GET /api/v1/vc/status/{id}, which returns the live lifecycle state.
@@ -142,25 +144,49 @@ func (iss *Issuer) IssueEmail(holderDID string) (map[string]any, error) {
 // IssuePassport builds and signs a passport NFC humanity credential. It does
 // not store passport source fields. Duplicate detection is enforced using the
 // verifier-produced national ID and passport number commitments.
-func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passportNumberHash string) (map[string]any, error) {
+func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passportNumberHash string, ageOver18 bool) ([]map[string]any, error) {
 	if err := iss.store.CheckDuplicatePersonhoodBinding(nationalIDHash, passportNumberHash); err != nil {
 		return nil, err
 	}
 
-	return iss.issue(
-		credentialType,
+	citizenship, err := iss.issue(
+		taiwanCitizenshipCredentialType,
 		CredentialSubject{
-			ID:              holderDID,
-			HumanVerified:   true,
-			AssuranceLevel:  passportAssuranceLevel,
-			AssuranceMethod: passportAssuranceMethod,
-			Jurisdiction:    jurisdiction,
-			Nationality:     nationality,
+			ID:                  holderDID,
+			CitizenshipVerified: true,
+			AssuranceLevel:      passportAssuranceLevel,
+			AssuranceMethod:     passportAssuranceMethod,
+			Jurisdiction:        jurisdiction,
+			Nationality:         nationality,
 		},
 		"",
 		nationalIDHash,
 		passportNumberHash,
 	)
+	if err != nil {
+		return nil, err
+	}
+	credentials := []map[string]any{citizenship}
+	if ageOver18 {
+		age, err := iss.issue(
+			ageOver18CredentialType,
+			CredentialSubject{
+				ID:              holderDID,
+				AgeOver18:       true,
+				AssuranceLevel:  passportAssuranceLevel,
+				AssuranceMethod: passportAssuranceMethod,
+				Jurisdiction:    jurisdiction,
+			},
+			"",
+			"",
+			"",
+		)
+		if err != nil {
+			return nil, err
+		}
+		credentials = append(credentials, age)
+	}
+	return credentials, nil
 }
 
 // IssueMobileMoicaRP builds and signs a MobileMoica relying-party humanity

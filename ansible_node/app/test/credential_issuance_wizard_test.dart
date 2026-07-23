@@ -165,9 +165,11 @@ void main() {
     );
 
     final credentials = await repository.listCredentials();
-    expect(credentials, hasLength(1));
-    expect(credentials.single.credentialId, 'urn:uuid:passport-credential');
-    expect(credentials.single.credentialType, 'TrisAuraHumanityCredential');
+    expect(credentials, hasLength(2));
+    expect(
+      credentials.map((credential) => credential.credentialType),
+      containsAll(['TaiwanCitizenshipCredential', 'AgeOver18Credential']),
+    );
     expect(
       await repository.getEncryptedPayload('urn:uuid:passport-credential'),
       startsWith('secure-storage-json-v1:'),
@@ -283,7 +285,7 @@ class _FakeVcIssuerClient extends VcIssuerClient {
   }
 
   @override
-  Future<Map<String, dynamic>> issuePassportCredential({
+  Future<List<Map<String, dynamic>>> issuePassportCredential({
     required String did,
     required String challengeId,
     required String challengeNonce,
@@ -304,7 +306,7 @@ class _FakeVcIssuerClient extends VcIssuerClient {
     expect(zkpProof, 'proof-abc123');
     expect(zkpCircuitVersion, ZkpProof.kCircuitVersion);
     expect(verificationKeyHash, 'sha256:vk-hash-abc123');
-    return _passportCredentialJson;
+    return [_passportCredentialJson, _passportAgeCredentialJson];
   }
 }
 
@@ -450,13 +452,13 @@ final _passportCredentialJson = <String, dynamic>{
     'https://elix.cool/contexts/humanity/v1',
   ],
   'id': 'urn:uuid:passport-credential',
-  'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
+  'type': ['VerifiableCredential', 'TaiwanCitizenshipCredential'],
   'issuer': 'did:web:issuer.elix.cool',
   'validFrom': '2026-05-24T00:00:00Z',
   'validUntil': '2026-08-22T00:00:00Z',
   'credentialSubject': {
     'id': 'did:plc:abcdefghijklmnop',
-    'humanVerified': true,
+    'citizenshipVerified': true,
     'assuranceLevel': 'passport_document',
     'assuranceMethod': 'passport_nfc',
     'nationality': 'TWN',
@@ -472,5 +474,18 @@ final _passportCredentialJson = <String, dynamic>{
     'verificationMethod': 'did:web:issuer.elix.cool#key-1',
     'proofPurpose': 'assertionMethod',
     'proofValue': 'zissuerproof',
+  },
+};
+
+final _passportAgeCredentialJson = <String, dynamic>{
+  ..._passportCredentialJson,
+  'id': 'urn:uuid:passport-age-credential',
+  'type': ['VerifiableCredential', 'AgeOver18Credential'],
+  'credentialSubject': {
+    'id': 'did:plc:abcdefghijklmnop',
+    'ageOver18': true,
+    'assuranceLevel': 'passport_document',
+    'assuranceMethod': 'passport_nfc',
+    'jurisdiction': 'TW',
   },
 };

@@ -235,7 +235,7 @@ class VcIssuerClient {
     return body['vc'] as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> issuePassportCredential({
+  Future<List<Map<String, dynamic>>> issuePassportCredential({
     required String did,
     required String challengeId,
     required String challengeNonce,
@@ -257,7 +257,10 @@ class VcIssuerClient {
       'zkp_circuit_version': zkpCircuitVersion,
       'verification_key_hash': verificationKeyHash,
     });
-    return body['vc'] as Map<String, dynamic>;
+    final credentials = body['credentials'] as List<dynamic>? ?? const [];
+    return credentials
+        .map((value) => Map<String, dynamic>.from(value as Map))
+        .toList(growable: false);
   }
 
   Future<PassportIssuanceChallenge> requestPassportChallenge({

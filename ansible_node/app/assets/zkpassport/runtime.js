@@ -2530,11 +2530,11 @@ var ElixZKPassport = (() => {
       super(64, outputLen, 8, false);
     }
     get() {
-      const { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H } = this;
-      return [A, B2, C2, D2, E2, F4, G4, H];
+      const { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H: H3 } = this;
+      return [A, B2, C2, D2, E2, F4, G4, H3];
     }
     // prettier-ignore
-    set(A, B2, C2, D2, E2, F4, G4, H) {
+    set(A, B2, C2, D2, E2, F4, G4, H3) {
       this.A = A | 0;
       this.B = B2 | 0;
       this.C = C2 | 0;
@@ -2542,7 +2542,7 @@ var ElixZKPassport = (() => {
       this.E = E2 | 0;
       this.F = F4 | 0;
       this.G = G4 | 0;
-      this.H = H | 0;
+      this.H = H3 | 0;
     }
     process(view, offset) {
       for (let i = 0; i < 16; i++, offset += 4)
@@ -2554,13 +2554,13 @@ var ElixZKPassport = (() => {
         const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
         SHA256_W[i] = s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16] | 0;
       }
-      let { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H } = this;
+      let { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H: H3 } = this;
       for (let i = 0; i < 64; i++) {
         const sigma1 = rotr(E2, 6) ^ rotr(E2, 11) ^ rotr(E2, 25);
-        const T1 = H + sigma1 + Chi(E2, F4, G4) + SHA256_K[i] + SHA256_W[i] | 0;
+        const T1 = H3 + sigma1 + Chi(E2, F4, G4) + SHA256_K[i] + SHA256_W[i] | 0;
         const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
         const T2 = sigma0 + Maj(A, B2, C2) | 0;
-        H = G4;
+        H3 = G4;
         G4 = F4;
         F4 = E2;
         E2 = D2 + T1 | 0;
@@ -2576,8 +2576,8 @@ var ElixZKPassport = (() => {
       E2 = E2 + this.E | 0;
       F4 = F4 + this.F | 0;
       G4 = G4 + this.G | 0;
-      H = H + this.H | 0;
-      this.set(A, B2, C2, D2, E2, F4, G4, H);
+      H3 = H3 + this.H | 0;
+      this.set(A, B2, C2, D2, E2, F4, G4, H3);
     }
     roundClean() {
       clean(SHA256_W);
@@ -17211,11 +17211,11 @@ var ElixZKPassport = (() => {
       super(64, outputLen, 8, false);
     }
     get() {
-      const { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H } = this;
-      return [A, B2, C2, D2, E2, F4, G4, H];
+      const { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H: H3 } = this;
+      return [A, B2, C2, D2, E2, F4, G4, H3];
     }
     // prettier-ignore
-    set(A, B2, C2, D2, E2, F4, G4, H) {
+    set(A, B2, C2, D2, E2, F4, G4, H3) {
       this.A = A | 0;
       this.B = B2 | 0;
       this.C = C2 | 0;
@@ -17223,7 +17223,7 @@ var ElixZKPassport = (() => {
       this.E = E2 | 0;
       this.F = F4 | 0;
       this.G = G4 | 0;
-      this.H = H | 0;
+      this.H = H3 | 0;
     }
     process(view, offset) {
       for (let i = 0; i < 16; i++, offset += 4)
@@ -17235,13 +17235,13 @@ var ElixZKPassport = (() => {
         const s1 = rotr2(W2, 17) ^ rotr2(W2, 19) ^ W2 >>> 10;
         SHA256_W2[i] = s1 + SHA256_W2[i - 7] + s0 + SHA256_W2[i - 16] | 0;
       }
-      let { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H } = this;
+      let { A, B: B2, C: C2, D: D2, E: E2, F: F4, G: G4, H: H3 } = this;
       for (let i = 0; i < 64; i++) {
         const sigma1 = rotr2(E2, 6) ^ rotr2(E2, 11) ^ rotr2(E2, 25);
-        const T1 = H + sigma1 + Chi2(E2, F4, G4) + SHA256_K2[i] + SHA256_W2[i] | 0;
+        const T1 = H3 + sigma1 + Chi2(E2, F4, G4) + SHA256_K2[i] + SHA256_W2[i] | 0;
         const sigma0 = rotr2(A, 2) ^ rotr2(A, 13) ^ rotr2(A, 22);
         const T2 = sigma0 + Maj2(A, B2, C2) | 0;
-        H = G4;
+        H3 = G4;
         G4 = F4;
         F4 = E2;
         E2 = D2 + T1 | 0;
@@ -17257,8 +17257,8 @@ var ElixZKPassport = (() => {
       E2 = E2 + this.E | 0;
       F4 = F4 + this.F | 0;
       G4 = G4 + this.G | 0;
-      H = H + this.H | 0;
-      this.set(A, B2, C2, D2, E2, F4, G4, H);
+      H3 = H3 + this.H | 0;
+      this.set(A, B2, C2, D2, E2, F4, G4, H3);
     }
     roundClean() {
       clean2(SHA256_W2);
@@ -20184,10 +20184,10 @@ var ElixZKPassport = (() => {
         const E2 = modP(modP(x1y1 * x1y1) - A - B2);
         const G4 = D2 + B2;
         const F4 = G4 - C2;
-        const H = D2 - B2;
+        const H3 = D2 - B2;
         const X3 = modP(E2 * F4);
-        const Y3 = modP(G4 * H);
-        const T3 = modP(E2 * H);
+        const Y3 = modP(G4 * H3);
+        const T3 = modP(E2 * H3);
         const Z3 = modP(F4 * G4);
         return new Point(X3, Y3, Z3, T3);
       }
@@ -20206,10 +20206,10 @@ var ElixZKPassport = (() => {
         const E2 = modP((X1 + Y1) * (X2 + Y2) - A - B2);
         const F4 = D2 - C2;
         const G4 = D2 + C2;
-        const H = modP(B2 - a * A);
+        const H3 = modP(B2 - a * A);
         const X3 = modP(E2 * F4);
-        const Y3 = modP(G4 * H);
-        const T3 = modP(E2 * H);
+        const Y3 = modP(G4 * H3);
+        const T3 = modP(E2 * H3);
         const Z3 = modP(F4 * G4);
         return new Point(X3, Y3, Z3, T3);
       }
@@ -30409,6 +30409,10 @@ ${values.join("\n")}` : `${blockName} :`;
     let r = new TextEncoder().encode(e6), i = new Uint8Array(t), n = r.map((o, a) => i[a] === 1 ? o : 0);
     return E(Array.from(n), 90);
   }
+  function H(e6) {
+    let t = new TextDecoder().decode(e6).replace(/\0/g, ""), r = parseInt(t.substring(0, 2)), i = parseInt(t.substring(2, 4)) - 1, n = parseInt(t.substring(4, 6)), o = (/* @__PURE__ */ new Date()).getFullYear(), a = Math.floor(o / 100) * 100, s = a - 100, c = r + (r + a > o + 10 ? s : a);
+    return new Date(Date.UTC(c, i, n, 0, 0, 0, 0));
+  }
   var se = Math.floor(Math.abs(Date.UTC(1900, 0, 1, 0, 0, 0)) / 1e3);
   var t1 = ((i) => (i[i.USER_ADDRESS = 1] = "USER_ADDRESS", i[i.CHAIN_ID = 2] = "CHAIN_ID", i[i.CUSTOM_DATA = 3] = "CUSTOM_DATA", i))(t1 || {});
   function Ar(e6) {
@@ -30942,6 +30946,19 @@ ${values.join("\n")}` : `${blockName} :`;
     }
     return r;
   }
+  function kn(e6, t) {
+    let r = e6.dateOfBirth;
+    if (!r) return 0;
+    let i = H(new TextEncoder().encode(r)), n = t ?? /* @__PURE__ */ new Date(), o = n.getFullYear() - i.getFullYear(), a = n.getMonth() - i.getMonth();
+    return (a < 0 || a === 0 && n.getDate() < i.getDate()) && o--, o;
+  }
+  async function G22(e6, t, r, i = 0n, n = 0n, o = 0n, a, s = G3) {
+    if (i !== 0n && !s) throw new Error("OPRF proof is required when nullifier secret is not 0");
+    let c = await O(e6);
+    if (!c) return null;
+    let d = await v(p.from(c.dg1).padEnd(y), p.from(c.e_content).padEnd(M), p.from(w(e6?.sod.signerInfo.signature.toNumberArray() ?? [], e6))), l = await K(r, p.from(c.dg1).padEnd(y), e6.passportExpiry, c.dg2_hash_normalized, c.dg2_hash_type, d.toBigInt()), u = kn(e6), m = 0, g = 0;
+    return t.age && (t.age.gt ? m = t.age.gt + 1 : t.age.gte ? m = t.age.gte : t.age.range ? (m = t.age.range[0], g = t.age.range[1]) : t.age.eq ? (m = t.age.eq, g = t.age.eq) : t.age.disclose && (m = u, g = u), t.age.lt ? g = t.age.lt - 1 : t.age.lte && (g = t.age.lte)), { ...await X(e6, c, d, r), current_date: a, comm_in: l.toHex(), service_scope: `0x${n.toString(16)}`, service_subscope: `0x${o.toString(16)}`, min_age_required: m, max_age_required: g, nullifier_secret: `0x${i.toString(16)}`, oprf_proof: s };
+  }
   async function $2(e6, t, r, i = 0n, n = 0n, o = 0n, a, s = G3, c = false) {
     let d = await O(e6);
     if (!d) return null;
@@ -31109,6 +31126,7 @@ ${values.join("\n")}` : `${blockName} :`;
     const salts = disclosureSalts(privateState.salt);
     const query = {
       nationality: { disclose: true },
+      age: { gte: 18 },
       bind: { custom_data: request.challenge_binding }
     };
     if (!request.issuer_host) throw new Error("Issuer host is missing");
@@ -31116,7 +31134,7 @@ ${values.join("\n")}` : `${blockName} :`;
     const serviceSubscope = w2(request.scope);
     const timestamp = Wo();
     const integrityName = `data_check_integrity_sa_${passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "")}_dg_${passport.sod.encapContentInfo.eContent.hashAlgorithm.toLowerCase().replace("-", "")}`;
-    const [dsc, id, integrity, disclose, bind, twPersonBinding] = await Promise.all([
+    const [dsc, id, integrity, disclose, age, bind, twPersonBinding] = await Promise.all([
       buildDSCCircuit(
         passport,
         manifest,
@@ -31126,6 +31144,7 @@ ${values.join("\n")}` : `${blockName} :`;
       buildIDCircuit(passport, manifest, report),
       packaged(manifest, integrityName, report),
       packaged(manifest, "disclose_bytes", report),
+      packaged(manifest, "compare_age", report),
       packaged(manifest, "bind", report),
       twPersonBindingCircuit(passport, salts, serviceScope, serviceSubscope, timestamp, report)
     ]);
@@ -31151,6 +31170,23 @@ ${values.join("\n")}` : `${blockName} :`;
         )
       }
     };
+    report("age:inputs");
+    age.inputs = await G22(
+      passport,
+      query,
+      salts,
+      0n,
+      serviceScope,
+      serviceSubscope,
+      timestamp,
+      G3
+    );
+    age.committed_inputs = {
+      compare_age: {
+        minAge: 18,
+        maxAge: 0
+      }
+    };
     report("bind:inputs");
     bind.inputs = await $2(
       passport,
@@ -31170,9 +31206,10 @@ ${values.join("\n")}` : `${blockName} :`;
     report("plan:ready");
     return {
       version: manifest.version,
-      circuits: [dsc, id, integrity, disclose, bind, twPersonBinding],
+      circuits: [dsc, id, integrity, disclose, age, bind, twPersonBinding],
       query_result: {
         nationality: { disclose: { result: passport.nationality } },
+        age: { gte: { result: kn(passport) >= 18, expected: 18 } },
         bind: { custom_data: request.challenge_binding }
       }
     };
