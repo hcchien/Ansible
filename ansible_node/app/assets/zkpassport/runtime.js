@@ -33136,11 +33136,17 @@ ${values.join("\n")}` : `${blockName} :`;
     if (typeof loadPackage !== "function") {
       throw new Error("Native circuit package loader is unavailable");
     }
-    const expectedHash = manifest.circuits[name]?.hash;
+    const manifestEntry = manifest.circuits[name];
+    const expectedHash = manifestEntry?.hash;
     if (!expectedHash) throw new Error(`Circuit ${name} is absent from the pinned manifest`);
-    const url = `https://circuits2.zkpassport.id/mainnet/by-hash/${expectedHash}.json`;
+    const urls = [
+      `https://circuits2.zkpassport.id/mainnet/by-hash/${expectedHash}.json`
+    ];
+    if (manifestEntry.cid) {
+      urls.push(`https://ipfs.zkpassport.id/ipfs/${manifestEntry.cid}`);
+    }
     report(`download:${name}`);
-    const circuit = await loadPackage({ name, url });
+    const circuit = await loadPackage({ name, urls });
     if (!circuit?.name || !circuit?.hash || !circuit?.noir_version || !circuit?.bb_version) {
       throw new Error(`Invalid packaged circuit returned for ${name}`);
     }
@@ -33241,19 +33247,28 @@ ${values.join("\n")}` : `${blockName} :`;
     const serviceSubscope = w2(request.scope);
     const timestamp = Wo();
     const integrityName = `data_check_integrity_sa_${passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "")}_dg_${passport.sod.encapContentInfo.eContent.hashAlgorithm.toLowerCase().replace("-", "")}`;
+    let validatedPackageCount = 0;
+    const reportPackageProgress = (stage) => {
+      if (stage.startsWith("validated:")) {
+        validatedPackageCount += 1;
+        report(`packages:${validatedPackageCount}/5`);
+      } else {
+        report(stage);
+      }
+    };
     const [dsc, id, integrity, disclose, bind] = await Promise.all([
       buildDSCCircuit(
         passport,
         registry,
         manifest,
         certificates,
-        report,
+        reportPackageProgress,
         loadPackage
       ),
-      buildIDCircuit(passport, registry, manifest, report, loadPackage),
-      packaged(registry, manifest, integrityName, report, loadPackage),
-      packaged(registry, manifest, "disclose_bytes", report, loadPackage),
-      packaged(registry, manifest, "bind", report, loadPackage)
+      buildIDCircuit(passport, registry, manifest, reportPackageProgress, loadPackage),
+      packaged(registry, manifest, integrityName, reportPackageProgress, loadPackage),
+      packaged(registry, manifest, "disclose_bytes", reportPackageProgress, loadPackage),
+      packaged(registry, manifest, "bind", reportPackageProgress, loadPackage)
     ]);
     report("integrity:inputs");
     integrity.inputs = await F22(passport, privateState.salt, salts);

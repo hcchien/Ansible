@@ -223,10 +223,12 @@ memory limits demonstrate that parallel proving is safe.
 
 On iOS, the five public circuit-package requests use an ephemeral native
 `URLSession` with a strict HTTPS host/path allowlist, bounded response size,
-timeouts, and at most five connections. WebKit supplies only the manifest
-content hash URL and receives the downloaded public JSON; document fields,
-holder identity, challenge, and proof inputs never enter the request. The
-package is still hash-validated against the signed app's manifest before use.
+an app-enforced thirty-second deadline per source, and at most five
+connections. The primary content-hash URL may fail over to the IPFS CID pinned
+in the same signed manifest. WebKit supplies only those manifest URLs and
+receives the downloaded public JSON; document fields, holder identity,
+challenge, and proof inputs never enter the request. Content from either
+source is still hash-validated against the signed app's manifest before use.
 Moving this bridge into the cross-platform Flutter artifact manager remains
 required before declaring the artifact boundary fully implemented; no cloud
 proving or raw-passport fallback is allowed in the interim. Updating the

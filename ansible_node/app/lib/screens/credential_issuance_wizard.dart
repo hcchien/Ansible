@@ -809,6 +809,10 @@ class _PassportNfcCredentialPanelState
     if (stage.startsWith('validated:')) {
       return zh ? '驗證護照證明電路' : 'Validating proof circuit';
     }
+    if (stage.startsWith('packages:')) {
+      final count = stage.substring('packages:'.length);
+      return zh ? '護照證明電路已完成 $count' : 'Proof circuits ready $count';
+    }
     return switch (stage) {
       'passport:parse' => zh ? '解析護照晶片資料' : 'Parsing passport chip data',
       'passport:supported' => zh ? '選擇護照證明電路' : 'Selecting passport circuits',

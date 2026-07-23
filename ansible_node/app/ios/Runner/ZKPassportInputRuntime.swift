@@ -14,6 +14,7 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
   private var planProgress: ((String) -> Void)?
   private var timeoutWorkItem: DispatchWorkItem?
   private var packageTasks: [String: URLSessionDataTask] = [:]
+  private var packageTimeouts: [String: DispatchWorkItem] = [:]
   private lazy var packageSession: URLSession = {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.timeoutIntervalForRequest = 45
@@ -103,10 +104,10 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
             if (error) pending.reject(new Error(String(error)));
             else pending.resolve(JSON.parse(atob(payload)));
           };
-          const loadPackage = ({ name, url }) => new Promise((resolve, reject) => {
+          const loadPackage = ({ name, urls }) => new Promise((resolve, reject) => {
             const id = `package-${++nextPackageId}`;
             packageResolvers.set(id, { resolve, reject });
-            send({ package_request: { id, name, url } });
+            send({ package_request: { id, name, urls } });
           });
           Promise.resolve().then(async () => {
             const runtime = globalThis.ElixZKPassport;
@@ -186,6 +187,8 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
     planProgress = nil
     packageTasks.values.forEach { $0.cancel() }
     packageTasks.removeAll()
+    packageTimeouts.values.forEach { $0.cancel() }
+    packageTimeouts.removeAll()
     timeoutWorkItem?.cancel()
     timeoutWorkItem = nil
     webView?.configuration.userContentController.removeScriptMessageHandler(
@@ -198,28 +201,43 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
   @MainActor
   private func downloadPackage(_ request: [String: Any]) {
     guard let id = request["id"] as? String,
-          let rawURL = request["url"] as? String,
-          let url = URL(string: rawURL),
-          url.scheme == "https",
-          url.host == "circuits2.zkpassport.id",
-          url.path.hasPrefix("/mainnet/by-hash/"),
-          url.path.hasSuffix(".json"),
-          url.query == nil,
-          url.fragment == nil else {
+          let rawURLs = request["urls"] as? [String],
+          !rawURLs.isEmpty else {
       resolvePackage(
         id: request["id"] as? String ?? "",
         data: nil,
-        error: "Rejected circuit package URL"
+        error: "Missing circuit package URLs"
       )
       return
     }
+    let urls = rawURLs.compactMap(URL.init(string:)).filter(Self.isAllowedPackageURL)
+    guard urls.count == rawURLs.count else {
+      resolvePackage(id: id, data: nil, error: "Rejected circuit package URL")
+      return
+    }
+    downloadPackage(id: id, urls: urls, index: 0)
+  }
 
-    let task = packageSession.dataTask(with: url) { [weak self] data, response, error in
+  @MainActor
+  private func downloadPackage(id: String, urls: [URL], index: Int) {
+    guard index < urls.count else {
+      resolvePackage(id: id, data: nil, error: "All circuit package sources failed")
+      return
+    }
+    var request = URLRequest(url: urls[index])
+    request.timeoutInterval = 30
+    request.cachePolicy = .returnCacheDataElseLoad
+    let task = packageSession.dataTask(with: request) { [weak self] data, response, error in
       Task { @MainActor in
         guard let self else { return }
+        self.packageTimeouts.removeValue(forKey: id)?.cancel()
         self.packageTasks.removeValue(forKey: id)
         if let error {
-          self.resolvePackage(id: id, data: nil, error: error.localizedDescription)
+          if index + 1 < urls.count {
+            self.downloadPackage(id: id, urls: urls, index: index + 1)
+          } else {
+            self.resolvePackage(id: id, data: nil, error: error.localizedDescription)
+          }
           return
         }
         guard let http = response as? HTTPURLResponse,
@@ -227,14 +245,34 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
               let data,
               data.count <= 25 * 1024 * 1024,
               (try? JSONSerialization.jsonObject(with: data)) is [String: Any] else {
-          self.resolvePackage(id: id, data: nil, error: "Invalid circuit package response")
+          if index + 1 < urls.count {
+            self.downloadPackage(id: id, urls: urls, index: index + 1)
+          } else {
+            self.resolvePackage(id: id, data: nil, error: "Invalid circuit package response")
+          }
           return
         }
         self.resolvePackage(id: id, data: data, error: nil)
       }
     }
     packageTasks[id] = task
+    let deadline = DispatchWorkItem { [weak task] in task?.cancel() }
+    packageTimeouts[id] = deadline
+    DispatchQueue.main.asyncAfter(deadline: .now() + 30, execute: deadline)
     task.resume()
+  }
+
+  private static func isAllowedPackageURL(_ url: URL) -> Bool {
+    guard url.scheme == "https", url.query == nil, url.fragment == nil else {
+      return false
+    }
+    if url.host == "circuits2.zkpassport.id" {
+      return url.path.hasPrefix("/mainnet/by-hash/") && url.path.hasSuffix(".json")
+    }
+    if url.host == "ipfs.zkpassport.id" {
+      return url.path.hasPrefix("/ipfs/")
+    }
+    return false
   }
 
   @MainActor
