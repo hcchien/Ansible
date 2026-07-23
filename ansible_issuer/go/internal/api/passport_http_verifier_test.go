@@ -51,6 +51,7 @@ func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *t
 }
 
 func TestHTTPPassportBindingVerifierAddsWorkloadIdentityToken(t *testing.T) {
+	t.Setenv("PASSPORT_VERIFIER_AUDIENCE", "https://verifier-service.run.app")
 	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if got := r.Header.Get("authorization"); got != "Bearer workload-token" {
 			t.Fatalf("authorization header = %q", got)
@@ -72,7 +73,7 @@ func TestHTTPPassportBindingVerifierAddsWorkloadIdentityToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	verifier.identityToken = func(_ context.Context, audience string) (string, error) {
-		if audience != "https://verifier.example" {
+		if audience != "https://verifier-service.run.app" {
 			t.Fatalf("audience = %q", audience)
 		}
 		return "workload-token", nil

@@ -19,6 +19,7 @@ import (
 // challenge consumption; the verifier is never allowed to issue credentials.
 type HTTPPassportBindingVerifier struct {
 	endpoint      string
+	audience      string
 	client        *http.Client
 	identityToken func(context.Context, string) (string, error)
 }
@@ -33,7 +34,15 @@ func NewHTTPPassportBindingVerifier(endpoint string, client *http.Client) (*HTTP
 		// deliberately longer than ordinary API timeouts, while still bounded.
 		client = &http.Client{Timeout: 120 * time.Second}
 	}
-	verifier := &HTTPPassportBindingVerifier{endpoint: endpoint, client: client}
+	audience := strings.TrimRight(strings.TrimSpace(os.Getenv("PASSPORT_VERIFIER_AUDIENCE")), "/")
+	if audience == "" {
+		audience = endpoint
+	}
+	verifier := &HTTPPassportBindingVerifier{
+		endpoint: endpoint,
+		audience: audience,
+		client:   client,
+	}
 	// Cloud Run services are private by default. When the Issuer itself runs
 	// on Cloud Run, authenticate to the verifier with the workload's identity;
 	// local development remains compatible with an explicit local endpoint.
@@ -84,7 +93,7 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 	}
 	req.Header.Set("content-type", "application/json")
 	if v.identityToken != nil {
-		token, err := v.identityToken(ctx, v.endpoint)
+		token, err := v.identityToken(ctx, v.audience)
 		if err != nil {
 			return PassportBindingResult{}, fmt.Errorf("passport verifier identity: %w", err)
 		}

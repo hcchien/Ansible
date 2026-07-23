@@ -201,8 +201,9 @@ case "$SERVICE" in
     ENV_VARS+=";TW_PROVIDER_AUDIENCE=${TW_PROVIDER_AUDIENCE:-trisaura-issuer}"
     ENV_VARS+=";VC_TTL_DAYS=${VC_TTL_DAYS:-90}"
     ENV_VARS+=";OTP_TTL_SECONDS=${OTP_TTL_SECONDS:-300}"
-    [ -z "${PASSPORT_VERIFIER_URL:-}" ] ||
-      ENV_VARS+=";PASSPORT_VERIFIER_URL=${PASSPORT_VERIFIER_URL}"
+    for OPT in PASSPORT_VERIFIER_URL PASSPORT_VERIFIER_AUDIENCE; do
+      [ -z "${!OPT:-}" ] || ENV_VARS+=";${OPT}=${!OPT}"
+    done
     # Pepper rotation: previous peppers stay valid for existing commitments.
     [ -z "${SUBJECT_COMMITMENT_PEPPER_PREVIOUS:-}" ] ||
       ENV_VARS+=";SUBJECT_COMMITMENT_PEPPER_PREVIOUS=${SUBJECT_COMMITMENT_PEPPER_PREVIOUS}"
