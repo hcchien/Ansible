@@ -227,6 +227,8 @@ class _PassportNfcCredentialPanelState
   String? _errorMessage;
   double? _srsDownloadProgress;
   ZkpProverProgress? _proofProgress;
+  DateTime? _proofProgressObservedAt;
+  Timer? _proofProgressTicker;
   bool _submittingToIssuer = false;
   bool _scanningMrz = false;
   final _documentNumberController = TextEditingController();
@@ -264,12 +266,27 @@ class _PassportNfcCredentialPanelState
       );
       _passportZkpProver = ZkpProverImpl(
         srsProvider: _passportSrsProvider!,
-        onProgress: (progress) {
-          if (!mounted) return;
-          setState(() => _proofProgress = progress);
-        },
+        onProgress: _recordProofProgress,
       );
     }
+  }
+
+  void _recordProofProgress(ZkpProverProgress progress) {
+    if (!mounted) return;
+    _proofProgressTicker ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+    setState(() {
+      _proofProgress = progress;
+      _proofProgressObservedAt = DateTime.now();
+    });
+  }
+
+  void _stopProofProgressTicker() {
+    _proofProgressTicker?.cancel();
+    _proofProgressTicker = null;
+    _proofProgressObservedAt = null;
   }
 
   String _copy({required String zh, required String en}) =>
@@ -277,6 +294,7 @@ class _PassportNfcCredentialPanelState
 
   @override
   void dispose() {
+    _stopProofProgressTicker();
     _documentNumberController.dispose();
     _dateOfBirthController.dispose();
     _dateOfExpiryController.dispose();
@@ -317,6 +335,7 @@ class _PassportNfcCredentialPanelState
       _errorMessage = null;
       _srsDownloadProgress = null;
       _proofProgress = null;
+      _proofProgressObservedAt = null;
       _submittingToIssuer = false;
     });
 
@@ -400,6 +419,7 @@ class _PassportNfcCredentialPanelState
         ),
       );
       if (!mounted) return;
+      _stopProofProgressTicker();
       setState(() => _submittingToIssuer = true);
       final vcJson = await _vcIssuerClient.issuePassportCredential(
         did: widget.holderDid,
@@ -460,9 +480,11 @@ class _PassportNfcCredentialPanelState
       widget.onCredentialStored?.call();
 
       if (!mounted) return;
+      _stopProofProgressTicker();
       setState(() => _phase = _PassportNfcPhase.done);
     } catch (error) {
       if (!mounted) return;
+      _stopProofProgressTicker();
       setState(() {
         _phase = _PassportNfcPhase.idle;
         _submittingToIssuer = false;
@@ -743,30 +765,36 @@ class _PassportNfcCredentialPanelState
     if (progress == null) {
       return _copy(zh: '準備本機證明', en: 'Preparing local proof');
     }
-    final elapsed = progress.elapsed.inSeconds;
+    final observedAt = _proofProgressObservedAt;
+    final elapsed =
+        progress.elapsed +
+        (observedAt == null
+            ? Duration.zero
+            : DateTime.now().difference(observedAt));
+    final elapsedSeconds = elapsed.inSeconds;
     final suffix = progress.circuitCount > 0
         ? ' ${progress.circuitIndex}/${progress.circuitCount}'
         : '';
     return switch (progress.stage) {
       ZkpProverStage.planning => _copy(
-        zh: '準備護照證明資料 · ${elapsed}s',
-        en: 'Planning passport proof · ${elapsed}s',
+        zh: '準備護照證明資料 · ${elapsedSeconds}s',
+        en: 'Planning passport proof · ${elapsedSeconds}s',
       ),
       ZkpProverStage.initializingSrs => _copy(
-        zh: '初始化證明參數 · ${elapsed}s',
-        en: 'Initializing proof parameters · ${elapsed}s',
+        zh: '初始化證明參數 · ${elapsedSeconds}s',
+        en: 'Initializing proof parameters · ${elapsedSeconds}s',
       ),
       ZkpProverStage.preparing => _copy(
-        zh: '準備本機證明$suffix · ${elapsed}s',
-        en: 'Preparing local proof$suffix · ${elapsed}s',
+        zh: '準備本機證明$suffix · ${elapsedSeconds}s',
+        en: 'Preparing local proof$suffix · ${elapsedSeconds}s',
       ),
       ZkpProverStage.proving => _copy(
-        zh: '產生本機證明$suffix · ${elapsed}s',
-        en: 'Generating local proof$suffix · ${elapsed}s',
+        zh: '產生本機證明$suffix · ${elapsedSeconds}s',
+        en: 'Generating local proof$suffix · ${elapsedSeconds}s',
       ),
       ZkpProverStage.verifying => _copy(
-        zh: '驗證本機證明$suffix · ${elapsed}s',
-        en: 'Verifying local proof$suffix · ${elapsed}s',
+        zh: '驗證本機證明$suffix · ${elapsedSeconds}s',
+        en: 'Verifying local proof$suffix · ${elapsedSeconds}s',
       ),
     };
   }

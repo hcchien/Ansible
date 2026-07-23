@@ -161,18 +161,25 @@ export async function createProofPlan(request) {
   const serviceSubscope = getServiceSubscopeHash(request.scope)
   const timestamp = getNowTimestamp()
 
-  const dsc = await buildDSCCircuit(passport, registry, manifest, certificates)
-  const id = await buildIDCircuit(passport, registry, manifest)
   const integrityName =
     `data_check_integrity_sa_${passport.sod.signerInfo.digestAlgorithm
       .toLowerCase()
       .replace("-", "")}_dg_${passport.sod.encapContentInfo.eContent.hashAlgorithm
       .toLowerCase()
       .replace("-", "")}`
-  const integrity = await packaged(registry, manifest, integrityName)
+
+  // The five circuit packages are independent public artifacts. Fetch and
+  // hash-validate them concurrently so mobile proof planning pays one network
+  // round-trip window instead of five consecutive windows.
+  const [dsc, id, integrity, disclose, bind] = await Promise.all([
+    buildDSCCircuit(passport, registry, manifest, certificates),
+    buildIDCircuit(passport, registry, manifest),
+    packaged(registry, manifest, integrityName),
+    packaged(registry, manifest, "disclose_bytes"),
+    packaged(registry, manifest, "bind"),
+  ])
   integrity.inputs = await getIntegrityCheckCircuitInputs(passport, privateState.salt, salts)
 
-  const disclose = await packaged(registry, manifest, "disclose_bytes")
   disclose.inputs = await getDiscloseCircuitInputs(
     passport,
     query,
@@ -183,7 +190,6 @@ export async function createProofPlan(request) {
     timestamp,
     OPRF_ZERO_PROOF,
   )
-  const bind = await packaged(registry, manifest, "bind")
   bind.inputs = await getBindCircuitInputs(
     passport,
     query,

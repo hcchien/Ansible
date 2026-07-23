@@ -198,6 +198,26 @@ temporary file; the next acquisition deletes stale complete and partial files
 before downloading, and the operating system may independently purge the
 temporary directory.
 
+### Proof-planning performance and observability
+
+Proof planning may retrieve five independent, public circuit packages selected
+from the passport's signing algorithms. Those package requests must run
+concurrently and each package must still pass the pinned registry hash
+validation before use. Neither the requests nor their cache keys may contain
+MRZ, DG, SOD, document number, holder DID, challenge, or proof inputs.
+
+The Wallet shows a monotonic elapsed timer for planning, SRS initialization,
+preparation, proving, and local verification. The timer is diagnostic UI only;
+it must be cancelled after success, failure, or disposal and must not emit
+passport data or telemetry. Native proving remains serialized until measured
+device memory limits demonstrate that parallel proving is safe.
+
+The current Beta runtime performs the public circuit-package retrieval inside
+an ephemeral on-device WebKit process. Moving retrieval into the Flutter
+artifact manager remains required before declaring the artifact boundary fully
+implemented; no cloud proving or raw-passport fallback is allowed in the
+interim.
+
 ## Artifact Supply Chain
 
 - A signed Elix manifest maps protocol versions to allowed circuit names,

@@ -19288,12 +19288,15 @@ ${values.join("\n")}` : `${blockName} :`;
     const serviceScope = O22(new URL(request.issuer).host);
     const serviceSubscope = w2(request.scope);
     const timestamp = Wo();
-    const dsc = await buildDSCCircuit(passport, registry, manifest, certificates);
-    const id = await buildIDCircuit(passport, registry, manifest);
     const integrityName = `data_check_integrity_sa_${passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "")}_dg_${passport.sod.encapContentInfo.eContent.hashAlgorithm.toLowerCase().replace("-", "")}`;
-    const integrity = await packaged(registry, manifest, integrityName);
+    const [dsc, id, integrity, disclose, bind] = await Promise.all([
+      buildDSCCircuit(passport, registry, manifest, certificates),
+      buildIDCircuit(passport, registry, manifest),
+      packaged(registry, manifest, integrityName),
+      packaged(registry, manifest, "disclose_bytes"),
+      packaged(registry, manifest, "bind")
+    ]);
     integrity.inputs = await F22(passport, privateState.salt, salts);
-    const disclose = await packaged(registry, manifest, "disclose_bytes");
     disclose.inputs = await H2(
       passport,
       query,
@@ -19304,7 +19307,6 @@ ${values.join("\n")}` : `${blockName} :`;
       timestamp,
       G4
     );
-    const bind = await packaged(registry, manifest, "bind");
     bind.inputs = await $2(
       passport,
       query,
