@@ -1,5 +1,7 @@
 import { sha256 } from "@noble/hashes/sha2.js"
 import { RegistryClient } from "@zkpassport/registry"
+import pinnedCertificates from "./pinned-certificates-mainnet.json"
+import pinnedManifest from "./pinned-circuit-manifest-0.20.0.json"
 import {
   Binary,
   OPRF_ZERO_PROOF,
@@ -147,11 +149,16 @@ export async function createProofPlan(request) {
   const passport = reader.getPassportViewModel()
   if (!isIDSupported(passport)) throw new Error("This passport is not supported by ZKPassport")
 
+  // These public registry snapshots are reviewed and pinned by the signed app
+  // release. Recomputing their 790-circuit and 584-certificate Merkle roots in
+  // mobile WebKit dominated proof planning. Individual passport-specific
+  // circuit packages remain downloaded on demand and hash-validated below.
   const registry = new RegistryClient({ chainId: 1 })
-  const [manifest, certificates] = await Promise.all([
-    registry.getCircuitManifest(undefined, { version: request.version, validate: true }),
-    registry.getCertificates(undefined, { validate: true }),
-  ])
+  const manifest = pinnedManifest
+  const certificates = pinnedCertificates
+  if (manifest.version !== request.version) {
+    throw new Error("Pinned ZKPassport manifest version mismatch")
+  }
   const salts = disclosureSalts(privateState.salt)
   const query = {
     nationality: { disclose: true },

@@ -200,11 +200,16 @@ temporary directory.
 
 ### Proof-planning performance and observability
 
-Proof planning may retrieve five independent, public circuit packages selected
-from the passport's signing algorithms. Those package requests must run
-concurrently and each package must still pass the pinned registry hash
-validation before use. Neither the requests nor their cache keys may contain
-MRZ, DG, SOD, document number, holder DID, challenge, or proof inputs.
+The signed app bundles the reviewed circuit manifest and certificate registry
+snapshot for the supported protocol version. Their exact roots and file
+SHA-256 values are release-tested. This avoids recomputing the 790-circuit and
+584-certificate registry Merkle roots in mobile WebKit for every issuance.
+
+Proof planning retrieves only the five independent, public circuit packages
+selected from the passport's signing algorithms. Those package requests run
+concurrently and each package must still pass the hash recorded in the bundled
+manifest before use. Neither the requests nor their cache keys may contain MRZ,
+DG, SOD, document number, holder DID, challenge, or proof inputs.
 
 The Wallet shows a monotonic elapsed timer for planning, SRS initialization,
 preparation, proving, and local verification. The timer is diagnostic UI only;
@@ -212,11 +217,13 @@ it must be cancelled after success, failure, or disposal and must not emit
 passport data or telemetry. Native proving remains serialized until measured
 device memory limits demonstrate that parallel proving is safe.
 
-The current Beta runtime performs the public circuit-package retrieval inside
-an ephemeral on-device WebKit process. Moving retrieval into the Flutter
-artifact manager remains required before declaring the artifact boundary fully
-implemented; no cloud proving or raw-passport fallback is allowed in the
-interim.
+The current Beta runtime performs the five public circuit-package requests
+inside an ephemeral on-device WebKit process. Moving those remaining requests
+into the Flutter artifact manager remains required before declaring the
+artifact boundary fully implemented; no cloud proving or raw-passport fallback
+is allowed in the interim. Updating the certificate registry or manifest
+requires a reviewed app release; it must never be silently refreshed at
+runtime.
 
 ## Artifact Supply Chain
 
