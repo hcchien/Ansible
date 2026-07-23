@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -46,6 +47,46 @@ func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *t
 	}
 	if result.NationalIDHash != "different-national-id" {
 		t.Fatalf("issuer must use verifier-derived output, got %#v", result)
+	}
+}
+
+func TestHTTPPassportBindingVerifierAddsWorkloadIdentityToken(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if got := r.Header.Get("authorization"); got != "Bearer workload-token" {
+			t.Fatalf("authorization header = %q", got)
+		}
+		response, _ := json.Marshal(map[string]any{
+			"verified":             true,
+			"nationality":          "TWN",
+			"national_id_hash":     "national-id-hash",
+			"passport_number_hash": "passport-number-hash",
+		})
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(response)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+	verifier, err := NewHTTPPassportBindingVerifier("https://verifier.example", client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier.identityToken = func(_ context.Context, audience string) (string, error) {
+		if audience != "https://verifier.example" {
+			t.Fatalf("audience = %q", audience)
+		}
+		return "workload-token", nil
+	}
+	_, err = verifier.VerifyPassportBinding(PassportBindingProof{
+		DID: "did:plc:abcdefghijklmnop", ChallengeID: "challenge-1",
+		ChallengeNonce: "nonce-1", ChallengeIssuer: "https://issuer.example",
+		ChallengeScope: "elix-passport-personhood-v1", Nationality: "TWN",
+		NationalIDHash: "national-id-hash", PassportNumberHash: "passport-number-hash",
+		ZKPProof: `{"proofs":[]}`, ZKPCircuitVersion: "0.20.0",
+		VerificationKeyHash: "sha256:test",
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

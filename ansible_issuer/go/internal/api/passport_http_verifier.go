@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -16,8 +18,9 @@ import (
 // pinned ZKPassport verifier runtime. The Issuer still owns policy checks and
 // challenge consumption; the verifier is never allowed to issue credentials.
 type HTTPPassportBindingVerifier struct {
-	endpoint string
-	client   *http.Client
+	endpoint      string
+	client        *http.Client
+	identityToken func(context.Context, string) (string, error)
 }
 
 func NewHTTPPassportBindingVerifier(endpoint string, client *http.Client) (*HTTPPassportBindingVerifier, error) {
@@ -30,7 +33,14 @@ func NewHTTPPassportBindingVerifier(endpoint string, client *http.Client) (*HTTP
 		// deliberately longer than ordinary API timeouts, while still bounded.
 		client = &http.Client{Timeout: 120 * time.Second}
 	}
-	return &HTTPPassportBindingVerifier{endpoint: endpoint, client: client}, nil
+	verifier := &HTTPPassportBindingVerifier{endpoint: endpoint, client: client}
+	// Cloud Run services are private by default. When the Issuer itself runs
+	// on Cloud Run, authenticate to the verifier with the workload's identity;
+	// local development remains compatible with an explicit local endpoint.
+	if strings.TrimSpace(os.Getenv("K_SERVICE")) != "" {
+		verifier.identityToken = cloudRunIdentityToken
+	}
+	return verifier, nil
 }
 
 func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindingProof) (PassportBindingResult, error) {
@@ -73,6 +83,13 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		return PassportBindingResult{}, err
 	}
 	req.Header.Set("content-type", "application/json")
+	if v.identityToken != nil {
+		token, err := v.identityToken(ctx, v.endpoint)
+		if err != nil {
+			return PassportBindingResult{}, fmt.Errorf("passport verifier identity: %w", err)
+		}
+		req.Header.Set("authorization", "Bearer "+token)
+	}
 	resp, err := v.client.Do(req)
 	if err != nil {
 		return PassportBindingResult{}, fmt.Errorf("passport verifier: %w", err)
@@ -102,6 +119,29 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		PassportNumberHash: result.PassportNumberHash,
 		VerifiedAt:         time.Now().UTC(),
 	}, nil
+}
+
+func cloudRunIdentityToken(ctx context.Context, audience string) (string, error) {
+	metadataURL := "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity" +
+		"?audience=" + url.QueryEscape(audience) + "&format=full"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metadataURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Metadata-Flavor", "Google")
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	token := strings.TrimSpace(string(raw))
+	if err != nil || resp.StatusCode != http.StatusOK || len(token) > 16<<10 ||
+		len(strings.Split(token, ".")) != 3 {
+		return "", errors.New("metadata identity token unavailable")
+	}
+	return token, nil
 }
 
 var _ PassportBindingVerifier = (*HTTPPassportBindingVerifier)(nil)
