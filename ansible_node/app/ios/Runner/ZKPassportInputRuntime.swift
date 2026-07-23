@@ -35,19 +35,17 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate {
           }
           return
         }
-        webView.evaluateJavaScript(runtimeJavaScript) { _, loadError in
-          if let loadError {
-            completion(.failure(loadError))
-            self.webView = nil
-            return
-          }
-          Task { @MainActor in
+        Task { @MainActor in
             defer { self.webView = nil }
             do {
               let value = try await webView.callAsyncJavaScript(
-                """
+                runtimeJavaScript + "\n" + """
                 try {
-                  const plan = await ElixZKPassport.createProofPlan(request);
+                  const runtime = globalThis.ElixZKPassport;
+                  if (!runtime || typeof runtime.createProofPlan !== "function") {
+                    throw new Error("ZKPassport runtime did not install its global API");
+                  }
+                  const plan = await runtime.createProofPlan(request);
                   return JSON.stringify({ ok: true, plan }, (_key, value) => {
                     if (typeof value === "bigint") return value.toString(10);
                     if (ArrayBuffer.isView(value)) return Array.from(value);
@@ -86,12 +84,11 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate {
               let message =
                 cocoaError.userInfo["WKJavaScriptExceptionMessage"] as? String ??
                 cocoaError.localizedDescription
-              completion(.failure(RuntimeError.javaScript(message)))
+                completion(.failure(RuntimeError.javaScript(message)))
+              }
             }
-          }
         }
       }
-    }
     waitUntilReady(20)
   }
 
