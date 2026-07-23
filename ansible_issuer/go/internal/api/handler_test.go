@@ -213,6 +213,24 @@ func TestRequest_InvalidDID(t *testing.T) {
 	}
 }
 
+func TestPassportChallengeAcceptsSupportedAppDIDs(t *testing.T) {
+	for _, did := range []string{
+		"did:elix:abcdefghijklmnopqrstuvwxyz",
+		"did:key:z6MkrJVnaZkeFzdQyR9zBCKaYJ6KQ9ZJQ1J5VfJvTrMxXg9B",
+	} {
+		t.Run(did[:7], func(t *testing.T) {
+			h := newTestHandler(t)
+			configurePassportChallengeVerifier(h)
+			w := call(h, http.MethodPost, "/api/v1/vc/passport/challenges", map[string]any{
+				"did": did,
+			})
+			if w.Code != http.StatusCreated {
+				t.Fatalf("expected 201 for %s, got %d: %s", did, w.Code, w.Body)
+			}
+		})
+	}
+}
+
 func TestIssue_ReturnsSignedEmailCredential(t *testing.T) {
 	h := newTestHandler(t)
 	w := call(h, http.MethodPost, "/api/v1/vc/issue", map[string]any{

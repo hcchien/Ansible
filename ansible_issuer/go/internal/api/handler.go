@@ -21,7 +21,14 @@ import (
 )
 
 var (
-	reDID            = regexp.MustCompile(`^did:(plc:[a-z2-7]{10,}|web:.+)$`)
+	reDID = regexp.MustCompile(
+		`^did:(` +
+			`plc:[a-z2-7]{10,}|` +
+			`elix:[a-z2-7]{26}|` +
+			`key:z[1-9A-HJ-NP-Za-km-z]{40,120}|` +
+			`web:[A-Za-z0-9._%:-]+` +
+			`)$`,
+	)
 	reEmail          = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 	reNationality    = regexp.MustCompile(`^[A-Z]{3}$`)
 	reNationalID     = regexp.MustCompile(`^[A-Z][0-9]{9}$`)
