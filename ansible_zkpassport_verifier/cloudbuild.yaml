@@ -55,7 +55,7 @@ steps:
       - --memory=2Gi
       - --cpu=2
       - --timeout=120
-      - --allow-unauthenticated
+      - --no-invoker-iam-check
       - --labels=managed-by=cloud-build,commit-sha=$COMMIT_SHA
       - --quiet
     waitFor: ["push-image"]
