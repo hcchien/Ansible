@@ -8,6 +8,19 @@ class SwoirZkPassportBackend {
   const SwoirZkPassportBackend();
 
   static const _channel = MethodChannel('elix/zkpassport_prover');
+  static bool _progressHandlerInstalled = false;
+  static void Function(String stage)? _planProgressCallback;
+
+  static void _installProgressHandler() {
+    if (_progressHandlerInstalled) return;
+    _progressHandlerInstalled = true;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'plan_progress') {
+        final stage = call.arguments as String?;
+        if (stage != null) _planProgressCallback?.call(stage);
+      }
+    });
+  }
 
   Future<String> prepare({
     required String manifestJson,
@@ -34,15 +47,22 @@ class SwoirZkPassportBackend {
   Future<Map<String, Object?>> createProofPlan({
     required String runtimeJavaScript,
     required Map<String, Object?> request,
+    void Function(String stage)? onProgress,
   }) async {
-    final plan = await _channel.invokeMapMethod<String, Object?>('plan', {
-      'runtime_javascript': runtimeJavaScript,
-      'request': request,
-    });
-    if (plan == null) {
-      throw StateError('ZKPassport input runtime returned no proof plan.');
+    _installProgressHandler();
+    _planProgressCallback = onProgress;
+    try {
+      final plan = await _channel.invokeMapMethod<String, Object?>('plan', {
+        'runtime_javascript': runtimeJavaScript,
+        'request': request,
+      });
+      if (plan == null) {
+        throw StateError('ZKPassport input runtime returned no proof plan.');
+      }
+      return plan;
+    } finally {
+      _planProgressCallback = null;
     }
-    return plan;
   }
 
   Future<Uint8List> prove({

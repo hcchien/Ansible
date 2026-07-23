@@ -82,7 +82,10 @@ import UIKit
         Task { @MainActor in
           self.zkPassportInputRuntime.createProofPlan(
             runtimeJavaScript: runtime,
-            request: request
+            request: request,
+            progress: { stage in
+              channel.invokeMethod("plan_progress", arguments: stage)
+            }
           ) { outcome in complete(outcome.map { $0 as Any }) }
         }
       case "initialize_srs":

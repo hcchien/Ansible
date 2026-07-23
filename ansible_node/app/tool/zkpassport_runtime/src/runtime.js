@@ -64,8 +64,10 @@ function sodHashAlgorithm(passport) {
   return passport.sod.signerInfo.digestAlgorithm.toLowerCase().replace("-", "")
 }
 
-async function packaged(registry, manifest, name) {
+async function packaged(registry, manifest, name, report = () => {}) {
+  report(`download:${name}`)
   const circuit = await registry.getPackagedCircuit(name, manifest, { validate: true })
+  report(`validated:${name}`)
   return {
     name,
     size: circuit.size,
@@ -76,7 +78,8 @@ async function packaged(registry, manifest, name) {
   }
 }
 
-async function buildDSCCircuit(passport, registry, manifest, certificates) {
+async function buildDSCCircuit(passport, registry, manifest, certificates, report) {
+  report("dsc:select")
   const csc = await getCscaForPassportAsync(passport.sod.certificate, certificates.certificates)
   if (!csc) throw new Error("The passport CSCA is absent from the trusted registry")
   const hash = cscHashAlgorithm(passport.sod).replace("SHA-", "sha").toLowerCase()
@@ -96,12 +99,15 @@ async function buildDSCCircuit(passport, registry, manifest, certificates) {
     const scheme = csc.signature_algorithm === "RSA-PSS" ? "pss" : "pkcs"
     name = `sig_check_dsc_tbs_${tbs}_rsa_${scheme}_${bits}_${hash}`
   }
-  const circuit = await packaged(registry, manifest, name)
+  const circuit = await packaged(registry, manifest, name, report)
+  report("dsc:inputs")
   circuit.inputs = await getDSCCircuitInputs(passport, privateState.salt, certificates)
+  report("dsc:ready")
   return circuit
 }
 
-async function buildIDCircuit(passport, registry, manifest) {
+async function buildIDCircuit(passport, registry, manifest, report) {
+  report("id:select")
   const certificate = extractTBS(passport)
   if (!certificate) throw new Error("Passport document-signing certificate is missing")
   const tbs = getTBSMaxLen(passport)
@@ -130,24 +136,28 @@ async function buildIDCircuit(passport, registry, manifest) {
   } else {
     throw new Error("Unsupported passport document-signing algorithm")
   }
-  const circuit = await packaged(registry, manifest, name)
+  const circuit = await packaged(registry, manifest, name, report)
+  report("id:inputs")
   circuit.inputs = await getIDDataCircuitInputs(
     passport,
     privateState.salt,
     privateState.salt,
   )
+  report("id:ready")
   return circuit
 }
 
 const privateState = { salt: 0n }
 
-export async function createProofPlan(request) {
+export async function createProofPlan(request, report = () => {}) {
   if (request.version !== "0.20.0") throw new Error("Unsupported circuit version")
+  report("passport:parse")
   privateState.salt = BigInt(request.salt)
   const reader = new PassportReader()
   reader.loadPassport(Binary.from(request.dg1), Binary.from(request.sod))
   const passport = reader.getPassportViewModel()
   if (!isIDSupported(passport)) throw new Error("This passport is not supported by ZKPassport")
+  report("passport:supported")
 
   // These public registry snapshots are reviewed and pinned by the signed app
   // release. Recomputing their 790-circuit and 584-certificate Merkle roots in
@@ -159,6 +169,7 @@ export async function createProofPlan(request) {
   if (manifest.version !== request.version) {
     throw new Error("Pinned ZKPassport manifest version mismatch")
   }
+  report("registry:ready")
   const salts = disclosureSalts(privateState.salt)
   const query = {
     nationality: { disclose: true },
@@ -179,14 +190,16 @@ export async function createProofPlan(request) {
   // hash-validate them concurrently so mobile proof planning pays one network
   // round-trip window instead of five consecutive windows.
   const [dsc, id, integrity, disclose, bind] = await Promise.all([
-    buildDSCCircuit(passport, registry, manifest, certificates),
-    buildIDCircuit(passport, registry, manifest),
-    packaged(registry, manifest, integrityName),
-    packaged(registry, manifest, "disclose_bytes"),
-    packaged(registry, manifest, "bind"),
+    buildDSCCircuit(passport, registry, manifest, certificates, report),
+    buildIDCircuit(passport, registry, manifest, report),
+    packaged(registry, manifest, integrityName, report),
+    packaged(registry, manifest, "disclose_bytes", report),
+    packaged(registry, manifest, "bind", report),
   ])
+  report("integrity:inputs")
   integrity.inputs = await getIntegrityCheckCircuitInputs(passport, privateState.salt, salts)
 
+  report("disclose:inputs")
   disclose.inputs = await getDiscloseCircuitInputs(
     passport,
     query,
@@ -197,6 +210,7 @@ export async function createProofPlan(request) {
     timestamp,
     OPRF_ZERO_PROOF,
   )
+  report("bind:inputs")
   bind.inputs = await getBindCircuitInputs(
     passport,
     query,
@@ -207,6 +221,7 @@ export async function createProofPlan(request) {
     timestamp,
     OPRF_ZERO_PROOF,
   )
+  report("plan:ready")
   return {
     version: manifest.version,
     circuits: [dsc, id, integrity, disclose, bind],

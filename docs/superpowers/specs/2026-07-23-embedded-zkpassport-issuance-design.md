@@ -212,10 +212,14 @@ manifest before use. Neither the requests nor their cache keys may contain MRZ,
 DG, SOD, document number, holder DID, challenge, or proof inputs.
 
 The Wallet shows a monotonic elapsed timer for planning, SRS initialization,
-preparation, proving, and local verification. The timer is diagnostic UI only;
-it must be cancelled after success, failure, or disposal and must not emit
-passport data or telemetry. Native proving remains serialized until measured
-device memory limits demonstrate that parallel proving is safe.
+preparation, proving, and local verification. Planning additionally reports
+local parsing, circuit selection, public package download and validation, DSC
+inputs, ID inputs, integrity inputs, disclosure inputs, and holder/challenge
+binding. These stage names travel only from the local WebKit process to the
+local Flutter UI; they contain no document values, circuit inputs, or network
+telemetry. The timer is diagnostic UI only; it must be cancelled after success,
+failure, or disposal. Native proving remains serialized until measured device
+memory limits demonstrate that parallel proving is safe.
 
 The current Beta runtime performs the five public circuit-package requests
 inside an ephemeral on-device WebKit process. Moving those remaining requests

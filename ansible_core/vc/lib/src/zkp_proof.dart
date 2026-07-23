@@ -182,6 +182,8 @@ class ZkpProverImpl implements ZkpProver {
           'scope': challenge.scope,
           'challenge_binding': challengeBinding,
         },
+        onProgress: (stage) =>
+            report(ZkpProverStage.planning, circuitName: stage),
       );
     } on Object catch (error) {
       throw ZkpProverException('plan', error);

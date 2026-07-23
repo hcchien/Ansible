@@ -777,8 +777,8 @@ class _PassportNfcCredentialPanelState
         : '';
     return switch (progress.stage) {
       ZkpProverStage.planning => _copy(
-        zh: '準備護照證明資料 · ${elapsedSeconds}s',
-        en: 'Planning passport proof · ${elapsedSeconds}s',
+        zh: '${_planningStageLabel(progress.circuitName, zh: true)} · ${elapsedSeconds}s',
+        en: '${_planningStageLabel(progress.circuitName, zh: false)} · ${elapsedSeconds}s',
       ),
       ZkpProverStage.initializingSrs => _copy(
         zh: '初始化證明參數 · ${elapsedSeconds}s',
@@ -796,6 +796,35 @@ class _PassportNfcCredentialPanelState
         zh: '驗證本機證明$suffix · ${elapsedSeconds}s',
         en: 'Verifying local proof$suffix · ${elapsedSeconds}s',
       ),
+    };
+  }
+
+  String _planningStageLabel(String? stage, {required bool zh}) {
+    if (stage == null) {
+      return zh ? '準備護照證明資料' : 'Planning passport proof';
+    }
+    if (stage.startsWith('download:')) {
+      return zh ? '下載護照證明電路' : 'Downloading proof circuit';
+    }
+    if (stage.startsWith('validated:')) {
+      return zh ? '驗證護照證明電路' : 'Validating proof circuit';
+    }
+    return switch (stage) {
+      'passport:parse' => zh ? '解析護照晶片資料' : 'Parsing passport chip data',
+      'passport:supported' => zh ? '選擇護照證明電路' : 'Selecting passport circuits',
+      'registry:ready' =>
+        zh ? '準備已驗證公開參數' : 'Preparing verified public metadata',
+      'dsc:select' => zh ? '選擇護照簽章電路' : 'Selecting passport signature circuit',
+      'dsc:inputs' => zh ? '建立護照簽章證明資料' : 'Building passport signature inputs',
+      'dsc:ready' => zh ? '護照簽章資料完成' : 'Passport signature inputs ready',
+      'id:select' => zh ? '選擇護照資料電路' : 'Selecting passport data circuit',
+      'id:inputs' => zh ? '建立護照資料證明' : 'Building passport data inputs',
+      'id:ready' => zh ? '護照資料證明完成' : 'Passport data inputs ready',
+      'integrity:inputs' => zh ? '建立資料完整性證明' : 'Building integrity inputs',
+      'disclose:inputs' => zh ? '建立最小揭露證明' : 'Building disclosure inputs',
+      'bind:inputs' => zh ? '綁定本機身分與挑戰' : 'Binding identity and challenge',
+      'plan:ready' => zh ? '護照證明資料已備妥' : 'Passport proof plan ready',
+      _ => zh ? '準備護照證明資料' : 'Planning passport proof',
     };
   }
 }

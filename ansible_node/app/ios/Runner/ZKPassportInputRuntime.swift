@@ -10,12 +10,14 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
 
   private var webView: WKWebView?
   private var planCompletion: ((Result<[String: Any], Error>) -> Void)?
+  private var planProgress: ((String) -> Void)?
   private var timeoutWorkItem: DispatchWorkItem?
 
   @MainActor
   func createProofPlan(
     runtimeJavaScript: String,
     request: [String: Any],
+    progress: @escaping (String) -> Void,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
     guard planCompletion == nil else {
@@ -47,6 +49,7 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
     webView.navigationDelegate = self
     self.webView = webView
     planCompletion = completion
+    planProgress = progress
 
     let timeout = DispatchWorkItem { [weak self] in
       Task { @MainActor in
@@ -86,7 +89,10 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
             if (!runtime || typeof runtime.createProofPlan !== "function") {
               throw new Error("ZKPassport runtime did not install its global API");
             }
-            const plan = await runtime.createProofPlan(\(requestJSON));
+            const plan = await runtime.createProofPlan(
+              \(requestJSON),
+              (stage) => send({ progress: String(stage) })
+            );
             const encodedPlan = JSON.stringify(plan, (_key, value) => {
               if (typeof value === "bigint") return value.toString(10);
               if (ArrayBuffer.isView(value)) return Array.from(value);
@@ -125,6 +131,10 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
       finish(.failure(RuntimeError.invalidPlan))
       return
     }
+    if let progress = envelope["progress"] as? String {
+      planProgress?(progress)
+      return
+    }
     guard envelope["ok"] as? Bool == true else {
       finish(.failure(RuntimeError.javaScript(
         envelope["error"] as? String ?? "Unknown JavaScript error"
@@ -144,6 +154,7 @@ final class ZKPassportInputRuntime: NSObject, WKNavigationDelegate, WKScriptMess
       return
     }
     planCompletion = nil
+    planProgress = nil
     timeoutWorkItem?.cancel()
     timeoutWorkItem = nil
     webView?.configuration.userContentController.removeScriptMessageHandler(
