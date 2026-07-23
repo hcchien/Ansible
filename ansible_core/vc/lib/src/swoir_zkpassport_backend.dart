@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 
 /// Minimal Dart facade over the pinned native Swoir/Swoirenberg backend.

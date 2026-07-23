@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
-
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 
@@ -179,7 +177,7 @@ class ZkpProverImpl implements ZkpProver {
           circuitId = await backend.prepare(
             manifestJson: jsonEncode(manifest),
             circuitSize: max(500000, circuit['size']! as int),
-            srsPath: srsPath!,
+            srsPath: srsPath,
           );
         } on Object catch (error) {
           throw ZkpProverException('prepare:$name', error);
