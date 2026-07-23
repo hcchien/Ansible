@@ -17,6 +17,7 @@ class RunnerTests: XCTestCase {
     XCTAssertTrue(source.contains("import JavaScriptCore"))
     XCTAssertTrue(source.contains("JSContext"))
     XCTAssertTrue(source.contains("resolveArtifacts"))
+    XCTAssertTrue(source.contains("rawCircuits.count == 7"))
     XCTAssertFalse(source.contains("import WebKit"))
     XCTAssertFalse(source.contains("WKWebView"))
     XCTAssertFalse(source.contains("WKScriptMessageHandler"))

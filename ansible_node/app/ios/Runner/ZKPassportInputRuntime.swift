@@ -289,7 +289,7 @@ final class ZKPassportInputRuntime: @unchecked Sendable {
       guard let self else { return }
       do {
         guard let rawCircuits = descriptor["circuits"] as? [[String: Any]],
-              rawCircuits.count == 6 else {
+              rawCircuits.count == 7 else {
           throw RuntimeError.invalidPlan
         }
         var resolved = Array<[String: Any]?>(repeating: nil, count: rawCircuits.count)

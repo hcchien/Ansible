@@ -117,7 +117,7 @@ else
     --project "$PROJECT_ID"
 fi
 
-for DB in ansible_relay ansible_appview; do
+for DB in ansible_relay ansible_appview ansible_issuer; do
   if gcloud sql databases describe "$DB" \
     --instance "$SQL_INSTANCE" --project "$PROJECT_ID" >/dev/null 2>&1; then
     log "database $DB exists"
@@ -184,6 +184,39 @@ create_random_secret() {
 PROVISION_INCOMPLETE=false
 create_db_url_secret relay-database-url ansible_relay
 create_db_url_secret appview-database-url ansible_appview
+
+# Issuer personhood bindings and provider sessions require their own database
+# principal. Do not reuse the relay credential: these stores contain private,
+# security-critical duplicate-prevention commitments and have a separate
+# operational boundary.
+ISSUER_DB_USER_CREATED=false
+ISSUER_DB_PASS=""
+if gcloud sql users list --instance "$SQL_INSTANCE" --project "$PROJECT_ID" \
+  --format='value(name)' | grep -qx issuer; then
+  log "DB user issuer exists"
+else
+  log "creating DB user issuer (password generated, stored only in Secret Manager)"
+  ISSUER_DB_PASS="Aa1!$(openssl rand -hex 22)"
+  gcloud sql users create issuer \
+    --instance "$SQL_INSTANCE" \
+    --password="$ISSUER_DB_PASS" \
+    --project "$PROJECT_ID"
+  ISSUER_DB_USER_CREATED=true
+fi
+
+if secret_exists issuer-database-url; then
+  log "secret issuer-database-url exists"
+elif [ "$ISSUER_DB_USER_CREATED" = true ]; then
+  log "creating secret issuer-database-url"
+  printf 'postgres://issuer:%s@/ansible_issuer?host=%%2Fcloudsql%%2F%s%%3A%s%%3A%s' \
+    "$ISSUER_DB_PASS" "$PROJECT_ID" "$REGION" "$SQL_INSTANCE" \
+    | gcloud secrets create issuer-database-url --data-file=- --project "$PROJECT_ID"
+else
+  warn "secret issuer-database-url is missing but the issuer DB user already exists."
+  warn "Reset that user's password and add a Cloud SQL Unix-socket PostgreSQL URL."
+  PROVISION_INCOMPLETE=true
+fi
+unset ISSUER_DB_PASS
 
 # Ed25519 issuer signing seed (private half; derive the public half for the
 # relay with scripts/gcp/check_prod_readiness.sh or the checklist doc).

@@ -189,12 +189,9 @@ case "$SERVICE" in
 
   issuer)
     require_env ISSUER_HOST TW_PROVIDER_AUTH_URL
-    BUCKET="${ISSUER_BUCKET:-${PROJECT_ID}-issuer-state}"
 
     ENV_VARS="ISSUER_DID=did:web:${ISSUER_HOST}"
     ENV_VARS+=";ISSUER_URL=https://${ISSUER_HOST}"
-    ENV_VARS+=";PERSONHOOD_BINDING_STORE_PATH=/var/issuer-state/personhood.json"
-    ENV_VARS+=";TW_PROVIDER_SESSION_STORE_PATH=/var/issuer-state/tw_provider_sessions.json"
     ENV_VARS+=";TW_PROVIDER_AUTH_URL=${TW_PROVIDER_AUTH_URL}"
     # `contract` is the only adapter that issues today; `production` fails closed.
     ENV_VARS+=";TW_PROVIDER_ADAPTER_MODE=${TW_PROVIDER_ADAPTER_MODE:-contract}"
@@ -208,22 +205,20 @@ case "$SERVICE" in
     [ -z "${SUBJECT_COMMITMENT_PEPPER_PREVIOUS:-}" ] ||
       ENV_VARS+=";SUBJECT_COMMITMENT_PEPPER_PREVIOUS=${SUBJECT_COMMITMENT_PEPPER_PREVIOUS}"
 
-    # --min/max-instances=1 is MANDATORY while the stores are file-backed (GCS
-    # volume): they are not multi-instance safe. Only a Postgres-backed issuer
-    # (DATABASE_URL set) may scale out — change the pin deliberately, with the
-    # runbook, not by editing this default.
-    log "deploying ansible-issuer (pinned to exactly 1 instance)"
+    # PostgreSQL unique indexes enforce active personhood-binding uniqueness
+    # across instances. Keep one warm instance by default; max scale can grow
+    # without falling back to an unsafe shared JSON file.
+    log "deploying ansible-issuer (PostgreSQL durable stores)"
     gcloud run deploy ansible-issuer \
       --image="$IMAGE" \
       --region "$REGION" \
       --project "$PROJECT_ID" \
       --platform=managed \
       --port=8080 \
-      --min-instances=1 --max-instances=1 \
-      --add-volume="name=issuer-state,type=cloud-storage,bucket=${BUCKET}" \
-      --add-volume-mount="volume=issuer-state,mount-path=/var/issuer-state" \
+      --min-instances=1 \
+      --add-cloudsql-instances="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}" \
       --set-env-vars="^;^${ENV_VARS}" \
-      --set-secrets="ISSUER_PRIVATE_KEY_HEX=issuer-priv-key:latest,SUBJECT_COMMITMENT_PEPPER=subject-commitment-pepper:latest,TW_PROVIDER_SHARED_SECRET=tw-provider-shared-secret:latest,ISSUER_ADMIN_TOKEN=issuer-admin-token:latest" \
+      --set-secrets="DATABASE_URL=issuer-database-url:latest,ISSUER_PRIVATE_KEY_HEX=issuer-priv-key:latest,SUBJECT_COMMITMENT_PEPPER=subject-commitment-pepper:latest,TW_PROVIDER_SHARED_SECRET=tw-provider-shared-secret:latest,ISSUER_ADMIN_TOKEN=issuer-admin-token:latest" \
       --allow-unauthenticated
     ;;
 
