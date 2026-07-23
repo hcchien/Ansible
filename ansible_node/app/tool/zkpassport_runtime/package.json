@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/runtime.js --bundle --platform=browser --format=iife --global-name=ElixZKPassport --target=safari16 --outfile=../../assets/zkpassport/runtime.js",
+    "build": "esbuild src/runtime.js --bundle --platform=browser --format=iife --global-name=ElixZKPassport --target=safari16 --inject:src/buffer-shim.js --outfile=../../assets/zkpassport/runtime.js",
     "test": "node --test"
   },
   "dependencies": {
