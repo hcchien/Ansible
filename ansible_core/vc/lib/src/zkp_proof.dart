@@ -72,6 +72,16 @@ abstract class ZkpProver {
   });
 }
 
+class ZkpProverException implements Exception {
+  const ZkpProverException(this.stage, this.cause);
+
+  final String stage;
+  final Object cause;
+
+  @override
+  String toString() => 'ZkpProverException($stage)';
+}
+
 /// Embedded ZKPassport prover backed by the native iOS Swoir runtime.
 class ZkpProverImpl implements ZkpProver {
   const ZkpProverImpl({this.backend = const SwoirZkPassportBackend()});
@@ -99,18 +109,23 @@ class ZkpProverImpl implements ZkpProver {
       List<int>.generate(31, (_) => random.nextInt(256)),
     );
     final salt = _bytesToBigInt(saltBytes);
-    final plan = await backend.createProofPlan(
-      runtimeJavaScript: runtime,
-      request: {
-        'version': ZkpProof.kCircuitVersion,
-        'salt': salt.toString(),
-        'dg1': passport.dg1Bytes.toList(growable: false),
-        'sod': passport.sodBytes.toList(growable: false),
-        'issuer': challenge.issuer,
-        'scope': challenge.scope,
-        'challenge_binding': challengeBinding,
-      },
-    );
+    late final Map<String, Object?> plan;
+    try {
+      plan = await backend.createProofPlan(
+        runtimeJavaScript: runtime,
+        request: {
+          'version': ZkpProof.kCircuitVersion,
+          'salt': salt.toString(),
+          'dg1': passport.dg1Bytes.toList(growable: false),
+          'sod': passport.sodBytes.toList(growable: false),
+          'issuer': challenge.issuer,
+          'scope': challenge.scope,
+          'challenge_binding': challengeBinding,
+        },
+      );
+    } on Object catch (error) {
+      throw ZkpProverException('plan', error);
+    }
     if (plan['version'] != ZkpProof.kCircuitVersion) {
       throw StateError('ZKPassport circuit manifest version mismatch.');
     }
@@ -131,20 +146,36 @@ class ZkpProverImpl implements ZkpProver {
           circuit['inputs']! as Map<Object?, Object?>,
         );
         final verificationKey = base64Decode(circuit['vkey']! as String);
-        final circuitId = await backend.prepare(
-          manifestJson: jsonEncode(manifest),
-          circuitSize: max(500000, circuit['size']! as int),
-        );
-        final proof = await backend.prove(
-          circuitId: circuitId,
-          inputs: inputs,
-          verificationKey: verificationKey,
-        );
-        final locallyVerified = await backend.verify(
-          circuitId: circuitId,
-          proof: proof,
-          verificationKey: verificationKey,
-        );
+        final name = circuit['name']! as String;
+        late final String circuitId;
+        try {
+          circuitId = await backend.prepare(
+            manifestJson: jsonEncode(manifest),
+            circuitSize: max(500000, circuit['size']! as int),
+          );
+        } on Object catch (error) {
+          throw ZkpProverException('prepare:$name', error);
+        }
+        late final Uint8List proof;
+        try {
+          proof = await backend.prove(
+            circuitId: circuitId,
+            inputs: inputs,
+            verificationKey: verificationKey,
+          );
+        } on Object catch (error) {
+          throw ZkpProverException('prove:$name', error);
+        }
+        late final bool locallyVerified;
+        try {
+          locallyVerified = await backend.verify(
+            circuitId: circuitId,
+            proof: proof,
+            verificationKey: verificationKey,
+          );
+        } on Object catch (error) {
+          throw ZkpProverException('verify:$name', error);
+        }
         if (!locallyVerified) {
           throw StateError(
             'A generated ZKPassport proof failed local verification.',

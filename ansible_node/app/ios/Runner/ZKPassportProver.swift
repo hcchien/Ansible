@@ -8,6 +8,7 @@ import Swoirenberg
 final class ZKPassportProver {
   private let swoir = Swoir(backend: Swoirenberg.self)
   private var circuits: [String: Circuit] = [:]
+  private var nativeProofs: [String: Data] = [:]
   private let queue = DispatchQueue(label: "cool.elix.zkpassport.prover", qos: .userInitiated)
 
   func prepare(manifestJSON: String, circuitSize: UInt32, srsPath: String,
@@ -25,7 +26,7 @@ final class ZKPassportProver {
             throw ProverError.missingSRS
           }
           circuit.num_points = try Swoirenberg.setup_srs(
-            circuit_size: 1_048_576,
+            circuit_size: circuitSize,
             srs_path: srsPath
           )
           let id = circuit.manifest.hash.description
@@ -51,6 +52,10 @@ final class ZKPassportProver {
           guard encoded.count > 4 else {
             throw ProverError.invalidProof
           }
+          // Swoir verifies the exact byte layout it produced. The ZKPassport
+          // SDK envelope omits noir_rs's 4-byte public-input-count prefix, so
+          // retain the native form only until the local verification finishes.
+          self.nativeProofs[circuitID] = encoded
           // noir_rs prefixes a 4-byte big-endian public-input count. The
           // ZKPassport SDK verifier expects the raw bb layout without it.
           completion(.success(Data(encoded.dropFirst(4))))
@@ -70,7 +75,8 @@ final class ZKPassportProver {
           return
         }
         do {
-          completion(.success(try circuit.verify(proof, vkey: verificationKey)))
+          let nativeProof = self.nativeProofs.removeValue(forKey: circuitID) ?? proof
+          completion(.success(try circuit.verify(nativeProof, vkey: verificationKey)))
         } catch {
           completion(.failure(error))
         }
@@ -79,7 +85,10 @@ final class ZKPassportProver {
   }
 
   func clear() {
-    queue.sync { circuits.removeAll() }
+    queue.sync {
+      circuits.removeAll()
+      nativeProofs.removeAll()
+    }
   }
 
   enum ProverError: Error {

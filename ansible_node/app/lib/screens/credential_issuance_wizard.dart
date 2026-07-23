@@ -495,6 +495,12 @@ class _PassportNfcCredentialPanelState
     if (error is StateError) {
       return error.message;
     }
+    if (error is ZkpProverException) {
+      return _copy(
+        zh: '護照零知識證明在 ${error.stage} 階段失敗，請稍候再試。',
+        en: 'The passport zero-knowledge proof failed during ${error.stage}. Please try again later.',
+      );
+    }
     return _copy(
       zh: '護照 NFC 驗證暫時無法完成，請稍後再試。',
       en: 'Passport NFC verification cannot be completed right now. Please try again later.',
