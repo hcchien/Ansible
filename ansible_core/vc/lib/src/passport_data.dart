@@ -38,6 +38,22 @@ class PassportData {
   /// ZKP private input for passport signature verification).
   final List<int> sodBytes;
 
+  /// Whether the document-signing certificate successfully verified the SOD.
+  final bool sodSignatureVerified;
+
+  /// Whether every data group read from the chip matches its SOD hash.
+  final bool dataGroupHashesVerified;
+
+  /// Whether the document-signing certificate chains to a trusted CSCA.
+  ///
+  /// This stays false unless the native reader was supplied with an approved,
+  /// current CSCA master list. Merely reading a chip is not enough to claim a
+  /// trusted passport identity.
+  final bool countrySigningCertificateVerified;
+
+  /// Whether the chip completed Active Authentication when DG15 supports it.
+  final bool activeAuthenticationVerified;
+
   // ── Computed fields ────────────────────────────────────────────────────────
 
   /// Hex-encoded SHA-256 of (documentNumber || dateOfBirth || dateOfExpiry).
@@ -56,6 +72,10 @@ class PassportData {
     this.dg2Bytes,
     required this.sodBytes,
     required this.passportSecret,
+    this.sodSignatureVerified = false,
+    this.dataGroupHashesVerified = false,
+    this.countrySigningCertificateVerified = false,
+    this.activeAuthenticationVerified = false,
   });
 
   /// Parse a TD3 (passport) MRZ and return a [PassportData] with raw byte

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:ansible_store/ansible_store.dart';
@@ -216,6 +217,9 @@ class _PassportNfcCredentialPanelState
 
   _PassportNfcPhase _phase = _PassportNfcPhase.idle;
   String? _errorMessage;
+  final _documentNumberController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
+  final _dateOfExpiryController = TextEditingController();
 
   @override
   void initState() {
@@ -228,7 +232,8 @@ class _PassportNfcCredentialPanelState
       );
     }
     _walletRepository = walletRepository;
-    _passportReader = widget.passportReader ?? const MockNfcPassportReader();
+    _passportReader =
+        widget.passportReader ?? const PlatformNfcPassportReader();
     _passportLocalIdService =
         widget.passportLocalIdService ?? const PassportLocalIdService();
     _passportZkpProver = widget.passportZkpProver ?? const ZkpProverImpl();
@@ -237,7 +242,42 @@ class _PassportNfcCredentialPanelState
   String _copy({required String zh, required String en}) =>
       context.uiCopy(zh: zh, en: en);
 
+  @override
+  void dispose() {
+    _documentNumberController.dispose();
+    _dateOfBirthController.dispose();
+    _dateOfExpiryController.dispose();
+    unawaited(_passportReader.cancel());
+    super.dispose();
+  }
+
   Future<void> _startScan() async {
+    final accessData = PassportAccessData(
+      documentNumber: _documentNumberController.text,
+      dateOfBirth: _dateOfBirthController.text,
+      dateOfExpiry: _dateOfExpiryController.text,
+    );
+    try {
+      accessData.validate();
+    } on FormatException {
+      setState(() {
+        _errorMessage = _copy(
+          zh: '請輸入護照號碼，以及 YYMMDD 格式的出生日期與有效期限。',
+          en: 'Enter the passport number, birth date, and expiry date in YYMMDD format.',
+        );
+      });
+      return;
+    }
+    if (!await _passportReader.isAvailable()) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = _copy(
+          zh: '這台裝置不支援護照 NFC，或 NFC 目前無法使用。',
+          en: 'Passport NFC is not supported or is currently unavailable on this device.',
+        );
+      });
+      return;
+    }
     setState(() {
       _phase = _PassportNfcPhase.scanning;
       _errorMessage = null;
@@ -247,6 +287,7 @@ class _PassportNfcCredentialPanelState
       PassportData? scanned;
       String? scanError;
       await _passportReader.scan(
+        accessData: accessData,
         onPassportRead: (data) => scanned = data,
         onError: (message) => scanError = message,
       );
@@ -260,6 +301,22 @@ class _PassportNfcCredentialPanelState
           _copy(
             zh: '護照 NFC 讀取失敗，請重新嘗試。',
             en: 'Passport NFC read failed. Please try again.',
+          ),
+        );
+      }
+      if (!data.sodSignatureVerified || !data.dataGroupHashesVerified) {
+        throw StateError(
+          _copy(
+            zh: '晶片資料未通過 SOD 簽章與資料完整性驗證，未建立憑證。',
+            en: 'The chip failed SOD signature or data-integrity verification. No credential was created.',
+          ),
+        );
+      }
+      if (!data.countrySigningCertificateVerified) {
+        throw StateError(
+          _copy(
+            zh: '已讀取護照晶片，但簽發國憑證不在目前受信任清單中，因此未建立真人憑證。',
+            en: 'The passport chip was read, but its country certificate is not in the current trust list. No humanity credential was created.',
           ),
         );
       }
@@ -424,6 +481,55 @@ class _PassportNfcCredentialPanelState
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 24),
+        TextField(
+          key: const ValueKey('passport-document-number'),
+          controller: _documentNumberController,
+          enabled: !busy,
+          textCapitalization: TextCapitalization.characters,
+          autocorrect: false,
+          decoration: InputDecoration(
+            labelText: _copy(zh: '護照號碼', en: 'Passport number'),
+            hintText: '123456789',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                key: const ValueKey('passport-date-of-birth'),
+                controller: _dateOfBirthController,
+                enabled: !busy,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                  labelText: _copy(zh: '出生日期', en: 'Date of birth'),
+                  hintText: 'YYMMDD',
+                  counterText: '',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                key: const ValueKey('passport-date-of-expiry'),
+                controller: _dateOfExpiryController,
+                enabled: !busy,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                  labelText: _copy(zh: '有效期限', en: 'Date of expiry'),
+                  hintText: 'YYMMDD',
+                  counterText: '',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 24),
         if (_errorMessage != null) ...[

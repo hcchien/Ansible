@@ -149,6 +149,7 @@ void main() {
 
     await tester.tap(find.text('Passport NFC'));
     await tester.pumpAndSettle();
+    await _enterPassportAccessData(tester);
     await tester.tap(find.text('掃描護照 NFC'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -227,6 +228,7 @@ void main() {
 
       await tester.tap(find.text('Passport NFC'));
       await tester.pumpAndSettle();
+      await _enterPassportAccessData(tester);
       await tester.tap(find.text('掃描護照 NFC'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
@@ -340,6 +342,7 @@ class _FakePassportReader implements NfcPassportReader {
 
   @override
   Future<void> scan({
+    required PassportAccessData accessData,
     required void Function(PassportData) onPassportRead,
     required void Function(String) onError,
   }) async {
@@ -348,6 +351,9 @@ class _FakePassportReader implements NfcPassportReader {
 
   @override
   Future<void> cancel() async {}
+
+  @override
+  Future<bool> isAvailable() async => true;
 }
 
 class _FakeZkpProver implements ZkpProver {
@@ -375,7 +381,26 @@ const _passportData = PassportData(
   dg1Bytes: [],
   sodBytes: [],
   passportSecret: 'dev-secret',
+  sodSignatureVerified: true,
+  dataGroupHashesVerified: true,
+  countrySigningCertificateVerified: true,
 );
+
+Future<void> _enterPassportAccessData(WidgetTester tester) async {
+  await tester.enterText(
+    find.byKey(const ValueKey('passport-document-number')),
+    '300012345',
+  );
+  await tester.enterText(
+    find.byKey(const ValueKey('passport-date-of-birth')),
+    '900101',
+  );
+  await tester.enterText(
+    find.byKey(const ValueKey('passport-date-of-expiry')),
+    '300101',
+  );
+  await tester.pump();
+}
 
 final _emailCredentialJson = <String, dynamic>{
   '@context': ['https://www.w3.org/2018/credentials/v1'],

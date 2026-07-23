@@ -4,6 +4,9 @@ PODS:
   - Flutter (1.0.0)
   - flutter_secure_storage (6.0.0):
     - Flutter
+  - NFCPassportReader (2.3.1):
+    - OpenSSL-Universal (= 3.3.3001)
+  - OpenSSL-Universal (3.3.3001)
   - passkeys_darwin (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -12,7 +15,12 @@ DEPENDENCIES:
   - ansible_did (from `.symlinks/plugins/ansible_did/ios`)
   - Flutter (from `Flutter`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - NFCPassportReader (from `https://github.com/AndyQ/NFCPassportReader.git`, tag `2.3.1`)
   - passkeys_darwin (from `.symlinks/plugins/passkeys_darwin/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - OpenSSL-Universal
 
 EXTERNAL SOURCES:
   ansible_did:
@@ -21,15 +29,25 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  NFCPassportReader:
+    :git: https://github.com/AndyQ/NFCPassportReader.git
+    :tag: 2.3.1
   passkeys_darwin:
     :path: ".symlinks/plugins/passkeys_darwin/darwin"
+
+CHECKOUT OPTIONS:
+  NFCPassportReader:
+    :git: https://github.com/AndyQ/NFCPassportReader.git
+    :tag: 2.3.1
 
 SPEC CHECKSUMS:
   ansible_did: 045b140f1db6dd41a34be778a5a22fade18ae9a2
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  NFCPassportReader: 8f69841f3436d36b2191d3b5905598bff7d19b36
+  OpenSSL-Universal: 6082b0bf950e5636fe0d78def171184e2b3899c2
   passkeys_darwin: 0a09d3b26cea8de1ec3bb8f8c7c159981f63bbc7
 
-PODFILE CHECKSUM: 78ec2e5914b8a539ba0dfa29147f69a73a35d06b
+PODFILE CHECKSUM: 854a2409e1f5363d9a7ba5988f81dbaecf929225
 
 COCOAPODS: 1.17.0

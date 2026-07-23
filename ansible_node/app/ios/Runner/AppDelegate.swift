@@ -2,6 +2,8 @@ import Flutter
 import NaturalLanguage
 import CryptoKit
 import LocalAuthentication
+import CoreNFC
+import NFCPassportReader
 import Security
 import UIKit
 
@@ -23,7 +25,105 @@ import UIKit
     registerEmbeddingChannel()
     registerPushTokenChannel()
     registerHardwareIdentityKeyChannel()
+    registerPassportNfcChannel()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private func registerPassportNfcChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else { return }
+    let channel = FlutterMethodChannel(
+      name: "elix/passport_nfc",
+      binaryMessenger: controller.binaryMessenger
+    )
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "isAvailable":
+        result(NFCTagReaderSession.readingAvailable)
+      case "scan":
+        guard #available(iOS 15.0, *),
+              let args = call.arguments as? [String: Any],
+              let mrzKey = args["mrz_key"] as? String,
+              let trustedCscaPem = args["trusted_csca_pem"] as? String,
+              !mrzKey.isEmpty,
+              !trustedCscaPem.isEmpty else {
+          result(FlutterError(
+            code: "invalid_arguments",
+            message: "Missing MRZ access key or trusted CSCA list.",
+            details: nil
+          ))
+          return
+        }
+        Task { @MainActor in
+          let trustListUrl = FileManager.default.temporaryDirectory
+            .appendingPathComponent("elix-csca-\(UUID().uuidString).pem")
+          do {
+            try Data(trustedCscaPem.utf8).write(
+              to: trustListUrl,
+              options: [.atomic, .completeFileProtection]
+            )
+            defer { try? FileManager.default.removeItem(at: trustListUrl) }
+
+            let reader = PassportReader(masterListURL: trustListUrl)
+            let passport = try await reader.readPassport(
+              mrzKey: mrzKey,
+              tags: [.COM, .DG1, .DG14, .DG15, .SOD],
+              skipSecureElements: true,
+              skipCA: false,
+              skipPACE: false
+            )
+            guard let dg1 = passport.getDataGroup(.DG1),
+                  let sod = passport.getDataGroup(.SOD) else {
+              throw NSError(
+                domain: "ElixPassportNfc",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Passport DG1 or SOD was not returned."]
+              )
+            }
+            result([
+              "document_number": passport.documentNumber,
+              "date_of_birth": passport.dateOfBirth,
+              "date_of_expiry": passport.documentExpiryDate,
+              "nationality": passport.nationality,
+              "mrz": passport.passportMRZ,
+              "dg1": FlutterStandardTypedData(bytes: Data(dg1.data)),
+              "sod": FlutterStandardTypedData(bytes: Data(sod.data)),
+              "sod_signature_verified": passport.documentSigningCertificateVerified,
+              "data_group_hashes_verified": passport.passportDataNotTampered,
+              "country_signing_certificate_verified": passport.passportCorrectlySigned,
+              "active_authentication_verified": passport.activeAuthenticationPassed,
+            ])
+          } catch {
+            try? FileManager.default.removeItem(at: trustListUrl)
+            result(FlutterError(
+              code: "passport_scan_failed",
+              message: self.passportNfcErrorMessage(error),
+              details: nil
+            ))
+          }
+        }
+      case "cancel":
+        // Core NFC presents its own cancel control. The native reader invalidates
+        // the session when the user cancels or the read completes.
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func passportNfcErrorMessage(_ error: Error) -> String {
+    let message = error.localizedDescription
+    let normalized = message.lowercased()
+    if normalized.contains("user canceled") || normalized.contains("invalidated by user") {
+      return "Passport scan cancelled."
+    }
+    if normalized.contains("tag") && normalized.contains("lost") {
+      return "The passport moved away from the phone. Hold it still and try again."
+    }
+    if normalized.contains("security status") || normalized.contains("mutual authenticate") {
+      return "The passport details do not match the chip. Check the number and dates."
+    }
+    return message
   }
 
   private func registerHardwareIdentityKeyChannel() {
