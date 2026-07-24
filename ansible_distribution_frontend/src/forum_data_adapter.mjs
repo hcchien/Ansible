@@ -19,6 +19,17 @@ import {
   validateReportDraft,
 } from './moderation_model.mjs';
 
+const PROHIBITED_CREDENTIAL_CLAIMS = new Set([
+  'nationalid',
+  'legalname',
+  'birthdate',
+  'documentnumber',
+  'passportnumber',
+  'nationalidhash',
+  'passportnumberhash',
+  'rawproviderassertion',
+]);
+
 export function createForumDataAdapter({
   relayBaseUrl,
   // The AppView is a separate read service; external/federated content is
@@ -407,6 +418,14 @@ export function normalizeForumHost(host) {
 export function normalizeHostedBoard(board) {
   const permissions = board?.permissions ?? {};
   const postingPolicy = board?.posting_policy ?? {};
+  const accessPolicy = board?.access_policy ?? {};
+  const postRequirement = accessPolicy?.post?.requirement ?? 'posting_policy';
+  const requirement =
+    postRequirement !== 'public' &&
+    postRequirement !== 'posting_policy' &&
+    postRequirement !== 'board_moderator'
+      ? accessPolicy?.requirements?.[postRequirement] ?? null
+      : null;
 
   return {
     id: board?.hosted_board_id ?? '',
@@ -425,7 +444,41 @@ export function normalizeHostedBoard(board) {
       // is the public-web gate for surfacing curated federated content.
       externalInclusion: postingPolicy.external_inclusion === true,
     },
+    accessPolicy: {
+      version: accessPolicy.version ?? 1,
+      postRequirement,
+      contentVisibility: accessPolicy.content_visibility ?? 'public',
+      federation: accessPolicy.federation ?? 'enabled',
+      credentialRequirement: requirement
+        ? {
+            name: postRequirement,
+            credentialType: requirement.credential_type ?? '',
+            credentialConfigurationId:
+              requirement.credential_configuration_id ?? null,
+            trustedIssuers: Array.isArray(requirement.trusted_issuers)
+              ? requirement.trusted_issuers.filter((value) => typeof value === 'string')
+              : [],
+            claims: Array.isArray(requirement.claims)
+              ? requirement.claims
+                  .filter((claim) => claim && typeof claim === 'object')
+                  .filter((claim) => !isProhibitedCredentialClaim(claim.path))
+                  .map((claim) => ({
+                    path: claim.path ?? '',
+                    op: claim.op ?? '',
+                    value: claim.value ?? '',
+                  }))
+              : [],
+            holderBindingRequired: requirement.holder_binding === 'required',
+            statusRequired: requirement.status?.required === true,
+          }
+        : null,
+    },
   };
+}
+
+function isProhibitedCredentialClaim(path) {
+  const normalized = String(path ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return PROHIBITED_CREDENTIAL_CLAIMS.has(normalized);
 }
 
 // Normalizes an AppView external item into a UI-ready record. External content
@@ -468,6 +521,7 @@ export function buildThreadsFromFeed(items) {
       threads.push({
         id: item.entity_id,
         title: payload.title || '',
+        boardId: item.board_id || payload.boardId || payload.board_id || '',
         authorDid: item.author_did,
         authorHandle: normalizeAuthorHandle(item, payload),
         updatedAt: item.created_at,

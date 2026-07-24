@@ -45,7 +45,7 @@ const sameHostRelayConfig = resolveFrontendRuntimeConfig({
 assert.equal(sameHostRelayConfig.webOrigin, 'https://web.elix.example');
 assert.equal(sameHostRelayConfig.relayOrigin, 'https://web.elix.example');
 assert.equal(sameHostRelayConfig.relayBaseUrl, 'https://web.elix.example');
-assert.equal(sameHostRelayConfig.locale, 'zh-Hant');
+assert.equal(sameHostRelayConfig.locale, 'ja');
 
 const subdomainRelayConfig = resolveFrontendRuntimeConfig({
   location: new URL('https://web.elix.example/#/login'),

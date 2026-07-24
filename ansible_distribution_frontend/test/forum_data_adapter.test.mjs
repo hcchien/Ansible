@@ -50,8 +50,50 @@ test('normalizes hosted boards into UI-ready board records', () => {
       canonicalUri: 'http://localhost:4001/boards/general',
       permissions: { canRead: true, canWrite: false },
       postingPolicy: { minPostTier: null, externalInclusion: false },
+      accessPolicy: {
+        version: 1,
+        postRequirement: 'posting_policy',
+        contentVisibility: 'public',
+        federation: 'enabled',
+        credentialRequirement: null,
+      },
     },
   );
+});
+
+test('normalizes dynamic credential posting requirements without Wallet payloads', () => {
+  const board = normalizeHostedBoard({
+    hosted_board_id: 'members',
+    access_policy: {
+      version: 1,
+      post: { requirement: 'member' },
+      content_visibility: 'public',
+      federation: 'enabled',
+      requirements: {
+        member: {
+          credential_type: 'MembershipCredential',
+          credential_configuration_id: 'board_member',
+          trusted_issuers: ['did:web:issuer.example'],
+          claims: [
+            { path: 'membership', op: 'equals', value: 'member' },
+            { path: 'legal_name', op: 'equals', value: 'Must not render' },
+          ],
+          holder_binding: 'required',
+          status: { required: true },
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(board.accessPolicy.credentialRequirement, {
+    name: 'member',
+    credentialType: 'MembershipCredential',
+    credentialConfigurationId: 'board_member',
+    trustedIssuers: ['did:web:issuer.example'],
+    claims: [{ path: 'membership', op: 'equals', value: 'member' }],
+    holderBindingRequired: true,
+    statusRequired: true,
+  });
 });
 
 test('normalizes the posting policy gate on tier-gated boards', () => {
@@ -104,6 +146,13 @@ test('builds forum home data from host, boards, and session capabilities', () =>
         canonicalUri: '',
         permissions: { canRead: true, canWrite: true },
         postingPolicy: { minPostTier: null, externalInclusion: false },
+        accessPolicy: {
+          version: 1,
+          postRequirement: 'posting_policy',
+          contentVisibility: 'public',
+          federation: 'enabled',
+          credentialRequirement: null,
+        },
       },
     ],
     primaryBoardId: 'general',
@@ -285,6 +334,7 @@ test('normalizes AppView post content into thread posts', () => {
       entity_id: 'thread-9',
       author_did: 'did:plc:thread-author',
       author_handle: 'thread-author.elix.cool',
+      board_id: 'general',
       created_at: '2026-06-18T14:33:27.083198Z',
       payload: { title: '不見了' },
     },
@@ -300,6 +350,7 @@ test('normalizes AppView post content into thread posts', () => {
   ]);
 
   assert.equal(thread.authorHandle, 'thread-author.elix.cool');
+  assert.equal(thread.boardId, 'general');
   assert.equal(thread.posts[0].authorHandle, 'reply-author.elix.cool');
   assert.equal(thread.posts[0].content, '文章不見了？！');
 });

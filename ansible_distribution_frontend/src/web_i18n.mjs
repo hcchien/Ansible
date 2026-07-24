@@ -1,7 +1,16 @@
 export const DEFAULT_LOCALE = 'zh-Hant';
-export const SUPPORTED_LOCALES = Object.freeze(['en', 'zh-Hant']);
+export const SUPPORTED_LOCALES = Object.freeze([
+  'en',
+  'zh-Hant',
+  'fr',
+  'es',
+  'ja',
+  'ko',
+  'de',
+  'it',
+]);
 
-const TRANSLATIONS = Object.freeze({
+const BASE_TRANSLATIONS = Object.freeze({
   en: {
     'common.appName': 'Elix',
     'common.socialIdentity': 'SOCIAL IDENTITY',
@@ -119,6 +128,11 @@ const TRANSLATIONS = Object.freeze({
     'board.gateBadge': 'Verified humans',
     'board.gateRequirement': 'Posting in this board requires the {tier} tier. Reading stays open to everyone.',
     'board.gateBlockedMessage': 'Your current tier is {tier}. Complete human verification in the Elix app to post in this board.',
+    'board.credentialGateBadge': 'Credential required',
+    'board.credentialRequirement': 'Posting requires a valid {credential} credential ({claims}). Reading stays open to everyone.',
+    'board.credentialFallback': 'membership',
+    'board.credentialClaimsFallback': 'board policy requirements',
+    'board.credentialBlockedMessage': 'Approve this board in the Elix app with an eligible Wallet credential. Credential details never enter the browser.',
     'board.external.title': 'From the fediverse',
     'board.external.badge': 'External',
     'board.external.disclaimer': 'This board includes curated content from the wider fediverse. It is not verified Elix content and carries no Elix trust — read it with its origin and compliance level in mind.',
@@ -435,6 +449,11 @@ const TRANSLATIONS = Object.freeze({
     'board.gateBadge': '真人驗證版',
     'board.gateRequirement': '這個板需要「{tier}」層級才能發文。閱讀不受限制。',
     'board.gateBlockedMessage': '你目前的層級是「{tier}」。請在 Elix app 完成真人驗證，再回到這個板發文。',
+    'board.credentialGateBadge': '需憑證',
+    'board.credentialRequirement': '發文需要有效的「{credential}」憑證（{claims}）。閱讀不受限制。',
+    'board.credentialFallback': '會員',
+    'board.credentialClaimsFallback': '符合看板政策',
+    'board.credentialBlockedMessage': '請回到 Elix app，以符合資格的 Wallet 憑證核准這個看板。憑證內容不會進入瀏覽器。',
     'board.external.title': '站外內容',
     'board.external.badge': '站外',
     'board.external.disclaimer': '這個板會收錄來自 fediverse 的精選站外內容。這些不是經過驗證的 Elix 內容，也不帶有 Elix 信任等級——請參考它的來源與相容性標示後再閱讀。',
@@ -636,6 +655,111 @@ const TRANSLATIONS = Object.freeze({
   },
 });
 
+export const LOCALE_NATIVE_NAMES = Object.freeze({
+  en: 'English',
+  'zh-Hant': '繁體中文',
+  fr: 'Français',
+  es: 'Español',
+  ja: '日本語',
+  ko: '한국어',
+  de: 'Deutsch',
+  it: 'Italiano',
+});
+
+// The App introduced these six locales with localized core surfaces and an
+// English fallback for untranslated long-tail copy. Keep the web contract
+// identical: every locale has every key, while these overrides cover global
+// navigation, board provenance, posting gates, and language settings.
+const LOCALE_OVERRIDES = Object.freeze({
+  fr: {
+    'common.home': 'Accueil', 'common.feed': 'Fil', 'common.boards': 'Forums',
+    'common.board': 'Forum', 'common.login': 'Connexion', 'common.newThread': 'Nouveau sujet',
+    'common.reply': 'Répondre', 'common.publish': 'Publier', 'common.moderation': 'Modération',
+    'home.discover': 'Découvrir', 'home.notifications': 'Notifications',
+    'boards.title': 'Forums', 'boards.posting': 'Publication', 'boards.readOnly': 'Lecture seule',
+    'board.signInToPost': 'Connectez-vous pour publier', 'board.noThreads': 'Aucun sujet pour le moment.',
+    'board.gateBadge': 'Humains vérifiés', 'board.credentialGateBadge': 'Justificatif requis',
+    'board.credentialBlockedMessage': 'Approuvez ce forum dans l’app Elix avec un justificatif Wallet admissible. Le justificatif ne quitte jamais l’app.',
+    'settings.title': 'RÉGLAGES', 'settings.done': 'Terminé',
+    'settings.language.title': 'Langue', 'settings.language.detail': 'Choisir la langue de l’interface',
+    'settings.language.value': 'Français',
+  },
+  es: {
+    'common.home': 'Inicio', 'common.feed': 'Noticias', 'common.boards': 'Foros',
+    'common.board': 'Foro', 'common.login': 'Iniciar sesión', 'common.newThread': 'Nuevo tema',
+    'common.reply': 'Responder', 'common.publish': 'Publicar', 'common.moderation': 'Moderación',
+    'home.discover': 'Descubrir', 'home.notifications': 'Notificaciones',
+    'boards.title': 'Foros', 'boards.posting': 'Publicación', 'boards.readOnly': 'Solo lectura',
+    'board.signInToPost': 'Inicia sesión para publicar', 'board.noThreads': 'Todavía no hay temas.',
+    'board.gateBadge': 'Personas verificadas', 'board.credentialGateBadge': 'Credencial requerida',
+    'board.credentialBlockedMessage': 'Aprueba este foro en la app Elix con una credencial Wallet válida. La credencial nunca sale de la app.',
+    'settings.title': 'AJUSTES', 'settings.done': 'Listo',
+    'settings.language.title': 'Idioma', 'settings.language.detail': 'Elige el idioma de la interfaz',
+    'settings.language.value': 'Español',
+  },
+  ja: {
+    'common.home': 'ホーム', 'common.feed': 'フィード', 'common.boards': 'ボード',
+    'common.board': 'ボード', 'common.login': 'ログイン', 'common.newThread': '新しいスレッド',
+    'common.reply': '返信', 'common.publish': '公開', 'common.moderation': 'モデレーション',
+    'home.discover': '見つける', 'home.notifications': '通知',
+    'boards.title': 'ボード', 'boards.posting': '投稿可', 'boards.readOnly': '閲覧のみ',
+    'board.signInToPost': 'ログインして投稿', 'board.noThreads': 'スレッドはまだありません。',
+    'board.gateBadge': '本人確認済み', 'board.credentialGateBadge': '認証情報が必要',
+    'board.credentialBlockedMessage': 'Elix アプリで対象の Wallet 認証情報を使ってこのボードを承認してください。認証情報がブラウザに渡ることはありません。',
+    'settings.title': '設定', 'settings.done': '完了',
+    'settings.language.title': '言語', 'settings.language.detail': 'インターフェース言語を選択',
+    'settings.language.value': '日本語',
+  },
+  ko: {
+    'common.home': '홈', 'common.feed': '피드', 'common.boards': '게시판',
+    'common.board': '게시판', 'common.login': '로그인', 'common.newThread': '새 스레드',
+    'common.reply': '답글', 'common.publish': '게시', 'common.moderation': '운영',
+    'home.discover': '둘러보기', 'home.notifications': '알림',
+    'boards.title': '게시판', 'boards.posting': '게시 가능', 'boards.readOnly': '읽기 전용',
+    'board.signInToPost': '로그인하여 게시', 'board.noThreads': '아직 스레드가 없습니다.',
+    'board.gateBadge': '인증된 사용자', 'board.credentialGateBadge': '자격 증명 필요',
+    'board.credentialBlockedMessage': 'Elix 앱에서 적격 Wallet 자격 증명으로 이 게시판을 승인하세요. 자격 증명은 브라우저로 전달되지 않습니다.',
+    'settings.title': '설정', 'settings.done': '완료',
+    'settings.language.title': '언어', 'settings.language.detail': '인터페이스 언어 선택',
+    'settings.language.value': '한국어',
+  },
+  de: {
+    'common.home': 'Start', 'common.feed': 'Feed', 'common.boards': 'Foren',
+    'common.board': 'Forum', 'common.login': 'Anmelden', 'common.newThread': 'Neues Thema',
+    'common.reply': 'Antworten', 'common.publish': 'Veröffentlichen', 'common.moderation': 'Moderation',
+    'home.discover': 'Entdecken', 'home.notifications': 'Benachrichtigungen',
+    'boards.title': 'Foren', 'boards.posting': 'Beiträge', 'boards.readOnly': 'Nur lesen',
+    'board.signInToPost': 'Zum Schreiben anmelden', 'board.noThreads': 'Noch keine Themen vorhanden.',
+    'board.gateBadge': 'Verifizierte Personen', 'board.credentialGateBadge': 'Nachweis erforderlich',
+    'board.credentialBlockedMessage': 'Genehmige dieses Forum in der Elix-App mit einem geeigneten Wallet-Nachweis. Der Nachweis gelangt nie in den Browser.',
+    'settings.title': 'EINSTELLUNGEN', 'settings.done': 'Fertig',
+    'settings.language.title': 'Sprache', 'settings.language.detail': 'Sprache der Oberfläche wählen',
+    'settings.language.value': 'Deutsch',
+  },
+  it: {
+    'common.home': 'Home', 'common.feed': 'Feed', 'common.boards': 'Forum',
+    'common.board': 'Forum', 'common.login': 'Accedi', 'common.newThread': 'Nuova discussione',
+    'common.reply': 'Rispondi', 'common.publish': 'Pubblica', 'common.moderation': 'Moderazione',
+    'home.discover': 'Scopri', 'home.notifications': 'Notifiche',
+    'boards.title': 'Forum', 'boards.posting': 'Pubblicazione', 'boards.readOnly': 'Sola lettura',
+    'board.signInToPost': 'Accedi per pubblicare', 'board.noThreads': 'Non ci sono ancora discussioni.',
+    'board.gateBadge': 'Persone verificate', 'board.credentialGateBadge': 'Credenziale richiesta',
+    'board.credentialBlockedMessage': 'Approva questo forum nell’app Elix con una credenziale Wallet idonea. La credenziale non entra mai nel browser.',
+    'settings.title': 'IMPOSTAZIONI', 'settings.done': 'Fine',
+    'settings.language.title': 'Lingua', 'settings.language.detail': 'Scegli la lingua dell’interfaccia',
+    'settings.language.value': 'Italiano',
+  },
+});
+
+const TRANSLATIONS = Object.freeze(Object.fromEntries(
+  SUPPORTED_LOCALES.map((locale) => [
+    locale,
+    locale === 'en' || locale === 'zh-Hant'
+      ? BASE_TRANSLATIONS[locale]
+      : Object.freeze({ ...BASE_TRANSLATIONS.en, ...LOCALE_OVERRIDES[locale] }),
+  ]),
+));
+
 let currentLocale = DEFAULT_LOCALE;
 
 export function setCurrentLocale(locale) {
@@ -648,9 +772,12 @@ export function getCurrentLocale() {
 }
 
 export function resolveLocale(locale) {
-  const value = String(locale ?? '').replaceAll('_', '-');
+  const value = String(locale ?? '').replaceAll('_', '-').toLowerCase();
   if (value === 'en' || value.startsWith('en-')) return 'en';
   if (value === 'zh' || value.startsWith('zh-')) return 'zh-Hant';
+  for (const locale of SUPPORTED_LOCALES.slice(2)) {
+    if (value === locale || value.startsWith(`${locale}-`)) return locale;
+  }
   return DEFAULT_LOCALE;
 }
 

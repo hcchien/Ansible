@@ -148,6 +148,56 @@ const gatedDirectoryHtml = renderPageBody(gatedDirectoryVm);
 assert.match(gatedDirectoryHtml, /class="gate-badge"/);
 assert.match(gatedDirectoryHtml, /真人驗證版/);
 
+const credentialBoard = normalizeHostedBoard({
+  hosted_board_id: 'members',
+  slug: 'members',
+  title: 'Members',
+  permissions: { read: true, write: true },
+  access_policy: {
+    version: 1,
+    discovery: 'public',
+    read: { requirement: 'public' },
+    post: { requirement: 'member' },
+    moderate: { requirement: 'board_moderator' },
+    requirements: {
+      member: {
+        credential_type: 'MembershipCredential',
+        trusted_issuers: ['did:web:issuer.example'],
+        claims: [{ path: 'membership', op: 'equals', value: 'member' }],
+        holder_binding: 'required',
+        status: { required: true },
+      },
+    },
+    capability_ttl_seconds: 300,
+    content_visibility: 'public',
+    federation: 'enabled',
+  },
+});
+const credentialBoardVm = buildAppViewModel({
+  route: { pageId: PAGE_IDS.board, params: { boardId: 'members' } },
+  session: {
+    authenticated: true,
+    trustTier: 'verified_human',
+    subjectDid: 'did:elix:fixture',
+    scopes: ['forum:read', 'forum:post'],
+    capabilities: { canPost: true, canReply: true },
+  },
+  forum: {
+    host: normalizeForumHost(CONTRACT_FIXTURES.forum.host),
+    boards: [credentialBoard],
+    board: credentialBoard,
+    threads: [],
+    capabilities: { canCreateThread: true, canReply: true },
+  },
+});
+const credentialBoardHtml = renderPageBody(credentialBoardVm);
+assert.match(credentialBoardHtml, /需憑證/);
+assert.match(credentialBoardHtml, /MembershipCredential/);
+assert.match(credentialBoardHtml, /membership = member/);
+assert.match(credentialBoardHtml, /憑證內容不會進入瀏覽器/);
+assert.match(credentialBoardHtml, /<button class="primary-action" type="button" disabled>/);
+assert.doesNotMatch(credentialBoardHtml, /data-action="new-thread"/);
+
 const loginVm = buildAppViewModel({
   route: { pageId: PAGE_IDS.login, params: {} },
   session: { authenticated: false, status: 'pending', scopes: [] },
@@ -218,6 +268,13 @@ assert.match(sessionsHtml, /class="settings-home"/);
 assert.match(sessionsHtml, /本機身分/);
 assert.match(sessionsHtml, /身分與裝置/);
 assert.match(sessionsHtml, /日常/);
+assert.match(sessionsHtml, /class="language-picker"/);
+for (const locale of ['en', 'zh-Hant', 'fr', 'es', 'ja', 'ko', 'de', 'it']) {
+  assert.match(sessionsHtml, new RegExp(`href="\\?lang=${locale}#\\/sessions"`));
+}
+for (const nativeName of ['English', '繁體中文', 'Français', 'Español', '日本語', '한국어', 'Deutsch', 'Italiano']) {
+  assert.match(sessionsHtml, new RegExp(nativeName));
+}
 assert.match(sessionsHtml, /邊界/);
 assert.match(sessionsHtml, /介面與語言/);
 assert.match(sessionsHtml, /每版的光/);
@@ -304,6 +361,8 @@ assert.match(moderatedBoardHtml, /href="#\/boards\/general\/threads\/thread-9"/)
 assert.match(moderatedBoardHtml, /href="#\/boards\/general\/threads\/thread-1"/);
 assert.match(moderatedBoardHtml, /class="board-thread-row is-signed"/);
 assert.match(moderatedBoardHtml, /class="board-thread-status"/);
+assert.match(moderatedBoardHtml, /class="board-thread-board"/);
+assert.match(moderatedBoardHtml, /#<\/span>General/);
 assert.match(moderatedBoardHtml, /class="board-thread-avatar"/);
 assert.match(moderatedBoardHtml, /class="did-handle"/);
 assert.match(moderatedBoardHtml, /class="pk-pill"/);

@@ -15,7 +15,12 @@ import {
   actionsForTargetKind,
 } from './moderation_model.mjs';
 import { renderQrCodeSvg } from './qr_code.mjs';
-import { t } from './web_i18n.mjs';
+import {
+  LOCALE_NATIVE_NAMES,
+  SUPPORTED_LOCALES,
+  getCurrentLocale,
+  t,
+} from './web_i18n.mjs';
 import { TRUST_TIERS, meetsMinPostTier } from './web_session_client.mjs';
 
 export function renderPageBody(viewModel, uiState = {}) {
@@ -112,6 +117,8 @@ function renderBoard(viewModel, uiState = {}) {
   const threadContext = {
     session: viewModel.session,
     boardId: board.id ?? '',
+    boardSlug: board.slug ?? board.id ?? '',
+    boardTitle: board.title ?? board.slug ?? board.id ?? '',
     canReply: Boolean(viewModel.actions?.canReply),
   };
 
@@ -124,9 +131,9 @@ function renderBoard(viewModel, uiState = {}) {
         <section class="board-head" aria-labelledby="board-title">
           <div class="heading">
             <p class="section-label">${escapeHtml(t('board.kicker'))}</p>
-            <h1 id="board-title">${escapeHtml(boardTitle)}${gate.gated ? ` ${renderGateBadge()}` : ''}</h1>
+            <h1 id="board-title">${escapeHtml(boardTitle)}${gate.gated ? ` ${renderGateBadge(gate)}` : ''}</h1>
             ${board.description ? `<p>${escapeHtml(board.description)}</p>` : ''}
-            ${gate.gated ? `<p class="gate-requirement">${escapeHtml(t('board.gateRequirement', { tier: trustTierLabel(gate.requiredTier) }))}</p>` : ''}
+            ${gate.gated ? `<p class="gate-requirement">${escapeHtml(gate.description)}</p>` : ''}
             <p>${escapeHtml(t('board.description'))}</p>
           </div>
           <div class="permission-state" aria-label="${escapeAttribute(t('common.permission'))}">
@@ -458,23 +465,45 @@ function renderThreadContextRail(viewModel, board = {}) {
 }
 
 // The relay enforces posting gates at intent acceptance; this client-side
-// check only makes the board's `posting_policy.min_post_tier` discoverable
-// before the user tries to write.
+// check makes both the legacy tier gate and Board Access Policy v1 credential
+// requirements discoverable before the user tries to write. Credential
+// presentation remains app-mediated: the browser never receives Wallet data.
 function boardPostingGate(board, session) {
   const minPostTier = board?.postingPolicy?.minPostTier ?? null;
-  const gated = minPostTier === TRUST_TIERS.verifiedHuman;
+  const credential = board?.accessPolicy?.credentialRequirement ?? null;
+  const credentialGated = Boolean(credential);
+  const tierGated = minPostTier === TRUST_TIERS.verifiedHuman;
+  const gated = tierGated || credentialGated;
   const trustTier = session?.trustTier ?? TRUST_TIERS.anonymous;
 
   return {
     gated,
+    kind: credentialGated ? 'credential' : 'tier',
     requiredTier: minPostTier,
+    credential,
+    description: credentialGated
+      ? t('board.credentialRequirement', {
+          credential: credential.credentialType || t('board.credentialFallback'),
+          claims: credentialClaimSummary(credential.claims),
+        })
+      : t('board.gateRequirement', { tier: trustTierLabel(minPostTier) }),
     blocked:
-      gated && Boolean(session?.authenticated) && !meetsMinPostTier(trustTier, minPostTier),
+      Boolean(session?.authenticated) &&
+      (credentialGated || (tierGated && !meetsMinPostTier(trustTier, minPostTier))),
   };
 }
 
-function renderGateBadge() {
-  return `<span class="gate-badge">${escapeHtml(t('board.gateBadge'))}</span>`;
+function credentialClaimSummary(claims = []) {
+  const visible = claims
+    .filter((claim) => claim?.path && claim?.op === 'equals')
+    .map((claim) => `${claim.path} = ${String(claim.value)}`);
+  return visible.length ? visible.join(', ') : t('board.credentialClaimsFallback');
+}
+
+function renderGateBadge(gate = {}) {
+  const label =
+    gate.kind === 'credential' ? t('board.credentialGateBadge') : t('board.gateBadge');
+  return `<span class="gate-badge">${escapeHtml(label)}</span>`;
 }
 
 function renderBoardPostAction(viewModel, gate) {
@@ -482,7 +511,9 @@ function renderBoardPostAction(viewModel, gate) {
     return `
       <div class="gate-blocked" role="note">
         <button class="primary-action" type="button" disabled>${escapeHtml(t('common.newThread'))}</button>
-        <p>${escapeHtml(t('board.gateBlockedMessage', { tier: trustTierLabel(viewModel.session?.trustTier ?? TRUST_TIERS.anonymous) }))}</p>
+        <p>${escapeHtml(gate.kind === 'credential'
+          ? t('board.credentialBlockedMessage')
+          : t('board.gateBlockedMessage', { tier: trustTierLabel(viewModel.session?.trustTier ?? TRUST_TIERS.anonymous) }))}</p>
       </div>
     `;
   }
@@ -590,6 +621,7 @@ function renderSessions(viewModel, uiState = {}) {
         renderSettingsRow({ icon: renderShieldGlyph(), title: t('settings.audit.title'), code: 'ADMIN', detail: t('settings.audit.detail'), value: t('settings.audit.value') }),
         renderSettingsRow({ icon: t('settings.language.icon'), title: t('settings.language.title'), code: 'LANGUAGE', detail: t('settings.language.detail'), value: t('settings.language.value') }),
       ])}
+      ${renderLanguagePicker()}
 
       ${renderSettingsGroup(t('settings.dailyGroup'), [
         renderSettingsRow({ icon: renderBellGlyph(), title: t('settings.inbox.title'), code: 'INBOX', detail: t('settings.inbox.detail'), value: t('settings.inbox.value') }),
@@ -641,6 +673,22 @@ function renderSessions(viewModel, uiState = {}) {
 
       <p class="settings-version">${escapeHtml(t('settings.version'))}</p>
     </section>
+  `;
+}
+
+function renderLanguagePicker() {
+  const current = getCurrentLocale();
+  return `
+    <nav class="language-picker" aria-label="${escapeAttribute(t('settings.language.title'))}">
+      ${SUPPORTED_LOCALES.map((locale) => `
+        <a
+          class="language-option${locale === current ? ' is-active' : ''}"
+          href="?lang=${encodeURIComponent(locale)}#/sessions"
+          lang="${escapeAttribute(locale)}"
+          ${locale === current ? 'aria-current="true"' : ''}
+        >${escapeHtml(LOCALE_NATIVE_NAMES[locale])}</a>
+      `).join('')}
+    </nav>
   `;
 }
 
@@ -1009,11 +1057,11 @@ function renderBoardDirectory(boards, { title, emptyText }) {
 function renderBoardDirectoryItem(board) {
   const title = board.title || board.id || t('common.board');
   const href = `#/boards/${encodeURIComponent(board.slug || board.id || '')}`;
-  const gated = board.postingPolicy?.minPostTier === TRUST_TIERS.verifiedHuman;
+  const gate = boardPostingGate(board, null);
 
   return `
     <li>
-      <a href="${escapeAttribute(href)}">${escapeHtml(title)}${gated ? ` ${renderGateBadge()}` : ''}</a>
+      <a href="${escapeAttribute(href)}">${escapeHtml(title)}${gate.gated ? ` ${renderGateBadge(gate)}` : ''}</a>
       <span class="perm${board.permissions?.canWrite ? '' : ' read'}">${escapeHtml(board.permissions?.canWrite ? t('boards.posting') : t('boards.readOnly'))}</span>
       ${board.description ? `<p class="descr">${escapeHtml(board.description)}</p>` : ''}
     </li>
@@ -1041,8 +1089,11 @@ function renderThreadItem(thread, context = {}) {
   const posts = thread.posts ?? [];
   const threadId = thread.id ?? '';
   const authenticated = Boolean(context.session?.authenticated);
-  const href = threadId && context.boardId
-    ? `#/boards/${encodeURIComponent(context.boardId)}/threads/${encodeURIComponent(threadId)}`
+  const boardId = thread.boardId || context.boardId || '';
+  const boardSlug = context.boardSlug || boardId;
+  const boardTitle = context.boardTitle || boardId;
+  const href = threadId && boardSlug
+    ? `#/boards/${encodeURIComponent(boardSlug)}/threads/${encodeURIComponent(threadId)}`
     : null;
   const replyCount = threadReplyCount(thread, posts);
   const status = locked ? t('error.threadLocked.title') : t('thread.statusActive');
@@ -1050,13 +1101,14 @@ function renderThreadItem(thread, context = {}) {
     ? renderReportControl({
         targetKind: 'thread',
         targetRef: threadId,
-        boardId: context.boardId ?? '',
+        boardId,
       })
     : '';
   const titleContent = `${escapeHtml(title)}${locked ? ` ${renderLockedBadge()}` : ''}`;
   const rowBody = `
     <span class="board-thread-avatar">${escapeHtml(initial)}</span>
     <span class="board-thread-copy">
+      ${boardTitle ? `<span class="board-thread-board"><span aria-hidden="true">#</span>${escapeHtml(boardTitle)}</span>` : ''}
       <span class="board-thread-status">${escapeHtml(t('board.replyCount', { count: replyCount }))} · ${escapeHtml(status)}</span>
       <span class="board-thread-title">${titleContent}</span>
       <span class="board-thread-by">

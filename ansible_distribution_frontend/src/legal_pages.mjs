@@ -117,7 +117,9 @@ export function resolveLegalLocale(value) {
     if (normalized === 'zh' || normalized.startsWith('zh-')) return 'zh-Hant';
   }
 
-  return resolveLocale(raw);
+  // Legal documents currently have reviewed English and Traditional Chinese
+  // editions only. Never label a fallback document as another language.
+  return DEFAULT_LOCALE;
 }
 
 // ---------------------------------------------------------------------------
