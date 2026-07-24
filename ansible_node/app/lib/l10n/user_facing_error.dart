@@ -25,6 +25,15 @@ String userFacingError(BuildContext context, Object error) {
       en: 'Update the app to keep syncing.',
     );
   }
+  if (_isIdentityKeyUpgradeRequired(error)) {
+    return context.uiCopy(
+      zh: '這個身分仍使用舊式軟體金鑰。請到「設定 → 身分金鑰保管」升級為裝置硬體金鑰後再同步。',
+      en:
+          'This identity still uses a legacy software key. Open '
+          'Settings → Identity key custody and upgrade to a device hardware '
+          'key before syncing.',
+    );
+  }
   if (error is ForumHostException && error.error == 'rate_limited') {
     return context.uiCopy(
       zh: '操作太頻繁，請稍後再試。',
@@ -118,6 +127,21 @@ bool _isUpgradeRequired(Object error) {
       statusCode == 426 || error == code,
     RelayAnchorException(:final statusCode, :final error) =>
       statusCode == 426 || error == code,
+    _ => false,
+  };
+}
+
+bool _isIdentityKeyUpgradeRequired(Object error) {
+  const codes = {
+    'identity_key_upgrade_required',
+    'unsupported_signing_algorithm',
+  };
+  return switch (error) {
+    ForumHostException(:final error) => codes.contains(error),
+    AtProtoException(:final error) => codes.contains(error),
+    RelayOpsException(:final error) => codes.contains(error),
+    RelayIdentityException(:final error) => codes.contains(error),
+    RelayAnchorException(:final error) => codes.contains(error),
     _ => false,
   };
 }

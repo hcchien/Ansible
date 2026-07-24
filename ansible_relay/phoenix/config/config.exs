@@ -33,6 +33,7 @@ config :ansible_relay, :snapshot_retention_days, :infinity
 config :ansible_relay, :allow_dev_identity_signatures, false
 config :ansible_relay, :allow_dev_publication_signatures, false
 config :ansible_relay, :allow_dev_zkp_proofs, false
+config :ansible_relay, :identity_write_algorithms, ["p256-sha256"]
 config :ansible_relay, :webauthn_rp_id, "elix.cool"
 config :ansible_relay, :webauthn_origin, "https://elix.cool"
 config :ansible_relay, :webauthn_sync_capability_required, false

@@ -81,8 +81,6 @@ class PublicationIntent {
     final sig = signature;
     final scheme = signatureScheme;
     if (sig == null || scheme == null || signedAt == null) return false;
-    if (scheme != 'ed25519' && scheme != 'schnorr-secp256k1') return false;
-
     final lower = sig.toLowerCase();
     if (lower.startsWith('dev') ||
         lower.startsWith('stub') ||
@@ -91,7 +89,14 @@ class PublicationIntent {
       return false;
     }
 
-    return RegExp(r'^[0-9a-f]{128}$').hasMatch(lower);
+    if (scheme == 'p256-sha256') {
+      return RegExp(r'^[0-9a-f]{136,144}$').hasMatch(lower) &&
+          lower.length.isEven;
+    }
+    if (scheme == 'schnorr-secp256k1') {
+      return RegExp(r'^[0-9a-f]{128}$').hasMatch(lower);
+    }
+    return false;
   }
 
   bool get canDistribute {

@@ -6,7 +6,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   POST /api/v2/identity/anchor  — verify Ed25519 sig and anchor DID
   """
 
-  alias AnsibleRelay.{DidAccountCache, IdentityCache, SigVerifier}
+  alias AnsibleRelay.{DidAccountCache, IdentityCache, IdentityWritePolicy, SigVerifier}
 
   @handle_domain "elix.cool"
 
@@ -14,6 +14,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
     with {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
          {:ok, handle_suffix} <- require_field(params, "handle_suffix"),
          signing_algorithm = Map.get(params, "signing_algorithm", "ed25519"),
+         :ok <- IdentityWritePolicy.validate(signing_algorithm),
          :ok <- validate_public_key(signing_algorithm, public_key_hex),
          :ok <- validate_handle_suffix(handle_suffix) do
       handle = "#{handle_suffix}.#{@handle_domain}"
@@ -45,6 +46,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
           detail: "public_key_hex does not match signing_algorithm"
         })
 
+      {:error, :unsupported_signing_algorithm} ->
+        send_json(conn, 422, %{
+          error: "unsupported_signing_algorithm",
+          expected: IdentityWritePolicy.expected()
+        })
+
       {:error, :invalid_handle_suffix} ->
         send_json(conn, 422, %{
           error: "missing_fields",
@@ -60,6 +67,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
          {:ok, registration_sig} <- require_field(params, "registration_sig"),
          {:ok, nonce} <- require_field(params, "nonce"),
          signing_algorithm = Map.get(params, "signing_algorithm", "ed25519"),
+         :ok <- IdentityWritePolicy.validate(signing_algorithm),
          :ok <- validate_did(did),
          :ok <- validate_public_key(signing_algorithm, public_key_hex),
          :ok <- validate_handle(handle) do
@@ -97,6 +105,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
       {:error, :invalid_public_key_hex} ->
         send_json(conn, 422, %{error: "invalid_public_key"})
 
+      {:error, :unsupported_signing_algorithm} ->
+        send_json(conn, 422, %{
+          error: "unsupported_signing_algorithm",
+          expected: IdentityWritePolicy.expected()
+        })
+
       {:error, :invalid_handle} ->
         send_json(conn, 422, %{error: "invalid_handle"})
     end
@@ -112,6 +126,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
          {:ok, issued_at} <- require_field(params, "issued_at"),
          expected_version when is_integer(expected_version) <- params["expected_key_version"],
          "hardware" <- params["new_custody"],
+         :ok <- IdentityWritePolicy.validate(new_algorithm),
          :ok <- validate_public_key(new_algorithm, new_public_key_hex),
          :ok <- validate_rotation_time(issued_at),
          {:ok, current} <- DidAccountCache.get(did),
@@ -157,6 +172,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
       {:error, :invalid_public_key_hex} ->
         send_json(conn, 422, %{error: "invalid_public_key"})
+
+      {:error, :unsupported_signing_algorithm} ->
+        send_json(conn, 422, %{
+          error: "unsupported_signing_algorithm",
+          expected: IdentityWritePolicy.expected()
+        })
 
       {:error, :unavailable} ->
         send_json(conn, 503, %{error: "verification_unavailable", retryable: true})

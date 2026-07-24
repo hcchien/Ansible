@@ -59,6 +59,27 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert body["handle"] == "alice.elix.cool"
   end
 
+  test "register rejects Ed25519 when the first-party write policy is P-256 only" do
+    original = Application.get_env(:ansible_relay, :identity_write_algorithms)
+    Application.put_env(:ansible_relay, :identity_write_algorithms, ["p256-sha256"])
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :identity_write_algorithms, original)
+    end)
+
+    response =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "legacy",
+        "signing_algorithm" => "ed25519"
+      })
+
+    assert response.status == 422
+    body = Jason.decode!(response.resp_body)
+    assert body["error"] == "unsupported_signing_algorithm"
+    assert body["expected"] == ["p256-sha256"]
+  end
+
   test "register reserves a handle while a nonce is pending" do
     first =
       post_json("/api/v2/identity/register", %{

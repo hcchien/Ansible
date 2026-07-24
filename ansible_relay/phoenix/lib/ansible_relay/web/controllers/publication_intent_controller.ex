@@ -4,7 +4,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
   import Plug.Conn
   require Logger
 
-  alias AnsibleRelay.{IdentityCache, PublicationIntentStore}
+  alias AnsibleRelay.{IdentityCache, IdentityWritePolicy, PublicationIntentStore}
 
   @required_fields ~w(intent_id author_did content_item_id action visibility payload payload_hash signature)
   @valid_actions ~w(publish update delete)
@@ -17,6 +17,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
          :ok <- reject_private_visibility(params["visibility"]),
          :ok <- validate_enum(params["visibility"], @valid_visibility, "visibility"),
          :ok <- validate_signature_scheme(params["signature_scheme"]),
+         :ok <- IdentityWritePolicy.validate(params["signature_scheme"]),
          :ok <- validate_signature_shape(params["signature"], params["signature_scheme"]),
          :ok <- validate_payload_hash(params["payload"], params["payload_hash"]),
          author_did = params["author_did"],
@@ -42,6 +43,12 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
 
       {:error, :invalid_signature_scheme} ->
         send_json(conn, 422, %{error: "invalid_signature_scheme", expected: @signature_schemes})
+
+      {:error, :unsupported_signing_algorithm} ->
+        send_json(conn, 422, %{
+          error: "unsupported_signing_algorithm",
+          expected: IdentityWritePolicy.expected()
+        })
 
       {:error, :malformed_signature} ->
         log_rejected_signature(:malformed_signature, params)

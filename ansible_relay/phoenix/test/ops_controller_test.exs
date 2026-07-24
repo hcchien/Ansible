@@ -125,6 +125,26 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     assert is_integer(body["log_id"])
   end
 
+  test "legacy identity cannot write when the first-party policy is P-256 only" do
+    original = Application.get_env(:ansible_relay, :identity_write_algorithms)
+    Application.put_env(:ansible_relay, :identity_write_algorithms, ["p256-sha256"])
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :identity_write_algorithms, original)
+    end)
+
+    did = "did:key:z6MkLegacyWrite#{System.unique_integer()}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    response = post_json("/api/v1/ops", valid_op(did, private_key))
+
+    assert response.status == 409
+    body = Jason.decode!(response.resp_body)
+    assert body["error"] == "identity_key_upgrade_required"
+    assert body["expected"] == ["p256-sha256"]
+  end
+
   test "sync writes require a WebAuthn capability when enforcement is enabled" do
     original =
       Application.get_env(:ansible_relay, :webauthn_sync_capability_required, false)

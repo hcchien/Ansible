@@ -47,7 +47,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
   import Ecto.Query
 
-  alias AnsibleRelay.{DidElix, Repo, SigVerifier}
+  alias AnsibleRelay.{DidElix, IdentityWritePolicy, Repo, SigVerifier}
   alias AnsibleRelay.Db.{IdentityAnchor, IdentityAccountFreeze}
 
   @reasons ~w(initial rotation recovery device_change)
@@ -180,6 +180,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     recovery_authorized = opts[:recovery_authorized] == true
 
     with {:ok, did, reason} <- validate_shape(anchor),
+         :ok <- IdentityWritePolicy.validate(identity_key_algorithm(anchor)),
          :ok <- ensure_not_frozen(did),
          :ok <- verify_device_attestations(anchor),
          body = canonical_body(anchor),

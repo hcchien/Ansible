@@ -2,7 +2,14 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   @moduledoc "Phase 2 — Op ingestion and delta pull endpoints."
 
   import Plug.Conn
-  alias AnsibleRelay.{AbuseDetector, IdentityCache, OpStore, SnapshotStore}
+
+  alias AnsibleRelay.{
+    AbuseDetector,
+    IdentityCache,
+    IdentityWritePolicy,
+    OpStore,
+    SnapshotStore
+  }
 
   alias AnsibleRelay.ForumHost.{
     BoardCapabilityRequest,
@@ -33,6 +40,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          author_did = params["author_did"],
          :ok <- check_sync_capability(conn, author_did),
          :ok <- check_did_verified(author_did),
+         :ok <- check_write_algorithm(author_did),
          :ok <- check_abuse_limit(author_did),
          :ok <- check_op_not_duplicate(params["op_id"]),
          message = signing_payload(params),
@@ -114,6 +122,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       {:error, :invalid_sync_capability} ->
         send_json(conn, 401, %{error: "invalid_sync_capability"})
+
+      {:error, :identity_key_upgrade_required} ->
+        send_json(conn, 409, %{
+          error: "identity_key_upgrade_required",
+          expected: IdentityWritePolicy.expected()
+        })
 
       # DB/infrastructure outage during the verification lookup: this is NOT an
       # unverified DID. Return a retryable 503 so clients back off rather than
@@ -438,6 +452,18 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       {:error, :rate_limited, detail} ->
         AnsibleRelay.Metrics.inc("relay_abuse_rejections_total", %{subject_type: "did"})
         {:error, :rate_limited, detail}
+    end
+  end
+
+  defp check_write_algorithm(did) do
+    case IdentityCache.get(did) do
+      {:ok, entry} ->
+        if IdentityWritePolicy.allowed?(Map.get(entry, :signing_algorithm, "ed25519")),
+          do: :ok,
+          else: {:error, :identity_key_upgrade_required}
+
+      _ ->
+        {:error, :identity_key_upgrade_required}
     end
   end
 

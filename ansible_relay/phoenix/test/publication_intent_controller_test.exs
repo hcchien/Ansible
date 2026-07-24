@@ -146,6 +146,26 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     assert Jason.decode!(response.resp_body)["accepted"] == true
   end
 
+  test "publication rejects Ed25519 when the first-party write policy is P-256 only" do
+    original = Application.get_env(:ansible_relay, :identity_write_algorithms)
+    Application.put_env(:ansible_relay, :identity_write_algorithms, ["p256-sha256"])
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :identity_write_algorithms, original)
+    end)
+
+    did = "did:key:z6MkLegacyPublication#{System.unique_integer([:positive])}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    response = post_json("/api/v1/publication-intents", valid_intent(did, private_key))
+
+    assert response.status == 422
+    body = Jason.decode!(response.resp_body)
+    assert body["error"] == "unsupported_signing_algorithm"
+    assert body["expected"] == ["p256-sha256"]
+  end
+
   test "rejects private visibility" do
     did = "did:key:z6MkPrivatePublication#{System.unique_integer([:positive])}"
     {public_key, private_key} = ed25519_keypair()

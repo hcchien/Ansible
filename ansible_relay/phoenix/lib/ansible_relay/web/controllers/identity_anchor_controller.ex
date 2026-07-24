@@ -44,6 +44,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
       {:error, :unknown_reason} ->
         send_json(conn, 422, %{error: "unknown_reason"})
 
+      {:error, :unsupported_signing_algorithm} ->
+        send_json(conn, 422, %{
+          error: "unsupported_signing_algorithm",
+          expected: AnsibleRelay.IdentityWritePolicy.expected()
+        })
+
       {:error, :did_mismatch} ->
         send_json(conn, 422, %{error: "did_mismatch"})
 
