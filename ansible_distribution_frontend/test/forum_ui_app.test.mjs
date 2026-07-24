@@ -106,6 +106,15 @@ await postRoot.listeners.get('click')({
   }),
   preventDefault() {},
 });
+assert.equal(submittedDraft, null);
+assert.match(postRoot.innerHTML, /確認即將簽署的發布內容/);
+
+await postRoot.listeners.get('click')({
+  target: createContainedActionElement(postRoot, 'confirm-thread-draft', {
+    boardId: 'general',
+  }),
+  preventDefault() {},
+});
 assert.equal(submittedDraft.title, 'Web posted thread');
 assert.equal(submittedDraft.boardId, 'general');
 assert.equal(submittedDraft.sessionViewModel.authenticated, true);

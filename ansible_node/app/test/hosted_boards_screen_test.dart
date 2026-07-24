@@ -49,6 +49,7 @@ void main() {
   Map<String, dynamic> hostedBoard({
     String title = 'FIFA2026',
     Map<String, dynamic> postingPolicy = const {},
+    Map<String, dynamic>? accessPolicy,
   }) {
     return {
       'hosted_board_id': 'fifa2026',
@@ -57,6 +58,7 @@ void main() {
       'title': title,
       'description': 'World cup talk',
       'posting_policy': postingPolicy,
+      if (accessPolicy != null) 'access_policy': accessPolicy,
     };
   }
 
@@ -141,6 +143,44 @@ void main() {
     expect(find.text('重試'), findsOneWidget);
   });
 
+  testWidgets('restores a pending policy effective time from history', (
+    tester,
+  ) async {
+    await seedHost();
+    final effectiveAt = DateTime.now()
+        .toUtc()
+        .add(const Duration(hours: 25));
+    await pumpScreen(
+      tester,
+      httpClientFactory: () => MockClient((request) async {
+        if (request.url.path.endsWith('/policy-history')) {
+          return http.Response(
+            jsonEncode({
+              'versions': [
+                {
+                  'policy_hash': 'pending-hash',
+                  'effective_at': effectiveAt.toIso8601String(),
+                  'superseded_at': null,
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'boards': [
+              hostedBoard(accessPolicy: {'version': 1}),
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+
+    expect(find.textContaining('政策變更待生效'), findsOneWidget);
+  });
+
   testWidgets(
     'editing a board submits a signed update intent and refreshes the '
     'local projection cache',
@@ -204,8 +244,9 @@ void main() {
       await tester.tap(find.text('FIFA2026'));
       await tester.pumpAndSettle();
       expect(find.text('編輯託管看板'), findsOneWidget);
-      // Posting-policy selector is editable in hosted-board edit mode.
-      expect(find.text('額外真人門檻'), findsOneWidget);
+      // Metadata editing is intentionally separate from the versioned access
+      // policy editor, so a title change cannot silently change governance.
+      expect(find.byKey(const Key('board_audience_mode')), findsNothing);
 
       await tester.enterText(find.byType(TextFormField).first, 'FIFA 2026 世界盃');
       await tester.tap(find.text('儲存'));

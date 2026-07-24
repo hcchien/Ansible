@@ -253,6 +253,7 @@ defmodule AnsibleAppview.Ingest.Folder do
   defp verify(op) do
     pk = op["public_key_hex"]
     sig = op["signature"]
+    payload = decode_payload(op["payload"])
 
     cond do
       op["removed"] == true ->
@@ -265,6 +266,12 @@ defmodule AnsibleAppview.Ingest.Folder do
         # still cannot forge content (that requires a valid signature below).
         {:error, :moderation_removed}
 
+      web_publication_proof_valid?(op, payload) ->
+        case anchor_ok?(op) do
+          {:ok, expires_at} -> {:ok, expires_at}
+          :expired -> {:error, :expired_anchor}
+        end
+
       not (is_binary(pk) and is_binary(sig) and
                SigVerifier.verify_ed25519(pk, SigningPayload.build(op), sig)) ->
         {:error, :bad_signature}
@@ -276,6 +283,36 @@ defmodule AnsibleAppview.Ingest.Folder do
         end
     end
   end
+
+  defp web_publication_proof_valid?(op, payload) when is_map(payload) do
+    proof = payload["web_author_proof"]
+    operation = payload["web_operation"]
+    operation_hash = payload["web_operation_hash"]
+    receipt = payload["web_host_receipt"]
+
+    with true <- is_map(proof) and is_map(operation) and is_map(receipt),
+         true <- proof["scheme"] == "webauthn-p256-sha256",
+         true <- proof["user_present"] == true and proof["user_verified"] == true,
+         true <- operation["operation_id"] == op["op_id"],
+         true <- operation["author_did"] == op["author_did"],
+         true <- operation["entity_type"] == op["entity_type"],
+         true <- operation["entity_id"] == op["entity_id"],
+         true <- operation_hash == proof["operation_hash"],
+         true <- operation_hash == receipt["operation_hash"],
+         true <- operation_hash == sha256(canonical_json(operation)),
+         true <-
+           SigVerifier.verify_ed25519(
+             receipt["public_key_hex"],
+             operation_hash,
+             receipt["signature"]
+           ) do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp web_publication_proof_valid?(_op, _payload), do: false
 
   # DID-anchor expiry gate. The relay op delta does not yet carry the author's
   # anchor expiry, so when no expiry is supplied we accept the op (the signature
@@ -507,7 +544,11 @@ defmodule AnsibleAppview.Ingest.Folder do
       sig_verified: true,
       # Verification provenance (Phase 2 / SOSP D-1): this row was
       # independently re-verified here, not trusted from the relay.
-      source: @source,
+      source:
+        if(get_in(payload, ["web_author_proof", "scheme"]) == "webauthn-p256-sha256",
+          do: "forum_host_webauthn_receipt",
+          else: @source
+        ),
       verified_at: now,
       # Retain the original signature so clients/third parties can re-verify
       # without trusting this projection (plan item 2, partial).
@@ -517,6 +558,24 @@ defmodule AnsibleAppview.Ingest.Folder do
       updated_at: now
     }
   end
+
+  defp canonical_json(value) when is_map(value) do
+    entries =
+      value
+      |> Enum.map(fn {key, entry_value} -> {to_string(key), entry_value} end)
+      |> Enum.sort_by(fn {key, _entry_value} -> key end)
+      |> Enum.map(fn {key, entry_value} ->
+        Jason.encode!(key) <> ":" <> canonical_json(entry_value)
+      end)
+
+    "{" <> Enum.join(entries, ",") <> "}"
+  end
+
+  defp canonical_json(value) when is_list(value),
+    do: "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
+
+  defp canonical_json(value), do: Jason.encode!(value)
+  defp sha256(value), do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
 
   defp decode_payload(payload) when is_map(payload), do: payload
 

@@ -5,7 +5,16 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
 
   alias AnsibleRelay.{AbuseDetector, IdentityCache, WebSessionStore}
 
-  @allowed_scopes MapSet.new(["forum:read", "forum:post", "forum:reply", "identity:display"])
+  @allowed_scopes MapSet.new([
+                    "forum:read",
+                    "forum:post",
+                    "forum:reply",
+                    "forum:edit",
+                    "forum:delete",
+                    "forum:react",
+                    "forum:moderate",
+                    "identity:display"
+                  ])
   @max_challenge_ttl_seconds 900
   @max_session_ttl_seconds 86_400
   @session_cookie_name "trisaura_session"

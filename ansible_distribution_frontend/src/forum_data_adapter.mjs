@@ -9,6 +9,7 @@ import {
   submitWebReport,
 } from './forum_host_client.mjs';
 import { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed } from './appview_client.mjs';
+import { createPasskeySignedThread } from './web_publication_client.mjs';
 import { ERROR_TYPES, normalizeFrontendError, notFoundError, scopeError } from './error_taxonomy.mjs';
 import {
   applyModerationStateToThreads,
@@ -48,6 +49,7 @@ export function createForumDataAdapter({
     submitWebModerationAction,
     fetchBoardModerationState,
   },
+  webPublicationClient = { createPasskeySignedThread },
   appViewClient = { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed },
 }) {
   async function loadForumHome({ sessionViewModel } = {}) {
@@ -235,11 +237,46 @@ export function createForumDataAdapter({
       throw scopeError('forum:post');
     }
 
-    const response = await forumHostClient.createHostedWebThread({
+    if (
+      typeof forumHostClient.fetchForumHostInfo !== 'function' &&
+      typeof forumHostClient.createHostedWebThread === 'function'
+    ) {
+      const legacyFixtureResponse = await forumHostClient.createHostedWebThread({
+        relayBaseUrl,
+        storage,
+        fetchImpl,
+        boardId,
+        title,
+      });
+      return normalizeThreadSubmission(legacyFixtureResponse);
+    }
+
+    const [host, boardsResponse] = await Promise.all([
+      forumHostClient.fetchForumHostInfo({ relayBaseUrl, fetchImpl }),
+      forumHostClient.fetchHostedBoards({ relayBaseUrl, fetchImpl }),
+    ]);
+    const boards = boardsResponse.boards ?? [];
+    const selectedBoardId =
+      boardId ?? boards[0]?.hosted_board_id ?? boards[0]?.slug ?? null;
+    const board = boards.find(
+      (candidate) =>
+        candidate.hosted_board_id === selectedBoardId ||
+        candidate.slug === selectedBoardId,
+    );
+    if (!board) throw notFoundError('board_not_found', { boardId: selectedBoardId });
+
+    const publisher =
+      forumHostClient.createPasskeySignedThread ??
+      webPublicationClient.createPasskeySignedThread;
+    const response = await publisher({
       relayBaseUrl,
       storage,
       fetchImpl,
-      boardId,
+      authorDid: sessionViewModel.subjectDid,
+      targetForumHost:
+        host.canonical_base_url ?? host.base_url ?? relayBaseUrl,
+      boardId: board.hosted_board_id,
+      boardPolicyVersion: board.access_policy_version ?? 1,
       title,
     });
 
@@ -504,10 +541,18 @@ export function normalizeExternalItem(item) {
 }
 
 export function normalizeThreadSubmission(response) {
+  const publication = response?.publication ?? null;
   return {
     accepted: Boolean(response?.accepted),
-    subjectDid: response?.subject_did ?? null,
+    subjectDid: publication?.author_did ?? response?.subject_did ?? null,
     trustTier: response?.trust_tier ?? null,
+    ...(publication
+      ? {
+          operationId: publication.operation_id ?? null,
+          operationHash: publication.operation_hash ?? null,
+          authorProofScheme: publication.author_proof?.scheme ?? null,
+        }
+      : {}),
   };
 }
 

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../services/hosted_issuer_manifest.dart';
-import '../services/posting_gate.dart';
+import '../services/board_policy_draft.dart';
 
 class BoardFormDialog extends StatefulWidget {
   final String? initialTitle;
@@ -21,6 +21,9 @@ class BoardFormDialog extends StatefulWidget {
 
   /// Current `posting_policy.min_post_tier` when editing; null ⇒ ungated.
   final String? initialMinPostTier;
+  final Map<String, Object?> initialPostingPolicy;
+  final Map<String, Object?> initialAccessPolicy;
+  final bool policyOnly;
   final HostedIssuerManifestLoader? manifestLoader;
 
   const BoardFormDialog({
@@ -32,6 +35,9 @@ class BoardFormDialog extends StatefulWidget {
     this.requireForumHost = false,
     this.showPostingPolicy = false,
     this.initialMinPostTier,
+    this.initialPostingPolicy = const {},
+    this.initialAccessPolicy = const {},
+    this.policyOnly = false,
     this.manifestLoader,
   });
 
@@ -48,13 +54,13 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedForumHostId;
 
-  /// `posting_policy.min_post_tier` for the new board; null ⇒ no gate.
-  String? _minPostTier;
-  String _accessMode = 'public';
   String _memberCredentialPreset = 'taiwan_citizenship';
+  BoardAudienceMode _audienceMode = BoardAudienceMode.public;
   HostedIssuerManifest? _issuerManifest;
   HostedIssuerCredentialConfiguration? _credentialConfiguration;
   HostedIssuerClaimConfiguration? _claimConfiguration;
+  Map<String, Object?>? _initialCustomRequirement;
+  late final BoardAudienceMode _initialAudienceMode;
   String? _manifestError;
   var _loadingManifest = false;
 
@@ -71,11 +77,37 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
     _selectedForumHostId =
         widget.initialForumHostId ??
         (widget.forumHosts.isNotEmpty ? widget.forumHosts.first.id : null);
-    _minPostTier = widget.initialMinPostTier;
+    final initialDraft = BoardPolicyDraft.fromPolicies(
+      postingPolicy: {
+        ...widget.initialPostingPolicy,
+        if (widget.initialMinPostTier != null)
+          'min_post_tier': widget.initialMinPostTier,
+      },
+      accessPolicy: widget.initialAccessPolicy,
+    );
+    _initialAudienceMode = initialDraft.mode;
+    _initialCustomRequirement = initialDraft.customRequirement;
+    final initialIssuers = _initialCustomRequirement?['trusted_issuers'];
+    if (initialIssuers is List && initialIssuers.firstOrNull is String) {
+      _trustedIssuerController.text = initialIssuers.first as String;
+    }
+    _applyAudienceMode(initialDraft.mode);
   }
 
   bool get _showsPostingPolicy =>
-      widget.requireForumHost || widget.showPostingPolicy;
+      widget.requireForumHost || widget.showPostingPolicy || widget.policyOnly;
+
+  void _applyAudienceMode(BoardAudienceMode mode) {
+    _audienceMode = mode;
+    _memberCredentialPreset = switch (mode) {
+      BoardAudienceMode.taiwanCitizenPost => 'taiwan_citizenship',
+      BoardAudienceMode.adultPost => 'age_over_18',
+      BoardAudienceMode.memberPost || BoardAudienceMode.memberRead =>
+        'organization_membership',
+      BoardAudienceMode.customPost || BoardAudienceMode.customRead => 'custom',
+      _ => _memberCredentialPreset,
+    };
+  }
 
   @override
   void dispose() {
@@ -91,7 +123,9 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-        widget.initialTitle == null
+        widget.policyOnly
+            ? context.uiCopy(zh: '看板存取政策', en: 'Board access policy')
+            : widget.initialTitle == null
             ? context.uiCopy(zh: '建立託管看板', en: 'Create hosted board')
             : context.uiCopy(zh: '編輯託管看板', en: 'Edit hosted board'),
       ),
@@ -135,7 +169,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                 ),
                 const SizedBox(height: 16),
               ],
-              TextFormField(
+              if (!widget.policyOnly) TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
                   labelText: context.uiCopy(zh: '標題', en: 'Title'),
@@ -152,8 +186,8 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
-              TextFormField(
+              if (!widget.policyOnly) const SizedBox(height: 16),
+              if (!widget.policyOnly) TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
                   labelText: context.uiCopy(
@@ -169,116 +203,137 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
               ),
               if (_showsPostingPolicy) ...[
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String?>(
-                  initialValue: _minPostTier,
-                  items: [
-                    DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text(context.uiCopy(zh: '不限', en: 'Anyone')),
-                    ),
-                    DropdownMenuItem<String?>(
-                      value: PostingGate.verifiedHumanTier,
-                      child: Text(
-                        context.uiCopy(zh: '需真人驗證', en: 'Verified humans only'),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _minPostTier = value);
-                  },
-                  decoration: InputDecoration(
-                    labelText: context.uiCopy(
-                      zh: '額外真人門檻',
-                      en: 'Additional personhood gate',
-                    ),
-                    helperText: context.uiCopy(
-                      zh: '通常選「不限」；需要特定 VC 時請使用下方的看板存取設定。',
-                      en: 'Usually leave this as Anyone; use board access below for a specific VC.',
-                    ),
-                  ),
-                ),
-              ],
-              if (widget.requireForumHost) ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _accessMode,
+                DropdownButtonFormField<BoardAudienceMode>(
+                  key: const Key('board_audience_mode'),
+                  initialValue: _audienceMode,
                   items: [
                     DropdownMenuItem(
-                      value: 'public',
-                      child: Text(
-                        context.uiCopy(zh: '公開看板', en: 'Public board'),
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'member_post',
-                      child: Text(
-                        context.uiCopy(zh: '會員才能發文', en: 'Members can post'),
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'member_read',
+                      value: BoardAudienceMode.public,
                       child: Text(
                         context.uiCopy(
-                          zh: '會員才能發現與閱讀',
-                          en: 'Members can discover and read',
+                          zh: '所有人都能閱讀與發文',
+                          en: 'Everyone can read and post',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: BoardAudienceMode.verifiedHumanPost,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '所有人可閱讀，已驗證真人才能發文',
+                          en: 'Public read, verified humans can post',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: BoardAudienceMode.taiwanCitizenPost,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '所有人可閱讀，台灣公民才能發文',
+                          en: 'Public read, Taiwan citizens can post',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: BoardAudienceMode.adultPost,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '所有人可閱讀，年滿 18 歲才能發文',
+                          en: 'Public read, adults can post',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: BoardAudienceMode.memberPost,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '所有人可閱讀，組織會員才能發文',
+                          en: 'Public read, organization members can post',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: BoardAudienceMode.memberRead,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '只有組織會員能找到與閱讀',
+                          en: 'Organization members can discover and read',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: BoardAudienceMode.customPost,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '其他資格才能發文（進階）',
+                          en: 'Other credential for posting (advanced)',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: BoardAudienceMode.customRead,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '其他資格才能找到與閱讀（進階）',
+                          en: 'Other credential for reading (advanced)',
                         ),
                       ),
                     ),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _accessMode = value ?? 'public'),
+                  onChanged: (value) => setState(
+                    () => _applyAudienceMode(
+                      value ?? BoardAudienceMode.public,
+                    ),
+                  ),
                   decoration: InputDecoration(
-                    labelText: context.uiCopy(zh: '看板存取', en: 'Board access'),
+                    labelText: context.uiCopy(
+                      zh: '這個看板給誰使用？',
+                      en: 'Who is this board for?',
+                    ),
                     helperText: context.uiCopy(
-                      zh: '會員資格只適用於這個看板，不會提高全域信任等級。',
-                      en: 'Membership applies only to this board and never changes global reputation.',
+                      zh: '資格只適用於這個看板，不會提高全域信任等級。',
+                      en: 'Eligibility applies only to this board and never changes global reputation.',
                     ),
                   ),
                 ),
-                if (_accessMode != 'public') ...[
+                if (_memberCredentialPreset == 'custom') ...[
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: const Key('member_credential_preset'),
-                    initialValue: _memberCredentialPreset,
-                    items: [
-                      DropdownMenuItem(
-                        value: 'taiwan_citizenship',
-                        child: Text(
-                          context.uiCopy(zh: '台灣公民', en: 'Taiwan citizenship'),
-                        ),
+                  ExpansionTile(
+                    key: const Key('advanced_credential_settings'),
+                    initiallyExpanded: true,
+                    title: Text(
+                      context.uiCopy(
+                        zh: '選擇 Hosted Issuer 與資格',
+                        en: 'Choose Hosted Issuer and credential',
                       ),
-                      DropdownMenuItem(
-                        value: 'age_over_18',
-                        child: Text(
-                          context.uiCopy(zh: '年滿 18 歲', en: 'Age 18 or older'),
-                        ),
+                    ),
+                    subtitle: Text(
+                      context.uiCopy(
+                        zh: '技術欄位只在進階設定中顯示',
+                        en: 'Technical fields stay inside advanced settings',
                       ),
-                      DropdownMenuItem(
-                        value: 'custom',
-                        child: Text(
+                    ),
+                    children: [
+                    if (_initialCustomRequirement != null &&
+                        _issuerManifest == null)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.verified_outlined),
+                        title: Text(
+                          (_initialCustomRequirement!['credential_type'] ??
+                                  context.uiCopy(
+                                    zh: '目前憑證',
+                                    en: 'Current credential',
+                                  ))
+                              .toString(),
+                        ),
+                        subtitle: Text(
                           context.uiCopy(
-                            zh: '自訂憑證（進階）',
-                            en: 'Custom credential (advanced)',
+                            zh: '目前政策會原樣保留；載入新的 Issuer manifest 才會取代。',
+                            en: 'The current requirement is preserved unchanged until a new Issuer manifest is loaded.',
                           ),
                         ),
                       ),
-                    ],
-                    onChanged: (value) => setState(
-                      () => _memberCredentialPreset =
-                          value ?? 'taiwan_citizenship',
-                    ),
-                    decoration: InputDecoration(
-                      labelText: context.uiCopy(
-                        zh: '所需資格',
-                        en: 'Required credential',
-                      ),
-                      helperText: context.uiCopy(
-                        zh: 'App 會自動選擇可信簽發者與最少揭露條件。',
-                        en: 'The app selects the trusted issuer and minimum-disclosure claim.',
-                      ),
-                    ),
-                  ),
-                  if (_memberCredentialPreset == 'custom') ...[
                     const SizedBox(height: 12),
                     TextFormField(
                       key: const Key('hosted_issuer_manifest_url'),
@@ -306,8 +361,20 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                                   en: 'Load credential configurations',
                                 ),
                               ),
-                        errorText: _manifestError,
+                        errorText: _manifestError == null
+                            ? null
+                            : _manifestErrorText(context, _manifestError!),
                       ),
+                      validator: (_) {
+                        if (_issuerManifest == null &&
+                            _initialCustomRequirement == null) {
+                          return context.uiCopy(
+                            zh: '請先載入 Hosted Issuer manifest',
+                            en: 'Load a Hosted Issuer manifest first',
+                          );
+                        }
+                        return null;
+                      },
                     ),
                     if (_issuerManifest != null &&
                         _issuerManifest!.configurations.isNotEmpty) ...[
@@ -359,7 +426,15 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                               )
                               .toList(growable: false),
                           onChanged: (claim) =>
-                              setState(() => _claimConfiguration = claim),
+                              setState(() {
+                                _claimConfiguration = claim;
+                                _claimValueController.text =
+                                    claim?.allowedValues.firstOrNull
+                                        ?.toString() ??
+                                    (claim?.valueType == 'boolean'
+                                        ? 'true'
+                                        : '');
+                              }),
                           decoration: InputDecoration(
                             labelText: context.uiCopy(
                               zh: '必要條件',
@@ -368,25 +443,13 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
-                          key: const Key('credential_claim_value'),
-                          controller: _claimValueController,
-                          decoration: InputDecoration(
-                            labelText: context.uiCopy(
-                              zh: '條件值',
-                              en: 'Required value',
-                            ),
-                            helperText: context.uiCopy(
-                              zh: '只支援 manifest 允許的 equals 條件。',
-                              en: 'Only manifest-authorized equals predicates are supported.',
-                            ),
-                          ),
-                        ),
+                        _buildClaimValueField(context),
                       ],
                     ],
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _trustedIssuerController,
+                      readOnly: _issuerManifest != null,
                       decoration: InputDecoration(
                         labelText: context.uiCopy(
                           zh: '可信簽發者 DID',
@@ -395,8 +458,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                         hintText: 'did:elix:org:…',
                       ),
                       validator: (value) {
-                        if (_accessMode != 'public' &&
-                            _memberCredentialPreset == 'custom' &&
+                        if (_memberCredentialPreset == 'custom' &&
                             (value == null ||
                                 !value.trim().startsWith('did:'))) {
                           return context.uiCopy(
@@ -414,38 +476,68 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                         return null;
                       },
                     ),
-                  ],
-                  const SizedBox(height: 8),
-                  Text(
-                    _accessMode == 'member_read'
-                        ? context.uiCopy(
-                            zh: 'Forum Host 可讀取內容；內容不會進入公開搜尋或 federation。',
-                            en: 'The Forum Host can read content; it is excluded from public search and federation.',
-                          )
-                        : context.uiCopy(
-                            zh: '內容仍公開；發文時需出示會員 VC。',
-                            en: 'Content remains public; posting requires a membership VC.',
-                          ),
-                    style: Theme.of(context).textTheme.bodySmall,
+                    ],
                   ),
-                ],
-                const SizedBox(height: 8),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  enabled: false,
-                  leading: const Icon(Icons.lock_outline),
+                  ],
+                const SizedBox(height: 12),
+                Card(
+                  key: const Key('board_policy_summary'),
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.uiCopy(
+                            zh: '儲存前確認',
+                            en: 'Review before saving',
+                          ),
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(_localizedPolicySummary(context)),
+                        const SizedBox(height: 8),
+                        Text(
+                          context.uiCopy(
+                            zh: '只會驗證決策所需的最少條件；完整憑證不會交給 Forum Host。',
+                            en: 'Only the minimum claim needed for the decision is verified; the Forum Host never receives the full credential.',
+                          ),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                ExpansionTile(
+                  key: const Key('board_policy_technical_preview'),
+                  tilePadding: EdgeInsets.zero,
                   title: Text(
                     context.uiCopy(
-                      zh: '端對端加密私密看板',
-                      en: 'End-to-end encrypted board',
+                      zh: '進階技術資訊',
+                      en: 'Advanced technical details',
                     ),
                   ),
                   subtitle: Text(
                     context.uiCopy(
-                      zh: '完成外部密碼學安全審查後才會開放。',
-                      en: 'Available only after external cryptographic review.',
+                      zh: '唯讀 policy JSON',
+                      en: 'Read-only policy JSON',
                     ),
                   ),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SelectableText(
+                        canonicalPolicyJson(
+                          _currentDraft().accessPolicy(
+                            systemIssuerDid: _systemIssuerDid,
+                          ),
+                        ),
+                        key: const Key('board_policy_json_preview'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -461,37 +553,31 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               final description = _descriptionController.text.trim();
-              final memberRequirement = _memberRequirement();
-              final memberRead = _accessMode == 'member_read';
-              final memberPost = _accessMode != 'public';
-              final visibility = memberRead ? 'host_visible' : 'public';
-              final federation = memberRead ? 'disabled' : 'enabled';
-              final accessPolicy = {
-                'version': 1,
-                'discovery': memberRead ? 'credential_required' : 'public',
-                'read': {'requirement': memberRead ? 'member' : 'public'},
-                'post': {
-                  'requirement': memberPost ? 'member' : 'posting_policy',
-                },
-                'moderate': {'requirement': 'board_moderator'},
-                'requirements': memberPost ? {'member': memberRequirement} : {},
-                'capability_ttl_seconds': 300,
-                'content_visibility': visibility,
-                'federation': federation,
-              };
+              final draft = _currentDraft();
+              final accessPolicy = draft.accessPolicy(
+                systemIssuerDid: _systemIssuerDid,
+              );
+              final visibility = draft.contentVisibility;
+              final federation = draft.federationMode;
               Navigator.pop(context, {
-                'title': _titleController.text.trim(),
-                'description': description.isEmpty ? null : description,
+                if (!widget.policyOnly)
+                  'title': _titleController.text.trim(),
+                if (!widget.policyOnly)
+                  'description': description.isEmpty ? null : description,
                 if (_selectedForumHostId != null)
                   'forumHostId': _selectedForumHostId,
                 // Included (possibly null) whenever the selector is shown so
                 // edit mode can distinguish "cleared the gate" from "not
                 // editable here".
-                if (_showsPostingPolicy) 'minPostTier': _minPostTier,
-                if (widget.requireForumHost)
+                if (_showsPostingPolicy)
+                  'minPostTier': draft.effectiveMinPostTier,
+                if (_showsPostingPolicy)
+                  'postingPolicyJson': jsonEncode(draft.postingPolicy),
+                if (widget.requireForumHost || widget.policyOnly)
                   'accessPolicyJson': jsonEncode(accessPolicy),
-                if (widget.requireForumHost) 'contentVisibility': visibility,
-                if (widget.requireForumHost)
+                if (widget.requireForumHost || widget.policyOnly)
+                  'contentVisibility': visibility,
+                if (widget.requireForumHost || widget.policyOnly)
                   'federationPolicyJson': jsonEncode({'mode': federation}),
               });
             }
@@ -504,7 +590,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
 
   Future<void> _loadManifest() async {
     final uri = Uri.tryParse(_manifestUrlController.text.trim());
-    if (uri == null) {
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
       setState(() => _manifestError = 'invalid_manifest_uri');
       return;
     }
@@ -533,16 +619,179 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
     }
   }
 
+  String _manifestErrorText(BuildContext context, String code) {
+    return switch (code) {
+      'invalid_manifest_uri' => context.uiCopy(
+        zh: '請輸入有效的 HTTPS manifest URL',
+        en: 'Enter a valid HTTPS manifest URL',
+      ),
+      'manifest_unavailable' => context.uiCopy(
+        zh: '無法載入 Issuer manifest，請檢查網址與網路',
+        en: 'Could not load the Issuer manifest. Check the URL and network.',
+      ),
+      _ => context.uiCopy(
+        zh: 'Issuer manifest 格式不受支援',
+        en: 'The Issuer manifest format is not supported.',
+      ),
+    };
+  }
+
   Object _policyValue(String raw) {
     final value = raw.trim();
-    if (value == 'true') return true;
-    if (value == 'false') return false;
-    return int.tryParse(value) ?? value;
+    return switch (_claimConfiguration?.valueType) {
+      'boolean' => value == 'true',
+      'integer' => int.parse(value),
+      _ => value,
+    };
+  }
+
+  Widget _buildClaimValueField(BuildContext context) {
+    final claim = _claimConfiguration;
+    final allowedValues = claim?.allowedValues ?? const [];
+    if (allowedValues.isNotEmpty) {
+      final current = allowedValues
+          .map((value) => value.toString())
+          .contains(_claimValueController.text)
+          ? _claimValueController.text
+          : allowedValues.first.toString();
+      _claimValueController.text = current;
+      return DropdownButtonFormField<String>(
+        key: const Key('credential_claim_value'),
+        initialValue: current,
+        items: allowedValues
+            .map(
+              (value) => DropdownMenuItem(
+                value: value.toString(),
+                child: Text(value.toString()),
+              ),
+            )
+            .toList(growable: false),
+        onChanged: (value) => _claimValueController.text = value ?? current,
+        decoration: InputDecoration(
+          labelText: context.uiCopy(zh: '條件值', en: 'Required value'),
+        ),
+      );
+    }
+    if (claim?.valueType == 'boolean') {
+      final current = _claimValueController.text == 'false' ? 'false' : 'true';
+      _claimValueController.text = current;
+      return DropdownButtonFormField<String>(
+        key: const Key('credential_claim_value'),
+        initialValue: current,
+        items: [
+          DropdownMenuItem(
+            value: 'true',
+            child: Text(context.uiCopy(zh: '是', en: 'Yes')),
+          ),
+          DropdownMenuItem(
+            value: 'false',
+            child: Text(context.uiCopy(zh: '否', en: 'No')),
+          ),
+        ],
+        onChanged: (value) => _claimValueController.text = value ?? 'true',
+        decoration: InputDecoration(
+          labelText: context.uiCopy(zh: '必要條件', en: 'Required condition'),
+        ),
+      );
+    }
+    return TextFormField(
+      key: const Key('credential_claim_value'),
+      controller: _claimValueController,
+      keyboardType: claim?.valueType == 'integer'
+          ? TextInputType.number
+          : TextInputType.text,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return context.uiCopy(zh: '請輸入條件值', en: 'Enter a required value');
+        }
+        if (claim?.valueType == 'integer' &&
+            int.tryParse(value.trim()) == null) {
+          return context.uiCopy(zh: '請輸入整數', en: 'Enter an integer');
+        }
+        if (claim?.valueType == 'integer') {
+          final integer = int.parse(value.trim());
+          if (integer < 0 || integer > 1000000) {
+            return context.uiCopy(
+              zh: '整數必須介於 0 與 1,000,000',
+              en: 'Enter an integer from 0 to 1,000,000',
+            );
+          }
+        }
+        if (claim?.valueType != 'integer' &&
+            value.trim().length > 128) {
+          return context.uiCopy(
+            zh: '條件值最多 128 個字元',
+            en: 'The value must be at most 128 characters',
+          );
+        }
+        return null;
+      },
+      decoration: InputDecoration(
+        labelText: context.uiCopy(zh: '條件值', en: 'Required value'),
+        helperText: context.uiCopy(
+          zh: '值的型別由 Issuer manifest 決定，不會自動猜測。',
+          en: 'The Issuer manifest defines the value type; the app does not guess.',
+        ),
+      ),
+    );
+  }
+
+  String get _systemIssuerDid {
+    final issuerHost = Uri.parse(AppEnvironment.issuerBaseUrl).host;
+    return 'did:web:$issuerHost';
+  }
+
+  BoardPolicyDraft _currentDraft() => BoardPolicyDraft(
+    mode: _audienceMode,
+    customRequirement:
+        _audienceMode == _initialAudienceMode &&
+            _issuerManifest == null &&
+            _initialCustomRequirement != null
+        ? _initialCustomRequirement
+        : _memberCredentialPreset == 'custom'
+        ? _memberRequirement()
+        : null,
+  );
+
+  String _localizedPolicySummary(BuildContext context) {
+    return switch (_audienceMode) {
+      BoardAudienceMode.public => context.uiCopy(
+        zh: '所有人都能找到、閱讀與發文。內容公開，並允許 federation。',
+        en: 'Everyone can discover, read, and post. Content is public and federation is enabled.',
+      ),
+      BoardAudienceMode.verifiedHumanPost => context.uiCopy(
+        zh: '所有人可閱讀；只有已驗證真人可發文。內容公開，並允許 federation。',
+        en: 'Everyone can read; posting requires verified-human status. Content is public and federation is enabled.',
+      ),
+      BoardAudienceMode.taiwanCitizenPost => context.uiCopy(
+        zh: '所有人可閱讀；發文只驗證「台灣公民資格有效」。',
+        en: 'Everyone can read; posting verifies only that Taiwan citizenship eligibility is valid.',
+      ),
+      BoardAudienceMode.adultPost => context.uiCopy(
+        zh: '所有人可閱讀；發文只驗證「已年滿 18 歲」。',
+        en: 'Everyone can read; posting verifies only that the person is at least 18.',
+      ),
+      BoardAudienceMode.memberPost => context.uiCopy(
+        zh: '所有人可閱讀；發文只驗證「組織會員資格有效」。',
+        en: 'Everyone can read; posting verifies only active organization membership.',
+      ),
+      BoardAudienceMode.memberRead => context.uiCopy(
+        zh: '只有有效組織會員能找到、閱讀與發文。Forum Host 可讀內容；公開搜尋與 federation 關閉。',
+        en: 'Only active organization members can discover, read, and post. The Forum Host can read content; public search and federation are disabled.',
+      ),
+      BoardAudienceMode.customPost => context.uiCopy(
+        zh: '所有人可閱讀；發文需要所選憑證的最少條件。',
+        en: 'Everyone can read; posting requires the selected credential’s minimum claim.',
+      ),
+      BoardAudienceMode.customRead => context.uiCopy(
+        zh: '只有符合所選憑證條件者能找到、閱讀與發文；公開搜尋與 federation 關閉。',
+        en: 'Only people satisfying the selected credential claim can discover, read, and post; public search and federation are disabled.',
+      ),
+    };
   }
 
   Map<String, Object?> _memberRequirement() {
-    final issuerHost = Uri.parse(AppEnvironment.issuerBaseUrl).host;
-    final systemIssuerDid = 'did:web:$issuerHost';
+    final systemIssuerDid = _systemIssuerDid;
     if (_memberCredentialPreset == 'taiwan_citizenship') {
       return {
         'credential_type': 'TaiwanCitizenshipCredential',
@@ -560,6 +809,17 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
         'trusted_issuers': [systemIssuerDid],
         'claims': [
           {'path': 'ageOver18', 'op': 'equals', 'value': true},
+        ],
+        'holder_binding': 'required',
+        'status': {'required': true, 'max_age_seconds': 300},
+      };
+    }
+    if (_memberCredentialPreset == 'organization_membership') {
+      return {
+        'credential_type': 'PoliticalPartyMembershipCredential',
+        'trusted_issuers': [systemIssuerDid],
+        'claims': [
+          {'path': 'membership', 'op': 'equals', 'value': true},
         ],
         'holder_binding': 'required',
         'status': {'required': true, 'max_age_seconds': 300},

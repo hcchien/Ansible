@@ -420,51 +420,11 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     if conn.halted do
       conn
     else
-      title = Map.get(params, "title")
-
-      if is_binary(title) and String.trim(title) != "" do
-        with {:ok, board} <- resolve_web_thread_board(params),
-             # Tier gate runs at acceptance time on the session DID — cookie
-             # writes get the identical posting_policy check as signed ops.
-             :ok <- PostingGate.authorize_board_post(conn, board, conn.assigns.verified_did),
-             # Lock gate: posting into a locked thread is rejected at the
-             # same chokepoint, with the lock's reason code.
-             :ok <- authorize_web_thread_lock(params),
-             :ok <- AbuseDetector.check_did(conn.assigns.verified_did) do
-          send_json(conn, 202, %{
-            accepted: true,
-            subject_did: conn.assigns.verified_did,
-            trust_tier: conn.assigns.web_session.trust_tier
-          })
-        else
-          {:error, :board_not_found} ->
-            send_json(conn, 404, %{error: "board_not_found"})
-
-          {:error, :posting_requires_tier, required_tier, current_tier} ->
-            send_json(conn, 403, %{
-              error: "posting_requires_tier",
-              required_tier: required_tier,
-              current_tier: current_tier
-            })
-
-          {:error, :thread_locked, reason_code} ->
-            send_json(conn, 403, %{error: "thread_locked", reason_code: reason_code})
-
-          {:error, :rate_limited, detail} ->
-            send_json(conn, 429, %{error: "rate_limited", detail: detail})
-
-          {:error, reason}
-          when reason in [
-                 :board_capability_required,
-                 :invalid_board_capability,
-                 :capability_expired,
-                 :board_capability_replay
-               ] ->
-            send_json(conn, 403, %{error: Atom.to_string(reason)})
-        end
-      else
-        send_json(conn, 422, %{error: "invalid_thread"})
-      end
+      send_json(conn, 409, %{
+        error: "passkey_author_proof_required",
+        challenge_endpoint: "/api/v1/web-publication/challenges",
+        operation_endpoint: "/api/v1/web-publication/operations"
+      })
     end
   end
 

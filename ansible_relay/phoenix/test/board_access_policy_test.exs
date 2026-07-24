@@ -99,6 +99,54 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicyTest do
     assert :ok = BoardAccessPolicy.validate(policy)
   end
 
+  test "all App board-policy editor presets satisfy the Relay v1 schema" do
+    public = app_policy(nil, false)
+
+    taiwan_citizen =
+      app_requirement(
+        "TaiwanCitizenshipCredential",
+        "citizenshipVerified",
+        true
+      )
+
+    adult =
+      app_requirement(
+        "AgeOver18Credential",
+        "ageOver18",
+        true
+      )
+
+    organization_member =
+      app_requirement(
+        "PoliticalPartyMembershipCredential",
+        "membership",
+        true
+      )
+
+    custom =
+      app_requirement(
+        "OrganizationMembershipCredential",
+        "membershipActive",
+        true
+      )
+      |> Map.put("credential_configuration_id", "party-member-v2")
+
+    policies = [
+      public,
+      # verified-human posting uses the same access JSON as public; its
+      # min_post_tier lives in the separately validated posting_policy.
+      public,
+      app_policy(taiwan_citizen, false),
+      app_policy(adult, false),
+      app_policy(organization_member, false),
+      app_policy(organization_member, true),
+      app_policy(custom, false),
+      app_policy(custom, true)
+    ]
+
+    assert Enum.all?(policies, &(BoardAccessPolicy.validate(&1) == :ok))
+  end
+
   defp membership_policy do
     requirement = %{
       "credential_type" => "PoliticalPartyMembershipCredential",
@@ -115,5 +163,27 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicyTest do
     |> Map.put("requirements", %{"member" => requirement})
     |> Map.put("content_visibility", "host_visible")
     |> Map.put("federation", "disabled")
+  end
+
+  defp app_policy(nil, false), do: BoardAccessPolicy.default()
+
+  defp app_policy(requirement, restricted?) do
+    BoardAccessPolicy.default()
+    |> Map.put("discovery", if(restricted?, do: "credential_required", else: "public"))
+    |> Map.put("read", %{"requirement" => if(restricted?, do: "member", else: "public")})
+    |> Map.put("post", %{"requirement" => "member"})
+    |> Map.put("requirements", %{"member" => requirement})
+    |> Map.put("content_visibility", if(restricted?, do: "host_visible", else: "public"))
+    |> Map.put("federation", if(restricted?, do: "disabled", else: "enabled"))
+  end
+
+  defp app_requirement(credential_type, claim_path, claim_value) do
+    %{
+      "credential_type" => credential_type,
+      "trusted_issuers" => ["did:web:issuer.example"],
+      "claims" => [%{"path" => claim_path, "op" => "equals", "value" => claim_value}],
+      "holder_binding" => "required",
+      "status" => %{"required" => true, "max_age_seconds" => 300}
+    }
   end
 end

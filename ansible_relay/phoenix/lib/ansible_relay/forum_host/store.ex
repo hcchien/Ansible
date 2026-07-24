@@ -4,6 +4,7 @@ defmodule AnsibleRelay.ForumHost.Store do
   import Ecto.Query
 
   alias AnsibleRelay.Repo
+  alias AnsibleRelay.ForumHost.ReceiptSigner
 
   alias AnsibleRelay.Db.{
     ForumHostAcceptedIntent,
@@ -394,7 +395,15 @@ defmodule AnsibleRelay.ForumHost.Store do
   end
 
   defp host_public_keys do
-    Application.get_env(:ansible_relay, :forum_host_public_keys, [])
+    configured = Application.get_env(:ansible_relay, :forum_host_public_keys, [])
+
+    case ReceiptSigner.public_key() do
+      {:ok, receipt_key} ->
+        [receipt_key | Enum.reject(configured, &(&1["key_id"] == receipt_key["key_id"]))]
+
+      {:error, _reason} ->
+        configured
+    end
   end
 
   defp accepted_session_issuers do

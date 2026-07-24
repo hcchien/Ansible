@@ -89,6 +89,15 @@ void main() {
       final finish = bodies[2];
       expect(finish['did_signature'], 'aa' * 64);
       expect(finish['challenge_id'], 'register-1');
+      final delegation = finish['delegation'] as Map<String, dynamic>;
+      expect(delegation['subject_did'], 'did:elix:alice');
+      expect(delegation['rp_id'], 'elix.cool');
+      expect(delegation['issued_at'], '2026-07-21T00:00:00.000Z');
+      expect(delegation['expires_at'], '2026-10-19T00:00:00.000Z');
+      expect(
+        delegation['allowed_actions'],
+        containsAll(['forum.publish', 'forum.reply', 'forum.edit', 'forum.delete', 'forum.react']),
+      );
     },
   );
 
@@ -155,7 +164,10 @@ class _FakeWebAuthnPlatform implements WebAuthnPlatform {
 class _FakeDidSigner implements DidSigner {
   @override
   Future<Ed25519Signature> sign(List<int> message) async {
-    expect(utf8.decode(message), 'register-1.Y3JlZA');
+    final delegation = jsonDecode(utf8.decode(message)) as Map<String, dynamic>;
+    expect(delegation['type'], 'io.trisaura.identity.webCredentialDelegation');
+    expect(delegation['challenge_id'], 'register-1');
+    expect(delegation['credential_id_hash'], isNotEmpty);
     return Ed25519Signature('aa' * 64);
   }
 }

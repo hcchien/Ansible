@@ -72,6 +72,8 @@ export function createForumUiApp({
       } else if (action === 'cancel-thread-draft') {
         cancelThreadDraft();
       } else if (action === 'submit-thread-draft') {
+        reviewThreadDraft(actionElement);
+      } else if (action === 'confirm-thread-draft') {
         await submitThreadDraft(actionElement);
       } else if (action === 'submit-report') {
         await submitReport(actionElement);
@@ -218,11 +220,25 @@ export function createForumUiApp({
     render();
   }
 
+  function reviewThreadDraft(actionElement) {
+    const title = String(readThreadDraftTitle(actionElement)).trim();
+    if (!title) return;
+
+    threadDraft = {
+      ...threadDraft,
+      boardId: currentBoardId(actionElement),
+      title,
+      reviewing: true,
+    };
+    uiError = null;
+    render();
+  }
+
   async function submitThreadDraft(actionElement) {
     if (!forumDataAdapter?.submitThreadDraft) return;
 
     try {
-      const title = readThreadDraftTitle(actionElement);
+      const title = threadDraft?.title ?? readThreadDraftTitle(actionElement);
       const trimmedTitle = String(title).trim();
       if (!trimmedTitle) return;
 

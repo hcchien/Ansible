@@ -297,6 +297,18 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ForumHostController.create_web_thread(conn, conn.body_params)
   end
 
+  post "/api/v1/web-publication/challenges" do
+    AnsibleRelay.Web.Controllers.WebPublicationController.challenge(conn, conn.body_params)
+  end
+
+  post "/api/v1/web-publication/operations" do
+    AnsibleRelay.Web.Controllers.WebPublicationController.create(conn, conn.body_params)
+  end
+
+  get "/api/v1/web-publication/operations/:operation_id" do
+    AnsibleRelay.Web.Controllers.WebPublicationController.show(conn, operation_id)
+  end
+
   # Forum Host — content reporting (signed-intent and web-session rails)
   post "/api/v1/forum-host/reports" do
     AnsibleRelay.Web.Controllers.ForumHostController.create_report(conn, conn.body_params)
@@ -446,6 +458,21 @@ defmodule AnsibleRelay.Web.Router do
 
   post "/api/v2/webauthn/authenticate/exchange" do
     AnsibleRelay.Web.Controllers.WebauthnSyncController.exchange(conn, conn.body_params)
+  end
+
+  get "/api/v2/webauthn/credentials" do
+    AnsibleRelay.Web.Controllers.WebauthnSyncController.list_credentials(
+      conn,
+      conn.query_params
+    )
+  end
+
+  post "/api/v2/webauthn/credentials/:credential_id/revoke" do
+    AnsibleRelay.Web.Controllers.WebauthnSyncController.revoke_credential(
+      conn,
+      credential_id,
+      conn.body_params
+    )
   end
 
   # V2 — Reputation / VP presentation

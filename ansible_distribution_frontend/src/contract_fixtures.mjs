@@ -346,6 +346,9 @@ export function createFixtureForumHostClient({
     async createHostedWebThread() {
       return CONTRACT_FIXTURES.forum.threadAccepted;
     },
+    async createPasskeySignedThread() {
+      return CONTRACT_FIXTURES.forum.threadAccepted;
+    },
     async submitWebReport() {
       if (reportOutcome === 'rate_limited') {
         throw new RelayApiError('rate_limited', { status: 429, code: 'rate_limited' });

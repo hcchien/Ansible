@@ -20,6 +20,15 @@ defmodule AnsibleRelay.IdentityWritePolicy do
 
   def allowed?(_algorithm), do: false
 
+  @doc """
+  Content-bound WebAuthn author proofs are a separate P-256 verification rail.
+  They are accepted only after DID delegation and UV assertion verification;
+  this does not make the ordinary publication-intent endpoint accept WebAuthn
+  assertion blobs as direct signatures.
+  """
+  def allowed_author_proof?("webauthn-p256-sha256"), do: true
+  def allowed_author_proof?(algorithm), do: allowed?(algorithm)
+
   @spec validate(term()) :: :ok | {:error, :unsupported_signing_algorithm}
   def validate(algorithm) do
     if allowed?(algorithm), do: :ok, else: {:error, :unsupported_signing_algorithm}

@@ -881,6 +881,25 @@ function renderThreadDraftForm(draft) {
   if (!draft) return '';
 
   const boardId = draft.boardId ?? '';
+  const review = draft.reviewing
+    ? `
+      <div class="thread-signing-review" role="note">
+        <strong>${escapeHtml(t('compose.signingReview.title'))}</strong>
+        <p>${escapeHtml(t('compose.signingReview.body'))}</p>
+        <dl>
+          <div><dt>${escapeHtml(t('compose.signingReview.action'))}</dt><dd>${escapeHtml(t('compose.signingReview.publishThread'))}</dd></div>
+          <div><dt>${escapeHtml(t('common.board'))}</dt><dd>#${escapeHtml(boardId)}</dd></div>
+          <div><dt>${escapeHtml(t('compose.threadDraft.titleLabel'))}</dt><dd>${escapeHtml(draft.title ?? '')}</dd></div>
+          <div><dt>${escapeHtml(t('compose.signingReview.visibility'))}</dt><dd>${escapeHtml(t('compose.signingReview.publicFederated'))}</dd></div>
+        </dl>
+      </div>
+    `
+    : `
+      <label class="thread-draft-label">
+        <span>${escapeHtml(t('compose.threadDraft.titleLabel'))}</span>
+        <input type="text" data-thread-draft-title value="${escapeAttribute(draft.title ?? '')}" placeholder="${escapeAttribute(t('compose.threadDraft.titlePlaceholder'))}" autocomplete="off" />
+      </label>
+    `;
 
   return `
     <section class="card thread-draft-form" data-thread-draft-form data-board-id="${escapeAttribute(boardId)}" aria-labelledby="thread-draft-title">
@@ -888,13 +907,10 @@ function renderThreadDraftForm(draft) {
         <h3 id="thread-draft-title">${escapeHtml(t('compose.threadDraft.title'))}</h3>
         ${boardId ? `<span class="label-mono">#${escapeHtml(boardId)}</span>` : ''}
       </div>
-      <label class="thread-draft-label">
-        <span>${escapeHtml(t('compose.threadDraft.titleLabel'))}</span>
-        <input type="text" data-thread-draft-title value="${escapeAttribute(draft.title ?? '')}" placeholder="${escapeAttribute(t('compose.threadDraft.titlePlaceholder'))}" autocomplete="off" />
-      </label>
+      ${review}
       <div class="thread-draft-actions">
         <button class="secondary-action" type="button" data-action="cancel-thread-draft">${escapeHtml(t('common.cancel'))}</button>
-        <button class="primary-action" type="button" data-action="submit-thread-draft" data-board-id="${escapeAttribute(boardId)}">${escapeHtml(t('common.publish'))}</button>
+        <button class="primary-action" type="button" data-action="${draft.reviewing ? 'confirm-thread-draft' : 'submit-thread-draft'}" data-board-id="${escapeAttribute(boardId)}">${escapeHtml(draft.reviewing ? t('compose.signingReview.confirm') : t('common.publish'))}</button>
       </div>
     </section>
   `;

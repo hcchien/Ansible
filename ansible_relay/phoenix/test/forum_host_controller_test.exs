@@ -1024,7 +1024,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert response.status == 403
   end
 
-  test "web session with forum:post can create a hosted web thread" do
+  test "legacy cookie-only web thread creation requires passkey author proof" do
     did = "did:plc:forum23456789"
     token = approved_session_token(["forum:read", "forum:post"], did)
 
@@ -1035,11 +1035,10 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
         [{"authorization", "Bearer #{token}"}]
       )
 
-    assert response.status == 202
+    assert response.status == 409
     body = Jason.decode!(response.resp_body)
-    assert body["accepted"] == true
-    assert body["subject_did"] == did
-    assert body["trust_tier"] == "self_custody_did"
+    assert body["error"] == "passkey_author_proof_required"
+    assert body["challenge_endpoint"] == "/api/v1/web-publication/challenges"
   end
 
   test "web thread creation rejects web session for a different audience" do
@@ -1061,7 +1060,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert Jason.decode!(response.resp_body)["error"] == "audience_mismatch"
   end
 
-  test "web thread creation accepts a web session with a loopback-alias audience" do
+  test "legacy web thread route accepts loopback audience but still requires passkey proof" do
     # Relay audience is http://localhost:4001; a session bound to the 127.0.0.1
     # alias must still pass the audience check.
     did = "did:plc:loopbackaudience23456789"
@@ -1080,11 +1079,11 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
         [{"authorization", "Bearer #{token}"}]
       )
 
-    assert response.status == 202
-    assert Jason.decode!(response.resp_body)["accepted"] == true
+    assert response.status == 409
+    assert Jason.decode!(response.resp_body)["error"] == "passkey_author_proof_required"
   end
 
-  test "web thread creation is rate limited across sessions for the same DID" do
+  test "legacy web thread route is rejected before publication rate limiting" do
     case AbuseDetector.start_link([]) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> AbuseDetector.reset()
@@ -1120,9 +1119,9 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
         [{"authorization", "Bearer #{token}"}]
       )
 
-    assert first.status == 202
-    assert second.status == 429
-    assert Jason.decode!(second.resp_body)["error"] == "rate_limited"
+    assert first.status == 409
+    assert second.status == 409
+    assert Jason.decode!(second.resp_body)["error"] == "passkey_author_proof_required"
   end
 
   # ---- posting_policy["min_post_tier"] gate ----
@@ -1333,7 +1332,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
              "external_inclusion_conflicts_with_trust_gate"
   end
 
-  test "web thread creation in a gated board rejects a basic session DID with the 403 contract" do
+  test "legacy web thread creation in a gated board still requires passkey proof" do
     board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
     did = "did:plc:gatedbasic#{System.unique_integer([:positive])}"
     token = approved_session_token(["forum:read", "forum:post"], did)
@@ -1345,16 +1344,11 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
         [{"authorization", "Bearer #{token}"}]
       )
 
-    assert response.status == 403
-
-    assert Jason.decode!(response.resp_body) == %{
-             "error" => "posting_requires_tier",
-             "required_tier" => "verified_human",
-             "current_tier" => "basic"
-           }
+    assert response.status == 409
+    assert Jason.decode!(response.resp_body)["error"] == "passkey_author_proof_required"
   end
 
-  test "web thread creation in a gated board accepts a verified_human session DID" do
+  test "legacy web thread creation rejects even a verified_human session without passkey proof" do
     board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
     did = "did:plc:gatedhuman#{System.unique_integer([:positive])}"
     seed_reputation_tier(did, "verified_human")
@@ -1367,11 +1361,11 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
         [{"authorization", "Bearer #{token}"}]
       )
 
-    assert response.status == 202
-    assert Jason.decode!(response.resp_body)["accepted"] == true
+    assert response.status == 409
+    assert Jason.decode!(response.resp_body)["error"] == "passkey_author_proof_required"
   end
 
-  test "web thread creation in an ungated board stays open to a basic session DID" do
+  test "legacy web thread creation in an ungated board still requires passkey proof" do
     board_id = insert_hosted_board(%{"min_trust_tier" => "self_custody_did"})
     did = "did:plc:ungatedbasic#{System.unique_integer([:positive])}"
     token = approved_session_token(["forum:read", "forum:post"], did)
@@ -1383,10 +1377,10 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
         [{"authorization", "Bearer #{token}"}]
       )
 
-    assert response.status == 202
+    assert response.status == 409
   end
 
-  test "web thread creation rejects an unknown board_id" do
+  test "legacy web thread route does not inspect board payload before passkey proof" do
     token = approved_session_token(["forum:read", "forum:post"])
 
     response =
@@ -1396,8 +1390,8 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
         [{"authorization", "Bearer #{token}"}]
       )
 
-    assert response.status == 404
-    assert Jason.decode!(response.resp_body)["error"] == "board_not_found"
+    assert response.status == 409
+    assert Jason.decode!(response.resp_body)["error"] == "passkey_author_proof_required"
   end
 
   defp restore_env(key, nil), do: Application.delete_env(:ansible_relay, key)

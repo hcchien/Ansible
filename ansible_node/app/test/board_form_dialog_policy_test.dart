@@ -43,7 +43,8 @@ void main() {
 
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    expect(find.text('公開看板'), findsOneWidget);
+    expect(find.text('所有人都能閱讀與發文'), findsOneWidget);
+    expect(find.byKey(const Key('board_policy_summary')), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField).first, 'Public board');
     await tester.tap(find.text('儲存'));
@@ -98,17 +99,12 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, 'Members');
-    await tester.ensureVisible(find.text('公開看板'));
-    await tester.tap(find.text('公開看板'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('會員才能發文').last);
-    await tester.pumpAndSettle();
     await tester.ensureVisible(
-      find.byKey(const Key('member_credential_preset')),
+      find.byKey(const Key('board_audience_mode')),
     );
-    await tester.tap(find.byKey(const Key('member_credential_preset')));
+    await tester.tap(find.byKey(const Key('board_audience_mode')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('自訂憑證（進階）').last);
+    await tester.tap(find.text('其他資格才能發文（進階）').last);
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('hosted_issuer_manifest_url')),
@@ -170,13 +166,14 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).first, 'Taiwan board');
-      await tester.ensureVisible(find.text('公開看板'));
-      await tester.tap(find.text('公開看板'));
+      await tester.ensureVisible(
+        find.byKey(const Key('board_audience_mode')),
+      );
+      await tester.tap(find.byKey(const Key('board_audience_mode')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('會員才能發文').last);
+      await tester.tap(find.text('所有人可閱讀，台灣公民才能發文').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('台灣公民'), findsOneWidget);
       expect(find.byKey(const Key('hosted_issuer_manifest_url')), findsNothing);
       expect(find.text('可信簽發者 DID'), findsNothing);
 
@@ -215,6 +212,7 @@ class _FakeManifestLoader implements HostedIssuerManifestLoader {
             HostedIssuerClaimConfiguration(
               path: 'membershipActive',
               allowedOperators: {'equals'},
+              valueType: 'boolean',
             ),
           ],
         ),

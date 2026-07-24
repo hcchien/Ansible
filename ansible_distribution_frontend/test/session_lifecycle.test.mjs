@@ -123,6 +123,9 @@ test('starts app login and exposes pending challenge state for the future UI', a
     'forum:read',
     'forum:post',
     'forum:reply',
+    'forum:edit',
+    'forum:delete',
+    'forum:react',
     'identity:display',
   ]);
   assert.equal(state.status, 'login_pending');
@@ -130,6 +133,9 @@ test('starts app login and exposes pending challenge state for the future UI', a
     'forum:read',
     'forum:post',
     'forum:reply',
+    'forum:edit',
+    'forum:delete',
+    'forum:react',
     'identity:display',
   ]);
   assert.deepEqual(state.viewModel.challenge, {

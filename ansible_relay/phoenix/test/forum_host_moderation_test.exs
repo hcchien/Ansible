@@ -604,7 +604,7 @@ defmodule AnsibleRelay.Web.ForumHostModerationTest do
            }
   end
 
-  test "locked thread rejects new posts at the web-session chokepoint" do
+  test "locked thread legacy web route requires passkey author proof" do
     {board_id, _owner_did, owner_token} = moderator_context()
     thread_id = "thread-web-locked-#{System.unique_integer([:positive])}"
 
@@ -619,15 +619,11 @@ defmodule AnsibleRelay.Web.ForumHostModerationTest do
         auth(token)
       )
 
-    assert response.status == 403
-
-    assert Jason.decode!(response.resp_body) == %{
-             "error" => "thread_locked",
-             "reason_code" => "spam"
-           }
+    assert response.status == 409
+    assert Jason.decode!(response.resp_body)["error"] == "passkey_author_proof_required"
   end
 
-  test "unlock_thread restores posting and clears the public lock state" do
+  test "unlock_thread clears public lock state but legacy web route remains disabled" do
     {board_id, _owner_did, owner_token} = moderator_context()
     thread_id = "thread-unlock-#{System.unique_integer([:positive])}"
 
@@ -643,7 +639,7 @@ defmodule AnsibleRelay.Web.ForumHostModerationTest do
         auth(token)
       )
 
-    assert response.status == 202
+    assert response.status == 409
 
     state = get_json("/api/v1/forum-host/boards/#{board_id}/moderation-state")
     assert Jason.decode!(state.resp_body)["locked_threads"] == []

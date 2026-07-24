@@ -14,6 +14,7 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
          :ok <- require_audience(session, Keyword.get(opts, :audience)) do
       conn
       |> assign(:web_session, session)
+      |> assign(:web_session_id, session_id(token))
       |> assign(:verified_did, session.subject_did)
     else
       {:error, :missing_scope} ->
@@ -25,6 +26,11 @@ defmodule AnsibleRelay.Web.Plugs.VerifyWebSession do
       _ ->
         send_error(conn, 401, "invalid_web_session")
     end
+  end
+
+  defp session_id(token) do
+    :crypto.hash(:sha256, token)
+    |> Base.url_encode64(padding: false)
   end
 
   defp session_token(conn) do

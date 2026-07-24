@@ -104,6 +104,35 @@ Specs now align with the break-glass model:
 - Any legally required retention path must be documented, scoped, encrypted,
   time-limited, audit-trailed, and user-visible when safe.
 
+### First-Party Web Publication Author Proof
+
+Status: Implemented, pending production ceremony verification.
+
+The first-party web publication path now requires a fresh, UV WebAuthn P-256
+assertion bound to a canonical operation hash and the current app-approved web
+session. The App creates a time-bounded DID-signed credential delegation;
+Forum Host persists an immutable accepted operation and signs only an
+acceptance receipt; Relay sync, AppView, and federation preserve the original
+operation and proof provenance. The former cookie-only thread endpoint fails
+closed with `passkey_author_proof_required`.
+
+This does not raise trust tier, disclose credential claims, or turn the Forum
+Host receipt into an author signature. Private visibility is excluded from the
+rail. Credential listing is session-bound and revocation requires a root DID
+signature.
+
+Production enablement remains gated on running the Relay and App test suites in
+an environment with Elixir and Flutter toolchains, configuring the exact
+production RP ID/origin and stable Forum Host receipt key, and completing a
+browser ceremony test with a real platform authenticator.
+
+Constitution rules affected:
+
+- Identity autonomy.
+- Data autonomy and minimization.
+- Local-first sync and federation.
+- Server non-impersonation.
+
 ## Remaining Gaps
 
 ### Hardware-Backed Key Storage And Reduced-Trust Mode

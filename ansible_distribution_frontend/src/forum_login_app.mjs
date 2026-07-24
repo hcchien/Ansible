@@ -9,6 +9,9 @@ export const DEFAULT_LOGIN_SCOPES = Object.freeze([
   'forum:read',
   'forum:post',
   'forum:reply',
+  'forum:edit',
+  'forum:delete',
+  'forum:react',
   'identity:display',
 ]);
 

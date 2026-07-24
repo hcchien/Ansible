@@ -1550,10 +1550,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       orElse: () => forumHosts.first,
     );
     final title = result['title']!;
-    final minPostTier = result['minPostTier'];
-    final postingPolicy = minPostTier == null
-        ? null
-        : <String, Object?>{'min_post_tier': minPostTier};
+    final postingPolicy = Map<String, Object?>.from(
+      jsonDecode(result['postingPolicyJson']!) as Map,
+    );
     final accessPolicy = Map<String, Object?>.from(
       jsonDecode(result['accessPolicyJson']!) as Map,
     );
@@ -1570,7 +1569,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       targetForumHost: forumHost.url,
       title: title,
       description: result['description'],
-      postingPolicy: postingPolicy,
+      postingPolicy: postingPolicy.isEmpty ? null : postingPolicy,
       accessPolicy: accessPolicy,
       contentVisibility: contentVisibility,
       federationPolicy: federationPolicy,

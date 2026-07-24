@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ansible_did/ansible_did.dart';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:passkeys/authenticator.dart';
 import 'package:passkeys/types.dart';
@@ -132,13 +133,52 @@ class SyncCapabilityService {
     final credential = await _platform.register(_publicKeyOptions(challenge));
     final rawId = (credential['rawId'] ?? credential['id']) as String;
     final challengeId = challenge['challenge_id'] as String;
-    final didProof = await _didSigner.sign(utf8.encode('$challengeId.$rawId'));
+    final credentialId = base64Url.decode(base64Url.normalize(rawId));
+    final credentialIdHash = sha256.convert(credentialId).toString();
+    final delegationId =
+        'wcd_${sha256.convert(utf8.encode('$_holderDid\u0000$rawId')).toString().substring(0, 32)}';
+    final issuedAt = _now().toUtc();
+    final delegation = <String, Object?>{
+      'type': 'io.trisaura.identity.webCredentialDelegation',
+      'version': 1,
+      'delegation_id': delegationId,
+      'challenge_id': challengeId,
+      'subject_did': _holderDid,
+      'credential_id_hash': credentialIdHash,
+      'rp_id': (challenge['publicKey'] as Map)['rp']['id'] as String,
+      'issued_at': issuedAt.toIso8601String(),
+      'expires_at': issuedAt.add(const Duration(days: 90)).toIso8601String(),
+      'allowed_actions': const [
+        'forum.publish',
+        'forum.reply',
+        'forum.edit',
+        'forum.delete',
+        'forum.react',
+        'forum.moderate',
+      ],
+    };
+    final didProof = await _didSigner.sign(
+      utf8.encode(_canonicalJson(delegation)),
+    );
     await _post('/api/v2/webauthn/register/finish', {
       'did': _holderDid,
       'challenge_id': challengeId,
       'credential': credential,
       'did_signature': didProof.hex,
+      'delegation': delegation,
     });
+  }
+
+  String _canonicalJson(Object? value) {
+    if (value is Map) {
+      final entries = value.entries.toList()
+        ..sort((left, right) => left.key.toString().compareTo(right.key.toString()));
+      return '{${entries.map((entry) => '${jsonEncode(entry.key.toString())}:${_canonicalJson(entry.value)}').join(',')}}';
+    }
+    if (value is List) {
+      return '[${value.map(_canonicalJson).join(',')}]';
+    }
+    return jsonEncode(value);
   }
 
   Map<String, dynamic> _publicKeyOptions(Map<String, dynamic> body) {

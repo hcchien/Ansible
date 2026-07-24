@@ -8,6 +8,10 @@ defmodule AnsibleRelay.Db.WebauthnChallenge do
     field(:kind, :string)
     field(:scope, :string)
     field(:wax_challenge, :binary)
+    field(:session_id, :string)
+    field(:operation_id, :string)
+    field(:operation_hash, :string)
+    field(:binding, :map)
     field(:expires_at, :utc_datetime_usec)
     field(:consumed_at, :utc_datetime_usec)
     timestamps(type: :utc_datetime_usec, updated_at: false)
@@ -15,7 +19,19 @@ defmodule AnsibleRelay.Db.WebauthnChallenge do
 
   def changeset(row, attrs) do
     row
-    |> cast(attrs, [:challenge_id, :did, :kind, :scope, :wax_challenge, :expires_at, :consumed_at])
+    |> cast(attrs, [
+      :challenge_id,
+      :did,
+      :kind,
+      :scope,
+      :wax_challenge,
+      :session_id,
+      :operation_id,
+      :operation_hash,
+      :binding,
+      :expires_at,
+      :consumed_at
+    ])
     |> validate_required([:challenge_id, :did, :kind, :scope, :wax_challenge, :expires_at])
   end
 end
