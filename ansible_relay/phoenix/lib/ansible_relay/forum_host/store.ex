@@ -317,25 +317,28 @@ defmodule AnsibleRelay.ForumHost.Store do
         Map.get(attrs, "canonical_board_uri", "#{base_url()}/boards/#{slug}")
       )
 
-    %ForumHostBoard{}
-    |> ForumHostBoard.changeset(changes)
-    |> Repo.insert!(
-      on_conflict:
-        {:replace,
-         [
-           :slug,
-           :canonical_board_uri,
-           :title,
-           :description,
-           :language,
-           :tags,
-           :permissions,
-           :posting_policy,
-           :moderation_policy,
-           :updated_at
-         ]},
-      conflict_target: :hosted_board_id
-    )
+    board =
+      %ForumHostBoard{}
+      |> ForumHostBoard.changeset(changes)
+      |> Repo.insert!(
+        on_conflict:
+          {:replace,
+           [
+             :slug,
+             :canonical_board_uri,
+             :title,
+             :description,
+             :language,
+             :tags,
+             :permissions,
+             :posting_policy,
+             :moderation_policy,
+             :updated_at
+           ]},
+        conflict_target: :hosted_board_id
+      )
+
+    ensure_canonical_board_uri!(board)
   end
 
   defp upsert_seed_announcement(attrs) do
@@ -523,7 +526,7 @@ defmodule AnsibleRelay.ForumHost.Store do
     |> Repo.insert()
     |> case do
       {:ok, board} ->
-        {:ok, board}
+        {:ok, ensure_canonical_board_uri!(board)}
 
       {:error, changeset} ->
         if slug_conflict?(changeset) do
@@ -586,6 +589,19 @@ defmodule AnsibleRelay.ForumHost.Store do
       slug: slug,
       canonical_board_uri: "#{base_url()}/boards/#{slug}"
     })
+  end
+
+  defp ensure_canonical_board_uri!(%ForumHostBoard{board_id: board_id} = board)
+       when is_integer(board_id) do
+    canonical_board_uri = "#{base_url()}/boards/#{board_id}"
+
+    if board.canonical_board_uri == canonical_board_uri do
+      board
+    else
+      board
+      |> Ecto.Changeset.change(canonical_board_uri: canonical_board_uri)
+      |> Repo.update!()
+    end
   end
 
   defp fetch_board_for_creator(board_id, author_did) do

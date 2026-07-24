@@ -136,7 +136,8 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
 
     board = Enum.find(body["boards"], &(&1["hosted_board_id"] == "general"))
     assert board["hosted_board_id"] == "general"
-    assert board["canonical_board_uri"] == "http://localhost:4001/boards/general"
+    assert is_integer(board["board_id"])
+    assert board["canonical_board_uri"] == "http://localhost:4001/boards/#{board["board_id"]}"
   end
 
   test "GET /api/v1/forum-host/announcements returns host-owned announcements" do

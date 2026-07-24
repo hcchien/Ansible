@@ -16,6 +16,20 @@ defmodule AnsibleAppview.Ingest.RelayClient do
     end
   end
 
+  @doc "Fetches the Forum Host board registry from this AppView's relay."
+  @spec fetch_hosted_boards(String.t()) :: {:ok, [map()]} | {:error, term()}
+  def fetch_hosted_boards(base_url) do
+    url = "#{String.trim_trailing(base_url, "/")}/api/v1/forum-host/boards"
+
+    with {:ok, body} <- AnsibleAppview.Ingest.SafeHttp.get(url, "application/json"),
+         {:ok, %{"boards" => boards}} when is_list(boards) <- Jason.decode(body) do
+      {:ok, boards}
+    else
+      {:ok, _} -> {:error, :unexpected_body}
+      error -> error
+    end
+  end
+
   defp decode(body) do
     case Jason.decode(body) do
       {:ok, %{"ops" => ops} = map} when is_list(ops) ->

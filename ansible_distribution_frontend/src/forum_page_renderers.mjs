@@ -165,7 +165,7 @@ function renderThreadDetail(viewModel, uiState = {}) {
   }
 
   const thread = viewModel.thread;
-  const boardId = board.slug || board.id || viewModel.route?.params?.boardId || '';
+  const boardId = board.id || viewModel.route?.params?.boardId || '';
   const boardHref = `#/boards/${encodeURIComponent(boardId)}`;
 
   if (!thread) {
@@ -444,7 +444,7 @@ function renderThreadMiniAction(kind, count) {
 }
 
 function renderThreadContextRail(viewModel, board = {}) {
-  const boardId = board.slug || board.id || '';
+  const boardId = board.id || '';
   const boardTitle = board.title || board.id || t('common.board');
   const href = boardId ? `#/boards/${encodeURIComponent(boardId)}` : '#/boards';
   const permission = renderPermissionLabel(viewModel);
@@ -999,7 +999,7 @@ function renderRightRail(viewModel, boards) {
     <aside class="right-rail" aria-label="${escapeAttribute(t('common.feedContextAria'))}">
       <section class="side-panel">
         <p class="section-label">${escapeHtml(t('home.subscribedBoards'))}</p>
-        ${boards.length ? boards.slice(0, 4).map((board) => `<a href="#/boards/${encodeURIComponent(board.slug || board.id || '')}">#${escapeHtml(board.title || board.id)}</a>`).join('') : `<span>${escapeHtml(t('common.noBoardsYet'))}</span>`}
+        ${boards.length ? boards.slice(0, 4).map((board) => `<a href="#/boards/${encodeURIComponent(board.id || '')}">#${escapeHtml(board.title || board.id)}</a>`).join('') : `<span>${escapeHtml(t('common.noBoardsYet'))}</span>`}
       </section>
       <section class="side-note">
         ${escapeHtml(t('home.feedNote'))}
@@ -1023,14 +1023,14 @@ function renderRelayFeed(boards, viewModel) {
 
 function renderBoardFeedPost(board, viewModel) {
   const title = board.title || board.id || t('common.board');
-  const slug = board.slug || board.id || title;
+  const boardId = board.id || title;
   const hostName = viewModel.host?.displayName || t('common.relay');
   const description = board.description;
-  const href = `#/boards/${encodeURIComponent(slug)}`;
+  const href = `#/boards/${encodeURIComponent(boardId)}`;
 
   return `
     <article class="post post-board">
-      <div class="post-source">${escapeHtml(t('home.boardSource', { slug }))}</div>
+      <div class="post-source">${escapeHtml(t('home.boardSource', { slug: boardId }))}</div>
       <div class="post-author">
         <span class="avatar">${escapeHtml(title.charAt(0).toUpperCase() || 'B')}</span>
         <div>
@@ -1072,7 +1072,7 @@ function renderBoardDirectory(boards, { title, emptyText }) {
 
 function renderBoardDirectoryItem(board) {
   const title = board.title || board.id || t('common.board');
-  const href = `#/boards/${encodeURIComponent(board.slug || board.id || '')}`;
+  const href = `#/boards/${encodeURIComponent(board.id || '')}`;
   const gate = boardPostingGate(board, null);
 
   return `

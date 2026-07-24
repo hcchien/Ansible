@@ -267,7 +267,7 @@ defmodule AnsibleAppview.ExternalIngestTest do
            )
 
     # The board's verified timeline (sig_verified filter) excludes it too.
-    assert Timeline.for_board("board-mixed", nil, 50).items == []
+    assert Timeline.for_board("board-mixed", nil, nil, 50).items == []
   end
 
   test "a board with no mapped sources returns an empty external page" do

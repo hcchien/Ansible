@@ -243,9 +243,16 @@ defmodule AnsibleAppview.Timeline do
     end
   end
 
-  @spec for_board(String.t(), integer() | nil, pos_integer()) :: map()
-  def for_board(board_id, cursor, limit) do
-    legacy_namespaced_id = "%\\_" <> escape_like(board_id)
+  @spec for_board(String.t(), String.t() | nil, integer() | nil, pos_integer()) :: map()
+  def for_board(board_id, legacy_board_id, cursor, limit) do
+    legacy_namespaced_id =
+      case legacy_board_id do
+        value when is_binary(value) and value != "" -> "%\\_" <> escape_like(value)
+        _ -> nil
+      end
+
+    board_scope =
+      dynamic([f], f.board_id == ^board_id) |> maybe_legacy_board(legacy_board_id, legacy_namespaced_id)
 
     page(
       from(f in FeedItem,
@@ -254,12 +261,19 @@ defmodule AnsibleAppview.Timeline do
         # that explicitly delimited legacy form. The escaped underscore is a
         # literal separator, not SQL LIKE's one-character wildcard: otherwise
         # reading `2026` also includes `fifa2026`.
-        where: f.board_id == ^board_id or like(f.board_id, ^legacy_namespaced_id)
+        where: ^board_scope
       ),
       cursor,
       limit
     )
   end
+
+  defp maybe_legacy_board(scope, legacy_board_id, legacy_namespaced_id)
+       when is_binary(legacy_board_id) and is_binary(legacy_namespaced_id) do
+    dynamic([f], ^scope or f.board_id == ^legacy_board_id or like(f.board_id, ^legacy_namespaced_id))
+  end
+
+  defp maybe_legacy_board(scope, _legacy_board_id, _legacy_namespaced_id), do: scope
 
   @doc """
   Items belonging to a thread id. Used to read comments on standalone content

@@ -116,7 +116,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert hd(alice.items).reputation_tier == "verified_human"
 
     # Board feed returns bob's post — the comment is NOT a top-level feed item.
-    board = Timeline.for_board("board-1", nil, 50)
+    board = Timeline.for_board("board-1", nil, nil, 50)
     assert Enum.map(board.items, & &1.entity_id) == ["e-4"]
 
     # The comment never leaks into a followed user's timeline either.
@@ -148,7 +148,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
         entity_id: "e-election-current",
         pub: pub,
         priv: priv,
-        payload: %{"boardId" => "2026", "title" => "選舉討論"}
+        payload: %{"boardId" => "42", "title" => "選舉討論"}
       ),
       signed_op(
         log_id: 2,
@@ -172,8 +172,8 @@ defmodule AnsibleAppview.IngestTimelineTest do
 
     {3, 3} = Folder.apply_ops(ops)
 
-    election = Timeline.for_board("2026", nil, 50)
-    fifa = Timeline.for_board("fifa2026", nil, 50)
+    election = Timeline.for_board("42", "2026", nil, 50)
+    fifa = Timeline.for_board("43", "fifa2026", nil, 50)
 
     assert Enum.map(election.items, & &1.entity_id) == ["e-election-legacy", "e-election-current"]
     assert Enum.map(fifa.items, & &1.entity_id) == ["e-fifa-legacy"]

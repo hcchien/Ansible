@@ -79,10 +79,10 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
 
   def min_post_tier(_policy), do: nil
 
-  @doc "Looks up a hosted board by hosted_board_id, falling back to slug. Nil when not hosted here."
+  @doc "Looks up a hosted board by canonical board ID, then legacy storage IDs."
   def get_board(board_id) when is_binary(board_id) do
-    (Repo.get(ForumHostBoard, board_id) ||
-       Repo.get_by(ForumHostBoard, slug: board_id) ||
+    (canonical_board(board_id) ||
+       Repo.get(ForumHostBoard, board_id) ||
        get_composite_board(board_id))
     |> then(fn
       %ForumHostBoard{} = board -> Store.activate_due_board_policy(board)
@@ -91,6 +91,13 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
   end
 
   def get_board(_board_id), do: nil
+
+  defp canonical_board(board_id) do
+    case Integer.parse(board_id) do
+      {id, ""} when id > 0 -> Repo.get_by(ForumHostBoard, board_id: id)
+      _ -> nil
+    end
+  end
 
   # App projections use `<forum-host-node-id>_<hosted-board-id>` locally.
   # Signed ops preserve that local id, so resolve only the suffix after the

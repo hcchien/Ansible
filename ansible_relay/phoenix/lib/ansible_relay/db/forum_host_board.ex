@@ -5,6 +5,7 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
   @primary_key {:hosted_board_id, :string, autogenerate: false}
   @derive {Jason.Encoder,
            only: [
+             :board_id,
              :hosted_board_id,
              :slug,
              :canonical_board_uri,
@@ -23,6 +24,7 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
              :federation_policy
            ]}
   schema "forum_host_boards" do
+    field(:board_id, :integer, read_after_writes: true)
     field(:slug, :string)
     field(:canonical_board_uri, :string)
     field(:title, :string)

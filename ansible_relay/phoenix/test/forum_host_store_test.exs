@@ -61,7 +61,7 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
     :ok = Store.ensure_seeded!()
 
     assert [%{hosted_board_id: "general"} = board] = Store.list_boards()
-    assert board.canonical_board_uri == "https://forum.trisaura.test/boards/general"
+    assert board.canonical_board_uri == "https://forum.trisaura.test/boards/#{board.board_id}"
     assert board.permissions == %{"read" => true, "write" => true}
     assert board.posting_policy == %{"min_trust_tier" => "self_custody_did"}
     assert board.moderation_policy == %{"appeals" => true}
@@ -117,7 +117,7 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
              })
 
     assert board.hosted_board_id == "reading-group"
-    assert board.canonical_board_uri == "https://forum.trisaura.test/boards/reading-group"
+    assert board.canonical_board_uri == "https://forum.trisaura.test/boards/#{board.board_id}"
 
     assert %ForumHostAcceptedIntent{
              author_did: "did:plc:author123",
@@ -211,7 +211,7 @@ defmodule AnsibleRelay.ForumHost.StoreTest do
 
     assert first.hosted_board_id == "shared-title"
     assert second.hosted_board_id == "shared-title-2"
-    assert second.canonical_board_uri == "https://forum.trisaura.test/boards/shared-title-2"
+    assert second.canonical_board_uri == "https://forum.trisaura.test/boards/#{second.board_id}"
   end
 
   test "create_board accepts a known posting_policy min_post_tier and persists it" do

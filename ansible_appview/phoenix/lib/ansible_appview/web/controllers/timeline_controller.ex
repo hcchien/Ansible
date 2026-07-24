@@ -87,9 +87,12 @@ defmodule AnsibleAppview.Web.Controllers.TimelineController do
     board_id = params["board_id"]
 
     if is_binary(board_id) and board_id != "" do
+      legacy_board_id = AnsibleAppview.ForumHostBoardRegistry.legacy_hosted_board_id(board_id)
+
       result =
         Timeline.for_board(
           board_id,
+          legacy_board_id,
           parse_int(params["cursor"]),
           parse_int(params["limit"]) || 50
         )

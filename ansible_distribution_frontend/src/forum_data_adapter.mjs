@@ -67,9 +67,7 @@ export function createForumDataAdapter({
 
   async function loadBoardPage({ boardId, sessionViewModel } = {}) {
     const home = await loadForumHome({ sessionViewModel });
-    const board = home.boards.find(
-      (candidate) => candidate.id === boardId || candidate.slug === boardId,
-    );
+    const board = home.boards.find((candidate) => candidate.id === boardId);
 
     if (!board) {
       return {
@@ -107,9 +105,7 @@ export function createForumDataAdapter({
 
   async function loadThreadPage({ boardId, threadId, sessionViewModel } = {}) {
     const home = await loadForumHome({ sessionViewModel });
-    const board = home.boards.find(
-      (candidate) => candidate.id === boardId || candidate.slug === boardId,
-    );
+    const board = home.boards.find((candidate) => candidate.id === boardId);
 
     if (!board) {
       return {
@@ -256,12 +252,10 @@ export function createForumDataAdapter({
       forumHostClient.fetchHostedBoards({ relayBaseUrl, fetchImpl }),
     ]);
     const boards = boardsResponse.boards ?? [];
-    const selectedBoardId =
-      boardId ?? boards[0]?.hosted_board_id ?? boards[0]?.slug ?? null;
+    const selectedBoardId = boardId ?? (String(boards[0]?.board_id ?? '') || null);
     const board = boards.find(
       (candidate) =>
-        candidate.hosted_board_id === selectedBoardId ||
-        candidate.slug === selectedBoardId,
+        String(candidate.board_id ?? candidate.hosted_board_id ?? '') === selectedBoardId,
     );
     if (!board) throw notFoundError('board_not_found', { boardId: selectedBoardId });
 
@@ -275,7 +269,7 @@ export function createForumDataAdapter({
       authorDid: sessionViewModel.subjectDid,
       targetForumHost:
         host.canonical_base_url ?? host.base_url ?? relayBaseUrl,
-      boardId: board.hosted_board_id,
+      boardId: String(board.board_id ?? board.hosted_board_id),
       boardPolicyVersion: board.access_policy_version ?? 1,
       title,
     });
@@ -465,7 +459,10 @@ export function normalizeHostedBoard(board) {
       : null;
 
   return {
-    id: board?.hosted_board_id ?? '',
+    // `board_id` is the host-scoped canonical sequence ID. Slugs are display
+    // aliases only and must never become publication or routing identities.
+    id: String(board?.board_id ?? board?.hosted_board_id ?? ''),
+    legacyHostedBoardId: board?.hosted_board_id ?? '',
     slug: board?.slug ?? board?.hosted_board_id ?? '',
     title: board?.title ?? '',
     description: board?.description ?? '',
