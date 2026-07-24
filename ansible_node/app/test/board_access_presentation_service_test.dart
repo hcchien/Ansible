@@ -65,6 +65,7 @@ void main() {
           'https://relay.example/api/v1/forum-host/boards/members/ops/delta',
         ),
         scope: 'read',
+        reuseAuthenticationContext: true,
       );
 
       expect(headers['x-elix-board-capability'], 'elix_board_v1_secret');
@@ -76,6 +77,7 @@ void main() {
         ),
       );
       expect(headers['x-elix-board-proof'], key.signature.hex);
+      expect(key.lastReuseAuthenticationContext, isTrue);
     },
   );
 
@@ -391,6 +393,7 @@ class _FakeHolderKey implements HolderBindingKey {
     hex: _derSignatureHex(),
   );
   String? lastMessage;
+  bool? lastReuseAuthenticationContext;
 
   @override
   Future<IdentityPublicKey> ensureKey() async => IdentityPublicKey(
@@ -401,8 +404,12 @@ class _FakeHolderKey implements HolderBindingKey {
   );
 
   @override
-  Future<IdentitySignature> sign(List<int> message) async {
+  Future<IdentitySignature> sign(
+    List<int> message, {
+    bool reuseAuthenticationContext = false,
+  }) async {
     lastMessage = utf8.decode(message);
+    lastReuseAuthenticationContext = reuseAuthenticationContext;
     return signature;
   }
 

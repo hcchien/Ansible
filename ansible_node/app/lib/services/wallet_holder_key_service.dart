@@ -6,7 +6,10 @@ import 'package:ansible_did/ansible_did.dart';
 /// content key and from Issuer/board administrative keys.
 abstract interface class HolderBindingKey {
   Future<IdentityPublicKey> ensureKey();
-  Future<IdentitySignature> sign(List<int> message);
+  Future<IdentitySignature> sign(
+    List<int> message, {
+    bool reuseAuthenticationContext = false,
+  });
 }
 
 class WalletHolderKeyService implements HolderBindingKey {
@@ -25,9 +28,15 @@ class WalletHolderKeyService implements HolderBindingKey {
   }
 
   @override
-  Future<IdentitySignature> sign(List<int> message) async {
+  Future<IdentitySignature> sign(
+    List<int> message, {
+    bool reuseAuthenticationContext = false,
+  }) async {
     await ensureKey();
-    return _key.sign(message);
+    return _key.sign(
+      message,
+      reuseAuthenticationContext: reuseAuthenticationContext,
+    );
   }
 }
 
@@ -52,9 +61,15 @@ class BoardHolderKeyService implements HolderBindingKey {
       await _key.load() ?? await _key.generate();
 
   @override
-  Future<IdentitySignature> sign(List<int> message) async {
+  Future<IdentitySignature> sign(
+    List<int> message, {
+    bool reuseAuthenticationContext = false,
+  }) async {
     await ensureKey();
-    return _key.sign(message);
+    return _key.sign(
+      message,
+      reuseAuthenticationContext: reuseAuthenticationContext,
+    );
   }
 
   Future<void> delete() => _key.delete();

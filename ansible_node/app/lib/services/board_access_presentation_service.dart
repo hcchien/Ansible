@@ -124,6 +124,7 @@ class BoardAccessPresentationService {
     required Uri forumHost,
     required String boardId,
     required String action,
+    bool reuseAuthenticationContext = false,
   }) async {
     final base = forumHost.resolve('/api/v1/forum-host/boards/$boardId');
     final requirements = _json(
@@ -161,6 +162,7 @@ class BoardAccessPresentationService {
             credential: credential,
             audience: audience,
             nonce: nonce,
+            reuseAuthenticationContext: reuseAuthenticationContext,
           )
         : await _dataIntegrityVp(
             signer: signer,
@@ -199,6 +201,7 @@ class BoardAccessPresentationService {
     required String method,
     required Uri requestUri,
     required String scope,
+    bool reuseAuthenticationContext = false,
   }) async {
     if (!capability.expiresAt.isAfter(_now()) ||
         !capability.scopes.contains(scope)) {
@@ -222,7 +225,10 @@ class BoardAccessPresentationService {
       'x-elix-board-jwk': await signer.encodedJwk(),
       'x-elix-board-timestamp': timestamp,
       'x-elix-board-request-nonce': nonce,
-      'x-elix-board-proof': await signer.signRequest(canonical),
+      'x-elix-board-proof': await signer.signRequest(
+        canonical,
+        reuseAuthenticationContext: reuseAuthenticationContext,
+      ),
     };
   }
 
@@ -231,6 +237,7 @@ class BoardAccessPresentationService {
     required _BoardCredential credential,
     required String audience,
     required String nonce,
+    required bool reuseAuthenticationContext,
   }) async {
     final holder = await signer.pairwiseDid();
     if (credential.holderDid != holder) {
@@ -247,6 +254,7 @@ class BoardAccessPresentationService {
           'verifiableCredential': [credential.compactJwt],
         },
       },
+      reuseAuthenticationContext: reuseAuthenticationContext,
     );
   }
 

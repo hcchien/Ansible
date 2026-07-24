@@ -85,10 +85,12 @@ class HardwareIdentityKey {
   Future<IdentitySignature> sign(
     List<int> message, {
     String alias = 'elix.identity.v1',
+    bool reuseAuthenticationContext = false,
   }) async {
     final result = await _channel.invokeMapMethod<String, dynamic>('sign', {
       'alias': alias,
       'message': Uint8List.fromList(message),
+      'reuse_authentication_context': reuseAuthenticationContext,
     });
     final signatureHex = result?['signature_hex'] as String?;
     if (signatureHex == null || signatureHex.isEmpty) {
@@ -199,6 +201,51 @@ class HardwareIdentityKey {
   }
 }
 
+/// A short-lived, user-approved hardware signing window for one explicit user
+/// operation (currently sync). It never weakens the per-request signature:
+/// callers still create a distinct nonce-bound proof for every operation.
+///
+/// iOS retains the authorized `LAContext` only until [close]. Platforms that
+/// do not implement the channel return `null`, so callers retain their normal
+/// per-operation hardware authorization behavior.
+class HardwareAuthenticationSession {
+  HardwareAuthenticationSession._(this._channel);
+
+  final MethodChannel _channel;
+
+  static Future<HardwareAuthenticationSession?> begin({
+    required String localizedReason,
+    MethodChannel? channel,
+  }) async {
+    final methodChannel =
+        channel ?? const MethodChannel('elix/hardware_identity_key');
+
+    try {
+      final started = await methodChannel.invokeMethod<bool>(
+        'beginAuthenticationSession',
+        {'localized_reason': localizedReason},
+      );
+      return started == true
+          ? HardwareAuthenticationSession._(methodChannel)
+          : null;
+    } on MissingPluginException {
+      return null;
+    } on PlatformException {
+      return null;
+    }
+  }
+
+  Future<void> close() async {
+    try {
+      await _channel.invokeMethod<void>('endAuthenticationSession');
+    } on MissingPluginException {
+      // The platform has no reusable authentication context.
+    } on PlatformException {
+      // The session is best-effort cleanup; expired contexts are fail-closed.
+    }
+  }
+}
+
 /// Purpose-separated non-exportable signing keys. Aliases are protocol
 /// constants so identity, Wallet holder binding, Issuer administration, and
 /// board-device authorization can never accidentally share private material.
@@ -245,8 +292,14 @@ class HardwareScopedPurposeKey {
     return key == null ? null : _requireHardware(Future.value(key));
   }
 
-  Future<IdentitySignature> sign(List<int> message) =>
-      _platformKey.sign(message, alias: _alias);
+  Future<IdentitySignature> sign(
+    List<int> message, {
+    bool reuseAuthenticationContext = false,
+  }) => _platformKey.sign(
+    message,
+    alias: _alias,
+    reuseAuthenticationContext: reuseAuthenticationContext,
+  );
 
   Future<void> delete() => _platformKey.delete(alias: _alias);
 
@@ -313,8 +366,14 @@ class HardwarePurposeKey {
 
   Future<IdentityPublicKey?> load() => _platformKey.load(alias: purpose.alias);
 
-  Future<IdentitySignature> sign(List<int> message) =>
-      _platformKey.sign(message, alias: purpose.alias);
+  Future<IdentitySignature> sign(
+    List<int> message, {
+    bool reuseAuthenticationContext = false,
+  }) => _platformKey.sign(
+    message,
+    alias: purpose.alias,
+    reuseAuthenticationContext: reuseAuthenticationContext,
+  );
 
   Future<void> delete() => _platformKey.delete(alias: purpose.alias);
 }

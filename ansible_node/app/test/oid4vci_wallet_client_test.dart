@@ -162,7 +162,10 @@ class _FakeHolderKey implements HolderBindingKey {
   );
 
   @override
-  Future<IdentitySignature> sign(List<int> message) async => IdentitySignature(
+  Future<IdentitySignature> sign(
+    List<int> message, {
+    bool reuseAuthenticationContext = false,
+  }) async => IdentitySignature(
     algorithm: IdentityKeyAlgorithm.p256Sha256,
     hex: '30440220${'01' * 32}0220${'02' * 32}',
   );

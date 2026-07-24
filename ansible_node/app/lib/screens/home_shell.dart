@@ -1872,7 +1872,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     await service.flushPending();
   }
 
-  AppSyncService _appSyncService() {
+  AppSyncService _appSyncService({
+    bool reuseHardwareAuthenticationContext = false,
+  }) {
     final capabilities = PlatformCapabilities.current;
     final boardAccess = BoardAccessPresentationService(
       walletRepository: DriftWalletRepository(widget.db),
@@ -1897,6 +1899,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           forumHost: requestUri.replace(path: '', query: null, fragment: null),
           boardId: board.hostedBoardId,
           action: action,
+          reuseAuthenticationContext: reuseHardwareAuthenticationContext,
         );
         boardCapabilities[cacheKey] = capability;
       }
@@ -1933,6 +1936,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         method: method,
         requestUri: requestUri,
         scope: action,
+        reuseAuthenticationContext: reuseHardwareAuthenticationContext,
       );
     }
 
@@ -2102,6 +2106,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
       return;
     }
+    HardwareAuthenticationSession? hardwareAuthenticationSession;
     if (showSnackBar) {
       if (!mounted) return;
       final verifier = widget.userPresenceVerifier;
@@ -2111,9 +2116,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
       final authenticated = verifier == null && widget.syncRunner != null
           ? true
-          : await (verifier ?? LocalDeviceUserPresenceVerifier()).verify(
-              reason: authenticationReason,
-            );
+          : verifier == null
+          ? (hardwareAuthenticationSession =
+                        await HardwareAuthenticationSession.begin(
+                          localizedReason: authenticationReason,
+                        )) !=
+                    null ||
+                await LocalDeviceUserPresenceVerifier().verify(
+                  reason: authenticationReason,
+                )
+          : await verifier.verify(reason: authenticationReason);
       if (!authenticated) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2133,7 +2145,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     try {
       final runner = widget.syncRunner;
       final result = runner == null
-          ? await _appSyncService().syncAll(
+          ? await _appSyncService(
+              reuseHardwareAuthenticationContext:
+                  hardwareAuthenticationSession != null,
+            ).syncAll(
+              // iOS keeps this LAContext only for the current explicit sync.
+              // Every capability proof still has its own nonce and signature.
               pullRemote: pullRemote,
               pushLocal: showSnackBar,
             )
@@ -2159,6 +2176,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ),
       );
     } finally {
+      await hardwareAuthenticationSession?.close();
       if (mounted) {
         setState(() => _syncing = false);
       }

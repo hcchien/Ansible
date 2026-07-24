@@ -616,18 +616,27 @@ class HardwareHolderJwtSigner {
   Future<String> signJwt({
     required String typ,
     required Map<String, Object?> claims,
+    bool reuseAuthenticationContext = false,
   }) async {
     final header = _b64(
       jsonEncode({'alg': 'ES256', 'typ': typ, 'jwk': await jwk()}),
     );
     final payload = _b64(jsonEncode(claims));
     final unsigned = '$header.$payload';
-    final signature = await _key.sign(utf8.encode(unsigned));
+    final signature = await _key.sign(
+      utf8.encode(unsigned),
+      reuseAuthenticationContext: reuseAuthenticationContext,
+    );
     return '$unsigned.${_b64Bytes(ecdsaDerSignatureToJose(_hex(signature.hex)))}';
   }
 
-  Future<String> signRequest(String canonicalRequest) async =>
-      (await _key.sign(utf8.encode(canonicalRequest))).hex;
+  Future<String> signRequest(
+    String canonicalRequest, {
+    bool reuseAuthenticationContext = false,
+  }) async => (await _key.sign(
+    utf8.encode(canonicalRequest),
+    reuseAuthenticationContext: reuseAuthenticationContext,
+  )).hex;
 
   String _canonicalJwk(Map<String, String> value) => jsonEncode({
     'crv': value['crv'],

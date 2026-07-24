@@ -18,6 +18,9 @@ import UIKit
   private let zkPassportProver = ZKPassportProver()
   private let zkPassportInputRuntime = ZKPassportInputRuntime()
   private var passportMRZScanner: PassportMRZScanner?
+  // Exists only for the duration of one explicit sync. It is never persisted
+  // and is passed only to Secure Enclave key loading for nonce-bound proofs.
+  private var syncAuthenticationContext: LAContext?
 
   override func application(
     _ application: UIApplication,
@@ -246,6 +249,36 @@ import UIKit
       binaryMessenger: controller.binaryMessenger
     )
     channel.setMethodCallHandler { call, result in
+      // These calls deliberately have no key alias. Keep them ahead of the
+      // generic argument validation so session cleanup always succeeds.
+      if call.method == "beginAuthenticationSession" {
+        let args = call.arguments as? [String: Any]
+        let reason = (args?["localized_reason"] as? String) ?? "Authorize Elix sync"
+        let context = LAContext()
+        context.localizedReason = reason
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) {
+          success, error in
+          DispatchQueue.main.async {
+            guard success else {
+              result(FlutterError(
+                code: "authentication_failed",
+                message: error?.localizedDescription ?? "Device authentication was not completed.",
+                details: nil
+              ))
+              return
+            }
+            self.syncAuthenticationContext = context
+            result(true)
+          }
+        }
+        return
+      }
+      if call.method == "endAuthenticationSession" {
+        self.syncAuthenticationContext?.invalidate()
+        self.syncAuthenticationContext = nil
+        result(nil)
+        return
+      }
       guard let args = call.arguments as? [String: Any] else {
         result(FlutterError(code: "invalid_arguments", message: "Missing arguments", details: nil))
         return
@@ -278,7 +311,13 @@ import UIKit
             result(FlutterError(code: "invalid_arguments", message: "Missing message", details: nil))
             return
           }
-          result(try self.signWithHardwareIdentityKey(alias: alias, message: message.data))
+          let reuseAuthenticationContext =
+            (args["reuse_authentication_context"] as? Bool) ?? false
+          result(try self.signWithHardwareIdentityKey(
+            alias: alias,
+            message: message.data,
+            authenticationContext: reuseAuthenticationContext ? self.syncAuthenticationContext : nil
+          ))
         case "generateAgreement":
           result(try self.generateHardwareAgreementKey(alias: alias))
         case "loadAgreement":
@@ -315,7 +354,10 @@ import UIKit
     ]
   }
 
-  private func loadSecureEnclaveKey(alias: String) throws -> SecureEnclave.P256.Signing.PrivateKey? {
+  private func loadSecureEnclaveKey(
+    alias: String,
+    authenticationContext: LAContext? = nil
+  ) throws -> SecureEnclave.P256.Signing.PrivateKey? {
     var query = keychainQuery(alias: alias)
     query[kSecReturnData as String] = true
     query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -325,7 +367,7 @@ import UIKit
     guard status == errSecSuccess, let data = item as? Data else {
       throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
     }
-    let context = LAContext()
+    let context = authenticationContext ?? LAContext()
     context.localizedReason = "Sign with your Elix identity"
     return try SecureEnclave.P256.Signing.PrivateKey(
       dataRepresentation: data,
@@ -443,8 +485,12 @@ import UIKit
     return keyResult(key)
   }
 
-  private func signWithHardwareIdentityKey(alias: String, message: Data) throws -> [String: Any] {
-    guard let key = try loadSecureEnclaveKey(alias: alias) else {
+  private func signWithHardwareIdentityKey(
+    alias: String,
+    message: Data,
+    authenticationContext: LAContext? = nil
+  ) throws -> [String: Any] {
+    guard let key = try loadSecureEnclaveKey(alias: alias, authenticationContext: authenticationContext) else {
       throw NSError(domain: "ElixHardwareKey", code: 1, userInfo: [NSLocalizedDescriptionKey: "Identity key not found"])
     }
     let signature = try key.signature(for: message)
