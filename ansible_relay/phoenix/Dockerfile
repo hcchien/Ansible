@@ -35,7 +35,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 #    verification to repo.hex.pm; package integrity is still enforced by the
 #    cryptographic checksums pinned in mix.lock.
 RUN mix archive.install github hexpm/hex branch latest --force
-RUN curl -fsSL https://github.com/erlang/rebar3/releases/latest/download/rebar3 \
+RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+      https://github.com/erlang/rebar3/releases/latest/download/rebar3 \
       -o /usr/local/bin/rebar3 \
     && chmod +x /usr/local/bin/rebar3 \
     && mix local.rebar rebar3 /usr/local/bin/rebar3 --force
