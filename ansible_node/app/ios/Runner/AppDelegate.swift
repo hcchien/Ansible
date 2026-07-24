@@ -246,12 +246,28 @@ import UIKit
       binaryMessenger: controller.binaryMessenger
     )
     channel.setMethodCallHandler { call, result in
-      guard let args = call.arguments as? [String: Any],
-            let alias = args["alias"] as? String else {
-        result(FlutterError(code: "invalid_arguments", message: "Missing key alias", details: nil))
+      guard let args = call.arguments as? [String: Any] else {
+        result(FlutterError(code: "invalid_arguments", message: "Missing arguments", details: nil))
         return
       }
       do {
+        // Verification only consumes public material. Requiring a local
+        // Secure Enclave alias here breaks remote sync on every P-256 op.
+        if call.method == "verify" {
+          guard let message = args["message"] as? FlutterStandardTypedData,
+                let publicKeyHex = args["public_key_hex"] as? String,
+                let signatureHex = args["signature_hex"] as? String else {
+            result(FlutterError(code: "invalid_arguments", message: "Missing verification input", details: nil))
+            return
+          }
+          result(self.verifyP256(publicKeyHex: publicKeyHex, message: message.data, signatureHex: signatureHex))
+          return
+        }
+
+        guard let alias = args["alias"] as? String else {
+          result(FlutterError(code: "invalid_arguments", message: "Missing key alias", details: nil))
+          return
+        }
         switch call.method {
         case "generate":
           result(try self.generateHardwareIdentityKey(alias: alias))
@@ -282,14 +298,6 @@ import UIKit
         case "delete":
           try self.deleteHardwareIdentityKey(alias: alias)
           result(nil)
-        case "verify":
-          guard let message = args["message"] as? FlutterStandardTypedData,
-                let publicKeyHex = args["public_key_hex"] as? String,
-                let signatureHex = args["signature_hex"] as? String else {
-            result(FlutterError(code: "invalid_arguments", message: "Missing verification input", details: nil))
-            return
-          }
-          result(self.verifyP256(publicKeyHex: publicKeyHex, message: message.data, signatureHex: signatureHex))
         default:
           result(FlutterMethodNotImplemented)
         }

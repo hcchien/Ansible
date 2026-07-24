@@ -18,10 +18,10 @@ class SharedPreferencesSelfBackfillStateStore
     implements SelfBackfillStateStore {
   const SharedPreferencesSelfBackfillStateStore();
 
-  // v2 replays histories once more after legacy raw P-256 signatures became
-  // verifiable by the app. Keeping the version in the key makes the migration
-  // retryable without mutating or deleting the user's existing local data.
-  static const _keyPrefix = 'elix-relay-self-backfill-v2';
+  // v3 retries histories after iOS public-key verification was decoupled from
+  // the local Secure Enclave alias. Keeping the version in the key makes the
+  // migration retryable without mutating or deleting existing local data.
+  static const _keyPrefix = 'elix-relay-self-backfill-v3';
 
   String _key(String remoteNodeId, String did) =>
       '$_keyPrefix::$remoteNodeId::$did';

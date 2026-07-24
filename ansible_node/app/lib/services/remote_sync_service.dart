@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/protocol.dart';
 import 'issuer_attestation_service.dart';
+import 'legacy_identity_key_resolver.dart';
 import 'notification_projector.dart';
 import 'private_board_crypto_service.dart';
 import 'op_signature_payload.dart';
@@ -20,6 +21,8 @@ typedef RemoteOpEd25519Verifier =
       required List<int> message,
       required String signatureHex,
     });
+
+typedef LegacyLocalPublicKeyResolver = Future<String?> Function(String did);
 
 typedef BoardReadAuthorization =
     Future<Map<String, String>> Function(
@@ -231,14 +234,20 @@ class RelayApiClient {
 class RemoteOpSignatureVerifier {
   final RemoteOpEd25519Verifier _verify;
   final Future<String?> Function(String did)? _resolvePublicKey;
+  final String? _localDid;
+  final LegacyLocalPublicKeyResolver? _resolveLegacyLocalPublicKey;
   // Simple in-memory cache: did → verified public key hex
   final Map<String, String> _keyCache = {};
 
   RemoteOpSignatureVerifier({
     RemoteOpEd25519Verifier? verify,
     Future<String?> Function(String did)? resolvePublicKey,
+    String? localDid,
+    LegacyLocalPublicKeyResolver? resolveLegacyLocalPublicKey,
   }) : _verify = verify ?? _verifyWithDidSigner,
-       _resolvePublicKey = resolvePublicKey;
+       _resolvePublicKey = resolvePublicKey,
+       _localDid = localDid,
+       _resolveLegacyLocalPublicKey = resolveLegacyLocalPublicKey;
 
   Future<bool> isTrusted(Map<String, dynamic> entry) async {
     final signedOp = _signedOp(entry);
@@ -288,11 +297,27 @@ class RemoteOpSignatureVerifier {
     final verificationSignature = isP256 && signature.length == 128
         ? _rawP256SignatureToDer(signature)
         : signature;
-    final signatureValid = await _verify(
+    var verifiedPublicKey = publicKeyHex;
+    var signatureValid = await _verify(
       publicKeyHex: publicKeyHex,
       message: utf8.encode(signingPayload),
       signatureHex: verificationSignature,
     );
+    String? legacyLocalKey;
+    if (!signatureValid &&
+        authorDid == _localDid &&
+        _resolveLegacyLocalPublicKey != null &&
+        _isHex(signature, 128)) {
+      legacyLocalKey = await _resolveLegacyLocalPublicKey(authorDid);
+      if (legacyLocalKey != null && _isHex(legacyLocalKey, 64)) {
+        signatureValid = await _verify(
+          publicKeyHex: legacyLocalKey,
+          message: utf8.encode(signingPayload),
+          signatureHex: signature,
+        );
+        if (signatureValid) verifiedPublicKey = legacyLocalKey;
+      }
+    }
     if (!signatureValid) return false;
 
     // Verify the public key is bound to authorDid (prevents relay from re-signing under arbitrary DIDs)
@@ -300,7 +325,12 @@ class RemoteOpSignatureVerifier {
     if (resolveKey != null) {
       final authorizedKey = _keyCache[authorDid] ?? await resolveKey(authorDid);
       if (authorizedKey == null) return false; // DID not registered
-      if (authorizedKey.toLowerCase() != publicKeyHex.toLowerCase()) {
+      final isAuthorizedCurrentKey =
+          authorizedKey.toLowerCase() == verifiedPublicKey.toLowerCase();
+      final isSelfCertifiedLegacyKey =
+          legacyLocalKey != null &&
+          legacyLocalKey.toLowerCase() == verifiedPublicKey.toLowerCase();
+      if (!isAuthorizedCurrentKey && !isSelfCertifiedLegacyKey) {
         return false; // Key mismatch
       }
       _cacheKey(authorDid, authorizedKey); // Cache hit for future ops
@@ -473,6 +503,10 @@ class RemoteSyncService {
            RemoteOpSignatureVerifier(
              resolvePublicKey: identityClient != null
                  ? (did) => identityClient.fetchPublicKey(did)
+                 : null,
+             localDid: followerDid,
+             resolveLegacyLocalPublicKey: followerDid != null
+                 ? LegacyIdentityKeyResolver().resolve
                  : null,
            ),
        _authorizeBoardRead = authorizeBoardRead,

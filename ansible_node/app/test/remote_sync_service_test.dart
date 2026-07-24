@@ -153,6 +153,43 @@ void main() {
   );
 
   test(
+    'restores a local DID op signed by its self-certified pre-rotation key',
+    () async {
+      final attemptedKeys = <String>[];
+      final verifier = RemoteOpSignatureVerifier(
+        verify:
+            ({
+              required publicKeyHex,
+              required message,
+              required signatureHex,
+            }) async {
+              attemptedKeys.add(publicKeyHex);
+              return publicKeyHex == 'b' * 64;
+            },
+        resolvePublicKey: (_) async => '04${'11' * 64}',
+        localDid: 'did:elix:local',
+        resolveLegacyLocalPublicKey: (_) async => 'b' * 64,
+      );
+      final entry = _signedActivityJson(
+        logId: 1,
+        opId: 'op-before-rotation',
+        authorDid: 'did:elix:local',
+        entityType: 'note',
+        entityId: 'note-1',
+        opType: 'insert',
+        payload: 'payload-base64',
+        // The legacy Relay response attached the DID's current key even though
+        // this op was signed by its pre-rotation Ed25519 key.
+        publicKeyHex: '04${'11' * 64}',
+        signature: 'a' * 128,
+      );
+
+      expect(await verifier.isTrusted(entry), isTrue);
+      expect(attemptedKeys, ['04${'11' * 64}', 'b' * 64]);
+    },
+  );
+
+  test(
     'RemoteOpSignatureVerifier rejects op when DID is not registered in relay',
     () async {
       final verifier = RemoteOpSignatureVerifier(
