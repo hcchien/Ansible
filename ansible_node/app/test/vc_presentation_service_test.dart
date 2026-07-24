@@ -72,6 +72,53 @@ void main() {
     },
   );
 
+  test('selects a manifest-defined credential and required claim', () async {
+    final repo = InMemoryWalletRepository();
+    final credential = <String, Object?>{
+      ..._humanityFixture,
+      'id': 'urn:uuid:organization-member',
+      'type': ['VerifiableCredential', 'OrganizationMembershipCredential'],
+      'credentialSubject': {
+        'id': 'did:key:z6Mkholder',
+        'membershipActive': true,
+      },
+    };
+    await repo.saveCredential(
+      metadata: WalletCredential(
+        credentialId: 'urn:uuid:organization-member',
+        issuerDid: 'did:web:issuer.elix.cool',
+        holderDid: 'did:key:z6Mkholder',
+        credentialType: 'OrganizationMembershipCredential',
+        status: WalletCredentialStatus.active,
+        validFrom: DateTime.utc(2026, 5, 4),
+        validUntil: DateTime.utc(2026, 8, 2),
+        displayName: 'Organization member',
+        createdAt: DateTime.utc(2026, 5, 4),
+        updatedAt: DateTime.utc(2026, 5, 4),
+      ),
+      encryptedPayload: jsonEncode(credential),
+      encryptionVersion: 'test-json',
+    );
+    final service = VcPresentationService(
+      walletRepository: repo,
+      trustedIssuers: {'did:web:issuer.elix.cool'},
+      proofVerifier: _FakeProofVerifier.valid(),
+      proofSigner: _FakeVpProofSigner('holder-proof'),
+      statusResolver: (_) async => CredentialStatus.active,
+    );
+
+    final envelope = await service.createForVerifierRequest(
+      holderDid: 'did:key:z6Mkholder',
+      audience: 'https://verifier.example',
+      nonce: 'nonce',
+      credentialType: 'OrganizationMembershipCredential',
+      requiredClaimValues: const {'membershipActive': true},
+      now: DateTime.utc(2026, 5, 5),
+    );
+
+    expect(envelope?.credentialId, 'urn:uuid:organization-member');
+  });
+
   test(
     'creates a Nostr binding event when a Nostr pubkey is supplied',
     () async {

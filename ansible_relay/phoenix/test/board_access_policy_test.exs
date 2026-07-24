@@ -61,7 +61,7 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicyTest do
              |> BoardAccessPolicy.validate()
   end
 
-  test "unknown claim operators and self-defined credential types fail closed" do
+  test "unknown claim operators and sensitive claims fail closed" do
     policy = membership_policy()
     member = policy["requirements"]["member"]
 
@@ -72,12 +72,31 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicyTest do
              })
              |> BoardAccessPolicy.validate()
 
-    assert {:error, :unsupported_credential_type} =
+    assert {:error, :invalid_claim_policy} =
              put_in(policy, ["requirements", "member"], %{
                member
-               | "credential_type" => "OperatorDefinedAdminCredential"
+               | "credential_type" => "OperatorDefinedAdminCredential",
+                 "claims" => [%{"path" => "nationalId", "op" => "equals", "value" => "A123"}]
              })
              |> BoardAccessPolicy.validate()
+  end
+
+  test "manifest-defined credential type and configuration are accepted" do
+    policy =
+      membership_policy()
+      |> put_in(
+        ["requirements", "member"],
+        %{
+          "credential_configuration_id" => "party-member-v2",
+          "credential_type" => "OrganizationMembershipCredential",
+          "trusted_issuers" => ["did:web:party.example"],
+          "claims" => [%{"path" => "membershipActive", "op" => "equals", "value" => true}],
+          "holder_binding" => "required",
+          "status" => %{"required" => true, "max_age_seconds" => 300}
+        }
+      )
+
+    assert :ok = BoardAccessPolicy.validate(policy)
   end
 
   defp membership_policy do

@@ -12,8 +12,6 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifier do
   import Bitwise
 
   @vp_typ "openid4vp+jwt"
-  @vc_type "PoliticalPartyMembershipCredential"
-
   def verify(compact, policy, requirement_name, nonce, audience, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     issuer_resolver = Keyword.fetch!(opts, :issuer_resolver)
@@ -36,10 +34,12 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifier do
          :ok <- validate_vc_time(vc_claims, now),
          {:ok, issuer_key} <- issuer_resolver.(vc_claims["iss"], vc_header["kid"]),
          true <- verify_ed25519(issuer_key, vc_signed, vc_signature),
-         {:ok, vc} <- credential_payload(vc_claims),
+         {:ok, rule} <- credential_rule(policy, requirement_name),
+         {:ok, vc, credential_type} <- credential_payload(vc_claims, rule),
+         :ok <- validate_configuration(vc, rule),
          :ok <- validate_board_binding(vc, board_id),
          :ok <- validate_status(status_checker, vc, now),
-         evidence <- evidence(vc_claims, vc),
+         evidence <- evidence(vc_claims, vc, credential_type, rule),
          :ok <- BoardAccessPolicy.evaluate_for_requirement(policy, requirement_name, evidence) do
       {:ok,
        %{
@@ -146,18 +146,52 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifier do
        else: {:error, :credential_expired}
   end
 
-  defp credential_payload(%{"vc" => %{} = vc}) do
-    types = vc["type"] || []
-    if @vc_type in types, do: {:ok, vc}, else: {:error, :credential_required}
+  defp credential_rule(policy, requirement_name) do
+    case get_in(policy, ["requirements", requirement_name]) do
+      %{} = rule -> {:ok, rule}
+      _ -> {:error, :credential_required}
+    end
   end
 
-  defp credential_payload(_), do: {:error, :invalid_credential}
+  defp credential_payload(%{"vc" => %{} = vc}, rule) do
+    types = vc["type"] || []
+    expected = rule["credential_type"]
+
+    if is_binary(expected) and expected in types,
+      do: {:ok, vc, expected},
+      else: {:error, :credential_required}
+  end
+
+  defp credential_payload(_, _), do: {:error, :invalid_credential}
+
+  defp validate_configuration(vc, rule) do
+    case rule["credential_configuration_id"] do
+      nil ->
+        :ok
+
+      expected ->
+        actual =
+          vc["credentialConfigurationId"] ||
+            get_in(vc, ["credentialSubject", "credential_configuration_id"])
+
+        if actual == expected,
+          do: :ok,
+          else: {:error, :credential_required}
+    end
+  end
 
   defp validate_board_binding(%{"credentialSubject" => %{"board_id" => board_id}}, board_id)
        when is_binary(board_id) and board_id != "",
        do: :ok
 
-  defp validate_board_binding(_, _), do: {:error, :wrong_board}
+  defp validate_board_binding(%{"credentialSubject" => subject}, _board_id)
+       when is_map(subject) do
+    if Map.has_key?(subject, "board_id"),
+      do: {:error, :wrong_board},
+      else: :ok
+  end
+
+  defp validate_board_binding(_, _), do: {:error, :invalid_credential}
 
   defp validate_status(checker, vc, now) do
     case checker.(vc["credentialStatus"], now) do
@@ -168,9 +202,10 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifier do
     end
   end
 
-  defp evidence(claims, vc) do
+  defp evidence(claims, vc, credential_type, rule) do
     %{
-      "credential_type" => @vc_type,
+      "credential_type" => credential_type,
+      "credential_configuration_id" => rule["credential_configuration_id"],
       "issuer" => claims["iss"],
       "holder_bound" => true,
       "status" => "active",

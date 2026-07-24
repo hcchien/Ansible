@@ -34,6 +34,7 @@ type Store interface {
 	CredentialRecords(tenantID string) ([]CredentialRecord, error)
 	PutCredentialTemplate(tenantID string, template CredentialTemplate) error
 	ActiveCredentialTemplate(tenantID, templateID string) (CredentialTemplate, error)
+	ActiveCredentialTemplates(tenantID string) ([]CredentialTemplate, error)
 	PutIssuanceRequest(tenantID string, request IssuanceRequest) error
 	IssuanceRequest(tenantID, requestID string) (IssuanceRequest, error)
 	IssuanceRequests(tenantID, state string) ([]IssuanceRequest, error)
@@ -210,6 +211,22 @@ func (s *MemoryStore) ActiveCredentialTemplate(tenantID, templateID string) (Cre
 		}
 	}
 	return CredentialTemplate{}, ErrNotFound
+}
+
+func (s *MemoryStore) ActiveCredentialTemplates(tenantID string) ([]CredentialTemplate, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if _, ok := s.tenants[tenantID]; !ok {
+		return nil, ErrNotFound
+	}
+	result := make([]CredentialTemplate, 0)
+	for _, template := range s.templates[tenantID] {
+		if template.Active {
+			result = append(result, template)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
 }
 
 func (s *MemoryStore) PutIssuanceRequest(tenantID string, request IssuanceRequest) error {

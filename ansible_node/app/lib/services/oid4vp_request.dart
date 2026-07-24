@@ -21,10 +21,24 @@ class Oid4vpAuthorizationRequest {
     required this.inputDescriptorId,
     required this.requiredCredentialType,
     required this.requestedClaimLabels,
+    required this.requiredClaimValues,
     this.state,
   });
 
-  static const supportedCredentialType = 'TrisAuraHumanityCredential';
+  static const _baseCredentialTypes = {
+    'VerifiableCredential',
+    'VerifiablePresentation',
+  };
+  static const _prohibitedClaimLabels = {
+    'nationalId',
+    'legalName',
+    'birthDate',
+    'documentNumber',
+    'passportNumber',
+    'nationalIdHash',
+    'passportNumberHash',
+    'rawProviderAssertion',
+  };
 
   final String clientId;
   final String audience;
@@ -36,6 +50,7 @@ class Oid4vpAuthorizationRequest {
   final String inputDescriptorId;
   final String requiredCredentialType;
   final List<String> requestedClaimLabels;
+  final Map<String, Object?> requiredClaimValues;
 
   String get verifierLabel {
     final parsed = Uri.tryParse(clientId);
@@ -133,10 +148,17 @@ class Oid4vpAuthorizationRequest {
     final descriptorId = _requiredString(firstDescriptor, 'id');
 
     final credentialType = _extractCredentialType(definition);
-    if (credentialType != supportedCredentialType) {
+    if (!_validCredentialType(credentialType)) {
       throw const Oid4vpRequestException(
         'unsupported_credential_type',
-        'Only TrisAuraHumanityCredential verifier requests are supported.',
+        'Verifier request must select exactly one credential type.',
+      );
+    }
+    final requestedClaimLabels = _extractRequestedClaimLabels(definition);
+    if (requestedClaimLabels.any(_containsProhibitedClaim)) {
+      throw const Oid4vpRequestException(
+        'prohibited_claim',
+        'Verifier request asks the Wallet to disclose a prohibited claim.',
       );
     }
 
@@ -150,8 +172,9 @@ class Oid4vpAuthorizationRequest {
       presentationDefinitionId: definitionId,
       inputDescriptorId: descriptorId,
       requiredCredentialType: credentialType,
-      requestedClaimLabels: List<String>.unmodifiable(
-        _extractRequestedClaimLabels(definition),
+      requestedClaimLabels: List<String>.unmodifiable(requestedClaimLabels),
+      requiredClaimValues: Map<String, Object?>.unmodifiable(
+        _extractRequiredClaimValues(definition),
       ),
     );
   }
@@ -193,30 +216,48 @@ class Oid4vpAuthorizationRequest {
   }
 
   static String _extractCredentialType(Object? value) {
-    if (_containsString(value, supportedCredentialType)) {
-      return supportedCredentialType;
-    }
-    return '';
+    final candidates = <String>{};
+    _collectCredentialTypeConstants(value, candidates);
+    candidates.removeAll(_baseCredentialTypes);
+    return candidates.length == 1 ? candidates.single : '';
   }
 
-  static bool _containsString(Object? value, String needle) {
-    if (value is String) return value == needle;
-    if (value is Iterable) {
-      return value.any((item) => _containsString(item, needle));
-    }
+  static void _collectCredentialTypeConstants(
+    Object? value,
+    Set<String> candidates,
+  ) {
     if (value is Map) {
-      return value.values.any((item) => _containsString(item, needle));
+      final constant = value['const'];
+      if (constant is String && constant.endsWith('Credential')) {
+        candidates.add(constant);
+      }
+      for (final nested in value.values) {
+        _collectCredentialTypeConstants(nested, candidates);
+      }
+      return;
     }
-    return false;
+    if (value is Iterable) {
+      for (final nested in value) {
+        _collectCredentialTypeConstants(nested, candidates);
+      }
+    }
+  }
+
+  static bool _validCredentialType(String value) {
+    return value.length >= 3 &&
+        value.length <= 128 &&
+        value.endsWith('Credential') &&
+        RegExp(r'^[A-Za-z][A-Za-z0-9._:-]*Credential$').hasMatch(value);
+  }
+
+  static bool _containsProhibitedClaim(String path) {
+    return path.split('.').any(_prohibitedClaimLabels.contains);
   }
 
   static List<String> _extractRequestedClaimLabels(Object? definition) {
     final labels = <String>{};
     _collectClaimLabels(definition, labels);
     labels.remove('type');
-    if (labels.isEmpty) {
-      labels.add('humanVerified');
-    }
     return labels.toList()..sort();
   }
 
@@ -242,6 +283,39 @@ class Oid4vpAuthorizationRequest {
     if (value is Iterable) {
       for (final nested in value) {
         _collectClaimLabels(nested, labels);
+      }
+    }
+  }
+
+  static Map<String, Object?> _extractRequiredClaimValues(Object? value) {
+    final result = <String, Object?>{};
+    _collectRequiredClaimValues(value, result);
+    return result;
+  }
+
+  static void _collectRequiredClaimValues(
+    Object? value,
+    Map<String, Object?> result,
+  ) {
+    if (value is Map) {
+      final path = value['path'];
+      final filter = value['filter'];
+      if (path is List && path.length == 1 && filter is Map) {
+        final label = path.first is String
+            ? _claimLabelFromPath(path.first as String)
+            : null;
+        if (label != null && label != 'type' && filter.containsKey('const')) {
+          result[label] = filter['const'];
+        }
+      }
+      for (final nested in value.values) {
+        _collectRequiredClaimValues(nested, result);
+      }
+      return;
+    }
+    if (value is Iterable) {
+      for (final nested in value) {
+        _collectRequiredClaimValues(nested, result);
       }
     }
   }

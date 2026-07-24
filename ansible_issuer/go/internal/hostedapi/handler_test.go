@@ -56,6 +56,13 @@ func TestManifestUsesStableSnakeCaseAndNeverExportsPEM(t *testing.T) {
 	if err := store.ActivateDelegation("party", "delegation-1", now); err != nil {
 		t.Fatal(err)
 	}
+	if err := store.PutCredentialTemplate("party", hostedissuer.CredentialTemplate{
+		ID: "party-member-v2", Version: 2, CredentialType: "OrganizationMembershipCredential",
+		ClaimAllowlist: []string{"membershipActive"}, ApprovalThreshold: 1,
+		MaxTTLDays: 90, Active: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	mux := http.NewServeMux()
 	NewHandler(store, nil, nil, nil, nil, nil, func() time.Time { return now }).Register(mux)
@@ -79,6 +86,15 @@ func TestManifestUsesStableSnakeCaseAndNeverExportsPEM(t *testing.T) {
 	}
 	if contains := json.Valid(response.Body.Bytes()) && (stringContains(encoded, "PUBLIC KEY") || stringContains(encoded, "kms/1")); contains {
 		t.Fatalf("private control-plane key metadata leaked: %s", encoded)
+	}
+	configurations, ok := body["credential_configurations"].([]any)
+	if !ok || len(configurations) != 1 {
+		t.Fatalf("missing credential configurations: %s", encoded)
+	}
+	configuration := configurations[0].(map[string]any)
+	if configuration["id"] != "party-member-v2" ||
+		configuration["credential_type"] != "OrganizationMembershipCredential" {
+		t.Fatalf("invalid credential configuration: %#v", configuration)
 	}
 }
 

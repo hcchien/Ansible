@@ -62,14 +62,14 @@ void main() {
     expect(request.audience, 'http://127.0.0.1:8787');
   });
 
-  test('rejects unsupported credential requests', () {
+  test('rejects malformed credential type requests', () {
     expect(
       () => Oid4vpAuthorizationRequest.parse(
         _requestUri(
           clientId: 'https://verifier.example',
           responseUri: 'https://verifier.example/direct_post',
           nonce: 'nonce-123',
-          credentialType: 'EmailCredential',
+          credentialType: 'EmailToken',
         ),
       ),
       throwsA(
@@ -80,6 +80,19 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('accepts a manifest-defined credential type without an app release', () {
+    final request = Oid4vpAuthorizationRequest.parse(
+      _requestUri(
+        clientId: 'https://verifier.example',
+        responseUri: 'https://verifier.example/direct_post',
+        nonce: 'nonce-123',
+        credentialType: 'OrganizationMembershipCredential',
+      ),
+    );
+
+    expect(request.requiredCredentialType, 'OrganizationMembershipCredential');
   });
 
   test('rejects request_uri-only verifier requests for the MVP', () {

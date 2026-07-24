@@ -22,6 +22,7 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
   @top_keys Map.keys(@default) |> MapSet.new()
   @action_keys MapSet.new(["requirement"])
   @requirement_keys MapSet.new([
+                      "credential_configuration_id",
                       "credential_type",
                       "trusted_issuers",
                       "claims",
@@ -30,7 +31,10 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
                     ])
   @claim_keys MapSet.new(["path", "op", "value"])
   @status_keys MapSet.new(["required", "max_age_seconds"])
-  @credential_type "PoliticalPartyMembershipCredential"
+  @prohibited_claims MapSet.new(~w[
+    nationalid legalname birthdate documentnumber passportnumber
+    nationalidhash passportnumberhash rawproviderassertion
+  ])
   @built_in_requirements ["public", "posting_policy", "board_moderator"]
 
   def default, do: @default
@@ -118,9 +122,10 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
            require(
              requirement,
              "credential_type",
-             &(&1 == @credential_type),
+             &valid_credential_type?/1,
              :unsupported_credential_type
            ),
+         :ok <- validate_configuration_id(value(requirement, "credential_configuration_id")),
          :ok <-
            require(requirement, "trusted_issuers", &valid_issuers?/1, :invalid_trusted_issuers),
          :ok <- require(requirement, "claims", &valid_claims?/1, :invalid_claim_policy),
@@ -197,6 +202,11 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
       value(evidence, "credential_type") != value(rule, "credential_type") ->
         {:error, :credential_required}
 
+      not is_nil(value(rule, "credential_configuration_id")) and
+          value(evidence, "credential_configuration_id") !=
+            value(rule, "credential_configuration_id") ->
+        {:error, :credential_required}
+
       value(evidence, "issuer") not in value(rule, "trusted_issuers") ->
         {:error, :issuer_not_trusted}
 
@@ -232,9 +242,42 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
   end
 
   defp valid_claims?(_), do: false
-  defp valid_claim_value?("membership", true), do: true
-  defp valid_claim_value?("membership_class", value), do: value in ["member", "moderator"]
+
+  defp valid_claim_value?(path, value) when is_binary(path) do
+    valid_claim_path?(path) and
+      (is_boolean(value) or
+         (is_binary(value) and byte_size(value) in 1..128) or
+         (is_integer(value) and value >= 0 and value <= 1_000_000))
+  end
+
   defp valid_claim_value?(_, _), do: false
+
+  defp valid_claim_path?(path) do
+    segments = String.split(path, ".", trim: true)
+
+    length(segments) in 1..4 and
+      Enum.all?(segments, &Regex.match?(~r/^[A-Za-z][A-Za-z0-9_]{0,63}$/, &1)) and
+      Enum.all?(segments, &(not MapSet.member?(@prohibited_claims, String.downcase(&1))))
+  end
+
+  defp valid_credential_type?(type) when is_binary(type) do
+    byte_size(type) in 3..128 and
+      String.ends_with?(type, "Credential") and
+      Regex.match?(~r/^[A-Za-z][A-Za-z0-9._:-]*Credential$/, type)
+  end
+
+  defp valid_credential_type?(_), do: false
+
+  defp validate_configuration_id(nil), do: :ok
+
+  defp validate_configuration_id(value)
+       when is_binary(value) and byte_size(value) in 1..128 do
+    if Regex.match?(~r/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, value),
+      do: :ok,
+      else: {:error, :invalid_credential_configuration_id}
+  end
+
+  defp validate_configuration_id(_), do: {:error, :invalid_credential_configuration_id}
 
   defp valid_issuers?(issuers) when is_list(issuers) and length(issuers) in 1..10,
     do:

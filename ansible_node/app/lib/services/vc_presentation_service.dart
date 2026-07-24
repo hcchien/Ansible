@@ -98,6 +98,8 @@ class VcPresentationService {
     required String holderDid,
     required String audience,
     required String nonce,
+    required String credentialType,
+    Map<String, Object?> requiredClaimValues = const {},
     required DateTime now,
     bool recordPresentation = true,
   }) async {
@@ -106,6 +108,9 @@ class VcPresentationService {
       audience: audience,
       nonce: nonce,
       now: now,
+      credentialType: credentialType,
+      requiredClaimValues: requiredClaimValues,
+      allowStoredIssuer: true,
       recordPresentation: recordPresentation,
       result: WalletPresentationResult.approved,
     );
@@ -137,12 +142,15 @@ class VcPresentationService {
     required DateTime now,
     required bool recordPresentation,
     required WalletPresentationResult result,
+    String credentialType = 'TrisAuraHumanityCredential',
+    Map<String, Object?> requiredClaimValues = const {},
+    bool allowStoredIssuer = false,
     String? nostrPubkey,
   }) async {
     final credentials = await walletRepository.listCredentials();
 
     for (final metadata in credentials) {
-      if (!_isCandidate(metadata, holderDid)) {
+      if (!_isCandidate(metadata, holderDid, credentialType)) {
         continue;
       }
 
@@ -164,15 +172,22 @@ class VcPresentationService {
       if (credential.holderDid != holderDid) {
         continue;
       }
+      if (!_claimsMatch(credential.claims, requiredClaimValues)) {
+        continue;
+      }
 
       final verifier = VcVerifier(
         proofVerifier: proofVerifier,
-        trustedIssuers: trustedIssuers,
+        trustedIssuers: {
+          ...trustedIssuers,
+          if (allowStoredIssuer) metadata.issuerDid,
+        },
         statusResolver: statusResolver,
       );
       final verification = await verifier.verifyCredentialStatus(
         credential,
         now: now,
+        requiredCredentialType: credentialType,
       );
       if (!verification.isValid) {
         continue;
@@ -258,13 +273,24 @@ class VcPresentationService {
     return {'event': event.toJson()};
   }
 
-  bool _isCandidate(WalletCredential credential, String holderDid) {
+  bool _isCandidate(
+    WalletCredential credential,
+    String holderDid,
+    String credentialType,
+  ) {
     return credential.holderDid == holderDid &&
         credential.status == WalletCredentialStatus.active &&
-        credential.credentialType == 'TrisAuraHumanityCredential';
+        credential.credentialType == credentialType;
   }
 
   String _nonceHash(String nonce) {
     return 'sha256-${sha256.convert(utf8.encode(nonce))}';
+  }
+
+  bool _claimsMatch(
+    Map<String, Object?> claims,
+    Map<String, Object?> required,
+  ) {
+    return required.entries.every((entry) => claims[entry.key] == entry.value);
   }
 }

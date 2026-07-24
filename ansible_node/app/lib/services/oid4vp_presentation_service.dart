@@ -116,6 +116,8 @@ class Oid4vpPresentationService implements Oid4vpPresentationApprover {
       holderDid: holderDid,
       audience: request.audience,
       nonce: request.nonce,
+      credentialType: request.requiredCredentialType,
+      requiredClaimValues: request.requiredClaimValues,
       now: now,
       recordPresentation: false,
     );

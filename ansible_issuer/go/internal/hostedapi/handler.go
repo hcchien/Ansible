@@ -349,6 +349,29 @@ func (h *Handler) manifest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "active_signing_key_invalid")
 		return
 	}
+	templates, err := h.store.ActiveCredentialTemplates(tenantID)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "credential_templates_unavailable")
+		return
+	}
+	configurations := make([]map[string]any, 0, len(templates))
+	for _, template := range templates {
+		claims := make([]map[string]any, 0, len(template.ClaimAllowlist))
+		for _, claim := range template.ClaimAllowlist {
+			claims = append(claims, map[string]any{
+				"path":              claim,
+				"allowed_operators": []string{"equals"},
+				"disclosable":       true,
+			})
+		}
+		configurations = append(configurations, map[string]any{
+			"id":              template.ID,
+			"version":         template.Version,
+			"credential_type": template.CredentialType,
+			"claims":          claims,
+			"max_ttl_days":    template.MaxTTLDays,
+		})
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"tenant":     tenant,
 		"delegation": delegation,
@@ -359,6 +382,7 @@ func (h *Handler) manifest(w http.ResponseWriter, r *http.Request) {
 			"protection_level":     key.ProtectionLevel,
 			"version":              key.Version,
 		},
+		"credential_configurations": configurations,
 	})
 }
 

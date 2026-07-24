@@ -32,6 +32,7 @@ class VcVerifier {
   VcVerificationResult verifyCredential(
     TrisAuraCredential credential, {
     required DateTime now,
+    String requiredCredentialType = 'TrisAuraHumanityCredential',
   }) {
     if (!trustedIssuers.contains(credential.issuerDid)) {
       return const VcVerificationResult.invalid('untrusted_issuer');
@@ -39,7 +40,7 @@ class VcVerifier {
     if (!credential.hasType('VerifiableCredential')) {
       return const VcVerificationResult.invalid('missing_vc_type');
     }
-    if (!credential.hasType('TrisAuraHumanityCredential')) {
+    if (!credential.hasType(requiredCredentialType)) {
       return const VcVerificationResult.invalid('unsupported_credential_type');
     }
     final utcNow = now.toUtc();
@@ -58,8 +59,13 @@ class VcVerifier {
   Future<VcVerificationResult> verifyCredentialStatus(
     TrisAuraCredential credential, {
     required DateTime now,
+    String requiredCredentialType = 'TrisAuraHumanityCredential',
   }) async {
-    final base = verifyCredential(credential, now: now);
+    final base = verifyCredential(
+      credential,
+      now: now,
+      requiredCredentialType: requiredCredentialType,
+    );
     if (!base.isValid) return base;
 
     final status = await statusResolver(credential);

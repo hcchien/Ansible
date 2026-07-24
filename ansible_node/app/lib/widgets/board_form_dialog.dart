@@ -4,6 +4,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/hosted_issuer_manifest.dart';
 import '../services/posting_gate.dart';
 
 class BoardFormDialog extends StatefulWidget {
@@ -19,6 +20,7 @@ class BoardFormDialog extends StatefulWidget {
 
   /// Current `posting_policy.min_post_tier` when editing; null ⇒ ungated.
   final String? initialMinPostTier;
+  final HostedIssuerManifestLoader? manifestLoader;
 
   const BoardFormDialog({
     super.key,
@@ -29,6 +31,7 @@ class BoardFormDialog extends StatefulWidget {
     this.requireForumHost = false,
     this.showPostingPolicy = false,
     this.initialMinPostTier,
+    this.manifestLoader,
   });
 
   @override
@@ -39,12 +42,19 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _trustedIssuerController;
+  late final TextEditingController _manifestUrlController;
+  late final TextEditingController _claimValueController;
   final _formKey = GlobalKey<FormState>();
   String? _selectedForumHostId;
 
   /// `posting_policy.min_post_tier` for the new board; null ⇒ no gate.
   String? _minPostTier;
   String _accessMode = 'public';
+  HostedIssuerManifest? _issuerManifest;
+  HostedIssuerCredentialConfiguration? _credentialConfiguration;
+  HostedIssuerClaimConfiguration? _claimConfiguration;
+  String? _manifestError;
+  var _loadingManifest = false;
 
   @override
   void initState() {
@@ -54,6 +64,8 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
       text: widget.initialDescription,
     );
     _trustedIssuerController = TextEditingController();
+    _manifestUrlController = TextEditingController();
+    _claimValueController = TextEditingController(text: 'true');
     _selectedForumHostId =
         widget.initialForumHostId ??
         (widget.forumHosts.isNotEmpty ? widget.forumHosts.first.id : null);
@@ -68,6 +80,8 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
     _titleController.dispose();
     _descriptionController.dispose();
     _trustedIssuerController.dispose();
+    _manifestUrlController.dispose();
+    _claimValueController.dispose();
     super.dispose();
   }
 
@@ -219,6 +233,109 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                 if (_accessMode != 'public') ...[
                   const SizedBox(height: 12),
                   TextFormField(
+                    key: const Key('hosted_issuer_manifest_url'),
+                    controller: _manifestUrlController,
+                    decoration: InputDecoration(
+                      labelText: context.uiCopy(
+                        zh: 'Hosted Issuer Manifest URL',
+                        en: 'Hosted Issuer manifest URL',
+                      ),
+                      hintText:
+                          'https://issuer.example/api/v1/hosted-issuers/org/manifest',
+                      suffixIcon: _loadingManifest
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : IconButton(
+                              key: const Key('load_issuer_manifest'),
+                              onPressed: _loadManifest,
+                              icon: const Icon(Icons.download_outlined),
+                              tooltip: context.uiCopy(
+                                zh: '載入憑證設定',
+                                en: 'Load credential configurations',
+                              ),
+                            ),
+                      errorText: _manifestError,
+                    ),
+                  ),
+                  if (_issuerManifest != null &&
+                      _issuerManifest!.configurations.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<
+                      HostedIssuerCredentialConfiguration
+                    >(
+                      key: const Key('credential_configuration'),
+                      isExpanded: true,
+                      initialValue: _credentialConfiguration,
+                      items: _issuerManifest!.configurations
+                          .map(
+                            (configuration) => DropdownMenuItem(
+                              value: configuration,
+                              child: Text(
+                                '${configuration.id} · ${configuration.credentialType}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (configuration) {
+                        setState(() {
+                          _credentialConfiguration = configuration;
+                          _claimConfiguration =
+                              configuration?.claims.firstOrNull;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: context.uiCopy(
+                          zh: '憑證設定',
+                          en: 'Credential configuration',
+                        ),
+                      ),
+                    ),
+                    if (_credentialConfiguration != null &&
+                        _credentialConfiguration!.claims.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<HostedIssuerClaimConfiguration>(
+                        key: const Key('credential_claim'),
+                        isExpanded: true,
+                        initialValue: _claimConfiguration,
+                        items: _credentialConfiguration!.claims
+                            .map(
+                              (claim) => DropdownMenuItem(
+                                value: claim,
+                                child: Text(claim.path),
+                              ),
+                            )
+                            .toList(growable: false),
+                        onChanged: (claim) =>
+                            setState(() => _claimConfiguration = claim),
+                        decoration: InputDecoration(
+                          labelText: context.uiCopy(
+                            zh: '必要條件',
+                            en: 'Required claim',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        key: const Key('credential_claim_value'),
+                        controller: _claimValueController,
+                        decoration: InputDecoration(
+                          labelText: context.uiCopy(
+                            zh: '條件值',
+                            en: 'Required value',
+                          ),
+                          helperText: context.uiCopy(
+                            zh: '只支援 manifest 允許的 equals 條件。',
+                            en: 'Only manifest-authorized equals predicates are supported.',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 12),
+                  TextFormField(
                     controller: _trustedIssuerController,
                     decoration: InputDecoration(
                       labelText: context.uiCopy(
@@ -233,6 +350,13 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                         return context.uiCopy(
                           zh: '請輸入有效的 Issuer DID',
                           en: 'Enter a valid issuer DID',
+                        );
+                      }
+                      if (_issuerManifest != null &&
+                          value?.trim() != _issuerManifest!.organizationDid) {
+                        return context.uiCopy(
+                          zh: 'Issuer DID 必須與 manifest 相符',
+                          en: 'Issuer DID must match the manifest',
                         );
                       }
                       return null;
@@ -285,11 +409,21 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
             if (_formKey.currentState!.validate()) {
               final description = _descriptionController.text.trim();
               final issuer = _trustedIssuerController.text.trim();
+              final selectedConfiguration = _credentialConfiguration;
+              final selectedClaim = _claimConfiguration;
               final memberRequirement = {
-                'credential_type': 'PoliticalPartyMembershipCredential',
+                if (selectedConfiguration != null)
+                  'credential_configuration_id': selectedConfiguration.id,
+                'credential_type':
+                    selectedConfiguration?.credentialType ??
+                    'PoliticalPartyMembershipCredential',
                 'trusted_issuers': [issuer],
                 'claims': [
-                  {'path': 'membership', 'op': 'equals', 'value': true},
+                  {
+                    'path': selectedClaim?.path ?? 'membership',
+                    'op': 'equals',
+                    'value': _policyValue(_claimValueController.text),
+                  },
                 ],
                 'holder_binding': 'required',
                 'status': {'required': true, 'max_age_seconds': 300},
@@ -332,5 +466,43 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
         ),
       ],
     );
+  }
+
+  Future<void> _loadManifest() async {
+    final uri = Uri.tryParse(_manifestUrlController.text.trim());
+    if (uri == null) {
+      setState(() => _manifestError = 'invalid_manifest_uri');
+      return;
+    }
+    setState(() {
+      _loadingManifest = true;
+      _manifestError = null;
+    });
+    try {
+      final manifest =
+          await (widget.manifestLoader ?? HostedIssuerManifestClient()).load(
+            uri,
+          );
+      if (!mounted) return;
+      final first = manifest.configurations.firstOrNull;
+      setState(() {
+        _issuerManifest = manifest;
+        _credentialConfiguration = first;
+        _claimConfiguration = first?.claims.firstOrNull;
+        _trustedIssuerController.text = manifest.organizationDid;
+      });
+    } on Object {
+      if (!mounted) return;
+      setState(() => _manifestError = 'manifest_unavailable');
+    } finally {
+      if (mounted) setState(() => _loadingManifest = false);
+    }
+  }
+
+  Object _policyValue(String raw) {
+    final value = raw.trim();
+    if (value == 'true') return true;
+    if (value == 'false') return false;
+    return int.tryParse(value) ?? value;
   }
 }

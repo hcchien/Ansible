@@ -221,7 +221,15 @@ class BoardAccessPresentationService {
     }
     final trusted = rule['trusted_issuers'];
     if (trusted is! List || !trusted.contains(vc['issuer'])) return false;
-    if (_claimAtPath(vc, 'board_id') != boardId) return false;
+    final credentialConfigurationId = rule['credential_configuration_id'];
+    if (credentialConfigurationId != null &&
+        vc['credentialConfigurationId'] != credentialConfigurationId &&
+        _claimAtPath(vc, 'credential_configuration_id') !=
+            credentialConfigurationId) {
+      return false;
+    }
+    final credentialBoardId = _claimAtPath(vc, 'board_id');
+    if (credentialBoardId != null && credentialBoardId != boardId) return false;
     final claims = rule['claims'];
     if (claims is! List) return false;
     for (final rawClaim in claims) {

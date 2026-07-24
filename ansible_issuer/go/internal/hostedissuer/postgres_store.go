@@ -296,6 +296,31 @@ func (s *PostgresStore) ActiveCredentialTemplate(tenantID, templateID string) (C
 	return template, mapNotFound(err)
 }
 
+func (s *PostgresStore) ActiveCredentialTemplates(tenantID string) ([]CredentialTemplate, error) {
+	rows, err := s.pool.Query(context.Background(), `
+		SELECT id, tenant_id, version, credential_type, claim_allowlist,
+			approval_threshold, max_ttl_days, active
+		FROM credential_templates WHERE tenant_id=$1 AND active=true
+		ORDER BY id`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]CredentialTemplate, 0)
+	for rows.Next() {
+		var template CredentialTemplate
+		if err := rows.Scan(
+			&template.ID, &template.TenantID, &template.Version, &template.CredentialType,
+			&template.ClaimAllowlist, &template.ApprovalThreshold, &template.MaxTTLDays,
+			&template.Active,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, template)
+	}
+	return result, rows.Err()
+}
+
 func (s *PostgresStore) PutIssuanceRequest(tenantID string, request IssuanceRequest) error {
 	if request.TenantID != "" && request.TenantID != tenantID {
 		return ErrTenantScope
