@@ -49,6 +49,31 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   defp canonical(value), do: value |> deep_sort() |> Jason.encode!()
 
+  @base58btc_alphabet "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+  defp base58btc_encode(bytes) do
+    leading_zeroes = bytes |> :binary.bin_to_list() |> Enum.take_while(&(&1 == 0)) |> length()
+    value = :binary.decode_unsigned(bytes)
+
+    encoded =
+      if value == 0 do
+        ""
+      else
+        value
+        |> base58btc_digits([])
+        |> Enum.join()
+      end
+
+    String.duplicate("1", leading_zeroes) <> encoded
+  end
+
+  defp base58btc_digits(0, digits), do: digits
+
+  defp base58btc_digits(value, digits) do
+    digit = rem(value, 58)
+    base58btc_digits(div(value, 58), [String.at(@base58btc_alphabet, digit) | digits])
+  end
+
   # Build a signed system credential VC.
   defp build_humanity_vc(holder_did, issuer_priv, opts \\ []) do
     now = DateTime.utc_now() |> DateTime.to_iso8601()
@@ -86,6 +111,46 @@ defmodule AnsibleRelay.VpVerifierTest do
       "proofPurpose" => "assertionMethod",
       "proofValue" => proof_value
     })
+  end
+
+  defp build_data_integrity_vc(holder_did, issuer_priv) do
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    vc_without_proof = %{
+      "@context" => [
+        "https://www.w3.org/ns/credentials/v2",
+        "https://elix.cool/contexts/citizenship/v1"
+      ],
+      "id" => "https://issuer.elix.cool/vc/data-integrity-test",
+      "type" => ["VerifiableCredential", "TaiwanCitizenshipCredential"],
+      "issuer" => @issuer_did,
+      "validFrom" => now,
+      "validUntil" =>
+        DateTime.add(DateTime.utc_now(), 90 * 86_400, :second) |> DateTime.to_iso8601(),
+      "credentialSubject" => %{
+        "id" => holder_did,
+        "citizenshipVerified" => true,
+        "jurisdiction" => "TW"
+      }
+    }
+
+    proof_options = %{
+      "@context" => vc_without_proof["@context"],
+      "type" => "DataIntegrityProof",
+      "cryptosuite" => "eddsa-jcs-2022",
+      "created" => now,
+      "verificationMethod" => "#{@issuer_did}#key-1",
+      "proofPurpose" => "assertionMethod"
+    }
+
+    hash_data =
+      :crypto.hash(:sha256, canonical(proof_options)) <>
+        :crypto.hash(:sha256, canonical(vc_without_proof))
+
+    proof_value =
+      sign(issuer_priv, hash_data) |> Base.decode16!(case: :mixed) |> base58btc_encode()
+
+    Map.put(vc_without_proof, "proof", Map.put(proof_options, "proofValue", "z" <> proof_value))
   end
 
   # Build a signed VP using the canonical form:
@@ -147,6 +212,16 @@ defmodule AnsibleRelay.VpVerifierTest do
 
     assert {:ok, "TaiwanCitizenshipCredential", ^vc} =
              VpVerifier.verify_with_credential(@holder_did, vp)
+  end
+
+  test "accepts an issuer DataIntegrityProof / eddsa-jcs-2022 VC", %{issuer_priv: issuer_priv} do
+    {pub_hex, priv} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
+
+    vc = build_data_integrity_vc(@holder_did, issuer_priv)
+    vp = build_vp(@holder_did, priv, [vc])
+
+    assert {:ok, "TaiwanCitizenshipCredential"} = VpVerifier.verify(@holder_did, vp)
   end
 
   test "accepts VP with matching nonce and audience", %{issuer_priv: issuer_priv} do

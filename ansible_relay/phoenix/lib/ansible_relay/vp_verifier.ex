@@ -11,8 +11,10 @@ defmodule AnsibleRelay.VpVerifier do
     3. Each embedded VC — issuer proof valid, subject matches holder, type
        recognised, not expired (checks `validUntil` then `expirationDate`).
 
-  Proof format: Ed25519Signature2020 or DataIntegrityProof/eddsa-jcs-2022,
-  proofValue = hex-encoded 64-byte Ed25519 signature.
+  Legacy issuer proofs use a hex-encoded Ed25519 signature. Current Issuer
+  credentials use DataIntegrityProof/eddsa-jcs-2022: its base58-btc multibase
+  signature covers SHA-256(proof configuration) || SHA-256(VC document), per
+  the Data Integrity hash-data construction.
   """
 
   alias AnsibleRelay.{DidAccountCache, SigVerifier}
@@ -207,18 +209,110 @@ defmodule AnsibleRelay.VpVerifier do
   defp verify_vc_issuer_proof(vc) do
     issuer_did = Map.get(vc, "issuer")
     proof = Map.get(vc, "proof", %{})
-    proof_value = Map.get(proof, "proofValue", "")
 
     with {:ok, entry} <- registry_entry(issuer_did),
          :ok <- issuer_permits_type(entry, vc) do
-      vc_without_proof = Map.delete(vc, "proof")
-      canonical = vc_without_proof |> deep_sort_keys() |> Jason.encode!()
-
-      if SigVerifier.verify_ed25519(entry.public_key_hex, canonical, proof_value),
+      if verify_issuer_signature(entry.public_key_hex, vc, proof),
         do: :ok,
         else: {:error, :invalid_vc_proof}
     end
   end
+
+  # Issuer's current W3C Data Integrity proof signs two canonical JSON hashes,
+  # not the raw credential JSON. Keep the legacy branch for credentials issued
+  # before the OID4VCI Data Integrity rollout.
+  defp verify_issuer_signature(
+         public_key_hex,
+         vc,
+         %{
+           "type" => "DataIntegrityProof",
+           "cryptosuite" => "eddsa-jcs-2022",
+           "proofValue" => proof_value
+         } = proof
+       ) do
+    with {:ok, signature_hex} <- decode_base58btc_signature(proof_value),
+         {:ok, document} <- data_integrity_document(vc, proof),
+         proof_options <- Map.delete(proof, "proofValue"),
+         hash_data <-
+           :crypto.hash(:sha256, canonical_json(proof_options)) <>
+             :crypto.hash(:sha256, canonical_json(document)) do
+      SigVerifier.verify_ed25519(public_key_hex, hash_data, signature_hex)
+    else
+      _ -> false
+    end
+  end
+
+  defp verify_issuer_signature(public_key_hex, vc, proof) when is_map(proof) do
+    proof_value = Map.get(proof, "proofValue", "")
+
+    SigVerifier.verify_ed25519(
+      public_key_hex,
+      canonical_json(Map.delete(vc, "proof")),
+      proof_value
+    )
+  end
+
+  defp verify_issuer_signature(_public_key_hex, _vc, _proof), do: false
+
+  defp data_integrity_document(vc, proof) do
+    document = Map.delete(vc, "proof")
+    proof_options = Map.delete(proof, "proofValue")
+
+    case Map.fetch(proof_options, "@context") do
+      :error ->
+        {:ok, document}
+
+      {:ok, proof_context} ->
+        if context_prefix?(Map.get(document, "@context"), proof_context) do
+          {:ok, Map.put(document, "@context", proof_context)}
+        else
+          :error
+        end
+    end
+  end
+
+  defp context_prefix?(document_context, proof_context) do
+    document_items = context_items(document_context)
+    proof_items = context_items(proof_context)
+
+    proof_items != [] and length(proof_items) <= length(document_items) and
+      Enum.zip(proof_items, document_items)
+      |> Enum.all?(fn {proof_item, document_item} ->
+        proof_item == document_item
+      end)
+  end
+
+  defp context_items(value) when is_binary(value), do: [value]
+  defp context_items(value) when is_list(value), do: value
+  defp context_items(_value), do: []
+
+  @base58btc_alphabet "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+  @base58btc_indexes @base58btc_alphabet |> String.graphemes() |> Enum.with_index() |> Map.new()
+
+  defp decode_base58btc_signature("z" <> encoded) when byte_size(encoded) > 0 do
+    with {:ok, number} <- base58btc_to_integer(encoded) do
+      leading_zeroes = encoded |> String.graphemes() |> Enum.take_while(&(&1 == "1")) |> length()
+      body = if number == 0, do: <<>>, else: :binary.encode_unsigned(number)
+      signature = :binary.copy(<<0>>, leading_zeroes) <> body
+
+      if byte_size(signature) == 64,
+        do: {:ok, Base.encode16(signature, case: :lower)},
+        else: :error
+    end
+  end
+
+  defp decode_base58btc_signature(_proof_value), do: :error
+
+  defp base58btc_to_integer(encoded) do
+    Enum.reduce_while(String.graphemes(encoded), {:ok, 0}, fn char, {:ok, value} ->
+      case Map.fetch(@base58btc_indexes, char) do
+        {:ok, digit} -> {:cont, {:ok, value * 58 + digit}}
+        :error -> {:halt, :error}
+      end
+    end)
+  end
+
+  defp canonical_json(value), do: value |> deep_sort_keys() |> Jason.encode!()
 
   defp registry_entry(issuer_did) when is_binary(issuer_did) do
     case Enum.find(trust_registry(), &(&1.did == issuer_did)) do
