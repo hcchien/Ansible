@@ -117,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 31;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -308,6 +308,23 @@ class AppDatabase extends _$AppDatabase {
           m,
           hostedBoardProjections,
           hostedBoardProjections.encryptionState,
+        );
+      }
+      if (from < 31) {
+        // P-256 is the only supported algorithm for new first-party identity
+        // writes. Remove obsolete Ed25519 publication delivery state while
+        // retaining the local-first content, Wallet credentials, operations,
+        // and historical keys needed to read and verify existing records.
+        await customStatement(
+          'DELETE FROM publication_targets '
+          'WHERE intent_id IN ('
+          'SELECT intent_id FROM publication_intents '
+          "WHERE signature_scheme = 'ed25519'"
+          ')',
+        );
+        await customStatement(
+          "DELETE FROM publication_intents "
+          "WHERE signature_scheme = 'ed25519'",
         );
       }
       await _addColumnIfMissing(
