@@ -29,19 +29,23 @@ class AppSyncResult {
   const AppSyncResult({
     required this.pulledActivities,
     required this.publishSummary,
+    this.opsSummary = const OpsDispatchSummary(),
     this.pullErrors = const [],
     this.reputationErrors = const [],
   });
 
   final int pulledActivities;
   final PublicPublishSummary publishSummary;
+  final OpsDispatchSummary opsSummary;
   final List<String> pullErrors;
   final List<String> reputationErrors;
 
   bool get success =>
       pullErrors.isEmpty &&
       reputationErrors.isEmpty &&
-      publishSummary.errorMessage == null;
+      publishSummary.errorMessage == null &&
+      opsSummary.rejected == 0 &&
+      opsSummary.retryPending == 0;
 }
 
 class PublicPublishSummary {
@@ -195,6 +199,7 @@ class AppSyncService {
 
     final reputationErrors = <String>[];
     final capabilities = <String, String>{};
+    var opsSummary = const OpsDispatchSummary();
     final effectivePushLocal = pushLocal && _allowIdentityWrites;
     if (effectivePushLocal) {
       final presenter = _reputationPresentationService;
@@ -225,7 +230,7 @@ class AppSyncService {
         // content remains on-device and is retried only here, after credentials
         // or the board policy may have changed.
         await queue.retryBlocked();
-        await OpsDispatchService(
+        opsSummary = await OpsDispatchService(
           repository: queue,
           signer: _didSigner,
           relayClient: RelayOpsClient(
@@ -251,6 +256,7 @@ class AppSyncService {
       pullErrors: pullSummary.pullErrors,
       reputationErrors: reputationErrors,
       publishSummary: publishSummary,
+      opsSummary: opsSummary,
     );
   }
 
@@ -687,6 +693,13 @@ String appSyncSummaryMessage(
   if (result.reputationErrors.isNotEmpty) {
     message += text.f('syncAllCredentialErrors', {
       'errors': result.reputationErrors.join('; '),
+    });
+  }
+  if (result.opsSummary.hasActivity) {
+    message += text.f('syncAllOpsSummary', {
+      'sent': result.opsSummary.sent,
+      'rejected': result.opsSummary.rejected,
+      'retry': result.opsSummary.retryPending,
     });
   }
   return message;

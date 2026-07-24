@@ -111,6 +111,36 @@ void main() {
     expect((await repo.listAll()).single.status, 'rejected');
   });
 
+  test(
+    'flushPending retries server errors at the next manual boundary',
+    () async {
+      final repo = InMemoryOpsQueueRepository();
+      await repo.enqueue(_entry());
+      var calls = 0;
+      final service = OpsDispatchService(
+        repository: repo,
+        signer: _RecordingSigner(),
+        relayClient: RelayOpsClient(
+          client: MockClient((_) async {
+            calls += 1;
+            if (calls == 1)
+              return http.Response('{"error":"server_error"}', 500);
+            return http.Response('{"accepted":true,"log_id":1}', 202);
+          }),
+        ),
+      );
+
+      final failed = await service.flushPending();
+      expect(failed.retryPending, 1);
+      expect((await repo.listAll()).single.status, 'blocked');
+
+      expect(await repo.retryBlocked(), 1);
+      final retried = await service.flushPending();
+      expect(retried.sent, 1);
+      expect((await repo.listAll()).single.status, 'synced');
+    },
+  );
+
   test('flushPending retains policy-blocked ops for a later retry', () async {
     final repo = InMemoryOpsQueueRepository();
     await repo.enqueue(_entry());

@@ -26,6 +26,9 @@ class RelayOpsException implements Exception {
 
   bool get isDuplicate => statusCode == 409;
 
+  bool get isRetryable =>
+      statusCode == 408 || statusCode == 429 || statusCode >= 500;
+
   @override
   String toString() {
     final label = error ?? 'relay_ops_error';
