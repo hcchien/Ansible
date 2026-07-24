@@ -180,7 +180,9 @@ class SyncCapabilityService {
   String _canonicalJson(Object? value) {
     if (value is Map) {
       final entries = value.entries.toList()
-        ..sort((left, right) => left.key.toString().compareTo(right.key.toString()));
+        ..sort(
+          (left, right) => left.key.toString().compareTo(right.key.toString()),
+        );
       return '{${entries.map((entry) => '${jsonEncode(entry.key.toString())}:${_canonicalJson(entry.value)}').join(',')}}';
     }
     if (value is List) {
@@ -207,10 +209,18 @@ class SyncCapabilityService {
       },
       body: jsonEncode(body),
     );
-    final decoded = jsonDecode(response.body);
-    final object = decoded is Map<String, dynamic>
-        ? decoded
-        : <String, dynamic>{};
+    Map<String, dynamic> object;
+    try {
+      final decoded = jsonDecode(response.body);
+      object = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    } on FormatException {
+      throw SyncCapabilityException(
+        response.statusCode,
+        response.statusCode >= 200 && response.statusCode < 300
+            ? 'invalid_response'
+            : 'webauthn_error',
+      );
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw SyncCapabilityException(
         response.statusCode,

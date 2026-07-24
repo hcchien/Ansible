@@ -97,7 +97,13 @@ void main() {
       expect(delegation['expires_at'], '2026-10-19T00:00:00.000Z');
       expect(
         delegation['allowed_actions'],
-        containsAll(['forum.publish', 'forum.reply', 'forum.edit', 'forum.delete', 'forum.react']),
+        containsAll([
+          'forum.publish',
+          'forum.reply',
+          'forum.edit',
+          'forum.delete',
+          'forum.react',
+        ]),
       );
     },
   );
@@ -120,13 +126,36 @@ void main() {
     );
   });
 
+  test(
+    'reports an empty Relay response without leaking a JSON parser error',
+    () async {
+      final service = SyncCapabilityService(
+        baseUrl: 'https://relay.example',
+        holderDid: 'did:elix:alice',
+        platform: _FakeWebAuthnPlatform(),
+        didSigner: _FakeDidSigner(),
+        client: MockClient((_) async => http.Response('', 502)),
+      );
+
+      await expectLater(
+        service.authorize(),
+        throwsA(
+          isA<SyncCapabilityException>()
+              .having((error) => error.statusCode, 'statusCode', 502)
+              .having((error) => error.error, 'error', 'webauthn_error'),
+        ),
+      );
+    },
+  );
+
   test('Linux fails closed before attempting unsupported WebAuthn', () async {
     var called = false;
     final service = SyncCapabilityService(
       baseUrl: 'https://relay.example',
       holderDid: 'did:elix:alice',
-      platformCapabilities:
-          PlatformCapabilities.forPlatform(ElixPlatform.linux),
+      platformCapabilities: PlatformCapabilities.forPlatform(
+        ElixPlatform.linux,
+      ),
       client: MockClient((_) async {
         called = true;
         return http.Response('{}', 500);
