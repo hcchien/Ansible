@@ -49,6 +49,44 @@ void main() {
     );
   });
 
+  test('reduced-trust read-only sync never publishes local content', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final now = DateTime.utc(2026, 7, 24);
+    final contentItems = DriftContentItemRepository(db);
+    final publications = DriftPublicationRepository(db);
+    await contentItems.create(
+      ContentItem(
+        id: 'pending-linux-note',
+        authorDid: 'did:elix:alice',
+        mode: ContentMode.note,
+        body: 'must remain local without WebAuthn',
+        status: ContentStatus.active,
+        visibility: ContentVisibility.public,
+        localOnly: false,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    final result = await AppSyncService(
+      remoteNodeRepo: DriftRemoteNodeRepository(db),
+      boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+      boardRepo: DriftBoardRepository(db),
+      threadRepo: DriftThreadRepository(db),
+      postRepo: DriftPostRepository(db),
+      contentItemRepo: contentItems,
+      publicationRepo: publications,
+      relaySettings: const EmptyNostrRelaySettingsStore(),
+      keyStore: const InMemoryNostrKeyStore(),
+      allowIdentityWrites: false,
+    ).syncAll(pullRemote: false);
+
+    expect(result.publishSummary.publicItems, 0);
+    expect(result.publishSummary.skippedReasons, {'webauthnUnavailable'});
+    expect(await publications.listTargets(), isEmpty);
+  });
+
   test('syncAll publishes public content to the active relay', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());

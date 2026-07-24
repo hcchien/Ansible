@@ -1,9 +1,13 @@
 part of 'settings_home_screen.dart';
 
 class _IssuerToolsFold extends StatefulWidget {
-  const _IssuerToolsFold({required this.did});
+  const _IssuerToolsFold({
+    required this.did,
+    required this.capabilities,
+  });
 
   final String did;
+  final PlatformCapabilities capabilities;
 
   @override
   State<_IssuerToolsFold> createState() => _IssuerToolsFoldState();
@@ -22,14 +26,20 @@ class _IssuerToolsFoldState extends State<_IssuerToolsFold> {
           label: context.uiCopy(zh: '簽發憑證與組織工具', en: 'Credential issuer tools'),
           en: 'ADVANCED',
           sub: context.uiCopy(
-            zh: '需要自行簽發會員憑證時再設定',
-            en: 'Set up only if you need to issue membership credentials',
+            zh: widget.capabilities.hardwareIdentityKey
+                ? '需要自行簽發會員憑證時再設定'
+                : '需要不可匯出的硬體金鑰；此裝置為降低信任模式',
+            en: widget.capabilities.hardwareIdentityKey
+                ? 'Set up only if you need to issue membership credentials'
+                : 'Requires a non-exportable hardware key; this device is reduced trust',
           ),
           value: _expanded
               ? context.uiCopy(zh: '收合', en: 'Hide')
               : context.uiCopy(zh: '展開', en: 'Show'),
           trailingIcon: _expanded ? Icons.expand_less : Icons.expand_more,
-          onTap: () => setState(() => _expanded = !_expanded),
+          onTap: widget.capabilities.hardwareIdentityKey
+              ? () => setState(() => _expanded = !_expanded)
+              : null,
         ),
         if (_expanded) ...[
           AnsibleSettingsRow(
@@ -75,8 +85,12 @@ class _IssuerToolsFoldState extends State<_IssuerToolsFold> {
 }
 
 class _IdentityCustodyRow extends StatefulWidget {
-  const _IdentityCustodyRow({required this.did});
+  const _IdentityCustodyRow({
+    required this.did,
+    required this.capabilities,
+  });
   final String did;
+  final PlatformCapabilities capabilities;
 
   @override
   State<_IdentityCustodyRow> createState() => _IdentityCustodyRowState();
@@ -91,8 +105,6 @@ class _IdentityCustodyRowState extends State<_IdentityCustodyRow> {
     super.initState();
     _identity = const SecureCanonicalIdentityStore().load();
   }
-
-  bool get _mobile => !kIsWeb && (Platform.isIOS || Platform.isAndroid);
 
   Future<void> _upgrade() async {
     final confirmed = await showDialog<bool>(
@@ -150,7 +162,7 @@ class _IdentityCustodyRowState extends State<_IdentityCustodyRow> {
         final hardware = snapshot.data?.custody == 'hardware';
         final value = hardware
             ? context.uiCopy(zh: '硬體保護', en: 'Hardware-backed')
-            : _mobile
+            : widget.capabilities.hardwareIdentityKey
             ? context.uiCopy(zh: '可升級', en: 'Upgrade available')
             : context.uiCopy(zh: '降低信任', en: 'Reduced trust');
         return AnsibleSettingsRow(
@@ -163,7 +175,7 @@ class _IdentityCustodyRowState extends State<_IdentityCustodyRow> {
                   zh: '私鑰不可匯出；簽章需要裝置授權',
                   en: 'Non-exportable; signing requires device authorization',
                 )
-              : _mobile
+              : widget.capabilities.hardwareIdentityKey
               ? context.uiCopy(
                   zh: '將舊軟體金鑰安全輪替至裝置硬體',
                   en: 'Safely rotate the legacy software key into device hardware',
@@ -176,7 +188,12 @@ class _IdentityCustodyRowState extends State<_IdentityCustodyRow> {
               ? context.uiCopy(zh: '升級中…', en: 'Upgrading…')
               : value,
           valueColor: hardware ? AnsibleDesign.spore : AnsibleDesign.ochre,
-          onTap: !hardware && _mobile && !_upgrading ? _upgrade : null,
+          onTap:
+              !hardware &&
+                  widget.capabilities.hardwareIdentityKey &&
+                  !_upgrading
+              ? _upgrade
+              : null,
         );
       },
     );
@@ -349,11 +366,17 @@ class _LanguageOptionRow extends StatelessWidget {
 }
 
 class _NotificationSettingsRow extends StatefulWidget {
-  const _NotificationSettingsRow({required this.text, this.db, this.did});
+  const _NotificationSettingsRow({
+    required this.text,
+    required this.capabilities,
+    this.db,
+    this.did,
+  });
 
   final _SettingsText text;
   final AppDatabase? db;
   final String? did;
+  final PlatformCapabilities capabilities;
 
   @override
   State<_NotificationSettingsRow> createState() =>
@@ -382,7 +405,11 @@ class _NotificationSettingsRowState extends State<_NotificationSettingsRow> {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) =>
-            NotificationSettingsScreen(db: widget.db, did: widget.did),
+            NotificationSettingsScreen(
+              db: widget.db,
+              did: widget.did,
+              platformCapabilities: widget.capabilities,
+            ),
       ),
     );
     if (!mounted) return;

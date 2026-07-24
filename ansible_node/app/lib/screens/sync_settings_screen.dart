@@ -22,6 +22,7 @@ import '../services/remote_sync_service.dart';
 import '../services/relay_reputation_presentation_service.dart';
 import '../services/user_presence_verifier.dart';
 import '../services/sync_capability_service.dart';
+import '../services/platform_capabilities.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/nostr_publication_retry_panel.dart';
@@ -48,6 +49,7 @@ class SyncSettingsScreen extends StatefulWidget {
   /// at add time. Defaults to [RelayDiscoveryClient] against the host URL.
   final Future<String?> Function(String url)? complianceFetcher;
   final UserPresenceVerifier? userPresenceVerifier;
+  final PlatformCapabilities? platformCapabilities;
 
   const SyncSettingsScreen({
     super.key,
@@ -56,6 +58,7 @@ class SyncSettingsScreen extends StatefulWidget {
     this.initialForumHostUrl,
     this.complianceFetcher,
     this.userPresenceVerifier,
+    this.platformCapabilities,
   });
 
   @override
@@ -64,6 +67,8 @@ class SyncSettingsScreen extends StatefulWidget {
 
 class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   static const int _retainForeverValue = 0;
+  PlatformCapabilities get _capabilities =>
+      widget.platformCapabilities ?? PlatformCapabilities.current;
   static const List<int> _retentionOptions = [
     7,
     30,
@@ -603,20 +608,33 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       );
 
       final result = await syncService.syncFromNode(client, node);
-      final capability = await SyncCapabilityService(
-        baseUrl: node.url,
-        holderDid: widget.localDid,
-      ).authorize();
-      _syncCapabilitiesByNode[node.id] = capability.token;
-      await RelayReputationPresentationService(
-        walletRepository: DriftWalletRepository(widget.db),
-        reputationRepository: DriftDidReputationRepository(widget.db),
-      ).present(holderDid: widget.localDid, node: node);
-      final publishSummary = publishPublicContent
+      String? capabilityToken;
+      if (_capabilities.webAuthn) {
+        final capability = await SyncCapabilityService(
+          baseUrl: node.url,
+          holderDid: widget.localDid,
+          platformCapabilities: _capabilities,
+        ).authorize();
+        capabilityToken = capability.token;
+        _syncCapabilitiesByNode[node.id] = capability.token;
+        await RelayReputationPresentationService(
+          walletRepository: DriftWalletRepository(widget.db),
+          reputationRepository: DriftDidReputationRepository(widget.db),
+        ).present(holderDid: widget.localDid, node: node);
+      }
+      final publishSummary = publishPublicContent && capabilityToken != null
           ? await bestEffortPublicPublish(
-              () => _publishPublicContent(showSnackBar: false),
+              () => _publishPublicContent(
+                showSnackBar: false,
+                syncCapability: capabilityToken,
+              ),
             )
-          : const PublicPublishSummary(publicItems: 0);
+          : PublicPublishSummary(
+              publicItems: 0,
+              skippedReasons: _capabilities.webAuthn
+                  ? const {}
+                  : const {'webauthnUnavailable'},
+            );
 
       setState(() {
         _syncingNodes[node.id] = false;
@@ -715,12 +733,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         }
       }
     }
-    final publishSummary = await bestEffortPublicPublish(
-      () => _publishPublicContent(
-        showSnackBar: false,
-        syncCapability: _activeSyncCapability(),
-      ),
-    );
+    final publishSummary = _capabilities.webAuthn
+        ? await bestEffortPublicPublish(
+            () => _publishPublicContent(
+              showSnackBar: false,
+              syncCapability: _activeSyncCapability(),
+            ),
+          )
+        : const PublicPublishSummary(
+            publicItems: 0,
+            skippedReasons: {'webauthnUnavailable'},
+          );
     if (!mounted) return;
     final message = _syncAllSummaryMessage(
       pulledActivities: pulledActivities,
@@ -926,6 +949,24 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: [
+                if (!_capabilities.webAuthn)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
+                    child: Container(
+                      key: const Key('sync_read_only_platform_notice'),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AnsibleDesign.ochre.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        context.uiCopy(
+                          zh: '此平台沒有可用的 WebAuthn。Relay 讀取同步仍可使用，但上傳與公開發佈會保持停用，不會退回 cookie 或未簽章寫入。',
+                          en: 'WebAuthn is unavailable on this platform. Relay pull sync remains available, while uploads and public publication stay disabled; Elix will not fall back to cookie-only or unsigned writes.',
+                        ),
+                      ),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
                   child: Column(

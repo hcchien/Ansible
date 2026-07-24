@@ -27,6 +27,7 @@ import 'services/identity_anchor_service.dart';
 import 'services/recovery_readiness_store.dart';
 import 'services/relay_anchor_client.dart';
 import 'services/secure_device_key_store.dart';
+import 'services/platform_capabilities.dart';
 import 'services/app_locale_controller.dart';
 import 'services/backup_policy_service.dart';
 import 'services/canonical_identity_store.dart';
@@ -132,7 +133,15 @@ Future<void> _bootstrap() async {
       timeout: const Duration(seconds: 15),
     );
 
-    runApp(MyApp(db: db, webSessionLinks: AppLinks().uriLinkStream));
+    final capabilities = PlatformCapabilities.current;
+    runApp(
+      MyApp(
+        db: db,
+        webSessionLinks: capabilities.appLinks
+            ? AppLinks().uriLinkStream
+            : const Stream<Uri>.empty(),
+      ),
+    );
   } catch (error, stack) {
     // A failure before runApp() otherwise shows a blank screen with no clue.
     // Surface it on-device so startup problems are diagnosable, and report it.

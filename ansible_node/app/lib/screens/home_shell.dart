@@ -17,6 +17,7 @@ import '../services/atproto_client.dart';
 import '../services/recovery_veto_service.dart';
 import '../services/relay_anchor_client.dart';
 import '../widgets/recovery_veto_alert.dart';
+import '../widgets/desktop_shortcut_scope.dart';
 import '../services/ai/ai_provider.dart';
 import '../services/ai/ai_provider_config_store.dart';
 import '../services/ai/apple_nl_embedding_service.dart';
@@ -37,6 +38,7 @@ import '../services/messenger_relay_client.dart';
 import '../services/messenger_sync_service.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
+import '../services/platform_capabilities.dart';
 import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
 import '../services/forum_publication_service.dart';
@@ -1867,6 +1869,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   AppSyncService _appSyncService() {
+    final capabilities = PlatformCapabilities.current;
     final boardAccess = BoardAccessPresentationService(
       walletRepository: DriftWalletRepository(widget.db),
     );
@@ -1962,7 +1965,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         reputationRepository: _didReputationRepo,
       ),
       syncCapabilityService: (node) =>
-          SyncCapabilityService(baseUrl: node.url, holderDid: widget.did),
+          SyncCapabilityService(
+            baseUrl: node.url,
+            holderDid: widget.did,
+            platformCapabilities: capabilities,
+          ),
+      allowIdentityWrites: capabilities.webAuthn,
       authorizeBoardRead: (board, requestUri) =>
           authorizeBoard(board, requestUri, 'read', 'GET'),
       authorizeBoardWrite: (board, requestUri) =>
@@ -2416,7 +2424,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // Phone layout uses the bottom icon nav (Threads-style); wide keeps the
     // sidebar + top header.
     final compactShell = MediaQuery.sizeOf(context).width < 720;
-    return Scaffold(
+    final shell = Scaffold(
       bottomNavigationBar: compactShell
           ? AutoHidingHomeBottomBar(
               visible: _mobileNavigationVisible,
@@ -2577,6 +2585,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ),
         ),
       ),
+    );
+    return DesktopShortcutScope(
+      onCompose: () {
+        if (_selectedBoard == HomeBoard.forum) {
+          unawaited(_createThread());
+        } else {
+          _openCompose(context);
+        }
+      },
+      onRefresh: () => unawaited(_runHeaderSync()),
+      child: shell,
     );
   }
 

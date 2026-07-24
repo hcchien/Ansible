@@ -2,6 +2,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/screens/passkeys_registration_screen.dart';
 import 'package:ansible_node/services/atproto_client.dart';
 import 'package:ansible_node/services/canonical_identity_store.dart';
+import 'package:ansible_node/services/platform_capabilities.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -270,6 +271,42 @@ void main() {
     expect(find.text('帳號名稱格式無效，請使用 1–63 個英數字或中間連字號。'), findsOneWidget);
     expect(passkeys.registerCalled, isFalse);
     expect(atProto.registeredPublicKeyHex, isNull);
+  });
+  testWidgets('reduced-trust desktop requires explicit consent', (tester) async {
+    final passkeys = _FakePasskeysManager('ef' * 32);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PasskeysRegistrationScreen(
+          platformCapabilities:
+              PlatformCapabilities.forPlatform(ElixPlatform.windows),
+          passkeysManager: passkeys,
+          canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+          atProtoClient: _FakeAtProtoClient(),
+          nonceSigner: (nonce, publicKeyHex) async => 'sig-for-$nonce',
+          onRegistered: (did, handle) {},
+        ),
+      ),
+    );
+
+    final button = tester.widget<FilledButton>(
+      find.byKey(const Key('create_identity_button')),
+    );
+    expect(button.onPressed, isNull);
+    expect(
+      find.byKey(const Key('reduced_trust_identity_consent')),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('reduced_trust_identity_consent')),
+    );
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
+    final enabled = tester.widget<FilledButton>(
+      find.byKey(const Key('create_identity_button')),
+    );
+    expect(enabled.onPressed, isNotNull);
   });
 }
 

@@ -1,15 +1,16 @@
 /// Passkeys-style identity manager for Tris-Aura V2.0.
 ///
-/// On real devices: stores device-held key material via flutter_secure_storage
-/// and requires local biometric/device authentication before account creation.
+/// On hardware-capable platforms: stores a non-exportable device key and
+/// requires local authentication. Windows/Linux may use a separately enabled,
+/// explicitly consented reduced-trust software key in OS secure storage.
 ///
 /// "Passkeys" here means: keypair generated and stored in hardware enclave,
 /// biometric required to sign, keypair never leaves the device.
 ///
-/// Full WebAuthn / FIDO2 RP flow is deferred to P2 (requires relay RP server).
+/// Relay synchronization performs its separate WebAuthn / FIDO2 RP ceremony.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'did_manager.dart';
@@ -68,6 +69,7 @@ class PasskeysManagerImpl implements PasskeysManager {
   final FlutterSecureStorage _secureStorage;
   final LocalAuthentication _localAuth;
   final bool _allowInsecureFallback;
+  final bool _allowReducedTrustIdentity;
   final HardwareIdentityKey _hardwareKey;
 
   PasskeysManagerImpl({
@@ -78,20 +80,24 @@ class PasskeysManagerImpl implements PasskeysManager {
       'ANSIBLE_ALLOW_INSECURE_DEV_FALLBACK',
       defaultValue: false,
     ),
+    bool allowReducedTrustIdentity = false,
     HardwareIdentityKey? hardwareIdentityKey,
   }) : _didManager = didManager ?? DidManagerImpl(),
        _secureStorage = secureStorage ?? const FlutterSecureStorage(),
        _localAuth = localAuthentication ?? LocalAuthentication(),
        _allowInsecureFallback = allowInsecureFallback,
+       _allowReducedTrustIdentity = allowReducedTrustIdentity,
        _hardwareKey = hardwareIdentityKey ?? HardwareIdentityKey();
 
   Future<bool> _authenticateWithBiometrics({required String reason}) async {
     try {
       final bool canCheck = await _localAuth.canCheckBiometrics;
       if (!canCheck) {
-        if (_allowInsecureFallback) {
+        if (_allowInsecureFallback || _allowReducedTrustIdentity) {
           debugPrint(
-            '[PasskeysManager] Biometrics unavailable — dev fallback enabled',
+            _allowReducedTrustIdentity
+                ? '[PasskeysManager] Device authentication unavailable — explicit reduced-trust identity selected'
+                : '[PasskeysManager] Biometrics unavailable — dev fallback enabled',
           );
           return true;
         }
@@ -104,9 +110,9 @@ class PasskeysManagerImpl implements PasskeysManager {
         options: const AuthenticationOptions(biometricOnly: false),
       );
     } on PlatformException catch (e) {
-      if (_allowInsecureFallback) {
+      if (_allowInsecureFallback || _allowReducedTrustIdentity) {
         debugPrint(
-          '[PasskeysManager] PlatformException from local_auth: $e — dev fallback enabled',
+          '[PasskeysManager] PlatformException from local_auth: $e — ${_allowReducedTrustIdentity ? 'explicit reduced-trust mode' : 'dev fallback enabled'}',
         );
         return true;
       }
@@ -114,9 +120,9 @@ class PasskeysManagerImpl implements PasskeysManager {
         'Device authentication failed: ${e.message ?? e.code}',
       );
     } catch (e) {
-      if (_allowInsecureFallback) {
+      if (_allowInsecureFallback || _allowReducedTrustIdentity) {
         debugPrint(
-          '[PasskeysManager] local_auth threw $e — dev fallback enabled',
+          '[PasskeysManager] local_auth threw $e — ${_allowReducedTrustIdentity ? 'explicit reduced-trust mode' : 'dev fallback enabled'}',
         );
         return true;
       }
@@ -138,14 +144,19 @@ class PasskeysManagerImpl implements PasskeysManager {
     try {
       identityKey = await _hardwareKey.generate();
       did = 'did:key:p256:${identityKey.publicKeyHex.substring(0, 24)}';
-    } on PlatformException {
-      if (!_allowInsecureFallback) rethrow;
+    } catch (error) {
+      if (!(_allowInsecureFallback || _allowReducedTrustIdentity) ||
+          (error is! PlatformException && error is! MissingPluginException)) {
+        rethrow;
+      }
       final ownedDid = await _didManager.generate();
       identityKey = IdentityPublicKey(
         algorithm: IdentityKeyAlgorithm.ed25519,
         publicKeyHex: ownedDid.publicKeyHex,
         custody: IdentityKeyCustody.reducedTrust,
-        hardwareSecurityLevel: 'software_dev_fallback',
+        hardwareSecurityLevel: _allowReducedTrustIdentity
+            ? 'software_os_secure_storage'
+            : 'software_dev_fallback',
       );
       did = ownedDid.did;
     }

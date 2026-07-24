@@ -7,6 +7,7 @@ import 'package:passkeys/authenticator.dart';
 import 'package:passkeys/types.dart';
 
 import '../config/protocol.dart';
+import 'platform_capabilities.dart';
 
 abstract class WebAuthnPlatform {
   Future<Map<String, dynamic>> register(Map<String, dynamic> options);
@@ -68,12 +69,15 @@ class SyncCapabilityService {
     DidSigner? didSigner,
     http.Client? client,
     DateTime Function()? now,
+    PlatformCapabilities? platformCapabilities,
   }) : _baseUri = Uri.parse(baseUrl),
        _holderDid = holderDid,
        _platform = platform ?? NativeWebAuthnPlatform(),
        _didSigner = didSigner ?? DidSignerImpl(),
        _client = client ?? http.Client(),
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now,
+       _platformCapabilities =
+           platformCapabilities ?? PlatformCapabilities.current;
 
   final Uri _baseUri;
   final String _holderDid;
@@ -81,10 +85,14 @@ class SyncCapabilityService {
   final DidSigner _didSigner;
   final http.Client _client;
   final DateTime Function() _now;
+  final PlatformCapabilities _platformCapabilities;
 
   SyncCapability? _cached;
 
   Future<SyncCapability> authorize({bool allowEnrollment = true}) async {
+    if (!_platformCapabilities.webAuthn) {
+      throw const SyncCapabilityException(409, 'webauthn_unavailable');
+    }
     final cached = _cached;
     if (cached != null &&
         cached.expiresAt.isAfter(

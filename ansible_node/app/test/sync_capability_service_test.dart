@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/services/sync_capability_service.dart';
+import 'package:ansible_node/services/platform_capabilities.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -117,6 +118,32 @@ void main() {
       service.authorize(allowEnrollment: false),
       throwsA(isA<SyncCapabilityException>()),
     );
+  });
+
+  test('Linux fails closed before attempting unsupported WebAuthn', () async {
+    var called = false;
+    final service = SyncCapabilityService(
+      baseUrl: 'https://relay.example',
+      holderDid: 'did:elix:alice',
+      platformCapabilities:
+          PlatformCapabilities.forPlatform(ElixPlatform.linux),
+      client: MockClient((_) async {
+        called = true;
+        return http.Response('{}', 500);
+      }),
+    );
+
+    await expectLater(
+      service.authorize(),
+      throwsA(
+        isA<SyncCapabilityException>().having(
+          (error) => error.error,
+          'error',
+          'webauthn_unavailable',
+        ),
+      ),
+    );
+    expect(called, isFalse);
   });
 }
 

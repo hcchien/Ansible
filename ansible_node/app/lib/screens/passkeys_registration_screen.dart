@@ -10,6 +10,7 @@ import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/atproto_client.dart';
 import '../services/canonical_identity_store.dart';
+import '../services/platform_capabilities.dart';
 import '../theme/ansible_design.dart';
 
 /// Passkeys Registration Screen — Phase 1 V2.0
@@ -40,6 +41,7 @@ class PasskeysRegistrationScreen extends StatefulWidget {
   final AtProtoClient? atProtoClient;
   final Future<String> Function(String nonce, String publicKeyHex)? nonceSigner;
   final bool allowInsecureDevFallback;
+  final PlatformCapabilities? platformCapabilities;
 
   const PasskeysRegistrationScreen({
     super.key,
@@ -51,6 +53,7 @@ class PasskeysRegistrationScreen extends StatefulWidget {
     this.nonceSigner,
     this.allowInsecureDevFallback =
         AppEnvironment.allowInsecureIdentityFallback,
+    this.platformCapabilities,
   });
 
   @override
@@ -65,6 +68,10 @@ class _PasskeysRegistrationScreenState
   final TextEditingController _handleController = TextEditingController(
     text: AppEnvironment.defaultHandleSuffix,
   );
+  bool _reducedTrustAccepted = false;
+
+  PlatformCapabilities get _capabilities =>
+      widget.platformCapabilities ?? PlatformCapabilities.current;
 
   late final PasskeysManager _passkeysManager;
   late final CanonicalIdentityStore _canonicalIdentityStore;
@@ -77,6 +84,7 @@ class _PasskeysRegistrationScreenState
         widget.passkeysManager ??
         PasskeysManagerImpl(
           allowInsecureFallback: widget.allowInsecureDevFallback,
+          allowReducedTrustIdentity: _capabilities.reducedTrustIdentityOnly,
         );
     _canonicalIdentityStore =
         widget.canonicalIdentityStore ?? const SecureCanonicalIdentityStore();
@@ -485,6 +493,32 @@ class _PasskeysRegistrationScreenState
                         ),
                         const SizedBox(height: 16),
                         _buildPhaseIndicator(),
+                        if (_capabilities.reducedTrustIdentityOnly) ...[
+                          const SizedBox(height: 14),
+                          CheckboxListTile(
+                            key: const Key('reduced_trust_identity_consent'),
+                            value: _reducedTrustAccepted,
+                            onChanged: _phase == _Phase.idle
+                                ? (value) => setState(
+                                    () => _reducedTrustAccepted = value ?? false,
+                                  )
+                                : null,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              _copy(
+                                zh: '我了解這台電腦只能建立降低信任的軟體金鑰',
+                                en: 'I understand this computer can only create a reduced-trust software key',
+                              ),
+                            ),
+                            subtitle: Text(
+                              _copy(
+                                zh: '私鑰會存入作業系統安全儲存，但不是不可匯出的硬體金鑰；高敏感 Issuer 管理與私密 board 金鑰功能會停用。之後可在支援硬體金鑰的裝置安全升級。',
+                                en: 'The key is stored in OS secure storage but is not non-exportable hardware custody. Sensitive issuer administration and private-board key operations stay disabled. You can upgrade later on a hardware-capable device.',
+                              ),
+                            ),
+                          ),
+                        ],
                         if (_errorMessage != null) ...[
                           const SizedBox(height: 14),
                           Container(
@@ -530,14 +564,22 @@ class _PasskeysRegistrationScreenState
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          onPressed: _phase == _Phase.idle
+                          key: const Key('create_identity_button'),
+                          onPressed:
+                              _phase == _Phase.idle &&
+                                  (!_capabilities.reducedTrustIdentityOnly ||
+                                      _reducedTrustAccepted)
                               ? _startRegistration
                               : null,
                           icon: const Icon(Icons.key_outlined),
                           label: Text(
                             _copy(
-                              zh: '建立帳號（Passkeys）',
-                              en: 'Create Account (Passkeys)',
+                              zh: _capabilities.hardwareIdentityKey
+                                  ? '建立帳號（Passkeys）'
+                                  : '建立降低信任帳號',
+                              en: _capabilities.hardwareIdentityKey
+                                  ? 'Create Account (Passkeys)'
+                                  : 'Create reduced-trust account',
                             ),
                           ),
                         ),

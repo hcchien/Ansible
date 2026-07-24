@@ -1,4 +1,5 @@
 import 'package:ansible_node/screens/credential_issuance_wizard.dart';
+import 'package:ansible_node/services/platform_capabilities.dart';
 import 'package:ansible_node/services/passport_local_id_service.dart';
 import 'package:ansible_node/services/atproto_client.dart';
 import 'package:ansible_node/services/vc_issuer_client.dart';
@@ -7,6 +8,9 @@ import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+final _iosCapabilities =
+    PlatformCapabilities.forPlatform(ElixPlatform.ios);
 
 void main() {
   setUp(() {
@@ -17,9 +21,12 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
-          body: CredentialIssuanceWizard(holderDid: 'did:plc:abcdefghijklmnop'),
+          body: CredentialIssuanceWizard(
+            holderDid: 'did:plc:abcdefghijklmnop',
+            platformCapabilities: _iosCapabilities,
+          ),
         ),
       ),
     );
@@ -27,6 +34,27 @@ void main() {
     expect(find.text('TW 身份驗證'), findsOneWidget);
     expect(find.text('Passport NFC'), findsOneWidget);
     expect(find.text('Email OTP / Legacy'), findsOneWidget);
+  });
+
+  testWidgets('desktop hides phone-only issuance and explains mobile handoff', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CredentialIssuanceWizard(
+            holderDid: 'did:elix:desktop',
+            platformCapabilities:
+                PlatformCapabilities.forPlatform(ElixPlatform.macos),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('TW 身份驗證'), findsNothing);
+    expect(find.text('Passport NFC'), findsNothing);
+    expect(find.text('Email OTP / Legacy'), findsOneWidget);
+    expect(find.textContaining('需要手機硬體'), findsOneWidget);
   });
 
   testWidgets('selecting TW provider shows MobileMoica disclosure panel', (
@@ -139,6 +167,7 @@ void main() {
             walletRepository: repository,
             vcIssuerClient: client,
             passportReader: _FakePassportReader(_passportData),
+            platformCapabilities: _iosCapabilities,
             passportLocalIdService: localIdService,
             passportZkpProver: const _FakeZkpProver(),
             onCredentialStored: () => storedCallbackCalled = true,
@@ -223,6 +252,7 @@ void main() {
               walletRepository: repository,
               vcIssuerClient: client,
               passportReader: _FakePassportReader(_passportData),
+              platformCapabilities: _iosCapabilities,
               passportLocalIdService: localIdService,
             ),
           ),

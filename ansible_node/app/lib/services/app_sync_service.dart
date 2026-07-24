@@ -106,6 +106,7 @@ class AppSyncService {
     RelayIdentityClient? identityClient,
     RelayReputationPresentationService? reputationPresentationService,
     SyncCapabilityService Function(RemoteNode node)? syncCapabilityService,
+    bool allowIdentityWrites = true,
     BoardReadAuthorization? authorizeBoardRead,
     BoardWriteAuthorization? authorizeBoardWrite,
     SelfBackfillStateStore selfBackfillState =
@@ -136,6 +137,7 @@ class AppSyncService {
        _identityClient = identityClient,
        _reputationPresentationService = reputationPresentationService,
        _syncCapabilityService = syncCapabilityService,
+       _allowIdentityWrites = allowIdentityWrites,
        _authorizeBoardRead = authorizeBoardRead,
        _authorizeBoardWrite = authorizeBoardWrite,
        _selfBackfillState = selfBackfillState;
@@ -166,6 +168,7 @@ class AppSyncService {
   final RelayIdentityClient? _identityClient;
   final RelayReputationPresentationService? _reputationPresentationService;
   final SyncCapabilityService Function(RemoteNode node)? _syncCapabilityService;
+  final bool _allowIdentityWrites;
   final BoardReadAuthorization? _authorizeBoardRead;
   final BoardWriteAuthorization? _authorizeBoardWrite;
   final SelfBackfillStateStore _selfBackfillState;
@@ -192,7 +195,8 @@ class AppSyncService {
 
     final reputationErrors = <String>[];
     final capabilities = <String, String>{};
-    if (pushLocal) {
+    final effectivePushLocal = pushLocal && _allowIdentityWrites;
+    if (effectivePushLocal) {
       final presenter = _reputationPresentationService;
       final holderDid = _followerDid;
       if (presenter != null && holderDid != null) {
@@ -232,11 +236,16 @@ class AppSyncService {
         ).flushPending();
       }
     }
-    final publishSummary = pushLocal
+    final publishSummary = effectivePushLocal
         ? await bestEffortPublicPublish(
             () => publishPublicContent(syncCapabilities: capabilities),
           )
-        : const PublicPublishSummary(publicItems: 0);
+        : PublicPublishSummary(
+            publicItems: 0,
+            skippedReasons: pushLocal
+                ? const {'webauthnUnavailable'}
+                : const {},
+          );
     return AppSyncResult(
       pulledActivities: pullSummary.pulledActivities,
       pullErrors: pullSummary.pullErrors,

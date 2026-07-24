@@ -6,6 +6,7 @@ import '../l10n/app_l10n.dart';
 import '../services/apns_push_token_provider.dart';
 import '../services/notification_preferences_controller.dart';
 import '../services/push_registration_service.dart';
+import '../services/platform_capabilities.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
@@ -19,6 +20,7 @@ class NotificationSettingsScreen extends StatefulWidget {
     this.db,
     this.did,
     this.pushServiceFactory,
+    this.platformCapabilities,
   });
 
   /// Injectable for tests / shared app instance; defaults to a controller
@@ -32,6 +34,7 @@ class NotificationSettingsScreen extends StatefulWidget {
 
   /// Test seam: builds the registration service for a relay base URL.
   final PushRegistrationService Function(String baseUrl)? pushServiceFactory;
+  final PlatformCapabilities? platformCapabilities;
 
   @override
   State<NotificationSettingsScreen> createState() =>
@@ -64,7 +67,10 @@ class _NotificationSettingsScreenState
     }
   }
 
-  bool get _pushSectionAvailable => widget.db != null && widget.did != null;
+  bool get _pushSectionAvailable =>
+      widget.db != null &&
+      widget.did != null &&
+      (widget.platformCapabilities ?? PlatformCapabilities.current).pushWake;
 
   Future<void> _setPushEnabled(bool enabled) async {
     final db = widget.db;

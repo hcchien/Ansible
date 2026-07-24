@@ -213,6 +213,31 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
+  Future<void> _openDesktopContextMenu(TapDownDetails details) async {
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        details.globalPosition.dx,
+        details.globalPosition.dy,
+        details.globalPosition.dx,
+        details.globalPosition.dy,
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'open',
+          child: Text(context.uiCopy(zh: '開啟', en: 'Open')),
+        ),
+        PopupMenuItem(
+          value: 'share',
+          child: Text(context.uiCopy(zh: '分享', en: 'Share')),
+        ),
+      ],
+    );
+    if (!mounted) return;
+    if (action == 'open') _openDetail();
+    if (action == 'share') await _share();
+  }
+
   /// "↗ pass on" — share the post's text via the platform share sheet.
   Future<void> _share() async {
     final text = widget.data.content.isNotEmpty
@@ -324,6 +349,7 @@ class _PostCardState extends State<PostCard> {
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         onTap: _openDetail,
+        onSecondaryTapDown: _openDesktopContextMenu,
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark

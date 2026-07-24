@@ -8,7 +8,8 @@ import 'canonical_identity_store.dart';
 import 'relay_identity_client.dart';
 
 /// Safely upgrades a legacy exportable Ed25519 identity to a non-exportable
-/// mobile P-256 key without changing the account DID.
+/// platform-backed P-256 key (iOS, Android, or macOS) without changing the
+/// account DID.
 class HardwareKeyUpgradeService {
   HardwareKeyUpgradeService({
     HardwareIdentityKey? hardwareKey,

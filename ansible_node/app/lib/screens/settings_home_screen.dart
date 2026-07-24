@@ -1,7 +1,4 @@
-import 'dart:io' show Platform;
-
 import 'package:ansible_store/ansible_store.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -22,6 +19,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../services/notification_preferences_controller.dart';
+import '../services/platform_capabilities.dart';
 import 'about_screen.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
@@ -73,6 +71,7 @@ class SettingsHomeScreen extends StatelessWidget {
     this.onOpenPersonalBoard,
     this.embedded = false,
     this.showLocalAiAccess,
+    this.platformCapabilities,
   });
 
   /// When true the screen is the bottom-nav 我 tab (not a pushed route), so it
@@ -83,10 +82,14 @@ class SettingsHomeScreen extends StatelessWidget {
   /// MCP clients and background execution limits. Null = decide by platform;
   /// overridable for tests.
   final bool? showLocalAiAccess;
+  final PlatformCapabilities? platformCapabilities;
+
+  PlatformCapabilities get _capabilities =>
+      platformCapabilities ?? PlatformCapabilities.current;
 
   bool get _showLocalAiAccess =>
       showLocalAiAccess ??
-      (!kIsWeb && (Platform.isMacOS || Platform.isLinux || Platform.isWindows));
+      _capabilities.localAiAccess;
 
   /// Jumps to the user's 個人版 (personal board) in the home pager. Surfaced as
   /// the top entry here because the personal board no longer has its own cell in
@@ -305,8 +308,8 @@ class SettingsHomeScreen extends StatelessWidget {
                   );
                 },
               ),
-              _IssuerToolsFold(did: did),
-              _IdentityCustodyRow(did: did),
+              _IssuerToolsFold(did: did, capabilities: _capabilities),
+              _IdentityCustodyRow(did: did, capabilities: _capabilities),
               AnsibleSettingsRow(
                 key: const Key('settings_identity_security_row'),
                 glyph: '⇄',
@@ -364,7 +367,12 @@ class SettingsHomeScreen extends StatelessWidget {
                   );
                 },
               ),
-              _NotificationSettingsRow(text: text, db: db, did: did),
+              _NotificationSettingsRow(
+                text: text,
+                db: db,
+                did: did,
+                capabilities: _capabilities,
+              ),
               AnsibleSettingsRow(
                 glyph: 'A',
                 label: text.readingPreferences,

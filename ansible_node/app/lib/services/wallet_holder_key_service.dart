@@ -61,7 +61,7 @@ class BoardHolderKeyService implements HolderBindingKey {
 }
 
 /// Root administration uses another hardware alias and is unavailable on
-/// reduced-trust desktop platforms. Callers must surface that limitation
+/// reduced-trust platforms (currently Windows and Linux). Callers must surface that limitation
 /// instead of silently falling back to an exportable key.
 class IssuerRootAdminKeyService {
   IssuerRootAdminKeyService({HardwarePurposeKey? key})

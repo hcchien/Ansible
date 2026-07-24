@@ -7,6 +7,7 @@ import '../services/external_url_launcher.dart';
 import '../services/oid4vp_presentation_service.dart';
 import '../services/oid4vci_wallet_client.dart';
 import '../services/vc_issuer_client.dart';
+import '../services/platform_capabilities.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/elix_focus_route.dart';
@@ -27,6 +28,7 @@ class WalletScreen extends StatefulWidget {
     this.verifierScannerBuilder,
     this.pollInterval = const Duration(seconds: 2),
     this.pollTimeout = const Duration(minutes: 2),
+    this.platformCapabilities,
   });
 
   final String holderDid;
@@ -38,6 +40,7 @@ class WalletScreen extends StatefulWidget {
   final WidgetBuilder? verifierScannerBuilder;
   final Duration pollInterval;
   final Duration pollTimeout;
+  final PlatformCapabilities? platformCapabilities;
 
   @override
   State<WalletScreen> createState() => _WalletScreenState();
@@ -46,6 +49,9 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen> {
   late Future<List<WalletCredential>> _credentials;
   var _showWizard = false;
+
+  PlatformCapabilities get _capabilities =>
+      widget.platformCapabilities ?? PlatformCapabilities.current;
 
   @override
   void initState() {
@@ -141,8 +147,10 @@ class _WalletScreenState extends State<WalletScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              _WalletVerifierRequestCard(onScan: _openVerifierScanner),
-              const SizedBox(height: 14),
+              if (_capabilities.cameraScanner) ...[
+                _WalletVerifierRequestCard(onScan: _openVerifierScanner),
+                const SizedBox(height: 14),
+              ],
               _IdentityCard(
                 primary: true,
                 name: text.t('rootName'),
@@ -259,6 +267,7 @@ class _WalletScreenState extends State<WalletScreen> {
       walletRepository: widget.repository,
       pollInterval: widget.pollInterval,
       pollTimeout: widget.pollTimeout,
+      platformCapabilities: widget.platformCapabilities,
       onCredentialStored: _handleCredentialStored,
     );
   }

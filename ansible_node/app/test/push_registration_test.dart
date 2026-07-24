@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/screens/notification_settings_screen.dart';
 import 'package:ansible_node/services/push_registration_service.dart';
+import 'package:ansible_node/services/platform_capabilities.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -144,6 +145,8 @@ void main() {
           home: NotificationSettingsScreen(
             db: db,
             did: 'did:plc:user',
+            platformCapabilities:
+                PlatformCapabilities.forPlatform(ElixPlatform.ios),
             pushServiceFactory: (baseUrl) {
               expect(baseUrl, 'https://relay.example');
               return PushRegistrationService(
@@ -186,6 +189,30 @@ void main() {
         find.byKey(const Key('notification_toggle_push_wake')),
         findsNothing,
       );
+    });
+
+    testWidgets('desktop keeps local notification settings but hides wake push', (
+      tester,
+    ) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationSettingsScreen(
+            db: db,
+            did: 'did:elix:desktop',
+            platformCapabilities:
+                PlatformCapabilities.forPlatform(ElixPlatform.macos),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('notification_toggle_push_wake')),
+        findsNothing,
+      );
+      expect(find.byType(Switch), findsWidgets);
     });
   });
 }

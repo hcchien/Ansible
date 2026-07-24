@@ -145,9 +145,13 @@ one-time recovery codes, delayed/vetoable recovery, and hardware-scoped private
 board agreement keys. Legacy encrypted-key backup is explicitly reduced trust
 and is not the default recovery authority for a hardware identity.
 
-Some legacy DID, PLC, Nostr, desktop, and compatibility device-key paths still
-persist or accept exportable key material. Those paths prevent a claim of full
-compliance.
+macOS now uses the same non-exportable P-256 hardware identity and key-rotation
+path as supported mobile devices. Windows and Linux do not claim hardware
+custody: onboarding requires explicit reduced-trust consent, sensitive Issuer
+and private-board authority remains unavailable, and unsupported WebAuthn
+fails closed. Some legacy DID, PLC, Nostr, Windows/Linux reduced-trust, and
+compatibility device-key paths still persist or accept exportable key
+material. Those paths prevent a claim of full compliance.
 
 Required follow-up:
 

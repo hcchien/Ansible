@@ -11,6 +11,7 @@ import '../services/atproto_client.dart';
 import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/passport_local_id_service.dart';
+import '../services/platform_capabilities.dart';
 import '../services/vc_issuer_client.dart';
 import '../services/zkpassport_srs_service.dart';
 import 'mobilemoica_rp_credential_screen.dart';
@@ -39,6 +40,7 @@ class CredentialIssuanceWizard extends StatefulWidget {
     this.pollTimeout = const Duration(minutes: 2),
     this.onCredentialStored,
     this.onEmailCredentialAdded,
+    this.platformCapabilities,
   });
 
   final String holderDid;
@@ -56,6 +58,7 @@ class CredentialIssuanceWizard extends StatefulWidget {
   final Duration pollTimeout;
   final VoidCallback? onCredentialStored;
   final void Function(String reputationTier)? onEmailCredentialAdded;
+  final PlatformCapabilities? platformCapabilities;
 
   @override
   State<CredentialIssuanceWizard> createState() =>
@@ -64,6 +67,9 @@ class CredentialIssuanceWizard extends StatefulWidget {
 
 class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
   CredentialIssuanceFlow? _selectedFlow;
+
+  PlatformCapabilities get _capabilities =>
+      widget.platformCapabilities ?? PlatformCapabilities.current;
 
   @override
   Widget build(BuildContext context) {
@@ -99,24 +105,29 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
                     children: [
-                      _FlowOptionButton(
-                        icon: Icons.badge_outlined,
-                        label: context.uiCopy(
-                          zh: 'TW 身份驗證',
-                          en: 'TW Identity Verification',
+                      if (_capabilities.mobileMoica)
+                        _FlowOptionButton(
+                          icon: Icons.badge_outlined,
+                          label: context.uiCopy(
+                            zh: 'TW 身份驗證',
+                            en: 'TW Identity Verification',
+                          ),
+                          selected:
+                              _selectedFlow ==
+                              CredentialIssuanceFlow.twProvider,
+                          onTap: () =>
+                              _select(CredentialIssuanceFlow.twProvider),
                         ),
-                        selected:
-                            _selectedFlow == CredentialIssuanceFlow.twProvider,
-                        onTap: () => _select(CredentialIssuanceFlow.twProvider),
-                      ),
-                      _FlowOptionButton(
-                        icon: Icons.nfc,
-                        label: 'Passport NFC',
-                        selected:
-                            _selectedFlow == CredentialIssuanceFlow.passportNfc,
-                        onTap: () =>
-                            _select(CredentialIssuanceFlow.passportNfc),
-                      ),
+                      if (_capabilities.passportNfc)
+                        _FlowOptionButton(
+                          icon: Icons.nfc,
+                          label: 'Passport NFC',
+                          selected:
+                              _selectedFlow ==
+                              CredentialIssuanceFlow.passportNfc,
+                          onTap: () =>
+                              _select(CredentialIssuanceFlow.passportNfc),
+                        ),
                       _FlowOptionButton(
                         icon: Icons.email_outlined,
                         label: 'Email OTP / Legacy',
@@ -126,6 +137,17 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                       ),
                     ],
                   ),
+                  if (_capabilities.desktop) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      context.uiCopy(
+                        zh: 'Mobile MoICA 與 Passport NFC 需要手機硬體；可先在手機完成簽發，憑證會透過你的同步設定出現在此裝置。',
+                        en: 'Mobile MoICA and Passport NFC require phone hardware. Complete issuance on mobile; the credential can then arrive through your configured sync.',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 180),
