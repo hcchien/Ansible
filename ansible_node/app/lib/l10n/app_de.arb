@@ -1,0 +1,23 @@
+{
+  "@@locale": "de",
+  "settingsTitle": "EINSTELLUNGEN",
+  "done": "Fertig",
+  "wallet": "Wallet",
+  "sync": "Synchronisieren",
+  "language": "Sprache",
+  "languageSubtitle": "Sprache der App-Oberfläche wählen",
+  "systemDefault": "Systemsprache",
+  "languagePickerTitle": "Sprache",
+  "languageSystemDescription": "Spracheinstellung dieses Geräts verwenden",
+  "cancel": "Abbrechen",
+  "search": "Suchen",
+  "settingsNav": "Einstellungen",
+  "networkOnline": "Online",
+  "networkOffline": "Offline",
+  "networkChecking": "Wird geprüft",
+  "syncFailedMessage": "Synchronisierung fehlgeschlagen: {error}",
+  "justNow": "Gerade eben",
+  "minutesAgo": "Vor {count} Min.",
+  "hoursAgo": "Vor {count} Std.",
+  "daysAgo": "Vor {count} Tagen"
+}

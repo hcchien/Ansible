@@ -69,6 +69,7 @@ const _strings = {
     'syncNodeError': '{name}: sync error — {error}',
     'syncAllComplete': 'Sync complete · pulled {count} activities · {publish}',
     'syncAllPullErrors': ' · pull errors: {errors}',
+    'syncAllCredentialErrors': ' · credential errors: {errors}',
     'publishFailed': 'public publish failed ({error})',
     'publishNoPublic': 'no public notes or murmurs to publish',
     'publishNoNewTargets': 'no new public targets ({reasons})',
@@ -215,6 +216,82 @@ const _strings = {
     'grantUses': 'uses',
     'revoke': 'Revoke',
   },
+  'fr': {
+    'syncAllComplete':
+        'Synchronisation terminée · {count} activités reçues · {publish}',
+    'syncAllPullErrors': ' · erreurs de réception : {errors}',
+    'syncAllCredentialErrors': ' · erreurs de justificatifs : {errors}',
+    'publishFailed': 'échec de la publication publique ({error})',
+    'publishNoPublic': 'aucune note publique ni aucun murmure à publier',
+    'publishNoNewTargets': 'aucune nouvelle cible publique ({reasons})',
+    'publishNoNewTargetsReason': 'aucune nouvelle cible',
+    'publishResult': '{published}/{enqueued} publiés, {failed} en échec',
+    'publishResultReason':
+        '{published}/{enqueued} publiés, {failed} en échec ({reason})',
+  },
+  'es': {
+    'syncAllComplete':
+        'Sincronización completada · {count} actividades recibidas · {publish}',
+    'syncAllPullErrors': ' · errores de recepción: {errors}',
+    'syncAllCredentialErrors': ' · errores de credenciales: {errors}',
+    'publishFailed': 'error de publicación pública ({error})',
+    'publishNoPublic': 'no hay notas públicas ni murmullos para publicar',
+    'publishNoNewTargets': 'no hay nuevos destinos públicos ({reasons})',
+    'publishNoNewTargetsReason': 'no hay nuevos destinos',
+    'publishResult': 'publicados {published}/{enqueued}, {failed} fallidos',
+    'publishResultReason':
+        'publicados {published}/{enqueued}, {failed} fallidos ({reason})',
+  },
+  'ja': {
+    'syncAllComplete': '同期完了 · {count} 件のアクティビティを取得 · {publish}',
+    'syncAllPullErrors': ' · 取得エラー：{errors}',
+    'syncAllCredentialErrors': ' · 資格情報エラー：{errors}',
+    'publishFailed': '公開に失敗しました（{error}）',
+    'publishNoPublic': '公開できるノートまたはつぶやきはありません',
+    'publishNoNewTargets': '新しい公開先はありません（{reasons}）',
+    'publishNoNewTargetsReason': '新しい公開先はありません',
+    'publishResult': '{published}/{enqueued} 件を公開、{failed} 件失敗',
+    'publishResultReason': '{published}/{enqueued} 件を公開、{failed} 件失敗（{reason}）',
+  },
+  'ko': {
+    'syncAllComplete': '동기화 완료 · 활동 {count}개 가져옴 · {publish}',
+    'syncAllPullErrors': ' · 가져오기 오류: {errors}',
+    'syncAllCredentialErrors': ' · 자격 증명 오류: {errors}',
+    'publishFailed': '공개 게시 실패({error})',
+    'publishNoPublic': '게시할 공개 노트 또는 머머가 없습니다',
+    'publishNoNewTargets': '새 공개 대상이 없습니다({reasons})',
+    'publishNoNewTargetsReason': '새 대상 없음',
+    'publishResult': '{published}/{enqueued}개 게시, {failed}개 실패',
+    'publishResultReason': '{published}/{enqueued}개 게시, {failed}개 실패({reason})',
+  },
+  'de': {
+    'syncAllComplete':
+        'Synchronisierung abgeschlossen · {count} Aktivitäten abgerufen · {publish}',
+    'syncAllPullErrors': ' · Abruffehler: {errors}',
+    'syncAllCredentialErrors': ' · Nachweisfehler: {errors}',
+    'publishFailed': 'Öffentliche Veröffentlichung fehlgeschlagen ({error})',
+    'publishNoPublic':
+        'keine öffentlichen Notizen oder Murmurs zum Veröffentlichen',
+    'publishNoNewTargets': 'keine neuen öffentlichen Ziele ({reasons})',
+    'publishNoNewTargetsReason': 'keine neuen Ziele',
+    'publishResult':
+        '{published}/{enqueued} veröffentlicht, {failed} fehlgeschlagen',
+    'publishResultReason':
+        '{published}/{enqueued} veröffentlicht, {failed} fehlgeschlagen ({reason})',
+  },
+  'it': {
+    'syncAllComplete':
+        'Sincronizzazione completata · {count} attività ricevute · {publish}',
+    'syncAllPullErrors': ' · errori di ricezione: {errors}',
+    'syncAllCredentialErrors': ' · errori delle credenziali: {errors}',
+    'publishFailed': 'pubblicazione pubblica non riuscita ({error})',
+    'publishNoPublic': 'nessuna nota pubblica o murmur da pubblicare',
+    'publishNoNewTargets': 'nessuna nuova destinazione pubblica ({reasons})',
+    'publishNoNewTargetsReason': 'nessuna nuova destinazione',
+    'publishResult': 'pubblicati {published}/{enqueued}, {failed} non riusciti',
+    'publishResultReason':
+        'pubblicati {published}/{enqueued}, {failed} non riusciti ({reason})',
+  },
   'zh': {
     'backSettings': '← 設定',
     'backWorkspace': '← 草地',
@@ -249,6 +326,7 @@ const _strings = {
     'syncNodeError': '{name}：同步錯誤 — {error}',
     'syncAllComplete': '同步完成 · 取得 {count} 則動態 · {publish}',
     'syncAllPullErrors': ' · 取得錯誤：{errors}',
+    'syncAllCredentialErrors': ' · 憑證錯誤：{errors}',
     'publishFailed': '公開發佈失敗（{error}）',
     'publishNoPublic': '沒有可公開發佈的筆記或 murmur',
     'publishNoNewTargets': '沒有新的公開目標（{reasons}）',

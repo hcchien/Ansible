@@ -1,0 +1,23 @@
+{
+  "@@locale": "es",
+  "settingsTitle": "AJUSTES",
+  "done": "Listo",
+  "wallet": "Cartera",
+  "sync": "Sincronizar",
+  "language": "Idioma",
+  "languageSubtitle": "Elige el idioma de la interfaz",
+  "systemDefault": "Idioma del sistema",
+  "languagePickerTitle": "Idioma",
+  "languageSystemDescription": "Usar el idioma de este dispositivo",
+  "cancel": "Cancelar",
+  "search": "Buscar",
+  "settingsNav": "Ajustes",
+  "networkOnline": "En línea",
+  "networkOffline": "Sin conexión",
+  "networkChecking": "Comprobando",
+  "syncFailedMessage": "Error de sincronización: {error}",
+  "justNow": "Ahora mismo",
+  "minutesAgo": "Hace {count} min",
+  "hoursAgo": "Hace {count} h",
+  "daysAgo": "Hace {count} d"
+}

@@ -164,7 +164,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(syncCalls, 1);
-    expect(find.textContaining('public publish 1/1 targets'), findsOneWidget);
+    expect(find.textContaining('已發佈 1/1'), findsOneWidget);
 
     await _disposeWidgetTree(tester);
   });

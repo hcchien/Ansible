@@ -2133,7 +2133,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (showSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(appSyncSummaryMessage(result)),
+            content: Text(
+              appSyncSummaryMessage(result, text: SubpageL10n.of(context)),
+            ),
             backgroundColor: result.success ? null : Colors.red,
           ),
         );

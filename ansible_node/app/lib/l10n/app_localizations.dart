@@ -5,7 +5,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_fr.dart';
+import 'app_localizations_it.dart';
+import 'app_localizations_ja.dart';
+import 'app_localizations_ko.dart';
 import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
@@ -94,1005 +100,1011 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
     Locale('en'),
+    Locale('es'),
+    Locale('fr'),
+    Locale('it'),
+    Locale('ja'),
+    Locale('ko'),
     Locale('zh'),
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
 
   /// No description provided for @appTitle.
   ///
-  /// In zh_Hant, this message translates to:
+  /// In en, this message translates to:
   /// **'Elix'**
   String get appTitle;
 
   /// No description provided for @settingsTitle.
   ///
-  /// In zh_Hant, this message translates to:
+  /// In en, this message translates to:
   /// **'SETTINGS'**
   String get settingsTitle;
 
   /// No description provided for @done.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'完成'**
+  /// In en, this message translates to:
+  /// **'Done'**
   String get done;
 
   /// No description provided for @localIdentity.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'本機身分'**
+  /// In en, this message translates to:
+  /// **'Local Identity'**
   String get localIdentity;
 
   /// No description provided for @localDid.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'本機 DID'**
+  /// In en, this message translates to:
+  /// **'Local DID'**
   String get localDid;
 
   /// No description provided for @edit.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'編輯'**
+  /// In en, this message translates to:
+  /// **'Edit'**
   String get edit;
 
   /// No description provided for @identityAndDevice.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'身分與裝置 · IDENTITY'**
+  /// In en, this message translates to:
+  /// **'Identity & Device'**
   String get identityAndDevice;
 
   /// No description provided for @wallet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'皮夾'**
+  /// In en, this message translates to:
+  /// **'Wallet'**
   String get wallet;
 
   /// No description provided for @walletSubtitleEmpty.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'尚無憑證'**
+  /// In en, this message translates to:
+  /// **'No credentials'**
   String get walletSubtitleEmpty;
 
   /// No description provided for @walletSubtitleCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'{count} 個憑證'**
+  /// In en, this message translates to:
+  /// **'{count} credentials'**
   String walletSubtitleCount(int count);
 
   /// No description provided for @empty.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'空'**
+  /// In en, this message translates to:
+  /// **'Empty'**
   String get empty;
 
   /// No description provided for @sync.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'同步'**
+  /// In en, this message translates to:
+  /// **'Sync'**
   String get sync;
 
   /// No description provided for @syncSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'Elix Relay 設定'**
+  /// In en, this message translates to:
+  /// **'Elix Relay settings'**
   String get syncSubtitle;
 
   /// No description provided for @configured.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'設定'**
+  /// In en, this message translates to:
+  /// **'Settings'**
   String get configured;
 
   /// No description provided for @accessAudit.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'存取與審計'**
+  /// In en, this message translates to:
+  /// **'Access & Audit'**
   String get accessAudit;
 
   /// No description provided for @accessAuditSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'誰看見了哪一個我'**
+  /// In en, this message translates to:
+  /// **'Who can see which identity'**
   String get accessAuditSubtitle;
 
   /// No description provided for @noSuspiciousAccess.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'0 可疑'**
+  /// In en, this message translates to:
+  /// **'0 suspicious'**
   String get noSuspiciousAccess;
 
   /// No description provided for @language.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'語言'**
+  /// In en, this message translates to:
+  /// **'Language'**
   String get language;
 
   /// No description provided for @languageSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'選擇 app 介面語言'**
+  /// In en, this message translates to:
+  /// **'Choose the app interface language'**
   String get languageSubtitle;
 
   /// No description provided for @systemDefault.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'跟隨系統'**
+  /// In en, this message translates to:
+  /// **'System default'**
   String get systemDefault;
 
   /// No description provided for @daily.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'日常 · DAILY'**
+  /// In en, this message translates to:
+  /// **'Daily'**
   String get daily;
 
   /// No description provided for @inbox.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'收信'**
+  /// In en, this message translates to:
+  /// **'Inbox'**
   String get inbox;
 
   /// No description provided for @inboxSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'圈內回覆、新成員、同步'**
+  /// In en, this message translates to:
+  /// **'Circle replies, new members, sync'**
   String get inboxSubtitle;
 
   /// No description provided for @notifications.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'通知'**
+  /// In en, this message translates to:
+  /// **'Notifications'**
   String get notifications;
 
   /// No description provided for @notificationsSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'決定哪些事會打擾你'**
+  /// In en, this message translates to:
+  /// **'Decide what can interrupt you'**
   String get notificationsSubtitle;
 
   /// No description provided for @light.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'輕'**
+  /// In en, this message translates to:
+  /// **'Light'**
   String get light;
 
   /// No description provided for @readingPreferences.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'閱讀偏好'**
+  /// In en, this message translates to:
+  /// **'Reading Preferences'**
   String get readingPreferences;
 
   /// No description provided for @readingPreferencesSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'字級、行距、主題'**
+  /// In en, this message translates to:
+  /// **'Text size, line height, theme'**
   String get readingPreferencesSubtitle;
 
   /// No description provided for @defaultValue.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'預設'**
+  /// In en, this message translates to:
+  /// **'Default'**
   String get defaultValue;
 
   /// No description provided for @boundaries.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'邊界 · BOUNDARIES'**
+  /// In en, this message translates to:
+  /// **'Boundaries'**
   String get boundaries;
 
   /// No description provided for @lock.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'鎖定'**
+  /// In en, this message translates to:
+  /// **'Lock'**
   String get lock;
 
   /// No description provided for @lockSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'把 app 變成空白封面'**
+  /// In en, this message translates to:
+  /// **'Turn the app into a blank cover'**
   String get lockSubtitle;
 
   /// No description provided for @off.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'關閉'**
+  /// In en, this message translates to:
+  /// **'Off'**
   String get off;
 
   /// No description provided for @backupRestore.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'備份與還原'**
+  /// In en, this message translates to:
+  /// **'Backup & Restore'**
   String get backupRestore;
 
   /// No description provided for @backupRestoreSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'passphrase、新裝置遷移'**
+  /// In en, this message translates to:
+  /// **'Passphrase, new device migration'**
   String get backupRestoreSubtitle;
 
   /// No description provided for @notSet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'未設'**
+  /// In en, this message translates to:
+  /// **'Not set'**
   String get notSet;
 
   /// No description provided for @blockedList.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'封鎖名單'**
+  /// In en, this message translates to:
+  /// **'Blocked List'**
   String get blockedList;
 
   /// No description provided for @blockedListSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'你看不到，他們也看不到你'**
+  /// In en, this message translates to:
+  /// **'You cannot see them, and they cannot see you'**
   String get blockedListSubtitle;
 
   /// No description provided for @about.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'關於 Elix'**
+  /// In en, this message translates to:
+  /// **'About Elix'**
   String get about;
 
   /// No description provided for @aboutSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'信號越過星際的距離'**
+  /// In en, this message translates to:
+  /// **'A signal across stellar distance'**
   String get aboutSubtitle;
 
   /// No description provided for @manual.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'使用手冊'**
+  /// In en, this message translates to:
+  /// **'Manual'**
   String get manual;
 
   /// No description provided for @signOutDevice.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'登出此裝置'**
+  /// In en, this message translates to:
+  /// **'Sign out of this device'**
   String get signOutDevice;
 
   /// No description provided for @signOutSubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'保留資料；下次需要 passkey'**
+  /// In en, this message translates to:
+  /// **'Keep data; passkey required next time'**
   String get signOutSubtitle;
 
   /// No description provided for @languagePickerTitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'語言'**
+  /// In en, this message translates to:
+  /// **'Language'**
   String get languagePickerTitle;
 
   /// No description provided for @languageSystemDescription.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'使用裝置的語言設定'**
+  /// In en, this message translates to:
+  /// **'Use this device\'s language setting'**
   String get languageSystemDescription;
 
   /// No description provided for @feedAll.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'動態'**
+  /// In en, this message translates to:
+  /// **'Feed'**
   String get feedAll;
 
   /// No description provided for @feedFollowing.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'追蹤'**
+  /// In en, this message translates to:
+  /// **'Following'**
   String get feedFollowing;
 
   /// No description provided for @feedBoards.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'看板'**
+  /// In en, this message translates to:
+  /// **'Boards'**
   String get feedBoards;
 
   /// No description provided for @searchBack.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'← 草地'**
+  /// In en, this message translates to:
+  /// **'← Meadow'**
   String get searchBack;
 
   /// No description provided for @clear.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'清除'**
+  /// In en, this message translates to:
+  /// **'Clear'**
   String get clear;
 
   /// No description provided for @searchHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'搜尋 murmur、筆記、討論'**
+  /// In en, this message translates to:
+  /// **'Search murmurs, notes, discussions'**
   String get searchHint;
 
   /// No description provided for @searchScopeAll.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'全部'**
+  /// In en, this message translates to:
+  /// **'All'**
   String get searchScopeAll;
 
   /// No description provided for @searchScopeMy.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'我的'**
+  /// In en, this message translates to:
+  /// **'My'**
   String get searchScopeMy;
 
   /// No description provided for @searchScopeCircle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'圈內'**
+  /// In en, this message translates to:
+  /// **'Circle'**
   String get searchScopeCircle;
 
   /// No description provided for @searchScopePublic.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開'**
+  /// In en, this message translates to:
+  /// **'Public'**
   String get searchScopePublic;
 
   /// No description provided for @searchResultCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'找到 {count} 處提及'**
+  /// In en, this message translates to:
+  /// **'Found {count} mentions'**
   String searchResultCount(int count);
 
   /// No description provided for @searchSortRelevant.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'↓ 相關'**
+  /// In en, this message translates to:
+  /// **'↓ Relevant'**
   String get searchSortRelevant;
 
   /// No description provided for @notesSectionCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'筆記 · NOTES · {count}'**
+  /// In en, this message translates to:
+  /// **'Notes · {count}'**
   String notesSectionCount(int count);
 
   /// No description provided for @murmursSectionCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'碎念 · MURMURS · {count}'**
+  /// In en, this message translates to:
+  /// **'Murmurs · {count}'**
   String murmursSectionCount(int count);
 
   /// No description provided for @threadsSectionCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'討論串 · FORUM · {count}'**
+  /// In en, this message translates to:
+  /// **'Threads · {count}'**
   String threadsSectionCount(int count);
 
   /// No description provided for @noNotesYet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'目前沒有筆記'**
+  /// In en, this message translates to:
+  /// **'No notes yet'**
   String get noNotesYet;
 
   /// No description provided for @noMatchingNotes.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'沒有符合的筆記'**
+  /// In en, this message translates to:
+  /// **'No matching notes'**
   String get noMatchingNotes;
 
   /// No description provided for @noMurmursYet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'目前沒有碎念'**
+  /// In en, this message translates to:
+  /// **'No murmurs yet'**
   String get noMurmursYet;
 
   /// No description provided for @noMatchingMurmurs.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'沒有符合的碎念'**
+  /// In en, this message translates to:
+  /// **'No matching murmurs'**
   String get noMatchingMurmurs;
 
   /// No description provided for @noThreadsYet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'目前沒有討論串'**
+  /// In en, this message translates to:
+  /// **'No threads yet'**
   String get noThreadsYet;
 
   /// No description provided for @noMatchingThreads.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'沒有符合的討論串'**
+  /// In en, this message translates to:
+  /// **'No matching threads'**
   String get noMatchingThreads;
 
   /// No description provided for @murmurTitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'MURMUR · 碎念'**
+  /// In en, this message translates to:
+  /// **'MURMUR'**
   String get murmurTitle;
 
   /// No description provided for @local.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'本地'**
+  /// In en, this message translates to:
+  /// **'Local'**
   String get local;
 
   /// No description provided for @send.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'送出'**
+  /// In en, this message translates to:
+  /// **'Send'**
   String get send;
 
   /// No description provided for @murmurPrompt.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'現在腦子裡\n有什麼半成形的東西嗎？'**
+  /// In en, this message translates to:
+  /// **'What half-formed thing\nis on your mind?'**
   String get murmurPrompt;
 
   /// No description provided for @murmurPrivateHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'一句話、一個直覺、一個還沒理順的問題都可以。沒人會看到。'**
+  /// In en, this message translates to:
+  /// **'A sentence, an instinct, an unresolved question all fit here. No one else will see it.'**
   String get murmurPrivateHint;
 
   /// No description provided for @murmurSyncHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'一句話、一個直覺、一個還沒理順的問題都可以。這則會標記為可同步。'**
+  /// In en, this message translates to:
+  /// **'A sentence, an instinct, an unresolved question all fit here. This one will be marked syncable.'**
   String get murmurSyncHint;
 
   /// No description provided for @murmurInputHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'這幾個月一直在想的事情是'**
+  /// In en, this message translates to:
+  /// **'What I have been thinking about lately is'**
   String get murmurInputHint;
 
   /// No description provided for @murmurPrivateVisibilityHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'只給自己'**
+  /// In en, this message translates to:
+  /// **'Only for me'**
   String get murmurPrivateVisibilityHint;
 
   /// No description provided for @murmurUnlistedVisibilityHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'不列出但可同步'**
+  /// In en, this message translates to:
+  /// **'Syncable but unlisted'**
   String get murmurUnlistedVisibilityHint;
 
   /// No description provided for @murmurPublicVisibilityHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開發布'**
+  /// In en, this message translates to:
+  /// **'Publish publicly'**
   String get murmurPublicVisibilityHint;
 
   /// No description provided for @looseMurmurs.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'散落'**
+  /// In en, this message translates to:
+  /// **'Loose'**
   String get looseMurmurs;
 
   /// No description provided for @looseMurmursEmpty.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'送出的碎念會先留在這裡。'**
+  /// In en, this message translates to:
+  /// **'Sent murmurs stay here first.'**
   String get looseMurmursEmpty;
 
   /// No description provided for @sent.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'已送出'**
+  /// In en, this message translates to:
+  /// **'Sent'**
   String get sent;
 
   /// No description provided for @deletedMurmur.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'已刪除碎念'**
+  /// In en, this message translates to:
+  /// **'Murmur deleted'**
   String get deletedMurmur;
 
   /// No description provided for @unused.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'未使用'**
+  /// In en, this message translates to:
+  /// **'Unused'**
   String get unused;
 
   /// No description provided for @referenceCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'{count} 篇引用'**
+  /// In en, this message translates to:
+  /// **'{count} references'**
   String referenceCount(int count);
 
   /// No description provided for @search.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'搜尋'**
+  /// In en, this message translates to:
+  /// **'Search'**
   String get search;
 
   /// No description provided for @settingsNav.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'設定'**
+  /// In en, this message translates to:
+  /// **'Settings'**
   String get settingsNav;
 
   /// No description provided for @publicIdentity.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開身分'**
+  /// In en, this message translates to:
+  /// **'Public identity'**
   String get publicIdentity;
 
   /// No description provided for @murmurTab.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'碎念'**
+  /// In en, this message translates to:
+  /// **'Murmur'**
   String get murmurTab;
 
   /// No description provided for @notesTab.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'筆記'**
+  /// In en, this message translates to:
+  /// **'Notes'**
   String get notesTab;
 
   /// No description provided for @discussionsTab.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'看板'**
+  /// In en, this message translates to:
+  /// **'Boards'**
   String get discussionsTab;
 
   /// No description provided for @discussionsTabCompact.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'看板'**
+  /// In en, this message translates to:
+  /// **'Boards'**
   String get discussionsTabCompact;
 
   /// No description provided for @networkOnline.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'已連線'**
+  /// In en, this message translates to:
+  /// **'Online'**
   String get networkOnline;
 
   /// No description provided for @networkOffline.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'離線'**
+  /// In en, this message translates to:
+  /// **'Offline'**
   String get networkOffline;
 
   /// No description provided for @networkChecking.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'檢查中'**
+  /// In en, this message translates to:
+  /// **'Checking'**
   String get networkChecking;
 
   /// No description provided for @workingNotes.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'草地'**
+  /// In en, this message translates to:
+  /// **'Working Notes'**
   String get workingNotes;
 
   /// No description provided for @newest.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'最近'**
+  /// In en, this message translates to:
+  /// **'Newest'**
   String get newest;
 
   /// No description provided for @oldest.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'最舊'**
+  /// In en, this message translates to:
+  /// **'Oldest'**
   String get oldest;
 
   /// No description provided for @newNote.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'新增筆記'**
+  /// In en, this message translates to:
+  /// **'New Note'**
   String get newNote;
 
   /// No description provided for @drawInAction.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'↗ 編入'**
+  /// In en, this message translates to:
+  /// **'↗ Draw in'**
   String get drawInAction;
 
   /// No description provided for @noLooseMurmursYet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'還沒有散落的碎念。'**
+  /// In en, this message translates to:
+  /// **'No loose murmurs yet.'**
   String get noLooseMurmursYet;
 
   /// No description provided for @lineage.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'來源 · LINEAGE'**
+  /// In en, this message translates to:
+  /// **'Lineage'**
   String get lineage;
 
   /// No description provided for @noteCreated.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'已建立筆記'**
+  /// In en, this message translates to:
+  /// **'Note created'**
   String get noteCreated;
 
   /// No description provided for @cancel.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'取消'**
+  /// In en, this message translates to:
+  /// **'Cancel'**
   String get cancel;
 
   /// No description provided for @draftLocal.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'草稿保留 · 本機'**
+  /// In en, this message translates to:
+  /// **'Draft stays local'**
   String get draftLocal;
 
   /// No description provided for @editing.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'編輯中 · EDITING'**
+  /// In en, this message translates to:
+  /// **'Editing'**
   String get editing;
 
   /// No description provided for @noteTitleHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'筆記標題'**
+  /// In en, this message translates to:
+  /// **'Note title'**
   String get noteTitleHint;
 
   /// No description provided for @noteTitleRequired.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'請輸入標題'**
+  /// In en, this message translates to:
+  /// **'Enter a title'**
   String get noteTitleRequired;
 
   /// No description provided for @noteBodyHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'繼續寫下去，或從下方拖一個 murmur 進來……'**
+  /// In en, this message translates to:
+  /// **'Keep writing, or drag a murmur in from below...'**
   String get noteBodyHint;
 
   /// No description provided for @noteBodyRequired.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'請輸入內文'**
+  /// In en, this message translates to:
+  /// **'Enter note body'**
   String get noteBodyRequired;
 
   /// No description provided for @noteSubjectLabel.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'這篇 note'**
+  /// In en, this message translates to:
+  /// **'this note'**
   String get noteSubjectLabel;
 
   /// No description provided for @drawIn.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'編入 · DRAW IN'**
+  /// In en, this message translates to:
+  /// **'Draw in'**
   String get drawIn;
 
   /// No description provided for @noMurmursToDraw.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'還沒有可以編入的 murmur。'**
+  /// In en, this message translates to:
+  /// **'No murmurs to draw in yet.'**
   String get noMurmursToDraw;
 
   /// No description provided for @noNotesDescription.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'碎念會先散落在本地；等它們慢慢靠近，再編成一篇筆記。'**
+  /// In en, this message translates to:
+  /// **'Murmurs stay loose locally first; when they start to connect, shape them into a note.'**
   String get noNotesDescription;
 
   /// No description provided for @noteUpdated.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'已更新筆記'**
+  /// In en, this message translates to:
+  /// **'Note updated'**
   String get noteUpdated;
 
   /// No description provided for @visibilityUpdated.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'可見性已更新'**
+  /// In en, this message translates to:
+  /// **'Visibility updated'**
   String get visibilityUpdated;
 
   /// No description provided for @lineageDescription.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'由 murmur 編成的筆記會在這裡保留來源。'**
+  /// In en, this message translates to:
+  /// **'Notes shaped from murmurs keep their source lineage here.'**
   String get lineageDescription;
 
   /// No description provided for @notePrivateSummary.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'還沒讓任何人看見'**
+  /// In en, this message translates to:
+  /// **'No one else can see this yet'**
   String get notePrivateSummary;
 
   /// No description provided for @noteNostrSummary.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開後會送到 Nostr Relay'**
+  /// In en, this message translates to:
+  /// **'Publishing sends this to Nostr relays'**
   String get noteNostrSummary;
 
   /// No description provided for @noteActivityPubSummary.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開後會送到 ActivityPub relay'**
+  /// In en, this message translates to:
+  /// **'Publishing sends this to the ActivityPub relay'**
   String get noteActivityPubSummary;
 
   /// No description provided for @noteBothSummary.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開後會送到 Nostr Relay 與 ActivityPub Relay'**
+  /// In en, this message translates to:
+  /// **'Publishing sends this to Nostr relays and the ActivityPub relay'**
   String get noteBothSummary;
 
   /// No description provided for @noteLocalPublicSummary.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開狀態，但暫不送出'**
+  /// In en, this message translates to:
+  /// **'Public state, but not sent yet'**
   String get noteLocalPublicSummary;
 
   /// No description provided for @createDiscussion.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'建立討論'**
+  /// In en, this message translates to:
+  /// **'Create Discussion'**
   String get createDiscussion;
 
   /// No description provided for @chooseHostedBoard.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'選擇看板'**
+  /// In en, this message translates to:
+  /// **'Choose board'**
   String get chooseHostedBoard;
 
   /// No description provided for @hostedBoardMissing.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'請先加入或建立 Elix Relay 的看板'**
+  /// In en, this message translates to:
+  /// **'Join or create an Elix Relay board first'**
   String get hostedBoardMissing;
 
   /// No description provided for @hostedBoardRequired.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'請選擇看板'**
+  /// In en, this message translates to:
+  /// **'Choose a board'**
   String get hostedBoardRequired;
 
   /// No description provided for @titleLabel.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'標題'**
+  /// In en, this message translates to:
+  /// **'Title'**
   String get titleLabel;
 
   /// No description provided for @discussionTitleHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'輸入討論標題'**
+  /// In en, this message translates to:
+  /// **'Enter discussion title'**
   String get discussionTitleHint;
 
   /// No description provided for @titleRequired.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'標題為必填'**
+  /// In en, this message translates to:
+  /// **'Title is required'**
   String get titleRequired;
 
   /// No description provided for @contentLabel.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'內容'**
+  /// In en, this message translates to:
+  /// **'Content'**
   String get contentLabel;
 
   /// No description provided for @discussionContentHint.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'輸入討論內容'**
+  /// In en, this message translates to:
+  /// **'Enter discussion content'**
   String get discussionContentHint;
 
   /// No description provided for @contentRequired.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'內容為必填'**
+  /// In en, this message translates to:
+  /// **'Content is required'**
   String get contentRequired;
 
   /// No description provided for @create.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'建立'**
+  /// In en, this message translates to:
+  /// **'Create'**
   String get create;
 
   /// No description provided for @uncategorized.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'未分類'**
+  /// In en, this message translates to:
+  /// **'Uncategorized'**
   String get uncategorized;
 
   /// No description provided for @addForumHostFirst.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'請先在同步設定新增 Elix Relay。討論看板由 Elix Relay 建立。'**
+  /// In en, this message translates to:
+  /// **'Add an Elix Relay in Sync settings first. Discussion boards are created by Elix Relays.'**
   String get addForumHostFirst;
 
   /// No description provided for @syncedPublicCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'已同步 {count} 篇公開內容'**
+  /// In en, this message translates to:
+  /// **'Synced {count} public items'**
   String syncedPublicCount(int count);
 
   /// No description provided for @publicQueuedRelayFailed.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'公開內容已排入同步，但 Relay 發佈失敗'**
+  /// In en, this message translates to:
+  /// **'Public content was queued, but relay publishing failed'**
   String get publicQueuedRelayFailed;
 
   /// No description provided for @noWritableNostrRelay.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'尚未設定可寫入的 Nostr Relay'**
+  /// In en, this message translates to:
+  /// **'No writable Nostr relay is configured'**
   String get noWritableNostrRelay;
 
   /// No description provided for @syncFailedMessage.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'同步失敗：{error}'**
+  /// In en, this message translates to:
+  /// **'Sync failed: {error}'**
   String syncFailedMessage(String error);
 
   /// No description provided for @justNow.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'剛剛'**
+  /// In en, this message translates to:
+  /// **'Just now'**
   String get justNow;
 
   /// No description provided for @minutesAgo.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'{count} 分鐘前'**
+  /// In en, this message translates to:
+  /// **'{count} minutes ago'**
   String minutesAgo(int count);
 
   /// No description provided for @hoursAgo.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'{count} 小時前'**
+  /// In en, this message translates to:
+  /// **'{count} hours ago'**
   String hoursAgo(int count);
 
   /// No description provided for @daysAgo.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'{count} 天前'**
+  /// In en, this message translates to:
+  /// **'{count} days ago'**
   String daysAgo(int count);
 
   /// No description provided for @circleSection.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'圈 · CIRCLE'**
+  /// In en, this message translates to:
+  /// **'Circle'**
   String get circleSection;
 
   /// No description provided for @allActivity.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'全部動態'**
+  /// In en, this message translates to:
+  /// **'All Activity'**
   String get allActivity;
 
   /// No description provided for @boardCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'{count} 看板'**
+  /// In en, this message translates to:
+  /// **'{count} boards'**
   String boardCount(int count);
 
   /// No description provided for @manageSubscriptions.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'管理訂閱'**
+  /// In en, this message translates to:
+  /// **'Manage Subscriptions'**
   String get manageSubscriptions;
 
   /// No description provided for @newPost.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'新貼文'**
+  /// In en, this message translates to:
+  /// **'New Post'**
   String get newPost;
 
   /// No description provided for @addBoardTooltip.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'新增看板'**
+  /// In en, this message translates to:
+  /// **'Add Board'**
   String get addBoardTooltip;
 
   /// No description provided for @newDiscussion.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'新板上討論'**
+  /// In en, this message translates to:
+  /// **'New Board Thread'**
   String get newDiscussion;
 
   /// No description provided for @createNewDiscussion.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'建立板上討論'**
+  /// In en, this message translates to:
+  /// **'Create Board Thread'**
   String get createNewDiscussion;
 
   /// No description provided for @boardsShort.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'看板'**
+  /// In en, this message translates to:
+  /// **'Boards'**
   String get boardsShort;
 
   /// No description provided for @manageBoardsShort.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'管理看板'**
+  /// In en, this message translates to:
+  /// **'Manage Boards'**
   String get manageBoardsShort;
 
   /// No description provided for @aiAssistant.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'AI 助手'**
+  /// In en, this message translates to:
+  /// **'AI Assistant'**
   String get aiAssistant;
 
   /// No description provided for @aiSummary.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'AI 摘要'**
+  /// In en, this message translates to:
+  /// **'AI Summary'**
   String get aiSummary;
 
   /// No description provided for @noPostsYet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'目前沒有動態'**
+  /// In en, this message translates to:
+  /// **'No feed posts yet'**
   String get noPostsYet;
 
   /// No description provided for @subscribe.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'訂閱'**
+  /// In en, this message translates to:
+  /// **'Subscribe'**
   String get subscribe;
 
   /// No description provided for @discussionAreaTitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'動態'**
+  /// In en, this message translates to:
+  /// **'Feed'**
   String get discussionAreaTitle;
 
   /// No description provided for @feedSocialIdentitySubtitle.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'Note 與 Murmur 是個人版發文類型；追蹤你的人會在他們的 feed 上看到，訂閱的看板則帶入公共討論。'**
+  /// In en, this message translates to:
+  /// **'Notes and Murmurs are personal posts. People who follow you see them in their feed; boards add shared discussions.'**
   String get feedSocialIdentitySubtitle;
 
   /// No description provided for @publicOpen.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'追蹤 + 看板'**
+  /// In en, this message translates to:
+  /// **'People + Boards'**
   String get publicOpen;
 
   /// No description provided for @noContentYet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'（尚無內容）'**
+  /// In en, this message translates to:
+  /// **'(No content yet)'**
   String get noContentYet;
 
   /// No description provided for @commentsCount.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'{count} 則留言'**
+  /// In en, this message translates to:
+  /// **'{count} comments'**
   String commentsCount(int count);
 
   /// No description provided for @manageBoards.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'管理看板'**
+  /// In en, this message translates to:
+  /// **'Manage Boards'**
   String get manageBoards;
 
   /// No description provided for @noBoardsYet.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'目前沒有看板'**
+  /// In en, this message translates to:
+  /// **'No boards yet'**
   String get noBoardsYet;
 
   /// No description provided for @deleteBoard.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'刪除看板'**
+  /// In en, this message translates to:
+  /// **'Delete Board'**
   String get deleteBoard;
 
   /// No description provided for @deleteBoardConfirm.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'確定刪除「{title}」？此動作不可恢復。'**
+  /// In en, this message translates to:
+  /// **'Delete \"{title}\"? This cannot be undone.'**
   String deleteBoardConfirm(String title);
 
   /// No description provided for @delete.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'刪除'**
+  /// In en, this message translates to:
+  /// **'Delete'**
   String get delete;
 
   /// No description provided for @close.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'關閉'**
+  /// In en, this message translates to:
+  /// **'Close'**
   String get close;
 
   /// No description provided for @addBoard.
   ///
-  /// In zh_Hant, this message translates to:
-  /// **'新增看板'**
+  /// In en, this message translates to:
+  /// **'Add Board'**
   String get addBoard;
 }
 
@@ -1106,8 +1118,16 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'zh'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+    'ja',
+    'ko',
+    'zh',
+  ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1128,8 +1148,20 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'de':
+      return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
+    case 'fr':
+      return AppLocalizationsFr();
+    case 'it':
+      return AppLocalizationsIt();
+    case 'ja':
+      return AppLocalizationsJa();
+    case 'ko':
+      return AppLocalizationsKo();
     case 'zh':
       return AppLocalizationsZh();
   }

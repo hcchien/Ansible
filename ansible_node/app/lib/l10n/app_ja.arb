@@ -1,0 +1,23 @@
+{
+  "@@locale": "ja",
+  "settingsTitle": "設定",
+  "done": "完了",
+  "wallet": "ウォレット",
+  "sync": "同期",
+  "language": "言語",
+  "languageSubtitle": "アプリの表示言語を選択",
+  "systemDefault": "システムのデフォルト",
+  "languagePickerTitle": "言語",
+  "languageSystemDescription": "このデバイスの言語設定を使用",
+  "cancel": "キャンセル",
+  "search": "検索",
+  "settingsNav": "設定",
+  "networkOnline": "オンライン",
+  "networkOffline": "オフライン",
+  "networkChecking": "確認中",
+  "syncFailedMessage": "同期に失敗しました：{error}",
+  "justNow": "たった今",
+  "minutesAgo": "{count}分前",
+  "hoursAgo": "{count}時間前",
+  "daysAgo": "{count}日前"
+}

@@ -1,0 +1,23 @@
+{
+  "@@locale": "it",
+  "settingsTitle": "IMPOSTAZIONI",
+  "done": "Fine",
+  "wallet": "Portafoglio",
+  "sync": "Sincronizza",
+  "language": "Lingua",
+  "languageSubtitle": "Scegli la lingua dell’interfaccia",
+  "systemDefault": "Lingua di sistema",
+  "languagePickerTitle": "Lingua",
+  "languageSystemDescription": "Usa la lingua di questo dispositivo",
+  "cancel": "Annulla",
+  "search": "Cerca",
+  "settingsNav": "Impostazioni",
+  "networkOnline": "Online",
+  "networkOffline": "Offline",
+  "networkChecking": "Verifica",
+  "syncFailedMessage": "Sincronizzazione non riuscita: {error}",
+  "justNow": "Adesso",
+  "minutesAgo": "{count} min fa",
+  "hoursAgo": "{count} h fa",
+  "daysAgo": "{count} g fa"
+}

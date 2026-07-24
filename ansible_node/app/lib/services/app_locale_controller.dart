@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-// Supported app languages. Scoped to zh-Hant + en: the UI is authored with the
-// `uiCopy(zh:, en:)` pattern (~400 call sites) rather than ARB, so the extra
-// ja/de/ko/es/fr/pt locales were unused fallbacks and a maintenance liability
-// (ROADMAP "Remove/Freeze"). Re-add with real international users.
 enum AppLocalePreference {
   system('system'),
   zhHant('zh-Hant'),
-  en('en');
+  en('en'),
+  fr('fr'),
+  es('es'),
+  ja('ja'),
+  ko('ko'),
+  de('de'),
+  it('it');
 
   const AppLocalePreference(this.storageValue);
 
@@ -22,6 +24,12 @@ enum AppLocalePreference {
         scriptCode: 'Hant',
       ),
       AppLocalePreference.en => const Locale('en'),
+      AppLocalePreference.fr => const Locale('fr'),
+      AppLocalePreference.es => const Locale('es'),
+      AppLocalePreference.ja => const Locale('ja'),
+      AppLocalePreference.ko => const Locale('ko'),
+      AppLocalePreference.de => const Locale('de'),
+      AppLocalePreference.it => const Locale('it'),
     };
   }
 
@@ -30,6 +38,12 @@ enum AppLocalePreference {
       AppLocalePreference.system => 'System',
       AppLocalePreference.zhHant => '繁體中文',
       AppLocalePreference.en => 'English',
+      AppLocalePreference.fr => 'Français',
+      AppLocalePreference.es => 'Español',
+      AppLocalePreference.ja => '日本語',
+      AppLocalePreference.ko => '한국어',
+      AppLocalePreference.de => 'Deutsch',
+      AppLocalePreference.it => 'Italiano',
     };
   }
 

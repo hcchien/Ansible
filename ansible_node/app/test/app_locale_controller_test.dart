@@ -32,8 +32,13 @@ void main() {
     expect(AppLocalePreference.zhHant.locale?.languageCode, 'zh');
     expect(AppLocalePreference.zhHant.locale?.scriptCode, 'Hant');
     expect(AppLocalePreference.en.locale?.languageCode, 'en');
+    expect(AppLocalePreference.fr.locale?.languageCode, 'fr');
+    expect(AppLocalePreference.es.locale?.languageCode, 'es');
+    expect(AppLocalePreference.ja.locale?.languageCode, 'ja');
+    expect(AppLocalePreference.ko.locale?.languageCode, 'ko');
+    expect(AppLocalePreference.de.locale?.languageCode, 'de');
+    expect(AppLocalePreference.it.locale?.languageCode, 'it');
     expect(AppLocalePreference.system.locale, isNull);
-    // Only zh-Hant + en are supported (extra locales removed).
-    expect(AppLocalePreference.values.length, 3);
+    expect(AppLocalePreference.values.length, 9);
   });
 }

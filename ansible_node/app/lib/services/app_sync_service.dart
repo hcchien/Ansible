@@ -4,6 +4,7 @@ import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 
+import '../l10n/subpage_l10n.dart';
 import 'content_publication_service.dart';
 import 'host_moderation_sync_service.dart';
 import 'issuer_attestation_service.dart';
@@ -630,35 +631,54 @@ Future<PublicPublishSummary> bestEffortPublicPublish(
   }
 }
 
-String publicPublishSummaryMessage(PublicPublishSummary summary) {
+String publicPublishSummaryMessage(
+  PublicPublishSummary summary, {
+  SubpageL10n text = const SubpageL10n('en'),
+}) {
   if (summary.errorMessage != null) {
-    return 'public publish failed (${summary.errorMessage})';
+    return text.f('publishFailed', {'error': summary.errorMessage!});
   }
   if (summary.publicItems == 0) {
-    return 'public publish 0 targets (no public notes/murmurs)';
+    return text.t('publishNoPublic');
   }
   if (summary.enqueued == 0 && summary.published == 0 && summary.failed == 0) {
     final reasons = summary.skippedReasons.isEmpty
-        ? 'no new targets'
+        ? text.t('publishNoNewTargetsReason')
         : summary.skippedReasons.join(', ');
-    return 'public publish 0 targets ($reasons)';
+    return text.f('publishNoNewTargets', {'reasons': reasons});
   }
   if (summary.failed > 0 && summary.failureReasons.isNotEmpty) {
-    return 'public publish ${summary.published}/${summary.enqueued} targets, ${summary.failed} failed (${summary.failureReasons.first})';
+    return text.f('publishResultReason', {
+      'published': summary.published,
+      'enqueued': summary.enqueued,
+      'failed': summary.failed,
+      'reason': summary.failureReasons.first,
+    });
   }
-  return 'public publish ${summary.published}/${summary.enqueued} targets, ${summary.failed} failed';
+  return text.f('publishResult', {
+    'published': summary.published,
+    'enqueued': summary.enqueued,
+    'failed': summary.failed,
+  });
 }
 
-String appSyncSummaryMessage(AppSyncResult result) {
-  final parts = <String>[
-    'pull ${result.pulledActivities} activities',
-    publicPublishSummaryMessage(result.publishSummary),
-  ];
+String appSyncSummaryMessage(
+  AppSyncResult result, {
+  SubpageL10n text = const SubpageL10n('en'),
+}) {
+  var message = text.f('syncAllComplete', {
+    'count': result.pulledActivities,
+    'publish': publicPublishSummaryMessage(result.publishSummary, text: text),
+  });
   if (result.pullErrors.isNotEmpty) {
-    parts.add('pull errors: ${result.pullErrors.join('; ')}');
+    message += text.f('syncAllPullErrors', {
+      'errors': result.pullErrors.join('; '),
+    });
   }
   if (result.reputationErrors.isNotEmpty) {
-    parts.add('credential errors: ${result.reputationErrors.join('; ')}');
+    message += text.f('syncAllCredentialErrors', {
+      'errors': result.reputationErrors.join('; '),
+    });
   }
-  return 'sync complete: ${parts.join('; ')}';
+  return message;
 }
