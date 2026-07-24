@@ -285,7 +285,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     );
     try {
       final signature = await _signReportPayload(
-        utf8.encode(jsonEncode(canonicalPayload)),
+        utf8.encode(forumHostCanonicalJson(canonicalPayload)),
       );
       final client =
           (widget.reportClientFactory ??

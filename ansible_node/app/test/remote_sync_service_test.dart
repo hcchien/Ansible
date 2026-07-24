@@ -56,6 +56,24 @@ void main() {
     },
   );
 
+  test('RelayApiClient reports an empty successful delta response', () async {
+    final client = RelayApiClient(
+      baseUrl: 'http://relay.local',
+      client: MockClient((request) async => http.Response('', 200)),
+    );
+
+    await expectLater(
+      client.getDelta(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'Relay delta returned an empty response',
+        ),
+      ),
+    );
+  });
+
   test(
     'RemoteOpSignatureVerifier verifies canonical signed op envelope',
     () async {

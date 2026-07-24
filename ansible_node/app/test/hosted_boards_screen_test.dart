@@ -113,9 +113,7 @@ void main() {
         return http.Response(
           jsonEncode({
             'boards': [
-              hostedBoard(
-                postingPolicy: {'min_post_tier': 'verified_human'},
-              ),
+              hostedBoard(postingPolicy: {'min_post_tier': 'verified_human'}),
             ],
           }),
           200,
@@ -188,12 +186,10 @@ void main() {
               200,
             );
           }
-          expect(
-            request.url.path,
-            '/api/v1/forum-host/boards/fifa2026/update',
-          );
-          final body = jsonDecode(utf8.decode(request.bodyBytes))
-              as Map<String, dynamic>;
+          expect(request.url.path, '/api/v1/forum-host/boards/fifa2026/update');
+          final body =
+              jsonDecode(utf8.decode(request.bodyBytes))
+                  as Map<String, dynamic>;
           updateBodies.add(body);
           return http.Response.bytes(
             utf8.encode(
@@ -209,12 +205,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('編輯託管看板'), findsOneWidget);
       // Posting-policy selector is editable in hosted-board edit mode.
-      expect(find.text('發文資格'), findsOneWidget);
+      expect(find.text('額外真人門檻'), findsOneWidget);
 
-      await tester.enterText(
-        find.byType(TextFormField).first,
-        'FIFA 2026 世界盃',
-      );
+      await tester.enterText(find.byType(TextFormField).first, 'FIFA 2026 世界盃');
       await tester.tap(find.text('儲存'));
       await tester.pumpAndSettle();
 
@@ -264,10 +257,7 @@ void main() {
             200,
           );
         }
-        return http.Response(
-          jsonEncode({'error': 'not_board_creator'}),
-          403,
-        );
+        return http.Response(jsonEncode({'error': 'not_board_creator'}), 403);
       }),
     );
 

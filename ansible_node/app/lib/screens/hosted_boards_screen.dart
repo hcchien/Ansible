@@ -186,7 +186,9 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
     );
 
     try {
-      final signature = await _sign(utf8.encode(jsonEncode(canonicalPayload)));
+      final signature = await _sign(
+        utf8.encode(forumHostCanonicalJson(canonicalPayload)),
+      );
       final client = _clientFor(entry.host.url);
       final Map<String, dynamic> updated;
       try {
@@ -427,7 +429,9 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
         expiresAt: expiresAt,
         effectiveAt: effectiveAt,
       );
-      final signature = await _sign(utf8.encode(jsonEncode(canonical)));
+      final signature = await _sign(
+        utf8.encode(forumHostCanonicalJson(canonical)),
+      );
       await client.updateHostedBoardPolicy(
         UpdateHostedBoardPolicyIntent(
           intentId: intentId,

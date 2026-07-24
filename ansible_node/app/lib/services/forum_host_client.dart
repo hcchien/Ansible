@@ -5,6 +5,29 @@ import 'package:http/http.dart' as http;
 import '../config/protocol.dart';
 import 'relay_identity_client.dart';
 
+/// Encodes signed Forum Host payloads exactly as the Relay does: object keys
+/// are sorted recursively, while array order is preserved.
+String forumHostCanonicalJson(Object? value) =>
+    jsonEncode(_canonicalForumHostValue(value));
+
+Object? _canonicalForumHostValue(Object? value) {
+  if (value is Map) {
+    final entries =
+        value.entries
+            .map((entry) => MapEntry(entry.key.toString(), entry.value))
+            .toList()
+          ..sort((left, right) => left.key.compareTo(right.key));
+    return <String, Object?>{
+      for (final entry in entries)
+        entry.key: _canonicalForumHostValue(entry.value),
+    };
+  }
+  if (value is List) {
+    return value.map(_canonicalForumHostValue).toList(growable: false);
+  }
+  return value;
+}
+
 class CreateHostedBoardIntent {
   static const type = 'io.trisaura.forum.createBoard';
   static const legacyVersion = 1;

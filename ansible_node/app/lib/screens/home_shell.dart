@@ -1562,7 +1562,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
     try {
       final signature = await DidSignerImpl()
-          .sign(utf8.encode(jsonEncode(canonicalPayload)))
+          .sign(utf8.encode(forumHostCanonicalJson(canonicalPayload)))
           .then((signature) => signature.hex);
       final forumHostClient = ForumHostClient(baseUrl: forumHost.url);
       final Map<String, dynamic> remoteBoard;

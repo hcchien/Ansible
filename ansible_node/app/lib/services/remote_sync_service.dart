@@ -80,7 +80,7 @@ class RelayApiClient {
       throw StateError('Relay delta failed: ${response.statusCode}');
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final body = _decodeResponseObject(response, operation: 'Relay delta');
     return _normalizeDelta(body);
   }
 
@@ -106,7 +106,23 @@ class RelayApiClient {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Board delta failed: ${response.statusCode}');
     }
-    return _normalizeDelta(jsonDecode(response.body) as Map<String, dynamic>);
+    return _normalizeDelta(
+      _decodeResponseObject(response, operation: 'Board delta'),
+    );
+  }
+
+  Map<String, dynamic> _decodeResponseObject(
+    http.Response response, {
+    required String operation,
+  }) {
+    if (response.body.trim().isEmpty) {
+      throw StateError('$operation returned an empty response');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) {
+      throw FormatException('$operation returned a non-object response');
+    }
+    return Map<String, dynamic>.from(decoded);
   }
 
   Map<String, String> get authHeaders {
