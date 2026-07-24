@@ -17,7 +17,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
          :ok <- reject_private_visibility(params["visibility"]),
          :ok <- validate_enum(params["visibility"], @valid_visibility, "visibility"),
          :ok <- validate_signature_scheme(params["signature_scheme"]),
-         :ok <- validate_signature_shape(params["signature"]),
+         :ok <- validate_signature_shape(params["signature"], params["signature_scheme"]),
          :ok <- validate_payload_hash(params["payload"], params["payload_hash"]),
          author_did = params["author_did"],
          :ok <- check_sync_capability(conn, author_did),
@@ -100,21 +100,39 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
   defp validate_signature_scheme(scheme) when scheme in @signature_schemes, do: :ok
   defp validate_signature_scheme(_scheme), do: {:error, :invalid_signature_scheme}
 
-  defp validate_signature_shape(signature) when is_binary(signature) do
+  defp validate_signature_shape(signature, signature_scheme) when is_binary(signature) do
     lower = String.downcase(signature)
 
     cond do
-      dev_publication_signature?(lower) -> :ok
-      String.starts_with?(lower, "dev") -> {:error, :malformed_signature}
-      String.starts_with?(lower, "stub") -> {:error, :malformed_signature}
-      String.starts_with?(lower, "deadbeef") -> {:error, :malformed_signature}
-      String.contains?(lower, "stub") -> {:error, :malformed_signature}
-      Regex.match?(~r/^[0-9a-f]{128}$/, lower) -> :ok
-      true -> {:error, :malformed_signature}
+      dev_publication_signature?(lower) ->
+        :ok
+
+      String.starts_with?(lower, "dev") ->
+        {:error, :malformed_signature}
+
+      String.starts_with?(lower, "stub") ->
+        {:error, :malformed_signature}
+
+      String.starts_with?(lower, "deadbeef") ->
+        {:error, :malformed_signature}
+
+      String.contains?(lower, "stub") ->
+        {:error, :malformed_signature}
+
+      signature_scheme in [nil, "ed25519"] and Regex.match?(~r/^[0-9a-f]{128}$/, lower) ->
+        :ok
+
+      signature_scheme == "p256-sha256" and
+        Regex.match?(~r/^[0-9a-f]{136,144}$/, lower) and rem(byte_size(lower), 2) == 0 ->
+        :ok
+
+      true ->
+        {:error, :malformed_signature}
     end
   end
 
-  defp validate_signature_shape(_signature), do: {:error, :malformed_signature}
+  defp validate_signature_shape(_signature, _signature_scheme),
+    do: {:error, :malformed_signature}
 
   defp validate_payload_hash(payload, payload_hash) when is_binary(payload_hash) do
     expected =

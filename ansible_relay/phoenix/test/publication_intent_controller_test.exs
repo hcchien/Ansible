@@ -18,13 +18,29 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     {Base.encode16(public_key, case: :lower), private_key}
   end
 
+  defp p256_keypair do
+    {public_key, private_key} = :crypto.generate_key(:ecdh, :secp256r1)
+    {Base.encode16(public_key, case: :lower), private_key}
+  end
+
   defp sign(private_key, message) do
     :crypto.sign(:eddsa, :none, message, [private_key, :ed25519])
     |> Base.encode16(case: :lower)
   end
 
-  defp seed_did(did, public_key) do
-    IdentityCache.put(did, public_key, "nullifier_#{System.unique_integer()}")
+  defp sign_p256(private_key, message) do
+    :crypto.sign(:ecdsa, :sha256, message, [private_key, :secp256r1])
+    |> Base.encode16(case: :lower)
+  end
+
+  defp seed_did(did, public_key, signing_algorithm \\ "ed25519") do
+    IdentityCache.put(
+      did,
+      public_key,
+      "nullifier_#{System.unique_integer()}",
+      nil,
+      signing_algorithm
+    )
   end
 
   defp payload_hash(payload) do
@@ -112,6 +128,22 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     assert stored.action == "publish"
     assert stored.visibility == "public"
     assert stored.delivery_status == "queued"
+  end
+
+  test "POST /api/v1/publication-intents accepts a DER P-256 hardware signature" do
+    did = "did:elix:p256-publication-#{System.unique_integer([:positive])}"
+    {public_key, private_key} = p256_keypair()
+    seed_did(did, public_key, "p256-sha256")
+
+    intent =
+      valid_intent(did, elem(ed25519_keypair(), 1))
+      |> Map.put("signature_scheme", "p256-sha256")
+
+    intent = Map.put(intent, "signature", sign_p256(private_key, signing_payload(intent)))
+    response = post_json("/api/v1/publication-intents", intent)
+
+    assert response.status == 202
+    assert Jason.decode!(response.resp_body)["accepted"] == true
   end
 
   test "rejects private visibility" do

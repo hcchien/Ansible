@@ -259,10 +259,11 @@ class ContentPublicationService {
         existingByEndpoint[activeNode.url]!,
     ];
 
-    if (targets.isNotEmpty ||
-        await publications.getIntentById(intentId) == null) {
-      await publications.enqueueIntent(intent, targets: targets);
-    }
+    // Always persist the freshly signed intent. A failed target can be retried
+    // after an identity-key rotation (for example, after reinstalling on iOS),
+    // and retaining the old signature/scheme makes diagnostics misleading and
+    // can cause repository-backed retry workers to resend stale credentials.
+    await publications.enqueueIntent(intent, targets: targets);
     for (final target in retryTargets) {
       await publications.resetTargetForRetry(target.targetId);
     }
