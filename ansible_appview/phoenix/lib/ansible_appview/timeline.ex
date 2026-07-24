@@ -245,11 +245,13 @@ defmodule AnsibleAppview.Timeline do
 
   @spec for_board(String.t(), integer() | nil, pos_integer()) :: map()
   def for_board(board_id, cursor, limit) do
-    pattern = "%_" <> board_id
-
     page(
       from(f in FeedItem,
-        where: f.board_id == ^board_id or like(f.board_id, ^pattern)
+        # A board feed is an exact Forum Host projection.  Matching a suffix
+        # (for example `FIFA2026` while reading `2026`) mixes distinct board
+        # conversations and makes the client render their posts under the
+        # wrong board context.
+        where: f.board_id == ^board_id
       ),
       cursor,
       limit

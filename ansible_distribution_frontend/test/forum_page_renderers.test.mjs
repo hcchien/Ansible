@@ -47,6 +47,24 @@ assert.doesNotMatch(homeHtml, /Relay 資料/);
 assert.doesNotMatch(homeHtml, /傳給圈內/);
 assert.doesNotMatch(homeHtml, /App-approved web session login|Read only|Open board|Login required for signed posting/);
 
+const undescribedBoardHomeHtml = renderPageBody({
+  page: { id: PAGE_IDS.home },
+  boards: [
+    {
+      id: 'fifa2026',
+      slug: 'fifa2026',
+      title: 'FIFA2026',
+      description: '',
+      permissions: { canWrite: true },
+    },
+  ],
+  host: { displayName: 'Local Forum Host' },
+  session: { authenticated: false, trustTier: 'anonymous', scopes: [] },
+});
+assert.match(undescribedBoardHomeHtml, /FIFA2026/);
+assert.doesNotMatch(undescribedBoardHomeHtml, /Relay server 回傳的 hosted board/);
+assert.doesNotMatch(undescribedBoardHomeHtml, /Relay server returned this hosted board/);
+
 const boardHarness = createFrontendFlowHarness({
   routeHash: '#/boards/general',
   sessionMode: 'approvedDid',

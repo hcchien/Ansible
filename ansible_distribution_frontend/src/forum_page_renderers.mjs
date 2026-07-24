@@ -1025,7 +1025,7 @@ function renderBoardFeedPost(board, viewModel) {
   const title = board.title || board.id || t('common.board');
   const slug = board.slug || board.id || title;
   const hostName = viewModel.host?.displayName || t('common.relay');
-  const description = board.description || t('home.boardFallbackDescription');
+  const description = board.description;
   const href = `#/boards/${encodeURIComponent(slug)}`;
 
   return `
@@ -1038,7 +1038,7 @@ function renderBoardFeedPost(board, viewModel) {
           <span>${escapeHtml(hostName)}</span>
         </div>
       </div>
-      <p class="post-body">${escapeHtml(description)}</p>
+      ${description ? `<p class="post-body">${escapeHtml(description)}</p>` : ''}
       <div class="post-actions">
         <a href="${escapeAttribute(href)}">${escapeHtml(t('home.openBoard'))}</a>
         <span>${escapeHtml(board.permissions?.canWrite ? t('home.postingAllowedByRelay') : t('home.readOnlyFromRelay'))}</span>

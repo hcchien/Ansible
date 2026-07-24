@@ -137,6 +137,39 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert length(again.items) == 1
   end
 
+  test "board feeds never include a different board that shares an id suffix" do
+    {pub, priv} = keypair()
+
+    ops = [
+      signed_op(
+        log_id: 1,
+        author_did: "did:key:author",
+        entity_type: "thread",
+        entity_id: "e-election",
+        pub: pub,
+        priv: priv,
+        payload: %{"boardId" => "2026", "title" => "選舉討論"}
+      ),
+      signed_op(
+        log_id: 2,
+        author_did: "did:key:author",
+        entity_type: "thread",
+        entity_id: "e-fifa",
+        pub: pub,
+        priv: priv,
+        payload: %{"boardId" => "FIFA2026", "title" => "世界盃討論"}
+      )
+    ]
+
+    {2, 2} = Folder.apply_ops(ops)
+
+    election = Timeline.for_board("2026", nil, 50)
+    fifa = Timeline.for_board("FIFA2026", nil, 50)
+
+    assert Enum.map(election.items, & &1.entity_id) == ["e-election"]
+    assert Enum.map(fifa.items, & &1.entity_id) == ["e-fifa"]
+  end
+
   test "folds federated follow ops into the graph; localOnly ignored; delete removes" do
     {pub, priv} = keypair()
 
