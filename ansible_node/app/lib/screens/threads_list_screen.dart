@@ -313,6 +313,8 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final crossPostTargetIds =
         (dialogResult['crossPostTargetIds'] as List?)?.cast<String>() ??
         const <String>[];
+    final publicationDeferred =
+        dialogResult['publicationDeferred'] as bool? ?? false;
     final authorDid = widget.localDid;
     if (title == null ||
         title.isEmpty ||
@@ -348,6 +350,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               boardId: boardId,
               title: thread.title,
             ),
+      deferPublication: publicationDeferred,
     );
     if (content.isNotEmpty) {
       final post = Post(
@@ -382,6 +385,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 content: post.content,
                 parentPostId: null,
               ),
+        deferPublication: publicationDeferred,
       );
     }
     await _recordPublicationTargets(
@@ -433,10 +437,14 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     );
   }
 
-  Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
+  Future<void> _enqueueAndFlush(
+    OpsQueueEntry entry, {
+    bool deferPublication = false,
+  }) async {
     final dispatchService = widget.opsDispatchService;
     if (dispatchService == null) return;
     await dispatchService.signAndEnqueue(entry);
+    if (deferPublication) return;
     final flushPendingOps = widget.onFlushPendingOps;
     if (flushPendingOps == null) {
       unawaited(dispatchService.flushPending());

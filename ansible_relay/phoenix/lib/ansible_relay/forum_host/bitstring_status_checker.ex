@@ -20,6 +20,23 @@ defmodule AnsibleRelay.ForumHost.BitstringStatusChecker do
     end)
   end
 
+  def check(%{"type" => "TrisAuraStatusEndpoint2024", "id" => url}, _now, opts)
+      when is_binary(url) do
+    fetcher = Keyword.get(opts, :json_fetcher, &fetch_json/1)
+
+    with true <- TrustedMembershipIssuer.status_url_allowed?(url),
+         {:ok, %{"status" => status}} <- fetcher.(url) do
+      case status do
+        "active" -> :active
+        "revoked" -> :revoked
+        "suspended" -> :suspended
+        _ -> :unavailable
+      end
+    else
+      _ -> :unavailable
+    end
+  end
+
   def check(_, _now, _opts), do: :unavailable
 
   defp check_entry(entry, now, fetcher) when is_map(entry) do
@@ -95,9 +112,26 @@ defmodule AnsibleRelay.ForumHost.BitstringStatusChecker do
     case :httpc.request(
            :get,
            {String.to_charlist(url), [{~c"accept", ~c"application/vc+jwt"}]},
-           [timeout: 5_000, connect_timeout: 3_000], body_format: :binary) do
+           [timeout: 5_000, connect_timeout: 3_000],
+           body_format: :binary
+         ) do
       {:ok, {{_, 200, _}, _headers, body}} when byte_size(body) <= @max_response_bytes ->
         {:ok, body}
+
+      _ ->
+        {:error, :status_unavailable}
+    end
+  end
+
+  defp fetch_json(url) do
+    case :httpc.request(
+           :get,
+           {String.to_charlist(url), [{~c"accept", ~c"application/json"}]},
+           [timeout: 5_000, connect_timeout: 3_000],
+           body_format: :binary
+         ) do
+      {:ok, {{_, 200, _}, _headers, body}} when byte_size(body) <= @max_response_bytes ->
+        Jason.decode(body)
 
       _ ->
         {:error, :status_unavailable}

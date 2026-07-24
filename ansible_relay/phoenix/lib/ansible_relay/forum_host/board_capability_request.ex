@@ -32,6 +32,15 @@ defmodule AnsibleRelay.ForumHost.BoardCapabilityRequest do
     end
   end
 
+  def device_thumbprint(jwk) when is_map(jwk) do
+    case p256_material(jwk) do
+      {:ok, _public_hex, thumbprint} -> {:ok, thumbprint}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def device_thumbprint(_), do: {:error, :invalid_board_capability}
+
   defp canonical_request(conn, board_id, scope, timestamp, nonce, token) do
     token_hash = :crypto.hash(:sha256, token) |> Base.encode16(case: :lower)
 

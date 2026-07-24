@@ -111,6 +111,33 @@ void main() {
     expect((await repo.listAll()).single.status, 'rejected');
   });
 
+  test('flushPending retains policy-blocked ops for a later retry', () async {
+    final repo = InMemoryOpsQueueRepository();
+    await repo.enqueue(_entry());
+
+    final service = OpsDispatchService(
+      repository: repo,
+      signer: _RecordingSigner(),
+      relayClient: RelayOpsClient(
+        client: MockClient((_) async {
+          return http.Response(
+            jsonEncode({'error': 'posting_policy_unsatisfied'}),
+            403,
+          );
+        }),
+      ),
+    );
+
+    await service.flushPending();
+
+    expect(await repo.countPending(), 0);
+    expect((await repo.listAll()).single.status, 'blocked');
+
+    expect(await repo.retryBlocked(), 1);
+    expect(await repo.countPending(), 1);
+    expect((await repo.listAll()).single.status, 'pending');
+  });
+
   test(
     'flushPending keeps unverified DID ops pending for re-anchoring',
     () async {

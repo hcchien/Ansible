@@ -22,6 +22,8 @@ class RelayOpsException implements Exception {
   bool get isPermanentRejection =>
       statusCode == 422 || error == 'invalid_signature' || statusCode == 409;
 
+  bool get isPolicyBlock => statusCode == 403;
+
   bool get isDuplicate => statusCode == 409;
 
   @override

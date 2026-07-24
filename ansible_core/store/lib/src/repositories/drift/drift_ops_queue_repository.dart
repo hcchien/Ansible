@@ -13,7 +13,9 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
 
   @override
   Future<void> enqueue(entity.OpsQueueEntry entry) async {
-    await _db.into(_db.opsQueue).insertOnConflictUpdate(
+    await _db
+        .into(_db.opsQueue)
+        .insertOnConflictUpdate(
           OpsQueueCompanion.insert(
             opId: entry.opId,
             authorDid: entry.authorDid,
@@ -33,11 +35,12 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
 
   @override
   Future<List<entity.OpsQueueEntry>> listPending({int limit = 50}) async {
-    final rows = await ((_db.select(_db.opsQueue)
-          ..where((t) => t.status.equals('pending'))
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
-          ..limit(limit)))
-        .get();
+    final rows =
+        await ((_db.select(_db.opsQueue)
+              ..where((t) => t.status.equals('pending'))
+              ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
+              ..limit(limit)))
+            .get();
     return rows.map(_mapRow).toList();
   }
 
@@ -45,10 +48,11 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
 
   @override
   Future<List<entity.OpsQueueEntry>> listAll({int limit = 100}) async {
-    final rows = await ((_db.select(_db.opsQueue)
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
-          ..limit(limit)))
-        .get();
+    final rows =
+        await ((_db.select(_db.opsQueue)
+              ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
+              ..limit(limit)))
+            .get();
     return rows.map(_mapRow).toList();
   }
 
@@ -69,9 +73,7 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
   @override
   Future<void> markSynced(String opId) async {
     await (_db.update(_db.opsQueue)..where((t) => t.opId.equals(opId))).write(
-      const OpsQueueCompanion(
-        status: Value('synced'),
-      ),
+      const OpsQueueCompanion(status: Value('synced')),
     );
   }
 
@@ -80,10 +82,21 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
   @override
   Future<void> markRejected(String opId) async {
     await (_db.update(_db.opsQueue)..where((t) => t.opId.equals(opId))).write(
-      const OpsQueueCompanion(
-        status: Value('rejected'),
-      ),
+      const OpsQueueCompanion(status: Value('rejected')),
     );
+  }
+
+  @override
+  Future<void> markBlocked(String opId) async {
+    await (_db.update(_db.opsQueue)..where((t) => t.opId.equals(opId))).write(
+      const OpsQueueCompanion(status: Value('blocked')),
+    );
+  }
+
+  @override
+  Future<int> retryBlocked() {
+    return (_db.update(_db.opsQueue)..where((t) => t.status.equals('blocked')))
+        .write(const OpsQueueCompanion(status: Value('pending')));
   }
 
   // ------------------------------------------------------------- pruneSynced
@@ -91,13 +104,13 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
   @override
   Future<int> pruneSynced({int olderThanDays = 7}) async {
     final cutoff = DateTime.now().subtract(Duration(days: olderThanDays));
-    final count = await (_db.delete(_db.opsQueue)
-          ..where(
-            (t) =>
-                t.status.equals('synced') &
-                t.createdAt.isSmallerThanValue(cutoff),
-          ))
-        .go();
+    final count =
+        await (_db.delete(_db.opsQueue)..where(
+              (t) =>
+                  t.status.equals('synced') &
+                  t.createdAt.isSmallerThanValue(cutoff),
+            ))
+            .go();
     return count;
   }
 
@@ -120,6 +133,19 @@ class DriftOpsQueueRepository implements OpsQueueRepository {
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .watch()
         .map((rows) => rows.map(_mapRow).toList());
+  }
+
+  @override
+  Stream<List<entity.OpsQueueEntry>> watchOutstanding() {
+    final query = _db.select(_db.opsQueue)
+      ..where(
+        (table) =>
+            table.status.equals('pending') | table.status.equals('blocked'),
+      )
+      ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]);
+    return query.watch().map(
+      (rows) => rows.map(_mapRow).toList(growable: false),
+    );
   }
 
   // ---------------------------------------------------------------- helpers

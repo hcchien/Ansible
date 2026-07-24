@@ -19,6 +19,12 @@ abstract class OpsQueueRepository {
   /// Mark an op as 'rejected' (relay refused).
   Future<void> markRejected(String opId);
 
+  /// Mark an op as blocked by a recoverable board policy/capability decision.
+  Future<void> markBlocked(String opId);
+
+  /// Move recoverably blocked ops back to pending for an explicit sync retry.
+  Future<int> retryBlocked();
+
   /// Delete ops with status 'synced' older than [olderThanDays].
   Future<int> pruneSynced({int olderThanDays = 7});
 
@@ -27,4 +33,7 @@ abstract class OpsQueueRepository {
 
   /// Reactive stream of pending ops (for UI badges).
   Stream<List<OpsQueueEntry>> watchPending();
+
+  /// Reactive stream of pending and policy-blocked ops.
+  Stream<List<OpsQueueEntry>> watchOutstanding();
 }

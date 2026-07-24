@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/discovery_client.dart';
+import '../services/board_access_presentation_service.dart';
 import '../services/elix_content_link.dart';
 import '../services/elix_content_router.dart';
 import '../services/posting_gate.dart';
@@ -186,6 +187,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     } catch (_) {
       // Board row may already exist from a prior subscribe; continue.
     }
+    final canWrite =
+        await BoardAccessPresentationService(
+          walletRepository: DriftWalletRepository(widget.db),
+        ).canAuthorizeLocally(
+          policy: board.accessPolicy,
+          boardId: board.hostedBoardId,
+          action: 'post',
+        );
     await hostedRepo.upsertProjection(
       HostedBoardProjection(
         localBoardId: localBoard.id,
@@ -196,7 +205,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         localSlug: localBoard.slug,
         title: board.title,
         description: board.description,
-        permissions: const {'read': true, 'write': true},
+        permissions: {'read': true, 'write': canWrite},
         postingPolicy: board.postingPolicy,
         accessPolicy: board.accessPolicy,
         accessPolicyVersion: board.accessPolicyVersion,
@@ -215,7 +224,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         hostedBoardId: board.hostedBoardId,
         localBoardId: localBoard.id,
         readEnabled: true,
-        writeEnabled: true,
+        writeEnabled: canWrite,
         createdAt: now,
         updatedAt: now,
       ),

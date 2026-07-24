@@ -10,8 +10,9 @@ import '../theme/ansible_design.dart';
 /// Full-screen composer for a new forum discussion, styled to match the app's
 /// design system (mirrors [NoteEditorScreen]'s chrome). Replaces the old
 /// Material `AlertDialog`. Pops
-/// `{boardId, title, content, crossPostTargetIds}` on submit, or null on
-/// cancel — the caller consumes the map and dispatches the ops/publication.
+/// `{boardId, title, content, crossPostTargetIds, publicationDeferred}` on
+/// submit, or null on cancel — the caller consumes the map and dispatches the
+/// ops/publication.
 class ThreadComposerScreen extends StatefulWidget {
   const ThreadComposerScreen({
     super.key,
@@ -27,11 +28,10 @@ class ThreadComposerScreen extends StatefulWidget {
   /// Shown in the footer for parity with the note editor. Optional.
   final String? authorDid;
 
-  /// When provided, the composer pre-checks the selected board's posting
-  /// gate (`posting_policy.min_post_tier`) and offers cross-posting to other
-  /// subscribed writable boards. Without it the composer behaves as before
-  /// (no gate pre-check, no cross-post selector). The relay stays the source
-  /// of truth for gate enforcement — this is UX pre-validation only.
+  /// When provided, the composer pre-checks the selected board's posting gate
+  /// and subscription permissions. A blocked post is still saved locally but
+  /// publication is deferred until a later explicit sync can satisfy policy.
+  /// The relay stays the source of truth for enforcement.
   final AppDatabase? db;
 
   @override
@@ -59,6 +59,9 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   /// True when the selected board requires a tier the local user lacks.
   /// UX pre-validation only — the relay re-checks at intent acceptance.
   bool _postingBlocked = false;
+  bool _writeEnabled = true;
+
+  bool get _publicationDeferred => _postingBlocked || !_writeEnabled;
 
   /// Other subscribed writable boards the user can also publish to
   /// (excluding the primary board and any board whose gate the user fails).
@@ -91,12 +94,24 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
         ? PostingGate.basicTier
         : await DriftDidReputationRepository(db).tierFor(did);
     final projection = await hostedRepo.getProjectionByLocalBoardId(boardId);
+    final subscriptions = await hostedRepo.listSubscriptions();
+    BoardSubscription? primarySubscription;
+    for (final subscription in subscriptions) {
+      if (subscription.localBoardId == boardId) {
+        primarySubscription = subscription;
+        break;
+      }
+    }
     final blocked =
         projection != null &&
         !PostingGate.satisfies(tier, projection.minPostTier);
+    // A projection without a subscription is normally a locally hosted board
+    // owned by this device. Only an explicit read-only subscription disables
+    // immediate publication.
+    final writeEnabled = primarySubscription?.writeEnabled ?? true;
 
     final targets = <_CrossPostTarget>[];
-    for (final subscription in await hostedRepo.listSubscriptions()) {
+    for (final subscription in subscriptions) {
       if (!subscription.writeEnabled) continue;
       if (subscription.localBoardId == boardId) continue;
       final targetProjection = await hostedRepo.getProjectionByLocalBoardId(
@@ -121,6 +136,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
     if (!mounted) return;
     setState(() {
       _postingBlocked = blocked;
+      _writeEnabled = writeEnabled;
       _crossPostTargets = targets;
       _selectedCrossPostIds.removeWhere(
         (id) => !targets.any((target) => target.subscriptionId == id),
@@ -143,7 +159,6 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   }
 
   void _submit() {
-    if (_postingBlocked) return;
     final l10n = context.l10n;
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
@@ -164,6 +179,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
       'title': title,
       'content': content,
       'crossPostTargetIds': _selectedCrossPostIds.toList(),
+      'publicationDeferred': _publicationDeferred,
     });
   }
 
@@ -210,7 +226,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
           children: [
             _TopBar(
               onCancel: () => Navigator.of(context).pop(),
-              onDone: _postingBlocked ? null : _submit,
+              onDone: _submit,
             ),
             if (_error != null) _ErrorBanner(message: _error!),
             _BoardSelector(
@@ -219,8 +235,9 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
               canChange: widget.boards.length > 1,
               onTap: _pickBoard,
             ),
-            if (_postingBlocked) const _PostingGateBanner(),
-            if (!_postingBlocked && _crossPostTargets.isNotEmpty)
+            if (_publicationDeferred)
+              _PostingGateBanner(writeEnabled: _writeEnabled),
+            if (!_publicationDeferred && _crossPostTargets.isNotEmpty)
               _CrossPostSelector(
                 targets: _crossPostTargets,
                 selectedIds: _selectedCrossPostIds,
@@ -509,7 +526,9 @@ class _Footer extends StatelessWidget {
 /// submit button is disabled while this banner is visible; the relay remains
 /// the enforcement source of truth.
 class _PostingGateBanner extends StatelessWidget {
-  const _PostingGateBanner();
+  const _PostingGateBanner({required this.writeEnabled});
+
+  final bool writeEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -538,11 +557,16 @@ class _PostingGateBanner extends StatelessWidget {
           Expanded(
             child: Text(
               context.uiCopy(
-                zh: '此看板僅限已驗證真人發文。完成真人驗證後才能在這裡發佈，閱讀不受影響。',
-                en:
-                    'Only verified humans can post in this board. Complete '
-                    'identity verification to publish here; reading is not '
-                    'affected.',
+                zh: writeEnabled
+                    ? '你目前未符合此看板的發文資格。內容仍會安全保存在本機，取得資格後可在同步時重新發佈。'
+                    : '你目前只有閱讀權限。內容會先保存為本機草稿，不會在取得發文資格前送到看板。',
+                en: writeEnabled
+                    ? 'You do not currently meet this board’s posting rule. '
+                          'The content stays safely on this device and can be '
+                          'retried after you qualify.'
+                    : 'You currently have read-only access. This content will '
+                          'be kept as a local draft and will not reach the '
+                          'board until posting access is available.',
               ),
               style: const TextStyle(
                 fontSize: 12.5,

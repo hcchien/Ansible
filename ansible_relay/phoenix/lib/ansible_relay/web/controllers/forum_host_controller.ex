@@ -8,11 +8,12 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   """
 
   import Plug.Conn
-  alias AnsibleRelay.AbuseDetector
+  alias AnsibleRelay.{AbuseDetector, VpVerifier}
 
   alias AnsibleRelay.ForumHost.{
     BoardAccessPolicy,
     BoardCapability,
+    BoardCapabilityRequest,
     BoardVpVerifier,
     Moderation,
     PostingGate,
@@ -197,18 +198,18 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     state = params["state"]
     vp_token = params["vp_token"]
 
-    with true <- is_binary(state) and is_binary(vp_token),
+    with true <- is_binary(state) and (is_binary(vp_token) or is_map(vp_token)),
          board when not is_nil(board) <- PostingGate.get_board(board_id),
          {:ok, session} <- PresentationSession.consume(state, board_id),
          true <-
            session.policy_version == board.access_policy_version and
              session.audience == Store.base_url() and
              session.action == Atom.to_string(action),
-         {:ok, nonce} <- BoardVpVerifier.nonce(vp_token),
+         {:ok, nonce} <- presentation_nonce(vp_token),
          true <- PresentationSession.matches_nonce?(session, nonce),
          {:ok, requirement} <- BoardAccessPolicy.requirement_for(board.access_policy, action),
          {:ok, result} <-
-           BoardVpVerifier.verify(
+           verify_board_presentation(
              vp_token,
              board.access_policy,
              requirement,
@@ -239,6 +240,79 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
       _ -> send_json(conn, 400, %{error: "invalid_presentation"})
     end
   end
+
+  defp presentation_nonce(vp_token) when is_binary(vp_token),
+    do: BoardVpVerifier.nonce(vp_token)
+
+  defp presentation_nonce(%{"proof" => %{"challenge" => nonce}})
+       when is_binary(nonce) and nonce != "",
+       do: {:ok, nonce}
+
+  defp presentation_nonce(_), do: {:error, :invalid_presentation}
+
+  defp verify_board_presentation(
+         vp_token,
+         policy,
+         requirement,
+         nonce,
+         audience,
+         opts
+       )
+       when is_binary(vp_token) do
+    BoardVpVerifier.verify(vp_token, policy, requirement, nonce, audience, opts)
+  end
+
+  defp verify_board_presentation(
+         %{"holder" => holder, "deviceKeyJwk" => device_jwk} = vp,
+         policy,
+         requirement,
+         nonce,
+         audience,
+         opts
+       )
+       when is_binary(holder) and is_map(device_jwk) do
+    status_checker = Keyword.fetch!(opts, :status_checker)
+
+    with {:ok, credential_type, vc} <-
+           VpVerifier.verify_with_credential(
+             holder,
+             vp,
+             nonce: nonce,
+             audience: audience
+           ),
+         :active <- status_checker.(vc["credentialStatus"], DateTime.utc_now()),
+         {:ok, thumbprint} <- BoardCapabilityRequest.device_thumbprint(device_jwk),
+         evidence <- %{
+           "credential_type" => credential_type,
+           "credential_configuration_id" => nil,
+           "issuer" => vc["issuer"],
+           "holder_bound" => true,
+           "status" => "active",
+           "claims" => vc["credentialSubject"] || %{}
+         },
+         :ok <-
+           BoardAccessPolicy.evaluate_for_requirement(
+             policy,
+             requirement,
+             evidence
+           ) do
+      {:ok,
+       %{
+         pairwise_subject: holder,
+         device_key_thumbprint: thumbprint,
+         evidence: evidence
+       }}
+    else
+      :suspended -> {:error, :credential_revoked}
+      :revoked -> {:error, :credential_revoked}
+      :unavailable -> {:error, :credential_status_unavailable}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_presentation}
+    end
+  end
+
+  defp verify_board_presentation(_, _, _, _, _, _),
+    do: {:error, :invalid_presentation}
 
   def create_board(conn, params) do
     case SignedIntent.verify_create_board(params) do

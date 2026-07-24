@@ -1685,6 +1685,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final crossPostTargetIds =
         (dialogResult['crossPostTargetIds'] as List?)?.cast<String>() ??
         const <String>[];
+    final publicationDeferred =
+        dialogResult['publicationDeferred'] as bool? ?? false;
     if (threadTitle == null ||
         threadTitle.isEmpty ||
         boardId == null ||
@@ -1719,6 +1721,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               boardId: boardId,
               title: thread.title,
             ),
+      deferPublication: publicationDeferred,
     );
     // 建立首帖
     final post = Post(
@@ -1751,6 +1754,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               threadId: thread.id,
               content: post.content,
             ),
+      deferPublication: publicationDeferred,
     );
     await _recordThreadPublicationTargets(
       threadId: thread.id,
@@ -1796,8 +1800,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
+  Future<void> _enqueueAndFlush(
+    OpsQueueEntry entry, {
+    bool deferPublication = false,
+  }) async {
     await _opsDispatchService.signAndEnqueue(entry);
+    if (deferPublication) return;
     unawaited(_flushPendingOps());
   }
 

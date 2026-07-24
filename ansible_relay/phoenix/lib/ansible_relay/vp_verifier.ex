@@ -17,7 +17,12 @@ defmodule AnsibleRelay.VpVerifier do
 
   alias AnsibleRelay.{DidAccountCache, SigVerifier}
 
-  @recognised_credential_types ~w[TrisAuraHumanityCredential EmailCredential]
+  @recognised_credential_types ~w[
+    TrisAuraHumanityCredential
+    TaiwanCitizenshipCredential
+    AgeOver18Credential
+    EmailCredential
+  ]
   @nostr_binding_kind 27_235
   @nostr_binding_marker "io.trisaura.vc.nostr-binding.v1"
   @nostr_binding_ttl_seconds 300
@@ -49,11 +54,20 @@ defmodule AnsibleRelay.VpVerifier do
   """
   @spec verify(String.t(), map(), keyword()) :: {:ok, String.t()} | {:error, error()}
   def verify(holder_did, vp, opts \\ []) when is_binary(holder_did) and is_map(vp) do
+    with {:ok, credential_type, _credential} <-
+           verify_with_credential(holder_did, vp, opts) do
+      {:ok, credential_type}
+    end
+  end
+
+  @doc "Verify a VP and return both its accepted type and credential payload."
+  def verify_with_credential(holder_did, vp, opts \\ [])
+      when is_binary(holder_did) and is_map(vp) do
     with {:ok, pub_key_hex} <- resolve_holder_key(holder_did),
          :ok <- verify_vp_proof(vp, pub_key_hex, holder_did, opts),
          {:ok, vcs} <- extract_vcs(vp),
          {:ok, vc} <- pick_accepted_vc(vcs, holder_did) do
-      {:ok, vc_credential_type(vc)}
+      {:ok, vc_credential_type(vc), vc}
     end
   end
 

@@ -6,7 +6,9 @@
 ///
 /// Lifecycle:
 ///   created → [pending] → signed (Ed25519) → [sent] → ack from relay → [synced]
-///   On network failure or relay rejection: status stays [pending] for retry.
+///   Network failures stay [pending]. Recoverable policy/capability failures
+///   become [blocked] until an explicit sync retry; malformed ops are
+///   [rejected].
 ///
 /// Fields:
 /// - [opId]       — UUID v4 generated locally
@@ -18,7 +20,7 @@
 /// - [signature]  — Ed25519 signature over (opId + payload), hex-encoded
 /// - [schemaVersion] — op payload format version (Phase 0 — API versioning);
 ///   1 is the only format that exists today, so it doubles as the default
-/// - [status]     — "pending" | "sent" | "synced" | "rejected"
+/// - [status]     — "pending" | "blocked" | "sent" | "synced" | "rejected"
 /// - [createdAt]  — local wall-clock time
 /// - [sentAt]     — null until first transmission attempt
 class OpsQueueEntry {
@@ -30,7 +32,7 @@ class OpsQueueEntry {
   final String payload; // base64-encoded Yrs binary delta
   final String signature; // Ed25519 over opId+payload, hex-encoded
   final int schemaVersion; // op payload format version (currently always 1)
-  final String status; // pending | sent | synced | rejected
+  final String status; // pending | blocked | sent | synced | rejected
   final DateTime createdAt;
   final DateTime? sentAt;
 

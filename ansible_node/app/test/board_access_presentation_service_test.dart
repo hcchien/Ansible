@@ -149,6 +149,117 @@ void main() {
       ),
     );
   });
+
+  test(
+    'Taiwan citizenship VC is presented with a device-bound JCS VP',
+    () async {
+      final key = _FakeHolderKey();
+      final now = DateTime.utc(2026, 7, 24, 10);
+      final wallet = InMemoryWalletRepository();
+      await wallet.saveCredential(
+        metadata: WalletCredential(
+          credentialId: 'tw-citizen',
+          issuerDid: 'did:web:issuer-dev.elix.cool',
+          holderDid: 'did:plc:citizen',
+          credentialType: 'TaiwanCitizenshipCredential',
+          status: WalletCredentialStatus.active,
+          validFrom: now.subtract(const Duration(minutes: 1)),
+          validUntil: now.add(const Duration(days: 30)),
+          displayName: 'Taiwan Citizenship',
+          createdAt: now,
+          updatedAt: now,
+        ),
+        encryptedPayload: jsonEncode({
+          '@context': ['https://www.w3.org/ns/credentials/v2'],
+          'id': 'urn:uuid:tw-citizen',
+          'type': ['VerifiableCredential', 'TaiwanCitizenshipCredential'],
+          'issuer': 'did:web:issuer-dev.elix.cool',
+          'validFrom': now
+              .subtract(const Duration(minutes: 1))
+              .toIso8601String(),
+          'validUntil': now.add(const Duration(days: 30)).toIso8601String(),
+          'credentialSubject': {
+            'id': 'did:plc:citizen',
+            'citizenshipVerified': true,
+          },
+          'proof': {
+            'type': 'DataIntegrityProof',
+            'cryptosuite': 'eddsa-jcs-2022',
+            'proofValue': 'zissuer-proof',
+          },
+        }),
+        encryptionVersion: 'test-json',
+      );
+
+      Map<String, dynamic>? presented;
+      final service = BoardAccessPresentationService(
+        walletRepository: wallet,
+        holderKey: key,
+        didSigner: _RecordingDidSigner(),
+        now: () => now,
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/access-requirements')) {
+            return http.Response(
+              jsonEncode({
+                'host': 'https://relay.example',
+                'policy': {
+                  'post': {'requirement': 'member'},
+                  'requirements': {
+                    'member': {
+                      'credential_type': 'TaiwanCitizenshipCredential',
+                      'trusted_issuers': ['did:web:issuer-dev.elix.cool'],
+                      'claims': [
+                        {
+                          'path': 'citizenshipVerified',
+                          'op': 'equals',
+                          'value': true,
+                        },
+                      ],
+                    },
+                  },
+                },
+              }),
+              200,
+            );
+          }
+          if (request.url.path.endsWith('/presentation/options')) {
+            return http.Response(
+              jsonEncode({'nonce': 'nonce-1', 'state': 'state-1'}),
+              200,
+            );
+          }
+          presented = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode({
+              'board_capability': 'elix_board_v1_test',
+              'expires_at': now
+                  .add(const Duration(minutes: 5))
+                  .toIso8601String(),
+              'scopes': ['post'],
+              'policy_version': 1,
+            }),
+            200,
+          );
+        }),
+      );
+
+      final capability = await service.authorize(
+        forumHost: Uri.parse('https://relay.example'),
+        boardId: 'taiwan',
+        action: 'post',
+      );
+
+      expect(capability.scopes, ['post']);
+      final vp = presented?['vp_token'] as Map<String, dynamic>;
+      expect(vp['holder'], 'did:plc:citizen');
+      expect(vp['deviceKeyJwk']['kty'], 'EC');
+      expect(vp['proof']['challenge'], 'nonce-1');
+      expect(
+        vp['verifiableCredential'][0]['type'],
+        contains('TaiwanCitizenshipCredential'),
+      );
+    },
+  );
 }
 
 class _FakeHolderKey implements HolderBindingKey {
@@ -182,4 +293,11 @@ class _FakeHolderKey implements HolderBindingKey {
     0x20,
     ...List<int>.filled(32, 2),
   ].map((value) => value.toRadixString(16).padLeft(2, '0')).join();
+}
+
+class _RecordingDidSigner implements DidSigner {
+  @override
+  Future<Ed25519Signature> sign(List<int> message) async {
+    return Ed25519Signature('11' * 64);
+  }
 }

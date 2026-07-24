@@ -14,22 +14,31 @@ class OpsQueueStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<OpsQueueEntry>>(
-      stream: repository.watchPending(),
+      stream: repository.watchOutstanding(),
       builder: (context, snapshot) {
-        final count = snapshot.data?.length ?? 0;
+        final entries = snapshot.data ?? const <OpsQueueEntry>[];
+        final count = entries.length;
+        final blocked = entries
+            .where((entry) => entry.status == 'blocked')
+            .length;
         if (count == 0) return const SizedBox.shrink();
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: count > 0 ? Colors.amber : Colors.green,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            '$count',
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
+        return Tooltip(
+          message: blocked > 0
+              ? '$blocked local post(s) are waiting for board permission'
+              : '$count local change(s) are waiting to sync',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: blocked > 0 ? Colors.deepOrange.shade200 : Colors.amber,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         );

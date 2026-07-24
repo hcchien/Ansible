@@ -211,6 +211,10 @@ class AppSyncService {
       final activeNode = await _remoteNodeRepo.getActive();
       final queue = _opsQueueRepo;
       if (activeNode != null && queue != null) {
+        // A manual sync is an explicit retry boundary. Policy-blocked local
+        // content remains on-device and is retried only here, after credentials
+        // or the board policy may have changed.
+        await queue.retryBlocked();
         await OpsDispatchService(
           repository: queue,
           signer: _didSigner,

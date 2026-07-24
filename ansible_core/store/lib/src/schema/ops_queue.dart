@@ -27,7 +27,7 @@ class OpsQueue extends Table {
   /// Ed25519 signature over (opId || payload), hex-encoded
   TextColumn get signature => text()();
 
-  /// "pending" | "sent" | "synced" | "rejected"
+  /// "pending" | "blocked" | "sent" | "synced" | "rejected"
   TextColumn get status => text().withDefault(const Constant('pending'))();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

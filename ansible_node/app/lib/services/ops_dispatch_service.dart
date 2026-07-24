@@ -55,6 +55,10 @@ class OpsDispatchService {
           await repository.markRejected(entry.opId);
           continue;
         }
+        if (error.isPolicyBlock) {
+          await repository.markBlocked(entry.opId);
+          continue;
+        }
         break;
       } catch (_) {
         break;

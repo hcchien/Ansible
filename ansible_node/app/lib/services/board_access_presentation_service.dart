@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
+import 'package:ansible_vc/ansible_vc.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
@@ -33,23 +35,38 @@ class BoardAccessCapability {
   final int policyVersion;
 }
 
+class _BoardCredential {
+  const _BoardCredential({
+    required this.holderDid,
+    this.compactJwt,
+    this.dataIntegrityCredential,
+  });
+
+  final String holderDid;
+  final String? compactJwt;
+  final Map<String, Object?>? dataIntegrityCredential;
+}
+
 class BoardAccessPresentationService {
   BoardAccessPresentationService({
     required WalletRepository walletRepository,
     http.Client? httpClient,
     SecureCredentialPayloadCodec? payloadCodec,
     HolderBindingKey? holderKey,
+    DidSigner? didSigner,
     DateTime Function()? now,
   }) : _wallet = walletRepository,
        _http = httpClient ?? http.Client(),
        _codec = payloadCodec ?? const SecureCredentialPayloadCodec(),
        _holderKeyOverride = holderKey,
+       _didSigner = didSigner ?? DidSignerImpl(),
        _now = now ?? (() => DateTime.now().toUtc());
 
   final WalletRepository _wallet;
   final http.Client _http;
   final SecureCredentialPayloadCodec _codec;
   final HolderBindingKey? _holderKeyOverride;
+  final DidSigner _didSigner;
   final DateTime Function() _now;
 
   HardwareHolderJwtSigner _signerForBoard(String boardId) =>
@@ -59,6 +76,36 @@ class BoardAccessPresentationService {
 
   Future<String> pairwiseSubject(String boardId) =>
       _signerForBoard(boardId).pairwiseDid();
+
+  /// Returns whether the local wallet can satisfy [action] without contacting
+  /// the Forum Host. This is UX pre-validation only; the Forum Host always
+  /// re-evaluates the live credential status when issuing a capability.
+  Future<bool> canAuthorizeLocally({
+    required Map<String, Object?> policy,
+    required String boardId,
+    required String action,
+  }) async {
+    final actionPolicy = policy[action];
+    if (actionPolicy is! Map || actionPolicy['requirement'] is! String) {
+      return false;
+    }
+    final requirement = actionPolicy['requirement'] as String;
+    if (requirement == 'public' || requirement == 'posting_policy') {
+      return true;
+    }
+    if (requirement == 'board_moderator') return false;
+    try {
+      final credential = await _membershipCredentialForPolicy(
+        policy: policy,
+        action: action,
+        boardId: boardId,
+      );
+      return credential.compactJwt == null ||
+          credential.holderDid == await _signerForBoard(boardId).pairwiseDid();
+    } on BoardAccessException {
+      return false;
+    }
+  }
 
   Future<BoardAccessCapability> authorize({
     required Uri forumHost,
@@ -85,22 +132,19 @@ class BoardAccessPresentationService {
       action: action,
       boardId: boardId,
     );
-    final holder = await signer.pairwiseDid();
-    if (credential.$1 != holder) {
-      throw const BoardAccessException('holder_binding_failed');
-    }
-    final vpToken = await signer.signJwt(
-      typ: 'openid4vp+jwt',
-      claims: {
-        'aud': audience,
-        'nonce': nonce,
-        'iat': _now().millisecondsSinceEpoch ~/ 1000,
-        'sub': holder,
-        'vp': {
-          'verifiableCredential': [credential.$2],
-        },
-      },
-    );
+    final vpToken = credential.compactJwt != null
+        ? await _hostedMembershipVp(
+            signer: signer,
+            credential: credential,
+            audience: audience,
+            nonce: nonce,
+          )
+        : await _dataIntegrityVp(
+            signer: signer,
+            credential: credential,
+            audience: audience,
+            nonce: nonce,
+          );
     final response = _json(
       await _http.post(
         base.resolve('${base.path}/presentation/verify'),
@@ -158,12 +202,83 @@ class BoardAccessPresentationService {
     };
   }
 
-  Future<(String, String)> _membershipCredential({
+  Future<Object> _hostedMembershipVp({
+    required HardwareHolderJwtSigner signer,
+    required _BoardCredential credential,
+    required String audience,
+    required String nonce,
+  }) async {
+    final holder = await signer.pairwiseDid();
+    if (credential.holderDid != holder) {
+      throw const BoardAccessException('holder_binding_failed');
+    }
+    return signer.signJwt(
+      typ: 'openid4vp+jwt',
+      claims: {
+        'aud': audience,
+        'nonce': nonce,
+        'iat': _now().millisecondsSinceEpoch ~/ 1000,
+        'sub': holder,
+        'vp': {
+          'verifiableCredential': [credential.compactJwt],
+        },
+      },
+    );
+  }
+
+  Future<Object> _dataIntegrityVp({
+    required HardwareHolderJwtSigner signer,
+    required _BoardCredential credential,
+    required String audience,
+    required String nonce,
+  }) async {
+    final raw = credential.dataIntegrityCredential;
+    if (raw == null) throw const BoardAccessException('invalid_credential');
+    final parsed = TrisAuraCredential.fromJson(raw);
+    final unsigned = VpBuilder.buildUnsigned(
+      credential: parsed,
+      holderDid: credential.holderDid,
+      nonce: nonce,
+      audience: audience,
+      createdAt: _now(),
+    );
+    unsigned['deviceKeyJwk'] =
+        jsonDecode(
+              utf8.decode(
+                base64Url.decode(
+                  base64Url.normalize(await signer.encodedJwk()),
+                ),
+              ),
+            )
+            as Map<String, dynamic>;
+    final canonical = VpBuilder.canonicalPayload(unsigned);
+    final signature = await _didSigner.sign(utf8.encode(canonical));
+    return VpBuilder.addProof(
+      unsignedPresentation: unsigned,
+      proofValue: signature.hex,
+    );
+  }
+
+  Future<_BoardCredential> _membershipCredential({
     required Map<String, Object?> requirements,
     required String action,
     required String boardId,
   }) async {
-    final rule = _credentialRule(requirements, action);
+    final policy = requirements['policy'];
+    if (policy is! Map) throw const BoardAccessException('invalid_response');
+    return _membershipCredentialForPolicy(
+      policy: Map<String, Object?>.from(policy),
+      action: action,
+      boardId: boardId,
+    );
+  }
+
+  Future<_BoardCredential> _membershipCredentialForPolicy({
+    required Map<String, Object?> policy,
+    required String action,
+    required String boardId,
+  }) async {
+    final rule = _credentialRule(policy, action);
     final credentialType = rule['credential_type'];
     if (credentialType is! String || credentialType.isEmpty) {
       throw const BoardAccessException('invalid_response');
@@ -188,18 +303,25 @@ class BoardAccessPresentationService {
             rule,
             boardId,
           )) {
-        return (metadata.holderDid, decoded['compact'] as String);
+        return _BoardCredential(
+          holderDid: metadata.holderDid,
+          compactJwt: decoded['compact'] as String,
+        );
+      }
+      if (_credentialSatisfies(decoded, rule, boardId)) {
+        return _BoardCredential(
+          holderDid: metadata.holderDid,
+          dataIntegrityCredential: decoded,
+        );
       }
     }
     throw const BoardAccessException('no_matching_credential');
   }
 
   Map<String, Object?> _credentialRule(
-    Map<String, Object?> response,
+    Map<String, Object?> policy,
     String action,
   ) {
-    final policy = response['policy'];
-    if (policy is! Map) throw const BoardAccessException('invalid_response');
     final actionPolicy = policy[action];
     if (actionPolicy is! Map || actionPolicy['requirement'] is! String) {
       throw const BoardAccessException('invalid_response');

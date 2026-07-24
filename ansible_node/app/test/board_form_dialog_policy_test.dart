@@ -103,6 +103,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('會員才能發文').last);
     await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('member_credential_preset')),
+    );
+    await tester.tap(find.byKey(const Key('member_credential_preset')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('自訂憑證（進階）').last);
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('hosted_issuer_manifest_url')),
       'https://issuer.example/manifest',
@@ -125,6 +132,72 @@ void main() {
       {'path': 'membershipActive', 'op': 'equals', 'value': true},
     ]);
   });
+
+  testWidgets(
+    'builds public-read Taiwan-citizen-post policy without technical fields',
+    (tester) async {
+      Map<String, String?>? result;
+      final now = DateTime.utc(2026, 7, 24);
+      final host = RemoteNode(
+        id: 'relay-dev',
+        name: 'Elix Relay',
+        url: 'https://relay-dev.elix.cool',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () async {
+                  result = await showDialog<Map<String, String?>>(
+                    context: context,
+                    builder: (_) => BoardFormDialog(
+                      forumHosts: [host],
+                      requireForumHost: true,
+                    ),
+                  );
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, 'Taiwan board');
+      await tester.ensureVisible(find.text('公開看板'));
+      await tester.tap(find.text('公開看板'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('會員才能發文').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('台灣公民'), findsOneWidget);
+      expect(find.byKey(const Key('hosted_issuer_manifest_url')), findsNothing);
+      expect(find.text('可信簽發者 DID'), findsNothing);
+
+      await tester.tap(find.text('儲存'));
+      await tester.pumpAndSettle();
+
+      final policy =
+          jsonDecode(result!['accessPolicyJson']!) as Map<String, dynamic>;
+      expect(policy['discovery'], 'public');
+      expect(policy['read'], {'requirement': 'public'});
+      expect(policy['post'], {'requirement': 'member'});
+      expect(policy['content_visibility'], 'public');
+      final requirement =
+          policy['requirements']['member'] as Map<String, dynamic>;
+      expect(requirement['credential_type'], 'TaiwanCitizenshipCredential');
+      expect(requirement['trusted_issuers'], ['did:web:localhost']);
+      expect(requirement['claims'], [
+        {'path': 'citizenshipVerified', 'op': 'equals', 'value': true},
+      ]);
+    },
+  );
 }
 
 class _FakeManifestLoader implements HostedIssuerManifestLoader {

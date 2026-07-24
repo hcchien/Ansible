@@ -49,7 +49,7 @@ defmodule AnsibleRelay.VpVerifierTest do
 
   defp canonical(value), do: value |> deep_sort() |> Jason.encode!()
 
-  # Build a signed TrisAuraHumanityCredential VC.
+  # Build a signed system credential VC.
   defp build_humanity_vc(holder_did, issuer_priv, opts \\ []) do
     now = DateTime.utc_now() |> DateTime.to_iso8601()
     valid_until = DateTime.add(DateTime.utc_now(), 90 * 86_400, :second) |> DateTime.to_iso8601()
@@ -60,17 +60,21 @@ defmodule AnsibleRelay.VpVerifierTest do
         "https://elix.cool/contexts/humanity/v1"
       ],
       "id" => Keyword.get(opts, :id, "https://issuer.elix.cool/vc/test001"),
-      "type" => ["VerifiableCredential", "TrisAuraHumanityCredential"],
+      "type" => [
+        "VerifiableCredential",
+        Keyword.get(opts, :credential_type, "TrisAuraHumanityCredential")
+      ],
       "issuer" => Keyword.get(opts, :issuer, @issuer_did),
       "validFrom" => now,
       "validUntil" => Keyword.get(opts, :valid_until, valid_until),
-      "credentialSubject" => %{
-        "id" => holder_did,
-        "humanVerified" => true,
-        "assuranceLevel" => "tw_natural_person_certificate",
-        "assuranceMethod" => "tw_fido_or_moica",
-        "jurisdiction" => "TW"
-      }
+      "credentialSubject" =>
+        Keyword.get(opts, :credential_subject, %{
+          "id" => holder_did,
+          "humanVerified" => true,
+          "assuranceLevel" => "tw_natural_person_certificate",
+          "assuranceMethod" => "tw_fido_or_moica",
+          "jurisdiction" => "TW"
+        })
     }
 
     proof_value = sign(issuer_priv, canonical(vc_without_proof))
@@ -125,12 +129,34 @@ defmodule AnsibleRelay.VpVerifierTest do
     assert {:ok, "TrisAuraHumanityCredential"} = VpVerifier.verify(@holder_did, vp)
   end
 
+  test "accepts a valid TaiwanCitizenshipCredential VP", %{issuer_priv: issuer_priv} do
+    {pub_hex, priv} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
+
+    vc =
+      build_humanity_vc(@holder_did, issuer_priv,
+        credential_type: "TaiwanCitizenshipCredential",
+        credential_subject: %{
+          "id" => @holder_did,
+          "citizenshipVerified" => true,
+          "jurisdiction" => "TW"
+        }
+      )
+
+    vp = build_vp(@holder_did, priv, [vc])
+
+    assert {:ok, "TaiwanCitizenshipCredential", ^vc} =
+             VpVerifier.verify_with_credential(@holder_did, vp)
+  end
+
   test "accepts VP with matching nonce and audience", %{issuer_priv: issuer_priv} do
     {pub_hex, priv} = holder_keypair()
     DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv)
-    vp = build_vp(@holder_did, priv, [vc], nonce: "nonce-123", audience: "https://relay.elix.cool")
+
+    vp =
+      build_vp(@holder_did, priv, [vc], nonce: "nonce-123", audience: "https://relay.elix.cool")
 
     assert {:ok, "TrisAuraHumanityCredential"} =
              VpVerifier.verify(@holder_did, vp,
@@ -144,7 +170,9 @@ defmodule AnsibleRelay.VpVerifierTest do
     DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
 
     vc = build_humanity_vc(@holder_did, issuer_priv)
-    vp = build_vp(@holder_did, priv, [vc], nonce: "nonce-abc", audience: "https://relay.elix.cool")
+
+    vp =
+      build_vp(@holder_did, priv, [vc], nonce: "nonce-abc", audience: "https://relay.elix.cool")
 
     assert {:error, :wrong_nonce} =
              VpVerifier.verify(@holder_did, vp,

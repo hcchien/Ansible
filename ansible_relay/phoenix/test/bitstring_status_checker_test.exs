@@ -5,7 +5,13 @@ defmodule AnsibleRelay.ForumHost.BitstringStatusCheckerTest do
 
   setup do
     original = Application.get_env(:ansible_relay, :trusted_membership_issuers)
-    on_exit(fn -> restore(:trusted_membership_issuers, original) end)
+    original_system = Application.get_env(:ansible_relay, :trusted_vc_issuers)
+
+    on_exit(fn ->
+      restore(:trusted_membership_issuers, original)
+      restore(:trusted_vc_issuers, original_system)
+    end)
+
     :ok
   end
 
@@ -50,6 +56,42 @@ defmodule AnsibleRelay.ForumHost.BitstringStatusCheckerTest do
     assert :unavailable =
              BitstringStatusChecker.check([entry("http://localhost/status", 42)], now,
                fetcher: fetcher
+             )
+  end
+
+  test "checks a system VC live status only on its trusted did:web origin" do
+    url = "https://issuer-dev.elix.cool/api/v1/vc/status/abc123"
+
+    Application.put_env(:ansible_relay, :trusted_vc_issuers, [
+      %{
+        did: "did:web:issuer-dev.elix.cool",
+        public_key_hex: String.duplicate("01", 32)
+      }
+    ])
+
+    active_fetcher = fn ^url -> {:ok, %{"status" => "active", "revoked" => false}} end
+    revoked_fetcher = fn ^url -> {:ok, %{"status" => "revoked", "revoked" => true}} end
+
+    status = %{"type" => "TrisAuraStatusEndpoint2024", "id" => url}
+
+    assert :active =
+             BitstringStatusChecker.check(status, DateTime.utc_now(),
+               json_fetcher: active_fetcher
+             )
+
+    assert :revoked =
+             BitstringStatusChecker.check(status, DateTime.utc_now(),
+               json_fetcher: revoked_fetcher
+             )
+
+    assert :unavailable =
+             BitstringStatusChecker.check(
+               %{
+                 "type" => "TrisAuraStatusEndpoint2024",
+                 "id" => "https://evil.example/api/v1/vc/status/abc123"
+               },
+               DateTime.utc_now(),
+               json_fetcher: active_fetcher
              )
   end
 

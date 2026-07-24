@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../services/hosted_issuer_manifest.dart';
 import '../services/posting_gate.dart';
@@ -50,6 +51,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
   /// `posting_policy.min_post_tier` for the new board; null ⇒ no gate.
   String? _minPostTier;
   String _accessMode = 'public';
+  String _memberCredentialPreset = 'taiwan_citizenship';
   HostedIssuerManifest? _issuerManifest;
   HostedIssuerCredentialConfiguration? _credentialConfiguration;
   HostedIssuerClaimConfiguration? _claimConfiguration;
@@ -185,10 +187,13 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                     setState(() => _minPostTier = value);
                   },
                   decoration: InputDecoration(
-                    labelText: context.uiCopy(zh: '發文資格', en: 'Who can post'),
+                    labelText: context.uiCopy(
+                      zh: '額外真人門檻',
+                      en: 'Additional personhood gate',
+                    ),
                     helperText: context.uiCopy(
-                      zh: '僅限制發文；任何人都能閱讀。',
-                      en: 'Restricts posting only; anyone can read.',
+                      zh: '通常選「不限」；需要特定 VC 時請使用下方的看板存取設定。',
+                      en: 'Usually leave this as Anyone; use board access below for a specific VC.',
                     ),
                   ),
                 ),
@@ -232,136 +237,184 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                 ),
                 if (_accessMode != 'public') ...[
                   const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('hosted_issuer_manifest_url'),
-                    controller: _manifestUrlController,
-                    decoration: InputDecoration(
-                      labelText: context.uiCopy(
-                        zh: 'Hosted Issuer Manifest URL',
-                        en: 'Hosted Issuer manifest URL',
-                      ),
-                      hintText:
-                          'https://issuer.example/api/v1/hosted-issuers/org/manifest',
-                      suffixIcon: _loadingManifest
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : IconButton(
-                              key: const Key('load_issuer_manifest'),
-                              onPressed: _loadManifest,
-                              icon: const Icon(Icons.download_outlined),
-                              tooltip: context.uiCopy(
-                                zh: '載入憑證設定',
-                                en: 'Load credential configurations',
-                              ),
-                            ),
-                      errorText: _manifestError,
-                    ),
-                  ),
-                  if (_issuerManifest != null &&
-                      _issuerManifest!.configurations.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<
-                      HostedIssuerCredentialConfiguration
-                    >(
-                      key: const Key('credential_configuration'),
-                      isExpanded: true,
-                      initialValue: _credentialConfiguration,
-                      items: _issuerManifest!.configurations
-                          .map(
-                            (configuration) => DropdownMenuItem(
-                              value: configuration,
-                              child: Text(
-                                '${configuration.id} · ${configuration.credentialType}',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(growable: false),
-                      onChanged: (configuration) {
-                        setState(() {
-                          _credentialConfiguration = configuration;
-                          _claimConfiguration =
-                              configuration?.claims.firstOrNull;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: context.uiCopy(
-                          zh: '憑證設定',
-                          en: 'Credential configuration',
+                  DropdownButtonFormField<String>(
+                    key: const Key('member_credential_preset'),
+                    initialValue: _memberCredentialPreset,
+                    items: [
+                      DropdownMenuItem(
+                        value: 'taiwan_citizenship',
+                        child: Text(
+                          context.uiCopy(zh: '台灣公民', en: 'Taiwan citizenship'),
                         ),
                       ),
-                    ),
-                    if (_credentialConfiguration != null &&
-                        _credentialConfiguration!.claims.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<HostedIssuerClaimConfiguration>(
-                        key: const Key('credential_claim'),
-                        isExpanded: true,
-                        initialValue: _claimConfiguration,
-                        items: _credentialConfiguration!.claims
-                            .map(
-                              (claim) => DropdownMenuItem(
-                                value: claim,
-                                child: Text(claim.path),
-                              ),
-                            )
-                            .toList(growable: false),
-                        onChanged: (claim) =>
-                            setState(() => _claimConfiguration = claim),
-                        decoration: InputDecoration(
-                          labelText: context.uiCopy(
-                            zh: '必要條件',
-                            en: 'Required claim',
-                          ),
+                      DropdownMenuItem(
+                        value: 'age_over_18',
+                        child: Text(
+                          context.uiCopy(zh: '年滿 18 歲', en: 'Age 18 or older'),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: const Key('credential_claim_value'),
-                        controller: _claimValueController,
-                        decoration: InputDecoration(
-                          labelText: context.uiCopy(
-                            zh: '條件值',
-                            en: 'Required value',
-                          ),
-                          helperText: context.uiCopy(
-                            zh: '只支援 manifest 允許的 equals 條件。',
-                            en: 'Only manifest-authorized equals predicates are supported.',
+                      DropdownMenuItem(
+                        value: 'custom',
+                        child: Text(
+                          context.uiCopy(
+                            zh: '自訂憑證（進階）',
+                            en: 'Custom credential (advanced)',
                           ),
                         ),
                       ),
                     ],
-                  ],
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _trustedIssuerController,
+                    onChanged: (value) => setState(
+                      () => _memberCredentialPreset =
+                          value ?? 'taiwan_citizenship',
+                    ),
                     decoration: InputDecoration(
                       labelText: context.uiCopy(
-                        zh: '可信簽發者 DID',
-                        en: 'Trusted issuer DID',
+                        zh: '所需資格',
+                        en: 'Required credential',
                       ),
-                      hintText: 'did:elix:org:…',
+                      helperText: context.uiCopy(
+                        zh: 'App 會自動選擇可信簽發者與最少揭露條件。',
+                        en: 'The app selects the trusted issuer and minimum-disclosure claim.',
+                      ),
                     ),
-                    validator: (value) {
-                      if (_accessMode != 'public' &&
-                          (value == null || !value.trim().startsWith('did:'))) {
-                        return context.uiCopy(
-                          zh: '請輸入有效的 Issuer DID',
-                          en: 'Enter a valid issuer DID',
-                        );
-                      }
-                      if (_issuerManifest != null &&
-                          value?.trim() != _issuerManifest!.organizationDid) {
-                        return context.uiCopy(
-                          zh: 'Issuer DID 必須與 manifest 相符',
-                          en: 'Issuer DID must match the manifest',
-                        );
-                      }
-                      return null;
-                    },
                   ),
+                  if (_memberCredentialPreset == 'custom') ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('hosted_issuer_manifest_url'),
+                      controller: _manifestUrlController,
+                      decoration: InputDecoration(
+                        labelText: context.uiCopy(
+                          zh: 'Hosted Issuer Manifest URL',
+                          en: 'Hosted Issuer manifest URL',
+                        ),
+                        hintText:
+                            'https://issuer.example/api/v1/hosted-issuers/org/manifest',
+                        suffixIcon: _loadingManifest
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : IconButton(
+                                key: const Key('load_issuer_manifest'),
+                                onPressed: _loadManifest,
+                                icon: const Icon(Icons.download_outlined),
+                                tooltip: context.uiCopy(
+                                  zh: '載入憑證設定',
+                                  en: 'Load credential configurations',
+                                ),
+                              ),
+                        errorText: _manifestError,
+                      ),
+                    ),
+                    if (_issuerManifest != null &&
+                        _issuerManifest!.configurations.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<
+                        HostedIssuerCredentialConfiguration
+                      >(
+                        key: const Key('credential_configuration'),
+                        isExpanded: true,
+                        initialValue: _credentialConfiguration,
+                        items: _issuerManifest!.configurations
+                            .map(
+                              (configuration) => DropdownMenuItem(
+                                value: configuration,
+                                child: Text(
+                                  '${configuration.id} · ${configuration.credentialType}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(growable: false),
+                        onChanged: (configuration) {
+                          setState(() {
+                            _credentialConfiguration = configuration;
+                            _claimConfiguration =
+                                configuration?.claims.firstOrNull;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          labelText: context.uiCopy(
+                            zh: '憑證設定',
+                            en: 'Credential configuration',
+                          ),
+                        ),
+                      ),
+                      if (_credentialConfiguration != null &&
+                          _credentialConfiguration!.claims.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<HostedIssuerClaimConfiguration>(
+                          key: const Key('credential_claim'),
+                          isExpanded: true,
+                          initialValue: _claimConfiguration,
+                          items: _credentialConfiguration!.claims
+                              .map(
+                                (claim) => DropdownMenuItem(
+                                  value: claim,
+                                  child: Text(claim.path),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (claim) =>
+                              setState(() => _claimConfiguration = claim),
+                          decoration: InputDecoration(
+                            labelText: context.uiCopy(
+                              zh: '必要條件',
+                              en: 'Required claim',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('credential_claim_value'),
+                          controller: _claimValueController,
+                          decoration: InputDecoration(
+                            labelText: context.uiCopy(
+                              zh: '條件值',
+                              en: 'Required value',
+                            ),
+                            helperText: context.uiCopy(
+                              zh: '只支援 manifest 允許的 equals 條件。',
+                              en: 'Only manifest-authorized equals predicates are supported.',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _trustedIssuerController,
+                      decoration: InputDecoration(
+                        labelText: context.uiCopy(
+                          zh: '可信簽發者 DID',
+                          en: 'Trusted issuer DID',
+                        ),
+                        hintText: 'did:elix:org:…',
+                      ),
+                      validator: (value) {
+                        if (_accessMode != 'public' &&
+                            _memberCredentialPreset == 'custom' &&
+                            (value == null ||
+                                !value.trim().startsWith('did:'))) {
+                          return context.uiCopy(
+                            zh: '請輸入有效的 Issuer DID',
+                            en: 'Enter a valid issuer DID',
+                          );
+                        }
+                        if (_issuerManifest != null &&
+                            value?.trim() != _issuerManifest!.organizationDid) {
+                          return context.uiCopy(
+                            zh: 'Issuer DID 必須與 manifest 相符',
+                            en: 'Issuer DID must match the manifest',
+                          );
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     _accessMode == 'member_read'
@@ -408,26 +461,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               final description = _descriptionController.text.trim();
-              final issuer = _trustedIssuerController.text.trim();
-              final selectedConfiguration = _credentialConfiguration;
-              final selectedClaim = _claimConfiguration;
-              final memberRequirement = {
-                if (selectedConfiguration != null)
-                  'credential_configuration_id': selectedConfiguration.id,
-                'credential_type':
-                    selectedConfiguration?.credentialType ??
-                    'PoliticalPartyMembershipCredential',
-                'trusted_issuers': [issuer],
-                'claims': [
-                  {
-                    'path': selectedClaim?.path ?? 'membership',
-                    'op': 'equals',
-                    'value': _policyValue(_claimValueController.text),
-                  },
-                ],
-                'holder_binding': 'required',
-                'status': {'required': true, 'max_age_seconds': 300},
-              };
+              final memberRequirement = _memberRequirement();
               final memberRead = _accessMode == 'member_read';
               final memberPost = _accessMode != 'public';
               final visibility = memberRead ? 'host_visible' : 'public';
@@ -504,5 +538,53 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
     if (value == 'true') return true;
     if (value == 'false') return false;
     return int.tryParse(value) ?? value;
+  }
+
+  Map<String, Object?> _memberRequirement() {
+    final issuerHost = Uri.parse(AppEnvironment.issuerBaseUrl).host;
+    final systemIssuerDid = 'did:web:$issuerHost';
+    if (_memberCredentialPreset == 'taiwan_citizenship') {
+      return {
+        'credential_type': 'TaiwanCitizenshipCredential',
+        'trusted_issuers': [systemIssuerDid],
+        'claims': [
+          {'path': 'citizenshipVerified', 'op': 'equals', 'value': true},
+        ],
+        'holder_binding': 'required',
+        'status': {'required': true, 'max_age_seconds': 300},
+      };
+    }
+    if (_memberCredentialPreset == 'age_over_18') {
+      return {
+        'credential_type': 'AgeOver18Credential',
+        'trusted_issuers': [systemIssuerDid],
+        'claims': [
+          {'path': 'ageOver18', 'op': 'equals', 'value': true},
+        ],
+        'holder_binding': 'required',
+        'status': {'required': true, 'max_age_seconds': 300},
+      };
+    }
+
+    final issuer = _trustedIssuerController.text.trim();
+    final selectedConfiguration = _credentialConfiguration;
+    final selectedClaim = _claimConfiguration;
+    return {
+      if (selectedConfiguration != null)
+        'credential_configuration_id': selectedConfiguration.id,
+      'credential_type':
+          selectedConfiguration?.credentialType ??
+          'PoliticalPartyMembershipCredential',
+      'trusted_issuers': [issuer],
+      'claims': [
+        {
+          'path': selectedClaim?.path ?? 'membership',
+          'op': 'equals',
+          'value': _policyValue(_claimValueController.text),
+        },
+      ],
+      'holder_binding': 'required',
+      'status': {'required': true, 'max_age_seconds': 300},
+    };
   }
 }

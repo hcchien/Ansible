@@ -41,13 +41,8 @@ void main() {
 
   tearDown(() => db.close());
 
-  Board board(String id, String title) => Board(
-    id: id,
-    slug: id,
-    title: title,
-    createdAt: now,
-    updatedAt: now,
-  );
+  Board board(String id, String title) =>
+      Board(id: id, slug: id, title: title, createdAt: now, updatedAt: now);
 
   Future<Board> seedBoard(String id, String title) async {
     final created = board(id, title);
@@ -131,7 +126,7 @@ void main() {
   }
 
   group('composer posting-gate pre-check', () {
-    testWidgets('a gated board shows the banner and disables submit', (
+    testWidgets('a gated board keeps a local draft and defers publication', (
       tester,
     ) async {
       final gated = await seedBoard('board-1', '真人版');
@@ -140,17 +135,61 @@ void main() {
         postingPolicy: const {'min_post_tier': 'verified_human'},
       );
 
-      await openComposer(tester, boards: [gated]);
+      final result = await openComposer(tester, boards: [gated]);
 
       expect(
         find.byKey(const Key('composer_posting_gate_banner')),
         findsOneWidget,
       );
-      expect(find.textContaining('此看板僅限已驗證真人發文'), findsOneWidget);
+      expect(find.textContaining('未符合此看板的發文資格'), findsOneWidget);
       final done = tester.widget<FilledButton>(
         find.byKey(const Key('thread_composer_done_button')),
       );
-      expect(done.onPressed, isNull);
+      expect(done.onPressed, isNotNull);
+
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_title_field')),
+        '離線草稿',
+      );
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_body_field')),
+        '取得資格後再同步',
+      );
+      await tester.tap(find.byKey(const Key('thread_composer_done_button')));
+      await tester.pumpAndSettle();
+
+      final popped = await result;
+      expect(popped?['publicationDeferred'], isTrue);
+      expect(popped?['crossPostTargetIds'], isEmpty);
+    });
+
+    testWidgets('a read-only subscription also defers publication', (
+      tester,
+    ) async {
+      final readOnly = await seedBoard('board-1', '唯讀版');
+      await seedProjection('board-1');
+      await seedSubscription('sub-1', 'board-1', writeEnabled: false);
+
+      final result = await openComposer(tester, boards: [readOnly]);
+
+      expect(
+        find.byKey(const Key('composer_posting_gate_banner')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('目前只有閱讀權限'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_title_field')),
+        '本機內容',
+      );
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_body_field')),
+        '不因 relay 規則而遺失',
+      );
+      await tester.tap(find.byKey(const Key('thread_composer_done_button')));
+      await tester.pumpAndSettle();
+
+      expect((await result)?['publicationDeferred'], isTrue);
     });
 
     testWidgets('a verified user clears the gate', (tester) async {
