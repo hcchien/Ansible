@@ -76,22 +76,34 @@ defmodule AnsibleRelay.WebPublication do
 
   def validate_operation(session, operation, claimed_hash)
       when is_map(operation) and is_binary(claimed_hash) do
-    with :ok <- require(operation["type"] == "io.trisaura.webPublicationOperation"),
-         :ok <- require(operation["version"] == 1),
-         :ok <- nonempty(operation, ~w(operation_id author_did action target_forum_host board_id entity_type entity_id payload_hash created_at expires_at nonce)),
-         :ok <- require(is_map(operation["payload"])),
+    with :ok <- ensure(operation["type"] == "io.trisaura.webPublicationOperation"),
+         :ok <- ensure(operation["version"] == 1),
+         :ok <-
+           nonempty(
+             operation,
+             ~w(operation_id author_did action target_forum_host board_id entity_type entity_id payload_hash created_at expires_at nonce)
+           ),
+         :ok <- ensure(is_map(operation["payload"])),
          {:ok, scope} <- required_scope(operation["action"]),
-         :ok <- require(scope in session.scopes, :missing_required_scope),
-         :ok <- require(operation["author_did"] == session.subject_did, :session_subject_mismatch),
-         :ok <- require(same_origin?(operation["target_forum_host"], Store.base_url()), :audience_mismatch),
-         :ok <- require(operation["visibility"] in @visibilities, :visibility_not_allowed),
-         :ok <- require(is_boolean(operation["federate"])),
+         :ok <- ensure(scope in session.scopes, :missing_required_scope),
+         :ok <- ensure(operation["author_did"] == session.subject_did, :session_subject_mismatch),
+         :ok <-
+           ensure(
+             same_origin?(operation["target_forum_host"], Store.base_url()),
+             :audience_mismatch
+           ),
+         :ok <- ensure(operation["visibility"] in @visibilities, :visibility_not_allowed),
+         :ok <- ensure(is_boolean(operation["federate"])),
          :ok <- validate_action_shape(operation),
          :ok <- validate_times(operation),
          payload_hash <- sha256(canonical_json(operation["payload"])),
-         :ok <- require(String.downcase(operation["payload_hash"]) == payload_hash, :payload_hash_mismatch),
+         :ok <-
+           ensure(
+             String.downcase(operation["payload_hash"]) == payload_hash,
+             :payload_hash_mismatch
+           ),
          operation_hash <- sha256(canonical_json(operation)),
-         :ok <- require(String.downcase(claimed_hash) == operation_hash, :operation_hash_mismatch),
+         :ok <- ensure(String.downcase(claimed_hash) == operation_hash, :operation_hash_mismatch),
          board when not is_nil(board) <- PostingGate.get_board(operation["board_id"]),
          :ok <- validate_policy_version(operation, board) do
       {:ok, operation, operation_hash, board}
@@ -261,7 +273,7 @@ defmodule AnsibleRelay.WebPublication do
     with {_scope, required_entity_type, _op_type} <-
            @actions[operation["action"]] || {:error, :invalid_operation},
          :ok <-
-           require(
+           ensure(
              is_nil(required_entity_type) or operation["entity_type"] == required_entity_type
            ),
          :ok <- validate_action_binding(operation) do
@@ -273,18 +285,18 @@ defmodule AnsibleRelay.WebPublication do
   end
 
   defp validate_action_binding(%{"action" => "forum.reply"} = operation),
-    do: require(is_binary(operation["parent_id"]) and operation["parent_id"] != "")
+    do: ensure(is_binary(operation["parent_id"]) and operation["parent_id"] != "")
 
   defp validate_action_binding(%{"action" => action} = operation)
        when action in ["forum.edit", "forum.delete"],
        do:
-         require(
+         ensure(
            is_binary(operation["expected_previous_revision"]) and
              operation["expected_previous_revision"] != ""
          )
 
   defp validate_action_binding(%{"action" => "forum.react"} = operation),
-    do: require(is_binary(operation["parent_id"]) and operation["parent_id"] != "")
+    do: ensure(is_binary(operation["parent_id"]) and operation["parent_id"] != "")
 
   defp validate_action_binding(_operation), do: :ok
 
@@ -301,11 +313,14 @@ defmodule AnsibleRelay.WebPublication do
   end
 
   defp validate_policy_version(operation, board) do
-    require(operation["board_policy_version"] == board.access_policy_version, :board_policy_version_conflict)
+    ensure(
+      operation["board_policy_version"] == board.access_policy_version,
+      :board_policy_version_conflict
+    )
   end
 
   defp nonempty(map, keys) do
-    require(
+    ensure(
       Enum.all?(keys, fn key ->
         value = map[key]
         not is_nil(value) and value != ""
@@ -325,7 +340,7 @@ defmodule AnsibleRelay.WebPublication do
   defp sha256(value),
     do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
 
-  defp require(value, reason \\ :invalid_operation)
-  defp require(true, _reason), do: :ok
-  defp require(false, reason), do: {:error, reason}
+  defp ensure(value, reason \\ :invalid_operation)
+  defp ensure(true, _reason), do: :ok
+  defp ensure(false, reason), do: {:error, reason}
 end
