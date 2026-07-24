@@ -191,6 +191,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   String? _selectedBoardId;
   FeedFilter _feedFilter = FeedFilter.all;
   PersonalFilter _personalFilter = PersonalFilter.all;
+  TimelineSort _timelineSort = TimelineSort.newest;
   ElixTab _selectedTab = ElixTab.feed;
   late HomeBoard _selectedBoard;
   // Active compact bottom-nav destination (boards pager / notifications / me).
@@ -516,7 +517,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     PostCardData withTier(PostCardData card) =>
         card.copyWith(authorTier: authorTiers[card.author] ?? 'basic');
     final forumTiered = forumCards.map(withTier).toList();
-    final followingTiered = followingCards.map(withTier).toList();
+    final followingTiered = followingCards.map(withTier).toList()
+      ..sort(_compareTimelineCards);
 
     setState(() {
       _boards = boards;
@@ -1158,8 +1160,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     for (final card in [...remote, ...local]) {
       if (seen.add(card.thread.id)) merged.add(card);
     }
-    merged.sort((a, b) => b.thread.updatedAt.compareTo(a.thread.updatedAt));
+    merged.sort(_compareTimelineCards);
     return merged;
+  }
+
+  int _compareTimelineCards(PostCardData a, PostCardData b) =>
+      _timelineSort == TimelineSort.newest
+      ? b.sortTimestamp.compareTo(a.sortTimestamp)
+      : a.sortTimestamp.compareTo(b.sortTimestamp);
+
+  void _setTimelineSort(TimelineSort sort) {
+    if (_timelineSort == sort) return;
+    setState(() {
+      _timelineSort = sort;
+      _followingPosts = [..._followingPosts]..sort(_compareTimelineCards);
+    });
   }
 
   Future<List<PostCardData>> _buildFollowingPostCards(
@@ -1238,6 +1253,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       author: item.authorDid,
       board: 'FOLLOWING · $label',
       timeAgo: _formatTimeAgo(item.publishedAt ?? item.createdAt),
+      sortTimestamp: item.publishedAt ?? item.createdAt,
       content: item.body,
       reactions: const {'👍': 0},
       comments: 0,
@@ -2466,6 +2482,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 loading: _loading,
                 posts: _posts,
                 followingPosts: _followingPosts,
+                timelineSort: _timelineSort,
+                onTimelineSortChanged: _setTimelineSort,
                 onRefresh: _loadData,
                 onCreateThread: _createThread,
                 onCreateBoard: _createBoard,

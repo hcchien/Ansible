@@ -11,6 +11,7 @@ import '../content_detail_screen.dart';
 import '../discover_screen.dart';
 import '../user_profile_screen.dart';
 import 'post_card.dart';
+import 'home_types.dart';
 
 /// Timeline board (時間軸) — posts from people you follow.
 class TimelineBoardView extends StatelessWidget {
@@ -23,6 +24,8 @@ class TimelineBoardView extends StatelessWidget {
     required this.opsDispatchService,
     required this.onFlushPendingOps,
     this.onCompose,
+    this.sort = TimelineSort.newest,
+    this.onSortChanged,
   });
 
   final AppDatabase db;
@@ -35,6 +38,8 @@ class TimelineBoardView extends StatelessWidget {
   /// Opens the compose sheet (guided first session step 3); when null the
   /// step still renders but points at the bottom-bar ＋.
   final VoidCallback? onCompose;
+  final TimelineSort sort;
+  final ValueChanged<TimelineSort>? onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -48,14 +53,17 @@ class TimelineBoardView extends StatelessWidget {
               : followingPosts.isEmpty
               ? _timelineEmptyState(context)
               : ListView.separated(
-                  itemCount: followingPosts.length + 1,
+                  itemCount: followingPosts.length + 2,
                   padding: const EdgeInsets.only(bottom: 12),
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     if (index == 0) {
+                      return _sortControl(context, style);
+                    }
+                    if (index == 1) {
                       return _discoveryEntry(context, style);
                     }
-                    final post = followingPosts[index - 1];
+                    final post = followingPosts[index - 2];
                     return PostCard(
                       db: db,
                       data: post,
@@ -112,6 +120,8 @@ class TimelineBoardView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(4, 24, 4, 24),
       children: [
+        _sortControl(context, style),
+        const SizedBox(height: 12),
         _discoveryEntry(context, style),
         const SizedBox(height: 24),
         Text(
@@ -164,6 +174,48 @@ class TimelineBoardView extends StatelessWidget {
           onTap: () => _openDiscover(context, boards: false),
         ),
       ],
+    );
+  }
+
+  Widget _sortControl(BuildContext context, ElixScreenStyleData style) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: PopupMenuButton<TimelineSort>(
+        key: const Key('timeline_sort_menu'),
+        initialValue: sort,
+        onSelected: onSortChanged,
+        color: style.surface,
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: TimelineSort.newest,
+            child: Text(context.uiCopy(zh: '最新優先', en: 'Newest first')),
+          ),
+          PopupMenuItem(
+            value: TimelineSort.oldest,
+            child: Text(context.uiCopy(zh: '最舊優先', en: 'Oldest first')),
+          ),
+        ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.swap_vert, size: 18, color: style.muted),
+              const SizedBox(width: 5),
+              Text(
+                sort == TimelineSort.newest
+                    ? context.uiCopy(zh: '最新優先', en: 'Newest first')
+                    : context.uiCopy(zh: '最舊優先', en: 'Oldest first'),
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.sans,
+                  fontSize: 13,
+                  color: style.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

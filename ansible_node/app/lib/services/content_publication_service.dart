@@ -208,7 +208,7 @@ class ContentPublicationService {
           )
         : await _signNostrPolicy(payloadHash);
     final signatureScheme = shouldPublishRelay
-        ? 'ed25519'
+        ? _identitySignatureScheme(signature)
         : 'schnorr-secp256k1';
     await contentItems.update(item.copyWith(signatureVerified: true));
     final existingTargets = await publications.listTargetsForIntent(intentId);
@@ -376,6 +376,13 @@ class ContentPublicationService {
       eventIdHex: payloadHash,
     );
     return signature.toLowerCase();
+  }
+
+  String _identitySignatureScheme(String signatureHex) {
+    // Ed25519 is fixed-width (64 bytes). Hardware P-256 signatures are ASN.1
+    // DER and therefore variable-width. The Relay negotiates the same scheme
+    // names through the identity endpoint.
+    return signatureHex.length == 128 ? 'ed25519' : 'p256-sha256';
   }
 
   Map<String, dynamic> _payload(ContentItem item) {

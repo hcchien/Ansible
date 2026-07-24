@@ -36,6 +36,7 @@ class PostCardData {
     required this.author,
     required this.board,
     required this.timeAgo,
+    DateTime? sortTimestamp,
     required this.reactions,
     required this.comments,
     required this.reacted,
@@ -43,7 +44,7 @@ class PostCardData {
     this.authorTier = 'basic',
     this.signatureVerified = false,
     this.openableThread = true,
-  });
+  }) : sortTimestamp = sortTimestamp ?? thread.createdAt;
 
   final Thread thread;
   final String category;
@@ -52,6 +53,7 @@ class PostCardData {
   final String author;
   final String board;
   final String timeAgo;
+  final DateTime sortTimestamp;
   final Map<String, int> reactions;
   final int comments;
   final bool reacted;
@@ -76,6 +78,7 @@ class PostCardData {
     author: author,
     board: board,
     timeAgo: timeAgo,
+    sortTimestamp: sortTimestamp,
     reactions: reactions,
     comments: comments,
     reacted: reacted,
@@ -344,20 +347,50 @@ class _PostCardState extends State<PostCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        GestureDetector(
-                          onTap: widget.onOpenAuthor == null
-                              ? null
-                              : () => widget.onOpenAuthor!(data.author),
-                          child: AuthorLabel(
-                            did: data.author,
-                            style: TextStyle(
-                              fontFamily: AnsibleDesign.sans,
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600,
-                              height: 1.2,
-                              color: style.foreground,
+                        Row(
+                          children: [
+                            Flexible(
+                              child: GestureDetector(
+                                onTap: widget.onOpenAuthor == null
+                                    ? null
+                                    : () => widget.onOpenAuthor!(data.author),
+                                child: AuthorLabel(
+                                  did: data.author,
+                                  style: TextStyle(
+                                    fontFamily: AnsibleDesign.sans,
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.2,
+                                    color: style.foreground,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            if (data.openableThread &&
+                                data.board.trim().isNotEmpty) ...[
+                              Text(
+                                '  ›  ',
+                                style: TextStyle(
+                                  fontFamily: AnsibleDesign.sans,
+                                  fontSize: 13,
+                                  color: style.faint,
+                                ),
+                              ),
+                              Flexible(
+                                child: Text(
+                                  data.board,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: AnsibleDesign.sans,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: style.muted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(

@@ -54,6 +54,8 @@ class MainPanel extends StatelessWidget {
     required this.loading,
     required this.posts,
     required this.followingPosts,
+    this.timelineSort = TimelineSort.newest,
+    this.onTimelineSortChanged,
     required this.onRefresh,
     required this.onCreateThread,
     required this.onCreateBoard,
@@ -125,6 +127,8 @@ class MainPanel extends StatelessWidget {
   final bool loading;
   final List<PostCardData> posts;
   final List<PostCardData> followingPosts;
+  final TimelineSort timelineSort;
+  final ValueChanged<TimelineSort>? onTimelineSortChanged;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onCreateThread;
   final Future<void> Function() onCreateBoard;
@@ -252,6 +256,8 @@ class MainPanel extends StatelessWidget {
                     did: did,
                     loading: loading,
                     followingPosts: followingPosts,
+                    sort: timelineSort,
+                    onSortChanged: onTimelineSortChanged,
                     opsDispatchService: opsDispatchService,
                     onFlushPendingOps: onFlushPendingOps,
                     onCompose: onComposeTap,

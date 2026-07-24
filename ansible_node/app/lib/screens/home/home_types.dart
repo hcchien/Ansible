@@ -9,5 +9,7 @@ enum HomeBoard { personal, timeline, forum }
 
 enum PersonalFilter { all, murmur, note }
 
+enum TimelineSort { newest, oldest }
+
 // Within the "圈內" room, a sub-selection between murmur and notes.
 enum CircleTab { murmur, notes }

@@ -270,6 +270,52 @@ void main() {
     expect(target.error, contains('unverified_did'));
   });
 
+  test(
+    'hardware identity publication declares P-256 signature scheme',
+    () async {
+      final now = DateTime.utc(2026, 5, 9);
+      final contentItems = InMemoryContentItemRepository();
+      final item = ContentItem(
+        id: 'note-p256',
+        authorDid: 'did:elix:alice',
+        mode: ContentMode.note,
+        title: 'Hardware signed',
+        body: 'P-256 publication',
+        status: ContentStatus.active,
+        visibility: ContentVisibility.public,
+        createdAt: now,
+        updatedAt: now,
+        localOnly: false,
+      );
+      await contentItems.create(item);
+      final relayClient = _RecordingRelayPublicationClient();
+
+      await ContentPublicationService(
+        contentItems: contentItems,
+        publications: InMemoryPublicationRepository(),
+        relaySettings: _FakeRelaySettingsStore(const []),
+        remoteNodes: _FakeRemoteNodeRepository(
+          active: RemoteNode(
+            id: 'node-1',
+            name: 'Relay',
+            url: 'https://relay.elix.cool',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ),
+        keyStore: InMemoryNostrKeyStore(),
+        didSigner: _FakeP256DidSigner(),
+        signingBridge: const SchnorrSigningBridge(auxRandHex: _zeroAuxRand),
+        relayPublicationClient: relayClient,
+      ).publishContentItem(
+        item,
+        distributionPreference: DistributionPreference.activityPub,
+      );
+
+      expect(relayClient.calls.single.intent.signatureScheme, 'p256-sha256');
+    },
+  );
+
   test('activitypub failed target is retried on the next publish', () async {
     final now = DateTime.utc(2026, 5, 9);
     final contentItems = InMemoryContentItemRepository();
@@ -391,6 +437,13 @@ class _FakeDidSigner implements DidSigner {
   @override
   Future<Ed25519Signature> sign(List<int> message) async {
     return Ed25519Signature('1' * 128);
+  }
+}
+
+class _FakeP256DidSigner implements DidSigner {
+  @override
+  Future<Ed25519Signature> sign(List<int> message) async {
+    return Ed25519Signature('30${'1' * 138}');
   }
 }
 
