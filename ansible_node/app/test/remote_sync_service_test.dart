@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:ansible_node/services/op_signature_payload.dart';
 import 'package:ansible_node/services/remote_sync_service.dart';
+import 'package:ansible_node/services/self_backfill_state_store.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -404,6 +405,136 @@ void main() {
       expect(await threadRepo.getById('thread-x'), isNotNull);
     },
   );
+
+  test(
+    'first sync replays from zero and restores content authored by local DID',
+    () async {
+      final boardRepo = InMemoryBoardRepository();
+      final threadRepo = InMemoryThreadRepository();
+      final postRepo = InMemoryPostRepository();
+      final contentRepo = InMemoryContentItemRepository();
+      final remoteNodeRepo = _FakeRemoteNodeRepository();
+      final backfillState = InMemorySelfBackfillStateStore();
+      final client = _FakeRelayApiClient(
+        activities: [
+          {
+            'logId': 21,
+            'activity': {
+              'activityId': 'self-note',
+              'type': 'create',
+              'entityType': 'murmur',
+              'entityId': 'self-note',
+              'authorId': 'did:key:local',
+              'createdAt': '2026-07-21T09:00:00Z',
+              'payload': {
+                'mode': 'murmur',
+                'body': 'my published note',
+                'visibility': 'public',
+              },
+            },
+          },
+          {
+            'logId': 22,
+            'activity': {
+              'activityId': 'someone-else',
+              'type': 'create',
+              'entityType': 'murmur',
+              'entityId': 'someone-else',
+              'authorId': 'did:key:other',
+              'createdAt': '2026-07-21T10:00:00Z',
+              'payload': {
+                'mode': 'murmur',
+                'body': 'not followed',
+                'visibility': 'public',
+              },
+            },
+          },
+        ],
+      );
+      final remoteNode = RemoteNode(
+        id: 'remote-1',
+        name: 'Remote',
+        url: 'https://relay.example',
+        syncCursor: 23,
+        createdAt: DateTime.utc(2026, 7, 21),
+        updatedAt: DateTime.utc(2026, 7, 21),
+      );
+
+      final result = await RemoteSyncService(
+        remoteNodeRepo: remoteNodeRepo,
+        boardSyncConfigRepo: _FakeBoardSyncConfigRepository(configs: const []),
+        boardRepo: boardRepo,
+        threadRepo: threadRepo,
+        postRepo: postRepo,
+        contentItemRepo: contentRepo,
+        followerDid: 'did:key:local',
+        selfBackfillState: backfillState,
+        opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+      ).syncFromNode(client, remoteNode);
+
+      expect(result.success, isTrue);
+      expect(client.requestedCursor, isNull);
+      expect((await contentRepo.list()).map((item) => item.id), ['self-note']);
+      expect(backfillState.markCompleteCalls, 1);
+    },
+  );
+
+  test('failed self backfill is not marked complete and retries', () async {
+    final backfillState = InMemorySelfBackfillStateStore();
+    final client = _ThrowingRelayApiClient();
+    final remoteNode = RemoteNode(
+      id: 'remote-1',
+      name: 'Remote',
+      url: 'https://relay.example',
+      syncCursor: 23,
+      createdAt: DateTime.utc(2026, 7, 21),
+      updatedAt: DateTime.utc(2026, 7, 21),
+    );
+    final service = RemoteSyncService(
+      remoteNodeRepo: _FakeRemoteNodeRepository(),
+      boardSyncConfigRepo: _FakeBoardSyncConfigRepository(configs: const []),
+      boardRepo: InMemoryBoardRepository(),
+      threadRepo: InMemoryThreadRepository(),
+      postRepo: InMemoryPostRepository(),
+      contentItemRepo: InMemoryContentItemRepository(),
+      followerDid: 'did:key:local',
+      selfBackfillState: backfillState,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+    );
+
+    expect((await service.syncFromNode(client, remoteNode)).success, isFalse);
+    expect((await service.syncFromNode(client, remoteNode)).success, isFalse);
+    expect(client.getDeltaCalls, 2);
+    expect(client.requestedCursors, [null, null]);
+    expect(backfillState.markCompleteCalls, 0);
+  });
+
+  test('completed self backfill resumes from the normal node cursor', () async {
+    final client = _FakeRelayApiClient(activities: const []);
+    final remoteNode = RemoteNode(
+      id: 'remote-1',
+      name: 'Remote',
+      url: 'https://relay.example',
+      syncCursor: 23,
+      createdAt: DateTime.utc(2026, 7, 21),
+      updatedAt: DateTime.utc(2026, 7, 21),
+    );
+
+    final result = await RemoteSyncService(
+      remoteNodeRepo: _FakeRemoteNodeRepository(),
+      boardSyncConfigRepo: _FakeBoardSyncConfigRepository(configs: const []),
+      boardRepo: InMemoryBoardRepository(),
+      threadRepo: InMemoryThreadRepository(),
+      postRepo: InMemoryPostRepository(),
+      contentItemRepo: InMemoryContentItemRepository(),
+      followerDid: 'did:key:local',
+      selfBackfillState: InMemorySelfBackfillStateStore(complete: true),
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+    ).syncFromNode(client, remoteNode, requireBoardSyncConfig: false);
+
+    expect(result.success, isTrue);
+    expect(client.requestedCursor, 23);
+  });
 
   test(
     'does NOT trust a peer-asserted reputation tier (fail closed)',
@@ -1282,6 +1413,20 @@ class _FakeRelayApiClient extends RelayApiClient {
     expect(boardId, 'members');
     expect(proofHeaders['x-elix-board-capability'], 'capability');
     return {'activities': boardActivities, 'nextCursor': 142, 'hasMore': false};
+  }
+}
+
+class _ThrowingRelayApiClient extends RelayApiClient {
+  _ThrowingRelayApiClient() : super(baseUrl: 'https://relay.example');
+
+  int getDeltaCalls = 0;
+  final List<int?> requestedCursors = [];
+
+  @override
+  Future<Map<String, dynamic>> getDelta({int? cursor, int limit = 100}) async {
+    getDeltaCalls++;
+    requestedCursors.add(cursor);
+    throw StateError('offline');
   }
 }
 

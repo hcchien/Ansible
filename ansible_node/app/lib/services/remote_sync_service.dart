@@ -12,6 +12,7 @@ import 'notification_projector.dart';
 import 'private_board_crypto_service.dart';
 import 'op_signature_payload.dart';
 import 'relay_identity_client.dart';
+import 'self_backfill_state_store.dart';
 
 typedef RemoteOpEd25519Verifier =
     Future<bool> Function({
@@ -401,6 +402,7 @@ class RemoteSyncService {
   final BoardReadAuthorization? _authorizeBoardRead;
   final PrivateBoardCryptoService _privateBoardCrypto;
   final DateTime Function() _now;
+  final SelfBackfillStateStore _selfBackfillState;
 
   RemoteSyncService({
     required RemoteNodeRepository remoteNodeRepo,
@@ -420,6 +422,8 @@ class RemoteSyncService {
     RelayIdentityClient? identityClient,
     BoardReadAuthorization? authorizeBoardRead,
     PrivateBoardCryptoService? privateBoardCrypto,
+    SelfBackfillStateStore selfBackfillState =
+        const CompletedSelfBackfillStateStore(),
     DateTime Function()? now,
   }) : _remoteNodeRepo = remoteNodeRepo,
        _boardSyncConfigRepo = boardSyncConfigRepo,
@@ -443,6 +447,7 @@ class RemoteSyncService {
            ),
        _authorizeBoardRead = authorizeBoardRead,
        _privateBoardCrypto = privateBoardCrypto ?? PrivateBoardCryptoService(),
+       _selfBackfillState = selfBackfillState,
        _now = now ?? DateTime.now;
 
   Future<SyncResult> syncFromNode(
@@ -490,10 +495,19 @@ class RemoteSyncService {
       };
       final enabledBoardIdSet = enabledConfigs.map((c) => c.boardId).toSet();
       final followedAuthorDids = await _resolveFollowedAuthorDids();
+      final localDid = _followerDid?.trim();
+      final needsSelfBackfill =
+          localDid != null &&
+          localDid.isNotEmpty &&
+          !await _selfBackfillState.isComplete(
+            remoteNodeId: remoteNode.id,
+            did: localDid,
+          );
       if (requireBoardSyncConfig &&
           enabledBoardIdSet.isEmpty &&
           hostedSubscriptions.isEmpty &&
-          followedAuthorDids.isEmpty) {
+          followedAuthorDids.isEmpty &&
+          !needsSelfBackfill) {
         return SyncResult.success(
           activitiesProcessed: 0,
           newCursor: remoteNode.syncCursor,
@@ -509,7 +523,7 @@ class RemoteSyncService {
       // the node-wide cursor. Start at the oldest active subscription cursor so
       // its history is replayed instead of being skipped forever.
       int currentCursor = publicHostedSubscriptions.fold(
-        remoteNode.syncCursor,
+        needsSelfBackfill ? 0 : remoteNode.syncCursor,
         (oldest, subscription) =>
             subscription.syncCursor < oldest ? subscription.syncCursor : oldest,
       );
@@ -545,10 +559,13 @@ class RemoteSyncService {
           final allowedByFollowedAuthor = followedAuthorDids.contains(
             entry.activity.authorId,
           );
+          final allowedBySelf =
+              localDid != null && entry.activity.authorId == localDid;
           if (requireBoardSyncConfig &&
               !allowedByLegacy &&
               hostedRoute == null &&
-              !allowedByFollowedAuthor) {
+              !allowedByFollowedAuthor &&
+              !allowedBySelf) {
             continue;
           }
           final activity = hostedRoute?.activity ?? entry.activity;
@@ -562,7 +579,7 @@ class RemoteSyncService {
           // A followed-author op whose board is not synced has no local
           // board/thread context; create lightweight stubs so the post/thread is
           // storable and renderable. Standalone murmur/note need no context.
-          if (allowedByFollowedAuthor &&
+          if ((allowedByFollowedAuthor || allowedBySelf) &&
               !allowedByLegacy &&
               hostedRoute == null) {
             await _ensureFollowedContext(activity);
@@ -649,6 +666,13 @@ class RemoteSyncService {
           subscription.subscriptionId,
           boardCursor,
           syncTime,
+        );
+      }
+
+      if (needsSelfBackfill) {
+        await _selfBackfillState.markComplete(
+          remoteNodeId: remoteNode.id,
+          did: localDid,
         );
       }
 

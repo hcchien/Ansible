@@ -55,6 +55,7 @@ import '../services/relay_ops_client.dart';
 import '../services/relay_reputation_presentation_service.dart';
 import '../services/user_presence_verifier.dart';
 import '../services/sync_capability_service.dart';
+import '../services/self_backfill_state_store.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
 import 'notifications_screen.dart';
@@ -1951,6 +1952,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           authorizeBoard(board, requestUri, 'read', 'GET'),
       authorizeBoardWrite: (board, requestUri) =>
           authorizeBoard(board, requestUri, 'post', 'POST'),
+      selfBackfillState: const SharedPreferencesSelfBackfillStateStore(),
     );
   }
 

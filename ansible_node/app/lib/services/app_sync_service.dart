@@ -16,6 +16,7 @@ import 'relay_ops_client.dart';
 import 'remote_sync_service.dart';
 import 'relay_reputation_presentation_service.dart';
 import 'sync_capability_service.dart';
+import 'self_backfill_state_store.dart';
 
 bool isPublishableContentForDid(ContentItem item, String localDid) {
   return item.authorDid == localDid &&
@@ -106,6 +107,8 @@ class AppSyncService {
     SyncCapabilityService Function(RemoteNode node)? syncCapabilityService,
     BoardReadAuthorization? authorizeBoardRead,
     BoardWriteAuthorization? authorizeBoardWrite,
+    SelfBackfillStateStore selfBackfillState =
+        const CompletedSelfBackfillStateStore(),
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
        _contactRepository = contactRepository,
@@ -133,7 +136,8 @@ class AppSyncService {
        _reputationPresentationService = reputationPresentationService,
        _syncCapabilityService = syncCapabilityService,
        _authorizeBoardRead = authorizeBoardRead,
-       _authorizeBoardWrite = authorizeBoardWrite;
+       _authorizeBoardWrite = authorizeBoardWrite,
+       _selfBackfillState = selfBackfillState;
 
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
@@ -163,6 +167,7 @@ class AppSyncService {
   final SyncCapabilityService Function(RemoteNode node)? _syncCapabilityService;
   final BoardReadAuthorization? _authorizeBoardRead;
   final BoardWriteAuthorization? _authorizeBoardWrite;
+  final SelfBackfillStateStore _selfBackfillState;
 
   // Portable issuer re-verification (federation trust): one service per
   // relay node, kept for the AppSyncService lifetime so its per-DID verified
@@ -499,6 +504,7 @@ class AppSyncService {
         issuerAttestationService: _attestationServiceFor(node.url),
         identityClient: _identityClient,
         authorizeBoardRead: _authorizeBoardRead,
+        selfBackfillState: _selfBackfillState,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);
       if (result.success) {
         pulledActivities += result.activitiesProcessed;
