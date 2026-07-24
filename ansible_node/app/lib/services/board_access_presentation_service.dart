@@ -124,14 +124,19 @@ class BoardAccessPresentationService {
       await _http.get(base.resolve('${base.path}/access-requirements')),
     );
     final forumHostId = _string(requirements, 'forum_host_id');
-    if (_string(requirements, 'board_id') != boardId) {
-      throw const BoardAccessException('invalid_board_scope');
-    }
-    final signer = _signerForBoard(forumHostId, boardId);
+    // Older local queues can contain a legacy board slug.  The Forum Host
+    // resolves it to its canonical numeric board id.  Continue the complete
+    // capability exchange on that canonical route; the signed queued op stays
+    // intact and the Relay normalizes its legacy board reference on ingest.
+    final canonicalBoardId = _string(requirements, 'board_id');
+    final canonicalBase = forumHost.resolve(
+      '/api/v1/forum-host/boards/$canonicalBoardId',
+    );
+    final signer = _signerForBoard(forumHostId, canonicalBoardId);
     final audience = _string(requirements, 'host');
     final options = _json(
       await _http.post(
-        base.resolve('${base.path}/presentation/options'),
+        canonicalBase.resolve('${canonicalBase.path}/presentation/options'),
         headers: const {'content-type': 'application/json'},
         body: jsonEncode({'action': action}),
       ),
@@ -142,7 +147,7 @@ class BoardAccessPresentationService {
       requirements: requirements,
       action: action,
       forumHostId: forumHostId,
-      boardId: boardId,
+      boardId: canonicalBoardId,
     );
     final vpToken = credential.compactJwt != null
         ? await _hostedMembershipVp(
@@ -159,7 +164,7 @@ class BoardAccessPresentationService {
           );
     final response = _json(
       await _http.post(
-        base.resolve('${base.path}/presentation/verify'),
+        canonicalBase.resolve('${canonicalBase.path}/presentation/verify'),
         headers: const {'content-type': 'application/json'},
         body: jsonEncode({
           'action': action,
@@ -175,7 +180,7 @@ class BoardAccessPresentationService {
     return BoardAccessCapability(
       token: _string(response, 'board_capability'),
       forumHostId: forumHostId,
-      boardId: boardId,
+      boardId: canonicalBoardId,
       host: forumHost,
       scopes: scopes.cast<String>(),
       expiresAt: DateTime.parse(_string(response, 'expires_at')).toUtc(),

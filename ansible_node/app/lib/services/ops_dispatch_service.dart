@@ -12,11 +12,13 @@ class OpsDispatchSummary {
     this.sent = 0,
     this.rejected = 0,
     this.retryPending = 0,
+    this.retryReason,
   });
 
   final int sent;
   final int rejected;
   final int retryPending;
+  final String? retryReason;
 
   bool get hasActivity => sent > 0 || rejected > 0 || retryPending > 0;
 }
@@ -80,6 +82,7 @@ class OpsDispatchService {
             sent: sent,
             rejected: rejected,
             retryPending: 1,
+            retryReason: error.toString(),
           );
         }
         if (error.isRetryable) {
@@ -92,12 +95,18 @@ class OpsDispatchService {
           sent: sent,
           rejected: rejected,
           retryPending: 1,
+          retryReason: error.toString(),
         );
-      } catch (_) {
+      } catch (error) {
+        // Network, TLS, and request-header failures happen before a Relay
+        // response exists.  Preserve both the operation and the diagnostic
+        // for the explicit retry boundary in the next manual sync.
+        await repository.markBlocked(entry.opId);
         return OpsDispatchSummary(
           sent: sent,
           rejected: rejected,
           retryPending: 1,
+          retryReason: error.toString(),
         );
       }
     }

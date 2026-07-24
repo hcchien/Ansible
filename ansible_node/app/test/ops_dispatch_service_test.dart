@@ -132,6 +132,10 @@ void main() {
 
       final failed = await service.flushPending();
       expect(failed.retryPending, 1);
+      expect(
+        failed.retryReason,
+        contains('RelayOpsException(500 server_error)'),
+      );
       expect((await repo.listAll()).single.status, 'blocked');
 
       expect(await repo.retryBlocked(), 1);

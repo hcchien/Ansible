@@ -71,7 +71,8 @@ const _strings = {
     'syncAllPullErrors': ' · pull errors: {errors}',
     'syncAllCredentialErrors': ' · credential errors: {errors}',
     'syncAllOpsSummary':
-        ' · board posts: {sent} delivered, {rejected} rejected, {retry} pending retry',
+        ' · board posts: {sent} delivered, {rejected} rejected, {retry} pending retry ({reason})',
+    'syncAllOpsUnknownReason': 'unknown reason',
     'publishFailed': 'public publish failed ({error})',
     'publishNoPublic': 'no public notes or murmurs to publish',
     'publishNoNewTargets': 'no new public targets ({reasons})',
@@ -509,7 +510,9 @@ const _strings = {
     'syncAllComplete': '同步完成 · 取得 {count} 則動態 · {publish}',
     'syncAllPullErrors': ' · 取得錯誤：{errors}',
     'syncAllCredentialErrors': ' · 憑證錯誤：{errors}',
-    'syncAllOpsSummary': ' · 看板貼文：已送出 {sent}，被拒絕 {rejected}，等待重試 {retry}',
+    'syncAllOpsSummary':
+        ' · 看板貼文：已送出 {sent}，被拒絕 {rejected}，等待重試 {retry}（{reason}）',
+    'syncAllOpsUnknownReason': '原因不明',
     'publishFailed': '公開發佈失敗（{error}）',
     'publishNoPublic': '沒有可公開發佈的筆記或 murmur',
     'publishNoNewTargets': '沒有新的公開目標（{reasons}）',

@@ -267,7 +267,113 @@ void main() {
       );
     },
   );
+
+  test(
+    'legacy board slug continues capability exchange on canonical id',
+    () async {
+      final key = _FakeHolderKey();
+      final now = DateTime.utc(2026, 7, 24, 10);
+      final wallet = InMemoryWalletRepository();
+      await wallet.saveCredential(
+        metadata: WalletCredential(
+          credentialId: 'tw-citizen',
+          issuerDid: 'did:web:issuer-dev.elix.cool',
+          holderDid: 'did:plc:citizen',
+          credentialType: 'TaiwanCitizenshipCredential',
+          status: WalletCredentialStatus.active,
+          validFrom: now.subtract(const Duration(minutes: 1)),
+          validUntil: now.add(const Duration(days: 30)),
+          displayName: 'Taiwan Citizenship',
+          createdAt: now,
+          updatedAt: now,
+        ),
+        encryptedPayload: jsonEncode(_citizenshipVc(now)),
+        encryptionVersion: 'test-json',
+      );
+      final requestedPaths = <String>[];
+      final service = BoardAccessPresentationService(
+        walletRepository: wallet,
+        holderKey: key,
+        didSigner: _RecordingDidSigner(),
+        now: () => now,
+        httpClient: MockClient((request) async {
+          requestedPaths.add(request.url.path);
+          if (request.url.path.endsWith('/access-requirements')) {
+            return http.Response(
+              jsonEncode({
+                'host': 'https://relay.example',
+                'forum_host_id': 'host-local-dev',
+                'board_id': '2',
+                'policy': {
+                  'post': {'requirement': 'member'},
+                  'requirements': {
+                    'member': {
+                      'credential_type': 'TaiwanCitizenshipCredential',
+                      'trusted_issuers': ['did:web:issuer-dev.elix.cool'],
+                      'claims': [
+                        {
+                          'path': 'citizenshipVerified',
+                          'op': 'equals',
+                          'value': true,
+                        },
+                      ],
+                    },
+                  },
+                },
+              }),
+              200,
+            );
+          }
+          if (request.url.path.endsWith('/presentation/options')) {
+            return http.Response(jsonEncode({'nonce': 'n', 'state': 's'}), 200);
+          }
+          return http.Response(
+            jsonEncode({
+              'board_capability': 'capability',
+              'expires_at': now
+                  .add(const Duration(minutes: 5))
+                  .toIso8601String(),
+              'scopes': ['post'],
+              'policy_version': 1,
+            }),
+            200,
+          );
+        }),
+      );
+
+      final capability = await service.authorize(
+        forumHost: Uri.parse('https://relay.example'),
+        boardId: '2026',
+        action: 'post',
+      );
+
+      expect(capability.boardId, '2');
+      expect(
+        requestedPaths,
+        contains('/api/v1/forum-host/boards/2/presentation/options'),
+      );
+      expect(
+        requestedPaths,
+        contains('/api/v1/forum-host/boards/2/presentation/verify'),
+      );
+    },
+  );
 }
+
+Map<String, Object?> _citizenshipVc(DateTime now) => {
+  '@context': ['https://www.w3.org/ns/credentials/v2'],
+  'id': 'urn:uuid:tw-citizen',
+  'type': ['VerifiableCredential', 'TaiwanCitizenshipCredential'],
+  'issuer': 'did:web:issuer-dev.elix.cool',
+  'validFrom': now.subtract(const Duration(minutes: 1)).toIso8601String(),
+  'validUntil': now.add(const Duration(days: 30)).toIso8601String(),
+  'credentialSubject': {'id': 'did:plc:citizen', 'citizenshipVerified': true},
+  'proof': {
+    'type': 'DataIntegrityProof',
+    'cryptosuite': 'eddsa-jcs-2022',
+    'proofValue': 'zissuer-proof',
+  },
+};
 
 class _FakeHolderKey implements HolderBindingKey {
   final signature = IdentitySignature(

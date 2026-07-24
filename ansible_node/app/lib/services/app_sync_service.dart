@@ -700,6 +700,8 @@ String appSyncSummaryMessage(
       'sent': result.opsSummary.sent,
       'rejected': result.opsSummary.rejected,
       'retry': result.opsSummary.retryPending,
+      'reason':
+          result.opsSummary.retryReason ?? text.t('syncAllOpsUnknownReason'),
     });
   }
   return message;
