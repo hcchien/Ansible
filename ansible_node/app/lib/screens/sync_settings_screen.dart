@@ -913,7 +913,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         _remoteNodes.isNotEmpty || _nostrRelays.any((relay) => relay.write);
 
     return AnsibleScreenScaffold(
-      title: 'SYNC',
+      title: context.uiCopy(zh: '同步', en: 'Sync'),
       leadingLabel: text.t('backSettings'),
       trailing: IconButton(
         onPressed: !hasSyncTargets || _syncingNodes.values.any((v) => v)

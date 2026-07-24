@@ -1,5 +1,6 @@
 {
   "@@locale": "ko",
+  "appTitle": "엘릭스",
   "settingsTitle": "설정",
   "done": "완료",
   "localIdentity": "로컬 신원",
@@ -9,6 +10,13 @@
   "wallet": "지갑",
   "walletSubtitleEmpty": "자격 증명 없음",
   "walletSubtitleCount": "자격 증명 {count}개",
+  "@walletSubtitleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "empty": "비어 있음",
   "sync": "동기화",
   "syncSubtitle": "Elix Relay 설정",
@@ -24,10 +32,14 @@
   "inboxSubtitle": "답글, 새 멤버, 동기화",
   "notifications": "알림",
   "notificationsSubtitle": "알림을 받을 항목 선택",
+  "light": "빛",
   "readingPreferences": "읽기 환경설정",
   "readingPreferencesSubtitle": "글자 크기, 줄 간격, 테마",
   "defaultValue": "기본값",
   "boundaries": "경계",
+  "lock": "잠그다",
+  "lockSubtitle": "앱을 빈 표지로 바꿔보세요",
+  "off": "끄다",
   "backupRestore": "백업 및 복원",
   "backupRestoreSubtitle": "암호 문구, 새 기기로 이전",
   "notSet": "설정 안 됨",
@@ -40,15 +52,216 @@
   "signOutSubtitle": "데이터 유지; 다음에 패스키 필요",
   "languagePickerTitle": "언어",
   "languageSystemDescription": "이 기기의 언어 설정 사용",
-  "cancel": "취소",
+  "feedAll": "밥을 먹이다",
+  "feedFollowing": "수행원",
+  "feedBoards": "무대",
+  "searchBack": "← 초원",
+  "clear": "분명한",
+  "searchHint": "중얼거림, 메모, 토론 검색",
+  "searchScopeAll": "모두",
+  "searchScopeMy": "나의",
+  "searchScopeCircle": "원",
+  "searchScopePublic": "공공의",
+  "searchResultCount": "{count}이 언급된 것을 발견했습니다.",
+  "@searchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchSortRelevant": "↓ 관련",
+  "notesSectionCount": "참고 사항 · {count}",
+  "@notesSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "murmursSectionCount": "중얼거림 · {count}",
+  "@murmursSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "threadsSectionCount": "스레드 · {count}",
+  "@threadsSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noNotesYet": "아직 메모가 없습니다.",
+  "noMatchingNotes": "일치하는 메모 없음",
+  "noMurmursYet": "아직 잡음은 없습니다",
+  "noMatchingMurmurs": "어울리는 중얼거림 없음",
+  "noThreadsYet": "아직 스레드가 없습니다.",
+  "noMatchingThreads": "일치하는 스레드 없음",
+  "murmurTitle": "어렴풋한 말소리",
+  "local": "현지의",
+  "send": "보내다",
+  "murmurPrompt": "무슨 반쯤 형성된 것\n당신의 마음에 있습니까?",
+  "murmurPrivateHint": "문장, 본능, 해결되지 않은 질문 모두 여기에 적합합니다. 다른 사람은 그것을 볼 수 없습니다.",
+  "murmurSyncHint": "문장, 본능, 해결되지 않은 질문 모두 여기에 적합합니다. 이것은 동기화 가능으로 표시됩니다.",
+  "murmurInputHint": "제가 최근에 생각하고 있는 것은",
+  "murmurPrivateVisibilityHint": "나에게만",
+  "murmurUnlistedVisibilityHint": "동기화 가능하지만 목록에 없음",
+  "murmurPublicVisibilityHint": "공개적으로 게시",
+  "looseMurmurs": "헐렁한",
+  "looseMurmursEmpty": "보낸 중얼거림은 먼저 여기에 머물러라.",
+  "sent": "전송된",
+  "deletedMurmur": "중얼거림이 삭제되었습니다.",
+  "unused": "미사용",
+  "referenceCount": "{count} 참조",
+  "@referenceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "search": "검색",
   "settingsNav": "설정",
+  "publicIdentity": "공공의 정체성",
+  "murmurTab": "어렴풋한 말소리",
+  "notesTab": "메모",
+  "discussionsTab": "무대",
+  "discussionsTabCompact": "무대",
   "networkOnline": "온라인",
   "networkOffline": "오프라인",
   "networkChecking": "확인 중",
+  "workingNotes": "작업 노트",
+  "newest": "최신",
+  "oldest": "가장 오래된",
+  "newNote": "새 메모",
+  "drawInAction": "↗ 그리기",
+  "noLooseMurmursYet": "아직은 느슨한 중얼거림이 없습니다.",
+  "lineage": "혈통",
+  "noteCreated": "메모가 생성되었습니다.",
+  "cancel": "취소",
+  "draftLocal": "초안은 로컬에 유지됩니다.",
+  "editing": "편집",
+  "noteTitleHint": "메모 제목",
+  "noteTitleRequired": "제목을 입력하세요",
+  "noteBodyHint": "계속 쓰거나 아래에서 중얼거리는 소리를 끌어오세요...",
+  "noteBodyRequired": "메모 본문 입력",
+  "noteSubjectLabel": "이 메모",
+  "drawIn": "끌어들이다",
+  "noMurmursToDraw": "아직 끌어낼 수 있는 중얼거림이 없습니다.",
+  "noNotesDescription": "중얼거림은 먼저 국부적으로 느슨해집니다. 연결되기 시작하면 메모 모양으로 만듭니다.",
+  "noteUpdated": "메모가 업데이트되었습니다.",
+  "visibilityUpdated": "공개 상태가 업데이트되었습니다.",
+  "lineageDescription": "중얼거림으로 형성된 음표는 여기에 소스 계보를 유지합니다.",
+  "notePrivateSummary": "아직은 다른 사람이 볼 수 없습니다.",
+  "noteNostrSummary": "게시는 이를 Nostr 릴레이로 보냅니다.",
+  "noteActivityPubSummary": "게시하면 이를 ActivityPub 릴레이로 보냅니다.",
+  "noteBothSummary": "게시하면 이를 Nostr 릴레이 및 ActivityPub 릴레이로 보냅니다.",
+  "noteLocalPublicSummary": "공개 상태이지만 아직 전송되지 않았습니다.",
+  "createDiscussion": "토론 만들기",
+  "chooseHostedBoard": "보드 선택",
+  "hostedBoardMissing": "먼저 Elix Relay 보드에 가입하거나 생성하세요.",
+  "hostedBoardRequired": "보드를 선택하세요",
+  "titleLabel": "제목",
+  "discussionTitleHint": "토론 제목 입력",
+  "titleRequired": "제목은 필수 항목입니다.",
+  "contentLabel": "콘텐츠",
+  "discussionContentHint": "토론 내용 입력",
+  "contentRequired": "콘텐츠가 필요합니다",
+  "create": "만들다",
+  "uncategorized": "분류되지 않음",
+  "addForumHostFirst": "먼저 동기화 설정에서 Elix Relay를 추가하세요. 토론 게시판은 Elix Relays에 의해 만들어졌습니다.",
+  "syncedPublicCount": "동기화된 {count} 공개 항목",
+  "@syncedPublicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publicQueuedRelayFailed": "공개 콘텐츠가 대기열에 추가되었지만 릴레이 게시에 실패했습니다.",
+  "noWritableNostrRelay": "쓰기 가능한 Nostr 릴레이가 구성되지 않았습니다.",
   "syncFailedMessage": "동기화 실패: {error}",
+  "@syncFailedMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "justNow": "방금",
   "minutesAgo": "{count}분 전",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "hoursAgo": "{count}시간 전",
-  "daysAgo": "{count}일 전"
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count}일 전",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "circleSection": "원",
+  "allActivity": "모든 활동",
+  "boardCount": "{count} 보드",
+  "@boardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageSubscriptions": "구독 관리",
+  "newPost": "새 게시물",
+  "addBoardTooltip": "보드 추가",
+  "newDiscussion": "새로운 보드 스레드",
+  "createNewDiscussion": "보드 스레드 생성",
+  "boardsShort": "무대",
+  "manageBoardsShort": "보드 관리",
+  "aiAssistant": "AI 어시스턴트",
+  "aiSummary": "AI 요약",
+  "noPostsYet": "아직 피드 게시물이 없습니다.",
+  "subscribe": "구독하다",
+  "discussionAreaTitle": "밥을 먹이다",
+  "feedSocialIdentitySubtitle": "메모와 중얼거림은 개인 게시물입니다. 당신을 팔로우하는 사람들은 자신의 피드에서 해당 내용을 볼 수 있습니다. 보드에는 공유 토론이 추가됩니다.",
+  "publicOpen": "사람 + 보드",
+  "noContentYet": "(아직 내용이 없습니다)",
+  "commentsCount": "{count} 댓글",
+  "@commentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageBoards": "보드 관리",
+  "noBoardsYet": "아직 보드가 없습니다.",
+  "deleteBoard": "보드 삭제",
+  "deleteBoardConfirm": "'{title}'을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+  "@deleteBoardConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "삭제",
+  "close": "닫다",
+  "addBoard": "보드 추가"
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'app_localizations.dart';
+import 'generated_legacy_ui_copy_translations.dart';
 
 extension AppL10nContext on BuildContext {
   AppLocalizations get l10n =>
@@ -27,7 +28,10 @@ extension AppL10nContext on BuildContext {
 
 String localizeUiCopy(String localeName, String english) {
   final languageCode = localeName.split(RegExp('[-_]')).first;
-  return _uiCopyTranslations[languageCode]?[english] ?? english;
+  return _uiCopyTranslations[languageCode]?[english] ??
+      generatedLegacyUiCopyTranslations[languageCode]?[english] ??
+      generatedLocalizeLegacyUiCopyPattern(languageCode, english) ??
+      english;
 }
 
 /// Localizes legacy two-language call sites while they are migrated into ARB.

@@ -1,5 +1,6 @@
 {
   "@@locale": "it",
+  "appTitle": "Elise",
   "settingsTitle": "IMPOSTAZIONI",
   "done": "Fine",
   "localIdentity": "Identità locale",
@@ -9,6 +10,13 @@
   "wallet": "Portafoglio",
   "walletSubtitleEmpty": "Nessuna credenziale",
   "walletSubtitleCount": "{count} credenziali",
+  "@walletSubtitleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "empty": "Vuoto",
   "sync": "Sincronizza",
   "syncSubtitle": "Impostazioni Elix Relay",
@@ -24,10 +32,14 @@
   "inboxSubtitle": "Risposte, nuovi membri e sincronizzazione",
   "notifications": "Notifiche",
   "notificationsSubtitle": "Scegli cosa può interromperti",
+  "light": "Leggero",
   "readingPreferences": "Preferenze di lettura",
   "readingPreferencesSubtitle": "Dimensione testo, interlinea e tema",
   "defaultValue": "Predefinito",
   "boundaries": "Confini",
+  "lock": "Serratura",
+  "lockSubtitle": "Trasforma l'app in una copertina vuota",
+  "off": "Spento",
   "backupRestore": "Backup e ripristino",
   "backupRestoreSubtitle": "Passphrase e migrazione su un nuovo dispositivo",
   "notSet": "Non impostato",
@@ -40,15 +52,216 @@
   "signOutSubtitle": "Conserva i dati; la prossima volta servirà una passkey",
   "languagePickerTitle": "Lingua",
   "languageSystemDescription": "Usa la lingua di questo dispositivo",
-  "cancel": "Annulla",
+  "feedAll": "Foraggio",
+  "feedFollowing": "Seguente",
+  "feedBoards": "Tavole",
+  "searchBack": "← Prato",
+  "clear": "Chiaro",
+  "searchHint": "Cerca mormorii, appunti, discussioni",
+  "searchScopeAll": "Tutto",
+  "searchScopeMy": "Mio",
+  "searchScopeCircle": "Cerchio",
+  "searchScopePublic": "Pubblico",
+  "searchResultCount": "Trovate menzioni {count}",
+  "@searchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchSortRelevant": "↓ Rilevante",
+  "notesSectionCount": "Note · {count}",
+  "@notesSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "murmursSectionCount": "Mormorii · {count}",
+  "@murmursSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "threadsSectionCount": "Discussioni · {count}",
+  "@threadsSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noNotesYet": "Nessuna nota ancora",
+  "noMatchingNotes": "Nessuna nota corrispondente",
+  "noMurmursYet": "Ancora nessun mormorio",
+  "noMatchingMurmurs": "Nessun mormorio corrispondente",
+  "noThreadsYet": "Nessun thread ancora",
+  "noMatchingThreads": "Nessun thread corrispondente",
+  "murmurTitle": "MORMORIO",
+  "local": "Locale",
+  "send": "Inviare",
+  "murmurPrompt": "Che cosa formata a metà\nhai in mente?",
+  "murmurPrivateHint": "Qui c'entra una frase, un istinto, una questione irrisolta. Nessun altro lo vedrà.",
+  "murmurSyncHint": "Qui c'entra una frase, un istinto, una questione irrisolta. Questo sarà contrassegnato come sincronizzabile.",
+  "murmurInputHint": "Quello a cui ho pensato ultimamente è",
+  "murmurPrivateVisibilityHint": "Solo per me",
+  "murmurUnlistedVisibilityHint": "Sincronizzabile ma non in elenco",
+  "murmurPublicVisibilityHint": "Pubblica pubblicamente",
+  "looseMurmurs": "Sciolto",
+  "looseMurmursEmpty": "I mormorii inviati restano qui per primi.",
+  "sent": "Inviato",
+  "deletedMurmur": "Mormorio cancellato",
+  "unused": "Inutilizzato",
+  "referenceCount": "Riferimenti {count}",
+  "@referenceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "search": "Cerca",
   "settingsNav": "Impostazioni",
+  "publicIdentity": "Identità pubblica",
+  "murmurTab": "Mormorio",
+  "notesTab": "Note",
+  "discussionsTab": "Tavole",
+  "discussionsTabCompact": "Tavole",
   "networkOnline": "Online",
   "networkOffline": "Offline",
   "networkChecking": "Verifica",
+  "workingNotes": "Note di lavoro",
+  "newest": "Più recente",
+  "oldest": "Il più antico",
+  "newNote": "Nuova nota",
+  "drawInAction": "↗ Attrai",
+  "noLooseMurmursYet": "Nessun mormorio sciolto ancora.",
+  "lineage": "Lignaggio",
+  "noteCreated": "Nota creata",
+  "cancel": "Annulla",
+  "draftLocal": "Il tiraggio rimane locale",
+  "editing": "Modifica",
+  "noteTitleHint": "Titolo della nota",
+  "noteTitleRequired": "Inserisci un titolo",
+  "noteBodyHint": "Continua a scrivere, o trascina un mormorio dal basso...",
+  "noteBodyRequired": "Inserisci il corpo della nota",
+  "noteSubjectLabel": "questa nota",
+  "drawIn": "Attira",
+  "noMurmursToDraw": "Nessun mormorio da attirare ancora.",
+  "noNotesDescription": "I soffi rimangono inizialmente liberi a livello locale; quando iniziano a connettersi, modellali in una nota.",
+  "noteUpdated": "Nota aggiornata",
+  "visibilityUpdated": "Visibilità aggiornata",
+  "lineageDescription": "Le note formate dai soffi mantengono qui la loro origine.",
+  "notePrivateSummary": "Nessun altro può ancora vederlo",
+  "noteNostrSummary": "La pubblicazione lo invia ai relè Nostr",
+  "noteActivityPubSummary": "La pubblicazione lo invia al relè ActivityPub",
+  "noteBothSummary": "La pubblicazione lo invia ai relè Nostr e al relè ActivityPub",
+  "noteLocalPublicSummary": "Stato pubblico, ma non ancora inviato",
+  "createDiscussion": "Crea discussione",
+  "chooseHostedBoard": "Scegli la tavola",
+  "hostedBoardMissing": "Unisciti o crea prima una scheda Elix Relay",
+  "hostedBoardRequired": "Scegli una tavola",
+  "titleLabel": "Titolo",
+  "discussionTitleHint": "Inserisci il titolo della discussione",
+  "titleRequired": "Il titolo è obbligatorio",
+  "contentLabel": "Contenuto",
+  "discussionContentHint": "Inserisci il contenuto della discussione",
+  "contentRequired": "Il contenuto è obbligatorio",
+  "create": "Creare",
+  "uncategorized": "Senza categoria",
+  "addForumHostFirst": "Aggiungi prima un relè Elix nelle impostazioni di sincronizzazione. I forum di discussione sono creati da Elix Relays.",
+  "syncedPublicCount": "Elementi pubblici {count} sincronizzati",
+  "@syncedPublicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publicQueuedRelayFailed": "Il contenuto pubblico è stato messo in coda, ma la pubblicazione tramite inoltro non è riuscita",
+  "noWritableNostrRelay": "Nessun relè Nostr scrivibile è configurato",
   "syncFailedMessage": "Sincronizzazione non riuscita: {error}",
+  "@syncFailedMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "justNow": "Adesso",
   "minutesAgo": "{count} min fa",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "hoursAgo": "{count} h fa",
-  "daysAgo": "{count} g fa"
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count} g fa",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "circleSection": "Cerchio",
+  "allActivity": "Tutte le attività",
+  "boardCount": "Tavole {count}",
+  "@boardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageSubscriptions": "Gestisci abbonamenti",
+  "newPost": "Nuovo messaggio",
+  "addBoardTooltip": "Aggiungi tavola",
+  "newDiscussion": "Nuovo thread della scheda",
+  "createNewDiscussion": "Crea discussione sulla scheda",
+  "boardsShort": "Tavole",
+  "manageBoardsShort": "Gestisci bacheche",
+  "aiAssistant": "Assistente AI",
+  "aiSummary": "Riepilogo dell'IA",
+  "noPostsYet": "Nessun post nel feed ancora",
+  "subscribe": "Iscriviti",
+  "discussionAreaTitle": "Foraggio",
+  "feedSocialIdentitySubtitle": "Note e Mormorii sono post personali. Le persone che ti seguono le vedono nel loro feed; le bacheche aggiungono discussioni condivise.",
+  "publicOpen": "Persone + Tabelloni",
+  "noContentYet": "(Nessun contenuto ancora)",
+  "commentsCount": "Commenti di {count}",
+  "@commentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageBoards": "Gestisci bacheche",
+  "noBoardsYet": "Nessuna bacheca ancora",
+  "deleteBoard": "Elimina bacheca",
+  "deleteBoardConfirm": "Eliminare \"{title}\"? Questa operazione non può essere annullata.",
+  "@deleteBoardConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Eliminare",
+  "close": "Vicino",
+  "addBoard": "Aggiungi tavola"
 }

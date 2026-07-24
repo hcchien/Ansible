@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -14,7 +15,7 @@ class CredentialAdminScreen extends StatelessWidget {
     final text = SubpageL10n.of(context);
 
     return AnsibleScreenScaffold(
-      title: 'ADMIN',
+      title: context.uiCopy(zh: '存取與審計', en: 'Access & audit'),
       leadingLabel: text.t('backSettings'),
       child: ListView(
         children: [

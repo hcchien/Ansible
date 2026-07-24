@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../services/messenger_sync_service.dart';
 import '../theme/ansible_design.dart';
@@ -89,7 +90,7 @@ class _MessengerThreadScreenState extends State<MessengerThreadScreen> {
   Widget build(BuildContext context) {
     final text = SubpageL10n.of(context);
     return AnsibleScreenScaffold(
-      title: 'MESSENGER',
+      title: context.uiCopy(zh: '私訊', en: 'Messenger'),
       leadingLabel: text.t('backWorkspace'),
       child: Column(
         children: [

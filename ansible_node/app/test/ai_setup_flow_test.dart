@@ -28,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('AI 提供者設定'), findsOneWidget);
-    expect(find.text('Manual'), findsOneWidget);
+    expect(find.text('手動'), findsOneWidget);
     expect(find.byKey(const Key('ai_base_url_field')), findsOneWidget);
     expect(find.byKey(const Key('ai_model_field')), findsOneWidget);
     expect(find.byKey(const Key('ai_api_key_field')), findsOneWidget);

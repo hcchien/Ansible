@@ -174,7 +174,7 @@ class _NotificationSettingsScreenState
   @override
   Widget build(BuildContext context) {
     return AnsibleScreenScaffold(
-      title: 'NOTIFICATIONS',
+      title: context.uiCopy(zh: '通知設定', en: 'Notification settings'),
       leadingLabel: '',
       child: AnimatedBuilder(
         animation: _controller,

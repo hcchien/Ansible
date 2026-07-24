@@ -149,10 +149,8 @@ class BoardSwipeProgressPill extends StatelessWidget {
           HomeBoard.timeline => context.uiCopy(zh: '時間軸', en: 'Timeline'),
           HomeBoard.forum => context.uiCopy(zh: '討論區', en: 'Forum'),
         };
-        final targetLabel = context.uiCopy(
-          zh: '換到${boardName(targetIndex)}',
-          en: 'Switch to ${boardName(targetIndex)}',
-        );
+        final switchTo = context.uiCopy(zh: '換到', en: 'Switch to');
+        final targetLabel = '$switchTo ${boardName(targetIndex)}';
         final progress = currentIsLo ? fractional : 1.0 - fractional;
         final percent = (progress.clamp(0.0, 1.0) * 100).round();
         final dark = Theme.of(context).brightness == Brightness.dark;

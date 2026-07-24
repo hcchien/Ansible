@@ -104,19 +104,21 @@ class _AiProviderSetupSheetState extends State<AiProviderSetupSheet> {
             const SizedBox(height: 16),
             DropdownButtonFormField<AiProviderType>(
               initialValue: _providerType,
-              decoration: const InputDecoration(labelText: 'Provider'),
-              items: const [
+              decoration: InputDecoration(
+                labelText: context.uiCopy(zh: '提供者', en: 'Provider'),
+              ),
+              items: [
                 DropdownMenuItem(
                   value: AiProviderType.manual,
-                  child: Text('Manual'),
+                  child: Text(context.uiCopy(zh: '手動', en: 'Manual')),
                 ),
-                DropdownMenuItem(
+                const DropdownMenuItem(
                   value: AiProviderType.openaiCompatible,
                   child: Text('OpenAI-compatible'),
                 ),
                 DropdownMenuItem(
                   value: AiProviderType.localHttp,
-                  child: Text('Local HTTP'),
+                  child: Text(context.uiCopy(zh: '本機 HTTP', en: 'Local HTTP')),
                 ),
               ],
               onChanged: (value) {

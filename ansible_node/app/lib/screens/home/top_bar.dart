@@ -159,7 +159,10 @@ class HomeTopBar extends StatelessWidget {
                 onPressed: onScreenStyleTap,
                 icon: const Icon(Icons.palette_outlined),
                 color: styleData.muted,
-                tooltip: 'Screen style · $screenStyleLabel',
+                tooltip: context.uiCopy(
+                  zh: '畫面樣式 · $screenStyleLabel',
+                  en: 'Screen style · $screenStyleLabel',
+                ),
               ),
               IconButton(
                 key: const Key('settings_button'),

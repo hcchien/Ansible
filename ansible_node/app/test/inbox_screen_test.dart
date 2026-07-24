@@ -7,7 +7,7 @@ void main() {
   testWidgets('inbox shows empty state instead of mock rows', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: InboxScreen()));
 
-    expect(find.text('INBOX'), findsOneWidget);
+    expect(find.text('收信匣'), findsOneWidget);
     expect(find.text('目前沒有收信'), findsOneWidget);
     expect(find.text('kr.'), findsNothing);
     expect(find.text('林下'), findsNothing);

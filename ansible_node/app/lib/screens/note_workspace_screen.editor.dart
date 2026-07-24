@@ -426,7 +426,7 @@ class _EditorVisibilityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = contentVisibilityMeta(visibility);
+    final meta = contentVisibilityMeta(context, visibility);
     return InkWell(
       key: const Key('note_editor_visibility_chip'),
       borderRadius: BorderRadius.circular(999),

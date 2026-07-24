@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:ansible_node/l10n/app_l10n.dart';
 import 'package:ansible_node/l10n/app_localizations.dart';
+import 'package:ansible_node/l10n/generated_legacy_ui_copy_translations.dart';
 import 'package:ansible_node/screens/credential_admin_screen.dart';
 import 'package:ansible_node/screens/credential_issuance_wizard.dart';
 import 'package:ansible_node/screens/home_shell.dart';
@@ -31,6 +34,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('every supported ARB contains the complete English message set', () {
+    final source =
+        jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+            as Map<String, dynamic>;
+    for (final locale in const ['de', 'es', 'fr', 'it', 'ja', 'ko']) {
+      final target =
+          jsonDecode(File('lib/l10n/app_$locale.arb').readAsStringSync())
+              as Map<String, dynamic>;
+      expect(
+        target.keys.toSet(),
+        containsAll(source.keys),
+        reason: '$locale must not fall back to English ARB messages',
+      );
+    }
+  });
+
+  test('home and notification legacy copy is translated in every locale', () {
+    for (final locale in const ['de', 'es', 'fr', 'it', 'ja', 'ko']) {
+      for (final english in const [
+        'Notifications',
+        'Notification settings',
+        'No notifications yet',
+        'replied to your thread',
+        'Mark all read',
+        'new',
+        'today',
+        'Switch to',
+      ]) {
+        expect(
+          generatedLegacyUiCopyTranslations[locale],
+          contains(english),
+          reason: '$locale must include "$english"',
+        );
+      }
+    }
+  });
+
+  test('dynamic legacy copy preserves runtime values', () {
+    expect(localizeUiCopy('ja', '42 chars'), contains('42'));
+    expect(localizeUiCopy('ko', '3d ago'), contains('3'));
+    expect(localizeUiCopy('fr', '7 remaining'), contains('7'));
+  });
+
   testWidgets('primary non-settings screens use selected English locale', (
     tester,
   ) async {
@@ -127,7 +173,7 @@ void main() {
       locale: const Locale('en'),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Wallet'), findsOneWidget);
+    expect(find.text('Wallet'), findsWidgets);
     await tester.drag(find.byType(ListView), const Offset(0, -520));
     await tester.pumpAndSettle();
     expect(find.text('No credentials yet'), findsOneWidget);

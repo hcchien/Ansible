@@ -182,15 +182,22 @@ class ContentDistributionChoice {
 }
 
 ({String label, Color dot}) contentVisibilityMeta(
+  BuildContext context,
   ContentVisibility visibility,
 ) {
   return switch (visibility) {
     ContentVisibility.private => (
-      label: 'private',
+      label: context.uiCopy(zh: '私人', en: 'private'),
       dot: AnsibleDesign.inkMuted,
     ),
-    ContentVisibility.unlisted => (label: 'unlisted', dot: AnsibleDesign.spore),
-    ContentVisibility.public => (label: 'public', dot: AnsibleDesign.accent),
+    ContentVisibility.unlisted => (
+      label: context.uiCopy(zh: '未列出', en: 'unlisted'),
+      dot: AnsibleDesign.spore,
+    ),
+    ContentVisibility.public => (
+      label: context.uiCopy(zh: '公開', en: 'public'),
+      dot: AnsibleDesign.accent,
+    ),
   };
 }
 
@@ -324,9 +331,9 @@ class _DistributionSettings extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'DISTRIBUTION',
-            style: TextStyle(
+          Text(
+            context.uiCopy(zh: '散布', en: 'DISTRIBUTION'),
+            style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 9,
               letterSpacing: 1.4,
@@ -336,14 +343,17 @@ class _DistributionSettings extends StatelessWidget {
           const SizedBox(height: 8),
           _DistributionToggle(
             key: const Key('distribution_nostr_toggle'),
-            label: 'Nostr relays',
+            label: context.uiCopy(zh: 'Nostr 中繼站', en: 'Nostr relays'),
             value: enabled && nostrEnabled,
             enabled: enabled && (activityPubEnabled || !nostrEnabled),
             onChanged: onNostrChanged,
           ),
           _DistributionToggle(
             key: const Key('distribution_activitypub_toggle'),
-            label: 'ActivityPub relay',
+            label: context.uiCopy(
+              zh: 'ActivityPub 中繼站',
+              en: 'ActivityPub relay',
+            ),
             value: enabled && activityPubEnabled,
             enabled: enabled && (nostrEnabled || !activityPubEnabled),
             onChanged: onActivityPubChanged,

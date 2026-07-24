@@ -9,7 +9,7 @@ class AppLocalizationsIt extends AppLocalizations {
   AppLocalizationsIt([String locale = 'it']) : super(locale);
 
   @override
-  String get appTitle => 'Elix';
+  String get appTitle => 'Elise';
 
   @override
   String get settingsTitle => 'IMPOSTAZIONI';
@@ -86,7 +86,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get notificationsSubtitle => 'Scegli cosa può interromperti';
 
   @override
-  String get light => 'Light';
+  String get light => 'Leggero';
 
   @override
   String get readingPreferences => 'Preferenze di lettura';
@@ -102,13 +102,13 @@ class AppLocalizationsIt extends AppLocalizations {
   String get boundaries => 'Confini';
 
   @override
-  String get lock => 'Lock';
+  String get lock => 'Serratura';
 
   @override
-  String get lockSubtitle => 'Turn the app into a blank cover';
+  String get lockSubtitle => 'Trasforma l\'app in una copertina vuota';
 
   @override
-  String get off => 'Off';
+  String get off => 'Spento';
 
   @override
   String get backupRestore => 'Backup e ripristino';
@@ -149,126 +149,126 @@ class AppLocalizationsIt extends AppLocalizations {
   String get languageSystemDescription => 'Usa la lingua di questo dispositivo';
 
   @override
-  String get feedAll => 'Feed';
+  String get feedAll => 'Foraggio';
 
   @override
-  String get feedFollowing => 'Following';
+  String get feedFollowing => 'Seguente';
 
   @override
-  String get feedBoards => 'Boards';
+  String get feedBoards => 'Tavole';
 
   @override
-  String get searchBack => '← Meadow';
+  String get searchBack => '← Prato';
 
   @override
-  String get clear => 'Clear';
+  String get clear => 'Chiaro';
 
   @override
-  String get searchHint => 'Search murmurs, notes, discussions';
+  String get searchHint => 'Cerca mormorii, appunti, discussioni';
 
   @override
-  String get searchScopeAll => 'All';
+  String get searchScopeAll => 'Tutto';
 
   @override
-  String get searchScopeMy => 'My';
+  String get searchScopeMy => 'Mio';
 
   @override
-  String get searchScopeCircle => 'Circle';
+  String get searchScopeCircle => 'Cerchio';
 
   @override
-  String get searchScopePublic => 'Public';
+  String get searchScopePublic => 'Pubblico';
 
   @override
   String searchResultCount(int count) {
-    return 'Found $count mentions';
+    return 'Trovate menzioni $count';
   }
 
   @override
-  String get searchSortRelevant => '↓ Relevant';
+  String get searchSortRelevant => '↓ Rilevante';
 
   @override
   String notesSectionCount(int count) {
-    return 'Notes · $count';
+    return 'Note · $count';
   }
 
   @override
   String murmursSectionCount(int count) {
-    return 'Murmurs · $count';
+    return 'Mormorii · $count';
   }
 
   @override
   String threadsSectionCount(int count) {
-    return 'Threads · $count';
+    return 'Discussioni · $count';
   }
 
   @override
-  String get noNotesYet => 'No notes yet';
+  String get noNotesYet => 'Nessuna nota ancora';
 
   @override
-  String get noMatchingNotes => 'No matching notes';
+  String get noMatchingNotes => 'Nessuna nota corrispondente';
 
   @override
-  String get noMurmursYet => 'No murmurs yet';
+  String get noMurmursYet => 'Ancora nessun mormorio';
 
   @override
-  String get noMatchingMurmurs => 'No matching murmurs';
+  String get noMatchingMurmurs => 'Nessun mormorio corrispondente';
 
   @override
-  String get noThreadsYet => 'No threads yet';
+  String get noThreadsYet => 'Nessun thread ancora';
 
   @override
-  String get noMatchingThreads => 'No matching threads';
+  String get noMatchingThreads => 'Nessun thread corrispondente';
 
   @override
-  String get murmurTitle => 'MURMUR';
+  String get murmurTitle => 'MORMORIO';
 
   @override
-  String get local => 'Local';
+  String get local => 'Locale';
 
   @override
-  String get send => 'Send';
+  String get send => 'Inviare';
 
   @override
-  String get murmurPrompt => 'What half-formed thing\nis on your mind?';
+  String get murmurPrompt => 'Che cosa formata a metà\nhai in mente?';
 
   @override
   String get murmurPrivateHint =>
-      'A sentence, an instinct, an unresolved question all fit here. No one else will see it.';
+      'Qui c\'entra una frase, un istinto, una questione irrisolta. Nessun altro lo vedrà.';
 
   @override
   String get murmurSyncHint =>
-      'A sentence, an instinct, an unresolved question all fit here. This one will be marked syncable.';
+      'Qui c\'entra una frase, un istinto, una questione irrisolta. Questo sarà contrassegnato come sincronizzabile.';
 
   @override
-  String get murmurInputHint => 'What I have been thinking about lately is';
+  String get murmurInputHint => 'Quello a cui ho pensato ultimamente è';
 
   @override
-  String get murmurPrivateVisibilityHint => 'Only for me';
+  String get murmurPrivateVisibilityHint => 'Solo per me';
 
   @override
-  String get murmurUnlistedVisibilityHint => 'Syncable but unlisted';
+  String get murmurUnlistedVisibilityHint => 'Sincronizzabile ma non in elenco';
 
   @override
-  String get murmurPublicVisibilityHint => 'Publish publicly';
+  String get murmurPublicVisibilityHint => 'Pubblica pubblicamente';
 
   @override
-  String get looseMurmurs => 'Loose';
+  String get looseMurmurs => 'Sciolto';
 
   @override
-  String get looseMurmursEmpty => 'Sent murmurs stay here first.';
+  String get looseMurmursEmpty => 'I mormorii inviati restano qui per primi.';
 
   @override
-  String get sent => 'Sent';
+  String get sent => 'Inviato';
 
   @override
-  String get deletedMurmur => 'Murmur deleted';
+  String get deletedMurmur => 'Mormorio cancellato';
 
   @override
-  String get unused => 'Unused';
+  String get unused => 'Inutilizzato';
 
   @override
   String referenceCount(int count) {
-    return '$count references';
+    return 'Riferimenti $count';
   }
 
   @override
@@ -278,19 +278,19 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsNav => 'Impostazioni';
 
   @override
-  String get publicIdentity => 'Public identity';
+  String get publicIdentity => 'Identità pubblica';
 
   @override
-  String get murmurTab => 'Murmur';
+  String get murmurTab => 'Mormorio';
 
   @override
-  String get notesTab => 'Notes';
+  String get notesTab => 'Note';
 
   @override
-  String get discussionsTab => 'Boards';
+  String get discussionsTab => 'Tavole';
 
   @override
-  String get discussionsTabCompact => 'Boards';
+  String get discussionsTabCompact => 'Tavole';
 
   @override
   String get networkOnline => 'Online';
@@ -302,141 +302,145 @@ class AppLocalizationsIt extends AppLocalizations {
   String get networkChecking => 'Verifica';
 
   @override
-  String get workingNotes => 'Working Notes';
+  String get workingNotes => 'Note di lavoro';
 
   @override
-  String get newest => 'Newest';
+  String get newest => 'Più recente';
 
   @override
-  String get oldest => 'Oldest';
+  String get oldest => 'Il più antico';
 
   @override
-  String get newNote => 'New Note';
+  String get newNote => 'Nuova nota';
 
   @override
-  String get drawInAction => '↗ Draw in';
+  String get drawInAction => '↗ Attrai';
 
   @override
-  String get noLooseMurmursYet => 'No loose murmurs yet.';
+  String get noLooseMurmursYet => 'Nessun mormorio sciolto ancora.';
 
   @override
-  String get lineage => 'Lineage';
+  String get lineage => 'Lignaggio';
 
   @override
-  String get noteCreated => 'Note created';
+  String get noteCreated => 'Nota creata';
 
   @override
   String get cancel => 'Annulla';
 
   @override
-  String get draftLocal => 'Draft stays local';
+  String get draftLocal => 'Il tiraggio rimane locale';
 
   @override
-  String get editing => 'Editing';
+  String get editing => 'Modifica';
 
   @override
-  String get noteTitleHint => 'Note title';
+  String get noteTitleHint => 'Titolo della nota';
 
   @override
-  String get noteTitleRequired => 'Enter a title';
+  String get noteTitleRequired => 'Inserisci un titolo';
 
   @override
-  String get noteBodyHint => 'Keep writing, or drag a murmur in from below...';
+  String get noteBodyHint =>
+      'Continua a scrivere, o trascina un mormorio dal basso...';
 
   @override
-  String get noteBodyRequired => 'Enter note body';
+  String get noteBodyRequired => 'Inserisci il corpo della nota';
 
   @override
-  String get noteSubjectLabel => 'this note';
+  String get noteSubjectLabel => 'questa nota';
 
   @override
-  String get drawIn => 'Draw in';
+  String get drawIn => 'Attira';
 
   @override
-  String get noMurmursToDraw => 'No murmurs to draw in yet.';
+  String get noMurmursToDraw => 'Nessun mormorio da attirare ancora.';
 
   @override
   String get noNotesDescription =>
-      'Murmurs stay loose locally first; when they start to connect, shape them into a note.';
+      'I soffi rimangono inizialmente liberi a livello locale; quando iniziano a connettersi, modellali in una nota.';
 
   @override
-  String get noteUpdated => 'Note updated';
+  String get noteUpdated => 'Nota aggiornata';
 
   @override
-  String get visibilityUpdated => 'Visibility updated';
+  String get visibilityUpdated => 'Visibilità aggiornata';
 
   @override
   String get lineageDescription =>
-      'Notes shaped from murmurs keep their source lineage here.';
+      'Le note formate dai soffi mantengono qui la loro origine.';
 
   @override
-  String get notePrivateSummary => 'No one else can see this yet';
+  String get notePrivateSummary => 'Nessun altro può ancora vederlo';
 
   @override
-  String get noteNostrSummary => 'Publishing sends this to Nostr relays';
+  String get noteNostrSummary => 'La pubblicazione lo invia ai relè Nostr';
 
   @override
   String get noteActivityPubSummary =>
-      'Publishing sends this to the ActivityPub relay';
+      'La pubblicazione lo invia al relè ActivityPub';
 
   @override
   String get noteBothSummary =>
-      'Publishing sends this to Nostr relays and the ActivityPub relay';
+      'La pubblicazione lo invia ai relè Nostr e al relè ActivityPub';
 
   @override
-  String get noteLocalPublicSummary => 'Public state, but not sent yet';
+  String get noteLocalPublicSummary => 'Stato pubblico, ma non ancora inviato';
 
   @override
-  String get createDiscussion => 'Create Discussion';
+  String get createDiscussion => 'Crea discussione';
 
   @override
-  String get chooseHostedBoard => 'Choose board';
+  String get chooseHostedBoard => 'Scegli la tavola';
 
   @override
-  String get hostedBoardMissing => 'Join or create an Elix Relay board first';
+  String get hostedBoardMissing =>
+      'Unisciti o crea prima una scheda Elix Relay';
 
   @override
-  String get hostedBoardRequired => 'Choose a board';
+  String get hostedBoardRequired => 'Scegli una tavola';
 
   @override
-  String get titleLabel => 'Title';
+  String get titleLabel => 'Titolo';
 
   @override
-  String get discussionTitleHint => 'Enter discussion title';
+  String get discussionTitleHint => 'Inserisci il titolo della discussione';
 
   @override
-  String get titleRequired => 'Title is required';
+  String get titleRequired => 'Il titolo è obbligatorio';
 
   @override
-  String get contentLabel => 'Content';
+  String get contentLabel => 'Contenuto';
 
   @override
-  String get discussionContentHint => 'Enter discussion content';
+  String get discussionContentHint =>
+      'Inserisci il contenuto della discussione';
 
   @override
-  String get contentRequired => 'Content is required';
+  String get contentRequired => 'Il contenuto è obbligatorio';
 
   @override
-  String get create => 'Create';
+  String get create => 'Creare';
 
   @override
-  String get uncategorized => 'Uncategorized';
+  String get uncategorized => 'Senza categoria';
 
   @override
   String get addForumHostFirst =>
-      'Add an Elix Relay in Sync settings first. Discussion boards are created by Elix Relays.';
+      'Aggiungi prima un relè Elix nelle impostazioni di sincronizzazione. I forum di discussione sono creati da Elix Relays.';
 
   @override
   String syncedPublicCount(int count) {
-    return 'Synced $count public items';
+    return 'Elementi pubblici $count sincronizzati';
   }
 
   @override
   String get publicQueuedRelayFailed =>
-      'Public content was queued, but relay publishing failed';
+      'Il contenuto pubblico è stato messo in coda, ma la pubblicazione tramite inoltro non è riuscita';
 
   @override
-  String get noWritableNostrRelay => 'No writable Nostr relay is configured';
+  String get noWritableNostrRelay =>
+      'Nessun relè Nostr scrivibile è configurato';
 
   @override
   String syncFailedMessage(String error) {
@@ -462,87 +466,87 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get circleSection => 'Circle';
+  String get circleSection => 'Cerchio';
 
   @override
-  String get allActivity => 'All Activity';
+  String get allActivity => 'Tutte le attività';
 
   @override
   String boardCount(int count) {
-    return '$count boards';
+    return 'Tavole $count';
   }
 
   @override
-  String get manageSubscriptions => 'Manage Subscriptions';
+  String get manageSubscriptions => 'Gestisci abbonamenti';
 
   @override
-  String get newPost => 'New Post';
+  String get newPost => 'Nuovo messaggio';
 
   @override
-  String get addBoardTooltip => 'Add Board';
+  String get addBoardTooltip => 'Aggiungi tavola';
 
   @override
-  String get newDiscussion => 'New Board Thread';
+  String get newDiscussion => 'Nuovo thread della scheda';
 
   @override
-  String get createNewDiscussion => 'Create Board Thread';
+  String get createNewDiscussion => 'Crea discussione sulla scheda';
 
   @override
-  String get boardsShort => 'Boards';
+  String get boardsShort => 'Tavole';
 
   @override
-  String get manageBoardsShort => 'Manage Boards';
+  String get manageBoardsShort => 'Gestisci bacheche';
 
   @override
-  String get aiAssistant => 'AI Assistant';
+  String get aiAssistant => 'Assistente AI';
 
   @override
-  String get aiSummary => 'AI Summary';
+  String get aiSummary => 'Riepilogo dell\'IA';
 
   @override
-  String get noPostsYet => 'No feed posts yet';
+  String get noPostsYet => 'Nessun post nel feed ancora';
 
   @override
-  String get subscribe => 'Subscribe';
+  String get subscribe => 'Iscriviti';
 
   @override
-  String get discussionAreaTitle => 'Feed';
+  String get discussionAreaTitle => 'Foraggio';
 
   @override
   String get feedSocialIdentitySubtitle =>
-      'Notes and Murmurs are personal posts. People who follow you see them in their feed; boards add shared discussions.';
+      'Note e Mormorii sono post personali. Le persone che ti seguono le vedono nel loro feed; le bacheche aggiungono discussioni condivise.';
 
   @override
-  String get publicOpen => 'People + Boards';
+  String get publicOpen => 'Persone + Tabelloni';
 
   @override
-  String get noContentYet => '(No content yet)';
+  String get noContentYet => '(Nessun contenuto ancora)';
 
   @override
   String commentsCount(int count) {
-    return '$count comments';
+    return 'Commenti di $count';
   }
 
   @override
-  String get manageBoards => 'Manage Boards';
+  String get manageBoards => 'Gestisci bacheche';
 
   @override
-  String get noBoardsYet => 'No boards yet';
+  String get noBoardsYet => 'Nessuna bacheca ancora';
 
   @override
-  String get deleteBoard => 'Delete Board';
+  String get deleteBoard => 'Elimina bacheca';
 
   @override
   String deleteBoardConfirm(String title) {
-    return 'Delete \"$title\"? This cannot be undone.';
+    return 'Eliminare \"$title\"? Questa operazione non può essere annullata.';
   }
 
   @override
-  String get delete => 'Delete';
+  String get delete => 'Eliminare';
 
   @override
-  String get close => 'Close';
+  String get close => 'Vicino';
 
   @override
-  String get addBoard => 'Add Board';
+  String get addBoard => 'Aggiungi tavola';
 }

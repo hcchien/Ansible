@@ -224,10 +224,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return context.uiCopy(zh: '你的內容已被板務處理', en: 'Your content was moderated');
     }
     final reason = moderationReasonLabel(context, reasonCode);
-    return context.uiCopy(
-      zh: '你的內容已被板務處理（$reason）',
-      en: 'Your content was moderated ($reason)',
+    final prefix = context.uiCopy(
+      zh: '你的內容已被板務處理',
+      en: 'Your content was moderated',
     );
+    if (context.usesChineseUi) return '$prefix（$reason）';
+    return '$prefix ($reason)';
   }
 
   IconData _typeIcon(NotificationType type) {
@@ -253,7 +255,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final hasUnread = _notifications.any((n) => !n.isRead);
     return AnsibleScreenScaffold(
-      title: 'NOTIFICATIONS',
+      title: context.uiCopy(zh: '通知', en: 'Notifications'),
       leadingLabel: widget.embedded
           ? ''
           : context.uiCopy(zh: '← 返回', en: '← Back'),

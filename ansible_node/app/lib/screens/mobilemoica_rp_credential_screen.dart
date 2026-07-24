@@ -44,7 +44,14 @@ class MobileMoicaRPCredentialScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('MobileMoica Verified Human')),
+      appBar: AppBar(
+        title: Text(
+          context.uiCopy(
+            zh: '電子自然人憑證驗證',
+            en: 'MobileMoica identity verification',
+          ),
+        ),
+      ),
       body: MobileMoicaRPCredentialPanel(
         holderDid: holderDid,
         vcIssuerClient: vcIssuerClient,

@@ -20,7 +20,7 @@ class MurmurDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnsibleScreenScaffold(
-      title: 'MURMUR',
+      title: context.uiCopy(zh: '短念', en: 'Murmur'),
       leadingLabel: context.uiCopy(zh: '← 草地', en: '← Home'),
       trailing: PopupMenuButton<String>(
         icon: const Icon(Icons.more_horiz),

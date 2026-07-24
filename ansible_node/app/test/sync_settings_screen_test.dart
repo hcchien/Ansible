@@ -32,7 +32,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('SYNC'), findsOneWidget);
+    expect(find.text('同步'), findsOneWidget);
     expect(find.text('目前沒有同步的圈'), findsNothing);
     expect(find.text('週四讀書會'), findsNothing);
     expect(find.textContaining('讀書會'), findsNothing);

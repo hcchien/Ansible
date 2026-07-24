@@ -9,7 +9,7 @@ class AppLocalizationsKo extends AppLocalizations {
   AppLocalizationsKo([String locale = 'ko']) : super(locale);
 
   @override
-  String get appTitle => 'Elix';
+  String get appTitle => '엘릭스';
 
   @override
   String get settingsTitle => '설정';
@@ -86,7 +86,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get notificationsSubtitle => '알림을 받을 항목 선택';
 
   @override
-  String get light => 'Light';
+  String get light => '빛';
 
   @override
   String get readingPreferences => '읽기 환경설정';
@@ -101,13 +101,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get boundaries => '경계';
 
   @override
-  String get lock => 'Lock';
+  String get lock => '잠그다';
 
   @override
-  String get lockSubtitle => 'Turn the app into a blank cover';
+  String get lockSubtitle => '앱을 빈 표지로 바꿔보세요';
 
   @override
-  String get off => 'Off';
+  String get off => '끄다';
 
   @override
   String get backupRestore => '백업 및 복원';
@@ -146,126 +146,126 @@ class AppLocalizationsKo extends AppLocalizations {
   String get languageSystemDescription => '이 기기의 언어 설정 사용';
 
   @override
-  String get feedAll => 'Feed';
+  String get feedAll => '밥을 먹이다';
 
   @override
-  String get feedFollowing => 'Following';
+  String get feedFollowing => '수행원';
 
   @override
-  String get feedBoards => 'Boards';
+  String get feedBoards => '무대';
 
   @override
-  String get searchBack => '← Meadow';
+  String get searchBack => '← 초원';
 
   @override
-  String get clear => 'Clear';
+  String get clear => '분명한';
 
   @override
-  String get searchHint => 'Search murmurs, notes, discussions';
+  String get searchHint => '중얼거림, 메모, 토론 검색';
 
   @override
-  String get searchScopeAll => 'All';
+  String get searchScopeAll => '모두';
 
   @override
-  String get searchScopeMy => 'My';
+  String get searchScopeMy => '나의';
 
   @override
-  String get searchScopeCircle => 'Circle';
+  String get searchScopeCircle => '원';
 
   @override
-  String get searchScopePublic => 'Public';
+  String get searchScopePublic => '공공의';
 
   @override
   String searchResultCount(int count) {
-    return 'Found $count mentions';
+    return '$count이 언급된 것을 발견했습니다.';
   }
 
   @override
-  String get searchSortRelevant => '↓ Relevant';
+  String get searchSortRelevant => '↓ 관련';
 
   @override
   String notesSectionCount(int count) {
-    return 'Notes · $count';
+    return '참고 사항 · $count';
   }
 
   @override
   String murmursSectionCount(int count) {
-    return 'Murmurs · $count';
+    return '중얼거림 · $count';
   }
 
   @override
   String threadsSectionCount(int count) {
-    return 'Threads · $count';
+    return '스레드 · $count';
   }
 
   @override
-  String get noNotesYet => 'No notes yet';
+  String get noNotesYet => '아직 메모가 없습니다.';
 
   @override
-  String get noMatchingNotes => 'No matching notes';
+  String get noMatchingNotes => '일치하는 메모 없음';
 
   @override
-  String get noMurmursYet => 'No murmurs yet';
+  String get noMurmursYet => '아직 잡음은 없습니다';
 
   @override
-  String get noMatchingMurmurs => 'No matching murmurs';
+  String get noMatchingMurmurs => '어울리는 중얼거림 없음';
 
   @override
-  String get noThreadsYet => 'No threads yet';
+  String get noThreadsYet => '아직 스레드가 없습니다.';
 
   @override
-  String get noMatchingThreads => 'No matching threads';
+  String get noMatchingThreads => '일치하는 스레드 없음';
 
   @override
-  String get murmurTitle => 'MURMUR';
+  String get murmurTitle => '어렴풋한 말소리';
 
   @override
-  String get local => 'Local';
+  String get local => '현지의';
 
   @override
-  String get send => 'Send';
+  String get send => '보내다';
 
   @override
-  String get murmurPrompt => 'What half-formed thing\nis on your mind?';
+  String get murmurPrompt => '무슨 반쯤 형성된 것\n당신의 마음에 있습니까?';
 
   @override
   String get murmurPrivateHint =>
-      'A sentence, an instinct, an unresolved question all fit here. No one else will see it.';
+      '문장, 본능, 해결되지 않은 질문 모두 여기에 적합합니다. 다른 사람은 그것을 볼 수 없습니다.';
 
   @override
   String get murmurSyncHint =>
-      'A sentence, an instinct, an unresolved question all fit here. This one will be marked syncable.';
+      '문장, 본능, 해결되지 않은 질문 모두 여기에 적합합니다. 이것은 동기화 가능으로 표시됩니다.';
 
   @override
-  String get murmurInputHint => 'What I have been thinking about lately is';
+  String get murmurInputHint => '제가 최근에 생각하고 있는 것은';
 
   @override
-  String get murmurPrivateVisibilityHint => 'Only for me';
+  String get murmurPrivateVisibilityHint => '나에게만';
 
   @override
-  String get murmurUnlistedVisibilityHint => 'Syncable but unlisted';
+  String get murmurUnlistedVisibilityHint => '동기화 가능하지만 목록에 없음';
 
   @override
-  String get murmurPublicVisibilityHint => 'Publish publicly';
+  String get murmurPublicVisibilityHint => '공개적으로 게시';
 
   @override
-  String get looseMurmurs => 'Loose';
+  String get looseMurmurs => '헐렁한';
 
   @override
-  String get looseMurmursEmpty => 'Sent murmurs stay here first.';
+  String get looseMurmursEmpty => '보낸 중얼거림은 먼저 여기에 머물러라.';
 
   @override
-  String get sent => 'Sent';
+  String get sent => '전송된';
 
   @override
-  String get deletedMurmur => 'Murmur deleted';
+  String get deletedMurmur => '중얼거림이 삭제되었습니다.';
 
   @override
-  String get unused => 'Unused';
+  String get unused => '미사용';
 
   @override
   String referenceCount(int count) {
-    return '$count references';
+    return '$count 참조';
   }
 
   @override
@@ -275,19 +275,19 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsNav => '설정';
 
   @override
-  String get publicIdentity => 'Public identity';
+  String get publicIdentity => '공공의 정체성';
 
   @override
-  String get murmurTab => 'Murmur';
+  String get murmurTab => '어렴풋한 말소리';
 
   @override
-  String get notesTab => 'Notes';
+  String get notesTab => '메모';
 
   @override
-  String get discussionsTab => 'Boards';
+  String get discussionsTab => '무대';
 
   @override
-  String get discussionsTabCompact => 'Boards';
+  String get discussionsTabCompact => '무대';
 
   @override
   String get networkOnline => '온라인';
@@ -299,141 +299,137 @@ class AppLocalizationsKo extends AppLocalizations {
   String get networkChecking => '확인 중';
 
   @override
-  String get workingNotes => 'Working Notes';
+  String get workingNotes => '작업 노트';
 
   @override
-  String get newest => 'Newest';
+  String get newest => '최신';
 
   @override
-  String get oldest => 'Oldest';
+  String get oldest => '가장 오래된';
 
   @override
-  String get newNote => 'New Note';
+  String get newNote => '새 메모';
 
   @override
-  String get drawInAction => '↗ Draw in';
+  String get drawInAction => '↗ 그리기';
 
   @override
-  String get noLooseMurmursYet => 'No loose murmurs yet.';
+  String get noLooseMurmursYet => '아직은 느슨한 중얼거림이 없습니다.';
 
   @override
-  String get lineage => 'Lineage';
+  String get lineage => '혈통';
 
   @override
-  String get noteCreated => 'Note created';
+  String get noteCreated => '메모가 생성되었습니다.';
 
   @override
   String get cancel => '취소';
 
   @override
-  String get draftLocal => 'Draft stays local';
+  String get draftLocal => '초안은 로컬에 유지됩니다.';
 
   @override
-  String get editing => 'Editing';
+  String get editing => '편집';
 
   @override
-  String get noteTitleHint => 'Note title';
+  String get noteTitleHint => '메모 제목';
 
   @override
-  String get noteTitleRequired => 'Enter a title';
+  String get noteTitleRequired => '제목을 입력하세요';
 
   @override
-  String get noteBodyHint => 'Keep writing, or drag a murmur in from below...';
+  String get noteBodyHint => '계속 쓰거나 아래에서 중얼거리는 소리를 끌어오세요...';
 
   @override
-  String get noteBodyRequired => 'Enter note body';
+  String get noteBodyRequired => '메모 본문 입력';
 
   @override
-  String get noteSubjectLabel => 'this note';
+  String get noteSubjectLabel => '이 메모';
 
   @override
-  String get drawIn => 'Draw in';
+  String get drawIn => '끌어들이다';
 
   @override
-  String get noMurmursToDraw => 'No murmurs to draw in yet.';
+  String get noMurmursToDraw => '아직 끌어낼 수 있는 중얼거림이 없습니다.';
 
   @override
   String get noNotesDescription =>
-      'Murmurs stay loose locally first; when they start to connect, shape them into a note.';
+      '중얼거림은 먼저 국부적으로 느슨해집니다. 연결되기 시작하면 메모 모양으로 만듭니다.';
 
   @override
-  String get noteUpdated => 'Note updated';
+  String get noteUpdated => '메모가 업데이트되었습니다.';
 
   @override
-  String get visibilityUpdated => 'Visibility updated';
+  String get visibilityUpdated => '공개 상태가 업데이트되었습니다.';
 
   @override
-  String get lineageDescription =>
-      'Notes shaped from murmurs keep their source lineage here.';
+  String get lineageDescription => '중얼거림으로 형성된 음표는 여기에 소스 계보를 유지합니다.';
 
   @override
-  String get notePrivateSummary => 'No one else can see this yet';
+  String get notePrivateSummary => '아직은 다른 사람이 볼 수 없습니다.';
 
   @override
-  String get noteNostrSummary => 'Publishing sends this to Nostr relays';
+  String get noteNostrSummary => '게시는 이를 Nostr 릴레이로 보냅니다.';
 
   @override
-  String get noteActivityPubSummary =>
-      'Publishing sends this to the ActivityPub relay';
+  String get noteActivityPubSummary => '게시하면 이를 ActivityPub 릴레이로 보냅니다.';
 
   @override
-  String get noteBothSummary =>
-      'Publishing sends this to Nostr relays and the ActivityPub relay';
+  String get noteBothSummary => '게시하면 이를 Nostr 릴레이 및 ActivityPub 릴레이로 보냅니다.';
 
   @override
-  String get noteLocalPublicSummary => 'Public state, but not sent yet';
+  String get noteLocalPublicSummary => '공개 상태이지만 아직 전송되지 않았습니다.';
 
   @override
-  String get createDiscussion => 'Create Discussion';
+  String get createDiscussion => '토론 만들기';
 
   @override
-  String get chooseHostedBoard => 'Choose board';
+  String get chooseHostedBoard => '보드 선택';
 
   @override
-  String get hostedBoardMissing => 'Join or create an Elix Relay board first';
+  String get hostedBoardMissing => '먼저 Elix Relay 보드에 가입하거나 생성하세요.';
 
   @override
-  String get hostedBoardRequired => 'Choose a board';
+  String get hostedBoardRequired => '보드를 선택하세요';
 
   @override
-  String get titleLabel => 'Title';
+  String get titleLabel => '제목';
 
   @override
-  String get discussionTitleHint => 'Enter discussion title';
+  String get discussionTitleHint => '토론 제목 입력';
 
   @override
-  String get titleRequired => 'Title is required';
+  String get titleRequired => '제목은 필수 항목입니다.';
 
   @override
-  String get contentLabel => 'Content';
+  String get contentLabel => '콘텐츠';
 
   @override
-  String get discussionContentHint => 'Enter discussion content';
+  String get discussionContentHint => '토론 내용 입력';
 
   @override
-  String get contentRequired => 'Content is required';
+  String get contentRequired => '콘텐츠가 필요합니다';
 
   @override
-  String get create => 'Create';
+  String get create => '만들다';
 
   @override
-  String get uncategorized => 'Uncategorized';
+  String get uncategorized => '분류되지 않음';
 
   @override
   String get addForumHostFirst =>
-      'Add an Elix Relay in Sync settings first. Discussion boards are created by Elix Relays.';
+      '먼저 동기화 설정에서 Elix Relay를 추가하세요. 토론 게시판은 Elix Relays에 의해 만들어졌습니다.';
 
   @override
   String syncedPublicCount(int count) {
-    return 'Synced $count public items';
+    return '동기화된 $count 공개 항목';
   }
 
   @override
-  String get publicQueuedRelayFailed =>
-      'Public content was queued, but relay publishing failed';
+  String get publicQueuedRelayFailed => '공개 콘텐츠가 대기열에 추가되었지만 릴레이 게시에 실패했습니다.';
 
   @override
-  String get noWritableNostrRelay => 'No writable Nostr relay is configured';
+  String get noWritableNostrRelay => '쓰기 가능한 Nostr 릴레이가 구성되지 않았습니다.';
 
   @override
   String syncFailedMessage(String error) {
@@ -459,87 +455,87 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get circleSection => 'Circle';
+  String get circleSection => '원';
 
   @override
-  String get allActivity => 'All Activity';
+  String get allActivity => '모든 활동';
 
   @override
   String boardCount(int count) {
-    return '$count boards';
+    return '$count 보드';
   }
 
   @override
-  String get manageSubscriptions => 'Manage Subscriptions';
+  String get manageSubscriptions => '구독 관리';
 
   @override
-  String get newPost => 'New Post';
+  String get newPost => '새 게시물';
 
   @override
-  String get addBoardTooltip => 'Add Board';
+  String get addBoardTooltip => '보드 추가';
 
   @override
-  String get newDiscussion => 'New Board Thread';
+  String get newDiscussion => '새로운 보드 스레드';
 
   @override
-  String get createNewDiscussion => 'Create Board Thread';
+  String get createNewDiscussion => '보드 스레드 생성';
 
   @override
-  String get boardsShort => 'Boards';
+  String get boardsShort => '무대';
 
   @override
-  String get manageBoardsShort => 'Manage Boards';
+  String get manageBoardsShort => '보드 관리';
 
   @override
-  String get aiAssistant => 'AI Assistant';
+  String get aiAssistant => 'AI 어시스턴트';
 
   @override
-  String get aiSummary => 'AI Summary';
+  String get aiSummary => 'AI 요약';
 
   @override
-  String get noPostsYet => 'No feed posts yet';
+  String get noPostsYet => '아직 피드 게시물이 없습니다.';
 
   @override
-  String get subscribe => 'Subscribe';
+  String get subscribe => '구독하다';
 
   @override
-  String get discussionAreaTitle => 'Feed';
+  String get discussionAreaTitle => '밥을 먹이다';
 
   @override
   String get feedSocialIdentitySubtitle =>
-      'Notes and Murmurs are personal posts. People who follow you see them in their feed; boards add shared discussions.';
+      '메모와 중얼거림은 개인 게시물입니다. 당신을 팔로우하는 사람들은 자신의 피드에서 해당 내용을 볼 수 있습니다. 보드에는 공유 토론이 추가됩니다.';
 
   @override
-  String get publicOpen => 'People + Boards';
+  String get publicOpen => '사람 + 보드';
 
   @override
-  String get noContentYet => '(No content yet)';
+  String get noContentYet => '(아직 내용이 없습니다)';
 
   @override
   String commentsCount(int count) {
-    return '$count comments';
+    return '$count 댓글';
   }
 
   @override
-  String get manageBoards => 'Manage Boards';
+  String get manageBoards => '보드 관리';
 
   @override
-  String get noBoardsYet => 'No boards yet';
+  String get noBoardsYet => '아직 보드가 없습니다.';
 
   @override
-  String get deleteBoard => 'Delete Board';
+  String get deleteBoard => '보드 삭제';
 
   @override
   String deleteBoardConfirm(String title) {
-    return 'Delete \"$title\"? This cannot be undone.';
+    return '\'$title\'을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.';
   }
 
   @override
-  String get delete => 'Delete';
+  String get delete => '삭제';
 
   @override
-  String get close => 'Close';
+  String get close => '닫다';
 
   @override
-  String get addBoard => 'Add Board';
+  String get addBoard => '보드 추가';
 }

@@ -373,7 +373,7 @@ class BoardSwipeHeader extends StatelessWidget {
                 ochreColor: ochreColor,
               ),
               _FocusHeaderChip(
-                label: 'murmur',
+                label: context.uiCopy(zh: '短念', en: 'murmur'),
                 selected: personalFilter == PersonalFilter.murmur,
                 onTap: () => onPersonalFilterChanged(PersonalFilter.murmur),
                 fgColor: fgColor,
@@ -383,7 +383,7 @@ class BoardSwipeHeader extends StatelessWidget {
                 ochreColor: ochreColor,
               ),
               _FocusHeaderChip(
-                label: 'note',
+                label: context.uiCopy(zh: '筆記', en: 'note'),
                 selected: personalFilter == PersonalFilter.note,
                 onTap: () => onPersonalFilterChanged(PersonalFilter.note),
                 fgColor: fgColor,
@@ -416,10 +416,9 @@ class BoardSwipeHeader extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            context.uiCopy(
-              zh: '$forumPostCount 新 · 今',
-              en: '$forumPostCount new · today',
-            ),
+            '$forumPostCount '
+            '${context.uiCopy(zh: '則新貼文', en: 'new')} · '
+            '${context.uiCopy(zh: '今天', en: 'today')}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 13, height: 1.3, color: faintColor),

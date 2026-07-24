@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../services/web_session_approval_client.dart';
 
 typedef WebSessionManagementClock = DateTime Function();
@@ -49,9 +50,13 @@ class _WebSessionManagementScreenState
       );
       setState(() => _sessionsFuture = _loadSessions());
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Web session revoked.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(zh: '網頁工作階段已撤銷。', en: 'Web session revoked.'),
+          ),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
@@ -61,7 +66,9 @@ class _WebSessionManagementScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Web sessions')),
+      appBar: AppBar(
+        title: Text(context.uiCopy(zh: '網頁工作階段', en: 'Web sessions')),
+      ),
       body: FutureBuilder<List<WebSessionRecord>>(
         future: _sessionsFuture,
         builder: (context, snapshot) {
@@ -73,7 +80,12 @@ class _WebSessionManagementScreenState
           }
           final sessions = snapshot.data ?? const [];
           if (sessions.isEmpty) {
-            return const _MessageState(message: 'No active web sessions.');
+            return _MessageState(
+              message: context.uiCopy(
+                zh: '沒有使用中的網頁工作階段。',
+                en: 'No active web sessions.',
+              ),
+            );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -123,7 +135,7 @@ class _WebSessionTile extends StatelessWidget {
       isThreeLine: true,
       trailing: TextButton(
         onPressed: isExpired ? null : onRevoke,
-        child: const Text('Revoke'),
+        child: Text(context.uiCopy(zh: '撤銷', en: 'Revoke')),
       ),
     );
   }

@@ -1,5 +1,6 @@
 {
   "@@locale": "es",
+  "appTitle": "Elix",
   "settingsTitle": "AJUSTES",
   "done": "Listo",
   "localIdentity": "Identidad local",
@@ -9,6 +10,13 @@
   "wallet": "Cartera",
   "walletSubtitleEmpty": "Sin credenciales",
   "walletSubtitleCount": "{count} credenciales",
+  "@walletSubtitleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "empty": "Vacío",
   "sync": "Sincronizar",
   "syncSubtitle": "Ajustes de Elix Relay",
@@ -24,10 +32,14 @@
   "inboxSubtitle": "Respuestas, nuevos miembros y sincronización",
   "notifications": "Notificaciones",
   "notificationsSubtitle": "Elige qué puede interrumpirte",
+  "light": "Luz",
   "readingPreferences": "Preferencias de lectura",
   "readingPreferencesSubtitle": "Tamaño de texto, interlineado y tema",
   "defaultValue": "Predeterminado",
   "boundaries": "Límites",
+  "lock": "Cerrar",
+  "lockSubtitle": "Convierte la aplicación en una portada en blanco",
+  "off": "Apagado",
   "backupRestore": "Copia de seguridad y restauración",
   "backupRestoreSubtitle": "Frase de acceso y migración a un dispositivo nuevo",
   "notSet": "Sin configurar",
@@ -40,15 +52,216 @@
   "signOutSubtitle": "Conservar datos; se requerirá passkey la próxima vez",
   "languagePickerTitle": "Idioma",
   "languageSystemDescription": "Usar el idioma de este dispositivo",
-  "cancel": "Cancelar",
+  "feedAll": "Alimentar",
+  "feedFollowing": "Siguiente",
+  "feedBoards": "tableros",
+  "searchBack": "← Prado",
+  "clear": "Claro",
+  "searchHint": "Buscar murmullos, notas, discusiones.",
+  "searchScopeAll": "Todo",
+  "searchScopeMy": "Mi",
+  "searchScopeCircle": "Círculo",
+  "searchScopePublic": "Público",
+  "searchResultCount": "Se encontraron menciones de {count}",
+  "@searchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchSortRelevant": "↓ Relevante",
+  "notesSectionCount": "Notas · {count}",
+  "@notesSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "murmursSectionCount": "Soplos · {count}",
+  "@murmursSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "threadsSectionCount": "Temas · {count}",
+  "@threadsSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noNotesYet": "Aún no hay notas",
+  "noMatchingNotes": "No hay notas coincidentes",
+  "noMurmursYet": "Aún no hay murmullos",
+  "noMatchingMurmurs": "No hay murmullos coincidentes",
+  "noThreadsYet": "Aún no hay hilos",
+  "noMatchingThreads": "No hay hilos coincidentes",
+  "murmurTitle": "MURMULLO",
+  "local": "Local",
+  "send": "Enviar",
+  "murmurPrompt": "¿Qué cosa a medio formar?\nestá en tu mente?",
+  "murmurPrivateHint": "Aquí cabe una frase, un instinto, una cuestión no resuelta. Nadie más lo verá.",
+  "murmurSyncHint": "Aquí cabe una frase, un instinto, una cuestión no resuelta. Este estará marcado como sincronizable.",
+  "murmurInputHint": "En lo que he estado pensando últimamente es",
+  "murmurPrivateVisibilityHint": "solo para mi",
+  "murmurUnlistedVisibilityHint": "Sincronizable pero no listado",
+  "murmurPublicVisibilityHint": "Publicar públicamente",
+  "looseMurmurs": "Perder",
+  "looseMurmursEmpty": "Los murmullos enviados se quedan aquí primero.",
+  "sent": "Enviado",
+  "deletedMurmur": "Murmullo eliminado",
+  "unused": "No usado",
+  "referenceCount": "Referencias de {count}",
+  "@referenceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "search": "Buscar",
   "settingsNav": "Ajustes",
+  "publicIdentity": "Identidad pública",
+  "murmurTab": "Murmullo",
+  "notesTab": "Notas",
+  "discussionsTab": "tableros",
+  "discussionsTabCompact": "tableros",
   "networkOnline": "En línea",
   "networkOffline": "Sin conexión",
   "networkChecking": "Comprobando",
+  "workingNotes": "Notas de trabajo",
+  "newest": "El más nuevo",
+  "oldest": "más antiguo",
+  "newNote": "Nueva nota",
+  "drawInAction": "↗ Dibujar",
+  "noLooseMurmursYet": "Aún no hay murmullos sueltos.",
+  "lineage": "Linaje",
+  "noteCreated": "Nota creada",
+  "cancel": "Cancelar",
+  "draftLocal": "El borrador se queda local",
+  "editing": "Edición",
+  "noteTitleHint": "Título de la nota",
+  "noteTitleRequired": "Introduce un título",
+  "noteBodyHint": "Sigue escribiendo o arrastra un murmullo desde abajo...",
+  "noteBodyRequired": "Introducir el cuerpo de la nota",
+  "noteSubjectLabel": "esta nota",
+  "drawIn": "Atraer",
+  "noMurmursToDraw": "Aún no hay murmullos que atraer.",
+  "noNotesDescription": "Los murmullos se mantienen sueltos primero a nivel local; cuando empiecen a conectarse, dales forma de nota.",
+  "noteUpdated": "Nota actualizada",
+  "visibilityUpdated": "Visibilidad actualizada",
+  "lineageDescription": "Las notas formadas a partir de murmullos mantienen aquí su linaje original.",
+  "notePrivateSummary": "Nadie más puede ver esto todavía.",
+  "noteNostrSummary": "La editorial envía esto a los retransmisores de Nostr.",
+  "noteActivityPubSummary": "La publicación envía esto al relé ActivityPub",
+  "noteBothSummary": "La publicación envía esto a los retransmisiones de Nostr y a la retransmisión de ActivityPub.",
+  "noteLocalPublicSummary": "Estado público, pero aún no enviado.",
+  "createDiscussion": "Crear discusión",
+  "chooseHostedBoard": "Elige tablero",
+  "hostedBoardMissing": "Únase o cree un tablero de Elix Relay primero",
+  "hostedBoardRequired": "Elige una tabla",
+  "titleLabel": "Título",
+  "discussionTitleHint": "Ingrese el título de la discusión",
+  "titleRequired": "Se requiere título",
+  "contentLabel": "Contenido",
+  "discussionContentHint": "Ingrese el contenido de la discusión",
+  "contentRequired": "Se requiere contenido",
+  "create": "Crear",
+  "uncategorized": "Sin categoría",
+  "addForumHostFirst": "Primero agregue un Elix Relay en la configuración de sincronización. Los foros de discusión son creados por Elix Relays.",
+  "syncedPublicCount": "Elementos públicos {count} sincronizados",
+  "@syncedPublicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publicQueuedRelayFailed": "El contenido público estaba en cola, pero la publicación de retransmisión falló",
+  "noWritableNostrRelay": "No se ha configurado ningún relé Nostr grabable",
   "syncFailedMessage": "Error de sincronización: {error}",
+  "@syncFailedMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "justNow": "Ahora mismo",
   "minutesAgo": "Hace {count} min",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "hoursAgo": "Hace {count} h",
-  "daysAgo": "Hace {count} d"
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "Hace {count} d",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "circleSection": "Círculo",
+  "allActivity": "Toda la actividad",
+  "boardCount": "Tableros {count}",
+  "@boardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageSubscriptions": "Administrar suscripciones",
+  "newPost": "Nueva publicación",
+  "addBoardTooltip": "Agregar tablero",
+  "newDiscussion": "Nuevo hilo del tablero",
+  "createNewDiscussion": "Crear hilo de tablero",
+  "boardsShort": "tableros",
+  "manageBoardsShort": "Administrar tableros",
+  "aiAssistant": "Asistente de IA",
+  "aiSummary": "Resumen de IA",
+  "noPostsYet": "Aún no hay publicaciones en el feed",
+  "subscribe": "Suscribir",
+  "discussionAreaTitle": "Alimentar",
+  "feedSocialIdentitySubtitle": "Las notas y los murmullos son publicaciones personales. Las personas que te siguen los ven en su feed; Los foros agregan discusiones compartidas.",
+  "publicOpen": "Personas + Tableros",
+  "noContentYet": "(Aún no hay contenido)",
+  "commentsCount": "Comentarios de {count}",
+  "@commentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageBoards": "Administrar tableros",
+  "noBoardsYet": "Aún no hay tableros",
+  "deleteBoard": "Eliminar tablero",
+  "deleteBoardConfirm": "¿Eliminar \"{title}\"? Esto no se puede deshacer.",
+  "@deleteBoardConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Borrar",
+  "close": "Cerca",
+  "addBoard": "Agregar tablero"
 }

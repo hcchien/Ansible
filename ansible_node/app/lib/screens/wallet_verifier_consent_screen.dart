@@ -104,24 +104,30 @@ class _WalletVerifierConsentScreenState
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
-          _InfoRow(label: 'Verifier', value: widget.request.verifierLabel),
           _InfoRow(
-            label: 'Credential',
+            label: context.uiCopy(zh: '驗證方', en: 'Verifier'),
+            value: widget.request.verifierLabel,
+          ),
+          _InfoRow(
+            label: context.uiCopy(zh: '憑證', en: 'Credential'),
             value: widget.request.requiredCredentialType,
           ),
-          _InfoRow(label: 'Challenge', value: widget.request.nonce),
           _InfoRow(
-            label: 'Response',
+            label: context.uiCopy(zh: '挑戰值', en: 'Challenge'),
+            value: widget.request.nonce,
+          ),
+          _InfoRow(
+            label: context.uiCopy(zh: '回應位置', en: 'Response'),
             value: widget.request.responseUri.toString(),
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Requested claims',
+            title: context.uiCopy(zh: '要求的屬性', en: 'Requested claims'),
             body: widget.request.requestedClaimLabels.join(', '),
           ),
           const SizedBox(height: 12),
           _Section(
-            title: 'Not disclosed',
+            title: context.uiCopy(zh: '不會揭露', en: 'Not disclosed'),
             body: context.uiCopy(
               zh: '身分證字號、姓名、憑證序號、MobileMoica response、duplicate commitment。',
               en: 'National ID number, legal name, credential serial number, MobileMoica response, duplicate commitment.',

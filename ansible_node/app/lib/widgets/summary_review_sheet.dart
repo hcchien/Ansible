@@ -81,13 +81,17 @@ class _SummaryReviewSheetState extends State<SummaryReviewSheet> {
               controller: _summaryController,
               minLines: 5,
               maxLines: 10,
-              decoration: const InputDecoration(labelText: 'Summary'),
+              decoration: InputDecoration(
+                labelText: context.uiCopy(zh: '摘要', en: 'Summary'),
+              ),
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _saving ? null : _save,
               icon: const Icon(Icons.note_add_outlined),
-              label: const Text('Save as private note'),
+              label: Text(
+                context.uiCopy(zh: '儲存為私人筆記', en: 'Save as private note'),
+              ),
             ),
           ],
         ),

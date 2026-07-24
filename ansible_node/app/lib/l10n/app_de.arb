@@ -1,5 +1,6 @@
 {
   "@@locale": "de",
+  "appTitle": "Elix",
   "settingsTitle": "EINSTELLUNGEN",
   "done": "Fertig",
   "localIdentity": "Lokale Identität",
@@ -9,6 +10,13 @@
   "wallet": "Wallet",
   "walletSubtitleEmpty": "Keine Nachweise",
   "walletSubtitleCount": "{count} Nachweise",
+  "@walletSubtitleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "empty": "Leer",
   "sync": "Synchronisieren",
   "syncSubtitle": "Elix Relay-Einstellungen",
@@ -24,10 +32,14 @@
   "inboxSubtitle": "Antworten, neue Mitglieder, Synchronisierung",
   "notifications": "Benachrichtigungen",
   "notificationsSubtitle": "Festlegen, was dich unterbrechen darf",
+  "light": "Licht",
   "readingPreferences": "Leseeinstellungen",
   "readingPreferencesSubtitle": "Textgröße, Zeilenhöhe, Thema",
   "defaultValue": "Standard",
   "boundaries": "Grenzen",
+  "lock": "Sperren",
+  "lockSubtitle": "Verwandeln Sie die App in ein leeres Cover",
+  "off": "Aus",
   "backupRestore": "Sichern und Wiederherstellen",
   "backupRestoreSubtitle": "Passphrase, Umzug auf ein neues Gerät",
   "notSet": "Nicht eingerichtet",
@@ -40,15 +52,216 @@
   "signOutSubtitle": "Daten behalten; beim nächsten Mal ist ein Passkey nötig",
   "languagePickerTitle": "Sprache",
   "languageSystemDescription": "Spracheinstellung dieses Geräts verwenden",
-  "cancel": "Abbrechen",
+  "feedAll": "Füttern",
+  "feedFollowing": "Nachfolgend",
+  "feedBoards": "Bretter",
+  "searchBack": "← Wiese",
+  "clear": "Klar",
+  "searchHint": "Suchen Sie nach Gemurmel, Notizen und Diskussionen",
+  "searchScopeAll": "Alle",
+  "searchScopeMy": "Mein",
+  "searchScopeCircle": "Kreis",
+  "searchScopePublic": "Öffentlich",
+  "searchResultCount": "{count}-Erwähnungen gefunden",
+  "@searchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchSortRelevant": "↓ Relevant",
+  "notesSectionCount": "Notizen · {count}",
+  "@notesSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "murmursSectionCount": "Murmelt · {count}",
+  "@murmursSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "threadsSectionCount": "Themen · {count}",
+  "@threadsSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noNotesYet": "Noch keine Notizen",
+  "noMatchingNotes": "Keine passenden Notizen",
+  "noMurmursYet": "Noch kein Murren",
+  "noMatchingMurmurs": "Kein passendes Gemurmel",
+  "noThreadsYet": "Noch keine Threads",
+  "noMatchingThreads": "Keine passenden Threads",
+  "murmurTitle": "MURMELN",
+  "local": "Lokal",
+  "send": "Schicken",
+  "murmurPrompt": "Was für ein halbfertiges Ding\ngeht dir durch den Kopf?",
+  "murmurPrivateHint": "Hier passt ein Satz, ein Instinkt, eine ungelöste Frage. Niemand sonst wird es sehen.",
+  "murmurSyncHint": "Hier passt ein Satz, ein Instinkt, eine ungelöste Frage. Dieser wird als synchronisierbar markiert.",
+  "murmurInputHint": "Worüber ich in letzter Zeit nachgedacht habe, ist",
+  "murmurPrivateVisibilityHint": "Nur für mich",
+  "murmurUnlistedVisibilityHint": "Synchronisierbar, aber nicht gelistet",
+  "murmurPublicVisibilityHint": "Öffentlich veröffentlichen",
+  "looseMurmurs": "Lose",
+  "looseMurmursEmpty": "Gesendetes Murmeln bleibt zuerst hier.",
+  "sent": "Gesendet",
+  "deletedMurmur": "Murmeln gelöscht",
+  "unused": "Unbenutzt",
+  "referenceCount": "{count}-Referenzen",
+  "@referenceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "search": "Suchen",
   "settingsNav": "Einstellungen",
+  "publicIdentity": "Öffentliche Identität",
+  "murmurTab": "Murmeln",
+  "notesTab": "Notizen",
+  "discussionsTab": "Bretter",
+  "discussionsTabCompact": "Bretter",
   "networkOnline": "Online",
   "networkOffline": "Offline",
   "networkChecking": "Wird geprüft",
+  "workingNotes": "Arbeitsnotizen",
+  "newest": "Neueste",
+  "oldest": "Älteste",
+  "newNote": "Neue Notiz",
+  "drawInAction": "↗ Einzeichnen",
+  "noLooseMurmursYet": "Noch kein lockeres Gemurmel.",
+  "lineage": "Abstammung",
+  "noteCreated": "Notiz erstellt",
+  "cancel": "Abbrechen",
+  "draftLocal": "Draft bleibt lokal",
+  "editing": "Bearbeitung",
+  "noteTitleHint": "Titel der Notiz",
+  "noteTitleRequired": "Geben Sie einen Titel ein",
+  "noteBodyHint": "Schreiben Sie weiter oder ziehen Sie ein Murmeln von unten herein ...",
+  "noteBodyRequired": "Geben Sie den Notiztext ein",
+  "noteSubjectLabel": "dieser Hinweis",
+  "drawIn": "Einziehen",
+  "noMurmursToDraw": "Noch ist kein Murmeln zu hören.",
+  "noNotesDescription": "Murmeltiere bleiben zunächst lokal locker; Wenn sie beginnen, sich zu verbinden, formen Sie sie zu einer Notiz.",
+  "noteUpdated": "Hinweis aktualisiert",
+  "visibilityUpdated": "Sichtbarkeit aktualisiert",
+  "lineageDescription": "Aus Murmeln geformte Notizen behalten hier ihre ursprüngliche Abstammungslinie.",
+  "notePrivateSummary": "Das kann noch niemand sonst sehen",
+  "noteNostrSummary": "Publishing sendet dies an Nostr-Relays",
+  "noteActivityPubSummary": "Publishing sendet dies an das ActivityPub-Relay",
+  "noteBothSummary": "Die Veröffentlichung sendet dies an Nostr-Relays und das ActivityPub-Relay",
+  "noteLocalPublicSummary": "Öffentlicher Status, aber noch nicht gesendet",
+  "createDiscussion": "Diskussion erstellen",
+  "chooseHostedBoard": "Wählen Sie ein Board",
+  "hostedBoardMissing": "Treten Sie zunächst einem Elix-Relay-Board bei oder erstellen Sie ein solches",
+  "hostedBoardRequired": "Wähle ein Board",
+  "titleLabel": "Titel",
+  "discussionTitleHint": "Geben Sie den Diskussionstitel ein",
+  "titleRequired": "Titel ist erforderlich",
+  "contentLabel": "Inhalt",
+  "discussionContentHint": "Geben Sie Diskussionsinhalte ein",
+  "contentRequired": "Inhalte sind erforderlich",
+  "create": "Erstellen",
+  "uncategorized": "Nicht kategorisiert",
+  "addForumHostFirst": "Fügen Sie zunächst in den Synchronisierungseinstellungen ein Elix-Relay hinzu. Diskussionsforen werden von Elix Relays erstellt.",
+  "syncedPublicCount": "Öffentliche {count}-Elemente synchronisiert",
+  "@syncedPublicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publicQueuedRelayFailed": "Öffentliche Inhalte wurden in die Warteschlange gestellt, die Weiterleitungsveröffentlichung ist jedoch fehlgeschlagen",
+  "noWritableNostrRelay": "Es ist kein beschreibbares Nostr-Relay konfiguriert",
   "syncFailedMessage": "Synchronisierung fehlgeschlagen: {error}",
+  "@syncFailedMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "justNow": "Gerade eben",
   "minutesAgo": "Vor {count} Min.",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "hoursAgo": "Vor {count} Std.",
-  "daysAgo": "Vor {count} Tagen"
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "Vor {count} Tagen",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "circleSection": "Kreis",
+  "allActivity": "Alle Aktivitäten",
+  "boardCount": "{count}-Boards",
+  "@boardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageSubscriptions": "Abonnements verwalten",
+  "newPost": "Neuer Beitrag",
+  "addBoardTooltip": "Board hinzufügen",
+  "newDiscussion": "Neuer Board-Thread",
+  "createNewDiscussion": "Erstellen Sie einen Board-Thread",
+  "boardsShort": "Bretter",
+  "manageBoardsShort": "Boards verwalten",
+  "aiAssistant": "KI-Assistent",
+  "aiSummary": "KI-Zusammenfassung",
+  "noPostsYet": "Noch keine Feed-Beiträge",
+  "subscribe": "Abonnieren",
+  "discussionAreaTitle": "Füttern",
+  "feedSocialIdentitySubtitle": "Notizen und Gemurmel sind persönliche Beiträge. Personen, die Ihnen folgen, sehen sie in ihrem Feed. Foren fügen gemeinsame Diskussionen hinzu.",
+  "publicOpen": "Menschen + Boards",
+  "noContentYet": "(Noch kein Inhalt)",
+  "commentsCount": "{count}-Kommentare",
+  "@commentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageBoards": "Boards verwalten",
+  "noBoardsYet": "Noch keine Boards",
+  "deleteBoard": "Board löschen",
+  "deleteBoardConfirm": "„{title}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+  "@deleteBoardConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Löschen",
+  "close": "Schließen",
+  "addBoard": "Board hinzufügen"
 }

@@ -40,8 +40,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('WALLET'), findsOneWidget);
-    expect(find.text('皮夾'), findsOneWidget);
+    expect(find.text('皮夾'), findsWidgets);
     await _scrollWallet(tester);
     expect(find.text('真人驗證'), findsOneWidget);
     expect(find.text('有效'), findsOneWidget);

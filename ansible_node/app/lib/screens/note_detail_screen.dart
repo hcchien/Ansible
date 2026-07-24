@@ -37,7 +37,8 @@ class NoteDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    note.title ?? 'Untitled note',
+                    note.title ??
+                        context.uiCopy(zh: '未命名筆記', en: 'Untitled note'),
                     style: const TextStyle(
                       fontSize: 30,
                       height: 1.2,
@@ -78,11 +79,14 @@ class NoteDetailScreen extends StatelessWidget {
     return '${local.year}.${local.month.toString().padLeft(2, '0')}.${local.day.toString().padLeft(2, '0')}';
   }
 
-  static String _visibilityLabel(ContentVisibility visibility) {
+  static String _visibilityLabel(
+    BuildContext context,
+    ContentVisibility visibility,
+  ) {
     return switch (visibility) {
-      ContentVisibility.private => 'private',
-      ContentVisibility.unlisted => 'unlisted',
-      ContentVisibility.public => 'public',
+      ContentVisibility.private => context.uiCopy(zh: '私人', en: 'private'),
+      ContentVisibility.unlisted => context.uiCopy(zh: '未列出', en: 'unlisted'),
+      ContentVisibility.public => context.uiCopy(zh: '公開', en: 'public'),
     };
   }
 
@@ -125,7 +129,7 @@ class _TopBar extends StatelessWidget {
           ),
           const Spacer(),
           AnsibleStatusChip(
-            label: NoteDetailScreen._visibilityLabel(note.visibility),
+            label: NoteDetailScreen._visibilityLabel(context, note.visibility),
             dot: NoteDetailScreen._visibilityColor(note.visibility),
           ),
           const SizedBox(width: 10),

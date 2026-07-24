@@ -64,8 +64,8 @@ void main() {
     );
 
     expect(find.text('Public note'), findsOneWidget);
-    expect(find.text('public'), findsOneWidget);
-    expect(find.text('private'), findsNothing);
+    expect(find.text('公開'), findsOneWidget);
+    expect(find.text('私人'), findsNothing);
   });
 
   testWidgets('note workspace can update note visibility', (tester) async {

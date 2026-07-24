@@ -24,7 +24,7 @@ void main() {
     expect(find.text('摘要審閱'), findsOneWidget);
     expect(find.textContaining('Discussion title'), findsWidgets);
 
-    await tester.tap(find.text('Save as private note'));
+    await tester.tap(find.text('儲存為私人筆記'));
     await tester.pumpAndSettle();
     expect(saved, isTrue);
   });

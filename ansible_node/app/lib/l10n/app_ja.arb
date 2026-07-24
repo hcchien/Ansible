@@ -1,5 +1,6 @@
 {
   "@@locale": "ja",
+  "appTitle": "Elix",
   "settingsTitle": "設定",
   "done": "完了",
   "localIdentity": "ローカル ID",
@@ -9,6 +10,13 @@
   "wallet": "ウォレット",
   "walletSubtitleEmpty": "認証情報はありません",
   "walletSubtitleCount": "{count} 件の認証情報",
+  "@walletSubtitleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "empty": "空",
   "sync": "同期",
   "syncSubtitle": "Elix Relay の設定",
@@ -24,10 +32,14 @@
   "inboxSubtitle": "返信、新しいメンバー、同期",
   "notifications": "通知",
   "notificationsSubtitle": "通知する項目を選択",
+  "light": "ライト",
   "readingPreferences": "表示設定",
   "readingPreferencesSubtitle": "文字サイズ、行間、テーマ",
   "defaultValue": "標準",
   "boundaries": "境界",
+  "lock": "ロック",
+  "lockSubtitle": "アプリを空白のカバーに切り替えます",
+  "off": "オフ",
   "backupRestore": "バックアップと復元",
   "backupRestoreSubtitle": "パスフレーズ、新しいデバイスへの移行",
   "notSet": "未設定",
@@ -40,22 +52,6 @@
   "signOutSubtitle": "データを保持し、次回はパスキーを使用",
   "languagePickerTitle": "言語",
   "languageSystemDescription": "このデバイスの言語設定を使用",
-  "cancel": "キャンセル",
-  "search": "検索",
-  "settingsNav": "設定",
-  "networkOnline": "オンライン",
-  "networkOffline": "オフライン",
-  "networkChecking": "確認中",
-  "syncFailedMessage": "同期に失敗しました：{error}",
-  "justNow": "たった今",
-  "minutesAgo": "{count}分前",
-  "hoursAgo": "{count}時間前",
-  "daysAgo": "{count}日前",
-  "appTitle": "Elix",
-  "light": "ライト",
-  "lock": "ロック",
-  "lockSubtitle": "アプリを空白のカバーに切り替えます",
-  "off": "オフ",
   "feedAll": "フィード",
   "feedFollowing": "フォロー中",
   "feedBoards": "ボード",
@@ -67,10 +63,38 @@
   "searchScopeCircle": "サークル",
   "searchScopePublic": "公開",
   "searchResultCount": "{count} 件見つかりました",
+  "@searchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "searchSortRelevant": "↓ 関連度順",
   "notesSectionCount": "ノート · {count}",
+  "@notesSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "murmursSectionCount": "つぶやき · {count}",
+  "@murmursSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "threadsSectionCount": "スレッド · {count}",
+  "@threadsSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noNotesYet": "ノートはまだありません",
   "noMatchingNotes": "一致するノートはありません",
   "noMurmursYet": "つぶやきはまだありません",
@@ -93,11 +117,23 @@
   "deletedMurmur": "つぶやきを削除しました",
   "unused": "未使用",
   "referenceCount": "{count} 件の参照",
+  "@referenceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "search": "検索",
+  "settingsNav": "設定",
   "publicIdentity": "公開 ID",
   "murmurTab": "つぶやき",
   "notesTab": "ノート",
   "discussionsTab": "ボード",
   "discussionsTabCompact": "ボード",
+  "networkOnline": "オンライン",
+  "networkOffline": "オフライン",
+  "networkChecking": "確認中",
   "workingNotes": "作業中のノート",
   "newest": "新しい順",
   "oldest": "古い順",
@@ -106,6 +142,7 @@
   "noLooseMurmursYet": "取り込めるつぶやきはまだありません。",
   "lineage": "出典",
   "noteCreated": "ノートを作成しました",
+  "cancel": "キャンセル",
   "draftLocal": "下書きはローカルに保存されます",
   "editing": "編集中",
   "noteTitleHint": "ノートのタイトル",
@@ -138,11 +175,58 @@
   "uncategorized": "未分類",
   "addForumHostFirst": "先に同期設定で Elix Relay を追加してください。議論ボードは Elix Relay 上に作成されます。",
   "syncedPublicCount": "公開項目 {count} 件を同期しました",
+  "@syncedPublicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "publicQueuedRelayFailed": "公開内容をキューに追加しましたが、Relay への公開に失敗しました",
   "noWritableNostrRelay": "書き込み可能な Nostr Relay が設定されていません",
+  "syncFailedMessage": "同期に失敗しました：{error}",
+  "@syncFailedMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "justNow": "たった今",
+  "minutesAgo": "{count}分前",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count}時間前",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count}日前",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "circleSection": "サークル",
   "allActivity": "すべてのアクティビティ",
   "boardCount": "{count} ボード",
+  "@boardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "manageSubscriptions": "購読を管理",
   "newPost": "新しい投稿",
   "addBoardTooltip": "ボードを追加",
@@ -159,10 +243,24 @@
   "publicOpen": "ユーザー + ボード",
   "noContentYet": "（内容はまだありません）",
   "commentsCount": "{count} 件のコメント",
+  "@commentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "manageBoards": "ボードを管理",
   "noBoardsYet": "ボードはまだありません",
   "deleteBoard": "ボードを削除",
   "deleteBoardConfirm": "「{title}」を削除しますか？この操作は取り消せません。",
+  "@deleteBoardConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "delete": "削除",
   "close": "閉じる",
   "addBoard": "ボードを追加"

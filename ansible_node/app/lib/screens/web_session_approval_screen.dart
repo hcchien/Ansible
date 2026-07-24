@@ -198,9 +198,15 @@ class _ApprovalContent extends StatelessWidget {
           label: context.uiCopy(zh: '網站', en: 'Website'),
           value: challenge.webOrigin,
         ),
-        _DetailRow(label: 'Relay', value: challenge.relayOrigin),
+        _DetailRow(
+          label: context.uiCopy(zh: '同步站', en: 'Relay'),
+          value: challenge.relayOrigin,
+        ),
         if (challenge.audience != null && challenge.audience!.isNotEmpty)
-          _DetailRow(label: 'Forum Host', value: challenge.audience!),
+          _DetailRow(
+            label: context.uiCopy(zh: '討論區主機', en: 'Forum Host'),
+            value: challenge.audience!,
+          ),
         _DetailRow(label: 'DID', value: currentDid),
         _DetailRow(
           label: context.uiCopy(zh: '請求有效期限', en: 'Request expires'),

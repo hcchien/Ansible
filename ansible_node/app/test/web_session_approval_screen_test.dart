@@ -26,7 +26,7 @@ void main() {
     expect(find.text('核准網頁工作階段'), findsOneWidget);
     expect(find.text('https://elix.cool'), findsOneWidget);
     expect(find.text('https://relay.elix.cool'), findsOneWidget);
-    expect(find.text('Forum Host'), findsOneWidget);
+    expect(find.text('討論區主機'), findsOneWidget);
     expect(find.text('https://forum.elix.cool'), findsOneWidget);
     expect(find.text('forum:read'), findsOneWidget);
     expect(find.text('forum:post'), findsOneWidget);

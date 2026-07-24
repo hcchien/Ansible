@@ -1,5 +1,6 @@
 {
   "@@locale": "fr",
+  "appTitle": "Élix",
   "settingsTitle": "RÉGLAGES",
   "done": "Terminé",
   "localIdentity": "Identité locale",
@@ -9,6 +10,13 @@
   "wallet": "Portefeuille",
   "walletSubtitleEmpty": "Aucun justificatif",
   "walletSubtitleCount": "{count} justificatifs",
+  "@walletSubtitleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "empty": "Vide",
   "sync": "Synchronisation",
   "syncSubtitle": "Réglages Elix Relay",
@@ -24,10 +32,14 @@
   "inboxSubtitle": "Réponses, nouveaux membres, synchronisation",
   "notifications": "Notifications",
   "notificationsSubtitle": "Choisir ce qui peut vous interrompre",
+  "light": "Lumière",
   "readingPreferences": "Préférences de lecture",
   "readingPreferencesSubtitle": "Taille du texte, interligne, thème",
   "defaultValue": "Par défaut",
   "boundaries": "Limites",
+  "lock": "Verrouillage",
+  "lockSubtitle": "Transformez l'application en une couverture vierge",
+  "off": "Désactivé",
   "backupRestore": "Sauvegarde et restauration",
   "backupRestoreSubtitle": "Phrase secrète, migration vers un nouvel appareil",
   "notSet": "Non défini",
@@ -40,15 +52,216 @@
   "signOutSubtitle": "Conserver les données ; passkey requise la prochaine fois",
   "languagePickerTitle": "Langue",
   "languageSystemDescription": "Utiliser la langue de cet appareil",
-  "cancel": "Annuler",
+  "feedAll": "Alimentation",
+  "feedFollowing": "Suivant",
+  "feedBoards": "Planches",
+  "searchBack": "← Prairie",
+  "clear": "Clair",
+  "searchHint": "Rechercher des murmures, des notes, des discussions",
+  "searchScopeAll": "Tous",
+  "searchScopeMy": "Mon",
+  "searchScopeCircle": "Cercle",
+  "searchScopePublic": "Publique",
+  "searchResultCount": "Mentions {count} trouvées",
+  "@searchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchSortRelevant": "↓ Pertinent",
+  "notesSectionCount": "Remarques · {count}",
+  "@notesSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "murmursSectionCount": "Murmures · {count}",
+  "@murmursSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "threadsSectionCount": "Sujets · {count}",
+  "@threadsSectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noNotesYet": "Aucune note pour l'instant",
+  "noMatchingNotes": "Aucune note correspondante",
+  "noMurmursYet": "Pas encore de murmures",
+  "noMatchingMurmurs": "Aucun murmure correspondant",
+  "noThreadsYet": "Pas encore de sujets",
+  "noMatchingThreads": "Aucun fil correspondant",
+  "murmurTitle": "MURMURE",
+  "local": "Locale",
+  "send": "Envoyer",
+  "murmurPrompt": "Quelle chose à moitié formée\nest dans votre esprit ?",
+  "murmurPrivateHint": "Une phrase, un instinct, une question non résolue ont leur place ici. Personne d'autre ne le verra.",
+  "murmurSyncHint": "Une phrase, un instinct, une question non résolue ont leur place ici. Celui-ci sera marqué synchronisable.",
+  "murmurInputHint": "Ce à quoi j'ai pensé ces derniers temps, c'est",
+  "murmurPrivateVisibilityHint": "Seulement pour moi",
+  "murmurUnlistedVisibilityHint": "Synchronisable mais non répertorié",
+  "murmurPublicVisibilityHint": "Publier publiquement",
+  "looseMurmurs": "Lâche",
+  "looseMurmursEmpty": "Les murmures envoyés restent ici en premier.",
+  "sent": "Envoyé",
+  "deletedMurmur": "Murmure supprimé",
+  "unused": "Inutilisé",
+  "referenceCount": "Références {count}",
+  "@referenceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "search": "Rechercher",
   "settingsNav": "Réglages",
+  "publicIdentity": "Identité publique",
+  "murmurTab": "Murmure",
+  "notesTab": "Remarques",
+  "discussionsTab": "Planches",
+  "discussionsTabCompact": "Planches",
   "networkOnline": "En ligne",
   "networkOffline": "Hors ligne",
   "networkChecking": "Vérification",
+  "workingNotes": "Notes de travail",
+  "newest": "Le plus récent",
+  "oldest": "Le plus ancien",
+  "newNote": "Nouvelle remarque",
+  "drawInAction": "↗ Attirer",
+  "noLooseMurmursYet": "Pas encore de murmures lâches.",
+  "lineage": "Lignée",
+  "noteCreated": "Note créée",
+  "cancel": "Annuler",
+  "draftLocal": "Le tirage reste local",
+  "editing": "Édition",
+  "noteTitleHint": "Titre de la note",
+  "noteTitleRequired": "Entrez un titre",
+  "noteBodyHint": "Continuez à écrire, ou faites glisser un murmure d'en bas...",
+  "noteBodyRequired": "Saisir le corps de la note",
+  "noteSubjectLabel": "cette note",
+  "drawIn": "Dessiner",
+  "noMurmursToDraw": "Aucun murmure à capter pour l’instant.",
+  "noNotesDescription": "Les murmures restent d'abord lâches localement ; quand ils commencent à se connecter, façonnez-les en une note.",
+  "noteUpdated": "Remarque mise à jour",
+  "visibilityUpdated": "Visibilité mise à jour",
+  "lineageDescription": "Les notes façonnées à partir de murmures conservent ici leur lignée source.",
+  "notePrivateSummary": "Personne d'autre ne peut encore voir ça",
+  "noteNostrSummary": "La publication envoie ceci aux relais Nostr",
+  "noteActivityPubSummary": "La publication envoie ceci au relais ActivityPub",
+  "noteBothSummary": "La publication envoie cela aux relais Nostr et au relais ActivityPub",
+  "noteLocalPublicSummary": "État public, mais pas encore envoyé",
+  "createDiscussion": "Créer une discussion",
+  "chooseHostedBoard": "Choisir le tableau",
+  "hostedBoardMissing": "Rejoignez ou créez d'abord un forum Elix Relay",
+  "hostedBoardRequired": "Choisissez une planche",
+  "titleLabel": "Titre",
+  "discussionTitleHint": "Entrez le titre de la discussion",
+  "titleRequired": "Le titre est requis",
+  "contentLabel": "Contenu",
+  "discussionContentHint": "Entrez le contenu de la discussion",
+  "contentRequired": "Le contenu est requis",
+  "create": "Créer",
+  "uncategorized": "Non classé",
+  "addForumHostFirst": "Ajoutez d’abord un relais Elix dans les paramètres de synchronisation. Les forums de discussion sont créés par Elix Relays.",
+  "syncedPublicCount": "Éléments publics {count} synchronisés",
+  "@syncedPublicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publicQueuedRelayFailed": "Le contenu public a été mis en file d'attente, mais la publication relais a échoué",
+  "noWritableNostrRelay": "Aucun relais Nostr inscriptible n'est configuré",
   "syncFailedMessage": "Échec de la synchronisation : {error}",
+  "@syncFailedMessage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "justNow": "À l’instant",
   "minutesAgo": "Il y a {count} min",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "hoursAgo": "Il y a {count} h",
-  "daysAgo": "Il y a {count} j"
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "Il y a {count} j",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "circleSection": "Cercle",
+  "allActivity": "Toutes les activités",
+  "boardCount": "Cartes {count}",
+  "@boardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageSubscriptions": "Gérer les abonnements",
+  "newPost": "Nouveau message",
+  "addBoardTooltip": "Ajouter un tableau",
+  "newDiscussion": "Nouveau fil de discussion",
+  "createNewDiscussion": "Créer un fil de discussion sur le forum",
+  "boardsShort": "Planches",
+  "manageBoardsShort": "Gérer les tableaux",
+  "aiAssistant": "Assistant IA",
+  "aiSummary": "Résumé de l'IA",
+  "noPostsYet": "Aucune publication dans le fil pour l'instant",
+  "subscribe": "S'abonner",
+  "discussionAreaTitle": "Alimentation",
+  "feedSocialIdentitySubtitle": "Les notes et les murmures sont des messages personnels. Les personnes qui vous suivent les voient dans leur flux ; les tableaux ajoutent des discussions partagées.",
+  "publicOpen": "Personnes + tableaux",
+  "noContentYet": "(Pas encore de contenu)",
+  "commentsCount": "Commentaires sur {count}",
+  "@commentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageBoards": "Gérer les tableaux",
+  "noBoardsYet": "Pas encore de tableaux",
+  "deleteBoard": "Supprimer le tableau",
+  "deleteBoardConfirm": "Supprimer \"{title}\" ? Cela ne peut pas être annulé.",
+  "@deleteBoardConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Supprimer",
+  "close": "Fermer",
+  "addBoard": "Ajouter un tableau"
 }

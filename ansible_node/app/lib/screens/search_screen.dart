@@ -66,7 +66,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final total = results.length;
 
     return AnsibleScreenScaffold(
-      title: 'SEARCH',
+      title: context.uiCopy(zh: '搜尋', en: 'Search'),
       leadingLabel: l10n.searchBack,
       child: ListView(
         children: [

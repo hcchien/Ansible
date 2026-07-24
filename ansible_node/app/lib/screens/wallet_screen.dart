@@ -94,7 +94,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget build(BuildContext context) {
     final text = SubpageL10n.of(context);
     return AnsibleScreenScaffold(
-      title: 'WALLET',
+      title: context.uiCopy(zh: '皮夾', en: 'Wallet'),
       leadingLabel: text.t('backSettings'),
       trailing: IconButton(
         onPressed: _reload,

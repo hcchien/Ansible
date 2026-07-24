@@ -19,11 +19,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Web sessions'), findsOneWidget);
+    expect(find.text('網頁工作階段'), findsOneWidget);
     expect(find.text('https://elix.cool'), findsOneWidget);
     expect(find.textContaining('app_device_abc'), findsOneWidget);
 
-    await tester.tap(find.text('Revoke').first);
+    await tester.tap(find.text('撤銷').first);
     await tester.pumpAndSettle();
 
     expect(client.revokedSessionId, 'wsi_other');

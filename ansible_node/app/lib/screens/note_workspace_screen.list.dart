@@ -206,7 +206,7 @@ class _VisibilityMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = contentVisibilityMeta(note.visibility);
+    final meta = contentVisibilityMeta(context, note.visibility);
     final chip = AnsibleStatusChip(
       key: Key('visibility_chip_${note.id}'),
       label: meta.label,

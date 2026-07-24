@@ -1,6 +1,7 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/messenger_sync_service.dart';
@@ -40,7 +41,7 @@ class InboxScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = SubpageL10n.of(context);
     return AnsibleScreenScaffold(
-      title: 'INBOX',
+      title: context.uiCopy(zh: '收信匣', en: 'Inbox'),
       leadingLabel: text.t('backWorkspace'),
       child: repository == null
           ? const _EmptyInbox()

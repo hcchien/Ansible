@@ -202,8 +202,8 @@ class _MurmurScreenState extends State<MurmurScreen> {
                     borderRadius: BorderRadius.circular(999),
                     onTap: _showVisibilitySheet,
                     child: AnsibleStatusChip(
-                      label: contentVisibilityMeta(_visibility).label,
-                      dot: contentVisibilityMeta(_visibility).dot,
+                      label: contentVisibilityMeta(context, _visibility).label,
+                      dot: contentVisibilityMeta(context, _visibility).dot,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -297,8 +297,11 @@ class _RecentMurmurRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 AnsibleStatusChip(
-                  label: contentVisibilityMeta(murmur.visibility).label,
-                  dot: contentVisibilityMeta(murmur.visibility).dot,
+                  label: contentVisibilityMeta(
+                    context,
+                    murmur.visibility,
+                  ).label,
+                  dot: contentVisibilityMeta(context, murmur.visibility).dot,
                 ),
                 const Spacer(),
                 Text(
