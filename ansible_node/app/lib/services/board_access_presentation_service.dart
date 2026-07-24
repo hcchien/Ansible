@@ -15,6 +15,12 @@ class BoardAccessException implements Exception {
   const BoardAccessException(this.code, {this.statusCode});
   final String code;
   final int? statusCode;
+
+  @override
+  String toString() {
+    final status = statusCode == null ? '' : ' status=$statusCode';
+    return 'BoardAccessException($code$status)';
+  }
 }
 
 class BoardAccessCapability {

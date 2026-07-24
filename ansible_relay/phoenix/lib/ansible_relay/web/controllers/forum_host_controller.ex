@@ -8,6 +8,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   """
 
   import Plug.Conn
+  require Logger
   alias AnsibleRelay.{AbuseDetector, VpVerifier}
 
   alias AnsibleRelay.ForumHost.{
@@ -201,7 +202,11 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
     with true <- is_binary(state) and (is_binary(vp_token) or is_map(vp_token)),
          board when not is_nil(board) <- PostingGate.get_board(board_id),
-         {:ok, session} <- PresentationSession.consume(state, board_id),
+         # PresentationSession predates canonical numeric board IDs and stores
+         # the durable hosted-board key.  The route may use the canonical ID,
+         # so consume against the resolved board's durable key; policy and
+         # canonical board binding are still checked below.
+         {:ok, session} <- PresentationSession.consume(state, board.hosted_board_id),
          true <-
            session.policy_version == board.access_policy_version and
              session.audience == Store.base_url() and
@@ -237,9 +242,20 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
         device_key_thumbprint: grant.device_key_thumbprint
       })
     else
-      nil -> send_json(conn, 404, %{error: "board_not_found"})
-      {:error, reason} -> send_json(conn, 403, %{error: error_string(reason)})
-      _ -> send_json(conn, 400, %{error: "invalid_presentation"})
+      nil ->
+        send_json(conn, 404, %{error: "board_not_found"})
+
+      {:error, reason} ->
+        # Reason codes identify a rejected access rule without logging a
+        # presentation, VC, holder DID, or any other identity material.
+        Logger.warning(
+          "board presentation rejected board_id=#{board_id} action=#{action} reason=#{error_string(reason)}"
+        )
+
+        send_json(conn, 403, %{error: error_string(reason)})
+
+      _ ->
+        send_json(conn, 400, %{error: "invalid_presentation"})
     end
   end
 

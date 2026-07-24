@@ -10,6 +10,16 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('board access exception preserves the safe server reason code', () {
+    expect(
+      const BoardAccessException(
+        'credential_status_unavailable',
+        statusCode: 403,
+      ).toString(),
+      'BoardAccessException(credential_status_unavailable status=403)',
+    );
+  });
+
   test('hardware holder JWT binds a canonical P-256 JWK', () async {
     final key = _FakeHolderKey();
     final signer = HardwareHolderJwtSigner(key: key);
