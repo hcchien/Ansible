@@ -326,6 +326,26 @@ class MainPanel extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(color: s.surface, shape: BoxShape.circle),
             child: IconButton(
+              key: const Key('compact_home_sync_button'),
+              padding: EdgeInsets.zero,
+              onPressed: syncing ? null : onSync,
+              icon: syncing
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync, size: 20),
+              color: s.foreground,
+              tooltip: context.uiCopy(zh: '同步', en: 'Sync'),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: s.surface, shape: BoxShape.circle),
+            child: IconButton(
               padding: EdgeInsets.zero,
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(

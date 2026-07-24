@@ -120,6 +120,39 @@ void main() {
   );
 
   test(
+    'normalizes legacy raw P-256 signatures to DER before verification',
+    () async {
+      String? verifiedSignature;
+      final verifier = RemoteOpSignatureVerifier(
+        verify:
+            ({
+              required publicKeyHex,
+              required message,
+              required signatureHex,
+            }) async {
+              verifiedSignature = signatureHex;
+              return true;
+            },
+      );
+      final entry = _signedActivityJson(
+        logId: 1,
+        opId: 'op-p256',
+        authorDid: 'did:elix:local',
+        entityType: 'note',
+        entityId: 'note-1',
+        opType: 'insert',
+        payload: 'payload-base64',
+        publicKeyHex: '04${'11' * 64}',
+        signature: '${'80'}${'00' * 31}${'01'}${'00' * 31}',
+      );
+
+      expect(await verifier.isTrusted(entry), isTrue);
+      expect(verifiedSignature, startsWith('304502210080'));
+      expect(verifiedSignature, endsWith('022001${'00' * 31}'));
+    },
+  );
+
+  test(
     'RemoteOpSignatureVerifier rejects op when DID is not registered in relay',
     () async {
       final verifier = RemoteOpSignatureVerifier(

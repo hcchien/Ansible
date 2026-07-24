@@ -268,7 +268,8 @@ class RemoteOpSignatureVerifier {
     final isP256 =
         _isHex(publicKeyHex, 130) &&
         publicKeyHex.startsWith('04') &&
-        RegExp(r'^[0-9a-fA-F]{136,144}$').hasMatch(signature!);
+        (RegExp(r'^[0-9a-fA-F]{128}$').hasMatch(signature!) ||
+            RegExp(r'^[0-9a-fA-F]{136,144}$').hasMatch(signature));
     if (!isEd25519 && !isP256) {
       return false;
     }
@@ -284,10 +285,13 @@ class RemoteOpSignatureVerifier {
       opType: opType!,
       payload: payload!,
     );
+    final verificationSignature = isP256 && signature.length == 128
+        ? _rawP256SignatureToDer(signature)
+        : signature;
     final signatureValid = await _verify(
       publicKeyHex: publicKeyHex,
       message: utf8.encode(signingPayload),
-      signatureHex: signature,
+      signatureHex: verificationSignature,
     );
     if (!signatureValid) return false;
 
@@ -342,6 +346,32 @@ class RemoteOpSignatureVerifier {
   bool _isHex(String value, int expectedLength) {
     if (value.length != expectedLength) return false;
     return RegExp(r'^[0-9a-fA-F]+$').hasMatch(value);
+  }
+
+  /// Converts the fixed-width IEEE P1363 P-256 form (`r || s`) used by early
+  /// Relay ops into the ASN.1 DER form expected by CryptoKit. Both encodings
+  /// represent the same ECDSA signature; no trust decision is weakened.
+  String _rawP256SignatureToDer(String rawHex) {
+    List<int> integerBytes(String value) {
+      final bytes = <int>[
+        for (var i = 0; i < value.length; i += 2)
+          int.parse(value.substring(i, i + 2), radix: 16),
+      ];
+      while (bytes.length > 1 && bytes.first == 0) {
+        bytes.removeAt(0);
+      }
+      if ((bytes.first & 0x80) != 0) bytes.insert(0, 0);
+      return bytes;
+    }
+
+    final r = integerBytes(rawHex.substring(0, 64));
+    final s = integerBytes(rawHex.substring(64));
+    final sequence = <int>[0x02, r.length, ...r, 0x02, s.length, ...s];
+    return <int>[
+      0x30,
+      sequence.length,
+      ...sequence,
+    ].map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
   }
 
   String _snakeCase(String key) {
