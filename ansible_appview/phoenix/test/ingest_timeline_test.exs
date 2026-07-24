@@ -137,7 +137,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert length(again.items) == 1
   end
 
-  test "board feeds never include a different board that shares an id suffix" do
+  test "board feeds isolate ids while retaining explicitly delimited legacy ids" do
     {pub, priv} = keypair()
 
     ops = [
@@ -145,7 +145,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
         log_id: 1,
         author_did: "did:key:author",
         entity_type: "thread",
-        entity_id: "e-election",
+        entity_id: "e-election-current",
         pub: pub,
         priv: priv,
         payload: %{"boardId" => "2026", "title" => "選舉討論"}
@@ -154,20 +154,29 @@ defmodule AnsibleAppview.IngestTimelineTest do
         log_id: 2,
         author_did: "did:key:author",
         entity_type: "thread",
-        entity_id: "e-fifa",
+        entity_id: "e-election-legacy",
         pub: pub,
         priv: priv,
-        payload: %{"boardId" => "FIFA2026", "title" => "世界盃討論"}
+        payload: %{"boardId" => "1784609094692_2026", "title" => "選舉舊文"}
+      ),
+      signed_op(
+        log_id: 3,
+        author_did: "did:key:author",
+        entity_type: "thread",
+        entity_id: "e-fifa-legacy",
+        pub: pub,
+        priv: priv,
+        payload: %{"boardId" => "1784609094692_fifa2026", "title" => "世界盃討論"}
       )
     ]
 
-    {2, 2} = Folder.apply_ops(ops)
+    {3, 3} = Folder.apply_ops(ops)
 
     election = Timeline.for_board("2026", nil, 50)
-    fifa = Timeline.for_board("FIFA2026", nil, 50)
+    fifa = Timeline.for_board("fifa2026", nil, 50)
 
-    assert Enum.map(election.items, & &1.entity_id) == ["e-election"]
-    assert Enum.map(fifa.items, & &1.entity_id) == ["e-fifa"]
+    assert Enum.map(election.items, & &1.entity_id) == ["e-election-legacy", "e-election-current"]
+    assert Enum.map(fifa.items, & &1.entity_id) == ["e-fifa-legacy"]
   end
 
   test "folds federated follow ops into the graph; localOnly ignored; delete removes" do

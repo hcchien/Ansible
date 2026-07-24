@@ -245,13 +245,16 @@ defmodule AnsibleAppview.Timeline do
 
   @spec for_board(String.t(), integer() | nil, pos_integer()) :: map()
   def for_board(board_id, cursor, limit) do
+    legacy_namespaced_id = "%\\_" <> escape_like(board_id)
+
     page(
       from(f in FeedItem,
-        # A board feed is an exact Forum Host projection.  Matching a suffix
-        # (for example `FIFA2026` while reading `2026`) mixes distinct board
-        # conversations and makes the client render their posts under the
-        # wrong board context.
-        where: f.board_id == ^board_id
+        # Current publications use the hosted board id verbatim. Earlier
+        # mobile clients persisted `<local-id>_<hosted-board-id>`, so retain
+        # that explicitly delimited legacy form. The escaped underscore is a
+        # literal separator, not SQL LIKE's one-character wildcard: otherwise
+        # reading `2026` also includes `fifa2026`.
+        where: f.board_id == ^board_id or like(f.board_id, ^legacy_namespaced_id)
       ),
       cursor,
       limit
@@ -364,4 +367,11 @@ defmodule AnsibleAppview.Timeline do
   end
 
   defp author_handle(_did), do: nil
+
+  defp escape_like(value) do
+    value
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
+  end
 end
