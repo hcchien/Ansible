@@ -213,6 +213,10 @@ void main() {
 
     expect(_screenStyleColor(tester, 'feed'), AnsibleDesign.paper);
 
+    // The settings scroll hides the compact navigation. Return toward the top
+    // before using the Forum tab, as a user would.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('board_switch_forum')));
     await tester.pumpAndSettle();
 
@@ -278,6 +282,10 @@ void main() {
       120,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(
+      find.byKey(const Key('settings_style_choice_personal_paper')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('settings_style_choice_personal_paper')),
     );

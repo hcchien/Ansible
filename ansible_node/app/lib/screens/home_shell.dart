@@ -1637,7 +1637,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 const {'read': true, 'write': true},
           ),
           postingPolicy: Map<String, Object?>.from(
-            remoteBoard['posting_policy'] as Map? ?? postingPolicy ?? const {},
+            remoteBoard['posting_policy'] as Map? ?? postingPolicy,
           ),
           accessPolicy: Map<String, Object?>.from(
             remoteBoard['access_policy'] as Map? ?? accessPolicy,

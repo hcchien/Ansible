@@ -21,6 +21,7 @@ import 'package:ansible_node/screens/wallet_verifier_consent_screen.dart';
 import 'package:ansible_node/services/atproto_client.dart';
 import 'package:ansible_node/services/oid4vp_presentation_service.dart';
 import 'package:ansible_node/services/oid4vp_request.dart';
+import 'package:ansible_node/services/platform_capabilities.dart';
 import 'package:ansible_node/widgets/ai_provider_setup_sheet.dart';
 import 'package:ansible_node/widgets/content_visibility_sheet.dart';
 import 'package:ansible_node/widgets/feed_filter_tabs.dart';
@@ -220,6 +221,9 @@ void main() {
         CredentialIssuanceWizard(
           holderDid: 'did:plc:abcdefghijklmnop',
           walletRepository: InMemoryWalletRepository(),
+          platformCapabilities: PlatformCapabilities.forPlatform(
+            ElixPlatform.ios,
+          ),
         ),
         locale: const Locale('en'),
       );

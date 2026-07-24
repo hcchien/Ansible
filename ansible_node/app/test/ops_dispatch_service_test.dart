@@ -123,8 +123,9 @@ void main() {
         relayClient: RelayOpsClient(
           client: MockClient((_) async {
             calls += 1;
-            if (calls == 1)
+            if (calls == 1) {
               return http.Response('{"error":"server_error"}', 500);
+            }
             return http.Response('{"accepted":true,"log_id":1}', 202);
           }),
         ),
