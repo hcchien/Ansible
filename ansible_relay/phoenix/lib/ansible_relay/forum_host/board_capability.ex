@@ -29,7 +29,11 @@ defmodule AnsibleRelay.ForumHost.BoardCapability do
          token <- @prefix <> Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false),
          attrs <- %{
            capability_hash: hash(token),
-           hosted_board_id: board.hosted_board_id,
+           # Capability protocol identifiers are the public canonical numeric
+           # board IDs. The database primary key remains the legacy durable
+           # hosted key during migration, so never leak it into a DPoP-bound
+           # grant or ask the client to sign two different identifiers.
+           hosted_board_id: canonical_board_id(board),
            pairwise_subject_hash: hash(pairwise_subject),
            device_key_thumbprint: device_key_thumbprint,
            audience: audience,
@@ -51,8 +55,9 @@ defmodule AnsibleRelay.ForumHost.BoardCapability do
 
     with true <- is_binary(token) and String.starts_with?(token, @prefix),
          %ForumHostBoardAccessGrant{} = grant <- active_grant(hash(token), now),
-         %ForumHostBoard{} = board <- Repo.get(ForumHostBoard, board_id),
-         true <- grant.hosted_board_id == board_id,
+         %ForumHostBoard{} = board <- resolve_board(board_id),
+         canonical_board_id <- canonical_board_id(board),
+         true <- grant.hosted_board_id == canonical_board_id,
          true <- grant.audience == audience,
          true <- grant.policy_version == board.access_policy_version,
          true <- scope in grant.scopes,
@@ -65,14 +70,42 @@ defmodule AnsibleRelay.ForumHost.BoardCapability do
     end
   end
 
+  @doc "Returns the canonical external identifier for a hosted board."
+  def canonical_board_id(%ForumHostBoard{board_id: board_id})
+      when is_integer(board_id) and board_id > 0,
+      do: Integer.to_string(board_id)
+
+  def canonical_board_id(%ForumHostBoard{hosted_board_id: hosted_board_id}), do: hosted_board_id
+
+  @doc "Resolves a route or legacy hosted key to its canonical external board id."
+  def canonical_board_id_for(board_id) do
+    case resolve_board(board_id) do
+      %ForumHostBoard{} = board -> canonical_board_id(board)
+      nil -> nil
+    end
+  end
+
   def revoke_board(board_id, reason) when is_binary(reason) and reason != "" do
     now = DateTime.utc_now()
+    canonical_id = canonical_board_id_for(board_id)
 
     from(g in ForumHostBoardAccessGrant,
-      where: g.hosted_board_id == ^board_id and is_nil(g.revoked_at)
+      where: g.hosted_board_id in ^Enum.uniq([board_id, canonical_id]) and is_nil(g.revoked_at)
     )
     |> Repo.update_all(set: [revoked_at: now, revocation_reason: reason])
   end
+
+  defp resolve_board(board_id) when is_binary(board_id) do
+    case Integer.parse(board_id) do
+      {numeric_id, ""} when numeric_id > 0 ->
+        Repo.get_by(ForumHostBoard, board_id: numeric_id) || Repo.get(ForumHostBoard, board_id)
+
+      _ ->
+        Repo.get(ForumHostBoard, board_id)
+    end
+  end
+
+  defp resolve_board(_board_id), do: nil
 
   defp active_grant(capability_hash, now) do
     from(g in ForumHostBoardAccessGrant,

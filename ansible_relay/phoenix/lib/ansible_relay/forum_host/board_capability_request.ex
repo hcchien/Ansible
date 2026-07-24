@@ -12,7 +12,9 @@ defmodule AnsibleRelay.ForumHost.BoardCapabilityRequest do
   def authorize(conn, board_id, scope, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
 
-    with {:ok, token} <- header(conn, "x-elix-board-capability"),
+    with canonical_board_id when is_binary(canonical_board_id) <-
+           BoardCapability.canonical_board_id_for(board_id),
+         {:ok, token} <- header(conn, "x-elix-board-capability"),
          {:ok, encoded_jwk} <- header(conn, "x-elix-board-jwk"),
          {:ok, timestamp} <- header(conn, "x-elix-board-timestamp"),
          {:ok, request_nonce} <- header(conn, "x-elix-board-request-nonce"),
@@ -21,9 +23,10 @@ defmodule AnsibleRelay.ForumHost.BoardCapabilityRequest do
          true <- abs(DateTime.to_unix(now) - unix) <= @max_clock_skew,
          {:ok, jwk} <- decode_jwk(encoded_jwk),
          {:ok, public_hex, thumbprint} <- p256_material(jwk),
-         canonical <- canonical_request(conn, board_id, scope, timestamp, request_nonce, token),
+         canonical <-
+           canonical_request(conn, canonical_board_id, scope, timestamp, request_nonce, token),
          true <- SigVerifier.verify_identity("p256-sha256", public_hex, canonical, signature),
-         {:ok, grant} <- BoardCapability.authorize(token, board_id, scope, thumbprint),
+         {:ok, grant} <- BoardCapability.authorize(token, canonical_board_id, scope, thumbprint),
          :ok <- consume_proof(token, request_nonce, timestamp, now) do
       {:ok, grant}
     else

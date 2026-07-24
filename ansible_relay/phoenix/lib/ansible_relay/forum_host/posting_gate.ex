@@ -57,7 +57,7 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
           {:error, :board_capability_required}
 
         _credential_requirement ->
-          case BoardCapabilityRequest.authorize(conn, board.hosted_board_id, "post") do
+          case BoardCapabilityRequest.authorize(conn, Integer.to_string(board.board_id), "post") do
             {:ok, _grant} -> :ok
             {:error, reason} -> {:error, reason}
           end
