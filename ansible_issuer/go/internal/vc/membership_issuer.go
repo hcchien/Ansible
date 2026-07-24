@@ -18,6 +18,7 @@ type MembershipIssueRequest struct {
 	HolderPairwiseDID string
 	HolderJWK         map[string]string
 	MembershipClass   string
+	ForumHostID       string
 	BoardID           string
 	StatusListIndex   int64
 	StatusListBaseURL string
@@ -39,7 +40,7 @@ type IssuedJWTCredential struct {
 func IssueMembershipJWT(signer Signer, request MembershipIssueRequest) (IssuedJWTCredential, error) {
 	if signer == nil || signer.Algorithm() != eddsaJCS2022 || request.IssuerDID == "" ||
 		request.IssuerURL == "" || request.HolderPairwiseDID == "" || request.StatusListIndex < 0 ||
-		request.StatusListBaseURL == "" || request.BoardID == "" || request.HolderJWK["kty"] != "EC" || request.HolderJWK["crv"] != "P-256" ||
+		request.StatusListBaseURL == "" || request.ForumHostID == "" || request.BoardID == "" || request.HolderJWK["kty"] != "EC" || request.HolderJWK["crv"] != "P-256" ||
 		request.HolderJWK["x"] == "" || request.HolderJWK["y"] == "" {
 		return IssuedJWTCredential{}, errors.New("invalid membership credential request")
 	}
@@ -54,7 +55,7 @@ func IssueMembershipJWT(signer Signer, request MembershipIssueRequest) (IssuedJW
 	idDigest := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%s\x00%d\x00%d", request.IssuerDID, request.HolderPairwiseDID, request.StatusListIndex, now.UnixNano())))
 	credentialID := request.IssuerURL + "/credentials/" + hex.EncodeToString(idDigest[:16])
 	subject := map[string]any{
-		"id": request.HolderPairwiseDID, "organization_id": request.IssuerDID, "membership": true, "board_id": request.BoardID,
+		"id": request.HolderPairwiseDID, "organization_id": request.IssuerDID, "membership": true, "forum_host_id": request.ForumHostID, "board_id": request.BoardID,
 	}
 	if request.MembershipClass != "" {
 		subject["membership_class"] = request.MembershipClass

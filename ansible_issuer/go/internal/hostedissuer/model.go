@@ -80,6 +80,7 @@ type IssuanceRequest struct {
 	ApplicantHash        string         `json:"applicant_hash"`
 	PayloadHash          string         `json:"payload_hash"`
 	MembershipClass      string         `json:"membership_class"`
+	ForumHostID          string         `json:"forum_host_id"`
 	BoardID              string         `json:"board_id"`
 	State                string         `json:"state"`
 	ApprovalCount        int            `json:"approval_count"`

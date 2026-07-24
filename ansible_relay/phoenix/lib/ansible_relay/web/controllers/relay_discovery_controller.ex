@@ -56,6 +56,7 @@ defmodule AnsibleRelay.Web.Controllers.RelayDiscoveryController do
       Store.list_boards()
       |> Enum.map(fn board ->
         %{
+          board_id: board.board_id,
           hosted_board_id: board.hosted_board_id,
           title: board.title,
           description: board.description,

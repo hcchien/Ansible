@@ -43,6 +43,7 @@ void main() {
       final headers = await service.proofHeaders(
         capability: BoardAccessCapability(
           token: 'elix_board_v1_secret',
+          forumHostId: 'host-local-dev',
           boardId: 'members',
           host: Uri.parse('https://relay.example'),
           scopes: const ['read'],
@@ -68,7 +69,7 @@ void main() {
     },
   );
 
-  test('a credential issued for one board cannot authorize another', () async {
+  test('a credential issued for one host cannot authorize another', () async {
     final key = _FakeHolderKey();
     final holder = await HardwareHolderJwtSigner(key: key).pairwiseDid();
     final now = DateTime.utc(2026, 7, 22, 10);
@@ -89,6 +90,7 @@ void main() {
       encryptedPayload: jsonEncode({
         'format': 'jwt_vc_json',
         'compact': 'header.payload.signature',
+        'forum_host_id': 'host-local-dev',
         'board_id': 'board-a',
         'vc': {
           'type': [
@@ -99,6 +101,7 @@ void main() {
           'credentialSubject': {
             'id': holder,
             'membership': true,
+            'forum_host_id': 'host-local-dev',
             'board_id': 'board-a',
           },
         },
@@ -114,6 +117,8 @@ void main() {
           return http.Response(
             jsonEncode({
               'host': 'https://relay.example',
+              'forum_host_id': 'another-host',
+              'board_id': 'board-a',
               'policy': {
                 'read': {'requirement': 'member'},
                 'requirements': {
@@ -137,7 +142,7 @@ void main() {
     await expectLater(
       service.authorize(
         forumHost: Uri.parse('https://relay.example'),
-        boardId: 'board-b',
+        boardId: 'board-a',
         action: 'read',
       ),
       throwsA(
@@ -202,6 +207,8 @@ void main() {
             return http.Response(
               jsonEncode({
                 'host': 'https://relay.example',
+                'forum_host_id': 'host-local-dev',
+                'board_id': 'taiwan',
                 'policy': {
                   'post': {'requirement': 'member'},
                   'requirements': {

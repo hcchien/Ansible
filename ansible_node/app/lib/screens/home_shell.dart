@@ -1392,7 +1392,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         try {
           final boards = await client.listBoardsCreatedBy(did);
           for (final board in boards) {
-            final hostedBoardId = board['hosted_board_id'] as String?;
+            final hostedBoardId =
+                board['board_id']?.toString() ??
+                board['hosted_board_id'] as String?;
             if (hostedBoardId == null || hostedBoardId.isEmpty) continue;
             final localBoardId = '${host.id}_$hostedBoardId';
             if (existingLocalIds.contains(localBoardId)) continue;
@@ -1604,7 +1606,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       } finally {
         forumHostClient.close();
       }
-      final hostedBoardId = remoteBoard['hosted_board_id'] as String;
+      final hostedBoardId =
+          remoteBoard['board_id']?.toString() ??
+          remoteBoard['hosted_board_id'] as String;
       final localBoardId = '${forumHost.id}_$hostedBoardId';
       final remoteSlug = remoteBoard['slug'] as String? ?? _slugify(title);
       final slug = _uniqueLocalBoardSlug(remoteSlug, localBoardId);
@@ -1964,12 +1968,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         walletRepository: DriftWalletRepository(widget.db),
         reputationRepository: _didReputationRepo,
       ),
-      syncCapabilityService: (node) =>
-          SyncCapabilityService(
-            baseUrl: node.url,
-            holderDid: widget.did,
-            platformCapabilities: capabilities,
-          ),
+      syncCapabilityService: (node) => SyncCapabilityService(
+        baseUrl: node.url,
+        holderDid: widget.did,
+        platformCapabilities: capabilities,
+      ),
       allowIdentityWrites: capabilities.webAuthn,
       authorizeBoardRead: (board, requestUri) =>
           authorizeBoard(board, requestUri, 'read', 'GET'),

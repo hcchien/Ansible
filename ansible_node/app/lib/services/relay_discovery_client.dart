@@ -231,7 +231,8 @@ class DiscoveredBoard {
 
   factory DiscoveredBoard.fromJson(Map<String, dynamic> json) {
     return DiscoveredBoard(
-      hostedBoardId: json['hosted_board_id'] as String,
+      hostedBoardId:
+          json['board_id']?.toString() ?? json['hosted_board_id'] as String,
       title: json['title'] as String,
       description: json['description'] as String?,
       forumHostUrl: json['forum_host_url'] as String,

@@ -14,6 +14,7 @@ void main() {
     final offer = Oid4vciCredentialOffer.parse({
       'credential_issuer': 'https://issuer-dev.elix.cool/tenants/ntp',
       'credential_configuration_ids': ['PoliticalPartyMembershipCredential-v1'],
+      'forum_host_id': 'host-local-dev',
       'board_id': 'board-ntp-members',
       'grants': {
         'urn:ietf:params:oauth:grant-type:pre-authorized_code': {
@@ -25,6 +26,7 @@ void main() {
     expect(offer.credentialIssuer.host, 'issuer-dev.elix.cool');
     expect(offer.configurationId, 'PoliticalPartyMembershipCredential-v1');
     expect(offer.preAuthorizedCode, 'eix_offer_v1_secret');
+    expect(offer.forumHostId, 'host-local-dev');
     expect(offer.boardId, 'board-ntp-members');
   });
 
@@ -33,6 +35,7 @@ void main() {
       () => Oid4vciCredentialOffer.parse({
         'credential_issuer': 'http://issuer.example/tenants/ntp',
         'credential_configuration_ids': ['a', 'b'],
+        'forum_host_id': 'host-local-dev',
         'board_id': 'board-ntp-members',
         'grants': {
           'urn:ietf:params:oauth:grant-type:pre-authorized_code': {
@@ -79,6 +82,7 @@ void main() {
           'id': 'did:jwk:holder',
           'organization_id': 'did:elix:org:ntp',
           'membership': true,
+          'forum_host_id': 'host-local-dev',
           'board_id': 'board-ntp-members',
         },
       },
@@ -117,6 +121,7 @@ void main() {
           final body = bodies.last;
           expect(body['holder_pairwise_did'], startsWith('did:jwk:'));
           expect(body['membership_class'], 'member');
+          expect(body['forum_host_id'], 'host-local-dev');
           expect(body['board_id'], 'board-ntp-members');
           expect((body['proof_jwt'] as String).split('.'), hasLength(3));
           return http.Response(
@@ -130,6 +135,7 @@ void main() {
 
       final id = await client.applyForMembership(
         credentialIssuer: Uri.parse('https://issuer.example/tenants/party'),
+        forumHostId: 'host-local-dev',
         boardId: 'board-ntp-members',
       );
 

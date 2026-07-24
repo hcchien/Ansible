@@ -40,6 +40,7 @@ func TestCredentialOfferRequiresThresholdApprovedSingleUseRequest(t *testing.T) 
 		"party",
 		"did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6IngiLCJ5IjoieSJ9",
 		"member",
+		"host-local-dev",
 		"board-party-members",
 	)
 	if err != nil {
@@ -67,6 +68,9 @@ func TestCredentialOfferRequiresThresholdApprovedSingleUseRequest(t *testing.T) 
 	if err != nil || offer["credential_issuer"] != "https://issuer.example/tenants/party" {
 		t.Fatalf("approved request must create offer: offer=%+v err=%v", offer, err)
 	}
+	if offer["forum_host_id"] != "host-local-dev" || offer["board_id"] != "board-party-members" {
+		t.Fatalf("credential offer must preserve the canonical board scope: %+v", offer)
+	}
 	if _, err := issuer.CreateOfferForApprovedRequest("party", request.ID); !errors.Is(err, hostedissuer.ErrDelegationInvalid) {
 		t.Fatalf("issuance request must be single-use, got %v", err)
 	}
@@ -84,7 +88,7 @@ func TestIssuanceDenialIsTerminal(t *testing.T) {
 	_ = store.PutAdministrator("party", hostedissuer.Administrator{DID: "did:example:admin", State: "active"})
 	issuer := NewIssuer(NewStateService(NewMemoryStateStore(), func() time.Time { return now }), store, nil, "https://issuer.example", func() time.Time { return now })
 	_, _ = issuer.PutMembershipTemplate("party", 1, 30, true)
-	request, _ := issuer.CreateBoardIssuanceRequest("party", "did:jwk:holder", "member", "board-party-members")
+	request, _ := issuer.CreateBoardIssuanceRequest("party", "did:jwk:holder", "member", "host-local-dev", "board-party-members")
 	denied, err := issuer.DecideIssuanceRequest("party", request.ID, "did:example:admin", "deny", "deny-hash")
 	if err != nil || denied.State != "denied" {
 		t.Fatalf("denial must be terminal: request=%+v err=%v", denied, err)

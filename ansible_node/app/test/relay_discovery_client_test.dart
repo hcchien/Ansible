@@ -46,6 +46,7 @@ void main() {
             ],
             'featured_boards': [
               {
+                'board_id': 42,
                 'hosted_board_id': 'general',
                 'title': 'General',
                 'description': 'Start here',
@@ -74,7 +75,7 @@ void main() {
       discovery.featuredForumHosts.single.constitutionCompliance,
       'unknown',
     );
-    expect(discovery.featuredBoards.single.hostedBoardId, 'general');
+    expect(discovery.featuredBoards.single.hostedBoardId, '42');
     expect(discovery.featuredBoards.single.description, 'Start here');
     expect(discovery.featuredBoards.single.tags, ['intro']);
     expect(discovery.featuredBoards.single.language, 'en');

@@ -17,6 +17,7 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifier do
     issuer_resolver = Keyword.fetch!(opts, :issuer_resolver)
     status_checker = Keyword.fetch!(opts, :status_checker)
     board_id = Keyword.fetch!(opts, :board_id)
+    forum_host_id = Keyword.fetch!(opts, :forum_host_id)
 
     with {:ok, header, claims, signed, signature} <- decode_jwt(compact),
          :ok <- validate_vp_header(header),
@@ -37,7 +38,7 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifier do
          {:ok, rule} <- credential_rule(policy, requirement_name),
          {:ok, vc, credential_type} <- credential_payload(vc_claims, rule),
          :ok <- validate_configuration(vc, rule),
-         :ok <- validate_board_binding(vc, board_id),
+         :ok <- validate_board_binding(vc, forum_host_id, board_id),
          :ok <- validate_status(status_checker, vc, now),
          evidence <- evidence(vc_claims, vc, credential_type, rule),
          :ok <- BoardAccessPolicy.evaluate_for_requirement(policy, requirement_name, evidence) do
@@ -180,18 +181,22 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifier do
     end
   end
 
-  defp validate_board_binding(%{"credentialSubject" => %{"board_id" => board_id}}, board_id)
-       when is_binary(board_id) and board_id != "",
+  defp validate_board_binding(
+         %{"credentialSubject" => %{"forum_host_id" => forum_host_id, "board_id" => board_id}},
+         forum_host_id,
+         board_id
+       )
+       when is_binary(forum_host_id) and forum_host_id != "" and is_binary(board_id) and board_id != "",
        do: :ok
 
-  defp validate_board_binding(%{"credentialSubject" => subject}, _board_id)
+  defp validate_board_binding(%{"credentialSubject" => subject}, _forum_host_id, _board_id)
        when is_map(subject) do
-    if Map.has_key?(subject, "board_id"),
+    if Map.has_key?(subject, "board_id") or Map.has_key?(subject, "forum_host_id"),
       do: {:error, :wrong_board},
       else: :ok
   end
 
-  defp validate_board_binding(_, _), do: {:error, :invalid_credential}
+  defp validate_board_binding(_, _, _), do: {:error, :invalid_credential}
 
   defp validate_status(checker, vc, now) do
     case checker.(vc["credentialStatus"], now) do

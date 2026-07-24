@@ -136,7 +136,8 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
       board ->
         send_json(conn, 200, %{
-          board_id: board.hosted_board_id,
+          board_id: Integer.to_string(board.board_id),
+          forum_host_id: Store.forum_host_id(),
           host: Store.base_url(),
           policy: board.access_policy,
           policy_version: board.access_policy_version,
@@ -215,7 +216,8 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
              requirement,
              nonce,
              Store.base_url(),
-             board_id: board.hosted_board_id,
+             board_id: Integer.to_string(board.board_id),
+             forum_host_id: Store.forum_host_id(),
              issuer_resolver: &TrustedMembershipIssuer.resolve/2,
              status_checker: &credential_status/2
            ),

@@ -20,6 +20,7 @@ class BoardAccessException implements Exception {
 class BoardAccessCapability {
   const BoardAccessCapability({
     required this.token,
+    required this.forumHostId,
     required this.boardId,
     required this.host,
     required this.scopes,
@@ -28,6 +29,7 @@ class BoardAccessCapability {
   });
 
   final String token;
+  final String forumHostId;
   final String boardId;
   final Uri host;
   final List<String> scopes;
@@ -69,19 +71,22 @@ class BoardAccessPresentationService {
   final DidSigner _didSigner;
   final DateTime Function() _now;
 
-  HardwareHolderJwtSigner _signerForBoard(String boardId) =>
+  HardwareHolderJwtSigner _signerForBoard(String forumHostId, String boardId) =>
       HardwareHolderJwtSigner(
-        key: _holderKeyOverride ?? BoardHolderKeyService(boardId: boardId),
+        key:
+            _holderKeyOverride ??
+            BoardHolderKeyService(boardId: '$forumHostId\u0000$boardId'),
       );
 
-  Future<String> pairwiseSubject(String boardId) =>
-      _signerForBoard(boardId).pairwiseDid();
+  Future<String> pairwiseSubject(String forumHostId, String boardId) =>
+      _signerForBoard(forumHostId, boardId).pairwiseDid();
 
   /// Returns whether the local wallet can satisfy [action] without contacting
   /// the Forum Host. This is UX pre-validation only; the Forum Host always
   /// re-evaluates the live credential status when issuing a capability.
   Future<bool> canAuthorizeLocally({
     required Map<String, Object?> policy,
+    required String forumHostId,
     required String boardId,
     required String action,
   }) async {
@@ -98,10 +103,12 @@ class BoardAccessPresentationService {
       final credential = await _membershipCredentialForPolicy(
         policy: policy,
         action: action,
+        forumHostId: forumHostId,
         boardId: boardId,
       );
       return credential.compactJwt == null ||
-          credential.holderDid == await _signerForBoard(boardId).pairwiseDid();
+          credential.holderDid ==
+              await _signerForBoard(forumHostId, boardId).pairwiseDid();
     } on BoardAccessException {
       return false;
     }
@@ -112,11 +119,15 @@ class BoardAccessPresentationService {
     required String boardId,
     required String action,
   }) async {
-    final signer = _signerForBoard(boardId);
     final base = forumHost.resolve('/api/v1/forum-host/boards/$boardId');
     final requirements = _json(
       await _http.get(base.resolve('${base.path}/access-requirements')),
     );
+    final forumHostId = _string(requirements, 'forum_host_id');
+    if (_string(requirements, 'board_id') != boardId) {
+      throw const BoardAccessException('invalid_board_scope');
+    }
+    final signer = _signerForBoard(forumHostId, boardId);
     final audience = _string(requirements, 'host');
     final options = _json(
       await _http.post(
@@ -130,6 +141,7 @@ class BoardAccessPresentationService {
     final credential = await _membershipCredential(
       requirements: requirements,
       action: action,
+      forumHostId: forumHostId,
       boardId: boardId,
     );
     final vpToken = credential.compactJwt != null
@@ -162,6 +174,7 @@ class BoardAccessPresentationService {
     }
     return BoardAccessCapability(
       token: _string(response, 'board_capability'),
+      forumHostId: forumHostId,
       boardId: boardId,
       host: forumHost,
       scopes: scopes.cast<String>(),
@@ -192,7 +205,7 @@ class BoardAccessPresentationService {
       nonce,
       tokenHash,
     ].join('\n');
-    final signer = _signerForBoard(capability.boardId);
+    final signer = _signerForBoard(capability.forumHostId, capability.boardId);
     return {
       'x-elix-board-capability': capability.token,
       'x-elix-board-jwk': await signer.encodedJwk(),
@@ -262,6 +275,7 @@ class BoardAccessPresentationService {
   Future<_BoardCredential> _membershipCredential({
     required Map<String, Object?> requirements,
     required String action,
+    required String forumHostId,
     required String boardId,
   }) async {
     final policy = requirements['policy'];
@@ -269,6 +283,7 @@ class BoardAccessPresentationService {
     return _membershipCredentialForPolicy(
       policy: Map<String, Object?>.from(policy),
       action: action,
+      forumHostId: forumHostId,
       boardId: boardId,
     );
   }
@@ -276,6 +291,7 @@ class BoardAccessPresentationService {
   Future<_BoardCredential> _membershipCredentialForPolicy({
     required Map<String, Object?> policy,
     required String action,
+    required String forumHostId,
     required String boardId,
   }) async {
     final rule = _credentialRule(policy, action);
@@ -295,12 +311,14 @@ class BoardAccessPresentationService {
       }
       final decoded = await _codec.decode(payload);
       if (decoded['format'] == 'jwt_vc_json' &&
+          decoded['forum_host_id'] == forumHostId &&
           decoded['board_id'] == boardId &&
           decoded['compact'] is String &&
           decoded['vc'] is Map &&
           _credentialSatisfies(
             Map<String, Object?>.from(decoded['vc'] as Map),
             rule,
+            forumHostId,
             boardId,
           )) {
         return _BoardCredential(
@@ -308,7 +326,7 @@ class BoardAccessPresentationService {
           compactJwt: decoded['compact'] as String,
         );
       }
-      if (_credentialSatisfies(decoded, rule, boardId)) {
+      if (_credentialSatisfies(decoded, rule, forumHostId, boardId)) {
         return _BoardCredential(
           holderDid: metadata.holderDid,
           dataIntegrityCredential: decoded,
@@ -335,6 +353,7 @@ class BoardAccessPresentationService {
   bool _credentialSatisfies(
     Map<String, Object?> vc,
     Map<String, Object?> rule,
+    String forumHostId,
     String boardId,
   ) {
     final types = vc['type'];
@@ -351,7 +370,16 @@ class BoardAccessPresentationService {
       return false;
     }
     final credentialBoardId = _claimAtPath(vc, 'board_id');
-    if (credentialBoardId != null && credentialBoardId != boardId) return false;
+    final credentialForumHostId = _claimAtPath(vc, 'forum_host_id');
+    // Board-scoped membership credentials are bound to both dimensions.  A
+    // board policy may also accept a generic VC (for example citizenship),
+    // which deliberately has neither claim.
+    if (credentialForumHostId != null || credentialBoardId != null) {
+      if (credentialForumHostId != forumHostId ||
+          credentialBoardId != boardId) {
+        return false;
+      }
+    }
     final claims = rule['claims'];
     if (claims is! List) return false;
     for (final rawClaim in claims) {

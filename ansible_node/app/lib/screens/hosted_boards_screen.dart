@@ -23,7 +23,10 @@ class HostedBoardEntry {
 
   const HostedBoardEntry({required this.host, required this.board});
 
-  String get hostedBoardId => board['hosted_board_id'] as String? ?? '';
+  String get hostedBoardId =>
+      board['board_id']?.toString() ??
+      board['hosted_board_id'] as String? ??
+      '';
   String get title => board['title'] as String? ?? hostedBoardId;
   String? get description => board['description'] as String?;
   String get contentVisibility =>
@@ -129,7 +132,9 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
         try {
           final boards = await client.listBoardsCreatedBy(widget.did);
           for (final board in boards) {
-            final hostedBoardId = board['hosted_board_id'] as String?;
+            final hostedBoardId =
+                board['board_id']?.toString() ??
+                board['hosted_board_id'] as String?;
             if (hostedBoardId == null || hostedBoardId.isEmpty) continue;
             entries.add(HostedBoardEntry(host: host, board: board));
             if (board['access_policy'] is Map) {
@@ -332,19 +337,14 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          context.uiCopy(zh: '確認政策變更', en: 'Confirm policy change'),
-        ),
+        title: Text(context.uiCopy(zh: '確認政策變更', en: 'Confirm policy change')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                context.uiCopy(
-                  zh: '目前版本',
-                  en: 'Current version',
-                ),
+                context.uiCopy(zh: '目前版本', en: 'Current version'),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               SelectableText(
@@ -435,9 +435,8 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _pendingPolicyEffectiveAt[
-          _policyKey(entry.host, entry.hostedBoardId)
-        ] = effectiveAt;
+        _pendingPolicyEffectiveAt[_policyKey(entry.host, entry.hostedBoardId)] =
+            effectiveAt;
         if (updatedBoard != null) {
           _entries = [
             for (final existing in _entries)
@@ -490,9 +489,7 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
       createdAt: createdAt,
       expiresAt: expiresAt,
     );
-    final signature = await _sign(
-      utf8.encode(forumHostCanonicalJson(payload)),
-    );
+    final signature = await _sign(utf8.encode(forumHostCanonicalJson(payload)));
     return client.updateHostedBoard(
       UpdateHostedBoardIntent(
         intentId: intentId,
@@ -627,9 +624,11 @@ class _HostedBoardsScreenState extends State<HostedBoardsScreen> {
         ),
         itemBuilder: (context, index) {
           final entry = _entries[index];
-          final pendingAt = _pendingPolicyEffectiveAt[
-            _policyKey(entry.host, entry.hostedBoardId)
-          ];
+          final pendingAt =
+              _pendingPolicyEffectiveAt[_policyKey(
+                entry.host,
+                entry.hostedBoardId,
+              )];
           return ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(entry.title),

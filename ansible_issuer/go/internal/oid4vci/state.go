@@ -23,6 +23,7 @@ type Grant struct {
 	SubjectPairwiseHash       string
 	SubjectPairwiseDID        string
 	MembershipClass           string
+	ForumHostID               string
 	BoardID                   string
 	ExpiresAt                 time.Time
 	ConsumedAt                *time.Time
@@ -35,6 +36,7 @@ type Access struct {
 	SubjectPairwiseHash       string
 	SubjectPairwiseDID        string
 	MembershipClass           string
+	ForumHostID               string
 	BoardID                   string
 	IssuedAt                  *time.Time
 	StatusIndex               *int64
@@ -71,10 +73,10 @@ func NewStateService(store StateStore, now func() time.Time) *StateService {
 }
 
 func (s *StateService) CreatePreAuthorizedGrant(tenantID, configurationID, subjectPairwiseDID, membershipClass string) (string, Grant, error) {
-	return s.CreateBoardPreAuthorizedGrant(tenantID, configurationID, subjectPairwiseDID, membershipClass, "")
+	return s.CreateBoardPreAuthorizedGrant(tenantID, configurationID, subjectPairwiseDID, membershipClass, "", "")
 }
 
-func (s *StateService) CreateBoardPreAuthorizedGrant(tenantID, configurationID, subjectPairwiseDID, membershipClass, boardID string) (string, Grant, error) {
+func (s *StateService) CreateBoardPreAuthorizedGrant(tenantID, configurationID, subjectPairwiseDID, membershipClass, forumHostID, boardID string) (string, Grant, error) {
 	if tenantID == "" || configurationID == "" || subjectPairwiseDID == "" {
 		return "", Grant{}, ErrInvalidGrant
 	}
@@ -85,7 +87,7 @@ func (s *StateService) CreateBoardPreAuthorizedGrant(tenantID, configurationID, 
 	if err != nil {
 		return "", Grant{}, err
 	}
-	grant := Grant{CodeHash: hashOpaque(code), TenantID: tenantID, CredentialConfigurationID: configurationID, SubjectPairwiseHash: hashOpaque(subjectPairwiseDID), SubjectPairwiseDID: subjectPairwiseDID, MembershipClass: membershipClass, BoardID: boardID, ExpiresAt: s.now().Add(10 * time.Minute)}
+	grant := Grant{CodeHash: hashOpaque(code), TenantID: tenantID, CredentialConfigurationID: configurationID, SubjectPairwiseHash: hashOpaque(subjectPairwiseDID), SubjectPairwiseDID: subjectPairwiseDID, MembershipClass: membershipClass, ForumHostID: forumHostID, BoardID: boardID, ExpiresAt: s.now().Add(10 * time.Minute)}
 	if err := s.store.PutGrant(grant); err != nil {
 		return "", Grant{}, err
 	}

@@ -461,6 +461,9 @@ func scanIssuanceRequest(row issuanceRequestRow) (IssuanceRequest, error) {
 	if value, ok := request.PolicySnapshot["board_id"].(string); ok {
 		request.BoardID = value
 	}
+	if value, ok := request.PolicySnapshot["forum_host_id"].(string); ok {
+		request.ForumHostID = value
+	}
 	return request, nil
 }
 
@@ -481,6 +484,9 @@ func scanIssuanceRequestWithApprovalCount(row issuanceRequestRow) (IssuanceReque
 	}
 	if value, ok := request.PolicySnapshot["board_id"].(string); ok {
 		request.BoardID = value
+	}
+	if value, ok := request.PolicySnapshot["forum_host_id"].(string); ok {
+		request.ForumHostID = value
 	}
 	return request, nil
 }

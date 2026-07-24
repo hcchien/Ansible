@@ -23,6 +23,7 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifierTest do
         "credentialSubject" => %{
           "id" => holder,
           "membership" => true,
+          "forum_host_id" => "host-local-dev",
           "board_id" => "board-a"
         },
         "credentialStatus" => [%{"statusPurpose" => "revocation"}]
@@ -69,6 +70,7 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifierTest do
                "https://relay.elix.cool",
                now: now,
                debug: true,
+               forum_host_id: "host-local-dev",
                board_id: "board-a",
                issuer_resolver: fn ^issuer, "key-1" -> {:ok, issuer_public} end,
                status_checker: fn _status, ^now -> :active end
@@ -85,6 +87,7 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifierTest do
                "wrong",
                "https://relay.elix.cool",
                now: now,
+               forum_host_id: "host-local-dev",
                board_id: "board-a",
                issuer_resolver: fn _, _ -> {:ok, issuer_public} end,
                status_checker: fn _, _ -> :active end
@@ -98,7 +101,22 @@ defmodule AnsibleRelay.ForumHost.BoardVpVerifierTest do
                "nonce-1",
                "https://relay.elix.cool",
                now: now,
+               forum_host_id: "host-local-dev",
                board_id: "board-b",
+               issuer_resolver: fn _, _ -> {:ok, issuer_public} end,
+               status_checker: fn _, _ -> :active end
+             )
+
+    assert {:error, :wrong_board} =
+             BoardVpVerifier.verify(
+               vp,
+               policy(issuer),
+               "member",
+               "nonce-1",
+               "https://relay.elix.cool",
+               now: now,
+               forum_host_id: "another-host",
+               board_id: "board-a",
                issuer_resolver: fn _, _ -> {:ok, issuer_public} end,
                status_checker: fn _, _ -> :active end
              )

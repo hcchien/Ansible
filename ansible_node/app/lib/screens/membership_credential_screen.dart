@@ -26,6 +26,7 @@ class MembershipCredentialScreen extends StatefulWidget {
 class _MembershipCredentialScreenState
     extends State<MembershipCredentialScreen> {
   final _tenant = TextEditingController();
+  final _forumHost = TextEditingController();
   final _board = TextEditingController();
   final _offer = TextEditingController();
   String _membershipClass = 'member';
@@ -35,6 +36,7 @@ class _MembershipCredentialScreenState
   @override
   void dispose() {
     _tenant.dispose();
+    _forumHost.dispose();
     _board.dispose();
     _offer.dispose();
     super.dispose();
@@ -67,6 +69,7 @@ class _MembershipCredentialScreenState
   Future<void> _apply() => _run(() async {
     final requestId = await widget.client.applyForMembership(
       credentialIssuer: _issuer(),
+      forumHostId: _forumHost.text.trim(),
       boardId: _board.text.trim(),
       membershipClass: _membershipClass,
     );
@@ -121,6 +124,14 @@ class _MembershipCredentialScreenState
               labelText: 'Hosted Issuer tenant ID',
             ),
           ),
+          TextField(
+            key: const Key('membership_forum_host_id'),
+            controller: _forumHost,
+            decoration: const InputDecoration(
+              labelText: 'Forum Host ID',
+            ),
+          ),
+          const SizedBox(height: 12),
           TextField(
             key: const Key('membership_board_id'),
             controller: _board,

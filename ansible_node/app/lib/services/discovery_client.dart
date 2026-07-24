@@ -92,7 +92,8 @@ class BoardSearchResult {
 
   factory BoardSearchResult.fromJson(Map<String, dynamic> m) =>
       BoardSearchResult(
-        hostedBoardId: m['hosted_board_id'] as String? ?? '',
+        hostedBoardId:
+            m['board_id']?.toString() ?? m['hosted_board_id'] as String? ?? '',
         slug: m['slug'] as String?,
         title: m['title'] as String? ?? '',
         description: m['description'] as String?,

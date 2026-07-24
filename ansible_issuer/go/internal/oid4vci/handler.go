@@ -119,6 +119,7 @@ func (h *Handler) apply(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		HolderPairwiseDID string `json:"holder_pairwise_did"`
 		MembershipClass   string `json:"membership_class"`
+		ForumHostID       string `json:"forum_host_id"`
 		BoardID           string `json:"board_id"`
 		ProofJWT          string `json:"proof_jwt"`
 	}
@@ -135,7 +136,7 @@ func (h *Handler) apply(w http.ResponseWriter, r *http.Request) {
 		writeOIDError(w, http.StatusBadRequest, "invalid_proof")
 		return
 	}
-	created, err := h.issuer.CreateBoardIssuanceRequest(r.PathValue("tenant"), request.HolderPairwiseDID, request.MembershipClass, request.BoardID)
+	created, err := h.issuer.CreateBoardIssuanceRequest(r.PathValue("tenant"), request.HolderPairwiseDID, request.MembershipClass, request.ForumHostID, request.BoardID)
 	if err != nil {
 		writeOIDError(w, http.StatusUnprocessableEntity, "issuance_request_not_accepted")
 		return

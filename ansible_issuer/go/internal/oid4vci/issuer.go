@@ -60,16 +60,17 @@ func (i *Issuer) Metadata(tenantID string) (map[string]any, error) {
 // createOffer is intentionally private. Every externally reachable issuance
 // path must consume an approved issuance request before minting a grant.
 func (i *Issuer) createOffer(tenantID, holderPairwiseDID, membershipClass string) (map[string]any, error) {
-	return i.createBoardOffer(tenantID, holderPairwiseDID, membershipClass, "")
+	return i.createBoardOffer(tenantID, holderPairwiseDID, membershipClass, "", "")
 }
 
-func (i *Issuer) createBoardOffer(tenantID, holderPairwiseDID, membershipClass, boardID string) (map[string]any, error) {
-	code, _, err := i.state.CreateBoardPreAuthorizedGrant(tenantID, "PoliticalPartyMembershipCredential-v1", holderPairwiseDID, membershipClass, boardID)
+func (i *Issuer) createBoardOffer(tenantID, holderPairwiseDID, membershipClass, forumHostID, boardID string) (map[string]any, error) {
+	code, _, err := i.state.CreateBoardPreAuthorizedGrant(tenantID, "PoliticalPartyMembershipCredential-v1", holderPairwiseDID, membershipClass, forumHostID, boardID)
 	if err != nil {
 		return nil, err
 	}
 	return map[string]any{
 		"credential_issuer":            i.CredentialIssuerURL(tenantID),
+		"forum_host_id":                forumHostID,
 		"board_id":                     boardID,
 		"credential_configuration_ids": []string{"PoliticalPartyMembershipCredential-v1"},
 		"grants": map[string]any{
@@ -99,13 +100,13 @@ func (i *Issuer) PutMembershipTemplate(tenantID string, version int64, maxTTLDay
 }
 
 func (i *Issuer) CreateIssuanceRequest(tenantID, holderPairwiseDID, membershipClass string) (hostedissuer.IssuanceRequest, error) {
-	return i.CreateBoardIssuanceRequest(tenantID, holderPairwiseDID, membershipClass, "")
+	return i.CreateBoardIssuanceRequest(tenantID, holderPairwiseDID, membershipClass, "", "")
 }
 
-func (i *Issuer) CreateBoardIssuanceRequest(tenantID, holderPairwiseDID, membershipClass, boardID string) (hostedissuer.IssuanceRequest, error) {
+func (i *Issuer) CreateBoardIssuanceRequest(tenantID, holderPairwiseDID, membershipClass, forumHostID, boardID string) (hostedissuer.IssuanceRequest, error) {
 	template, err := i.store.ActiveCredentialTemplate(tenantID, "membership")
 	if err != nil || !strings.HasPrefix(holderPairwiseDID, "did:jwk:") ||
-		(membershipClass != "member" && membershipClass != "moderator") || strings.TrimSpace(boardID) == "" {
+		(membershipClass != "member" && membershipClass != "moderator") || strings.TrimSpace(forumHostID) == "" || strings.TrimSpace(boardID) == "" {
 		return hostedissuer.IssuanceRequest{}, hostedissuer.ErrDelegationInvalid
 	}
 	id, err := hostedissuer.RandomControlPlaneIDForAPI("issuance")
@@ -114,7 +115,7 @@ func (i *Issuer) CreateBoardIssuanceRequest(tenantID, holderPairwiseDID, members
 	}
 	payload := map[string]any{
 		"template_id": template.ID, "template_version": template.Version,
-		"holder_pairwise_did": holderPairwiseDID, "membership_class": membershipClass, "board_id": boardID,
+		"holder_pairwise_did": holderPairwiseDID, "membership_class": membershipClass, "forum_host_id": forumHostID, "board_id": boardID,
 	}
 	encoded, _ := json.Marshal(payload)
 	payloadDigest := sha256.Sum256(encoded)
@@ -122,10 +123,10 @@ func (i *Issuer) CreateBoardIssuanceRequest(tenantID, holderPairwiseDID, members
 	request := hostedissuer.IssuanceRequest{
 		ID: id, TenantID: tenantID, TemplateID: template.ID, TemplateVersion: template.Version,
 		ApplicantPairwiseDID: holderPairwiseDID, ApplicantHash: hex.EncodeToString(applicantDigest[:]),
-		PayloadHash: hex.EncodeToString(payloadDigest[:]), MembershipClass: membershipClass, BoardID: boardID,
+		PayloadHash: hex.EncodeToString(payloadDigest[:]), MembershipClass: membershipClass, ForumHostID: forumHostID, BoardID: boardID,
 		PolicySnapshot: map[string]any{
 			"template_id": template.ID, "template_version": template.Version,
-			"credential_type": template.CredentialType, "membership_class": membershipClass, "board_id": boardID,
+			"credential_type": template.CredentialType, "membership_class": membershipClass, "forum_host_id": forumHostID, "board_id": boardID,
 			"approval_threshold": template.ApprovalThreshold,
 		},
 		ExpiresAt: i.now().Add(7 * 24 * time.Hour), CreatedAt: i.now().UTC(),
@@ -188,7 +189,7 @@ func (i *Issuer) CreateOfferForApprovedRequest(tenantID, requestID string) (map[
 	if err != nil {
 		return nil, err
 	}
-	offer, err := i.createBoardOffer(tenantID, request.ApplicantPairwiseDID, request.MembershipClass, request.BoardID)
+	offer, err := i.createBoardOffer(tenantID, request.ApplicantPairwiseDID, request.MembershipClass, request.ForumHostID, request.BoardID)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +222,7 @@ func (i *Issuer) Issue(ctx context.Context, tenantID, accessToken, proofJWT stri
 	if err != nil {
 		return vc.IssuedJWTCredential{}, err
 	}
-	if pairwiseDID(holderJWK) != access.SubjectPairwiseDID || access.BoardID == "" {
+	if pairwiseDID(holderJWK) != access.SubjectPairwiseDID || access.ForumHostID == "" || access.BoardID == "" {
 		return vc.IssuedJWTCredential{}, errors.New("credential holder or board binding mismatch")
 	}
 	if err := i.state.ConsumeNonce(nonce); err != nil {
@@ -253,6 +254,7 @@ func (i *Issuer) Issue(ctx context.Context, tenantID, accessToken, proofJWT stri
 		HolderPairwiseDID: access.SubjectPairwiseDID,
 		HolderJWK:         map[string]string{"kty": holderJWK.KTY, "crv": holderJWK.CRV, "x": holderJWK.X, "y": holderJWK.Y},
 		MembershipClass:   access.MembershipClass, StatusListIndex: *access.StatusIndex,
+		ForumHostID:       access.ForumHostID,
 		BoardID:           access.BoardID,
 		StatusListBaseURL: i.CredentialIssuerURL(tenantID) + "/status", Now: *access.IssuedAt,
 	})

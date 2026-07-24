@@ -192,6 +192,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           walletRepository: DriftWalletRepository(widget.db),
         ).canAuthorizeLocally(
           policy: board.accessPolicy,
+          forumHostId: host.id,
           boardId: board.hostedBoardId,
           action: 'post',
         );

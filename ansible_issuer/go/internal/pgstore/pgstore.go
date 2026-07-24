@@ -206,6 +206,7 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		)`,
 		`ALTER TABLE oid4vci_grants ADD COLUMN IF NOT EXISTS subject_pairwise_did text NOT NULL DEFAULT ''`,
 		`ALTER TABLE oid4vci_grants ADD COLUMN IF NOT EXISTS membership_class text NOT NULL DEFAULT 'member'`,
+		`ALTER TABLE oid4vci_grants ADD COLUMN IF NOT EXISTS forum_host_id text NOT NULL DEFAULT ''`,
 		`ALTER TABLE oid4vci_grants ADD COLUMN IF NOT EXISTS board_id text NOT NULL DEFAULT ''`,
 		`CREATE TABLE IF NOT EXISTS oid4vci_access_tokens (
 			token_hash text PRIMARY KEY, grant_code_hash text NOT NULL REFERENCES oid4vci_grants(code_hash),
@@ -214,6 +215,7 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		)`,
 		`ALTER TABLE oid4vci_access_tokens ADD COLUMN IF NOT EXISTS subject_pairwise_did text NOT NULL DEFAULT ''`,
 		`ALTER TABLE oid4vci_access_tokens ADD COLUMN IF NOT EXISTS membership_class text NOT NULL DEFAULT 'member'`,
+		`ALTER TABLE oid4vci_access_tokens ADD COLUMN IF NOT EXISTS forum_host_id text NOT NULL DEFAULT ''`,
 		`ALTER TABLE oid4vci_access_tokens ADD COLUMN IF NOT EXISTS board_id text NOT NULL DEFAULT ''`,
 		`ALTER TABLE oid4vci_access_tokens ADD COLUMN IF NOT EXISTS issued_at timestamptz`,
 		`ALTER TABLE oid4vci_access_tokens ADD COLUMN IF NOT EXISTS status_index bigint`,

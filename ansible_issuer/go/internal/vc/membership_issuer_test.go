@@ -23,7 +23,7 @@ func TestMembershipCredentialIsMinimalAndHardwareHolderBound(t *testing.T) {
 	issued, err := IssueMembershipJWT(signer, MembershipIssueRequest{
 		IssuerDID: "did:web:party.example", IssuerURL: "https://issuer.example/tenants/party",
 		HolderPairwiseDID: "did:peer:holder", HolderJWK: map[string]string{"kty": "EC", "crv": "P-256", "x": strings.Repeat("x", 43), "y": strings.Repeat("y", 43)},
-		MembershipClass: "member", BoardID: "board-party-members", StatusListIndex: 7, StatusListBaseURL: "https://issuer.example/tenants/party/status",
+		MembershipClass: "member", ForumHostID: "host-local-dev", BoardID: "board-party-members", StatusListIndex: 7, StatusListBaseURL: "https://issuer.example/tenants/party/status",
 		Now: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
@@ -43,6 +43,9 @@ func TestMembershipCredentialIsMinimalAndHardwareHolderBound(t *testing.T) {
 	}
 	if !strings.Contains(string(claimsJSON), `"board_id":"board-party-members"`) {
 		t.Fatalf("credential is not board-bound: %s", claimsJSON)
+	}
+	if !strings.Contains(string(claimsJSON), `"forum_host_id":"host-local-dev"`) {
+		t.Fatalf("credential is not host-bound: %s", claimsJSON)
 	}
 	if !ed25519.Verify(signer.PublicKey().(ed25519.PublicKey), []byte(parts[0]+"."+parts[1]), mustDecodeBase64(t, parts[2])) {
 		t.Fatal("JWT signature invalid")

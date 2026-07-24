@@ -25,12 +25,14 @@ class Oid4vciCredentialOffer {
     required this.credentialIssuer,
     required this.configurationId,
     required this.preAuthorizedCode,
+    required this.forumHostId,
     required this.boardId,
   });
 
   final Uri credentialIssuer;
   final String configurationId;
   final String preAuthorizedCode;
+  final String forumHostId;
   final String boardId;
 
   factory Oid4vciCredentialOffer.parse(Map<String, Object?> json) {
@@ -44,6 +46,7 @@ class Oid4vciCredentialOffer {
         ? preAuthorized['pre-authorized_code']
         : null;
     final boardId = json['board_id'];
+    final forumHostId = json['forum_host_id'];
     if (issuer == null ||
         !issuer.hasAuthority ||
         issuer.scheme != 'https' ||
@@ -52,6 +55,8 @@ class Oid4vciCredentialOffer {
         ids.first is! String ||
         code is! String ||
         code.isEmpty ||
+        forumHostId is! String ||
+        forumHostId.trim().isEmpty ||
         boardId is! String ||
         boardId.trim().isEmpty) {
       throw const Oid4vciWalletException(
@@ -63,6 +68,7 @@ class Oid4vciCredentialOffer {
       credentialIssuer: issuer,
       configurationId: ids.first as String,
       preAuthorizedCode: code,
+      forumHostId: forumHostId,
       boardId: boardId,
     );
   }
@@ -89,6 +95,7 @@ class Oid4vciWalletClient {
 
   Future<String> applyForMembership({
     required Uri credentialIssuer,
+    required String forumHostId,
     required String boardId,
     String membershipClass = 'member',
   }) async {
@@ -104,13 +111,13 @@ class Oid4vciWalletClient {
       const {},
     );
     final nonce = _requiredString(nonceResponse, 'c_nonce');
-    if (boardId.trim().isEmpty) {
+    if (forumHostId.trim().isEmpty || boardId.trim().isEmpty) {
       throw const Oid4vciWalletException(
         'board_required',
         'Membership credentials must be bound to a board.',
       );
     }
-    final holderKey = _holderKey(boardId);
+    final holderKey = _holderKey(forumHostId, boardId);
     final proof = await _proofJwt(
       credentialIssuer.toString(),
       nonce,
@@ -122,6 +129,7 @@ class Oid4vciWalletClient {
       {
         'holder_pairwise_did': holderDid,
         'membership_class': membershipClass,
+        'forum_host_id': forumHostId,
         'board_id': boardId,
         'proof_jwt': proof,
       },
@@ -172,7 +180,7 @@ class Oid4vciWalletClient {
       const {},
     );
     final nonce = _requiredString(nonceResponse, 'c_nonce');
-    final holderKey = _holderKey(offer.boardId);
+    final holderKey = _holderKey(offer.forumHostId, offer.boardId);
     final proof = await _proofJwt(
       offer.credentialIssuer.toString(),
       nonce,
@@ -306,7 +314,9 @@ class Oid4vciWalletClient {
       );
     }
     final subject = vc['credentialSubject'];
-    if (subject is! Map || subject['board_id'] != offer.boardId) {
+    if (subject is! Map ||
+        subject['forum_host_id'] != offer.forumHostId ||
+        subject['board_id'] != offer.boardId) {
       throw const Oid4vciWalletException(
         'board_binding_mismatch',
         'Credential is not bound to the requested board.',
@@ -362,6 +372,7 @@ class Oid4vciWalletClient {
     final wrapper = {
       'format': 'jwt_vc_json',
       'compact': compact,
+      'forum_host_id': offer.forumHostId,
       'board_id': offer.boardId,
       'vc': vc,
     };
@@ -389,8 +400,9 @@ class Oid4vciWalletClient {
     return metadata;
   }
 
-  HolderBindingKey _holderKey(String boardId) =>
-      _holderKeyOverride ?? BoardHolderKeyService(boardId: boardId);
+  HolderBindingKey _holderKey(String forumHostId, String boardId) =>
+      _holderKeyOverride ??
+      BoardHolderKeyService(boardId: '$forumHostId\u0000$boardId');
 
   Uri _manifestUri(Uri issuer) {
     final segments = issuer.pathSegments;
