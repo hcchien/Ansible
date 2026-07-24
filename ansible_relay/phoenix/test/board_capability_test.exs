@@ -28,7 +28,7 @@ defmodule AnsibleRelay.ForumHost.BoardCapabilityTest do
     assert {:ok, token, grant} =
              BoardCapability.issue(board, "did:elix:pairwise", thumbprint, ["post"])
 
-    assert grant.hosted_board_id == canonical_id
+    assert grant.hosted_board_id == hosted_key
 
     assert {:ok, _grant} =
              BoardCapability.authorize(token, canonical_id, "post", thumbprint)

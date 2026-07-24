@@ -29,11 +29,10 @@ defmodule AnsibleRelay.ForumHost.BoardCapability do
          token <- @prefix <> Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false),
          attrs <- %{
            capability_hash: hash(token),
-           # Capability protocol identifiers are the public canonical numeric
-           # board IDs. The database primary key remains the legacy durable
-           # hosted key during migration, so never leak it into a DPoP-bound
-           # grant or ask the client to sign two different identifiers.
-           hosted_board_id: canonical_board_id(board),
+           # This column has a foreign key to the durable hosted-board key.
+           # DPoP and the public capability protocol use canonical_board_id,
+           # while storage retains this internal relation during migration.
+           hosted_board_id: board.hosted_board_id,
            pairwise_subject_hash: hash(pairwise_subject),
            device_key_thumbprint: device_key_thumbprint,
            audience: audience,
@@ -56,8 +55,7 @@ defmodule AnsibleRelay.ForumHost.BoardCapability do
     with true <- is_binary(token) and String.starts_with?(token, @prefix),
          %ForumHostBoardAccessGrant{} = grant <- active_grant(hash(token), now),
          %ForumHostBoard{} = board <- resolve_board(board_id),
-         canonical_board_id <- canonical_board_id(board),
-         true <- grant.hosted_board_id == canonical_board_id,
+         true <- grant.hosted_board_id == board.hosted_board_id,
          true <- grant.audience == audience,
          true <- grant.policy_version == board.access_policy_version,
          true <- scope in grant.scopes,
