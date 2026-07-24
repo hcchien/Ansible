@@ -11,6 +11,7 @@ import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/elix_focus_route.dart';
 import 'credential_issuance_wizard.dart';
+import 'credential_detail_screen.dart';
 import 'membership_credential_screen.dart';
 import 'wallet_verifier_scanner_screen.dart';
 
@@ -210,6 +211,18 @@ class _WalletScreenState extends State<WalletScreen> {
                 for (final credential in credentials) ...[
                   _CredentialTile(
                     credential: credential,
+                    onOpen: () => Navigator.of(context).push(
+                      elixFocusPageRoute<void>(
+                        settings: RouteSettings(
+                          name:
+                              '/wallet/credentials/${credential.credentialId}',
+                        ),
+                        builder: (_) => CredentialDetailScreen(
+                          credential: credential,
+                          repository: widget.repository,
+                        ),
+                      ),
+                    ),
                     onDelete: () => _deleteCredential(credential),
                   ),
                   const SizedBox(height: 12),
@@ -567,81 +580,101 @@ class _IdentityCard extends StatelessWidget {
 }
 
 class _CredentialTile extends StatelessWidget {
-  const _CredentialTile({required this.credential, required this.onDelete});
+  const _CredentialTile({
+    required this.credential,
+    required this.onOpen,
+    required this.onDelete,
+  });
 
   final WalletCredential credential;
+  final VoidCallback onOpen;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final text = SubpageL10n.of(context);
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AnsibleDesign.paperElev,
-        border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: ValueKey('credential_${credential.credentialId}'),
+        onTap: onOpen,
         borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _statusColor(credential.status).withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.verified_user_outlined,
-              color: _statusColor(credential.status),
-            ),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AnsibleDesign.paperElev,
+            border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  credential.displayName,
-                  style: const TextStyle(
-                    color: AnsibleDesign.ink,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _statusColor(
+                    credential.status,
+                  ).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+                child: Icon(
+                  Icons.verified_user_outlined,
+                  color: _statusColor(credential.status),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _StatusChip(status: credential.status),
                     Text(
-                      text.f('expires', {
-                        'date': _formatDate(credential.validUntil),
-                      }),
-                      style: const TextStyle(color: AnsibleDesign.inkMuted),
+                      _credentialDisplayName(context, credential),
+                      style: const TextStyle(
+                        color: AnsibleDesign.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _StatusChip(status: credential.status),
+                        Text(
+                          text.f('expires', {
+                            'date': _formatDate(credential.validUntil),
+                          }),
+                          style: const TextStyle(color: AnsibleDesign.inkMuted),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      credential.issuerDid,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AnsibleDesign.inkFaint,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  credential.issuerDid,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AnsibleDesign.inkFaint,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+                color: AnsibleDesign.inkMuted,
+                tooltip: text.t('deleteLocalCredential'),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AnsibleDesign.inkFaint,
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
-            color: AnsibleDesign.inkMuted,
-            tooltip: text.t('deleteLocalCredential'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -708,4 +741,36 @@ String _formatDate(DateTime value) {
   final month = utc.month.toString().padLeft(2, '0');
   final day = utc.day.toString().padLeft(2, '0');
   return '${utc.year}-$month-$day';
+}
+
+String _credentialDisplayName(
+  BuildContext context,
+  WalletCredential credential,
+) {
+  final canonicalName = switch (credential.credentialType) {
+    'TaiwanCitizenshipCredential' => 'Taiwan Citizenship',
+    'AgeOver18Credential' => 'Age 18 or Older',
+    'TrisAuraHumanityCredential' => 'Verified Human',
+    _ => null,
+  };
+  if (canonicalName == null ||
+      (credential.displayName != canonicalName &&
+          credential.displayName != credential.credentialType)) {
+    return credential.displayName;
+  }
+  return switch (credential.credentialType) {
+    'TaiwanCitizenshipCredential' => context.uiCopy(
+      zh: '台灣公民',
+      en: 'Taiwan Citizenship',
+    ),
+    'AgeOver18Credential' => context.uiCopy(
+      zh: '年滿 18 歲',
+      en: 'Age 18 or Older',
+    ),
+    'TrisAuraHumanityCredential' => context.uiCopy(
+      zh: '真人驗證',
+      en: 'Verified Human',
+    ),
+    _ => credential.displayName,
+  };
 }

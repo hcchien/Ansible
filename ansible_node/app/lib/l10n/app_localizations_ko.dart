@@ -18,48 +18,48 @@ class AppLocalizationsKo extends AppLocalizations {
   String get done => '완료';
 
   @override
-  String get localIdentity => 'Local Identity';
+  String get localIdentity => '로컬 신원';
 
   @override
-  String get localDid => 'Local DID';
+  String get localDid => '로컬 DID';
 
   @override
-  String get edit => 'Edit';
+  String get edit => '편집';
 
   @override
-  String get identityAndDevice => 'Identity & Device';
+  String get identityAndDevice => '신원 및 기기';
 
   @override
   String get wallet => '지갑';
 
   @override
-  String get walletSubtitleEmpty => 'No credentials';
+  String get walletSubtitleEmpty => '자격 증명 없음';
 
   @override
   String walletSubtitleCount(int count) {
-    return '$count credentials';
+    return '자격 증명 $count개';
   }
 
   @override
-  String get empty => 'Empty';
+  String get empty => '비어 있음';
 
   @override
   String get sync => '동기화';
 
   @override
-  String get syncSubtitle => 'Elix Relay settings';
+  String get syncSubtitle => 'Elix Relay 설정';
 
   @override
-  String get configured => 'Settings';
+  String get configured => '설정';
 
   @override
-  String get accessAudit => 'Access & Audit';
+  String get accessAudit => '접근 및 감사';
 
   @override
-  String get accessAuditSubtitle => 'Who can see which identity';
+  String get accessAuditSubtitle => '누가 어떤 신원을 확인했는지';
 
   @override
-  String get noSuspiciousAccess => '0 suspicious';
+  String get noSuspiciousAccess => '의심스러운 접근 0건';
 
   @override
   String get language => '언어';
@@ -71,34 +71,34 @@ class AppLocalizationsKo extends AppLocalizations {
   String get systemDefault => '시스템 기본값';
 
   @override
-  String get daily => 'Daily';
+  String get daily => '일상';
 
   @override
-  String get inbox => 'Inbox';
+  String get inbox => '받은 편지함';
 
   @override
-  String get inboxSubtitle => 'Circle replies, new members, sync';
+  String get inboxSubtitle => '답글, 새 멤버, 동기화';
 
   @override
-  String get notifications => 'Notifications';
+  String get notifications => '알림';
 
   @override
-  String get notificationsSubtitle => 'Decide what can interrupt you';
+  String get notificationsSubtitle => '알림을 받을 항목 선택';
 
   @override
   String get light => 'Light';
 
   @override
-  String get readingPreferences => 'Reading Preferences';
+  String get readingPreferences => '읽기 환경설정';
 
   @override
-  String get readingPreferencesSubtitle => 'Text size, line height, theme';
+  String get readingPreferencesSubtitle => '글자 크기, 줄 간격, 테마';
 
   @override
-  String get defaultValue => 'Default';
+  String get defaultValue => '기본값';
 
   @override
-  String get boundaries => 'Boundaries';
+  String get boundaries => '경계';
 
   @override
   String get lock => 'Lock';
@@ -110,35 +110,34 @@ class AppLocalizationsKo extends AppLocalizations {
   String get off => 'Off';
 
   @override
-  String get backupRestore => 'Backup & Restore';
+  String get backupRestore => '백업 및 복원';
 
   @override
-  String get backupRestoreSubtitle => 'Passphrase, new device migration';
+  String get backupRestoreSubtitle => '암호 문구, 새 기기로 이전';
 
   @override
-  String get notSet => 'Not set';
+  String get notSet => '설정 안 됨';
 
   @override
-  String get blockedList => 'Blocked List';
+  String get blockedList => '차단 목록';
 
   @override
-  String get blockedListSubtitle =>
-      'You cannot see them, and they cannot see you';
+  String get blockedListSubtitle => '서로를 볼 수 없습니다';
 
   @override
-  String get about => 'About Elix';
+  String get about => 'Elix 정보';
 
   @override
-  String get aboutSubtitle => 'A signal across stellar distance';
+  String get aboutSubtitle => '별 사이의 거리를 건너는 신호';
 
   @override
-  String get manual => 'Manual';
+  String get manual => '사용 설명서';
 
   @override
-  String get signOutDevice => 'Sign out of this device';
+  String get signOutDevice => '이 기기에서 로그아웃';
 
   @override
-  String get signOutSubtitle => 'Keep data; passkey required next time';
+  String get signOutSubtitle => '데이터 유지; 다음에 패스키 필요';
 
   @override
   String get languagePickerTitle => '언어';

@@ -193,7 +193,7 @@ void main() {
               ),
             ),
             keyStore: keyStore,
-            didSigner: _FakeDidSigner(),
+            didSigner: _FakeP256DidSigner(),
             signingBridge: const SchnorrSigningBridge(auxRandHex: _zeroAuxRand),
             relayClient: nostrRelayClient,
             relayPublicationClient: relayPublicationClient,
@@ -211,7 +211,7 @@ void main() {
       );
       expect(
         relayPublicationClient.calls.single.intent.signatureScheme,
-        'ed25519',
+        'p256-sha256',
       );
       expect(
         relayPublicationClient.calls.single.intent.payload['title'],

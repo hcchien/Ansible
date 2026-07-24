@@ -1,4 +1,5 @@
 import 'package:ansible_node/services/app_locale_controller.dart';
+import 'package:ansible_node/l10n/app_l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -40,5 +41,15 @@ void main() {
     expect(AppLocalePreference.it.locale?.languageCode, 'it');
     expect(AppLocalePreference.system.locale, isNull);
     expect(AppLocalePreference.values.length, 9);
+  });
+
+  test('legacy discovery and settings copy is localized in Japanese', () {
+    expect(localizeUiCopy('ja', '← Back'), '← 戻る');
+    expect(
+      localizeUiCopy('ja', 'Search people, boards, posts'),
+      'ユーザー、ボード、投稿を検索',
+    );
+    expect(localizeUiCopy('ja', 'Recover account'), 'アカウントを復旧');
+    expect(localizeUiCopy('ja', 'External content'), '外部コンテンツ');
   });
 }

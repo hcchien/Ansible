@@ -18,48 +18,48 @@ class AppLocalizationsIt extends AppLocalizations {
   String get done => 'Fine';
 
   @override
-  String get localIdentity => 'Local Identity';
+  String get localIdentity => 'Identità locale';
 
   @override
-  String get localDid => 'Local DID';
+  String get localDid => 'DID locale';
 
   @override
-  String get edit => 'Edit';
+  String get edit => 'Modifica';
 
   @override
-  String get identityAndDevice => 'Identity & Device';
+  String get identityAndDevice => 'Identità e dispositivo';
 
   @override
   String get wallet => 'Portafoglio';
 
   @override
-  String get walletSubtitleEmpty => 'No credentials';
+  String get walletSubtitleEmpty => 'Nessuna credenziale';
 
   @override
   String walletSubtitleCount(int count) {
-    return '$count credentials';
+    return '$count credenziali';
   }
 
   @override
-  String get empty => 'Empty';
+  String get empty => 'Vuoto';
 
   @override
   String get sync => 'Sincronizza';
 
   @override
-  String get syncSubtitle => 'Elix Relay settings';
+  String get syncSubtitle => 'Impostazioni Elix Relay';
 
   @override
-  String get configured => 'Settings';
+  String get configured => 'Impostazioni';
 
   @override
-  String get accessAudit => 'Access & Audit';
+  String get accessAudit => 'Accesso e audit';
 
   @override
-  String get accessAuditSubtitle => 'Who can see which identity';
+  String get accessAuditSubtitle => 'Chi può vedere quale identità';
 
   @override
-  String get noSuspiciousAccess => '0 suspicious';
+  String get noSuspiciousAccess => '0 accessi sospetti';
 
   @override
   String get language => 'Lingua';
@@ -71,34 +71,35 @@ class AppLocalizationsIt extends AppLocalizations {
   String get systemDefault => 'Lingua di sistema';
 
   @override
-  String get daily => 'Daily';
+  String get daily => 'Quotidiano';
 
   @override
-  String get inbox => 'Inbox';
+  String get inbox => 'Posta in arrivo';
 
   @override
-  String get inboxSubtitle => 'Circle replies, new members, sync';
+  String get inboxSubtitle => 'Risposte, nuovi membri e sincronizzazione';
 
   @override
-  String get notifications => 'Notifications';
+  String get notifications => 'Notifiche';
 
   @override
-  String get notificationsSubtitle => 'Decide what can interrupt you';
+  String get notificationsSubtitle => 'Scegli cosa può interromperti';
 
   @override
   String get light => 'Light';
 
   @override
-  String get readingPreferences => 'Reading Preferences';
+  String get readingPreferences => 'Preferenze di lettura';
 
   @override
-  String get readingPreferencesSubtitle => 'Text size, line height, theme';
+  String get readingPreferencesSubtitle =>
+      'Dimensione testo, interlinea e tema';
 
   @override
-  String get defaultValue => 'Default';
+  String get defaultValue => 'Predefinito';
 
   @override
-  String get boundaries => 'Boundaries';
+  String get boundaries => 'Confini';
 
   @override
   String get lock => 'Lock';
@@ -110,35 +111,36 @@ class AppLocalizationsIt extends AppLocalizations {
   String get off => 'Off';
 
   @override
-  String get backupRestore => 'Backup & Restore';
+  String get backupRestore => 'Backup e ripristino';
 
   @override
-  String get backupRestoreSubtitle => 'Passphrase, new device migration';
+  String get backupRestoreSubtitle =>
+      'Passphrase e migrazione su un nuovo dispositivo';
 
   @override
-  String get notSet => 'Not set';
+  String get notSet => 'Non impostato';
 
   @override
-  String get blockedList => 'Blocked List';
+  String get blockedList => 'Elenco bloccati';
 
   @override
-  String get blockedListSubtitle =>
-      'You cannot see them, and they cannot see you';
+  String get blockedListSubtitle => 'Non potete vedervi a vicenda';
 
   @override
-  String get about => 'About Elix';
+  String get about => 'Informazioni su Elix';
 
   @override
-  String get aboutSubtitle => 'A signal across stellar distance';
+  String get aboutSubtitle => 'Un segnale attraverso la distanza interstellare';
 
   @override
-  String get manual => 'Manual';
+  String get manual => 'Manuale';
 
   @override
-  String get signOutDevice => 'Sign out of this device';
+  String get signOutDevice => 'Disconnetti da questo dispositivo';
 
   @override
-  String get signOutSubtitle => 'Keep data; passkey required next time';
+  String get signOutSubtitle =>
+      'Conserva i dati; la prossima volta servirà una passkey';
 
   @override
   String get languagePickerTitle => 'Lingua';

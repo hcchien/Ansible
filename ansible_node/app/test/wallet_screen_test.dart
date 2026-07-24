@@ -43,10 +43,123 @@ void main() {
     expect(find.text('WALLET'), findsOneWidget);
     expect(find.text('皮夾'), findsOneWidget);
     await _scrollWallet(tester);
-    expect(find.text('Verified Human'), findsOneWidget);
+    expect(find.text('真人驗證'), findsOneWidget);
     expect(find.text('有效'), findsOneWidget);
     expect(find.text('到期 2026-08-02'), findsOneWidget);
   });
+
+  testWidgets('credential card opens local privacy-safe details', (
+    tester,
+  ) async {
+    final repo = InMemoryWalletRepository();
+    final metadata = WalletCredential(
+      credentialId: 'urn:uuid:test-citizenship',
+      issuerDid: 'did:web:issuer-dev.elix.cool',
+      holderDid: 'did:plc:abcdefghijklmnop',
+      credentialType: 'TaiwanCitizenshipCredential',
+      status: WalletCredentialStatus.active,
+      validFrom: DateTime.utc(2026, 7, 24),
+      validUntil: DateTime.utc(2026, 10, 22),
+      displayName: 'Taiwan Citizenship',
+      createdAt: DateTime.utc(2026, 7, 24),
+      updatedAt: DateTime.utc(2026, 7, 24),
+    );
+    await repo.saveCredential(
+      metadata: metadata,
+      encryptedPayload: '''
+{
+  "id": "urn:uuid:test-citizenship",
+  "type": ["VerifiableCredential", "TaiwanCitizenshipCredential"],
+  "issuer": "did:web:issuer-dev.elix.cool",
+  "validFrom": "2026-07-24T00:00:00Z",
+  "validUntil": "2026-10-22T00:00:00Z",
+  "credentialSubject": {
+    "id": "did:plc:abcdefghijklmnop",
+    "nationality": "TW"
+  },
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "ztest"
+  }
+}
+''',
+      encryptionVersion: 'test-json',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WalletScreen(
+          holderDid: 'did:plc:abcdefghijklmnop',
+          repository: repo,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _scrollWallet(tester);
+
+    await tester.tap(
+      find.byKey(const Key('credential_urn:uuid:test-citizenship')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('憑證詳情'), findsOneWidget);
+    expect(find.text('TaiwanCitizenshipCredential'), findsOneWidget);
+    expect(find.text('TW'), findsOneWidget);
+    expect(find.text('結構、期限與隱私欄位檢查通過'), findsOneWidget);
+    expect(find.textContaining('Z123'), findsNothing);
+    expect(find.textContaining('363027682'), findsNothing);
+  });
+
+  testWidgets(
+    'credential detail keeps a safe summary when payload is missing',
+    (tester) async {
+      final repo = InMemoryWalletRepository();
+      final metadata = WalletCredential(
+        credentialId: 'urn:uuid:legacy-citizenship',
+        issuerDid: 'did:web:issuer-dev.elix.cool',
+        holderDid: 'did:plc:legacyholder',
+        credentialType: 'TaiwanCitizenshipCredential',
+        status: WalletCredentialStatus.active,
+        validFrom: DateTime.utc(2026, 7, 24),
+        validUntil: DateTime.utc(2026, 10, 22),
+        displayName: 'Taiwan Citizenship',
+        createdAt: DateTime.utc(2026, 7, 24),
+        updatedAt: DateTime.utc(2026, 7, 24),
+      );
+      await repo.saveCredential(
+        metadata: metadata,
+        encryptedPayload: 'secure-storage-json-v1:urn:uuid:legacy-citizenship',
+        encryptionVersion: 'secure-storage-json-v1',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WalletScreen(
+            holderDid: 'did:plc:legacyholder',
+            repository: repo,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _scrollWallet(tester);
+      await tester.tap(
+        find.byKey(const Key('credential_urn:uuid:legacy-citizenship')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('僅能讀取憑證摘要'), findsOneWidget);
+      expect(find.text('TaiwanCitizenshipCredential'), findsOneWidget);
+      expect(find.text('TWN'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('僅檢查 Wallet 摘要與有效期限'),
+        240,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.text('僅檢查 Wallet 摘要與有效期限'), findsOneWidget);
+    },
+  );
 
   testWidgets('wallet screen shows empty state', (tester) async {
     await tester.pumpWidget(

@@ -29,8 +29,9 @@ class _SettingsText {
   String get language => l10n?.language ?? '語言';
   String get languageSubtitle => l10n?.languageSubtitle ?? '選擇 app 介面語言';
   String get systemDefault => l10n?.systemDefault ?? '跟隨系統';
-  bool get _zh => l10n == null || l10n?.language == '語言';
-  String _copy({required String zh, required String en}) => _zh ? zh : en;
+  bool get _zh => l10n == null || l10n!.localeName.startsWith('zh');
+  String _copy({required String zh, required String en}) =>
+      _zh ? zh : localizeUiCopy(l10n?.localeName ?? 'en', en);
   String get languageGlyph => _copy(zh: '文', en: 'A');
   String get interfaceAndLanguage =>
       _copy(zh: '介面與語言', en: 'Interface & Language');

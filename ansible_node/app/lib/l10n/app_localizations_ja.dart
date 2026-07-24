@@ -18,48 +18,48 @@ class AppLocalizationsJa extends AppLocalizations {
   String get done => '完了';
 
   @override
-  String get localIdentity => 'Local Identity';
+  String get localIdentity => 'ローカル ID';
 
   @override
-  String get localDid => 'Local DID';
+  String get localDid => 'ローカル DID';
 
   @override
-  String get edit => 'Edit';
+  String get edit => '編集';
 
   @override
-  String get identityAndDevice => 'Identity & Device';
+  String get identityAndDevice => 'ID とデバイス';
 
   @override
   String get wallet => 'ウォレット';
 
   @override
-  String get walletSubtitleEmpty => 'No credentials';
+  String get walletSubtitleEmpty => '認証情報はありません';
 
   @override
   String walletSubtitleCount(int count) {
-    return '$count credentials';
+    return '$count 件の認証情報';
   }
 
   @override
-  String get empty => 'Empty';
+  String get empty => '空';
 
   @override
   String get sync => '同期';
 
   @override
-  String get syncSubtitle => 'Elix Relay settings';
+  String get syncSubtitle => 'Elix Relay の設定';
 
   @override
-  String get configured => 'Settings';
+  String get configured => '設定';
 
   @override
-  String get accessAudit => 'Access & Audit';
+  String get accessAudit => 'アクセスと監査';
 
   @override
-  String get accessAuditSubtitle => 'Who can see which identity';
+  String get accessAuditSubtitle => 'どの ID が誰に表示されたか';
 
   @override
-  String get noSuspiciousAccess => '0 suspicious';
+  String get noSuspiciousAccess => '不審なアクセス 0 件';
 
   @override
   String get language => '言語';
@@ -71,74 +71,73 @@ class AppLocalizationsJa extends AppLocalizations {
   String get systemDefault => 'システムのデフォルト';
 
   @override
-  String get daily => 'Daily';
+  String get daily => '日常';
 
   @override
-  String get inbox => 'Inbox';
+  String get inbox => '受信箱';
 
   @override
-  String get inboxSubtitle => 'Circle replies, new members, sync';
+  String get inboxSubtitle => '返信、新しいメンバー、同期';
 
   @override
-  String get notifications => 'Notifications';
+  String get notifications => '通知';
 
   @override
-  String get notificationsSubtitle => 'Decide what can interrupt you';
+  String get notificationsSubtitle => '通知する項目を選択';
 
   @override
-  String get light => 'Light';
+  String get light => 'ライト';
 
   @override
-  String get readingPreferences => 'Reading Preferences';
+  String get readingPreferences => '表示設定';
 
   @override
-  String get readingPreferencesSubtitle => 'Text size, line height, theme';
+  String get readingPreferencesSubtitle => '文字サイズ、行間、テーマ';
 
   @override
-  String get defaultValue => 'Default';
+  String get defaultValue => '標準';
 
   @override
-  String get boundaries => 'Boundaries';
+  String get boundaries => '境界';
 
   @override
-  String get lock => 'Lock';
+  String get lock => 'ロック';
 
   @override
-  String get lockSubtitle => 'Turn the app into a blank cover';
+  String get lockSubtitle => 'アプリを空白のカバーに切り替えます';
 
   @override
-  String get off => 'Off';
+  String get off => 'オフ';
 
   @override
-  String get backupRestore => 'Backup & Restore';
+  String get backupRestore => 'バックアップと復元';
 
   @override
-  String get backupRestoreSubtitle => 'Passphrase, new device migration';
+  String get backupRestoreSubtitle => 'パスフレーズ、新しいデバイスへの移行';
 
   @override
-  String get notSet => 'Not set';
+  String get notSet => '未設定';
 
   @override
-  String get blockedList => 'Blocked List';
+  String get blockedList => 'ブロックリスト';
 
   @override
-  String get blockedListSubtitle =>
-      'You cannot see them, and they cannot see you';
+  String get blockedListSubtitle => 'お互いに表示されません';
 
   @override
-  String get about => 'About Elix';
+  String get about => 'Elix について';
 
   @override
-  String get aboutSubtitle => 'A signal across stellar distance';
+  String get aboutSubtitle => '星間距離を越えるシグナル';
 
   @override
-  String get manual => 'Manual';
+  String get manual => 'マニュアル';
 
   @override
-  String get signOutDevice => 'Sign out of this device';
+  String get signOutDevice => 'このデバイスからログアウト';
 
   @override
-  String get signOutSubtitle => 'Keep data; passkey required next time';
+  String get signOutSubtitle => 'データを保持し、次回はパスキーを使用';
 
   @override
   String get languagePickerTitle => '言語';
@@ -147,126 +146,124 @@ class AppLocalizationsJa extends AppLocalizations {
   String get languageSystemDescription => 'このデバイスの言語設定を使用';
 
   @override
-  String get feedAll => 'Feed';
+  String get feedAll => 'フィード';
 
   @override
-  String get feedFollowing => 'Following';
+  String get feedFollowing => 'フォロー中';
 
   @override
-  String get feedBoards => 'Boards';
+  String get feedBoards => 'ボード';
 
   @override
-  String get searchBack => '← Meadow';
+  String get searchBack => '← 戻る';
 
   @override
-  String get clear => 'Clear';
+  String get clear => 'クリア';
 
   @override
-  String get searchHint => 'Search murmurs, notes, discussions';
+  String get searchHint => 'つぶやき、ノート、議論を検索';
 
   @override
-  String get searchScopeAll => 'All';
+  String get searchScopeAll => 'すべて';
 
   @override
-  String get searchScopeMy => 'My';
+  String get searchScopeMy => '自分';
 
   @override
-  String get searchScopeCircle => 'Circle';
+  String get searchScopeCircle => 'サークル';
 
   @override
-  String get searchScopePublic => 'Public';
+  String get searchScopePublic => '公開';
 
   @override
   String searchResultCount(int count) {
-    return 'Found $count mentions';
+    return '$count 件見つかりました';
   }
 
   @override
-  String get searchSortRelevant => '↓ Relevant';
+  String get searchSortRelevant => '↓ 関連度順';
 
   @override
   String notesSectionCount(int count) {
-    return 'Notes · $count';
+    return 'ノート · $count';
   }
 
   @override
   String murmursSectionCount(int count) {
-    return 'Murmurs · $count';
+    return 'つぶやき · $count';
   }
 
   @override
   String threadsSectionCount(int count) {
-    return 'Threads · $count';
+    return 'スレッド · $count';
   }
 
   @override
-  String get noNotesYet => 'No notes yet';
+  String get noNotesYet => 'ノートはまだありません';
 
   @override
-  String get noMatchingNotes => 'No matching notes';
+  String get noMatchingNotes => '一致するノートはありません';
 
   @override
-  String get noMurmursYet => 'No murmurs yet';
+  String get noMurmursYet => 'つぶやきはまだありません';
 
   @override
-  String get noMatchingMurmurs => 'No matching murmurs';
+  String get noMatchingMurmurs => '一致するつぶやきはありません';
 
   @override
-  String get noThreadsYet => 'No threads yet';
+  String get noThreadsYet => 'スレッドはまだありません';
 
   @override
-  String get noMatchingThreads => 'No matching threads';
+  String get noMatchingThreads => '一致するスレッドはありません';
 
   @override
-  String get murmurTitle => 'MURMUR';
+  String get murmurTitle => 'つぶやき';
 
   @override
-  String get local => 'Local';
+  String get local => 'ローカル';
 
   @override
-  String get send => 'Send';
+  String get send => '送信';
 
   @override
-  String get murmurPrompt => 'What half-formed thing\nis on your mind?';
+  String get murmurPrompt => 'まだ形になっていない考えはありますか？';
 
   @override
-  String get murmurPrivateHint =>
-      'A sentence, an instinct, an unresolved question all fit here. No one else will see it.';
+  String get murmurPrivateHint => '一文、直感、答えのない問いでも構いません。ほかの人には表示されません。';
 
   @override
-  String get murmurSyncHint =>
-      'A sentence, an instinct, an unresolved question all fit here. This one will be marked syncable.';
+  String get murmurSyncHint => '一文、直感、答えのない問いでも構いません。同期可能として保存されます。';
 
   @override
-  String get murmurInputHint => 'What I have been thinking about lately is';
+  String get murmurInputHint => '最近考えていることは';
 
   @override
-  String get murmurPrivateVisibilityHint => 'Only for me';
+  String get murmurPrivateVisibilityHint => '自分だけ';
 
   @override
-  String get murmurUnlistedVisibilityHint => 'Syncable but unlisted';
+  String get murmurUnlistedVisibilityHint => '同期可能・一覧には非表示';
 
   @override
-  String get murmurPublicVisibilityHint => 'Publish publicly';
+  String get murmurPublicVisibilityHint => '公開する';
 
   @override
-  String get looseMurmurs => 'Loose';
+  String get looseMurmurs => '未整理';
 
   @override
-  String get looseMurmursEmpty => 'Sent murmurs stay here first.';
+  String get looseMurmursEmpty => '送信したつぶやきは最初にここへ保存されます。';
 
   @override
-  String get sent => 'Sent';
+  String get sent => '送信済み';
 
   @override
-  String get deletedMurmur => 'Murmur deleted';
+  String get deletedMurmur => 'つぶやきを削除しました';
 
   @override
-  String get unused => 'Unused';
+  String get unused => '未使用';
 
   @override
   String referenceCount(int count) {
-    return '$count references';
+    return '$count 件の参照';
   }
 
   @override
@@ -276,19 +273,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsNav => '設定';
 
   @override
-  String get publicIdentity => 'Public identity';
+  String get publicIdentity => '公開 ID';
 
   @override
-  String get murmurTab => 'Murmur';
+  String get murmurTab => 'つぶやき';
 
   @override
-  String get notesTab => 'Notes';
+  String get notesTab => 'ノート';
 
   @override
-  String get discussionsTab => 'Boards';
+  String get discussionsTab => 'ボード';
 
   @override
-  String get discussionsTabCompact => 'Boards';
+  String get discussionsTabCompact => 'ボード';
 
   @override
   String get networkOnline => 'オンライン';
@@ -300,141 +297,136 @@ class AppLocalizationsJa extends AppLocalizations {
   String get networkChecking => '確認中';
 
   @override
-  String get workingNotes => 'Working Notes';
+  String get workingNotes => '作業中のノート';
 
   @override
-  String get newest => 'Newest';
+  String get newest => '新しい順';
 
   @override
-  String get oldest => 'Oldest';
+  String get oldest => '古い順';
 
   @override
-  String get newNote => 'New Note';
+  String get newNote => '新しいノート';
 
   @override
-  String get drawInAction => '↗ Draw in';
+  String get drawInAction => '↗ 取り込む';
 
   @override
-  String get noLooseMurmursYet => 'No loose murmurs yet.';
+  String get noLooseMurmursYet => '取り込めるつぶやきはまだありません。';
 
   @override
-  String get lineage => 'Lineage';
+  String get lineage => '出典';
 
   @override
-  String get noteCreated => 'Note created';
+  String get noteCreated => 'ノートを作成しました';
 
   @override
   String get cancel => 'キャンセル';
 
   @override
-  String get draftLocal => 'Draft stays local';
+  String get draftLocal => '下書きはローカルに保存されます';
 
   @override
-  String get editing => 'Editing';
+  String get editing => '編集中';
 
   @override
-  String get noteTitleHint => 'Note title';
+  String get noteTitleHint => 'ノートのタイトル';
 
   @override
-  String get noteTitleRequired => 'Enter a title';
+  String get noteTitleRequired => 'タイトルを入力してください';
 
   @override
-  String get noteBodyHint => 'Keep writing, or drag a murmur in from below...';
+  String get noteBodyHint => '続きを書くか、下のつぶやきを取り込んでください…';
 
   @override
-  String get noteBodyRequired => 'Enter note body';
+  String get noteBodyRequired => '本文を入力してください';
 
   @override
-  String get noteSubjectLabel => 'this note';
+  String get noteSubjectLabel => 'このノート';
 
   @override
-  String get drawIn => 'Draw in';
+  String get drawIn => '取り込む';
 
   @override
-  String get noMurmursToDraw => 'No murmurs to draw in yet.';
+  String get noMurmursToDraw => '取り込めるつぶやきはまだありません。';
 
   @override
-  String get noNotesDescription =>
-      'Murmurs stay loose locally first; when they start to connect, shape them into a note.';
+  String get noNotesDescription => 'つぶやきはまずローカルに残ります。考えがつながり始めたらノートにまとめましょう。';
 
   @override
-  String get noteUpdated => 'Note updated';
+  String get noteUpdated => 'ノートを更新しました';
 
   @override
-  String get visibilityUpdated => 'Visibility updated';
+  String get visibilityUpdated => '公開範囲を更新しました';
 
   @override
-  String get lineageDescription =>
-      'Notes shaped from murmurs keep their source lineage here.';
+  String get lineageDescription => 'つぶやきから作成したノートの出典をここに残します。';
 
   @override
-  String get notePrivateSummary => 'No one else can see this yet';
+  String get notePrivateSummary => 'まだほかの人には表示されません';
 
   @override
-  String get noteNostrSummary => 'Publishing sends this to Nostr relays';
+  String get noteNostrSummary => '公開すると Nostr Relay に送信されます';
 
   @override
-  String get noteActivityPubSummary =>
-      'Publishing sends this to the ActivityPub relay';
+  String get noteActivityPubSummary => '公開すると ActivityPub Relay に送信されます';
 
   @override
-  String get noteBothSummary =>
-      'Publishing sends this to Nostr relays and the ActivityPub relay';
+  String get noteBothSummary => '公開すると Nostr と ActivityPub の Relay に送信されます';
 
   @override
-  String get noteLocalPublicSummary => 'Public state, but not sent yet';
+  String get noteLocalPublicSummary => '公開状態ですが、まだ送信されていません';
 
   @override
-  String get createDiscussion => 'Create Discussion';
+  String get createDiscussion => '議論を作成';
 
   @override
-  String get chooseHostedBoard => 'Choose board';
+  String get chooseHostedBoard => 'ボードを選択';
 
   @override
-  String get hostedBoardMissing => 'Join or create an Elix Relay board first';
+  String get hostedBoardMissing => '先に Elix Relay のボードへ参加するか作成してください';
 
   @override
-  String get hostedBoardRequired => 'Choose a board';
+  String get hostedBoardRequired => 'ボードを選択してください';
 
   @override
-  String get titleLabel => 'Title';
+  String get titleLabel => 'タイトル';
 
   @override
-  String get discussionTitleHint => 'Enter discussion title';
+  String get discussionTitleHint => '議論のタイトルを入力';
 
   @override
-  String get titleRequired => 'Title is required';
+  String get titleRequired => 'タイトルは必須です';
 
   @override
-  String get contentLabel => 'Content';
+  String get contentLabel => '内容';
 
   @override
-  String get discussionContentHint => 'Enter discussion content';
+  String get discussionContentHint => '議論の内容を入力';
 
   @override
-  String get contentRequired => 'Content is required';
+  String get contentRequired => '内容は必須です';
 
   @override
-  String get create => 'Create';
+  String get create => '作成';
 
   @override
-  String get uncategorized => 'Uncategorized';
+  String get uncategorized => '未分類';
 
   @override
   String get addForumHostFirst =>
-      'Add an Elix Relay in Sync settings first. Discussion boards are created by Elix Relays.';
+      '先に同期設定で Elix Relay を追加してください。議論ボードは Elix Relay 上に作成されます。';
 
   @override
   String syncedPublicCount(int count) {
-    return 'Synced $count public items';
+    return '公開項目 $count 件を同期しました';
   }
 
   @override
-  String get publicQueuedRelayFailed =>
-      'Public content was queued, but relay publishing failed';
+  String get publicQueuedRelayFailed => '公開内容をキューに追加しましたが、Relay への公開に失敗しました';
 
   @override
-  String get noWritableNostrRelay => 'No writable Nostr relay is configured';
+  String get noWritableNostrRelay => '書き込み可能な Nostr Relay が設定されていません';
 
   @override
   String syncFailedMessage(String error) {
@@ -460,87 +452,87 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get circleSection => 'Circle';
+  String get circleSection => 'サークル';
 
   @override
-  String get allActivity => 'All Activity';
+  String get allActivity => 'すべてのアクティビティ';
 
   @override
   String boardCount(int count) {
-    return '$count boards';
+    return '$count ボード';
   }
 
   @override
-  String get manageSubscriptions => 'Manage Subscriptions';
+  String get manageSubscriptions => '購読を管理';
 
   @override
-  String get newPost => 'New Post';
+  String get newPost => '新しい投稿';
 
   @override
-  String get addBoardTooltip => 'Add Board';
+  String get addBoardTooltip => 'ボードを追加';
 
   @override
-  String get newDiscussion => 'New Board Thread';
+  String get newDiscussion => '新しいボードスレッド';
 
   @override
-  String get createNewDiscussion => 'Create Board Thread';
+  String get createNewDiscussion => 'ボードスレッドを作成';
 
   @override
-  String get boardsShort => 'Boards';
+  String get boardsShort => 'ボード';
 
   @override
-  String get manageBoardsShort => 'Manage Boards';
+  String get manageBoardsShort => 'ボードを管理';
 
   @override
-  String get aiAssistant => 'AI Assistant';
+  String get aiAssistant => 'AI アシスタント';
 
   @override
-  String get aiSummary => 'AI Summary';
+  String get aiSummary => 'AI 要約';
 
   @override
-  String get noPostsYet => 'No feed posts yet';
+  String get noPostsYet => 'フィード投稿はまだありません';
 
   @override
-  String get subscribe => 'Subscribe';
+  String get subscribe => '購読';
 
   @override
-  String get discussionAreaTitle => 'Feed';
+  String get discussionAreaTitle => 'フィード';
 
   @override
   String get feedSocialIdentitySubtitle =>
-      'Notes and Murmurs are personal posts. People who follow you see them in their feed; boards add shared discussions.';
+      'ノートとつぶやきは個人投稿です。フォロワーのフィードに表示され、ボードでは共有の議論に参加できます。';
 
   @override
-  String get publicOpen => 'People + Boards';
+  String get publicOpen => 'ユーザー + ボード';
 
   @override
-  String get noContentYet => '(No content yet)';
+  String get noContentYet => '（内容はまだありません）';
 
   @override
   String commentsCount(int count) {
-    return '$count comments';
+    return '$count 件のコメント';
   }
 
   @override
-  String get manageBoards => 'Manage Boards';
+  String get manageBoards => 'ボードを管理';
 
   @override
-  String get noBoardsYet => 'No boards yet';
+  String get noBoardsYet => 'ボードはまだありません';
 
   @override
-  String get deleteBoard => 'Delete Board';
+  String get deleteBoard => 'ボードを削除';
 
   @override
   String deleteBoardConfirm(String title) {
-    return 'Delete \"$title\"? This cannot be undone.';
+    return '「$title」を削除しますか？この操作は取り消せません。';
   }
 
   @override
-  String get delete => 'Delete';
+  String get delete => '削除';
 
   @override
-  String get close => 'Close';
+  String get close => '閉じる';
 
   @override
-  String get addBoard => 'Add Board';
+  String get addBoard => 'ボードを追加';
 }
