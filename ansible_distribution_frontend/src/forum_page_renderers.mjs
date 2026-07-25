@@ -196,9 +196,6 @@ function renderThreadDetail(viewModel, uiState = {}) {
     authenticated: Boolean(viewModel.session?.authenticated),
     thread,
     threadId: thread.id ?? '',
-    anonymousReplies:
-      board.permissions?.canWrite === false ||
-      (viewModel.session?.trustTier ?? TRUST_TIERS.anonymous) === TRUST_TIERS.anonymous,
   };
   const replyCount = threadReplyCount(thread, posts);
 
