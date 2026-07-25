@@ -52,9 +52,18 @@ steps:
     args:
       - -c
       - |
-        mix local.hex --force
-        mix local.rebar --force
-        mix deps.get
+        apt-get update
+        apt-get install -y --no-install-recommends ca-certificates curl git
+        # OTP rejects the intermittent Hex CDN certificate chain in Cloud
+        # Build. Install Hex/Rebar from their pinned upstream release paths;
+        # dependency checksums remain enforced by mix.lock.
+        mix archive.install github hexpm/hex branch latest --force
+        curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+          https://github.com/erlang/rebar3/releases/latest/download/rebar3 \
+          -o /usr/local/bin/rebar3
+        chmod +x /usr/local/bin/rebar3
+        mix local.rebar rebar3 /usr/local/bin/rebar3 --force
+        HEX_UNSAFE_HTTPS=1 mix deps.get
         mix ecto.migrate
         mix test
     waitFor: ["wait-for-postgres", "verify-identity-contract"]
