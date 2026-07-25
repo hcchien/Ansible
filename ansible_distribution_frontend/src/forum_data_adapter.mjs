@@ -67,7 +67,7 @@ export function createForumDataAdapter({
 
   async function loadBoardPage({ boardId, sessionViewModel } = {}) {
     const home = await loadForumHome({ sessionViewModel });
-    const board = home.boards.find((candidate) => candidate.id === boardId);
+    const board = home.boards.find((candidate) => boardMatchesRoute(candidate, boardId));
 
     if (!board) {
       return {
@@ -105,7 +105,7 @@ export function createForumDataAdapter({
 
   async function loadThreadPage({ boardId, threadId, sessionViewModel } = {}) {
     const home = await loadForumHome({ sessionViewModel });
-    const board = home.boards.find((candidate) => candidate.id === boardId);
+    const board = home.boards.find((candidate) => boardMatchesRoute(candidate, boardId));
 
     if (!board) {
       return {
@@ -615,4 +615,11 @@ function normalizeAuthorHandle(item, payload = {}) {
     null;
   const handle = String(value ?? '').trim();
   return handle || null;
+}
+
+function boardMatchesRoute(board, routeBoardId) {
+  const requested = String(routeBoardId ?? '');
+  return [board?.id, board?.slug, board?.legacyHostedBoardId]
+    .map((value) => String(value ?? ''))
+    .includes(requested);
 }

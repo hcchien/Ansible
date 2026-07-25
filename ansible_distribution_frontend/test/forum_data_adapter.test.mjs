@@ -249,7 +249,14 @@ test('loads thread detail from the AppView thread feed', async () => {
       async fetchHostedBoards() {
         calls.push(['boards']);
         return {
-          boards: [{ hosted_board_id: 'fifa2026', slug: 'fifa2026', title: 'FIFA2026' }],
+          boards: [
+            {
+              board_id: 1,
+              hosted_board_id: 'fifa2026',
+              slug: 'fifa2026',
+              title: 'FIFA2026',
+            },
+          ],
         };
       },
       async fetchBoardModerationState({ boardId }) {
@@ -290,14 +297,15 @@ test('loads thread detail from the AppView thread feed', async () => {
     sessionViewModel: AUTHENTICATED_SESSION,
   });
 
-  assert.equal(page.board.id, 'fifa2026');
+  assert.equal(page.board.id, '1');
+  assert.equal(page.board.slug, 'fifa2026');
   assert.equal(page.thread.id, 'thread-9');
   assert.equal(page.thread.title, '不見了');
   assert.equal(page.thread.posts[0].content, '文章不見了？！');
   assert.deepEqual(calls, [
     ['host'],
     ['boards'],
-    ['moderation', 'fifa2026'],
+    ['moderation', '1'],
     ['thread-feed', 'http://localhost:5174', 'thread-9'],
   ]);
 });
