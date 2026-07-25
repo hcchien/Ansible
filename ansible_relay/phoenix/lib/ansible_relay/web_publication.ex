@@ -95,6 +95,7 @@ defmodule AnsibleRelay.WebPublication do
          :ok <- ensure(operation["visibility"] in @visibilities, :visibility_not_allowed),
          :ok <- ensure(is_boolean(operation["federate"])),
          :ok <- validate_action_shape(operation),
+         :ok <- validate_original_author(operation),
          :ok <- validate_times(operation),
          payload_hash <- sha256(canonical_json(operation["payload"])),
          :ok <-
@@ -299,6 +300,17 @@ defmodule AnsibleRelay.WebPublication do
     do: ensure(is_binary(operation["parent_id"]) and operation["parent_id"] != "")
 
   defp validate_action_binding(_operation), do: :ok
+
+  defp validate_original_author(%{"action" => action} = operation)
+       when action in ["forum.edit", "forum.delete"] do
+    case OpStore.create_op_author(operation["entity_type"], operation["entity_id"]) do
+      author when author == operation["author_did"] -> :ok
+      nil -> {:error, :original_content_not_found}
+      _ -> {:error, :not_original_author}
+    end
+  end
+
+  defp validate_original_author(_operation), do: :ok
 
   defp validate_times(operation) do
     with {:ok, created_at, _} <- DateTime.from_iso8601(operation["created_at"]),

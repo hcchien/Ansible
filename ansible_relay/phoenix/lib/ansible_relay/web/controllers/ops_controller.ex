@@ -46,6 +46,13 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          message = signing_payload(params),
          :ok <- check_signature(author_did, message, params["signature"]),
          :ok <-
+           check_original_author(
+             params["entity_type"],
+             params["entity_id"],
+             params["op_type"],
+             author_did
+           ),
+         :ok <-
            check_posting_gate(
              conn,
              params["entity_type"],
@@ -145,6 +152,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       {:error, :bad_signature} ->
         send_json(conn, 401, %{error: "invalid_signature"})
 
+      {:error, :not_original_author} ->
+        send_json(conn, 403, %{error: "not_original_author"})
+
+      {:error, :original_content_not_found} ->
+        send_json(conn, 404, %{error: "original_content_not_found"})
+
       {:error, :rate_limited, detail} ->
         send_json(conn, 429, %{error: "rate_limited", detail: detail})
 
@@ -183,6 +196,20 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       do: AnsibleRelay.WebauthnSync.authorize(conn, did),
       else: :ok
   end
+
+  defp check_original_author(_entity_type, _entity_id, "insert", _author_did), do: :ok
+
+  defp check_original_author(entity_type, entity_id, op_type, author_did)
+       when op_type in ["update", "delete"] and
+              entity_type in ["thread", "post", "comment"] do
+    case OpStore.create_op_author(entity_type, entity_id) do
+      ^author_did -> :ok
+      nil -> {:error, :original_content_not_found}
+      _ -> {:error, :not_original_author}
+    end
+  end
+
+  defp check_original_author(_entity_type, _entity_id, _op_type, _author_did), do: :ok
 
   # GET /api/v1/ops/delta
   def delta(conn, params) do
