@@ -9,6 +9,11 @@ substitutions:
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
 
 steps:
+  - id: verify-identity-contract
+    name: node:22-alpine
+    entrypoint: node
+    args: ["scripts/verify_identity_resolution_contract.mjs"]
+
   - id: start-postgres
     name: gcr.io/cloud-builders/docker
     args:
@@ -52,7 +57,7 @@ steps:
         mix deps.get
         mix ecto.migrate
         mix test
-    waitFor: ["wait-for-postgres"]
+    waitFor: ["wait-for-postgres", "verify-identity-contract"]
 
   - id: build-image
     name: gcr.io/cloud-builders/docker

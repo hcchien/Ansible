@@ -1,0 +1,47 @@
+[
+  {
+    "name": "public handle wins",
+    "author": {
+      "did": "did:elix:5smknmtlodh7pomzg7iuibhfwq",
+      "handle": "hcc129",
+      "display_name": "Hsin-Chan"
+    },
+    "expected": "hcc129"
+  },
+  {
+    "name": "handle fallback",
+    "author": {
+      "did": "did:elix:5smknmtlodh7pomzg7iuibhfwq",
+      "handle": "hcc129",
+      "display_name": null
+    },
+    "expected": "hcc129"
+  },
+  {
+    "name": "did fallback",
+    "author": {
+      "did": "did:elix:5smknmtlodh7pomzg7iuibhfwq",
+      "handle": null,
+      "display_name": null
+    },
+    "expected": "did:eli...ibhfwq"
+  },
+  {
+    "name": "handle remains visible when did is unavailable",
+    "author": {
+      "did": null,
+      "handle": "untrusted-orphan",
+      "display_name": "Orphan"
+    },
+    "expected": "untrusted-orphan"
+  },
+  {
+    "name": "anonymous without public identity",
+    "author": {
+      "did": null,
+      "handle": null,
+      "display_name": null
+    },
+    "expected": "anonymous"
+  }
+]

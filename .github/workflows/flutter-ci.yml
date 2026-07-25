@@ -65,7 +65,7 @@ jobs:
           packages=false
           while IFS= read -r file; do
             case "$file" in
-              .github/workflows/flutter-ci.yml)
+              .github/workflows/flutter-ci.yml|contracts/identity-resolution/*|contracts/identity-resolution/**/*|scripts/verify_identity_resolution_contract.mjs)
                 app=true
                 packages=true
                 ;;
@@ -123,6 +123,10 @@ jobs:
       - name: Show Flutter version
         run: flutter --version
 
+      - name: Verify shared identity contract
+        working-directory: ${{ github.workspace }}
+        run: node scripts/verify_identity_resolution_contract.mjs
+
       - name: Get dependencies
         working-directory: ${{ matrix.path }}
         run: ${{ matrix.tool }} pub get
@@ -157,6 +161,10 @@ jobs:
 
       - name: Show Flutter version
         run: flutter --version
+
+      - name: Verify shared identity contract
+        working-directory: ${{ github.workspace }}
+        run: node scripts/verify_identity_resolution_contract.mjs
 
       - name: Get dependencies
         run: flutter pub get

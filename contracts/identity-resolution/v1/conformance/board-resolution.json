@@ -1,0 +1,42 @@
+[
+  {
+    "name": "canonical id",
+    "reference": "1",
+    "boards": [
+      { "id": "1", "slug": "fifa2026", "legacy_ids": ["FIFA2026"] }
+    ],
+    "expected_id": "1"
+  },
+  {
+    "name": "route slug",
+    "reference": "fifa2026",
+    "boards": [
+      { "id": "1", "slug": "fifa2026", "legacy_ids": ["FIFA2026"] }
+    ],
+    "expected_id": "1"
+  },
+  {
+    "name": "legacy hosted id",
+    "reference": "FIFA2026",
+    "boards": [
+      { "id": "1", "slug": "fifa2026", "legacy_ids": ["FIFA2026"] }
+    ],
+    "expected_id": "1"
+  },
+  {
+    "name": "unknown reference",
+    "reference": "missing",
+    "boards": [
+      { "id": "1", "slug": "fifa2026", "legacy_ids": ["FIFA2026"] }
+    ],
+    "expected_id": null
+  },
+  {
+    "name": "empty reference",
+    "reference": "",
+    "boards": [
+      { "id": "1", "slug": "fifa2026", "legacy_ids": [] }
+    ],
+    "expected_id": null
+  }
+]

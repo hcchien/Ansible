@@ -33,6 +33,9 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
     steps:
       - uses: actions/checkout@v4
+      - name: Verify shared identity contract
+        working-directory: ${{ github.workspace }}
+        run: node scripts/verify_identity_resolution_contract.mjs
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

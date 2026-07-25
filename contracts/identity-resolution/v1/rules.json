@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "board_match_fields": ["id", "slug", "legacy_ids"],
+  "public_author_priority": ["handle", "abbreviated_did"],
+  "anonymous_only_when_public_identity_missing": true,
+  "did_abbreviation": {
+    "maximum_unabbreviated_length": 16,
+    "prefix_length": 7,
+    "suffix_length": 6,
+    "separator": "..."
+  }
+}

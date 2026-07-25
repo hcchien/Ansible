@@ -3,7 +3,7 @@
 
 POSTGRES_TEST_ENV := POSTGRES_USER="$$USER" POSTGRES_PASSWORD=postgres MIX_ENV=test
 
-.PHONY: help setup dev dev-down test test-flutter test-app test-packages \
+.PHONY: help setup dev dev-down test test-contracts test-flutter test-app test-packages \
         test-relay test-appview test-issuer test-frontend test-rust \
         build-mcp lint analyze
 
@@ -19,7 +19,10 @@ dev: ## Start backend stack (postgres + relay + appview + issuer + frontend)
 dev-down: ## Stop the backend stack
 	docker compose down
 
-test: test-flutter test-relay test-appview test-issuer test-frontend test-rust ## Run every suite
+test: test-contracts test-flutter test-relay test-appview test-issuer test-frontend test-rust ## Run every suite
+
+test-contracts: ## Verify shared cross-component identity contracts
+	node scripts/verify_identity_resolution_contract.mjs
 
 test-flutter: test-packages test-app ## All Dart/Flutter tests
 

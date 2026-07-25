@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://elix.cool/contracts/identity-resolution/v1/public-author.schema.json",
+  "title": "Elix Public Author",
+  "type": "object",
+  "required": ["did"],
+  "properties": {
+    "did": { "type": ["string", "null"] },
+    "handle": { "type": ["string", "null"] },
+    "display_name": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

@@ -138,6 +138,7 @@ defmodule AnsibleRelay.Web.ForumHostControllerTest do
     assert board["hosted_board_id"] == "general"
     assert is_integer(board["board_id"])
     assert board["canonical_board_uri"] == "http://localhost:4001/boards/#{board["board_id"]}"
+    assert is_binary(board["slug"])
   end
 
   test "GET /api/v1/forum-host/announcements returns host-owned announcements" do

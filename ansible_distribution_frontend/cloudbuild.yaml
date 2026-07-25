@@ -8,11 +8,17 @@ substitutions:
   _IMAGE_NAME: ansible-web
 
 steps:
+  - id: verify-identity-contract
+    name: node:22-alpine
+    entrypoint: node
+    args: ["scripts/verify_identity_resolution_contract.mjs"]
+
   - id: test
     name: node:22-alpine
     dir: ansible_distribution_frontend
     entrypoint: npm
     args: ["test"]
+    waitFor: ["verify-identity-contract"]
 
   - id: build-image
     name: gcr.io/cloud-builders/docker

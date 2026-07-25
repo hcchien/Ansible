@@ -97,6 +97,7 @@ defmodule AnsibleRelay.Web.ThreadPreviewTest do
     assert body["board_id"] == "board-1"
     assert body["title"] == "我們在重建什麼樣的網路？"
     assert body["author_did"] == "did:elix:author"
+    assert Map.has_key?(body, "author_handle")
     assert body["reply_count"] == 2
     assert body["excerpt"] == "便利往往是監控偽裝成的禮物。"
     assert body["locked"] == false
