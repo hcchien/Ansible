@@ -28,6 +28,8 @@ defmodule AnsibleAppview.Release do
   """
   def rebuild do
     load_app()
+    {:ok, _} = Application.ensure_all_started(:inets)
+    {:ok, _} = Application.ensure_all_started(:ssl)
 
     {:ok, _, _} =
       Ecto.Migrator.with_repo(AnsibleAppview.Repo, fn _repo ->
