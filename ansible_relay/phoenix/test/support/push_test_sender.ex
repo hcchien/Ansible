@@ -10,7 +10,9 @@ defmodule AnsibleRelay.Push.TestSender do
   @behaviour AnsibleRelay.Push.PushSender
 
   def start_link do
-    case Agent.start_link(fn -> [] end, name: __MODULE__) do
+    # This is shared test infrastructure. It must not die when the individual
+    # ExUnit process that first touched it exits while another case is running.
+    case Agent.start(fn -> [] end, name: __MODULE__) do
       {:ok, pid} -> {:ok, pid}
       {:error, {:already_started, pid}} -> {:ok, pid}
     end

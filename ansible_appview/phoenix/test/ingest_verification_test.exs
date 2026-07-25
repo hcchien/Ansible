@@ -160,7 +160,7 @@ defmodule AnsibleAppview.IngestVerificationTest do
     {indexed, max_log} = Folder.apply_ops([op])
     assert indexed == 1
     assert max_log == 105
-    assert Enum.map(Timeline.for_board("2026", nil, 50).items, & &1.op_id) == ["op-105"]
+    assert Enum.map(Timeline.for_board("2026", nil, nil, 50).items, & &1.op_id) == ["op-105"]
   end
 
   test "a bad-signature op is excluded from public reads and increments the rejection metric" do
