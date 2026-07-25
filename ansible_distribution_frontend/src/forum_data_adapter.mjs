@@ -252,7 +252,9 @@ export function createForumDataAdapter({
       forumHostClient.fetchHostedBoards({ relayBaseUrl, fetchImpl }),
     ]);
     const boards = boardsResponse.boards ?? [];
-    const selectedBoardId = boardId ?? (String(boards[0]?.board_id ?? '') || null);
+    const selectedBoardId =
+      boardId ??
+      (String(boards[0]?.board_id ?? boards[0]?.hosted_board_id ?? '') || null);
     const board = boards.find(
       (candidate) =>
         String(candidate.board_id ?? candidate.hosted_board_id ?? '') === selectedBoardId,
