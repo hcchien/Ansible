@@ -30,11 +30,18 @@ defmodule AnsibleAppview.Release do
     load_app()
     {:ok, _} = Application.ensure_all_started(:inets)
     {:ok, _} = Application.ensure_all_started(:ssl)
+    {:ok, cache} = AnsibleAppview.Cache.ETS.start_link()
+    {:ok, home_timeline} = AnsibleAppview.HomeTimeline.ETS.start_link()
 
-    {:ok, _, _} =
-      Ecto.Migrator.with_repo(AnsibleAppview.Repo, fn _repo ->
-        AnsibleAppview.Ingest.Rebuilder.run()
-      end)
+    try do
+      {:ok, _, _} =
+        Ecto.Migrator.with_repo(AnsibleAppview.Repo, fn _repo ->
+          AnsibleAppview.Ingest.Rebuilder.run()
+        end)
+    after
+      GenServer.stop(cache)
+      GenServer.stop(home_timeline)
+    end
   end
 
   defp repos do
