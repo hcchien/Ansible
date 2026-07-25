@@ -44,6 +44,7 @@ test('normalizes hosted boards into UI-ready board records', () => {
     }),
     {
       id: 'general',
+      legacyHostedBoardId: 'general',
       slug: 'general',
       title: 'General',
       description: 'General discussion',
@@ -140,6 +141,7 @@ test('builds forum home data from host, boards, and session capabilities', () =>
     boards: [
       {
         id: 'general',
+        legacyHostedBoardId: 'general',
         slug: 'general',
         title: 'General',
         description: '',
