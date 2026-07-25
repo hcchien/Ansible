@@ -34,6 +34,11 @@ defmodule AnsibleAppview.IngestVerificationTest do
     {Base.encode16(pub, case: :lower), priv}
   end
 
+  defp p256_keypair do
+    {pub, priv} = :crypto.generate_key(:ecdh, :secp256r1)
+    {Base.encode16(pub, case: :lower), priv}
+  end
+
   defp signed_op(opts) do
     priv = Keyword.fetch!(opts, :priv)
 
@@ -61,6 +66,30 @@ defmodule AnsibleAppview.IngestVerificationTest do
       |> Base.encode16(case: :lower)
 
     Map.put(op, "signature", signature)
+  end
+
+  defp p256_signed_op(opts) do
+    priv = Keyword.fetch!(opts, :priv)
+
+    base = %{
+      "log_id" => Keyword.fetch!(opts, :log_id),
+      "op_id" => "op-#{Keyword.fetch!(opts, :log_id)}",
+      "author_did" => Keyword.fetch!(opts, :author_did),
+      "entity_type" => Keyword.fetch!(opts, :entity_type),
+      "entity_id" => "e-#{Keyword.fetch!(opts, :log_id)}",
+      "op_type" => "insert",
+      "payload" => Base.encode64(Jason.encode!(Keyword.get(opts, :payload, %{}))),
+      "public_key_hex" => Keyword.fetch!(opts, :pub),
+      "signing_algorithm" => "p256-sha256",
+      "reputation_tier" => "basic",
+      "received_at" => "2026-07-25T00:00:00Z"
+    }
+
+    signature =
+      :crypto.sign(:ecdsa, :sha256, SigningPayload.build(base), [priv, :secp256r1])
+      |> Base.encode16(case: :lower)
+
+    Map.put(base, "signature", signature)
   end
 
   defp rejection_count(reason) do
@@ -108,6 +137,30 @@ defmodule AnsibleAppview.IngestVerificationTest do
 
     explore = Discovery.explore(nil, 50)
     assert "op-100" in Enum.map(explore.items, & &1.op_id)
+  end
+
+  test "a valid P-256 hardware-identity op folds into the board feed" do
+    {pub, priv} = p256_keypair()
+
+    op =
+      p256_signed_op(
+        log_id: 105,
+        author_did: "did:elix:p256-author",
+        entity_type: "thread",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "boardId" => "1784819993011_2026",
+          "threadId" => "e-105",
+          "title" => "P-256 thread",
+          "createdAt" => "2026-07-25T00:00:00Z"
+        }
+      )
+
+    {indexed, max_log} = Folder.apply_ops([op])
+    assert indexed == 1
+    assert max_log == 105
+    assert Enum.map(Timeline.for_board("2026", nil, 50).items, & &1.op_id) == ["op-105"]
   end
 
   test "a bad-signature op is excluded from public reads and increments the rejection metric" do

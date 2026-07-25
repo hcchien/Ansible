@@ -273,7 +273,12 @@ defmodule AnsibleAppview.Ingest.Folder do
         end
 
       not (is_binary(pk) and is_binary(sig) and
-               SigVerifier.verify_ed25519(pk, SigningPayload.build(op), sig)) ->
+               SigVerifier.verify_identity(
+                 op["signing_algorithm"] || "ed25519",
+                 pk,
+                 SigningPayload.build(op),
+                 sig
+               )) ->
         {:error, :bad_signature}
 
       true ->
