@@ -95,6 +95,7 @@ defmodule AnsibleRelay.WebPublication do
          :ok <- ensure(operation["visibility"] in @visibilities, :visibility_not_allowed),
          :ok <- ensure(is_boolean(operation["federate"])),
          :ok <- validate_action_shape(operation),
+         :ok <- validate_original_author(operation),
          :ok <- validate_times(operation),
          payload_hash <- sha256(canonical_json(operation["payload"])),
          :ok <-
@@ -217,7 +218,7 @@ defmodule AnsibleRelay.WebPublication do
       |> Map.put("web_host_receipt", receipt)
       |> Jason.encode!()
 
-    OpStore.append(%{
+    op = %{
       op_id: operation["operation_id"],
       author_did: operation["author_did"],
       entity_type: operation["entity_type"],
@@ -227,7 +228,15 @@ defmodule AnsibleRelay.WebPublication do
       signature: proof["signature"],
       schema_version: 1,
       received_at: DateTime.utc_now()
-    })
+    }
+
+    case operation["action"] do
+      action when action in ["forum.edit", "forum.delete"] ->
+        OpStore.append_author_mutation(op, operation["expected_previous_revision"])
+
+      _ ->
+        OpStore.append(op)
+    end
   end
 
   defp enqueue_federation(%{"federate" => false}, _proof), do: :ok
@@ -299,6 +308,19 @@ defmodule AnsibleRelay.WebPublication do
     do: ensure(is_binary(operation["parent_id"]) and operation["parent_id"] != "")
 
   defp validate_action_binding(_operation), do: :ok
+
+  defp validate_original_author(%{"action" => action} = operation)
+       when action in ["forum.edit", "forum.delete"] do
+    author_did = operation["author_did"]
+
+    case OpStore.create_op_author(operation["entity_type"], operation["entity_id"]) do
+      ^author_did -> :ok
+      nil -> {:error, :original_content_not_found}
+      _ -> {:error, :not_original_author}
+    end
+  end
+
+  defp validate_original_author(_operation), do: :ok
 
   defp validate_times(operation) do
     with {:ok, created_at, _} <- DateTime.from_iso8601(operation["created_at"]),

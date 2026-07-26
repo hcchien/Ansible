@@ -106,6 +106,15 @@ defmodule AnsibleRelay.Web.Controllers.WebPublicationController do
   defp send_error(conn, {:error, :operation_id_conflict}),
     do: send_json(conn, 409, %{error: "operation_id_conflict"})
 
+  defp send_error(conn, {:error, :not_original_author}),
+    do: send_json(conn, 403, %{error: "not_original_author"})
+
+  defp send_error(conn, {:error, :original_content_not_found}),
+    do: send_json(conn, 404, %{error: "original_content_not_found"})
+
+  defp send_error(conn, {:error, :revision_conflict}),
+    do: send_json(conn, 409, %{error: "revision_conflict"})
+
   defp send_error(conn, {:error, :board_policy_version_conflict}),
     do: send_json(conn, 409, %{error: "board_policy_version_conflict"})
 

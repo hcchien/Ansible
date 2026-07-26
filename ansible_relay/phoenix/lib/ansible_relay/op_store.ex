@@ -31,6 +31,40 @@ defmodule AnsibleRelay.OpStore do
   this is safe under parallel ingest without a serializing process.
   """
   def append(op) do
+    do_append(op)
+  end
+
+  @doc """
+  Append an update/delete only when its signer created the entity.
+
+  When [expected_previous_revision] is supplied, the append is additionally
+  compare-and-swap protected against the entity's latest op id.  The advisory
+  transaction lock makes the author/revision check and insert one serialized
+  decision for this entity; this is important because a UI-side revision check
+  alone can be raced by another signed write.
+  """
+  def append_author_mutation(op, expected_previous_revision \\ nil) do
+    Repo.transaction(fn ->
+      lock_entity(op.entity_type, op.entity_id)
+
+      result =
+        with :ok <- verify_original_author(op),
+             :ok <- verify_previous_revision(op, expected_previous_revision) do
+          do_append(op)
+        end
+
+      case result do
+        {:ok, log_id} -> log_id
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+    |> case do
+      {:ok, log_id} -> {:ok, log_id}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp do_append(op) do
     attrs = %{
       op_id: op.op_id,
       author_did: op.author_did,
@@ -154,6 +188,42 @@ defmodule AnsibleRelay.OpStore do
         select: o.author_did
       )
     )
+  end
+
+  defp lock_entity(entity_type, entity_id) do
+    # `hashtext` collisions merely serialize unrelated entities; they cannot
+    # authorize a mutation.  The lock is released with this transaction.
+    Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", ["#{entity_type}:#{entity_id}"])
+    :ok
+  end
+
+  defp verify_original_author(op) do
+    author_did = op.author_did
+
+    case create_op_author(op.entity_type, op.entity_id) do
+      ^author_did -> :ok
+      nil -> {:error, :original_content_not_found}
+      _ -> {:error, :not_original_author}
+    end
+  end
+
+  defp verify_previous_revision(_op, nil), do: :ok
+
+  defp verify_previous_revision(op, expected_previous_revision)
+       when is_binary(expected_previous_revision) do
+    latest_revision =
+      Repo.one(
+        from(o in Op,
+          where: o.entity_type == ^op.entity_type and o.entity_id == ^op.entity_id,
+          order_by: [desc: o.id],
+          limit: 1,
+          select: o.op_id
+        )
+      )
+
+    if latest_revision == expected_previous_revision,
+      do: :ok,
+      else: {:error, :revision_conflict}
   end
 
   @doc """

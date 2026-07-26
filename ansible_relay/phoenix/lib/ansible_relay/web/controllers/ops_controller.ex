@@ -46,6 +46,13 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          message = signing_payload(params),
          :ok <- check_signature(author_did, message, params["signature"]),
          :ok <-
+           check_original_author(
+             params["entity_type"],
+             params["entity_id"],
+             params["op_type"],
+             author_did
+           ),
+         :ok <-
            check_posting_gate(
              conn,
              params["entity_type"],
@@ -76,7 +83,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
         received_at: DateTime.utc_now() |> DateTime.to_iso8601()
       }
 
-      case OpStore.append(op) do
+      case append_op(op) do
         {:ok, log_id} ->
           AnsibleRelay.Metrics.inc("relay_op_ingest_total", %{
             entity_type: op.entity_type,
@@ -90,6 +97,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
         {:error, :duplicate} ->
           send_json(conn, 409, %{error: "duplicate_op_id"})
+
+        {:error, :not_original_author} ->
+          send_json(conn, 403, %{error: "not_original_author"})
+
+        {:error, :original_content_not_found} ->
+          send_json(conn, 404, %{error: "original_content_not_found"})
 
         # A malformed payload shape (e.g. a JSON object where the store expects
         # a string column) fails the changeset cast. Treat it as bad input, not
@@ -144,6 +157,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       {:error, :bad_signature} ->
         send_json(conn, 401, %{error: "invalid_signature"})
+
+      {:error, :not_original_author} ->
+        send_json(conn, 403, %{error: "not_original_author"})
+
+      {:error, :original_content_not_found} ->
+        send_json(conn, 404, %{error: "original_content_not_found"})
 
       {:error, :rate_limited, detail} ->
         send_json(conn, 429, %{error: "rate_limited", detail: detail})
@@ -470,6 +489,25 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   defp check_op_not_duplicate(op_id) do
     if OpStore.exists?(op_id), do: {:error, :duplicate_op}, else: :ok
   end
+
+  defp check_original_author(_entity_type, _entity_id, "insert", _author_did), do: :ok
+
+  defp check_original_author(entity_type, entity_id, op_type, author_did)
+       when op_type in ["update", "delete"] and entity_type in ["thread", "post", "comment"] do
+    case OpStore.create_op_author(entity_type, entity_id) do
+      ^author_did -> :ok
+      nil -> {:error, :original_content_not_found}
+      _ -> {:error, :not_original_author}
+    end
+  end
+
+  defp check_original_author(_entity_type, _entity_id, _op_type, _author_did), do: :ok
+
+  defp append_op(%{entity_type: entity_type, op_type: op_type} = op)
+       when entity_type in ["thread", "post", "comment"] and op_type in ["update", "delete"],
+       do: OpStore.append_author_mutation(op)
+
+  defp append_op(op), do: OpStore.append(op)
 
   # Thread/post creation in a hosted board must satisfy that board's
   # posting_policy["min_post_tier"]. The author's tier is resolved at
