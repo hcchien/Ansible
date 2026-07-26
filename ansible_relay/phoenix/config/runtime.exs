@@ -74,6 +74,14 @@ if config_env() == :prod do
 
   config :ansible_relay, :activity_pub_delivery_enabled, activity_pub_delivery_enabled
 
+  activity_pub_blocked_domains =
+    System.get_env("ACTIVITY_PUB_BLOCKED_DOMAINS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+
+  config :ansible_relay, :activity_pub_blocked_domains, activity_pub_blocked_domains
+
   if activity_pub_delivery_enabled do
     activity_pub_public_key_pem =
       System.get_env("ACTIVITY_PUB_PUBLIC_KEY_PEM") ||

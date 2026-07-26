@@ -8,6 +8,7 @@ import '../l10n/subpage_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/app_locale_controller.dart';
 import '../services/external_content_preferences_controller.dart';
+import '../services/fediverse_preferences_controller.dart';
 import '../services/identity_anchor_service.dart';
 import '../services/hardware_key_upgrade_service.dart';
 import '../services/canonical_identity_store.dart';
@@ -57,6 +58,7 @@ class SettingsHomeScreen extends StatelessWidget {
     this.localeController,
     this.readingPreferencesController,
     this.externalContentPreferencesController,
+    this.fediversePreferencesController,
     this.onClearIdentity,
     this.personalScreenStyle,
     this.forumScreenStyle,
@@ -88,8 +90,7 @@ class SettingsHomeScreen extends StatelessWidget {
       platformCapabilities ?? PlatformCapabilities.current;
 
   bool get _showLocalAiAccess =>
-      showLocalAiAccess ??
-      _capabilities.localAiAccess;
+      showLocalAiAccess ?? _capabilities.localAiAccess;
 
   /// Jumps to the user's 個人版 (personal board) in the home pager. Surfaced as
   /// the top entry here because the personal board no longer has its own cell in
@@ -105,6 +106,9 @@ class SettingsHomeScreen extends StatelessWidget {
   /// row builds its own controller from the production SharedPreferences store.
   final ExternalContentPreferencesController?
   externalContentPreferencesController;
+
+  /// Signed outbound ActivityPub consent and per-user remote-site policy.
+  final FediversePreferencesController? fediversePreferencesController;
 
   /// Source of recovery-readiness state for the RECOVERY settings row.
   final RecoveryReadinessStore recoveryReadinessStore;
@@ -434,6 +438,11 @@ class SettingsHomeScreen extends StatelessWidget {
                 onOpenRecoveryWizard: onOpenRecoveryWizard,
               ),
               _BlockedListSettingsRow(db: db, text: text, last: false),
+              _FediversePublishingSettingsRow(
+                db: db,
+                did: did,
+                controller: fediversePreferencesController,
+              ),
               _ExternalContentSettingsRow(
                 controller: externalContentPreferencesController,
                 last: true,

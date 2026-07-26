@@ -4,7 +4,12 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
   import Plug.Conn
 
   alias AnsibleRelay.ActivityPub.{Actor, ActivityBuilder, Inbox}
-  alias AnsibleRelay.{DidAccountCache, PublicationIntentStore, ReputationTier}
+  alias AnsibleRelay.{
+    DidAccountCache,
+    FediversePreferences,
+    PublicationIntentStore,
+    ReputationTier
+  }
 
   def webfinger(conn, %{"resource" => "acct:" <> account}) do
     with [actor, host] <- String.split(account, "@", parts: 2),
@@ -38,18 +43,39 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
   # are best-effort; a malformed activity is dropped, never errored back),
   # with the handled behavior echoed for observability/tests.
   def inbox(conn, %{"actor" => actor}) do
-    with {:ok, _did} <- enabled_actor(actor) do
+    with {:ok, _did} <- enabled_actor(actor),
+         %{allow_remote_followers: true} = preference <-
+           FediversePreferences.get_by_actor(actor),
+         remote_actor when is_binary(remote_actor) <- conn.body_params["actor"],
+         true <- FediversePreferences.allowed_remote?(preference, remote_actor) do
       case AnsibleRelay.ActivityPub.Inbox.handle(actor, conn.body_params,
-             base_url: base_url(conn)
+             base_url: base_url(conn),
+             remote_policy: fn remote_actor, inbox ->
+               FediversePreferences.allowed_remote?(preference, remote_actor, inbox)
+             end
            ) do
         {:accepted, kind} ->
           send_json(conn, 202, %{accepted: true, actor: actor, behavior: to_string(kind)})
 
         {:error, :malformed} ->
           send_json(conn, 202, %{accepted: true, actor: actor, behavior: "dropped"})
+
+        {:error, :blocked} ->
+          send_json(conn, 202, %{accepted: true, actor: actor, behavior: "blocked"})
       end
     else
-      _ -> send_json(conn, 404, %{error: "actor_not_found"})
+      %{allow_remote_followers: false} ->
+        send_json(conn, 202, %{
+          accepted: true,
+          actor: actor,
+          behavior: "remote_follows_disabled"
+        })
+
+      false ->
+        send_json(conn, 202, %{accepted: true, actor: actor, behavior: "blocked"})
+
+      _ ->
+        send_json(conn, 404, %{error: "actor_not_found"})
     end
   end
 
@@ -114,7 +140,7 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
   defp enabled_actor(handle) do
     with {:ok, did} <- DidAccountCache.get_by_handle(handle),
          true <- ReputationTier.meets?(DidAccountCache.reputation_tier(did), "verified_human"),
-         true <- PublicationIntentStore.actor_enabled?(handle) do
+         true <- FediversePreferences.enabled_actor?(handle) do
       {:ok, did}
     else
       _ -> :not_found

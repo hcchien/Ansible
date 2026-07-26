@@ -3,7 +3,8 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
   use Plug.Test
 
   alias AnsibleRelay.Web.Router
-  alias AnsibleRelay.{Db.PublicationIntent, DidAccountCache, IdentityCache, Repo}
+  alias AnsibleRelay.Db.{FediversePreference, PublicationIntent}
+  alias AnsibleRelay.{DidAccountCache, IdentityCache, Repo}
 
   @router_opts Router.init([])
 
@@ -34,6 +35,8 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
   end
 
   defp seed_did(did, public_key, signing_algorithm \\ "ed25519") do
+    handle = "ap-#{System.unique_integer([:positive])}"
+
     IdentityCache.put(
       did,
       public_key,
@@ -45,10 +48,19 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     DidAccountCache.put(
       did,
       public_key,
-      "ap-#{System.unique_integer([:positive])}",
+      handle,
       reputation_tier: "verified_human",
       signing_algorithm: signing_algorithm
     )
+
+    Repo.insert!(%FediversePreference{
+      did: did,
+      actor: handle,
+      enabled: true,
+      revision: System.unique_integer([:positive]),
+      signature: String.duplicate("a", 128),
+      signature_scheme: signing_algorithm
+    })
   end
 
   defp payload_hash(payload) do

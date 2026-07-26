@@ -1,10 +1,7 @@
 part of 'settings_home_screen.dart';
 
 class _IssuerToolsFold extends StatefulWidget {
-  const _IssuerToolsFold({
-    required this.did,
-    required this.capabilities,
-  });
+  const _IssuerToolsFold({required this.did, required this.capabilities});
 
   final String did;
   final PlatformCapabilities capabilities;
@@ -85,10 +82,7 @@ class _IssuerToolsFoldState extends State<_IssuerToolsFold> {
 }
 
 class _IdentityCustodyRow extends StatefulWidget {
-  const _IdentityCustodyRow({
-    required this.did,
-    required this.capabilities,
-  });
+  const _IdentityCustodyRow({required this.did, required this.capabilities});
   final String did;
   final PlatformCapabilities capabilities;
 
@@ -404,12 +398,11 @@ class _NotificationSettingsRowState extends State<_NotificationSettingsRow> {
   Future<void> _openNotificationSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            NotificationSettingsScreen(
-              db: widget.db,
-              did: widget.did,
-              platformCapabilities: widget.capabilities,
-            ),
+        builder: (_) => NotificationSettingsScreen(
+          db: widget.db,
+          did: widget.did,
+          platformCapabilities: widget.capabilities,
+        ),
       ),
     );
     if (!mounted) return;
@@ -646,6 +639,259 @@ class _ExternalContentSettingsRow extends StatefulWidget {
   @override
   State<_ExternalContentSettingsRow> createState() =>
       _ExternalContentSettingsRowState();
+}
+
+class _FediversePublishingSettingsRow extends StatefulWidget {
+  const _FediversePublishingSettingsRow({
+    required this.db,
+    required this.did,
+    this.controller,
+  });
+
+  final AppDatabase db;
+  final String did;
+  final FediversePreferencesController? controller;
+
+  @override
+  State<_FediversePublishingSettingsRow> createState() =>
+      _FediversePublishingSettingsRowState();
+}
+
+class _FediversePublishingSettingsRowState
+    extends State<_FediversePublishingSettingsRow> {
+  late final FediversePreferencesController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        widget.controller ??
+        FediversePreferencesController(
+          did: widget.did,
+          remoteNodes: DriftRemoteNodeRepository(widget.db),
+        );
+    if (!_controller.loaded) _controller.load();
+  }
+
+  Future<void> _setEnabled(bool enabled) async {
+    try {
+      await _controller.setEnabled(enabled);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_message(error))));
+    }
+  }
+
+  String _message(Object error) {
+    final value = error.toString().replaceFirst('Bad state: ', '');
+    if (value == 'activity_pub_requires_verified_human') {
+      return context.uiCopy(
+        zh: '需要先通過真人驗證，才能開啟 Fediverse 發布。',
+        en: 'Verified-human status is required to enable Fediverse publishing.',
+      );
+    }
+    return value;
+  }
+
+  List<String> _lines(String value) => value
+      .split(RegExp(r'[,\n]'))
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toList();
+
+  Future<void> _editPolicy() async {
+    var policy = _controller.preferences.domainPolicy;
+    var followers = _controller.preferences.allowRemoteFollowers;
+    final allowed = TextEditingController(
+      text: _controller.preferences.allowedDomains.join('\n'),
+    );
+    final blocked = TextEditingController(
+      text: _controller.preferences.blockedDomains.join('\n'),
+    );
+    final actors = TextEditingController(
+      text: _controller.preferences.blockedActors.join('\n'),
+    );
+    final result = await showDialog<FediversePreferences>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            context.uiCopy(zh: 'Fediverse 站台政策', en: 'Fediverse site policy'),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<FediverseDomainPolicy>(
+                  initialValue: policy,
+                  decoration: InputDecoration(
+                    labelText: context.uiCopy(zh: '允許模式', en: 'Site policy'),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: FediverseDomainPolicy.open,
+                      child: Text(
+                        context.uiCopy(
+                          zh: '開放（封鎖清單除外）',
+                          en: 'Open, except blocked',
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: FediverseDomainPolicy.allowlist,
+                      child: Text(
+                        context.uiCopy(zh: '僅允許清單', en: 'Allowlist only'),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => policy = value);
+                    }
+                  },
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    context.uiCopy(
+                      zh: '允許站外使用者追蹤',
+                      en: 'Allow remote followers',
+                    ),
+                  ),
+                  value: followers,
+                  onChanged: (value) => setDialogState(() => followers = value),
+                ),
+                TextField(
+                  controller: allowed,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: context.uiCopy(
+                      zh: '允許的網域（每行一個）',
+                      en: 'Allowed domains (one per line)',
+                    ),
+                  ),
+                ),
+                TextField(
+                  controller: blocked,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: context.uiCopy(
+                      zh: '封鎖的網域（每行一個）',
+                      en: 'Blocked domains (one per line)',
+                    ),
+                  ),
+                ),
+                TextField(
+                  controller: actors,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: context.uiCopy(
+                      zh: '封鎖的使用者網址',
+                      en: 'Blocked actor URLs',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                context,
+                _controller.preferences.copyWith(
+                  domainPolicy: policy,
+                  allowRemoteFollowers: followers,
+                  allowedDomains: _lines(allowed.text),
+                  blockedDomains: _lines(blocked.text),
+                  blockedActors: _lines(actors.text),
+                ),
+              ),
+              child: Text(context.uiCopy(zh: '儲存', en: 'Save')),
+            ),
+          ],
+        ),
+      ),
+    );
+    allowed.dispose();
+    blocked.dispose();
+    actors.dispose();
+    if (result == null) return;
+    try {
+      await _controller.update(result);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_message(error))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            const AnsibleGlyphBox(glyph: '↗'),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InkWell(
+                onTap: _controller.saving ? null : _editPolicy,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.uiCopy(
+                        zh: '發布到 Fediverse',
+                        en: 'Publish to Fediverse',
+                      ),
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      context.uiCopy(
+                        zh: '僅限真人驗證；點此設定允許與封鎖站台',
+                        en:
+                            'Verified humans only; tap to configure allowed '
+                            'and blocked sites',
+                      ),
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 13,
+                        color: AnsibleDesign.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Switch(
+              value: _controller.preferences.enabled,
+              onChanged: !_controller.loaded || _controller.saving
+                  ? null
+                  : _setEnabled,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ExternalContentSettingsRowState
