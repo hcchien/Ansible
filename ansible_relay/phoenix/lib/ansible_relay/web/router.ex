@@ -89,6 +89,16 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ActivityPubController.outbox(conn, %{"actor" => actor})
   end
 
+  get "/users/:actor/followers" do
+    AnsibleRelay.Web.Controllers.ActivityPubController.followers(conn, %{"actor" => actor})
+  end
+
+  get "/objects/:publication_id" do
+    AnsibleRelay.Web.Controllers.ActivityPubController.object(conn, %{
+      "publication_id" => publication_id
+    })
+  end
+
   # Self-certifying identity anchor (the legacy ZKP challenge/anchor flow was
   # retired in favour of did:elix + this self-certifying object).
   post "/api/v1/identity/anchor" do

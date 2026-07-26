@@ -85,6 +85,8 @@ class PostsViewScreen extends StatefulWidget {
 
 class _PostsViewScreenState extends State<PostsViewScreen> {
   late final DriftPostRepository _postRepo;
+  late final DriftThreadRepository _threadRepo;
+  late Thread _thread;
   List<Post> _posts = [];
   bool _isLoading = true;
 
@@ -135,6 +137,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   void initState() {
     super.initState();
     _postRepo = DriftPostRepository(widget.db);
+    _threadRepo = DriftThreadRepository(widget.db);
+    _thread = widget.thread;
     _loadPosts();
   }
 
@@ -423,6 +427,112 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     }
   }
 
+  Future<void> _editOpeningPost(Post post) async {
+    final titleController = TextEditingController(text: _thread.title);
+    final bodyController = TextEditingController(text: post.content);
+    final result = await showDialog<(String, String)>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.uiCopy(zh: '編輯貼文', en: 'Edit post')),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                key: const Key('edit_thread_title_field'),
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: context.uiCopy(zh: '標題', en: 'Title'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('edit_thread_body_field'),
+                controller: bodyController,
+                minLines: 4,
+                maxLines: 10,
+                decoration: InputDecoration(
+                  labelText: context.uiCopy(zh: '內容', en: 'Content'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              final body = bodyController.text.trim();
+              if (title.isEmpty || body.isEmpty) return;
+              Navigator.pop(dialogContext, (title, body));
+            },
+            child: Text(context.uiCopy(zh: '儲存', en: 'Save')),
+          ),
+        ],
+      ),
+    );
+    titleController.dispose();
+    bodyController.dispose();
+    if (result == null) return;
+
+    final now = DateTime.now();
+    final (title, body) = result;
+    final titleChanged = title != _thread.title;
+    final bodyChanged = body != post.content;
+    if (!titleChanged && !bodyChanged) return;
+
+    if (titleChanged) {
+      final updatedThread = Thread(
+        id: _thread.id,
+        boardId: _thread.boardId,
+        title: title,
+        authorId: _thread.authorId,
+        createdAt: _thread.createdAt,
+        updatedAt: now,
+        isDeleted: _thread.isDeleted,
+      );
+      await _threadRepo.update(updatedThread);
+      await _enqueueAndFlush(
+        CrdtOpBuilder.updateThread(
+          authorDid: _authorDid,
+          entityId: updatedThread.id,
+          newTitle: title,
+        ),
+      );
+      if (mounted) setState(() => _thread = updatedThread);
+    }
+
+    if (bodyChanged && !post.id.endsWith(':legacy-opening')) {
+      final updatedPost = Post(
+        id: post.id,
+        threadId: post.threadId,
+        boardId: post.boardId,
+        authorId: post.authorId,
+        content: body,
+        createdAt: post.createdAt,
+        updatedAt: now,
+        lastEditAt: now,
+        parentPostId: post.parentPostId,
+        isDeleted: post.isDeleted,
+        signatureVerified: true,
+      );
+      await _postRepo.update(updatedPost);
+      await _enqueueAndFlush(
+        CrdtOpBuilder.updatePost(
+          authorDid: _authorDid,
+          entityId: updatedPost.id,
+          newContent: body,
+        ),
+      );
+    }
+    await _loadPosts();
+  }
+
   Future<void> _deletePost(Post post) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -455,6 +565,45 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       );
       _loadPosts();
     }
+  }
+
+  Future<void> _deleteOpeningPost(Post post) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.uiCopy(zh: '刪除貼文', en: 'Delete post')),
+        content: Text(
+          context.uiCopy(
+            zh: '這會刪除整則貼文與討論串。已同步的裝置會收到刪除標記，確定繼續嗎？',
+            en: 'This deletes the post and its thread. Synced devices will receive a tombstone. Continue?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(context.uiCopy(zh: '刪除', en: 'Delete')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await _threadRepo.delete(_thread.id);
+    if (!post.id.endsWith(':legacy-opening')) {
+      await _postRepo.delete(post.id);
+      await _enqueueAndFlush(
+        CrdtOpBuilder.deletePost(authorDid: _authorDid, entityId: post.id),
+      );
+    }
+    await _enqueueAndFlush(
+      CrdtOpBuilder.deleteThread(authorDid: _authorDid, entityId: _thread.id),
+    );
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   Future<void> _enqueueAndFlush(OpsQueueEntry entry) async {
@@ -695,7 +844,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
             const SizedBox(height: 5),
           ],
           Text(
-            widget.thread.title,
+            _thread.title,
             style: TextStyle(
               fontFamily: AnsibleDesign.serif,
               fontSize: 20,
@@ -935,6 +1084,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
 
   /// Per-post overflow menu (edit / delete / report).
   Widget _postMenu(BuildContext context, Post post) {
+    final isOpeningPost = _posts.isNotEmpty && _posts.first.id == post.id;
     return SizedBox(
       height: 22,
       width: 28,
@@ -963,9 +1113,17 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         ],
         onSelected: (value) {
           if (value == 'edit') {
-            _editPost(post);
+            if (isOpeningPost) {
+              _editOpeningPost(post);
+            } else {
+              _editPost(post);
+            }
           } else if (value == 'delete') {
-            _deletePost(post);
+            if (isOpeningPost) {
+              _deleteOpeningPost(post);
+            } else {
+              _deletePost(post);
+            }
           } else if (value == 'report') {
             _reportContent(post: post);
           }

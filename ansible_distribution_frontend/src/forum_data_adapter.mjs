@@ -9,7 +9,10 @@ import {
   submitWebReport,
 } from './forum_host_client.mjs';
 import { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed } from './appview_client.mjs';
-import { createPasskeySignedThread } from './web_publication_client.mjs';
+import {
+  createPasskeySignedOperation,
+  createPasskeySignedThread,
+} from './web_publication_client.mjs';
 import { ERROR_TYPES, normalizeFrontendError, notFoundError, scopeError } from './error_taxonomy.mjs';
 import {
   applyModerationStateToThreads,
@@ -49,7 +52,7 @@ export function createForumDataAdapter({
     submitWebModerationAction,
     fetchBoardModerationState,
   },
-  webPublicationClient = { createPasskeySignedThread },
+  webPublicationClient = { createPasskeySignedThread, createPasskeySignedOperation },
   appViewClient = { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed },
 }) {
   async function loadForumHome({ sessionViewModel } = {}) {
@@ -279,6 +282,51 @@ export function createForumDataAdapter({
     return normalizeThreadSubmission(response);
   }
 
+  async function submitContentMutation({
+    action,
+    entityType,
+    entityId,
+    boardId,
+    expectedPreviousRevision,
+    payload,
+    sessionViewModel,
+  }) {
+    const requiredCapability =
+      action === 'forum.edit' ? 'canEdit' : 'canDelete';
+    if (!sessionViewModel?.capabilities?.[requiredCapability]) {
+      throw scopeError(action === 'forum.edit' ? 'forum:edit' : 'forum:delete');
+    }
+
+    const [host, boardsResponse] = await Promise.all([
+      forumHostClient.fetchForumHostInfo({ relayBaseUrl, fetchImpl }),
+      forumHostClient.fetchHostedBoards({ relayBaseUrl, fetchImpl }),
+    ]);
+    const board = (boardsResponse.boards ?? []).find(
+      (candidate) =>
+        String(candidate.board_id ?? candidate.hosted_board_id ?? '') ===
+        String(boardId),
+    );
+    if (!board) throw notFoundError('board_not_found', { boardId });
+
+    const publisher =
+      forumHostClient.createPasskeySignedOperation ??
+      webPublicationClient.createPasskeySignedOperation;
+    return publisher({
+      relayBaseUrl,
+      storage,
+      fetchImpl,
+      authorDid: sessionViewModel.subjectDid,
+      targetForumHost: host.canonical_base_url ?? host.base_url ?? relayBaseUrl,
+      boardId: String(board.board_id ?? board.hosted_board_id),
+      boardPolicyVersion: board.access_policy_version ?? 1,
+      action,
+      entityType,
+      entityId,
+      expectedPreviousRevision,
+      payload,
+    });
+  }
+
   // POST /web/reports. Validates the draft locally first (mirrors the relay
   // rule set) so the picker can fail fast, then submits over the cookie rail.
   async function submitReport({
@@ -400,6 +448,7 @@ export function createForumDataAdapter({
     loadBoardPage,
     loadThreadPage,
     submitThreadDraft,
+    submitContentMutation,
     submitReport,
     loadModerationConsole,
     submitModerationAction,
@@ -556,13 +605,13 @@ export function normalizeThreadSubmission(response) {
 }
 
 export function buildThreadsFromFeed(items) {
-  const threads = [];
+  const threadsById = new Map();
   const postsByThread = new Map();
 
   for (const item of items) {
     if (item.entity_type === 'thread' && item.op_type === 'insert') {
       const payload = item.payload ?? {};
-      threads.push({
+      threadsById.set(item.entity_id, {
         id: item.entity_id,
         title: payload.title || '',
         boardId: item.board_id || payload.boardId || payload.board_id || '',
@@ -571,7 +620,19 @@ export function buildThreadsFromFeed(items) {
         updatedAt: item.created_at,
         replyCount: 0,
         posts: [],
+        revision: item.op_id ?? String(item.log_id ?? ''),
       });
+    } else if (item.entity_type === 'thread' && item.op_type === 'update') {
+      const thread = threadsById.get(item.entity_id);
+      if (thread) {
+        const payload = item.payload ?? {};
+        if (typeof payload.title === 'string') thread.title = payload.title;
+        thread.updatedAt = item.created_at ?? thread.updatedAt;
+        thread.revision = item.op_id ?? String(item.log_id ?? thread.revision);
+      }
+    } else if (item.entity_type === 'thread' && item.op_type === 'delete') {
+      threadsById.delete(item.entity_id);
+      postsByThread.delete(item.entity_id);
     } else if (item.entity_type === 'post' && item.op_type === 'insert') {
       const payload = item.payload ?? {};
       const threadId = payload.threadId || payload.thread_id;
@@ -585,11 +646,33 @@ export function buildThreadsFromFeed(items) {
           authorDid: item.author_did,
           authorHandle: normalizeAuthorHandle(item, payload),
           createdAt: item.created_at,
+          revision: item.op_id ?? String(item.log_id ?? ''),
         });
+      }
+    } else if (
+      item.entity_type === 'post' &&
+      (item.op_type === 'update' || item.op_type === 'delete')
+    ) {
+      for (const posts of postsByThread.values()) {
+        const index = posts.findIndex((post) => post.id === item.entity_id);
+        if (index < 0) continue;
+        if (item.op_type === 'delete') {
+          posts.splice(index, 1);
+        } else {
+          const payload = item.payload ?? {};
+          posts[index] = {
+            ...posts[index],
+            content: payload.content ?? payload.newContent ?? posts[index].content,
+            updatedAt: item.created_at ?? posts[index].updatedAt,
+            revision: item.op_id ?? String(item.log_id ?? posts[index].revision),
+          };
+        }
+        break;
       }
     }
   }
 
+  const threads = [...threadsById.values()];
   for (const thread of threads) {
     const posts = postsByThread.get(thread.id) ?? [];
     posts.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));

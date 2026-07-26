@@ -104,9 +104,9 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicyTest do
 
     taiwan_citizen =
       app_requirement(
-        "TaiwanCitizenshipCredential",
-        "citizenshipVerified",
-        true
+        "NationalityCredential",
+        "nationality",
+        "TWN"
       )
 
     adult =

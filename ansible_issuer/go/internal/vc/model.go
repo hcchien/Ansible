@@ -32,6 +32,7 @@ type CredentialSubject struct {
 	AssuranceMethod     string `json:"assuranceMethod,omitempty"`
 	Jurisdiction        string `json:"jurisdiction,omitempty"`
 	Nationality         string `json:"nationality,omitempty"`
+	NationalityVerified bool   `json:"nationalityVerified,omitempty"`
 	CitizenshipVerified bool   `json:"citizenshipVerified,omitempty"`
 	AgeOver18           bool   `json:"ageOver18,omitempty"`
 	DisclosureModel     string `json:"disclosureModel,omitempty"`

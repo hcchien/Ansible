@@ -276,6 +276,27 @@ See `AnsibleRelay.Release` (`lib/ansible_relay/release.ex`) for migrate and
 rollback tasks. Run `migrate` after deploying a new image before serving
 traffic from it.
 
+### ActivityPub Note Delivery
+
+ActivityPub delivery is off by default. Production enables the verified-human,
+explicit-opt-in Note slice with:
+
+```text
+ACTIVITY_PUB_DELIVERY_ENABLED=true
+ACTIVITY_PUB_PUBLIC_KEY_PEM=<RSA public key PEM>
+ACTIVITY_PUB_PRIVATE_KEY_PEM=<matching RSA private key PEM>
+```
+
+The first signed ActivityPub Note is the user's opt-in and exposes the
+relay-owned Actor. The Relay requires the author's current reputation tier to
+meet `verified_human`; credentials, nullifiers, and legal-identity fields never
+enter the ActivityPub payload. Accepted Notes fan out to the Actor's stored
+follower inboxes and are delivered with RSA-SHA256 HTTP Signatures.
+
+Do not enable the public inbox in production until inbound HTTP Signature
+verification and SSRF-safe remote Actor resolution are complete. Outbound Note
+delivery can be exercised first with curated follower inbox rows.
+
 ## Genesis Hosting TODO
 
 - [ ] Add `libcluster` and regional GKE topology config.

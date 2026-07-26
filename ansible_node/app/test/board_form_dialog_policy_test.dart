@@ -99,9 +99,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, 'Members');
-    await tester.ensureVisible(
-      find.byKey(const Key('board_audience_mode')),
-    );
+    await tester.ensureVisible(find.byKey(const Key('board_audience_mode')));
     await tester.tap(find.byKey(const Key('board_audience_mode')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('其他資格才能發文（進階）').last);
@@ -166,9 +164,7 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).first, 'Taiwan board');
-      await tester.ensureVisible(
-        find.byKey(const Key('board_audience_mode')),
-      );
+      await tester.ensureVisible(find.byKey(const Key('board_audience_mode')));
       await tester.tap(find.byKey(const Key('board_audience_mode')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('所有人可閱讀，台灣公民才能發文').last);
@@ -188,10 +184,11 @@ void main() {
       expect(policy['content_visibility'], 'public');
       final requirement =
           policy['requirements']['member'] as Map<String, dynamic>;
-      expect(requirement['credential_type'], 'TaiwanCitizenshipCredential');
+      expect(requirement['credential_type'], 'NationalityCredential');
       expect(requirement['trusted_issuers'], ['did:web:localhost']);
       expect(requirement['claims'], [
-        {'path': 'citizenshipVerified', 'op': 'equals', 'value': true},
+        {'path': 'nationalityVerified', 'op': 'equals', 'value': true},
+        {'path': 'nationality', 'op': 'equals', 'value': 'TWN'},
       ]);
     },
   );

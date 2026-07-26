@@ -11,7 +11,7 @@ import (
 
 const (
 	credentialType                  = "TrisAuraHumanityCredential"
-	taiwanCitizenshipCredentialType = "TaiwanCitizenshipCredential"
+	nationalityCredentialType       = "NationalityCredential"
 	ageOver18CredentialType         = "AgeOver18Credential"
 	emailCredentialType             = "EmailCredential"
 	assuranceLevel                  = "tw_natural_person_certificate"
@@ -141,23 +141,22 @@ func (iss *Issuer) IssueEmail(holderDID string) (map[string]any, error) {
 	)
 }
 
-// IssuePassport builds and signs a passport NFC humanity credential. It does
-// not store passport source fields. Duplicate detection is enforced using the
-// verifier-produced national ID and passport number commitments.
+// IssuePassport builds independently presentable passport NFC credentials for
+// personhood, nationality, and (when true) the age-over-18 predicate. Passport
+// nationality never gates personhood or age issuance. It does not store source
+// document fields; duplicate detection uses only verifier-produced commitments.
 func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passportNumberHash string, ageOver18 bool) ([]map[string]any, error) {
 	if err := iss.store.CheckDuplicatePersonhoodBinding(nationalIDHash, passportNumberHash); err != nil {
 		return nil, err
 	}
 
-	citizenship, err := iss.issue(
-		taiwanCitizenshipCredentialType,
+	humanity, err := iss.issue(
+		credentialType,
 		CredentialSubject{
-			ID:                  holderDID,
-			CitizenshipVerified: true,
-			AssuranceLevel:      passportAssuranceLevel,
-			AssuranceMethod:     passportAssuranceMethod,
-			Jurisdiction:        jurisdiction,
-			Nationality:         nationality,
+			ID:              holderDID,
+			HumanVerified:   true,
+			AssuranceLevel:  passportAssuranceLevel,
+			AssuranceMethod: passportAssuranceMethod,
 		},
 		"",
 		nationalIDHash,
@@ -166,7 +165,25 @@ func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passpor
 	if err != nil {
 		return nil, err
 	}
-	credentials := []map[string]any{citizenship}
+
+	nationalityCredential, err := iss.issue(
+		nationalityCredentialType,
+		CredentialSubject{
+			ID:                  holderDID,
+			NationalityVerified: true,
+			AssuranceLevel:      passportAssuranceLevel,
+			AssuranceMethod:     passportAssuranceMethod,
+			Nationality:         nationality,
+		},
+		"",
+		"",
+		"",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	credentials := []map[string]any{humanity, nationalityCredential}
 	if ageOver18 {
 		age, err := iss.issue(
 			ageOver18CredentialType,

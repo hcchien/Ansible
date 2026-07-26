@@ -302,6 +302,7 @@ function renderThreadOriginalPost(thread, context = {}) {
         boardId: context.boardId ?? '',
       })
     : '';
+  const ownerActions = renderOwnerActions(thread, 'thread', context, thread.title ?? '');
 
   return `
     <article class="thread-op">
@@ -314,6 +315,7 @@ function renderThreadOriginalPost(thread, context = {}) {
           <span class="thread-author"${author && authorLabel !== shortIdentity(author) ? ` title="${escapeAttribute(author)}"` : ''}>${escapeHtml(authorLabel)}</span>
           <span class="thread-source">${escapeHtml(t('thread.originalMarker'))}${signed ? ` · <span class="thread-source-strong">${escapeHtml(t('thread.signedPk'))}</span>` : ''}</span>
           ${renderThreadTime(thread.createdAt ?? thread.updatedAt, 'thread-post-time')}
+          ${ownerActions}
         </div>
         <div class="thread-body-copy">${renderThreadParagraphs(body)}</div>
         ${renderThreadActionRow({
@@ -416,6 +418,12 @@ function renderThreadReplyItem(post, context = {}) {
         boardId: context.boardId ?? '',
       })
     : '';
+  const ownerActions = renderOwnerActions(
+    post,
+    'post',
+    context,
+    post.body ?? post.content ?? '',
+  );
 
   return `
     <article class="thread-reply-item">
@@ -424,6 +432,7 @@ function renderThreadReplyItem(post, context = {}) {
         <div class="thread-reply-top">
           <span class="thread-reply-name${anonymous ? ' is-anonymous' : ''}"${title}>${escapeHtml(authorLabel)}</span>
           ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
+          ${ownerActions}
         </div>
         <div class="thread-reply-body">${renderThreadParagraphs(post.body ?? post.content ?? '')}</div>
         <div class="thread-mini-actions">
@@ -433,6 +442,24 @@ function renderThreadReplyItem(post, context = {}) {
         </div>
       </div>
     </article>
+  `;
+}
+
+function renderOwnerActions(entity, entityType, context, currentValue) {
+  const sessionDid = context.session?.subjectDid ?? context.session?.did ?? '';
+  const authorDid = entity.authorDid ?? entity.subjectDid ?? entity.author ?? '';
+  if (!sessionDid || sessionDid !== authorDid || !entity.id || !entity.revision) return '';
+
+  const common =
+    ` data-entity-type="${escapeAttribute(entityType)}"` +
+    ` data-entity-id="${escapeAttribute(entity.id)}"` +
+    ` data-board-id="${escapeAttribute(context.boardId ?? '')}"` +
+    ` data-revision="${escapeAttribute(entity.revision)}"`;
+  return `
+    <span class="content-owner-actions">
+      <button type="button" data-action="edit-own-content"${common} data-current-value="${escapeAttribute(currentValue)}">${escapeHtml(t('content.edit'))}</button>
+      <button type="button" data-action="delete-own-content"${common}>${escapeHtml(t('content.delete'))}</button>
+    </span>
   `;
 }
 

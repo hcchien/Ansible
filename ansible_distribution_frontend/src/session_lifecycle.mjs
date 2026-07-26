@@ -207,6 +207,8 @@ export function capabilitiesForScopes(scopes) {
     canRead: true,
     canPost: scopes.includes('forum:post'),
     canReply: scopes.includes('forum:reply'),
+    canEdit: scopes.includes('forum:edit'),
+    canDelete: scopes.includes('forum:delete'),
     canRevoke: scopes.includes('session:revoke') || scopes.length > 0,
     canManageProfile: scopes.includes('profile:write'),
   };

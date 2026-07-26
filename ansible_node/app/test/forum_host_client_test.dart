@@ -13,14 +13,14 @@ void main() {
         'board': {
           'write': {
             'trusted_issuers': ['did:web:issuer-dev.elix.cool'],
-            'credential_type': 'TaiwanCitizenshipCredential',
+            'credential_type': 'NationalityCredential',
           },
           'read': {'mode': 'public', 'enabled': true},
         },
         'a': 2,
       }),
       '{"a":2,"board":{"read":{"enabled":true,"mode":"public"},'
-      '"write":{"credential_type":"TaiwanCitizenshipCredential",'
+      '"write":{"credential_type":"NationalityCredential",'
       '"trusted_issuers":["did:web:issuer-dev.elix.cool"]}},"z":1}',
     );
   });

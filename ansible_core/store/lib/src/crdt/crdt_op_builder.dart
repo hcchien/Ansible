@@ -239,6 +239,53 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Build an Op for changing a thread's title. The Relay verifies that the
+  /// signer is the author of the original insert op before accepting it.
+  static OpsQueueEntry updateThread({
+    required String authorDid,
+    required String entityId,
+    required String newTitle,
+  }) {
+    final opId = _uuid.v4();
+    final payload = _encodeJsonPayload({
+      'title': newTitle,
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'thread',
+      entityId: entityId,
+      opType: 'update',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  /// Build an author-signed tombstone for a whole thread.
+  static OpsQueueEntry deleteThread({
+    required String authorDid,
+    required String entityId,
+  }) {
+    final opId = _uuid.v4();
+    final payload = _encodeJsonPayload({
+      'deletedAt': DateTime.now().toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'thread',
+      entityId: entityId,
+      opType: 'delete',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: DateTime.now(),
+    );
+  }
+
   /// Build an Op for publishing a standalone murmur (short-form content).
   ///
   /// The payload carries only the public/unlisted distributable subset — never

@@ -51,21 +51,16 @@ class BoardPolicyDraft {
   String get federationMode => restrictsReading ? 'disabled' : 'enabled';
 
   Map<String, Object?> get postingPolicy => {
-    if (effectiveMinPostTier != null)
-      'min_post_tier': effectiveMinPostTier,
+    if (effectiveMinPostTier != null) 'min_post_tier': effectiveMinPostTier,
   };
 
-  Map<String, Object?> accessPolicy({
-    required String systemIssuerDid,
-  }) {
+  Map<String, Object?> accessPolicy({required String systemIssuerDid}) {
     final requirement = _requirement(systemIssuerDid);
     return {
       'version': 1,
       'discovery': restrictsReading ? 'credential_required' : 'public',
       'read': {'requirement': restrictsReading ? 'member' : 'public'},
-      'post': {
-        'requirement': requiresCredential ? 'member' : 'posting_policy',
-      },
+      'post': {'requirement': requiresCredential ? 'member' : 'posting_policy'},
       'moderate': {'requirement': 'board_moderator'},
       'requirements': requiresCredential ? {'member': requirement} : {},
       'capability_ttl_seconds': 300,
@@ -77,22 +72,27 @@ class BoardPolicyDraft {
   Map<String, Object?> _requirement(String systemIssuerDid) {
     if (customRequirement != null) return customRequirement!;
     return switch (mode) {
-      BoardAudienceMode.taiwanCitizenPost => _builtInRequirement(
-        type: 'TaiwanCitizenshipCredential',
-        issuer: systemIssuerDid,
-        path: 'citizenshipVerified',
-      ),
+      BoardAudienceMode.taiwanCitizenPost => {
+        'credential_type': 'NationalityCredential',
+        'trusted_issuers': [systemIssuerDid],
+        'claims': [
+          {'path': 'nationalityVerified', 'op': 'equals', 'value': true},
+          {'path': 'nationality', 'op': 'equals', 'value': 'TWN'},
+        ],
+        'holder_binding': 'required',
+        'status': {'required': true, 'max_age_seconds': 300},
+      },
       BoardAudienceMode.adultPost => _builtInRequirement(
         type: 'AgeOver18Credential',
         issuer: systemIssuerDid,
         path: 'ageOver18',
       ),
-      BoardAudienceMode.memberPost || BoardAudienceMode.memberRead =>
-        _builtInRequirement(
-          type: 'PoliticalPartyMembershipCredential',
-          issuer: systemIssuerDid,
-          path: 'membership',
-        ),
+      BoardAudienceMode.memberPost ||
+      BoardAudienceMode.memberRead => _builtInRequirement(
+        type: 'PoliticalPartyMembershipCredential',
+        issuer: systemIssuerDid,
+        path: 'membership',
+      ),
       _ => const {},
     };
   }
@@ -139,7 +139,7 @@ class BoardPolicyDraft {
       final type = custom['credential_type'];
       final restricted =
           discovery == 'credential_required' || readRequirement == 'member';
-      if (type == 'TaiwanCitizenshipCredential' && !restricted) {
+      if (type == 'NationalityCredential' && !restricted) {
         return BoardPolicyDraft(
           mode: BoardAudienceMode.taiwanCitizenPost,
           customRequirement: custom,
@@ -167,14 +167,9 @@ class BoardPolicyDraft {
       );
     }
     if (tier == 'verified_human') {
-      return const BoardPolicyDraft(
-        mode: BoardAudienceMode.verifiedHumanPost,
-      );
+      return const BoardPolicyDraft(mode: BoardAudienceMode.verifiedHumanPost);
     }
-    return BoardPolicyDraft(
-      mode: BoardAudienceMode.public,
-      minPostTier: tier,
-    );
+    return BoardPolicyDraft(mode: BoardAudienceMode.public, minPostTier: tier);
   }
 
   static Map<String, Object?> _builtInRequirement({

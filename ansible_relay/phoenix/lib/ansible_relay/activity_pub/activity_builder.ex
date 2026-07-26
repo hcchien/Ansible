@@ -28,9 +28,12 @@ defmodule AnsibleRelay.ActivityPub.ActivityBuilder do
       "type" => activity_type,
       "actor" => actor,
       "published" => DateTime.to_iso8601(intent.received_at || intent.inserted_at),
-      "to" => recipients(intent.visibility),
+      "to" => audience(intent.visibility, actor).to,
+      "cc" => audience(intent.visibility, actor).cc,
       "object" => object
     }
+    |> Enum.reject(fn {_key, value} -> value in [nil, []] end)
+    |> Map.new()
   end
 
   defp activity_type("publish"), do: "Create"
@@ -47,15 +50,21 @@ defmodule AnsibleRelay.ActivityPub.ActivityBuilder do
   end
 
   defp object_for(%PublicationIntent{} = intent, base_url) do
+    actor = Actor.actor_url(actor_name(intent), base_url)
+    audience = audience(intent.visibility, actor)
+
     %{
       "id" => "#{base_url}/objects/#{intent.publication_id}",
       "type" => object_type(intent),
-      "attributedTo" => Actor.actor_url(actor_name(intent), base_url),
+      "attributedTo" => actor,
       "name" => intent.payload["title"],
       "content" => intent.payload["body"] || intent.payload["text"] || "",
-      "to" => recipients(intent.visibility)
+      "published" => intent.payload["created_at"],
+      "updated" => intent.payload["updated_at"],
+      "to" => audience.to,
+      "cc" => audience.cc
     }
-    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Enum.reject(fn {_key, value} -> value in [nil, []] end)
     |> Map.new()
   end
 
@@ -64,8 +73,14 @@ defmodule AnsibleRelay.ActivityPub.ActivityBuilder do
   defp object_type(%PublicationIntent{payload: %{"mode" => "note"}}), do: "Article"
   defp object_type(_intent), do: "Note"
 
-  defp recipients("public"), do: [@public]
-  defp recipients("unlisted"), do: [@public]
+  defp audience("public", actor),
+    do: %{to: [@public], cc: ["#{actor}/followers"]}
+
+  # Unlisted is still public federation, never privacy. Address followers
+  # directly and copy Public so compatible servers deliver it without placing
+  # it in public discovery surfaces.
+  defp audience("unlisted", actor),
+    do: %{to: ["#{actor}/followers"], cc: [@public]}
 
   defp slug(value) do
     value

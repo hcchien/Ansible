@@ -3,7 +3,7 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
   use Plug.Test
 
   alias AnsibleRelay.Web.Router
-  alias AnsibleRelay.{Db.PublicationIntent, IdentityCache, Repo}
+  alias AnsibleRelay.{Db.PublicationIntent, DidAccountCache, IdentityCache, Repo}
 
   @router_opts Router.init([])
 
@@ -40,6 +40,14 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
       "nullifier_#{System.unique_integer()}",
       nil,
       signing_algorithm
+    )
+
+    DidAccountCache.put(
+      did,
+      public_key,
+      "ap-#{System.unique_integer([:positive])}",
+      reputation_tier: "verified_human",
+      signing_algorithm: signing_algorithm
     )
   end
 
@@ -128,6 +136,45 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     assert stored.action == "publish"
     assert stored.visibility == "public"
     assert stored.delivery_status == "queued"
+  end
+
+  test "ActivityPub Note requires verified-human tier" do
+    did = "did:key:z6MkBasicPublication#{System.unique_integer([:positive])}"
+    {public_key, private_key} = ed25519_keypair()
+
+    IdentityCache.put(
+      did,
+      public_key,
+      "nullifier_#{System.unique_integer()}",
+      nil,
+      "ed25519"
+    )
+
+    DidAccountCache.put(
+      did,
+      public_key,
+      "basic-#{System.unique_integer([:positive])}",
+      reputation_tier: "basic"
+    )
+
+    response = post_json("/api/v1/publication-intents", valid_intent(did, private_key))
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "activity_pub_requires_verified_human"
+  end
+
+  test "ActivityPub endpoint rejects murmurs while the first slice is notes-only" do
+    did = "did:key:z6MkMurmurPublication#{System.unique_integer([:positive])}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    intent = valid_intent(did, private_key)
+    payload = %{"type" => "murmur", "text" => "not enabled yet"}
+    intent = %{intent | "payload" => payload, "payload_hash" => payload_hash(payload)}
+    intent = Map.put(intent, "signature", sign(private_key, signing_payload(intent)))
+
+    response = post_json("/api/v1/publication-intents", intent)
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "activity_pub_notes_only"
   end
 
   test "POST /api/v1/publication-intents accepts a DER P-256 hardware signature" do

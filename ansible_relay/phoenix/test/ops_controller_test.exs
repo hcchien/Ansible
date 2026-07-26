@@ -496,11 +496,16 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     seed_did(did, public_key)
     board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
 
+    insert =
+      content_op(did, private_key, "thread", %{"boardId" => board_id, "title" => "Original"})
+
+    assert post_json("/api/v1/ops", insert).status == 202
+
     op = %{
       "op_id" => "op-#{System.unique_integer()}",
       "author_did" => did,
       "entity_type" => "thread",
-      "entity_id" => "entity-#{System.unique_integer()}",
+      "entity_id" => insert["entity_id"],
       "op_type" => "update",
       "payload" => Base.encode64(Jason.encode!(%{"boardId" => board_id, "title" => "Edited"}))
     }
@@ -509,6 +514,34 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     response = post_json("/api/v1/ops", op)
 
     assert response.status == 202
+  end
+
+  test "only the original author can update or delete content" do
+    alice = "did:key:z6MkOwner#{System.unique_integer()}"
+    bob = "did:key:z6MkOther#{System.unique_integer()}"
+    {alice_public, alice_private} = ed25519_keypair()
+    {bob_public, bob_private} = ed25519_keypair()
+    seed_did(alice, alice_public)
+    seed_did(bob, bob_public)
+
+    insert = content_op(alice, alice_private, "post", %{"content" => "original"})
+    assert post_json("/api/v1/ops", insert).status == 202
+
+    for op_type <- ["update", "delete"] do
+      mutation = %{
+        "op_id" => "op-#{System.unique_integer()}",
+        "author_did" => bob,
+        "entity_type" => "post",
+        "entity_id" => insert["entity_id"],
+        "op_type" => op_type,
+        "payload" => Base.encode64(Jason.encode!(%{"content" => "not yours"}))
+      }
+
+      mutation = Map.put(mutation, "signature", sign(bob_private, signing_payload(mutation)))
+      response = post_json("/api/v1/ops", mutation)
+      assert response.status == 403
+      assert Jason.decode!(response.resp_body)["error"] == "not_original_author"
+    end
   end
 
   test "thread insert referencing a board not hosted here passes through" do

@@ -18,6 +18,7 @@ var (
 
 const (
 	PersonhoodBindingTWNationalIDContext   = "tw_national_id_v1"
+	PersonhoodBindingPassportContext       = "passport_personhood_v1"
 	PersonhoodBindingPassportNumberContext = "passport_number_v1"
 )
 

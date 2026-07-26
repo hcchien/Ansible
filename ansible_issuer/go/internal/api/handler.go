@@ -643,10 +643,13 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
 	}
-	if !reTWPersonBindingInput.MatchString(binding.TWPersonBindingInput) ||
+	personhoodBindingInput := binding.PersonhoodBindingInput
+	if personhoodBindingInput == "" {
+		personhoodBindingInput = binding.TWPersonBindingInput
+	}
+	if !reTWPersonBindingInput.MatchString(personhoodBindingInput) ||
 		!rePersonhoodHash.MatchString(binding.PassportNumberHash) ||
-		binding.Nationality != body.Nationality ||
-		binding.Nationality != "TWN" {
+		binding.Nationality != body.Nationality {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
 	}
@@ -660,9 +663,20 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	personBindings := h.peppers.ComputeAll(
-		binding.TWPersonBindingInput,
-		vc.PersonhoodBindingTWNationalIDContext,
+		personhoodBindingInput,
+		vc.PersonhoodBindingPassportContext,
 	)
+	// During migration, a TW passport must also be checked under the former
+	// domain separator so an existing active binding cannot enrol again.
+	if binding.Nationality == "TWN" {
+		personBindings = append(
+			personBindings,
+			h.peppers.ComputeAll(
+				personhoodBindingInput,
+				vc.PersonhoodBindingTWNationalIDContext,
+			)...,
+		)
+	}
 	if err := h.issuer.CheckDuplicate(personBindings); err != nil {
 		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
 			writeError(w, http.StatusConflict, "personhood_already_bound")
