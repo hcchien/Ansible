@@ -643,10 +643,13 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
 	}
-	if !reTWPersonBindingInput.MatchString(binding.TWPersonBindingInput) ||
+	personhoodBindingInput := binding.PersonhoodBindingInput
+	if personhoodBindingInput == "" {
+		personhoodBindingInput = binding.TWPersonBindingInput
+	}
+	if !reTWPersonBindingInput.MatchString(personhoodBindingInput) ||
 		!rePersonhoodHash.MatchString(binding.PassportNumberHash) ||
-		binding.Nationality != body.Nationality ||
-		binding.Nationality != "TWN" {
+		binding.Nationality != body.Nationality {
 		writeError(w, http.StatusUnauthorized, "invalid_passport_proof")
 		return
 	}
@@ -660,9 +663,25 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	personBindings := h.peppers.ComputeAll(
-		binding.TWPersonBindingInput,
-		vc.PersonhoodBindingTWNationalIDContext,
+		personhoodBindingInput,
+		vc.PersonhoodBindingPassportContext,
 	)
+	storedPersonBinding := personBindings[0]
+	// During migration, a TW passport must also be checked under the former
+	// domain separator so an existing active binding cannot enrol again.
+	if binding.Nationality == "TWN" {
+		legacyTWBindings := h.peppers.ComputeAll(
+			personhoodBindingInput,
+			vc.PersonhoodBindingTWNationalIDContext,
+		)
+		personBindings = append(
+			personBindings,
+			legacyTWBindings...,
+		)
+		// Persist the TW cross-method commitment so a later MobileMoica
+		// ceremony detects the active passport credential as a duplicate.
+		storedPersonBinding = legacyTWBindings[0]
+	}
 	if err := h.issuer.CheckDuplicate(personBindings); err != nil {
 		if errors.Is(err, vc.ErrDuplicateActiveCredential) {
 			writeError(w, http.StatusConflict, "personhood_already_bound")
@@ -674,7 +693,7 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 	credMap, err := h.issuer.IssuePassport(
 		body.DID,
 		binding.Nationality,
-		personBindings[0],
+		storedPersonBinding,
 		binding.PassportNumberHash,
 		binding.AgeOver18,
 	)

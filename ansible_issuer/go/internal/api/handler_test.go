@@ -36,11 +36,11 @@ func (v fakePassportVerifier) VerifyPassportBinding(
 		return api.PassportBindingResult{}, v.err
 	}
 	return api.PassportBindingResult{
-		TWPersonBindingInput: testTWPersonBindingInput("Z123000000"),
-		PassportNumberHash:   proof.PassportNumberHash,
-		Nationality:          proof.Nationality,
-		AgeOver18:            true,
-		VerifiedAt:           time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
+		PersonhoodBindingInput: testTWPersonBindingInput("Z123000000"),
+		PassportNumberHash:     proof.PassportNumberHash,
+		Nationality:            proof.Nationality,
+		AgeOver18:              true,
+		VerifiedAt:             time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
 	}, nil
 }
 
@@ -348,12 +348,20 @@ func TestPassportIssue_ReturnsPassportCredentialWithoutPassportIdentifiers(t *te
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
 	}
 	credentials, ok := bodyJSON(t, w)["credentials"].([]any)
-	if !ok || len(credentials) != 2 {
-		t.Fatalf("expected citizenship and age credentials, got %v", bodyJSON(t, w))
+	if !ok || len(credentials) != 3 {
+		t.Fatalf("expected humanity, nationality, and age credentials, got %v", bodyJSON(t, w))
 	}
-	vcMap := credentials[0].(map[string]any)
+	humanityMap := credentials[0].(map[string]any)
+	humanitySubject, _ := humanityMap["credentialSubject"].(map[string]any)
+	if humanitySubject["humanVerified"] != true {
+		t.Fatalf("expected passport humanity credential, got %v", humanitySubject)
+	}
+	if _, ok := humanitySubject["nationality"]; ok {
+		t.Fatalf("humanity credential must not disclose nationality: %v", humanitySubject)
+	}
+	vcMap := credentials[1].(map[string]any)
 	cs, _ := vcMap["credentialSubject"].(map[string]any)
-	if cs["nationality"] != "TWN" {
+	if cs["nationality"] != "TWN" || cs["nationalityVerified"] != true {
 		t.Fatalf("expected nationality claim, got %v", cs)
 	}
 	if cs["assuranceMethod"] != "passport_nfc" {
@@ -363,6 +371,32 @@ func TestPassportIssue_ReturnsPassportCredentialWithoutPassportIdentifiers(t *te
 		if _, ok := cs[prohibited]; ok {
 			t.Fatalf("credentialSubject must not contain %q", prohibited)
 		}
+	}
+}
+
+func TestPassportIssue_AcceptsSupportedNonTaiwanNationality(t *testing.T) {
+	h := newTestHandler(t)
+	configurePassportVerifier(h)
+	w := call(h, http.MethodPost, "/api/v1/vc/passport/issue", map[string]any{
+		"did":                   testDID,
+		"nationality":           "JPN",
+		"passport_number_hash":  "passport-number-hash-jpn",
+		"zkp_proof":             "proof-jpn",
+		"zkp_circuit_version":   "passport_v1_dev",
+		"verification_key_hash": "sha256:dev-passport-v1-placeholder",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for supported JPN passport, got %d: %s", w.Code, w.Body)
+	}
+	credentials := bodyJSON(t, w)["credentials"].([]any)
+	nationalityVC := credentials[1].(map[string]any)
+	subject := nationalityVC["credentialSubject"].(map[string]any)
+	if subject["nationality"] != "JPN" {
+		t.Fatalf("expected JPN nationality credential, got %v", subject)
+	}
+	ageVC := credentials[2].(map[string]any)
+	if ageVC["credentialSubject"].(map[string]any)["ageOver18"] != true {
+		t.Fatalf("age predicate must be nationality-independent: %v", ageVC)
 	}
 }
 

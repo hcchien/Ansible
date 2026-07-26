@@ -3,7 +3,8 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
   use Plug.Test
 
   alias AnsibleRelay.Web.Router
-  alias AnsibleRelay.{Db.PublicationIntent, IdentityCache, Repo}
+  alias AnsibleRelay.Db.{FediversePreference, PublicationIntent}
+  alias AnsibleRelay.{DidAccountCache, IdentityCache, Repo}
 
   @router_opts Router.init([])
 
@@ -34,6 +35,8 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
   end
 
   defp seed_did(did, public_key, signing_algorithm \\ "ed25519") do
+    handle = "ap-#{System.unique_integer([:positive])}"
+
     IdentityCache.put(
       did,
       public_key,
@@ -41,6 +44,23 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
       nil,
       signing_algorithm
     )
+
+    DidAccountCache.put(
+      did,
+      public_key,
+      handle,
+      reputation_tier: "verified_human",
+      signing_algorithm: signing_algorithm
+    )
+
+    Repo.insert!(%FediversePreference{
+      did: did,
+      actor: handle,
+      enabled: true,
+      revision: System.unique_integer([:positive]),
+      signature: String.duplicate("a", 128),
+      signature_scheme: signing_algorithm
+    })
   end
 
   defp payload_hash(payload) do
@@ -120,14 +140,53 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     body = Jason.decode!(response.resp_body)
     assert body["accepted"] == true
     assert body["status"] == "accepted"
-    assert body["delivery_status"] == "queued"
+    assert body["delivery_status"] == "awaiting_followers"
     assert is_binary(body["publication_id"])
 
     stored = Repo.get_by!(PublicationIntent, publication_id: body["publication_id"])
     assert stored.author_did == did
     assert stored.action == "publish"
     assert stored.visibility == "public"
-    assert stored.delivery_status == "queued"
+    assert stored.delivery_status == "awaiting_followers"
+  end
+
+  test "ActivityPub Note requires verified-human tier" do
+    did = "did:key:z6MkBasicPublication#{System.unique_integer([:positive])}"
+    {public_key, private_key} = ed25519_keypair()
+
+    IdentityCache.put(
+      did,
+      public_key,
+      "nullifier_#{System.unique_integer()}",
+      nil,
+      "ed25519"
+    )
+
+    DidAccountCache.put(
+      did,
+      public_key,
+      "basic-#{System.unique_integer([:positive])}",
+      reputation_tier: "basic"
+    )
+
+    response = post_json("/api/v1/publication-intents", valid_intent(did, private_key))
+    assert response.status == 403
+    assert Jason.decode!(response.resp_body)["error"] == "activity_pub_requires_verified_human"
+  end
+
+  test "ActivityPub endpoint rejects murmurs while the first slice is notes-only" do
+    did = "did:key:z6MkMurmurPublication#{System.unique_integer([:positive])}"
+    {public_key, private_key} = ed25519_keypair()
+    seed_did(did, public_key)
+
+    intent = valid_intent(did, private_key)
+    payload = %{"type" => "murmur", "text" => "not enabled yet"}
+    intent = %{intent | "payload" => payload, "payload_hash" => payload_hash(payload)}
+    intent = Map.put(intent, "signature", sign(private_key, signing_payload(intent)))
+
+    response = post_json("/api/v1/publication-intents", intent)
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "activity_pub_notes_only"
   end
 
   test "POST /api/v1/publication-intents accepts a DER P-256 hardware signature" do
@@ -227,7 +286,7 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     assert Jason.decode!(response.resp_body)["accepted"] == true
   end
 
-  test "accepts development publication signatures for local-only unverified DID when enabled" do
+  test "development signatures do not bypass the verified-human gate" do
     original = Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false)
     Application.put_env(:ansible_relay, :allow_dev_publication_signatures, true)
 
@@ -241,8 +300,10 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
 
     response = post_json("/api/v1/publication-intents", intent)
 
-    assert response.status == 202
-    assert Jason.decode!(response.resp_body)["accepted"] == true
+    assert response.status == 403
+
+    assert Jason.decode!(response.resp_body)["error"] ==
+             "activity_pub_requires_verified_human"
   end
 
   test "rejects tampered payload hash" do

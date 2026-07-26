@@ -757,6 +757,7 @@ String _credentialDisplayName(
   WalletCredential credential,
 ) {
   final canonicalName = switch (credential.credentialType) {
+    'NationalityCredential' => 'Verified Nationality',
     'TaiwanCitizenshipCredential' => 'Taiwan Citizenship',
     'AgeOver18Credential' => 'Age 18 or Older',
     'TrisAuraHumanityCredential' => 'Verified Human',
@@ -768,6 +769,10 @@ String _credentialDisplayName(
     return credential.displayName;
   }
   return switch (credential.credentialType) {
+    'NationalityCredential' => context.uiCopy(
+      zh: '國籍驗證',
+      en: 'Verified Nationality',
+    ),
     'TaiwanCitizenshipCredential' => context.uiCopy(
       zh: '台灣公民',
       en: 'Taiwan Citizenship',

@@ -19,10 +19,10 @@ func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *t
 			t.Fatalf("challenge binding missing: %#v", body)
 		}
 		response, _ := json.Marshal(map[string]any{
-			"verified":                true,
-			"nationality":             "TWN",
-			"tw_person_binding_input": "0x00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
-			"passport_number_hash":    "passport-number-hash",
+			"verified":                 true,
+			"nationality":              "TWN",
+			"personhood_binding_input": "0x00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+			"passport_number_hash":     "passport-number-hash",
 		})
 		return &http.Response{
 			StatusCode: http.StatusOK,
@@ -45,7 +45,7 @@ func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TWPersonBindingInput != "0x00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff" {
+	if result.PersonhoodBindingInput != "0x00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff" {
 		t.Fatalf("issuer must use verifier-derived output, got %#v", result)
 	}
 }

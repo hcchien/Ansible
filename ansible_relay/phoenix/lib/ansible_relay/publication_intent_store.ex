@@ -8,8 +8,8 @@ defmodule AnsibleRelay.PublicationIntentStore do
 
   import Ecto.Query
 
-  alias AnsibleRelay.{Repo, Db.PublicationIntent}
-  alias AnsibleRelay.ActivityPub.ActivityBuilder
+  alias AnsibleRelay.{FediversePreferences, Repo, Db.PublicationIntent}
+  alias AnsibleRelay.ActivityPub.{ActivityBuilder, DeliveryQueue, Inbox}
 
   def accept(attrs) do
     attrs =
@@ -24,7 +24,7 @@ defmodule AnsibleRelay.PublicationIntentStore do
     |> Repo.insert()
     |> case do
       {:ok, intent} ->
-        {:ok, intent}
+        fan_out_to_followers(intent)
 
       {:error, %Ecto.Changeset{} = changeset} ->
         if duplicate?(changeset) do
@@ -54,6 +54,60 @@ defmodule AnsibleRelay.PublicationIntentStore do
   def list_for_actor(actor) when is_binary(actor) do
     list_accepted()
     |> Enum.filter(&(ActivityBuilder.actor_name(&1) == actor))
+  end
+
+  def get_by_publication_id(publication_id) when is_binary(publication_id),
+    do: Repo.get_by(PublicationIntent, publication_id: publication_id)
+
+  def actor_enabled?(actor) when is_binary(actor),
+    do: FediversePreferences.enabled_actor?(actor)
+
+  # Materialize one durable delivery attempt per follower inbox as part of
+  # accepting a Note. Delivery itself remains asynchronous and retryable.
+  # Duplicate/shared inboxes are collapsed so one remote instance does not
+  # receive the same activity repeatedly for multiple followers.
+  defp fan_out_to_followers(intent) do
+    actor = ActivityBuilder.actor_name(intent)
+
+    preference = FediversePreferences.get_by_actor(actor)
+
+    results =
+      actor
+      |> Inbox.followers()
+      |> Enum.filter(fn follower ->
+        FediversePreferences.allowed_remote?(
+          preference,
+          follower.remote_actor,
+          follower.remote_inbox
+        )
+      end)
+      |> Enum.map(& &1.remote_inbox)
+      |> Enum.uniq()
+      |> Enum.map(fn inbox ->
+        case DeliveryQueue.enqueue(intent, inbox) do
+          {:ok, _attempt} -> :ok
+          {:error, :duplicate} -> :ok
+          {:error, reason} -> {:error, reason}
+        end
+      end)
+
+    if Enum.any?(results, &match?({:error, _}, &1)) do
+      case intent
+           |> PublicationIntent.changeset(%{delivery_status: "enqueue_failed"})
+           |> Repo.update() do
+        {:ok, updated} -> {:ok, updated}
+        {:error, changeset} -> {:error, changeset}
+      end
+    else
+      delivery_status = if results == [], do: "awaiting_followers", else: "queued"
+
+      case intent
+           |> PublicationIntent.changeset(%{delivery_status: delivery_status})
+           |> Repo.update() do
+        {:ok, updated} -> {:ok, updated}
+        {:error, changeset} -> {:error, changeset}
+      end
+    end
   end
 
   defp duplicate?(changeset) do

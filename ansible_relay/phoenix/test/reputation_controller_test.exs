@@ -52,6 +52,27 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     valid_until = DateTime.add(DateTime.utc_now(), 90 * 86_400, :second) |> DateTime.to_iso8601()
     credential_type = Keyword.get(opts, :credential_type, "TrisAuraHumanityCredential")
 
+    subject =
+      %{
+        "id" => holder_did,
+        "humanVerified" => true,
+        "assuranceLevel" => "tw_natural_person_certificate",
+        "assuranceMethod" => "tw_fido_or_moica",
+        "jurisdiction" => "TW"
+      }
+      |> then(fn subject ->
+        case Keyword.get(opts, :assurance) do
+          nil ->
+            subject
+
+          uniqueness ->
+            Map.merge(subject, %{
+              "humanAssurance" => "verified",
+              "uniquenessAssurance" => uniqueness
+            })
+        end
+      end)
+
     vc_without_proof = %{
       "@context" => [
         "https://www.w3.org/ns/credentials/v2",
@@ -62,13 +83,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
       "issuer" => @issuer_did,
       "validFrom" => now,
       "validUntil" => valid_until,
-      "credentialSubject" => %{
-        "id" => holder_did,
-        "humanVerified" => true,
-        "assuranceLevel" => "tw_natural_person_certificate",
-        "assuranceMethod" => "tw_fido_or_moica",
-        "jurisdiction" => "TW"
-      }
+      "credentialSubject" => subject
     }
 
     proof_value = sign(issuer_priv, canonical(vc_without_proof))
@@ -283,6 +298,26 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     assert {:ok, %{reputation_tier: "verified_human"}} = DidAccountCache.get(@holder_did)
   end
 
+  test "present derives unique_human from strong signed assurance claims",
+       %{issuer_priv: issuer_priv} do
+    {pub_hex, priv_key} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
+
+    vc = build_vc(@holder_did, issuer_priv, assurance: "strong")
+    vp = build_vp(@holder_did, priv_key, [vc])
+
+    response =
+      post_json("/api/v2/reputation/present", %{"holder_did" => @holder_did, "vp" => vp})
+
+    assert response.status == 200
+    body = Jason.decode!(response.resp_body)
+    assert body["reputation_tier"] == "unique_human"
+    assert body["assurance"]["identity_control"] == "did_key"
+    assert body["assurance"]["human_evidence"] == "natural_person"
+    assert body["assurance"]["uniqueness"] == "strong"
+    assert {:ok, %{reputation_tier: "unique_human"}} = DidAccountCache.get(@holder_did)
+  end
+
   test "present persists the issuer-signed VC and serves it as the attestation",
        %{issuer_priv: issuer_priv} do
     {pub_hex, priv_key} = holder_keypair()
@@ -418,7 +453,7 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
     {pub_hex, priv_key} = holder_keypair()
 
     DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool",
-      reputation_tier: "verified_human"
+      reputation_tier: "unique_human"
     )
 
     vc = build_vc(@holder_did, issuer_priv)
@@ -428,7 +463,9 @@ defmodule AnsibleRelay.Web.ReputationControllerTest do
       post_json("/api/v2/reputation/present", %{"holder_did" => @holder_did, "vp" => vp})
 
     assert response.status == 200
-    assert {:ok, %{reputation_tier: "verified_human"}} = DidAccountCache.get(@holder_did)
+    assert Jason.decode!(response.resp_body)["reputation_tier"] == "unique_human"
+    assert {:ok, %{reputation_tier: "unique_human"}} = DidAccountCache.get(@holder_did)
+    assert get_json("/api/v1/identity/attestation/#{@holder_did}").status == 404
   end
 
   test "present returns 404 for unknown holder", %{issuer_priv: issuer_priv} do

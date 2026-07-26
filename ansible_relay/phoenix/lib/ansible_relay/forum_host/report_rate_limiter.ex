@@ -27,7 +27,13 @@ defmodule AnsibleRelay.ForumHost.ReportRateLimiter do
   @default_policies %{
     "basic" => %{capacity: 3, refill_per_second: 3 / 3600, suspension_ms: 600_000},
     "dns_verified" => %{capacity: 6, refill_per_second: 6 / 3600, suspension_ms: 600_000},
-    "verified_human" => %{capacity: 12, refill_per_second: 12 / 3600, suspension_ms: 600_000}
+    "humanity_limited" => %{
+      capacity: 8,
+      refill_per_second: 8 / 3600,
+      suspension_ms: 600_000
+    },
+    "verified_human" => %{capacity: 12, refill_per_second: 12 / 3600, suspension_ms: 600_000},
+    "unique_human" => %{capacity: 16, refill_per_second: 16 / 3600, suspension_ms: 600_000}
   }
 
   @type decision :: :ok | {:error, :rate_limited, map()}

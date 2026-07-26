@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../l10n/app_l10n.dart';
 import '../../services/handle_resolver.dart';
 import '../../services/ops_dispatch_service.dart';
+import '../../services/posting_gate.dart';
 import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
@@ -433,7 +434,7 @@ class _PostCardState extends State<PostCard> {
                       ],
                     ),
                   ),
-                  if (data.authorTier == 'verified_human') ...[
+                  if (PostingGate.isVerifiedHuman(data.authorTier)) ...[
                     Icon(Icons.verified, size: 14, color: AnsibleDesign.spore),
                     const SizedBox(width: 8),
                   ],

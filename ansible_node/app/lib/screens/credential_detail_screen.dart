@@ -236,10 +236,7 @@ class _CredentialDetail {
 
 List<MapEntry<String, Object?>> _metadataClaims(WalletCredential credential) {
   return switch (credential.credentialType) {
-    'TaiwanCitizenshipCredential' => const [
-      MapEntry('citizenshipVerified', true),
-      MapEntry('nationality', 'TWN'),
-    ],
+    'NationalityCredential' => const [MapEntry('nationalityVerified', true)],
     'AgeOver18Credential' => const [MapEntry('ageOver18', true)],
     _ => const [],
   };
@@ -451,6 +448,15 @@ String _claimLabel(BuildContext context, String key) {
     'over18' => context.uiCopy(zh: '年滿 18 歲', en: 'Age 18 or older'),
     'humanVerified' ||
     'verifiedHuman' => context.uiCopy(zh: '真人驗證', en: 'Verified human'),
+    'humanAssurance' => context.uiCopy(zh: '真人保證等級', en: 'Human assurance'),
+    'uniquenessAssurance' => context.uiCopy(
+      zh: '唯一性保證',
+      en: 'Uniqueness assurance',
+    ),
+    'verificationMethodClass' => context.uiCopy(
+      zh: '驗證方式類別',
+      en: 'Verification method class',
+    ),
     _ => key,
   };
 }
@@ -460,9 +466,9 @@ String _localizedCredentialName(
   WalletCredential credential,
 ) {
   return switch (credential.credentialType) {
-    'TaiwanCitizenshipCredential' => context.uiCopy(
-      zh: '台灣公民',
-      en: 'Taiwan Citizenship',
+    'NationalityCredential' => context.uiCopy(
+      zh: '國籍驗證',
+      en: 'Verified Nationality',
     ),
     'AgeOver18Credential' => context.uiCopy(
       zh: '年滿 18 歲',

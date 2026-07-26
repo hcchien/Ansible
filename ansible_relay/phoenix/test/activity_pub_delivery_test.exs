@@ -2,6 +2,7 @@ defmodule AnsibleRelay.ActivityPubDeliveryTest do
   use ExUnit.Case, async: false
 
   alias AnsibleRelay.ActivityPub.{ActivityBuilder, DeliveryQueue}
+  alias AnsibleRelay.Db.{ActivityPubFollower, FediversePreference}
   alias AnsibleRelay.{PublicationIntentStore, Repo}
 
   defp accepted_intent(attrs \\ %{}) do
@@ -46,6 +47,31 @@ defmodule AnsibleRelay.ActivityPubDeliveryTest do
     delete_activity = ActivityBuilder.from_intent(delete, base_url: "https://relay.elix.cool")
     assert delete_activity["type"] == "Delete"
     assert delete_activity["object"]["type"] == "Tombstone"
+  end
+
+  test "accepting a note fans out to unique follower inboxes" do
+    Repo.insert!(%FediversePreference{
+      did: "did:key:z6MkAlice",
+      actor: "alice",
+      enabled: true,
+      revision: 1,
+      signature: String.duplicate("a", 128),
+      signature_scheme: "ed25519"
+    })
+
+    for remote_actor <- ["https://remote.example/users/bob", "https://remote.example/users/cara"] do
+      %ActivityPubFollower{}
+      |> ActivityPubFollower.changeset(%{
+        actor: "alice",
+        remote_actor: remote_actor,
+        remote_inbox: "https://remote.example/inbox"
+      })
+      |> Repo.insert!()
+    end
+
+    intent = accepted_intent()
+    assert [%{remote_inbox: "https://remote.example/inbox", status: "pending"}] =
+             DeliveryQueue.list_for_publication(intent.publication_id)
   end
 
   test "delivery queue stores per-inbox status and retries transient failures" do

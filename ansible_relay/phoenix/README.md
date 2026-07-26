@@ -276,6 +276,44 @@ See `AnsibleRelay.Release` (`lib/ansible_relay/release.ex`) for migrate and
 rollback tasks. Run `migrate` after deploying a new image before serving
 traffic from it.
 
+### ActivityPub Note Delivery
+
+ActivityPub delivery is off by default. Production enables the verified-human,
+explicit-opt-in Note slice with:
+
+```text
+ACTIVITY_PUB_DELIVERY_ENABLED=true
+ACTIVITY_PUB_PUBLIC_KEY_PEM=<RSA public key PEM>
+ACTIVITY_PUB_PRIVATE_KEY_PEM=<matching RSA private key PEM>
+ACTIVITY_PUB_BLOCKED_DOMAINS=blocked.example,another.example
+```
+
+The App first submits a DID-signed
+`PUT /api/v1/fediverse/preferences`. Enabling requires the author's current
+reputation tier to meet `verified_human`; disabling remains possible after a
+trust downgrade. The preference independently controls remote followers,
+open-versus-allowlist federation, allowed domains, blocked domains, and blocked
+actor URLs. `ACTIVITY_PUB_BLOCKED_DOMAINS` is the operator boundary and takes
+precedence over user allowlists.
+
+Assurance is represented independently as identity control, human evidence,
+and uniqueness. `humanity_limited`, `verified_human`, and `unique_human` are
+compatibility projections for existing gates, not a claim that video
+liveness is stronger than passkey control. New passport and Taiwan
+natural-person credentials with a strong privacy-preserving uniqueness binding
+derive `unique_human`; legacy humanity credentials remain `verified_human`.
+The Fediverse gate deliberately continues to require at least
+`verified_human`.
+
+Only an enabled Actor is exposed. Credentials, nullifiers, and legal-identity
+fields never enter the ActivityPub payload. Accepted public or unlisted Notes
+fan out only to follower inboxes allowed by both platform and user policy, and
+are delivered with RSA-SHA256 HTTP Signatures.
+
+Do not enable the public inbox in production until inbound HTTP Signature
+verification and SSRF-safe remote Actor resolution are complete. Outbound Note
+delivery can be exercised first with curated follower inbox rows.
+
 ## Genesis Hosting TODO
 
 - [ ] Add `libcluster` and regional GKE topology config.

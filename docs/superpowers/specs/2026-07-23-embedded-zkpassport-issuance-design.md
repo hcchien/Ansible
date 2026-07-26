@@ -9,8 +9,8 @@
 Complete the optional Passport NFC trust upgrade without sending raw passport
 data to Elix infrastructure. The user scans the MRZ and ePassport chip inside
 Elix, generates a ZKPassport proof on the phone, and presents that proof to the
-Issuer. The Issuer verifies the proof and issues a minimal
-`TrisAuraHumanityCredential`.
+Issuer. The Issuer verifies the proof and issues independent, minimal
+credentials for personhood, nationality, and age eligibility.
 
 The experience must remain embedded in Elix. A WebView or redirect to the
 ZKPassport application is not an embedded implementation.
@@ -52,8 +52,10 @@ credentials, so the Tris-Aura Engineering Constitution applies in full.
 4. The issuer-scoped identifier is retained only for duplicate active binding.
    It must never be included in a VC, Relay record, presentation, or ordinary
    audit event.
-5. The issued VC contains only `humanVerified`, `assuranceLevel`,
-   `assuranceMethod`, and explicitly requested nationality.
+5. The Issuer separates claims into independently presentable credentials:
+   `TrisAuraHumanityCredential`, `NationalityCredential`, and, when true,
+   `AgeOver18Credential`. No verifier must learn nationality or age merely to
+   verify personhood.
 6. Verification fails closed for unknown circuits, keys, roots, expired
    challenges, reused challenges, malformed proofs, unsupported documents, or
    unavailable registries.
@@ -61,6 +63,45 @@ credentials, so the Tris-Aura Engineering Constitution applies in full.
 This design is constitution-compliant if and only if those boundaries are
 enforced by tests and production configuration. Sending raw passport material
 to the Issuer is not an allowed fallback.
+
+## Credential Model
+
+Passport nationality is not an eligibility gate for personhood or age. Any
+passport whose document format, CSCA chain, and proof circuit are supported may
+produce the same personhood and age credentials.
+
+After one successful proof, the Issuer returns:
+
+1. `TrisAuraHumanityCredential` for every accepted passport:
+   `humanVerified=true`, `assuranceLevel=passport_document`, and
+   `assuranceMethod=passport_nfc`.
+2. `NationalityCredential` for every accepted passport:
+   `nationality=<ISO 3166-1 alpha-3>` and `nationalityVerified=true`.
+3. `AgeOver18Credential` only when the proof establishes the predicate:
+   `ageOver18=true`.
+
+The credentials MUST be separately signed and separately presentable. The
+personhood credential MUST NOT contain nationality or age. The nationality
+credential MUST NOT contain date of birth. The age credential MUST NOT contain
+date of birth or nationality.
+
+`TaiwanCitizenshipCredential` is a legacy type. Existing credentials remain
+readable until expiry, but new passport issuance MUST use
+`NationalityCredential`. A Taiwan-only board requests `NationalityCredential`
+with `nationality == "TWN"`; it does not treat personhood as Taiwanese
+citizenship.
+
+The duplicate/personhood binding applies to the whole issuance ceremony, not
+to one disclosed claim. Multiple nationalities, renewed passports, or multiple
+passport documents MUST NOT produce multiple simultaneously active
+high-assurance personhood bindings for the same person. Commitments remain
+Issuer-internal and never appear in any credential or presentation.
+
+The generic ZKPassport `uniqueIdentifier` is domain-separated into an
+Issuer-scoped personhood binding for every supported nationality. Taiwanese
+passports additionally run the TW cross-method circuit so Passport NFC and
+MobileMoica share the legacy TW duplicate-prevention domain. The TW-only
+circuit MUST NOT be required for non-TW passports.
 
 ## Trust And Threat Model
 

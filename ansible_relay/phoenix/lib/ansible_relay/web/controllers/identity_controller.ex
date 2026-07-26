@@ -74,10 +74,14 @@ defmodule AnsibleRelay.Web.Controllers.IdentityController do
         send_json(conn, 404, %{error: "attestation_not_found"})
 
       row ->
+        assurance =
+          AnsibleRelay.HumanAssurance.from_credential(row.credential_type, row.vc)
+
         send_json(conn, 200, %{
           did: row.did,
           credential_type: row.credential_type,
           reputation_tier: row.reputation_tier,
+          assurance: assurance,
           vc: row.vc,
           presented_at: DateTime.to_iso8601(row.presented_at)
         })

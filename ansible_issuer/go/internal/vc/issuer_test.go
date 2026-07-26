@@ -139,6 +139,34 @@ func TestIssuer_NoPIIInCredentialSubject(t *testing.T) {
 	}
 }
 
+func TestIssuer_HumanityCredentialCarriesStrongUniqueAssurance(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := raw["credentialSubject"].(map[string]any)
+	if cs["humanAssurance"] != "verified" {
+		t.Fatalf("expected verified human assurance, got %v", cs)
+	}
+	if cs["uniquenessAssurance"] != "strong" {
+		t.Fatalf("expected strong uniqueness assurance, got %v", cs)
+	}
+	if cs["verificationMethodClass"] != "government_eid" {
+		t.Fatalf("expected government_eid method class, got %v", cs)
+	}
+}
+
+func TestIssuer_StrongAssuranceRequiresPersonhoodCommitment(t *testing.T) {
+	iss := newTestIssuer(t)
+	if _, err := iss.Issue("did:plc:holder1abcdefghij", nil); !errors.Is(err, vc.ErrMissingPersonhoodCommitment) {
+		t.Fatalf("expected ErrMissingPersonhoodCommitment, got %v", err)
+	}
+	if _, err := iss.IssuePassport("did:plc:holder1abcdefghij", "TWN", "", "", true); !errors.Is(err, vc.ErrMissingPersonhoodCommitment) {
+		t.Fatalf("expected ErrMissingPersonhoodCommitment, got %v", err)
+	}
+}
+
 func TestIssuer_RefusesDuplicate(t *testing.T) {
 	iss := newTestIssuer(t)
 	if _, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-same"}); err != nil {
@@ -172,8 +200,8 @@ func TestIssuer_IssuePassportCredential(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(raw) != 2 {
-		t.Fatalf("expected citizenship and age credentials, got %d", len(raw))
+	if len(raw) != 3 {
+		t.Fatalf("expected humanity, nationality, and age credentials, got %d", len(raw))
 	}
 	for _, credential := range raw {
 		if !iss.VerifyProof(credential) {
@@ -181,9 +209,21 @@ func TestIssuer_IssuePassportCredential(t *testing.T) {
 		}
 	}
 
-	cs, _ := raw[0]["credentialSubject"].(map[string]any)
-	if cs["nationality"] != "TWN" {
-		t.Fatalf("expected nationality claim, got %v", cs)
+	humanity, _ := raw[0]["credentialSubject"].(map[string]any)
+	if humanity["humanVerified"] != true {
+		t.Fatalf("expected humanVerified claim, got %v", humanity)
+	}
+	if humanity["humanAssurance"] != "verified" ||
+		humanity["uniquenessAssurance"] != "strong" ||
+		humanity["verificationMethodClass"] != "government_document" {
+		t.Fatalf("expected strong government-document assurance, got %v", humanity)
+	}
+	if _, ok := humanity["nationality"]; ok {
+		t.Fatalf("humanity credential must not disclose nationality: %v", humanity)
+	}
+	cs, _ := raw[1]["credentialSubject"].(map[string]any)
+	if cs["nationality"] != "TWN" || cs["nationalityVerified"] != true {
+		t.Fatalf("expected independently verified nationality claim, got %v", cs)
 	}
 	if cs["assuranceMethod"] != "passport_nfc" {
 		t.Fatalf("expected passport_nfc assurance method, got %v", cs)
@@ -200,6 +240,31 @@ func TestIssuer_IssuePassportCredential(t *testing.T) {
 	}
 	if binding.HolderDID != "did:plc:holder1abcdefghij" {
 		t.Fatalf("expected binding holder DID, got %q", binding.HolderDID)
+	}
+}
+
+func TestIssuer_IssuePassportCredentialsAreNotTaiwanLocked(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.IssuePassport(
+		"did:plc:holder-japan-abcdefghij",
+		"JPN",
+		"national-id-hash-jpn",
+		"passport-number-hash-jpn",
+		true,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(raw) != 3 {
+		t.Fatalf("expected three credentials, got %d", len(raw))
+	}
+	nationality, _ := raw[1]["credentialSubject"].(map[string]any)
+	if nationality["nationality"] != "JPN" {
+		t.Fatalf("expected JPN nationality, got %v", nationality)
+	}
+	age, _ := raw[2]["credentialSubject"].(map[string]any)
+	if age["ageOver18"] != true {
+		t.Fatalf("expected nationality-independent age predicate, got %v", age)
 	}
 }
 

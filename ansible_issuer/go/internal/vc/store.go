@@ -11,13 +11,15 @@ import (
 )
 
 var (
-	ErrDuplicateActiveCredential  = errors.New("duplicate_active_credential")
-	ErrDuplicatePersonhoodBinding = errors.New("duplicate_personhood_binding")
-	ErrCredentialNotFound         = errors.New("credential_not_found")
+	ErrDuplicateActiveCredential   = errors.New("duplicate_active_credential")
+	ErrDuplicatePersonhoodBinding  = errors.New("duplicate_personhood_binding")
+	ErrCredentialNotFound          = errors.New("credential_not_found")
+	ErrMissingPersonhoodCommitment = errors.New("missing_personhood_commitment")
 )
 
 const (
 	PersonhoodBindingTWNationalIDContext   = "tw_national_id_v1"
+	PersonhoodBindingPassportContext       = "passport_personhood_v1"
 	PersonhoodBindingPassportNumberContext = "passport_number_v1"
 )
 

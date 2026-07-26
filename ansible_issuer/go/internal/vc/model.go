@@ -25,16 +25,20 @@ type CredentialStatus2 struct {
 // CredentialSubject contains privacy-preserving attestation claims.
 // Raw government identity (nationalId, legalName, birthDate) must never appear here.
 type CredentialSubject struct {
-	ID                  string `json:"id"`
-	HumanVerified       bool   `json:"humanVerified,omitempty"`
-	EmailVerified       bool   `json:"emailVerified,omitempty"`
-	AssuranceLevel      string `json:"assuranceLevel,omitempty"`
-	AssuranceMethod     string `json:"assuranceMethod,omitempty"`
-	Jurisdiction        string `json:"jurisdiction,omitempty"`
-	Nationality         string `json:"nationality,omitempty"`
-	CitizenshipVerified bool   `json:"citizenshipVerified,omitempty"`
-	AgeOver18           bool   `json:"ageOver18,omitempty"`
-	DisclosureModel     string `json:"disclosureModel,omitempty"`
+	ID                      string `json:"id"`
+	HumanVerified           bool   `json:"humanVerified,omitempty"`
+	HumanAssurance          string `json:"humanAssurance,omitempty"`
+	UniquenessAssurance     string `json:"uniquenessAssurance,omitempty"`
+	VerificationMethodClass string `json:"verificationMethodClass,omitempty"`
+	EmailVerified           bool   `json:"emailVerified,omitempty"`
+	AssuranceLevel          string `json:"assuranceLevel,omitempty"`
+	AssuranceMethod         string `json:"assuranceMethod,omitempty"`
+	Jurisdiction            string `json:"jurisdiction,omitempty"`
+	Nationality             string `json:"nationality,omitempty"`
+	NationalityVerified     bool   `json:"nationalityVerified,omitempty"`
+	CitizenshipVerified     bool   `json:"citizenshipVerified,omitempty"`
+	AgeOver18               bool   `json:"ageOver18,omitempty"`
+	DisclosureModel         string `json:"disclosureModel,omitempty"`
 }
 
 // Proof is the W3C Data Integrity proof block used by issued credentials.

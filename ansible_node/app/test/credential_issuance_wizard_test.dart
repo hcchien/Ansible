@@ -9,8 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-final _iosCapabilities =
-    PlatformCapabilities.forPlatform(ElixPlatform.ios);
+final _iosCapabilities = PlatformCapabilities.forPlatform(ElixPlatform.ios);
 
 void main() {
   setUp(() {
@@ -44,8 +43,9 @@ void main() {
         home: Scaffold(
           body: CredentialIssuanceWizard(
             holderDid: 'did:elix:desktop',
-            platformCapabilities:
-                PlatformCapabilities.forPlatform(ElixPlatform.macos),
+            platformCapabilities: PlatformCapabilities.forPlatform(
+              ElixPlatform.macos,
+            ),
           ),
         ),
       ),
@@ -194,10 +194,14 @@ void main() {
     );
 
     final credentials = await repository.listCredentials();
-    expect(credentials, hasLength(2));
+    expect(credentials, hasLength(3));
     expect(
       credentials.map((credential) => credential.credentialType),
-      containsAll(['TaiwanCitizenshipCredential', 'AgeOver18Credential']),
+      containsAll([
+        'TrisAuraHumanityCredential',
+        'NationalityCredential',
+        'AgeOver18Credential',
+      ]),
     );
     expect(
       await repository.getEncryptedPayload('urn:uuid:passport-credential'),
@@ -211,7 +215,7 @@ void main() {
     final extension = await repository.getPassportExtensionByLocalUniqueId(
       localId,
     );
-    expect(extension?.credentialId, 'urn:uuid:passport-credential');
+    expect(extension?.credentialId, 'urn:uuid:passport-humanity-credential');
     expect(extension?.nationalIdHash, 'national-id-hash-abc123');
     expect(extension?.passportNumberHash, 'passport-number-hash-abc123');
     expect(extension?.nationality, 'TWN');
@@ -336,7 +340,11 @@ class _FakeVcIssuerClient extends VcIssuerClient {
     expect(zkpProof, 'proof-abc123');
     expect(zkpCircuitVersion, ZkpProof.kCircuitVersion);
     expect(verificationKeyHash, 'sha256:vk-hash-abc123');
-    return [_passportCredentialJson, _passportAgeCredentialJson];
+    return [
+      _passportHumanityCredentialJson,
+      _passportCredentialJson,
+      _passportAgeCredentialJson,
+    ];
   }
 }
 
@@ -482,13 +490,13 @@ final _passportCredentialJson = <String, dynamic>{
     'https://elix.cool/contexts/humanity/v1',
   ],
   'id': 'urn:uuid:passport-credential',
-  'type': ['VerifiableCredential', 'TaiwanCitizenshipCredential'],
+  'type': ['VerifiableCredential', 'NationalityCredential'],
   'issuer': 'did:web:issuer.elix.cool',
   'validFrom': '2026-05-24T00:00:00Z',
   'validUntil': '2026-08-22T00:00:00Z',
   'credentialSubject': {
     'id': 'did:plc:abcdefghijklmnop',
-    'citizenshipVerified': true,
+    'nationalityVerified': true,
     'assuranceLevel': 'passport_document',
     'assuranceMethod': 'passport_nfc',
     'nationality': 'TWN',
@@ -504,6 +512,18 @@ final _passportCredentialJson = <String, dynamic>{
     'verificationMethod': 'did:web:issuer.elix.cool#key-1',
     'proofPurpose': 'assertionMethod',
     'proofValue': 'zissuerproof',
+  },
+};
+
+final _passportHumanityCredentialJson = <String, dynamic>{
+  ..._passportCredentialJson,
+  'id': 'urn:uuid:passport-humanity-credential',
+  'type': ['VerifiableCredential', 'TrisAuraHumanityCredential'],
+  'credentialSubject': {
+    'id': 'did:plc:abcdefghijklmnop',
+    'humanVerified': true,
+    'assuranceLevel': 'passport_document',
+    'assuranceMethod': 'passport_nfc',
   },
 };
 

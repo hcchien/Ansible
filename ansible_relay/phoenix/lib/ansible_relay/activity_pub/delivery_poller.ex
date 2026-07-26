@@ -25,7 +25,7 @@ defmodule AnsibleRelay.ActivityPub.DeliveryPoller do
   use GenServer
   require Logger
 
-  alias AnsibleRelay.ActivityPub.DeliveryQueue
+  alias AnsibleRelay.ActivityPub.{DeliveryQueue, HttpSignature}
 
   @default_interval_ms 60_000
   @default_batch_limit 50
@@ -78,24 +78,30 @@ defmodule AnsibleRelay.ActivityPub.DeliveryPoller do
   # Returns {:ok, status} | {:error, reason} to match DeliveryQueue's client
   # contract (2xx delivered, 5xx retryable, other codes permanent).
   defp post_activity(attempt, activity) do
-    url = String.to_charlist(attempt.remote_inbox)
+    remote_inbox = attempt.remote_inbox
+    url = String.to_charlist(remote_inbox)
     body = Jason.encode!(activity)
+    actor_uri = activity["actor"]
 
-    headers = [{~c"content-type", ~c"application/activity+json"}]
+    with true <- is_binary(actor_uri),
+         {:ok, headers} <- HttpSignature.headers(:post, remote_inbox, body, actor_uri) do
+      request = {url, headers, ~c"application/activity+json", body}
 
-    request = {url, headers, ~c"application/activity+json", body}
+      case :httpc.request(
+             :post,
+             request,
+             [timeout: http_timeout_ms(), connect_timeout: 3_000],
+             body_format: :binary
+           ) do
+        {:ok, {{_http, status, _reason}, _resp_headers, _resp_body}} ->
+          {:ok, status}
 
-    case :httpc.request(
-           :post,
-           request,
-           [timeout: http_timeout_ms(), connect_timeout: 3_000],
-           body_format: :binary
-         ) do
-      {:ok, {{_http, status, _reason}, _resp_headers, _resp_body}} ->
-        {:ok, status}
-
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
+    else
+      false -> {:error, :activity_actor_missing}
+      {:error, reason} -> {:error, reason}
     end
   end
 

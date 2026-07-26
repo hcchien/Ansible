@@ -25,6 +25,9 @@ type PassportBindingProof struct {
 // PassportBindingResult is the verifier-approved binding material the Issuer is
 // allowed to persist for duplicate prevention.
 type PassportBindingResult struct {
+	PersonhoodBindingInput   string
+	// Deprecated compatibility field for the original TW-only verifier
+	// contract. New verifier runtimes return PersonhoodBindingInput.
 	TWPersonBindingInput string
 	PassportNumberHash   string
 	Nationality          string

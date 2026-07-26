@@ -8,14 +8,29 @@ library;
 
 abstract final class PostingGate {
   static const String basicTier = 'basic';
+  static const String humanityLimitedTier = 'humanity_limited';
   static const String verifiedHumanTier = 'verified_human';
+  static const String uniqueHumanTier = 'unique_human';
 
   /// Reason code the relay returns when a write is rejected by the gate.
   static const String requiresTierErrorCode = 'posting_requires_tier';
 
   /// Tier ordering. Unknown tiers rank below `basic` so a future tier the
   /// client does not understand fails closed (relay still decides for real).
-  static const Map<String, int> _rank = {basicTier: 0, verifiedHumanTier: 1};
+  static const Map<String, int> _rank = {
+    basicTier: 0,
+    humanityLimitedTier: 1,
+    verifiedHumanTier: 2,
+    uniqueHumanTier: 3,
+  };
+
+  static bool isHumanAssured(String? tier) =>
+      tier == humanityLimitedTier ||
+      tier == verifiedHumanTier ||
+      tier == uniqueHumanTier;
+
+  static bool isVerifiedHuman(String? tier) =>
+      satisfies(tier ?? basicTier, verifiedHumanTier);
 
   /// Minimum tier required by [postingPolicy], or null when ungated.
   static String? minPostTier(Map<String, Object?> postingPolicy) {
