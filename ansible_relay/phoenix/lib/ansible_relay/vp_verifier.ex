@@ -21,6 +21,7 @@ defmodule AnsibleRelay.VpVerifier do
 
   @recognised_credential_types ~w[
     TrisAuraHumanityCredential
+    NationalityCredential
     TaiwanCitizenshipCredential
     AgeOver18Credential
     EmailCredential

@@ -16,6 +16,9 @@ export function challengeBinding(input) {
 
 export function passportBindingHash(uniqueIdentifier) {
   return {
+    personhood_binding_input: `0x${createHash("sha256")
+      .update(`zkp-personhood-v1\0${uniqueIdentifier}`)
+      .digest("hex")}`,
     passport_number_hash: `zkp-passport-v1_${createHash("sha256")
       .update(`zkp-passport-v1\0${uniqueIdentifier}`)
       .digest("hex")}`,

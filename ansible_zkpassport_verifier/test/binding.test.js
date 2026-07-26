@@ -19,11 +19,19 @@ test("challenge binding is deterministic and nonce-bound", () => {
   )
 })
 
-test("passport identifier never masquerades as a national-ID binding", () => {
+test("passport verifier derives separated personhood and document bindings", () => {
   const binding = passportBindingHash("unique-passport")
-  assert.deepEqual(Object.keys(binding), ["passport_number_hash"])
+  assert.deepEqual(Object.keys(binding), [
+    "personhood_binding_input",
+    "passport_number_hash",
+  ])
+  assert.match(binding.personhood_binding_input, /^0x[a-f0-9]{64}$/)
   assert.match(
     binding.passport_number_hash,
     /^zkp-passport-v1_[a-f0-9]{64}$/,
+  )
+  assert.notEqual(
+    binding.personhood_binding_input.slice(2),
+    binding.passport_number_hash.split("_")[1],
   )
 })

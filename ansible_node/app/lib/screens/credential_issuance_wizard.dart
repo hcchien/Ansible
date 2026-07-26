@@ -478,10 +478,15 @@ class _PassportNfcCredentialPanelState
                 TrisAuraCredential.fromJson(Map<String, Object?>.from(value)),
           )
           .toList(growable: false);
-      final citizenship = credentials
+      final humanity = credentials
           .where(
             (credential) =>
-                credential.types.contains('TaiwanCitizenshipCredential'),
+                credential.types.contains('TrisAuraHumanityCredential'),
+          )
+          .single;
+      final nationalityCredential = credentials
+          .where(
+            (credential) => credential.types.contains('NationalityCredential'),
           )
           .single;
       if (credentials.any(
@@ -489,8 +494,13 @@ class _PassportNfcCredentialPanelState
       )) {
         throw StateError('Issuer returned an unsupported passport credential.');
       }
-      if (citizenship.claims['nationality'] != data.nationality ||
-          citizenship.claims['citizenshipVerified'] != true) {
+      if (humanity.claims['humanVerified'] != true ||
+          humanity.claims.containsKey('nationality') ||
+          humanity.claims.containsKey('ageOver18')) {
+        throw StateError('Issuer returned an invalid humanity credential.');
+      }
+      if (nationalityCredential.claims['nationality'] != data.nationality ||
+          nationalityCredential.claims['nationalityVerified'] != true) {
         throw StateError('Issuer returned a mismatched passport credential.');
       }
       final ageCredentials = credentials.where(
@@ -509,22 +519,29 @@ class _PassportNfcCredentialPanelState
           credentialId: credential.id,
           payloadJson: jsonEncode(credential.json),
         );
-        final isCitizenship = credential.types.contains(
-          'TaiwanCitizenshipCredential',
+        final isHumanity = credential.types.contains(
+          'TrisAuraHumanityCredential',
+        );
+        final isNationality = credential.types.contains(
+          'NationalityCredential',
         );
         await _walletRepository.saveCredential(
           metadata: WalletCredential(
             credentialId: credential.id,
             issuerDid: credential.issuerDid,
             holderDid: credential.holderDid,
-            credentialType: isCitizenship
-                ? 'TaiwanCitizenshipCredential'
+            credentialType: isHumanity
+                ? 'TrisAuraHumanityCredential'
+                : isNationality
+                ? 'NationalityCredential'
                 : 'AgeOver18Credential',
             status: WalletCredentialStatus.active,
             validFrom: credential.validFrom,
             validUntil: credential.validUntil,
-            displayName: isCitizenship
-                ? 'Taiwan Citizenship'
+            displayName: isHumanity
+                ? 'Passport Verified Human'
+                : isNationality
+                ? 'Verified Nationality'
                 : 'Age 18 or Older',
             createdAt: now,
             updatedAt: now,
@@ -535,7 +552,7 @@ class _PassportNfcCredentialPanelState
       }
       await _walletRepository.savePassportExtension(
         PassportWalletExtension(
-          credentialId: citizenship.id,
+          credentialId: humanity.id,
           passportLocalUniqueId: passportLocalUniqueId,
           nationalIdHash: passportProof.nationalIdHash,
           passportNumberHash: passportProof.passportNumberHash,

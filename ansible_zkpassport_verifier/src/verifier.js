@@ -62,12 +62,21 @@ export async function verifyPassportRequest(input) {
   ) {
     return { verified: false }
   }
-  const twPersonBindingInput = await verifyTwPersonBindingProof(envelope.proofs)
+  const bindings = passportBindingHash(result.uniqueIdentifier)
+
+  // TW passports additionally carry the legacy cross-method binding proof so
+  // Passport NFC and MobileMoica cannot create two active personhood bindings.
+  // Other supported nationalities use the generic issuer-scoped ZKPassport
+  // personhood binding and are not rejected for lacking a TW-only circuit.
+  if (disclosedNationality === "TWN") {
+    bindings.personhood_binding_input =
+      await verifyTwPersonBindingProof(envelope.proofs)
+  }
+
   return {
     verified: true,
     nationality: disclosedNationality,
     age_over_18: ageOver18.result,
-    tw_person_binding_input: twPersonBindingInput,
-    ...passportBindingHash(result.uniqueIdentifier),
+    ...bindings,
   }
 }

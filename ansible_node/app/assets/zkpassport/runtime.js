@@ -31146,7 +31146,7 @@ ${values.join("\n")}` : `${blockName} :`;
       packaged(manifest, "disclose_bytes", report),
       packaged(manifest, "compare_age", report),
       packaged(manifest, "bind", report),
-      twPersonBindingCircuit(passport, salts, serviceScope, serviceSubscope, timestamp, report)
+      passport.nationality === "TWN" ? twPersonBindingCircuit(passport, salts, serviceScope, serviceSubscope, timestamp, report) : Promise.resolve(null)
     ]);
     report("integrity:inputs");
     integrity.inputs = await F22(passport, privateState.salt, salts);
@@ -31206,7 +31206,7 @@ ${values.join("\n")}` : `${blockName} :`;
     report("plan:ready");
     return {
       version: manifest.version,
-      circuits: [dsc, id, integrity, disclose, age, bind, twPersonBinding],
+      circuits: [dsc, id, integrity, disclose, age, bind, twPersonBinding].filter(Boolean),
       query_result: {
         nationality: { disclose: { result: passport.nationality } },
         age: { gte: { result: kn(passport) >= 18, expected: 18 } },

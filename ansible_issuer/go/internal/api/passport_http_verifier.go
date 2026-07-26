@@ -107,26 +107,31 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		return PassportBindingResult{}, ErrInvalidPassportProof
 	}
 	var result struct {
-		Verified             bool   `json:"verified"`
-		Nationality          string `json:"nationality"`
-		TWPersonBindingInput string `json:"tw_person_binding_input"`
-		PassportNumberHash   string `json:"passport_number_hash"`
-		AgeOver18            bool   `json:"age_over_18"`
+		Verified               bool   `json:"verified"`
+		Nationality            string `json:"nationality"`
+		PersonhoodBindingInput string `json:"personhood_binding_input"`
+		TWPersonBindingInput   string `json:"tw_person_binding_input"`
+		PassportNumberHash     string `json:"passport_number_hash"`
+		AgeOver18              bool   `json:"age_over_18"`
 	}
 	if json.Unmarshal(limited, &result) != nil || !result.Verified {
 		return PassportBindingResult{}, ErrInvalidPassportProof
 	}
+	personhoodBindingInput := result.PersonhoodBindingInput
+	if personhoodBindingInput == "" {
+		personhoodBindingInput = result.TWPersonBindingInput
+	}
 	if result.Nationality != proof.Nationality ||
-		result.TWPersonBindingInput == "" ||
+		personhoodBindingInput == "" ||
 		result.PassportNumberHash == "" {
 		return PassportBindingResult{}, ErrInvalidPassportProof
 	}
 	return PassportBindingResult{
-		Nationality:          result.Nationality,
-		TWPersonBindingInput: result.TWPersonBindingInput,
-		PassportNumberHash:   result.PassportNumberHash,
-		AgeOver18:            result.AgeOver18,
-		VerifiedAt:           time.Now().UTC(),
+		Nationality:            result.Nationality,
+		PersonhoodBindingInput: personhoodBindingInput,
+		PassportNumberHash:     result.PassportNumberHash,
+		AgeOver18:              result.AgeOver18,
+		VerifiedAt:             time.Now().UTC(),
 	}, nil
 }
 

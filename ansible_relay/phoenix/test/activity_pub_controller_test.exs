@@ -2,7 +2,7 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   use ExUnit.Case, async: false
   use Plug.Test
 
-  alias AnsibleRelay.{PublicationIntentStore, Repo}
+  alias AnsibleRelay.{DidAccountCache, PublicationIntentStore, Repo}
   alias AnsibleRelay.Web.Router
 
   @router_opts Router.init([])
@@ -48,10 +48,17 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    DidAccountCache.put(
+      "did:key:z6MkAlice",
+      String.duplicate("a", 64),
+      "alice",
+      reputation_tier: "verified_human"
+    )
     :ok
   end
 
   test "webfinger returns relay-domain actor link" do
+    accepted_intent()
     response = get_json("/.well-known/webfinger?resource=acct:alice@relay.elix.cool")
 
     assert response.status == 200
@@ -65,6 +72,7 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   end
 
   test "actor endpoint returns ActivityPub actor document" do
+    accepted_intent()
     response = get_json("/users/alice")
 
     assert response.status == 200
@@ -95,6 +103,7 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   end
 
   test "inbox endpoint accepts remote ActivityPub activity envelope" do
+    accepted_intent()
     response =
       post_json("/users/alice/inbox", %{
         "@context" => "https://www.w3.org/ns/activitystreams",

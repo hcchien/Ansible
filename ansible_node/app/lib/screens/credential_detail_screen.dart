@@ -236,10 +236,7 @@ class _CredentialDetail {
 
 List<MapEntry<String, Object?>> _metadataClaims(WalletCredential credential) {
   return switch (credential.credentialType) {
-    'TaiwanCitizenshipCredential' => const [
-      MapEntry('citizenshipVerified', true),
-      MapEntry('nationality', 'TWN'),
-    ],
+    'NationalityCredential' => const [MapEntry('nationalityVerified', true)],
     'AgeOver18Credential' => const [MapEntry('ageOver18', true)],
     _ => const [],
   };
@@ -460,9 +457,9 @@ String _localizedCredentialName(
   WalletCredential credential,
 ) {
   return switch (credential.credentialType) {
-    'TaiwanCitizenshipCredential' => context.uiCopy(
-      zh: '台灣公民',
-      en: 'Taiwan Citizenship',
+    'NationalityCredential' => context.uiCopy(
+      zh: '國籍驗證',
+      en: 'Verified Nationality',
     ),
     'AgeOver18Credential' => context.uiCopy(
       zh: '年滿 18 歲',

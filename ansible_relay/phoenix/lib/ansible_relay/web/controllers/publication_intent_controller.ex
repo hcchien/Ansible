@@ -4,7 +4,13 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
   import Plug.Conn
   require Logger
 
-  alias AnsibleRelay.{IdentityCache, IdentityWritePolicy, PublicationIntentStore}
+  alias AnsibleRelay.{
+    DidAccountCache,
+    IdentityCache,
+    IdentityWritePolicy,
+    PublicationIntentStore,
+    ReputationTier
+  }
 
   @required_fields ~w(intent_id author_did content_item_id action visibility payload payload_hash signature)
   @valid_actions ~w(publish update delete)
@@ -17,14 +23,16 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
          :ok <- reject_private_visibility(params["visibility"]),
          :ok <- validate_enum(params["visibility"], @valid_visibility, "visibility"),
          :ok <- validate_signature_scheme(params["signature_scheme"]),
+         :ok <- validate_note_payload(params["payload"]),
          :ok <- IdentityWritePolicy.validate(params["signature_scheme"]),
          :ok <- validate_signature_shape(params["signature"], params["signature_scheme"]),
          :ok <- validate_payload_hash(params["payload"], params["payload_hash"]),
          author_did = params["author_did"],
          :ok <- check_sync_capability(conn, author_did),
          :ok <- check_did_verified(author_did, params["signature"]),
+         {:ok, actor_handle} <- check_activity_pub_enabled(author_did),
          :ok <- check_signature(author_did, signing_payload(params), params["signature"]),
-         {:ok, intent} <- PublicationIntentStore.accept(normalize(params)) do
+         {:ok, intent} <- PublicationIntentStore.accept(normalize(params, actor_handle)) do
       send_json(conn, 202, %{
         accepted: true,
         publication_id: intent.publication_id,
@@ -44,6 +52,9 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
       {:error, :invalid_signature_scheme} ->
         send_json(conn, 422, %{error: "invalid_signature_scheme", expected: @signature_schemes})
 
+      {:error, :activity_pub_notes_only} ->
+        send_json(conn, 422, %{error: "activity_pub_notes_only"})
+
       {:error, :unsupported_signing_algorithm} ->
         send_json(conn, 422, %{
           error: "unsupported_signing_algorithm",
@@ -60,6 +71,12 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
       {:error, :unverified_did} ->
         log_rejected_signature(:unverified_did, params)
         send_json(conn, 401, %{error: "unverified_did"})
+
+      {:error, :activity_pub_requires_verified_human} ->
+        send_json(conn, 403, %{error: "activity_pub_requires_verified_human"})
+
+      {:error, :activity_pub_account_unavailable} ->
+        send_json(conn, 503, %{error: "activity_pub_account_unavailable"})
 
       {:error, :invalid_sync_capability} ->
         send_json(conn, 401, %{error: "invalid_sync_capability"})
@@ -106,6 +123,9 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
   defp validate_signature_scheme(nil), do: :ok
   defp validate_signature_scheme(scheme) when scheme in @signature_schemes, do: :ok
   defp validate_signature_scheme(_scheme), do: {:error, :invalid_signature_scheme}
+
+  defp validate_note_payload(%{"type" => "note"}), do: :ok
+  defp validate_note_payload(_payload), do: {:error, :activity_pub_notes_only}
 
   defp validate_signature_shape(signature, signature_scheme) when is_binary(signature) do
     lower = String.downcase(signature)
@@ -180,6 +200,29 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
     end
   end
 
+  # ActivityPub is an explicit high-trust distribution rail. The actor handle
+  # comes from the relay-owned account record, never from the client payload,
+  # so a signed intent cannot publish under somebody else's fediverse name.
+  # The credential/nullifier behind the tier remains relay-local and is never
+  # copied into the ActivityPub payload.
+  defp check_activity_pub_enabled(did) do
+    case DidAccountCache.get(did) do
+      {:ok, %{handle: handle, reputation_tier: tier}}
+      when is_binary(handle) and handle != "" ->
+        if ReputationTier.meets?(tier, "verified_human") do
+          {:ok, handle}
+        else
+          {:error, :activity_pub_requires_verified_human}
+        end
+
+      {:error, :unavailable} ->
+        {:error, :activity_pub_account_unavailable}
+
+      _ ->
+        {:error, :activity_pub_requires_verified_human}
+    end
+  end
+
   defp dev_publication_signature?(signature) when is_binary(signature) do
     Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false) &&
       String.starts_with?(String.downcase(signature), "dev-signature-")
@@ -208,14 +251,14 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
     end
   end
 
-  defp normalize(params) do
+  defp normalize(params, actor_handle) do
     %{
       intent_id: params["intent_id"],
       author_did: params["author_did"],
       content_item_id: params["content_item_id"],
       action: params["action"],
       visibility: params["visibility"],
-      payload: params["payload"],
+      payload: Map.put(params["payload"], "actor", actor_handle),
       payload_hash: String.downcase(params["payload_hash"]),
       signature: String.downcase(params["signature"]),
       signature_scheme: params["signature_scheme"] || "ed25519"

@@ -396,7 +396,8 @@ void main() {
             return http.Response(
               jsonEncode({
                 'credentials': [
-                  {'id': 'passport-vc-1'},
+                  {'id': 'passport-humanity-vc-1'},
+                  {'id': 'passport-nationality-vc-1'},
                   {'id': 'passport-age-vc-1'},
                 ],
               }),
@@ -418,7 +419,8 @@ void main() {
         );
 
         expect(vc.map((item) => item['id']), [
-          'passport-vc-1',
+          'passport-humanity-vc-1',
+          'passport-nationality-vc-1',
           'passport-age-vc-1',
         ]);
       },

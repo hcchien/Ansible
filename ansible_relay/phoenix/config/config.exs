@@ -33,6 +33,9 @@ config :ansible_relay, :snapshot_retention_days, :infinity
 config :ansible_relay, :allow_dev_identity_signatures, false
 config :ansible_relay, :allow_dev_publication_signatures, false
 config :ansible_relay, :allow_dev_zkp_proofs, false
+config :ansible_relay, :activity_pub_delivery_enabled, false
+config :ansible_relay, :activity_pub_public_key_pem, nil
+config :ansible_relay, :activity_pub_private_key_pem, nil
 config :ansible_relay, :identity_write_algorithms, ["p256-sha256"]
 config :ansible_relay, :webauthn_rp_id, "elix.cool"
 config :ansible_relay, :webauthn_origin, "https://elix.cool"
