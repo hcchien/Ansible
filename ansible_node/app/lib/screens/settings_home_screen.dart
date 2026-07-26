@@ -15,6 +15,7 @@ import '../services/canonical_identity_store.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/recovery_readiness_store.dart';
 import '../services/relay_anchor_client.dart';
+import '../services/relay_reputation_presentation_service.dart';
 import '../services/secure_device_key_store.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';

@@ -669,6 +669,15 @@ class _FediversePublishingSettingsRowState
         FediversePreferencesController(
           did: widget.did,
           remoteNodes: DriftRemoteNodeRepository(widget.db),
+          verifiedHumanPresenter: (node) async {
+            final result = await RelayReputationPresentationService(
+              walletRepository: DriftWalletRepository(widget.db),
+              reputationRepository: DriftDidReputationRepository(widget.db),
+            ).present(holderDid: widget.did, node: node);
+            if (!result.presented) {
+              throw StateError('activity_pub_requires_verified_human');
+            }
+          },
         );
     if (!_controller.loaded) _controller.load();
   }

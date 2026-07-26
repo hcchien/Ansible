@@ -13,6 +13,8 @@ enum FediverseDomainPolicy { open, allowlist }
 
 typedef FediverseSyncCapabilityProvider =
     Future<String> Function(RemoteNode node);
+typedef FediverseVerifiedHumanPresenter =
+    Future<void> Function(RemoteNode node);
 
 @immutable
 class FediversePreferences {
@@ -125,9 +127,11 @@ class FediversePreferencesController extends ChangeNotifier {
     DidSigner? signer,
     http.Client? client,
     FediverseSyncCapabilityProvider? syncCapabilityProvider,
+    FediverseVerifiedHumanPresenter? verifiedHumanPresenter,
   }) : _store = store,
        _signer = signer ?? DidSignerImpl(),
        _client = client ?? http.Client(),
+       _verifiedHumanPresenter = verifiedHumanPresenter,
        _syncCapabilityProvider =
            syncCapabilityProvider ??
            ((node) async {
@@ -144,6 +148,7 @@ class FediversePreferencesController extends ChangeNotifier {
   final DidSigner _signer;
   final http.Client _client;
   final FediverseSyncCapabilityProvider _syncCapabilityProvider;
+  final FediverseVerifiedHumanPresenter? _verifiedHumanPresenter;
 
   FediversePreferences preferences = const FediversePreferences();
   bool loaded = false;
@@ -230,6 +235,13 @@ class FediversePreferencesController extends ChangeNotifier {
       final node = await remoteNodes.getActive();
       if (node == null) {
         throw StateError('No active Relay is configured.');
+      }
+      if (normalized.enabled) {
+        // A credential is local-first and is not automatically known to a
+        // Relay merely because it was issued. Present the minimum
+        // verified-human claim immediately before enabling federation so the
+        // user does not need to discover an unrelated manual-sync step.
+        await _verifiedHumanPresenter?.call(node);
       }
       final signature = await _signer.sign(
         utf8.encode(_signingPayload(normalized)),

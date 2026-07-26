@@ -12,6 +12,7 @@ void main() {
     'signs and sends explicit Fediverse consent to the active Relay',
     () async {
       Map<String, dynamic>? requestBody;
+      var presented = false;
       final store = _MemoryStore();
       final controller = FediversePreferencesController(
         did: 'did:key:alice',
@@ -19,7 +20,9 @@ void main() {
         store: store,
         signer: _Signer(),
         syncCapabilityProvider: (_) async => 'sync-token',
+        verifiedHumanPresenter: (_) async => presented = true,
         client: MockClient((request) async {
+          expect(presented, isTrue);
           expect(request.headers['authorization'], 'Bearer sync-token');
           requestBody = jsonDecode(request.body) as Map<String, dynamic>;
           return http.Response(
@@ -54,6 +57,7 @@ void main() {
       expect(requestBody!['signature_scheme'], 'ed25519');
       expect(controller.preferences.enabled, isTrue);
       expect(store.saved?.enabled, isTrue);
+      expect(presented, isTrue);
     },
   );
 
