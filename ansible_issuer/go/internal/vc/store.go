@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	ErrDuplicateActiveCredential  = errors.New("duplicate_active_credential")
-	ErrDuplicatePersonhoodBinding = errors.New("duplicate_personhood_binding")
-	ErrCredentialNotFound         = errors.New("credential_not_found")
+	ErrDuplicateActiveCredential   = errors.New("duplicate_active_credential")
+	ErrDuplicatePersonhoodBinding  = errors.New("duplicate_personhood_binding")
+	ErrCredentialNotFound          = errors.New("credential_not_found")
+	ErrMissingPersonhoodCommitment = errors.New("missing_personhood_commitment")
 )
 
 const (

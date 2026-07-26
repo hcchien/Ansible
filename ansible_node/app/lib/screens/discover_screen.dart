@@ -545,7 +545,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           ),
                         ),
                       ),
-                      if (actor.reputationTier == 'verified_human') ...[
+                      if (PostingGate.isVerifiedHuman(
+                        actor.reputationTier,
+                      )) ...[
                         const SizedBox(width: 5),
                         const Icon(
                           Icons.verified,

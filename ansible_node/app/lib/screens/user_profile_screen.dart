@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
 import '../services/handle_resolver.dart';
+import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/follow_button.dart';
@@ -146,7 +147,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ? passedName
         : (hasHandle ? _handle! : shortenDid(widget.did));
     final handleLine = hasHandle ? '@${_handle!}' : null;
-    final verified = _tier == 'verified_human';
+    final verified = PostingGate.isVerifiedHuman(_tier);
+    final humanAssured = PostingGate.isHumanAssured(_tier);
+    final assuranceLabel = switch (_tier) {
+      PostingGate.uniqueHumanTier => context.uiCopy(
+        zh: '強唯一性真人',
+        en: 'Unique Human',
+      ),
+      PostingGate.verifiedHumanTier => context.uiCopy(
+        zh: '已驗證真人',
+        en: 'Verified Human',
+      ),
+      PostingGate.humanityLimitedTier => context.uiCopy(
+        zh: '有限真人保證',
+        en: 'Limited Human Assurance',
+      ),
+      _ => '',
+    };
 
     return AnsibleScreenScaffold(
       title: context.uiCopy(zh: '個人檔案', en: 'PROFILE'),
@@ -204,19 +221,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               _Avatar(seed: displayName),
             ],
           ),
-          if (verified) ...[
+          if (humanAssured) ...[
             const SizedBox(height: 12),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.verified,
+                Icon(
+                  verified ? Icons.verified : Icons.face_retouching_natural,
                   size: 15,
                   color: AnsibleDesign.accent,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  context.uiCopy(zh: '已驗證真人', en: 'Verified Human'),
+                  assuranceLabel,
                   style: const TextStyle(
                     fontSize: 12,
                     color: AnsibleDesign.inkMuted,

@@ -5,6 +5,13 @@ humanity credentials (passport NFC, TW provider, MobileMoica RP) and email
 contactability credentials. Serves the issuer `did:web` document so external
 verifiers can resolve the signing key.
 
+Humanity credentials carry signed assurance dimensions rather than a single
+undifferentiated result: `humanAssurance`, `uniquenessAssurance`, and the
+coarse `verificationMethodClass`. Current passport NFC and Taiwan
+natural-person paths issue `verified` + `strong`; phone or email control never
+counts as human assurance. Raw identity and duplicate-prevention commitments
+remain issuer-local and are not included in the VC.
+
 ## Prerequisites
 
 - Go ≥ 1.25 (see `go.mod`)

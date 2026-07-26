@@ -7,22 +7,25 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     2. Verify VP via VpVerifier (holder proof + VC issuer proof + structural checks).
        If `nostr_binding` is present, also verify the short-lived Nostr
        binding event before assigning local Nostr pubkey trust.
-    3. Map credential type → reputation tier
+    3. Derive reputation tier from credential type and signed assurance claims
     4. Update DID entry in DidAccountCache (and write-through to PostgreSQL)
     5. Return {did, reputation_tier}
 
-  Tier mapping:
-    TrisAuraHumanityCredential → "verified_human"
+  Humanity mapping:
+    signed strong uniqueness → "unique_human"
+    signed limited/unknown uniqueness → "humanity_limited"
+    legacy humanity credential → "verified_human"
     EmailCredential → "basic"
   """
 
-  alias AnsibleRelay.{AbuseDetector, DidAccountCache, ReputationTier, VpVerifier}
-  alias AnsibleRelay.Identity.AttestationStore
-
-  @tier_for_credential %{
-    "TrisAuraHumanityCredential" => "verified_human",
-    "EmailCredential" => "basic"
+  alias AnsibleRelay.{
+    AbuseDetector,
+    DidAccountCache,
+    HumanAssurance,
+    ReputationTier,
+    VpVerifier
   }
+  alias AnsibleRelay.Identity.AttestationStore
 
   def present(conn, params) do
     with :ok <- check_rate_limit(conn),
@@ -31,9 +34,11 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
          :ok <- validate_did(holder_did) do
       case verify_presentation(holder_did, vp, Map.get(params, "nostr_binding")) do
         {:ok, credential_type, nostr_pubkey} ->
-          tier = Map.get(@tier_for_credential, credential_type, "basic")
-          persist_attestation(holder_did, credential_type, tier, vp)
-          upgrade_tier(conn, holder_did, tier, nostr_pubkey)
+          credential = matched_credential(vp, credential_type)
+          assurance = HumanAssurance.from_credential(credential_type, credential)
+          tier = HumanAssurance.compatibility_tier(assurance)
+          persist_attestation_if_not_downgrade(holder_did, credential_type, tier, vp)
+          upgrade_tier(conn, holder_did, tier, assurance, nostr_pubkey)
 
         {:error, :holder_not_found} ->
           send_json(conn, 404, %{error: "holder_not_found"})
@@ -115,22 +120,27 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
   defp verify_presentation(_holder_did, _vp, _nostr_binding),
     do: {:error, :invalid_nostr_binding}
 
-  defp upgrade_tier(conn, holder_did, tier, nostr_pubkey) do
+  defp upgrade_tier(conn, holder_did, tier, assurance, nostr_pubkey) do
     case DidAccountCache.get(holder_did) do
       {:ok, entry} ->
-        if ReputationTier.rank(tier) > ReputationTier.rank(entry.reputation_tier) do
-          :ok =
-            DidAccountCache.put(
-              holder_did,
-              entry.public_key_hex,
-              entry.handle,
-              reputation_tier: tier,
-              signing_algorithm: Map.get(entry, :signing_algorithm, "ed25519"),
-              key_version: Map.get(entry, :key_version, 1)
-            )
-        end
+        effective_tier =
+          if ReputationTier.rank(tier) > ReputationTier.rank(entry.reputation_tier) do
+            :ok =
+              DidAccountCache.put(
+                holder_did,
+                entry.public_key_hex,
+                entry.handle,
+                reputation_tier: tier,
+                signing_algorithm: Map.get(entry, :signing_algorithm, "ed25519"),
+                key_version: Map.get(entry, :key_version, 1)
+              )
 
-        body = %{did: holder_did, reputation_tier: tier}
+            tier
+          else
+            entry.reputation_tier
+          end
+
+        body = %{did: holder_did, reputation_tier: effective_tier, assurance: assurance}
 
         body =
           if nostr_pubkey do
@@ -177,6 +187,18 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     end
   rescue
     _ -> :ok
+  end
+
+  defp persist_attestation_if_not_downgrade(holder_did, credential_type, tier, vp) do
+    case DidAccountCache.get(holder_did) do
+      {:ok, %{reputation_tier: current_tier}} ->
+        if ReputationTier.rank(tier) >= ReputationTier.rank(current_tier),
+          do: persist_attestation(holder_did, credential_type, tier, vp),
+          else: :ok
+
+      _ ->
+        :ok
+    end
   end
 
   # The VC inside the VP whose type earned the tier — stored exactly as

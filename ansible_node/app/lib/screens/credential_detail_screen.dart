@@ -448,6 +448,15 @@ String _claimLabel(BuildContext context, String key) {
     'over18' => context.uiCopy(zh: '年滿 18 歲', en: 'Age 18 or older'),
     'humanVerified' ||
     'verifiedHuman' => context.uiCopy(zh: '真人驗證', en: 'Verified human'),
+    'humanAssurance' => context.uiCopy(zh: '真人保證等級', en: 'Human assurance'),
+    'uniquenessAssurance' => context.uiCopy(
+      zh: '唯一性保證',
+      en: 'Uniqueness assurance',
+    ),
+    'verificationMethodClass' => context.uiCopy(
+      zh: '驗證方式類別',
+      en: 'Verification method class',
+    ),
     _ => key,
   };
 }

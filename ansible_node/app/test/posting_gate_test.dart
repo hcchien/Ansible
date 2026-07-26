@@ -35,6 +35,37 @@ void main() {
         ),
         isTrue,
       );
+      expect(
+        PostingGate.satisfies(
+          PostingGate.uniqueHumanTier,
+          PostingGate.verifiedHumanTier,
+        ),
+        isTrue,
+      );
+      expect(
+        PostingGate.satisfies(
+          PostingGate.humanityLimitedTier,
+          PostingGate.verifiedHumanTier,
+        ),
+        isFalse,
+      );
+    });
+
+    test('unique_human is the strongest human assurance gate', () {
+      expect(
+        PostingGate.satisfies(
+          PostingGate.verifiedHumanTier,
+          PostingGate.uniqueHumanTier,
+        ),
+        isFalse,
+      );
+      expect(
+        PostingGate.satisfies(
+          PostingGate.uniqueHumanTier,
+          PostingGate.uniqueHumanTier,
+        ),
+        isTrue,
+      );
     });
 
     test('unknown tiers fail closed on both sides', () {
