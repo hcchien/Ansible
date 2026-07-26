@@ -95,14 +95,14 @@ defmodule AnsibleRelay.ActivityPub.InboxTest do
     assert Inbox.followers("forum_host") == []
   end
 
-  test "the inbox endpoint reports the handled behavior (still 202)" do
+  test "the inbox endpoint stays hidden until the local actor opts in" do
     response =
       conn(:post, "/users/forum_host/inbox", Jason.encode!(%{"type" => "Like"}))
       |> put_req_header("content-type", "application/json")
       |> Router.call(@router_opts)
 
-    assert response.status == 202
-    assert Jason.decode!(response.resp_body)["behavior"] == "ignored"
+    assert response.status == 404
+    assert Jason.decode!(response.resp_body)["error"] == "actor_not_found"
   end
 
   test "followers are scoped per local actor" do

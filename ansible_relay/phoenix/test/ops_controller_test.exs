@@ -494,12 +494,14 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     did = "did:key:z6MkGatedUpdate#{System.unique_integer()}"
     {public_key, private_key} = ed25519_keypair()
     seed_did(did, public_key)
+    seed_reputation_tier(did, "verified_human")
     board_id = insert_hosted_board(%{"min_post_tier" => "verified_human"})
 
     insert =
       content_op(did, private_key, "thread", %{"boardId" => board_id, "title" => "Original"})
 
     assert post_json("/api/v1/ops", insert).status == 202
+    seed_reputation_tier(did, "self_custody_did")
 
     op = %{
       "op_id" => "op-#{System.unique_integer()}",
