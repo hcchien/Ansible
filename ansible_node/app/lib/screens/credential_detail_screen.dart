@@ -237,6 +237,7 @@ class _CredentialDetail {
 List<MapEntry<String, Object?>> _metadataClaims(WalletCredential credential) {
   return switch (credential.credentialType) {
     'NationalityCredential' => const [MapEntry('nationalityVerified', true)],
+    'TaiwanCitizenshipCredential' => const [MapEntry('nationality', 'TWN')],
     'AgeOver18Credential' => const [MapEntry('ageOver18', true)],
     _ => const [],
   };
