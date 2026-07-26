@@ -285,13 +285,21 @@ explicit-opt-in Note slice with:
 ACTIVITY_PUB_DELIVERY_ENABLED=true
 ACTIVITY_PUB_PUBLIC_KEY_PEM=<RSA public key PEM>
 ACTIVITY_PUB_PRIVATE_KEY_PEM=<matching RSA private key PEM>
+ACTIVITY_PUB_BLOCKED_DOMAINS=blocked.example,another.example
 ```
 
-The first signed ActivityPub Note is the user's opt-in and exposes the
-relay-owned Actor. The Relay requires the author's current reputation tier to
-meet `verified_human`; credentials, nullifiers, and legal-identity fields never
-enter the ActivityPub payload. Accepted Notes fan out to the Actor's stored
-follower inboxes and are delivered with RSA-SHA256 HTTP Signatures.
+The App first submits a DID-signed
+`PUT /api/v1/fediverse/preferences`. Enabling requires the author's current
+reputation tier to meet `verified_human`; disabling remains possible after a
+trust downgrade. The preference independently controls remote followers,
+open-versus-allowlist federation, allowed domains, blocked domains, and blocked
+actor URLs. `ACTIVITY_PUB_BLOCKED_DOMAINS` is the operator boundary and takes
+precedence over user allowlists.
+
+Only an enabled Actor is exposed. Credentials, nullifiers, and legal-identity
+fields never enter the ActivityPub payload. Accepted public or unlisted Notes
+fan out only to follower inboxes allowed by both platform and user policy, and
+are delivered with RSA-SHA256 HTTP Signatures.
 
 Do not enable the public inbox in production until inbound HTTP Signature
 verification and SSRF-safe remote Actor resolution are complete. Outbound Note

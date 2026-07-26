@@ -2,6 +2,7 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   use ExUnit.Case, async: false
   use Plug.Test
 
+  alias AnsibleRelay.Db.FediversePreference
   alias AnsibleRelay.{DidAccountCache, PublicationIntentStore, Repo}
   alias AnsibleRelay.Web.Router
 
@@ -54,6 +55,16 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
       "alice",
       reputation_tier: "verified_human"
     )
+
+    Repo.insert!(%FediversePreference{
+      did: "did:key:z6MkAlice",
+      actor: "alice",
+      enabled: true,
+      revision: 1,
+      signature: String.duplicate("a", 128),
+      signature_scheme: "ed25519"
+    })
+
     :ok
   end
 

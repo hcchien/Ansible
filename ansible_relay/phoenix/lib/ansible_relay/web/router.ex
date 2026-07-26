@@ -185,6 +185,10 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.PublicationIntentController.create(conn, conn.body_params)
   end
 
+  put "/api/v1/fediverse/preferences" do
+    AnsibleRelay.Web.Controllers.FediversePreferenceController.update(conn, conn.body_params)
+  end
+
   # Phase 2 — Delta pull (cursor-based)
   get "/api/v1/ops/delta" do
     AnsibleRelay.Web.Controllers.OpsController.delta(conn, conn.query_params)

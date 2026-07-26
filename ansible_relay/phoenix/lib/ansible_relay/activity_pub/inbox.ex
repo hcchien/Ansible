@@ -41,11 +41,13 @@ defmodule AnsibleRelay.ActivityPub.Inbox do
     follow_id = activity["id"]
 
     with true <- is_binary(remote_actor) and remote_actor != "",
-         {:ok, inbox} <- remote_inbox(remote_actor, opts) do
+         {:ok, inbox} <- remote_inbox(remote_actor, opts),
+         :ok <- allowed_remote(remote_actor, inbox, opts) do
       upsert_follower(actor, remote_actor, inbox, follow_id)
       enqueue_accept(actor, activity, inbox, opts)
       {:accepted, :follow}
     else
+      {:error, :blocked} -> {:error, :blocked}
       _ -> {:error, :malformed}
     end
   end
@@ -136,6 +138,16 @@ defmodule AnsibleRelay.ActivityPub.Inbox do
       {:ok, inbox}
     else
       _ -> {:error, :no_inbox}
+    end
+  end
+
+  defp allowed_remote(remote_actor, inbox, opts) do
+    case Keyword.get(opts, :remote_policy) do
+      policy when is_function(policy, 2) ->
+        if policy.(remote_actor, inbox), do: :ok, else: {:error, :blocked}
+
+      _ ->
+        :ok
     end
   end
 

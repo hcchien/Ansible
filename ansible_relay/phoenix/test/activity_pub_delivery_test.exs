@@ -2,7 +2,8 @@ defmodule AnsibleRelay.ActivityPubDeliveryTest do
   use ExUnit.Case, async: false
 
   alias AnsibleRelay.ActivityPub.{ActivityBuilder, DeliveryQueue}
-  alias AnsibleRelay.{Db.ActivityPubFollower, PublicationIntentStore, Repo}
+  alias AnsibleRelay.Db.{ActivityPubFollower, FediversePreference}
+  alias AnsibleRelay.{PublicationIntentStore, Repo}
 
   defp accepted_intent(attrs \\ %{}) do
     defaults = %{
@@ -49,6 +50,15 @@ defmodule AnsibleRelay.ActivityPubDeliveryTest do
   end
 
   test "accepting a note fans out to unique follower inboxes" do
+    Repo.insert!(%FediversePreference{
+      did: "did:key:z6MkAlice",
+      actor: "alice",
+      enabled: true,
+      revision: 1,
+      signature: String.duplicate("a", 128),
+      signature_scheme: "ed25519"
+    })
+
     for remote_actor <- ["https://remote.example/users/bob", "https://remote.example/users/cara"] do
       %ActivityPubFollower{}
       |> ActivityPubFollower.changeset(%{

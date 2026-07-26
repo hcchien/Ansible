@@ -6,6 +6,7 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
 
   alias AnsibleRelay.{
     DidAccountCache,
+    FediversePreferences,
     IdentityCache,
     IdentityWritePolicy,
     PublicationIntentStore,
@@ -30,8 +31,8 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
          author_did = params["author_did"],
          :ok <- check_sync_capability(conn, author_did),
          :ok <- check_did_verified(author_did, params["signature"]),
-         {:ok, actor_handle} <- check_activity_pub_enabled(author_did),
          :ok <- check_signature(author_did, signing_payload(params), params["signature"]),
+         {:ok, actor_handle} <- check_activity_pub_enabled(author_did),
          {:ok, intent} <- PublicationIntentStore.accept(normalize(params, actor_handle)) do
       send_json(conn, 202, %{
         accepted: true,
@@ -74,6 +75,9 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
 
       {:error, :activity_pub_requires_verified_human} ->
         send_json(conn, 403, %{error: "activity_pub_requires_verified_human"})
+
+      {:error, :activity_pub_not_enabled} ->
+        send_json(conn, 403, %{error: "activity_pub_not_enabled"})
 
       {:error, :activity_pub_account_unavailable} ->
         send_json(conn, 503, %{error: "activity_pub_account_unavailable"})
@@ -209,10 +213,13 @@ defmodule AnsibleRelay.Web.Controllers.PublicationIntentController do
     case DidAccountCache.get(did) do
       {:ok, %{handle: handle, reputation_tier: tier}}
       when is_binary(handle) and handle != "" ->
-        if ReputationTier.meets?(tier, "verified_human") do
+        if ReputationTier.meets?(tier, "verified_human") and
+             FediversePreferences.enabled_for_did?(did) do
           {:ok, handle}
         else
-          {:error, :activity_pub_requires_verified_human}
+          if ReputationTier.meets?(tier, "verified_human"),
+            do: {:error, :activity_pub_not_enabled},
+            else: {:error, :activity_pub_requires_verified_human}
         end
 
       {:error, :unavailable} ->

@@ -88,6 +88,21 @@ defmodule AnsibleRelay.ActivityPub.InboxTest do
     assert Repo.aggregate(ActivityPubDeliveryAttempt, :count) == 0
   end
 
+  test "remote policy is applied after resolving the inbox host" do
+    policy = fn actor, inbox ->
+      actor == @remote and inbox == "https://allowed.example/inbox"
+    end
+
+    assert {:error, :blocked} =
+             Inbox.handle("forum_host", follow_activity(),
+               actor_fetcher: fetcher("https://blocked.example/inbox"),
+               remote_policy: policy
+             )
+
+    assert Inbox.followers("forum_host") == []
+    assert Repo.aggregate(ActivityPubDeliveryAttempt, :count) == 0
+  end
+
   test "unknown activity types are acknowledged and ignored" do
     assert {:accepted, :ignored} =
              Inbox.handle("forum_host", %{"type" => "Like", "actor" => @remote})

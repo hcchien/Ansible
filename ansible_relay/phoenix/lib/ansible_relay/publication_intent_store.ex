@@ -8,7 +8,7 @@ defmodule AnsibleRelay.PublicationIntentStore do
 
   import Ecto.Query
 
-  alias AnsibleRelay.{Repo, Db.PublicationIntent}
+  alias AnsibleRelay.{FediversePreferences, Repo, Db.PublicationIntent}
   alias AnsibleRelay.ActivityPub.{ActivityBuilder, DeliveryQueue, Inbox}
 
   def accept(attrs) do
@@ -59,9 +59,8 @@ defmodule AnsibleRelay.PublicationIntentStore do
   def get_by_publication_id(publication_id) when is_binary(publication_id),
     do: Repo.get_by(PublicationIntent, publication_id: publication_id)
 
-  # Publishing the first signed ActivityPub Note is the user's explicit opt-in.
-  # Merely reaching verified_human tier must not silently expose an Actor.
-  def actor_enabled?(actor) when is_binary(actor), do: list_for_actor(actor) != []
+  def actor_enabled?(actor) when is_binary(actor),
+    do: FediversePreferences.enabled_actor?(actor)
 
   # Materialize one durable delivery attempt per follower inbox as part of
   # accepting a Note. Delivery itself remains asynchronous and retryable.
@@ -70,9 +69,18 @@ defmodule AnsibleRelay.PublicationIntentStore do
   defp fan_out_to_followers(intent) do
     actor = ActivityBuilder.actor_name(intent)
 
+    preference = FediversePreferences.get_by_actor(actor)
+
     results =
       actor
       |> Inbox.followers()
+      |> Enum.filter(fn follower ->
+        FediversePreferences.allowed_remote?(
+          preference,
+          follower.remote_actor,
+          follower.remote_inbox
+        )
+      end)
       |> Enum.map(& &1.remote_inbox)
       |> Enum.uniq()
       |> Enum.map(fn inbox ->
