@@ -303,8 +303,10 @@ defmodule AnsibleRelay.WebPublication do
 
   defp validate_original_author(%{"action" => action} = operation)
        when action in ["forum.edit", "forum.delete"] do
+    expected_author = operation["author_did"]
+
     case OpStore.create_op_author(operation["entity_type"], operation["entity_id"]) do
-      author when author == operation["author_did"] -> :ok
+      ^expected_author -> :ok
       nil -> {:error, :original_content_not_found}
       _ -> {:error, :not_original_author}
     end
