@@ -128,14 +128,14 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     body = Jason.decode!(response.resp_body)
     assert body["accepted"] == true
     assert body["status"] == "accepted"
-    assert body["delivery_status"] == "queued"
+    assert body["delivery_status"] == "awaiting_followers"
     assert is_binary(body["publication_id"])
 
     stored = Repo.get_by!(PublicationIntent, publication_id: body["publication_id"])
     assert stored.author_did == did
     assert stored.action == "publish"
     assert stored.visibility == "public"
-    assert stored.delivery_status == "queued"
+    assert stored.delivery_status == "awaiting_followers"
   end
 
   test "ActivityPub Note requires verified-human tier" do
@@ -274,7 +274,7 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
     assert Jason.decode!(response.resp_body)["accepted"] == true
   end
 
-  test "accepts development publication signatures for local-only unverified DID when enabled" do
+  test "development signatures do not bypass the verified-human gate" do
     original = Application.get_env(:ansible_relay, :allow_dev_publication_signatures, false)
     Application.put_env(:ansible_relay, :allow_dev_publication_signatures, true)
 
@@ -288,8 +288,10 @@ defmodule AnsibleRelay.Web.PublicationIntentControllerTest do
 
     response = post_json("/api/v1/publication-intents", intent)
 
-    assert response.status == 202
-    assert Jason.decode!(response.resp_body)["accepted"] == true
+    assert response.status == 403
+
+    assert Jason.decode!(response.resp_body)["error"] ==
+             "activity_pub_requires_verified_human"
   end
 
   test "rejects tampered payload hash" do
