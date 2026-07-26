@@ -31146,7 +31146,14 @@ ${values.join("\n")}` : `${blockName} :`;
       packaged(manifest, "disclose_bytes", report),
       packaged(manifest, "compare_age", report),
       packaged(manifest, "bind", report),
-      passport.nationality === "TWN" ? twPersonBindingCircuit(passport, salts, serviceScope, serviceSubscope, timestamp, report) : Promise.resolve(null)
+      passport.nationality === "TWN" ? twPersonBindingCircuit(
+        passport,
+        salts,
+        serviceScope,
+        serviceSubscope,
+        timestamp,
+        report
+      ) : Promise.resolve(null)
     ]);
     report("integrity:inputs");
     integrity.inputs = await F22(passport, privateState.salt, salts);
@@ -31206,7 +31213,10 @@ ${values.join("\n")}` : `${blockName} :`;
     report("plan:ready");
     return {
       version: manifest.version,
-      circuits: [dsc, id, integrity, disclose, age, bind, twPersonBinding].filter(Boolean),
+      // Use an explicit predicate here. `@zkpassport/utils` bundles an ASN.1
+      // class named Boolean into this scope, so a truthy-constructor shorthand
+      // would call that class as a function and throw in JavaScriptCore.
+      circuits: [dsc, id, integrity, disclose, age, bind, twPersonBinding].filter((circuit) => circuit !== null),
       query_result: {
         nationality: { disclose: { result: passport.nationality } },
         age: { gte: { result: kn(passport) >= 18, expected: 18 } },

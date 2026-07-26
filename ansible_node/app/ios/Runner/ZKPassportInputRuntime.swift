@@ -228,7 +228,7 @@ final class ZKPassportInputRuntime: @unchecked Sendable {
     runtimeContext = context
     var uncaughtException: String?
     context.exceptionHandler = { _, exception in
-      uncaughtException = exception?.toString()
+      uncaughtException = Self.describeJavaScriptError(exception)
     }
     context.evaluateScript(Self.javaScriptCorePolyfills)
     context.evaluateScript(runtimeJavaScript)
@@ -270,7 +270,7 @@ final class ZKPassportInputRuntime: @unchecked Sendable {
     }
     let failureBlock: @convention(block) (JSValue) -> Void = { [weak self] error in
       self?.finishOnMain(.failure(RuntimeError.javaScript(
-        error.toString() ?? "Unknown JavaScriptCore error"
+        Self.describeJavaScriptError(error)
       )))
     }
     guard let promise = createProofPlan.call(
@@ -289,7 +289,7 @@ final class ZKPassportInputRuntime: @unchecked Sendable {
       guard let self else { return }
       do {
         guard let rawCircuits = descriptor["circuits"] as? [[String: Any]],
-              rawCircuits.count == 7 else {
+              (6...7).contains(rawCircuits.count) else {
           throw RuntimeError.invalidPlan
         }
         var resolved = Array<[String: Any]?>(repeating: nil, count: rawCircuits.count)
@@ -389,6 +389,22 @@ final class ZKPassportInputRuntime: @unchecked Sendable {
       return url.path.hasPrefix("/ipfs/")
     }
     return false
+  }
+
+  private static func describeJavaScriptError(_ error: JSValue?) -> String {
+    guard let error else {
+      return "Unknown JavaScriptCore error"
+    }
+    let message = error.toString() ?? "Unknown JavaScriptCore error"
+    guard let stack = error.objectForKeyedSubscript("stack"),
+          !stack.isUndefined,
+          !stack.isNull,
+          let stackText = stack.toString(),
+          !stackText.isEmpty,
+          stackText != message else {
+      return message
+    }
+    return "\(message)\n\(stackText)"
   }
 
   private static let javaScriptCorePolyfills = """
