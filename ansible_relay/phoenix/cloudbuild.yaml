@@ -92,7 +92,7 @@ steps:
     waitFor: ["build-image"]
 
   - id: migrate-dev
-    name: gcr.io.google.com/cloudsdktool/cloud-sdk:slim
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: sh
     args:
       - -c
