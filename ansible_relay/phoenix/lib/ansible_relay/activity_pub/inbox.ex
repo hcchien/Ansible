@@ -12,21 +12,18 @@ defmodule AnsibleRelay.ActivityPub.Inbox do
   Follow activity does not carry it); the fetcher is injectable for tests
   and uses OTP `:httpc` in production, same as the federated resolver.
 
-  ## Trust boundary (deliberate scope)
+  ## Trust boundary
 
-  Inbound activities are NOT HTTP-signature-verified yet — that is the
-  remaining "full federation behavior" item. The consequences are bounded
-  by design: AP follower edges live only on the AP mirror (this table) and
-  are never trust-bearing for native surfaces — external content is never
-  `sig_verified`, never surfaces on verified boards, and reputation comes
-  only from issuer-signed attestations. A forged Follow adds a cosmetic
-  mirror edge; a forged Undo removes one. HTTP signature verification
-  upgrades this from cosmetic-integrity to authenticated.
+  The web controller verifies the exact inbound request bytes, Digest, Date,
+  signed headers, remote actor key ownership, RSA signature, and replay status
+  before calling this module. Authentication remains transport-only:
+  ActivityPub follower edges and content never become Elix identity,
+  reputation, or native verified operations.
   """
 
   import Ecto.Query
 
-  alias AnsibleRelay.{Db.ActivityPubFollower, Repo}
+  alias AnsibleRelay.{ActivityPub.InboundStore, Db.ActivityPubFollower, Repo}
   alias AnsibleRelay.Db.ActivityPubDeliveryAttempt
 
   @doc """
@@ -65,6 +62,16 @@ defmodule AnsibleRelay.ActivityPub.Inbox do
       {:accepted, :unfollow}
     else
       {:error, :malformed}
+    end
+  end
+
+  def handle(actor, %{"type" => type} = activity, _opts)
+      when type in ["Create", "Update", "Delete"] do
+    case InboundStore.record(actor, activity) do
+      {:ok, _} -> {:accepted, :external_content}
+      {:error, :invalid_public_activity} -> {:error, :malformed}
+      {:error, :unsupported_activity} -> {:accepted, :ignored}
+      {:error, _} -> {:error, :malformed}
     end
   end
 

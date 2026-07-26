@@ -6,7 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/protocol.dart';
+import 'sync_capability_service.dart';
+
 enum FediverseDomainPolicy { open, allowlist }
+
+typedef FediverseSyncCapabilityProvider =
+    Future<String> Function(RemoteNode node);
 
 @immutable
 class FediversePreferences {
@@ -118,15 +124,26 @@ class FediversePreferencesController extends ChangeNotifier {
         const SharedPreferencesFediversePreferencesStore(),
     DidSigner? signer,
     http.Client? client,
+    FediverseSyncCapabilityProvider? syncCapabilityProvider,
   }) : _store = store,
        _signer = signer ?? DidSignerImpl(),
-       _client = client ?? http.Client();
+       _client = client ?? http.Client(),
+       _syncCapabilityProvider =
+           syncCapabilityProvider ??
+           ((node) async {
+             final capability = await SyncCapabilityService(
+               baseUrl: node.url,
+               holderDid: did,
+             ).authorize();
+             return capability.token;
+           });
 
   final String did;
   final RemoteNodeRepository remoteNodes;
   final FediversePreferencesStore _store;
   final DidSigner _signer;
   final http.Client _client;
+  final FediverseSyncCapabilityProvider _syncCapabilityProvider;
 
   FediversePreferences preferences = const FediversePreferences();
   bool loaded = false;
@@ -140,6 +157,61 @@ class FediversePreferencesController extends ChangeNotifier {
 
   Future<void> setEnabled(bool enabled) =>
       update(preferences.copyWith(enabled: enabled));
+
+  Future<int> deleteFederatedAccount() async {
+    if (saving) return 0;
+    saving = true;
+    notifyListeners();
+    try {
+      final node = await remoteNodes.getActive();
+      if (node == null) {
+        throw StateError('No active Relay is configured.');
+      }
+      final requestedAt = DateTime.now().toUtc().toIso8601String();
+      const reason = 'user_requested';
+      final capability = await _syncCapabilityProvider(node);
+      final payload = jsonEncode([
+        did,
+        'delete_fediverse_account',
+        reason,
+        requestedAt,
+      ]);
+      final signature = await _signer.sign(utf8.encode(payload));
+      final response = await _client.post(
+        Uri.parse(
+          '${node.url.replaceFirst(RegExp(r'/$'), '')}'
+          '/api/v1/fediverse/account/delete',
+        ),
+        headers: {
+          'content-type': 'application/json',
+          'authorization': 'Bearer $capability',
+          ...AnsibleProtocol.headers,
+        },
+        body: jsonEncode({
+          'did': did,
+          'reason_code': reason,
+          'requested_at': requestedAt,
+          'signature': signature.hex.toLowerCase(),
+          'signature_scheme': signature.hex.length == 128
+              ? 'ed25519'
+              : 'p256-sha256',
+        }),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError(_error(response.body));
+      }
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      preferences = preferences.copyWith(
+        enabled: false,
+        allowRemoteFollowers: false,
+      );
+      await _store.save(did, preferences);
+      return body['queued_delete_deliveries'] as int? ?? 0;
+    } finally {
+      saving = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> update(FediversePreferences next) async {
     if (saving) return;
@@ -162,6 +234,7 @@ class FediversePreferencesController extends ChangeNotifier {
       final signature = await _signer.sign(
         utf8.encode(_signingPayload(normalized)),
       );
+      final capability = await _syncCapabilityProvider(node);
       final body = {
         'did': did,
         ...normalized.toJson(),
@@ -175,7 +248,11 @@ class FediversePreferencesController extends ChangeNotifier {
           '${node.url.replaceFirst(RegExp(r'/$'), '')}'
           '/api/v1/fediverse/preferences',
         ),
-        headers: const {'content-type': 'application/json'},
+        headers: {
+          'content-type': 'application/json',
+          'authorization': 'Bearer $capability',
+          ...AnsibleProtocol.headers,
+        },
         body: jsonEncode(body),
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {

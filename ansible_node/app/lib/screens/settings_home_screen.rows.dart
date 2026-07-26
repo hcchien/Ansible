@@ -773,6 +773,62 @@ class _FediversePublishingSettingsRowState
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.delete_outline),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AnsibleDesign.danger,
+                  ),
+                  onPressed: !_controller.preferences.enabled
+                      ? null
+                      : () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(
+                                context.uiCopy(
+                                  zh: '刪除 Fediverse 帳號？',
+                                  en: 'Delete Fediverse account?',
+                                ),
+                              ),
+                              content: Text(
+                                context.uiCopy(
+                                  zh:
+                                      'Relay 會停止公開此帳號，並嘗試通知既有追蹤站台。'
+                                      '無法保證其他站台會立即刪除已收到的副本。',
+                                  en:
+                                      'The Relay will hide this actor and attempt to '
+                                      'notify existing followers. Remote copies '
+                                      'cannot be guaranteed to disappear.',
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: Text(
+                                    context.uiCopy(zh: '取消', en: 'Cancel'),
+                                  ),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: Text(
+                                    context.uiCopy(zh: '確認刪除', en: 'Delete'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed != true || !context.mounted) return;
+                          Navigator.pop(context, const FediversePreferences());
+                        },
+                  label: Text(
+                    context.uiCopy(
+                      zh: '刪除 Fediverse 帳號',
+                      en: 'Delete Fediverse account',
+                    ),
+                  ),
+                ),
                 TextField(
                   controller: blocked,
                   maxLines: 3,
@@ -822,6 +878,30 @@ class _FediversePublishingSettingsRowState
     blocked.dispose();
     actors.dispose();
     if (result == null) return;
+    if (!result.enabled &&
+        _controller.preferences.enabled &&
+        result.revision == 0) {
+      try {
+        final count = await _controller.deleteFederatedAccount();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.uiCopy(
+                zh: '已停用帳號，並排入 $count 個遠端刪除通知。',
+                en: 'Account disabled; $count remote Delete deliveries queued.',
+              ),
+            ),
+          ),
+        );
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_message(error))));
+      }
+      return;
+    }
     try {
       await _controller.update(result);
     } catch (error) {

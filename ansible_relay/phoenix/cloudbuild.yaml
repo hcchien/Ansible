@@ -7,6 +7,8 @@ substitutions:
   _REPOSITORY: ansible
   _IMAGE_NAME: ansible-relay
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
+  _ACTIVITY_PUB_DELIVERY_ENABLED: "true"
+  _VPC_CONNECTOR: ansible-conn
 
 steps:
   - id: verify-identity-contract
@@ -89,6 +91,32 @@ steps:
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
     waitFor: ["build-image"]
 
+  - id: migrate-dev
+    name: gcr.io.google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        set -eu
+        image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA"
+        job="ansible-relay-dev-migrate"
+        if gcloud run jobs describe "$$job" --region="${_REGION}" --project="$PROJECT_ID" >/dev/null 2>&1; then
+          gcloud run jobs update "$$job" --image="$$image" --region="${_REGION}" --project="$PROJECT_ID" --quiet
+        else
+          gcloud run jobs create "$$job" \
+            --image="$$image" \
+            --region="${_REGION}" \
+            --project="$PROJECT_ID" \
+            --vpc-connector="${_VPC_CONNECTOR}" \
+            --vpc-egress=private-ranges-only \
+            --set-secrets=DATABASE_URL=relay-database-url:latest \
+            --command=/app/bin/ansible_relay \
+            --args='eval,AnsibleRelay.Release.migrate()' \
+            --quiet
+        fi
+        gcloud run jobs execute "$$job" --region="${_REGION}" --project="$PROJECT_ID" --wait
+    waitFor: ["push-image"]
+
   - id: deploy-dev
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
@@ -100,8 +128,10 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID
+      - --update-env-vars=ACTIVITY_PUB_DELIVERY_ENABLED=${_ACTIVITY_PUB_DELIVERY_ENABLED}
+      - --update-secrets=ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key-dev:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key-dev:latest
       - --quiet
-    waitFor: ["push-image"]
+    waitFor: ["migrate-dev"]
 
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA

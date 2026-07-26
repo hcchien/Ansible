@@ -93,6 +93,42 @@ defmodule AnsibleAppview.ExternalIngestTest do
     source
   end
 
+  test "authenticated Relay inbox Create Update Delete stays in external lane" do
+    add_source(%{board_id: "board-fediverse"})
+    object_id = "https://m.example.test/notes/push-1"
+
+    create = %{
+      "activity_type" => "Create",
+      "remote_actor" => @actor,
+      "object_id" => object_id,
+      "payload" => ap_note(object_id, content: "created")
+    }
+
+    assert {:ok, %{ingested: 1}} = ExternalIngest.ingest_activity(create)
+    item = Repo.get_by!(FeedItem, op_id: object_id)
+    refute item.sig_verified
+    assert item.author_tier == "external_unverified"
+    assert item.board_id == "board-fediverse"
+
+    update =
+      create
+      |> Map.put("activity_type", "Update")
+      |> put_in(["payload", "object", "content"], "updated")
+
+    assert {:ok, %{updated: 1}} = ExternalIngest.ingest_activity(update)
+    assert Repo.get_by!(FeedItem, op_id: object_id).payload["content"] == "updated"
+
+    delete = %{
+      "activity_type" => "Delete",
+      "remote_actor" => @actor,
+      "object_id" => object_id,
+      "payload" => %{"type" => "Delete", "object" => object_id}
+    }
+
+    assert {:ok, %{deleted: 1}} = ExternalIngest.ingest_activity(delete)
+    assert Repo.get_by!(FeedItem, op_id: object_id).deleted
+  end
+
   # A validly-signed native verified op (mirrors ingest_verification_test).
   defp native_verified_op(log_id, did) do
     {pub, priv} = keypair()

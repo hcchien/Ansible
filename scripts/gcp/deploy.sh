@@ -142,6 +142,8 @@ case "$SERVICE" in
     ENV_VARS+=";WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID}"
     ENV_VARS+=";WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN}"
     ENV_VARS+=";WEBAUTHN_SYNC_CAPABILITY_REQUIRED=${WEBAUTHN_SYNC_CAPABILITY_REQUIRED:-false}"
+    ENV_VARS+=";ACTIVITY_PUB_DELIVERY_ENABLED=${ACTIVITY_PUB_DELIVERY_ENABLED:-true}"
+    ENV_VARS+=";ACTIVITY_PUB_BLOCKED_DOMAINS=${ACTIVITY_PUB_BLOCKED_DOMAINS:-}"
     # Optional pass-throughs (universal links fail closed when unset; the ZKP
     # verification path stays disabled when unset — placeholders never boot).
     for OPT in UNIVERSAL_LINK_IOS_APP_IDS APP_LINK_ANDROID_PACKAGE \
@@ -160,7 +162,7 @@ case "$SERVICE" in
       --vpc-egress=private-ranges-only \
       --min-instances=1 \
       --set-env-vars="^;^${ENV_VARS}" \
-      --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest,SYNC_CAPABILITY_SECRET=relay-sync-capability-secret:latest" \
+      --set-secrets="DATABASE_URL=relay-database-url:latest,ANSIBLE_RELAY_SNAPSHOT_SIGNING_KEY_HEX=relay-snapshot-signing-key:latest,SYNC_CAPABILITY_SECRET=relay-sync-capability-secret:latest,ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key:latest" \
       --allow-unauthenticated
     ;;
 
@@ -182,7 +184,7 @@ case "$SERVICE" in
       --vpc-connector="$VPC_CONNECTOR" \
       --vpc-egress=private-ranges-only \
       --min-instances=1 --max-instances=1 \
-      --set-env-vars="^;^RELAY_BASE_URL=https://${RELAY_HOST};INGEST_INTERVAL_MS=${INGEST_INTERVAL_MS:-5000}" \
+      --set-env-vars="^;^RELAY_BASE_URL=https://${RELAY_HOST};INGEST_INTERVAL_MS=${INGEST_INTERVAL_MS:-5000};EXTERNAL_INGEST_INTERVAL_MS=${EXTERNAL_INGEST_INTERVAL_MS:-15000}" \
       --set-secrets="DATABASE_URL=appview-database-url:latest" \
       --allow-unauthenticated
     ;;

@@ -53,4 +53,11 @@ if config_env() == :prod do
     nil -> :ok
     value -> config :ansible_appview, :ingest_interval_ms, String.to_integer(value)
   end
+
+  external_interval =
+    String.to_integer(System.get_env("EXTERNAL_INGEST_INTERVAL_MS") || "15000")
+
+  config :ansible_appview,
+    start_external_ingest: external_interval > 0,
+    external_ingest_interval_ms: external_interval
 end

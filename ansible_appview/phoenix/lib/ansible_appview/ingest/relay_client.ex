@@ -30,6 +30,27 @@ defmodule AnsibleAppview.Ingest.RelayClient do
     end
   end
 
+  @doc "Fetches authenticated inbound ActivityPub activities recorded by Relay."
+  def fetch_federation_inbound(base_url, cursor, limit \\ 200) do
+    url =
+      "#{String.trim_trailing(base_url, "/")}/api/v1/federation/inbound" <>
+        "?cursor=#{cursor}&limit=#{limit}"
+
+    with {:ok, body} <- AnsibleAppview.Ingest.SafeHttp.get(url, "application/json"),
+         {:ok, %{"activities" => activities} = map} when is_list(activities) <-
+           Jason.decode(body) do
+      {:ok,
+       %{
+         activities: activities,
+         next_cursor: map["next_cursor"] || cursor,
+         has_more: map["has_more"] || false
+       }}
+    else
+      {:ok, _} -> {:error, :unexpected_body}
+      error -> error
+    end
+  end
+
   defp decode(body) do
     case Jason.decode(body) do
       {:ok, %{"ops" => ops} = map} when is_list(ops) ->

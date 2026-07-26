@@ -1,0 +1,23 @@
+name: Mastodon compatibility
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  live-mastodon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise a real Mastodon server
+        env:
+          MASTODON_BASE_URL: ${{ secrets.MASTODON_TEST_BASE_URL }}
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_TEST_ACCESS_TOKEN }}
+          RELAY_BASE_URL: ${{ secrets.MASTODON_TEST_RELAY_BASE_URL }}
+          ELIX_ACTOR: ${{ secrets.MASTODON_TEST_ELIX_ACTOR }}
+        run: scripts/fediverse/mastodon_compatibility_test.sh

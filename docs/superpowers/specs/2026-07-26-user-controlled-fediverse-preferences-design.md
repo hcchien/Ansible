@@ -58,6 +58,39 @@ because it requires authenticated inbound federation and a durable account
 deletion ceremony. The UI describes the current action as “pause/disable”, not
 remote erasure.
 
+## Production Federation Completion
+
+Inbound ActivityPub requests are accepted only after all of the following pass:
+
+- the raw HTTP body matches the `Digest` header;
+- `Date` is inside the configured clock-skew window;
+- the declared signed-header set covers `(request-target)`, `host`, `date`, and
+  `digest`;
+- the `Signature` verifies against the public key resolved from `keyId`;
+- the key owner and the ActivityPub activity actor are the same actor;
+- the signature fingerprint has not already been consumed inside the replay
+  window; and
+- platform and user actor/domain policy permits both the actor and resolved
+  inbox/key hosts.
+
+Authenticated `Create`, `Update`, and `Delete` activities are stored as a
+durable inbound log. AppView consumes that log only for explicitly curated
+external sources and projects public `Note` objects into the existing
+`external_unverified` lane. These items never become native Elix operations,
+never receive `sig_verified=true`, and never satisfy a board credential or
+trust-tier policy.
+
+Account deletion is a separate, DID-authorized ceremony from pausing
+federation. It snapshots the current follower inboxes, creates one durable
+ActivityPub `Delete` delivery per unique allowed inbox, disables actor
+discovery and new publication, removes follower edges only after the delivery
+rows are durable, and leaves a reason-coded audit record. Remote delivery is
+best-effort; the UI must not claim remote erasure.
+
+Production deployment enables the delivery poller explicitly and supplies the
+Relay ActivityPub RSA key pair through secret storage. Development and
+production use distinct keys. A missing key or delivery flag fails closed.
+
 ## Constitution Review
 
 1. Identity: the user-held DID key signs every preference revision.
@@ -72,4 +105,7 @@ remote erasure.
 7. Users can disable at any trust tier and can block actors/domains.
 8. External hosts remain `unknown` unless separately evaluated; allowlisting a
    host does not claim constitution compliance.
-
+9. Inbound remote content is public-only, allowlist-bounded, honestly labeled
+   `external_unverified`, and removable by disabling its source.
+10. HTTP Signatures authenticate transport only. They never establish Elix
+    identity, personhood, credential validity, or a native author signature.

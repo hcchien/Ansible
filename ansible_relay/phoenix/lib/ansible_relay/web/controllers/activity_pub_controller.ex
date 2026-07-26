@@ -3,7 +3,14 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.ActivityPub.{Actor, ActivityBuilder, Inbox}
+  alias AnsibleRelay.ActivityPub.{
+    Actor,
+    ActivityBuilder,
+    InboundHttpSignature,
+    InboundStore,
+    Inbox
+  }
+
   alias AnsibleRelay.{
     DidAccountCache,
     FediversePreferences,
@@ -29,9 +36,16 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
   def webfinger(conn, _params), do: send_json(conn, 422, %{error: "missing_resource"})
 
   def actor(conn, %{"actor" => actor}) do
-    case enabled_actor(actor) do
+    case known_actor(actor) do
       {:ok, _did} ->
-        send_json(conn, 200, Actor.document(actor, base_url(conn)), "application/activity+json")
+        document = Actor.document(actor, base_url(conn))
+
+        document =
+          if FediversePreferences.enabled_actor?(actor),
+            do: document,
+            else: document |> Map.put("discoverable", false) |> Map.put("suspended", true)
+
+        send_json(conn, 200, document, "application/activity+json")
 
       _ ->
         send_json(conn, 404, %{error: "actor_not_found"})
@@ -47,7 +61,8 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
          %{allow_remote_followers: true} = preference <-
            FediversePreferences.get_by_actor(actor),
          remote_actor when is_binary(remote_actor) <- conn.body_params["actor"],
-         true <- FediversePreferences.allowed_remote?(preference, remote_actor) do
+         true <- FediversePreferences.allowed_remote?(preference, remote_actor),
+         {:ok, _transport} <- verify_inbound(conn, conn.body_params) do
       case AnsibleRelay.ActivityPub.Inbox.handle(actor, conn.body_params,
              base_url: base_url(conn),
              remote_policy: fn remote_actor, inbox ->
@@ -73,6 +88,9 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
 
       false ->
         send_json(conn, 202, %{accepted: true, actor: actor, behavior: "blocked"})
+
+      {:error, reason} ->
+        send_json(conn, 401, %{error: "invalid_http_signature", reason: to_string(reason)})
 
       _ ->
         send_json(conn, 404, %{error: "actor_not_found"})
@@ -137,6 +155,12 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
     end
   end
 
+  def inbound_delta(conn, params) do
+    cursor = nonnegative_integer(params["cursor"], 0)
+    limit = params["limit"] |> positive_integer(100) |> min(500)
+    send_json(conn, 200, InboundStore.delta(cursor, limit))
+  end
+
   defp enabled_actor(handle) do
     with {:ok, did} <- DidAccountCache.get_by_handle(handle),
          true <- ReputationTier.meets?(DidAccountCache.reputation_tier(did), "verified_human"),
@@ -147,12 +171,49 @@ defmodule AnsibleRelay.Web.Controllers.ActivityPubController do
     end
   end
 
+  # Keep a non-discoverable actor document available after account deletion so
+  # remote servers can resolve the keyId and verify the queued Delete activity.
+  # WebFinger, inbox, outbox, and followers remain gated by enabled_actor/1.
+  defp known_actor(handle) do
+    with %{did: did} <- FediversePreferences.get_by_actor(handle),
+         {:ok, %{handle: ^handle}} <- DidAccountCache.get(did) do
+      {:ok, did}
+    else
+      _ -> :not_found
+    end
+  end
+
+  defp verify_inbound(conn, activity) do
+    case Application.get_env(
+           :ansible_relay,
+           :activity_pub_inbound_verifier,
+           InboundHttpSignature
+         ) do
+      module when is_atom(module) -> module.verify(conn, activity)
+      verifier when is_function(verifier, 2) -> verifier.(conn, activity)
+    end
+  end
+
   defp base_url(conn) do
     default_port? =
       (conn.scheme == :https && conn.port == 443) || (conn.scheme == :http && conn.port == 80)
 
     port = if default_port?, do: "", else: ":#{conn.port}"
     "#{conn.scheme}://#{conn.host}#{port}"
+  end
+
+  defp nonnegative_integer(value, default) do
+    case Integer.parse(to_string(value || "")) do
+      {number, ""} when number >= 0 -> number
+      _ -> default
+    end
+  end
+
+  defp positive_integer(value, default) do
+    case Integer.parse(to_string(value || "")) do
+      {number, ""} when number > 0 -> number
+      _ -> default
+    end
   end
 
   defp send_json(conn, status, body, content_type \\ "application/json") do

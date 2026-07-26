@@ -2,7 +2,7 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   use ExUnit.Case, async: false
   use Plug.Test
 
-  alias AnsibleRelay.Db.FediversePreference
+  alias AnsibleRelay.Db.{ActivityPubInboundActivity, FediversePreference}
   alias AnsibleRelay.{DidAccountCache, PublicationIntentStore, Repo}
   alias AnsibleRelay.Web.Router
 
@@ -49,6 +49,7 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+
     DidAccountCache.put(
       "did:key:z6MkAlice",
       String.duplicate("a", 64),
@@ -64,6 +65,16 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
       signature: String.duplicate("a", 128),
       signature_scheme: "ed25519"
     })
+
+    previous = Application.get_env(:ansible_relay, :activity_pub_inbound_verifier)
+    previous_public_key = Application.get_env(:ansible_relay, :activity_pub_public_key_pem)
+    Application.put_env(:ansible_relay, :activity_pub_inbound_verifier, fn _, _ -> {:ok, %{}} end)
+    Application.put_env(:ansible_relay, :activity_pub_public_key_pem, "TEST PUBLIC KEY")
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :activity_pub_inbound_verifier, previous)
+      Application.put_env(:ansible_relay, :activity_pub_public_key_pem, previous_public_key)
+    end)
 
     :ok
   end
@@ -96,6 +107,19 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
     assert body["outbox"] == "https://relay.elix.cool/users/alice/outbox"
   end
 
+  test "deleted actor remains key-resolvable but is no longer discoverable" do
+    preference = Repo.get_by!(FediversePreference, actor: "alice")
+    Repo.update!(Ecto.Changeset.change(preference, enabled: false))
+
+    actor_response = get_json("/users/alice")
+    assert actor_response.status == 200
+    assert Jason.decode!(actor_response.resp_body)["suspended"] == true
+    assert Jason.decode!(actor_response.resp_body)["publicKey"]["id"] =~ "#main-key"
+
+    webfinger = get_json("/.well-known/webfinger?resource=acct:alice@relay.elix.cool")
+    assert webfinger.status == 404
+  end
+
   test "outbox projects accepted publication intents to ActivityPub Create" do
     intent = accepted_intent()
 
@@ -113,18 +137,36 @@ defmodule AnsibleRelay.Web.ActivityPubControllerTest do
     assert activity["object"]["name"] == "ActivityPub note"
   end
 
-  test "inbox endpoint accepts remote ActivityPub activity envelope" do
+  test "inbox durably records an authenticated public remote Create" do
     accepted_intent()
+    remote_actor = "https://remote.example/users/bob"
+    object_id = "https://remote.example/notes/1"
+    public = "https://www.w3.org/ns/activitystreams#Public"
+
     response =
       post_json("/users/alice/inbox", %{
         "@context" => "https://www.w3.org/ns/activitystreams",
         "id" => "https://remote.example/activities/1",
         "type" => "Create",
-        "actor" => "https://remote.example/users/bob",
-        "object" => %{"type" => "Note", "content" => "hello"}
+        "actor" => remote_actor,
+        "to" => [public],
+        "object" => %{
+          "id" => object_id,
+          "type" => "Note",
+          "attributedTo" => remote_actor,
+          "to" => [public],
+          "content" => "hello"
+        }
       })
 
     assert response.status == 202
-    assert Jason.decode!(response.resp_body)["accepted"] == true
+    assert Jason.decode!(response.resp_body)["behavior"] == "external_content"
+
+    assert [%{object_id: ^object_id, remote_actor: ^remote_actor}] =
+             Repo.all(ActivityPubInboundActivity)
+
+    delta = get_json("/api/v1/federation/inbound?cursor=0&limit=10")
+    assert delta.status == 200
+    assert [%{"object_id" => ^object_id}] = Jason.decode!(delta.resp_body)["activities"]
   end
 end

@@ -17,7 +17,7 @@ defmodule AnsibleAppview.Ingest.ExternalPoller do
   require Logger
 
   alias AnsibleAppview.ExternalSources
-  alias AnsibleAppview.Ingest.ExternalIngest
+  alias AnsibleAppview.Ingest.{CursorStore, ExternalIngest, RelayClient}
 
   # Default OFF (0 = never schedule) so tests and unconfigured deployments don't
   # poll the fediverse implicitly.
@@ -48,6 +48,8 @@ defmodule AnsibleAppview.Ingest.ExternalPoller do
   @doc "Ingest every enabled source once. Safe to call directly. Never raises."
   @spec poll_all() :: :ok
   def poll_all do
+    poll_relay_inbox()
+
     ExternalSources.list_enabled()
     |> Enum.each(fn source ->
       try do
@@ -63,6 +65,22 @@ defmodule AnsibleAppview.Ingest.ExternalPoller do
     e ->
       Logger.warning("external poller poll_all error: #{inspect(e)}")
       :ok
+  end
+
+  defp poll_relay_inbox do
+    base_url = Application.fetch_env!(:ansible_appview, :relay_base_url)
+    source = "activitypub_inbound"
+    cursor = CursorStore.get(source)
+
+    case RelayClient.fetch_federation_inbound(base_url, cursor) do
+      {:ok, page} ->
+        Enum.each(page.activities, &ExternalIngest.ingest_activity/1)
+        CursorStore.put(page.next_cursor, source)
+        if page.has_more, do: poll_relay_inbox()
+
+      {:error, reason} ->
+        Logger.warning("ActivityPub inbound delta fetch failed: #{inspect(reason)}")
+    end
   end
 
   defp interval_ms do

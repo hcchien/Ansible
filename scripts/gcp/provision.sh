@@ -233,6 +233,41 @@ create_random_secret relay-snapshot-signing-key 32
 # HMAC key for five-minute, DID-bound sync capabilities.
 create_random_secret relay-sync-capability-secret 32
 
+# Relay-owned RSA transport keys for ActivityPub HTTP Signatures. These keys
+# authenticate Relay transport only; they are not user identity keys. Dev and
+# production deliberately use different pairs.
+create_activitypub_key_pair() {
+  local suffix="$1"
+  local private_secret="relay-activitypub-private-key${suffix}"
+  local public_secret="relay-activitypub-public-key${suffix}"
+
+  if secret_exists "$private_secret" && secret_exists "$public_secret"; then
+    log "ActivityPub RSA key secrets${suffix:- (prod)} exist"
+    return
+  elif secret_exists "$private_secret" || secret_exists "$public_secret"; then
+    warn "only one ActivityPub RSA key secret${suffix:- (prod)} exists; refusing to create a mismatched pair"
+    PROVISION_INCOMPLETE=true
+    return
+  fi
+
+  log "creating Relay ActivityPub RSA transport key pair${suffix:- (prod)}"
+  AP_KEY_DIR="$(mktemp -d)"
+  trap 'rm -rf "${AP_KEY_DIR:-}"' EXIT
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
+    -out "$AP_KEY_DIR/private.pem" >/dev/null 2>&1
+  openssl pkey -in "$AP_KEY_DIR/private.pem" -pubout \
+    -out "$AP_KEY_DIR/public.pem" >/dev/null 2>&1
+  gcloud secrets create "$private_secret" \
+    --data-file="$AP_KEY_DIR/private.pem" --project "$PROJECT_ID"
+  gcloud secrets create "$public_secret" \
+    --data-file="$AP_KEY_DIR/public.pem" --project "$PROJECT_ID"
+  rm -rf "$AP_KEY_DIR"
+  AP_KEY_DIR=""
+}
+
+create_activitypub_key_pair ""
+create_activitypub_key_pair "-dev"
+
 # --- Issuer state bucket ------------------------------------------------------
 if gcloud storage buckets describe "gs://${BUCKET}" --project "$PROJECT_ID" >/dev/null 2>&1; then
   log "bucket gs://${BUCKET} exists"
@@ -249,7 +284,9 @@ RUNTIME_SA="$(runtime_service_account)"
 log "granting secret access + bucket write to $RUNTIME_SA"
 for S in relay-database-url appview-database-url issuer-priv-key \
   subject-commitment-pepper tw-provider-shared-secret issuer-admin-token \
-  relay-snapshot-signing-key relay-sync-capability-secret; do
+  relay-snapshot-signing-key relay-sync-capability-secret \
+  relay-activitypub-private-key relay-activitypub-public-key \
+  relay-activitypub-private-key-dev relay-activitypub-public-key-dev; do
   if secret_exists "$S"; then
     gcloud secrets add-iam-policy-binding "$S" \
       --member="serviceAccount:${RUNTIME_SA}" \

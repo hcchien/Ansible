@@ -32,6 +32,7 @@ defmodule AnsibleAppview.Ingest.ExternalIngest do
   """
 
   require Logger
+  import Ecto.Query
 
   alias AnsibleAppview.{ExternalSources, Metrics, Repo}
   alias AnsibleAppview.Db.{ExternalSource, FeedItem}
@@ -61,6 +62,28 @@ defmodule AnsibleAppview.Ingest.ExternalIngest do
       %ExternalSource{} = source -> ingest_source(source)
     end
   end
+
+  @doc """
+  Applies one authenticated Relay Inbox activity to the same curated,
+  external-unverified lane used by pull ingest.
+  """
+  def ingest_activity(%{
+        "activity_type" => type,
+        "remote_actor" => actor_uri,
+        "object_id" => object_id,
+        "payload" => payload
+      })
+      when type in ["Create", "Update", "Delete"] do
+    case ExternalSources.get_by_actor_uri(actor_uri) do
+      %ExternalSource{enabled: true} = source ->
+        apply_activity(source, type, object_id, payload)
+
+      _ ->
+        {:ok, %{ingested: 0, ignored: :source_not_curated}}
+    end
+  end
+
+  def ingest_activity(_), do: {:ok, %{ingested: 0, ignored: :unsupported}}
 
   defp do_ingest(%ExternalSource{} = source) do
     case OutboxClient.impl().fetch_outbox(source.actor_uri) do
@@ -121,6 +144,60 @@ defmodule AnsibleAppview.Ingest.ExternalIngest do
     end
 
     %{ingested: inserted, deduped: deduped, attempted: attempted}
+  end
+
+  defp apply_activity(source, "Create", _object_id, payload) do
+    {:ok, fold_items(source, [payload])}
+  end
+
+  defp apply_activity(source, "Update", object_id, payload) do
+    case Note.normalize(payload, source.actor_uri) do
+      {:ok, item} ->
+        now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+        {count, _} =
+          Repo.update_all(
+            from(f in FeedItem,
+              where:
+                f.op_id == ^object_id and f.source == @source and
+                  f.external_actor_uri == ^source.actor_uri
+            ),
+            set: [
+              payload: %{
+                "type" => "external_note",
+                "content" => item.content,
+                "name" => item.name,
+                "http_signature_status" => "valid"
+              },
+              item_created_at: parse_dt(item.published_at) || now,
+              updated_at: now,
+              deleted: false
+            ]
+          )
+
+        if count == 0,
+          do: {:ok, fold_items(source, [payload])},
+          else: {:ok, %{updated: count}}
+
+      :skip ->
+        {:ok, %{updated: 0, ignored: :not_public_note}}
+    end
+  end
+
+  defp apply_activity(source, "Delete", object_id, _payload) do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    {count, _} =
+      Repo.update_all(
+        from(f in FeedItem,
+          where:
+            f.op_id == ^object_id and f.source == @source and
+              f.external_actor_uri == ^source.actor_uri
+        ),
+        set: [deleted: true, op_type: "delete", updated_at: now]
+      )
+
+    {:ok, %{deleted: count}}
   end
 
   defp row(%ExternalSource{} = source, item) do

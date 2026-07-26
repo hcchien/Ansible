@@ -18,7 +18,9 @@ void main() {
         remoteNodes: _RemoteNodes(),
         store: store,
         signer: _Signer(),
+        syncCapabilityProvider: (_) async => 'sync-token',
         client: MockClient((request) async {
+          expect(request.headers['authorization'], 'Bearer sync-token');
           requestBody = jsonDecode(request.body) as Map<String, dynamic>;
           return http.Response(
             jsonEncode({
@@ -62,6 +64,7 @@ void main() {
       remoteNodes: _RemoteNodes(),
       store: store,
       signer: _Signer(),
+      syncCapabilityProvider: (_) async => 'sync-token',
       client: MockClient(
         (_) async => http.Response(
           jsonEncode({'error': 'activity_pub_requires_verified_human'}),

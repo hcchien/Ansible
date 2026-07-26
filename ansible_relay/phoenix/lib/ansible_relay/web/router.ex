@@ -8,7 +8,8 @@ defmodule AnsibleRelay.Web.Router do
   plug(Plug.Parsers,
     parsers: [:json],
     pass: ["application/json"],
-    json_decoder: Jason
+    json_decoder: Jason,
+    body_reader: {AnsibleRelay.Web.RawBodyReader, :read_body, []}
   )
 
   plug(:dispatch)
@@ -99,6 +100,10 @@ defmodule AnsibleRelay.Web.Router do
     })
   end
 
+  get "/api/v1/federation/inbound" do
+    AnsibleRelay.Web.Controllers.ActivityPubController.inbound_delta(conn, conn.query_params)
+  end
+
   # Self-certifying identity anchor (the legacy ZKP challenge/anchor flow was
   # retired in favour of did:elix + this self-certifying object).
   post "/api/v1/identity/anchor" do
@@ -187,6 +192,10 @@ defmodule AnsibleRelay.Web.Router do
 
   put "/api/v1/fediverse/preferences" do
     AnsibleRelay.Web.Controllers.FediversePreferenceController.update(conn, conn.body_params)
+  end
+
+  post "/api/v1/fediverse/account/delete" do
+    AnsibleRelay.Web.Controllers.FediverseAccountController.delete(conn, conn.body_params)
   end
 
   # Phase 2 — Delta pull (cursor-based)
