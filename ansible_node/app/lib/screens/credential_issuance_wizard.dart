@@ -444,23 +444,37 @@ class _PassportNfcCredentialPanelState
 
       // Download the large public parameter file before requesting the
       // bounded, single-use Issuer challenge.
-      preloadedSrsPath = await _passportSrsProvider?.acquire();
+      try {
+        preloadedSrsPath = await _passportSrsProvider?.acquire();
+      } on Object catch (error) {
+        throw ZkpProverException('srs-download', error);
+      }
       final challenge = await _vcIssuerClient.requestPassportChallenge(
         did: widget.holderDid,
       );
       if (!challenge.expiresAt.isAfter(DateTime.now().toUtc())) {
         throw StateError('Issuer returned an expired passport challenge.');
       }
-      final passportProof = await _passportZkpProver.prove(
-        passport: data,
-        challenge: ZkpChallengeBinding(
-          challengeId: challenge.challengeId,
-          nonce: challenge.nonce,
-          did: widget.holderDid,
-          issuer: challenge.issuer.toString(),
-          scope: challenge.scope,
-        ),
-      );
+      late final ZkpProof passportProof;
+      try {
+        passportProof = await _passportZkpProver.prove(
+          passport: data,
+          challenge: ZkpChallengeBinding(
+            challengeId: challenge.challengeId,
+            nonce: challenge.nonce,
+            did: widget.holderDid,
+            issuer: challenge.issuer.toString(),
+            scope: challenge.scope,
+          ),
+        );
+      } on ZkpProverException {
+        rethrow;
+      } on Object catch (error) {
+        // Platform channels and JavaScriptCore can surface an unwrapped
+        // PlatformException. Preserve its diagnostic and stage instead of
+        // incorrectly presenting it as an NFC read failure.
+        throw ZkpProverException('pipeline', error);
+      }
       if (!mounted) return;
       _stopProofProgressTicker();
       setState(() => _submittingToIssuer = true);

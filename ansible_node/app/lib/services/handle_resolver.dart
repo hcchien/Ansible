@@ -35,20 +35,24 @@ class HandleResolver {
 
   /// Returns the handle for [did], or null if unknown/unresolvable.
   Future<String?> handleFor(String did) async {
-    if (did.isEmpty) return null;
-    if (_cache.containsKey(did)) return _cache[did];
+    final identity = did.trim();
+    if (identity.isEmpty) return null;
+    // Some imported/federated records already carry a handle in the author
+    // field. Do not turn that friendly identifier into a failed DID lookup.
+    if (!identity.startsWith('did:')) return identity.replaceFirst('@', '');
+    if (_cache.containsKey(identity)) return _cache[identity];
     try {
       final response = await _client
-          .get(_endpoint('/api/v1/identity/handle/${Uri.encodeComponent(did)}'))
+          .get(_handleEndpoint(identity))
           .timeout(timeout);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final handle = body is Map ? body['handle'] as String? : null;
-        _cache[did] = handle; // cache success (incl. null body)
+        _cache[identity] = handle; // cache success (incl. null body)
         return handle;
       }
       if (response.statusCode == 404) {
-        _cache[did] = null; // cache the negative
+        _cache[identity] = null; // cache the negative
       }
       return null;
     } catch (_) {
@@ -56,17 +60,18 @@ class HandleResolver {
     }
   }
 
-  Uri _endpoint(String path) {
-    final basePath = _baseUri.path.endsWith('/')
-        ? _baseUri.path.substring(0, _baseUri.path.length - 1)
-        : _baseUri.path;
-    return Uri(
-      scheme: _baseUri.scheme,
-      host: _baseUri.host,
-      port: _baseUri.hasPort ? _baseUri.port : null,
-      path: '$basePath$path',
-    );
-  }
+  Uri _handleEndpoint(String did) => _baseUri.replace(
+    pathSegments: [
+      ..._baseUri.pathSegments.where((segment) => segment.isNotEmpty),
+      'api',
+      'v1',
+      'identity',
+      'handle',
+      did,
+    ],
+    query: null,
+    fragment: null,
+  );
 }
 
 /// A short, human-readable form of a DID for fallback display when the handle
