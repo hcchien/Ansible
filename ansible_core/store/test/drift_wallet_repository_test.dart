@@ -177,5 +177,45 @@ void main() {
 
       expect(await repo.listPresentations('urn:uuid:test-humanity'), isEmpty);
     });
+
+    test('delete removes the passport local-duplicate extension', () async {
+      final credential = entity.WalletCredential(
+        credentialId: 'urn:uuid:test-passport',
+        issuerDid: 'did:web:issuer.elix.cool',
+        holderDid: 'did:key:z6Mkholder',
+        credentialType: 'TrisAuraHumanityCredential',
+        status: entity.WalletCredentialStatus.active,
+        validFrom: DateTime.utc(2026, 5, 4),
+        validUntil: DateTime.utc(2026, 8, 2),
+        displayName: 'Verified Human',
+        createdAt: DateTime.utc(2026, 5, 4, 10),
+        updatedAt: DateTime.utc(2026, 5, 4, 10),
+      );
+      await repo.saveCredential(
+        metadata: credential,
+        encryptedPayload: 'ciphertext-not-json',
+        encryptionVersion: 'local-dev-v1',
+      );
+      await repo.savePassportExtension(
+        entity.PassportWalletExtension(
+          credentialId: credential.credentialId,
+          passportLocalUniqueId: 'passport-local-v1-test',
+          nationalIdHash: 'national-id-hash',
+          passportNumberHash: 'passport-number-hash',
+          nationality: 'TWN',
+          assuranceMethod: 'passport_nfc',
+          verifiedAt: DateTime.utc(2026, 5, 4, 10),
+        ),
+      );
+
+      await repo.deleteCredential(credential.credentialId);
+
+      expect(
+        await repo.getPassportExtensionByLocalUniqueId(
+          'passport-local-v1-test',
+        ),
+        isNull,
+      );
+    });
   });
 }

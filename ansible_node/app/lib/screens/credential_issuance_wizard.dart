@@ -424,7 +424,10 @@ class _PassportNfcCredentialPanelState
           );
       final existing = await _walletRepository
           .getPassportExtensionByLocalUniqueId(passportLocalUniqueId);
-      if (existing != null) {
+      final existingCredential = existing == null
+          ? null
+          : await _walletRepository.getCredential(existing.credentialId);
+      if (existingCredential != null) {
         if (!mounted) return;
         setState(() {
           _phase = _PassportNfcPhase.idle;

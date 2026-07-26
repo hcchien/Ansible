@@ -232,9 +232,26 @@ void main() {
       final localIdService = PassportLocalIdService.fixedSecret(
         'wallet-secret',
       );
+      final existingCredential = WalletCredential(
+        credentialId: 'urn:uuid:existing-passport',
+        issuerDid: 'did:web:issuer-dev.elix.cool',
+        holderDid: 'did:plc:abcdefghijklmnop',
+        credentialType: 'TrisAuraHumanityCredential',
+        status: WalletCredentialStatus.active,
+        validFrom: DateTime.utc(2026, 5, 24),
+        validUntil: DateTime.utc(2026, 8, 22),
+        displayName: 'Verified Human',
+        createdAt: DateTime.utc(2026, 5, 24),
+        updatedAt: DateTime.utc(2026, 5, 24),
+      );
+      await repository.saveCredential(
+        metadata: existingCredential,
+        encryptedPayload: 'secure-storage-json-v1:existing',
+        encryptionVersion: 'secure-storage-json-v1',
+      );
       await repository.savePassportExtension(
         PassportWalletExtension(
-          credentialId: 'urn:uuid:existing-passport',
+          credentialId: existingCredential.credentialId,
           passportLocalUniqueId: localIdService.derive(
             nationality: 'TWN',
             documentNumber: '300012345',
