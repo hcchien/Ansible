@@ -139,6 +139,34 @@ func TestIssuer_NoPIIInCredentialSubject(t *testing.T) {
 	}
 }
 
+func TestIssuer_HumanityCredentialCarriesStrongUniqueAssurance(t *testing.T) {
+	iss := newTestIssuer(t)
+	raw, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cs, _ := raw["credentialSubject"].(map[string]any)
+	if cs["humanAssurance"] != "verified" {
+		t.Fatalf("expected verified human assurance, got %v", cs)
+	}
+	if cs["uniquenessAssurance"] != "strong" {
+		t.Fatalf("expected strong uniqueness assurance, got %v", cs)
+	}
+	if cs["verificationMethodClass"] != "government_eid" {
+		t.Fatalf("expected government_eid method class, got %v", cs)
+	}
+}
+
+func TestIssuer_StrongAssuranceRequiresPersonhoodCommitment(t *testing.T) {
+	iss := newTestIssuer(t)
+	if _, err := iss.Issue("did:plc:holder1abcdefghij", nil); !errors.Is(err, vc.ErrMissingPersonhoodCommitment) {
+		t.Fatalf("expected ErrMissingPersonhoodCommitment, got %v", err)
+	}
+	if _, err := iss.IssuePassport("did:plc:holder1abcdefghij", "TWN", "", "", true); !errors.Is(err, vc.ErrMissingPersonhoodCommitment) {
+		t.Fatalf("expected ErrMissingPersonhoodCommitment, got %v", err)
+	}
+}
+
 func TestIssuer_RefusesDuplicate(t *testing.T) {
 	iss := newTestIssuer(t)
 	if _, err := iss.Issue("did:plc:holder1abcdefghij", []string{"commitment-same"}); err != nil {
@@ -184,6 +212,11 @@ func TestIssuer_IssuePassportCredential(t *testing.T) {
 	humanity, _ := raw[0]["credentialSubject"].(map[string]any)
 	if humanity["humanVerified"] != true {
 		t.Fatalf("expected humanVerified claim, got %v", humanity)
+	}
+	if humanity["humanAssurance"] != "verified" ||
+		humanity["uniquenessAssurance"] != "strong" ||
+		humanity["verificationMethodClass"] != "government_document" {
+		t.Fatalf("expected strong government-document assurance, got %v", humanity)
 	}
 	if _, ok := humanity["nationality"]; ok {
 		t.Fatalf("humanity credential must not disclose nationality: %v", humanity)

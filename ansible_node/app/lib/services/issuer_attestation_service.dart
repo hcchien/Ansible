@@ -7,6 +7,30 @@ import 'package:http/http.dart' as http;
 import '../config/app_environment.dart';
 import '../config/protocol.dart';
 
+class HumanAssuranceProfile {
+  const HumanAssuranceProfile({
+    required this.identityControl,
+    required this.humanEvidence,
+    required this.uniqueness,
+    required this.methodClass,
+  });
+
+  final String identityControl;
+  final String humanEvidence;
+  final String uniqueness;
+  final String methodClass;
+
+  String get compatibilityTier {
+    if (humanEvidence == 'natural_person' && uniqueness == 'strong') {
+      return 'unique_human';
+    }
+    if (humanEvidence == 'natural_person') return 'humanity_limited';
+    if (humanEvidence == 'liveness') return 'humanity_limited';
+    if (humanEvidence == 'legacy_verified') return 'verified_human';
+    return 'basic';
+  }
+}
+
 /// Portable, trustless verified-human (federation trust design): trust the
 /// ISSUER, not the relay. A relay serves the issuer-signed VC that earned a
 /// DID's tier (`GET /api/v1/identity/attestation/:did`); this service
@@ -46,15 +70,13 @@ class IssuerAttestationService {
   final Duration timeout;
   final DateTime Function() _now;
 
-  /// Same mapping as the relay — the tier is DERIVED from the verified
-  /// credential type locally, never read from the response.
-  static const _tierForCredential = {
-    'TrisAuraHumanityCredential': 'verified_human',
-    'EmailCredential': 'basic',
+  static const _recognizedCredentialTypes = {
+    'TrisAuraHumanityCredential',
+    'EmailCredential',
   };
 
   String? _issuerKeyHexCache;
-  final Map<String, String?> _tierCache = {};
+  final Map<String, HumanAssuranceProfile?> _assuranceCache = {};
 
   /// The issuer-attested reputation tier for [did], or null when no
   /// verifiable attestation exists (caller treats as `basic`). Verified
@@ -63,7 +85,15 @@ class IssuerAttestationService {
   /// the next batch retries. Ingest calls this per author, so repeats must
   /// be cheap.
   Future<String?> verifiedTierFor(String did) async {
-    if (_tierCache.containsKey(did)) return _tierCache[did];
+    final assurance = await verifiedAssuranceFor(did);
+    return assurance?.compatibilityTier;
+  }
+
+  /// Returns orthogonal assurance dimensions. `identityControl` describes the
+  /// DID proof on this presentation; passkey UV is a separate operation proof
+  /// and is never inferred from video or personhood credentials.
+  Future<HumanAssuranceProfile?> verifiedAssuranceFor(String did) async {
+    if (_assuranceCache.containsKey(did)) return _assuranceCache[did];
 
     final http.Response response;
     try {
@@ -80,28 +110,31 @@ class IssuerAttestationService {
       return null; // transport error — fail closed, retry later
     }
 
-    String? tier;
+    HumanAssuranceProfile? assurance;
     if (response.statusCode == 200) {
       try {
         final decoded = jsonDecode(response.body);
         final vc = decoded is Map ? decoded['vc'] : null;
         if (vc is Map) {
-          tier = await _verifyVc(did, vc.cast<String, Object?>());
+          assurance = await _verifyVc(did, vc.cast<String, Object?>());
         }
       } catch (_) {
-        tier = null;
+        assurance = null;
       }
     }
 
     // 200-with-bad-proof and 404 are both definitive negatives — cache them.
-    _tierCache[did] = tier;
-    return tier;
+    _assuranceCache[did] = assurance;
+    return assurance;
   }
 
   /// Verifies subject, issuer, validity window, and the issuer's Ed25519
-  /// proof; returns the locally-derived tier, or null.
-  Future<String?> _verifyVc(String did, Map<String, Object?> vc) async {
-    // Subject must be the DID whose tier this would set.
+  /// proof; returns locally-derived assurance dimensions, or null.
+  Future<HumanAssuranceProfile?> _verifyVc(
+    String did,
+    Map<String, Object?> vc,
+  ) async {
+    // Subject must be the DID whose assurance this would set.
     final subject = vc['credentialSubject'];
     if (subject is! Map || subject['id'] != did) return null;
 
@@ -109,11 +142,11 @@ class IssuerAttestationService {
     final expectedIssuerDid = 'did:web:${_issuerBaseUri.host}';
     if (vc['issuer'] != expectedIssuerDid) return null;
 
-    // Type must map to a tier we recognize.
+    // Type must map to an assurance profile we recognize.
     final types = vc['type'];
     if (types is! List) return null;
     final credentialType = types.whereType<String>().firstWhere(
-      _tierForCredential.containsKey,
+      _recognizedCredentialTypes.contains,
       orElse: () => '',
     );
     if (credentialType.isEmpty) return null;
@@ -151,7 +184,68 @@ class IssuerAttestationService {
     }
     if (!valid) return null;
 
-    return _tierForCredential[credentialType];
+    return _assuranceForCredential(credentialType, subject);
+  }
+
+  /// Mirrors Relay `ReputationTier.for_credential/2`. Legacy humanity VCs
+  /// remain `verified_human`; new issuer-signed assurance claims distinguish
+  /// limited liveness from strong privacy-preserving uniqueness.
+  static HumanAssuranceProfile _assuranceForCredential(
+    String type,
+    Map subject,
+  ) {
+    const none = HumanAssuranceProfile(
+      identityControl: 'did_key',
+      humanEvidence: 'none',
+      uniqueness: 'unknown',
+      methodClass: 'none',
+    );
+    if (type == 'EmailCredential') return none;
+    if (type != 'TrisAuraHumanityCredential' ||
+        subject['humanVerified'] != true) {
+      return none;
+    }
+
+    final human = subject['humanAssurance'];
+    final uniqueness = subject['uniquenessAssurance'];
+    if (human == 'verified' && uniqueness == 'strong') {
+      return HumanAssuranceProfile(
+        identityControl: 'did_key',
+        humanEvidence: 'natural_person',
+        uniqueness: 'strong',
+        methodClass:
+            subject['verificationMethodClass'] as String? ?? 'unspecified',
+      );
+    }
+    if (human == 'verified' &&
+        (uniqueness == 'limited' || uniqueness == 'unknown')) {
+      return HumanAssuranceProfile(
+        identityControl: 'did_key',
+        humanEvidence: 'natural_person',
+        uniqueness: uniqueness as String,
+        methodClass:
+            subject['verificationMethodClass'] as String? ?? 'unspecified',
+      );
+    }
+    if (human == 'liveness' &&
+        (uniqueness == 'limited' || uniqueness == 'unknown')) {
+      return HumanAssuranceProfile(
+        identityControl: 'did_key',
+        humanEvidence: 'liveness',
+        uniqueness: uniqueness as String,
+        methodClass:
+            subject['verificationMethodClass'] as String? ?? 'liveness',
+      );
+    }
+    if (human == null && uniqueness == null) {
+      return const HumanAssuranceProfile(
+        identityControl: 'did_key',
+        humanEvidence: 'legacy_verified',
+        uniqueness: 'unknown',
+        methodClass: 'legacy',
+      );
+    }
+    return none;
   }
 
   /// The pinned issuer Ed25519 key: the explicit pin when configured,

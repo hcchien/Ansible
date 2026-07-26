@@ -22,6 +22,10 @@ const (
 	passportAssuranceMethod         = "passport_nfc"
 	mobileMoicaAssuranceMethod      = "mobilemoica_rp_explicit_disclosure"
 	mobileMoicaDisclosureModel      = "explicit_rp"
+	humanAssuranceVerified          = "verified"
+	uniquenessAssuranceStrong       = "strong"
+	methodClassGovernmentDocument  = "government_document"
+	methodClassGovernmentEID       = "government_eid"
 	jurisdiction                    = "TW"
 	defaultTTLDays                  = 90
 	// credentialStatusType names the issuer's status-endpoint check. The status
@@ -95,6 +99,9 @@ func NewIssuerWithSigner(cfg Config, store CredentialStore, signer Signer) (*Iss
 // under any supplied commitment.
 func (iss *Issuer) Issue(holderDID string, commitments []string) (map[string]any, error) {
 	primary := primaryCommitment(commitments)
+	if primary == "" {
+		return nil, ErrMissingPersonhoodCommitment
+	}
 	if err := iss.store.CheckDuplicateAny(commitments); err != nil {
 		return nil, err
 	}
@@ -102,11 +109,14 @@ func (iss *Issuer) Issue(holderDID string, commitments []string) (map[string]any
 	return iss.issue(
 		credentialType,
 		CredentialSubject{
-			ID:              holderDID,
-			HumanVerified:   true,
-			AssuranceLevel:  assuranceLevel,
-			AssuranceMethod: assuranceMethod,
-			Jurisdiction:    jurisdiction,
+			ID:                      holderDID,
+			HumanVerified:           true,
+			HumanAssurance:          humanAssuranceVerified,
+			UniquenessAssurance:     uniquenessAssuranceStrong,
+			VerificationMethodClass: methodClassGovernmentEID,
+			AssuranceLevel:          assuranceLevel,
+			AssuranceMethod:         assuranceMethod,
+			Jurisdiction:            jurisdiction,
 		},
 		primary,
 		primary,
@@ -146,6 +156,9 @@ func (iss *Issuer) IssueEmail(holderDID string) (map[string]any, error) {
 // nationality never gates personhood or age issuance. It does not store source
 // document fields; duplicate detection uses only verifier-produced commitments.
 func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passportNumberHash string, ageOver18 bool) ([]map[string]any, error) {
+	if nationalIDHash == "" && passportNumberHash == "" {
+		return nil, ErrMissingPersonhoodCommitment
+	}
 	if err := iss.store.CheckDuplicatePersonhoodBinding(nationalIDHash, passportNumberHash); err != nil {
 		return nil, err
 	}
@@ -153,10 +166,13 @@ func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passpor
 	humanity, err := iss.issue(
 		credentialType,
 		CredentialSubject{
-			ID:              holderDID,
-			HumanVerified:   true,
-			AssuranceLevel:  passportAssuranceLevel,
-			AssuranceMethod: passportAssuranceMethod,
+			ID:                      holderDID,
+			HumanVerified:           true,
+			HumanAssurance:          humanAssuranceVerified,
+			UniquenessAssurance:     uniquenessAssuranceStrong,
+			VerificationMethodClass: methodClassGovernmentDocument,
+			AssuranceLevel:          passportAssuranceLevel,
+			AssuranceMethod:         passportAssuranceMethod,
 		},
 		"",
 		nationalIDHash,
@@ -211,6 +227,9 @@ func (iss *Issuer) IssuePassport(holderDID, nationality, nationalIDHash, passpor
 // issued VC contains only assurance metadata and the holder DID.
 func (iss *Issuer) IssueMobileMoicaRP(holderDID string, commitments []string) (map[string]any, error) {
 	primary := primaryCommitment(commitments)
+	if primary == "" {
+		return nil, ErrMissingPersonhoodCommitment
+	}
 	if err := iss.store.CheckDuplicateAny(commitments); err != nil {
 		return nil, err
 	}
@@ -218,12 +237,15 @@ func (iss *Issuer) IssueMobileMoicaRP(holderDID string, commitments []string) (m
 	return iss.issue(
 		credentialType,
 		CredentialSubject{
-			ID:              holderDID,
-			HumanVerified:   true,
-			AssuranceLevel:  assuranceLevel,
-			AssuranceMethod: mobileMoicaAssuranceMethod,
-			Jurisdiction:    jurisdiction,
-			DisclosureModel: mobileMoicaDisclosureModel,
+			ID:                      holderDID,
+			HumanVerified:           true,
+			HumanAssurance:          humanAssuranceVerified,
+			UniquenessAssurance:     uniquenessAssuranceStrong,
+			VerificationMethodClass: methodClassGovernmentEID,
+			AssuranceLevel:          assuranceLevel,
+			AssuranceMethod:         mobileMoicaAssuranceMethod,
+			Jurisdiction:            jurisdiction,
+			DisclosureModel:         mobileMoicaDisclosureModel,
 		},
 		primary,
 		primary,

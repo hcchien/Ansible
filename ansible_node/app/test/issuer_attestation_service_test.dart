@@ -23,6 +23,8 @@ void main() {
     String issuer = issuerDid,
     String credentialType = 'TrisAuraHumanityCredential',
     String? validUntil,
+    String? humanAssurance,
+    String? uniquenessAssurance,
   }) {
     return {
       '@context': [
@@ -37,6 +39,9 @@ void main() {
       'credentialSubject': {
         'id': subject,
         'humanVerified': true,
+        if (humanAssurance != null) 'humanAssurance': humanAssurance,
+        if (uniquenessAssurance != null)
+          'uniquenessAssurance': uniquenessAssurance,
         'jurisdiction': 'TW',
       },
     };
@@ -62,8 +67,9 @@ void main() {
 
   Future<MockClient> relayServing(Map<String, Object?>? vc) async {
     final issuerPubHex = await issuerKey.publicKeyHex();
-    final multibase =
-        encodeDidKeyEd25519(issuerPubHex).replaceFirst('did:key:', '');
+    final multibase = encodeDidKeyEd25519(
+      issuerPubHex,
+    ).replaceFirst('did:key:', '');
     return MockClient((request) async {
       if (request.url.path == '/.well-known/did.json') {
         return http.Response(
@@ -75,7 +81,7 @@ void main() {
                 'type': 'Multikey',
                 'controller': issuerDid,
                 'publicKeyMultibase': multibase,
-              }
+              },
             ],
           }),
           200,
@@ -125,16 +131,44 @@ void main() {
     expect(await service.verifiedTierFor(holderDid), 'verified_human');
   });
 
+  test('strong unique humanity claims yield unique_human', () async {
+    final vc = await signedVc(
+      vcWithoutProof(humanAssurance: 'verified', uniquenessAssurance: 'strong'),
+    );
+    final service = serviceWith(await relayServing(vc));
+    expect(await service.verifiedTierFor(holderDid), 'unique_human');
+    final assurance = await service.verifiedAssuranceFor(holderDid);
+    expect(assurance?.identityControl, 'did_key');
+    expect(assurance?.humanEvidence, 'natural_person');
+    expect(assurance?.uniqueness, 'strong');
+  });
+
+  test('liveness without strong uniqueness yields humanity_limited', () async {
+    final vc = await signedVc(
+      vcWithoutProof(
+        humanAssurance: 'liveness',
+        uniquenessAssurance: 'limited',
+      ),
+    );
+    final service = serviceWith(await relayServing(vc));
+    expect(await service.verifiedTierFor(holderDid), 'humanity_limited');
+    expect(
+      (await service.verifiedAssuranceFor(holderDid))?.humanEvidence,
+      'liveness',
+    );
+  });
+
   test('EmailCredential maps to basic, not verified_human', () async {
-    final vc = await signedVc(vcWithoutProof(credentialType: 'EmailCredential'));
+    final vc = await signedVc(
+      vcWithoutProof(credentialType: 'EmailCredential'),
+    );
     final service = serviceWith(await relayServing(vc));
     expect(await service.verifiedTierFor(holderDid), 'basic');
   });
 
   test('a tampered VC body fails the issuer proof (fail closed)', () async {
     final vc = await signedVc(vcWithoutProof());
-    final subject =
-        (vc['credentialSubject']! as Map).cast<String, Object?>();
+    final subject = (vc['credentialSubject']! as Map).cast<String, Object?>();
     final tampered = {
       ...vc,
       'credentialSubject': {...subject, 'humanVerified': false},
@@ -156,8 +190,9 @@ void main() {
   });
 
   test('an expired VC is rejected', () async {
-    final vc =
-        await signedVc(vcWithoutProof(validUntil: '2026-06-01T00:00:00Z'));
+    final vc = await signedVc(
+      vcWithoutProof(validUntil: '2026-06-01T00:00:00Z'),
+    );
     final service = serviceWith(await relayServing(vc));
     expect(await service.verifiedTierFor(holderDid), isNull);
   });
@@ -165,8 +200,9 @@ void main() {
   test('no attestation (404) yields null and is cached', () async {
     var calls = 0;
     final issuerPubHex = await issuerKey.publicKeyHex();
-    final multibase =
-        encodeDidKeyEd25519(issuerPubHex).replaceFirst('did:key:', '');
+    final multibase = encodeDidKeyEd25519(
+      issuerPubHex,
+    ).replaceFirst('did:key:', '');
     final client = MockClient((request) async {
       if (request.url.path == '/.well-known/did.json') {
         return http.Response(

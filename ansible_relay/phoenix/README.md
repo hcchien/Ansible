@@ -296,6 +296,15 @@ open-versus-allowlist federation, allowed domains, blocked domains, and blocked
 actor URLs. `ACTIVITY_PUB_BLOCKED_DOMAINS` is the operator boundary and takes
 precedence over user allowlists.
 
+Assurance is represented independently as identity control, human evidence,
+and uniqueness. `humanity_limited`, `verified_human`, and `unique_human` are
+compatibility projections for existing gates, not a claim that video
+liveness is stronger than passkey control. New passport and Taiwan
+natural-person credentials with a strong privacy-preserving uniqueness binding
+derive `unique_human`; legacy humanity credentials remain `verified_human`.
+The Fediverse gate deliberately continues to require at least
+`verified_human`.
+
 Only an enabled Actor is exposed. Credentials, nullifiers, and legal-identity
 fields never enter the ActivityPub payload. Accepted public or unlisted Notes
 fan out only to follower inboxes allowed by both platform and user policy, and
