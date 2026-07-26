@@ -3,30 +3,33 @@ import 'package:test/test.dart';
 
 void main() {
   group('CrdtOpBuilder murmur/note', () {
-    test('createMurmur builds a murmur op with a public distributable payload', () {
-      final op = CrdtOpBuilder.createMurmur(
-        authorDid: 'did:key:alice',
-        entityId: 'murmur-1',
-        text: 'a passing thought',
-        tone: 'note',
-        sourceType: 'typed',
-      );
+    test(
+      'createMurmur builds a murmur op with a public distributable payload',
+      () {
+        final op = CrdtOpBuilder.createMurmur(
+          authorDid: 'did:key:alice',
+          entityId: 'murmur-1',
+          text: 'a passing thought',
+          tone: 'note',
+          sourceType: 'typed',
+        );
 
-      expect(op.entityType, 'murmur');
-      expect(op.opType, 'insert');
-      expect(op.authorDid, 'did:key:alice');
-      expect(op.entityId, 'murmur-1');
+        expect(op.entityType, 'murmur');
+        expect(op.opType, 'insert');
+        expect(op.authorDid, 'did:key:alice');
+        expect(op.entityId, 'murmur-1');
 
-      final payload = CrdtOpBuilder.decodePayload(op.payload);
-      expect(payload['mode'], 'murmur');
-      expect(payload['body'], 'a passing thought');
-      expect(payload['visibility'], 'public');
-      expect(payload['tone'], 'note');
-      expect(payload['sourceType'], 'typed');
-      expect(payload.containsKey('createdAt'), isTrue);
-      // Private metadata must never enter the op payload.
-      expect(payload.containsKey('privateTagsJson'), isFalse);
-    });
+        final payload = CrdtOpBuilder.decodePayload(op.payload);
+        expect(payload['mode'], 'murmur');
+        expect(payload['body'], 'a passing thought');
+        expect(payload['visibility'], 'public');
+        expect(payload['tone'], 'note');
+        expect(payload['sourceType'], 'typed');
+        expect(payload.containsKey('createdAt'), isTrue);
+        // Private metadata must never enter the op payload.
+        expect(payload.containsKey('privateTagsJson'), isFalse);
+      },
+    );
 
     test('createNote builds a note op carrying its visibility', () {
       final op = CrdtOpBuilder.createNote(
@@ -117,11 +120,45 @@ void main() {
           newContent: 'edited',
         ),
         CrdtOpBuilder.deletePost(authorDid: 'did:key:alice', entityId: 'p1'),
+        CrdtOpBuilder.updateThread(
+          authorDid: 'did:key:alice',
+          entityId: 'thread-1',
+          newTitle: 'Edited title',
+        ),
+        CrdtOpBuilder.deleteThread(
+          authorDid: 'did:key:alice',
+          entityId: 'thread-1',
+        ),
       ];
 
       for (final op in ops) {
         expect(op.schemaVersion, CrdtOpBuilder.opSchemaVersion);
       }
+    });
+
+    test('thread mutations use update/delete schema operations', () {
+      final update = CrdtOpBuilder.updateThread(
+        authorDid: 'did:key:alice',
+        entityId: 'thread-1',
+        newTitle: 'Edited title',
+      );
+      final deletion = CrdtOpBuilder.deleteThread(
+        authorDid: 'did:key:alice',
+        entityId: 'thread-1',
+      );
+
+      expect(update.entityType, 'thread');
+      expect(update.opType, 'update');
+      expect(
+        CrdtOpBuilder.decodePayload(update.payload)['title'],
+        'Edited title',
+      );
+      expect(deletion.entityType, 'thread');
+      expect(deletion.opType, 'delete');
+      expect(
+        CrdtOpBuilder.decodePayload(deletion.payload).containsKey('deletedAt'),
+        isTrue,
+      );
     });
 
     test('OpsQueueEntry JSON round-trips schemaVersion and defaults to 1', () {

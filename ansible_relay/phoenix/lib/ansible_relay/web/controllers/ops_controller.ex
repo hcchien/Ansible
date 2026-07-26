@@ -203,6 +203,20 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       else: :ok
   end
 
+  defp check_original_author(_entity_type, _entity_id, "insert", _author_did), do: :ok
+
+  defp check_original_author(entity_type, entity_id, op_type, author_did)
+       when op_type in ["update", "delete"] and
+              entity_type in ["thread", "post", "comment"] do
+    case OpStore.create_op_author(entity_type, entity_id) do
+      ^author_did -> :ok
+      nil -> {:error, :original_content_not_found}
+      _ -> {:error, :not_original_author}
+    end
+  end
+
+  defp check_original_author(_entity_type, _entity_id, _op_type, _author_did), do: :ok
+
   # GET /api/v1/ops/delta
   def delta(conn, params) do
     AnsibleRelay.Metrics.inc("relay_delta_requests_total")

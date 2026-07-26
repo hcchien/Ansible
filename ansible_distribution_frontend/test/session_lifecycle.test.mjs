@@ -91,6 +91,8 @@ test('restores an app-approved DID session into a capability view model', async 
       canRead: true,
       canPost: true,
       canReply: false,
+      canEdit: false,
+      canDelete: false,
       canRevoke: true,
       canManageProfile: false,
     },

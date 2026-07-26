@@ -75,6 +75,10 @@ export function createForumUiApp({
         reviewThreadDraft(actionElement);
       } else if (action === 'confirm-thread-draft') {
         await submitThreadDraft(actionElement);
+      } else if (action === 'edit-own-content') {
+        await editOwnContent(actionElement);
+      } else if (action === 'delete-own-content') {
+        await deleteOwnContent(actionElement);
       } else if (action === 'submit-report') {
         await submitReport(actionElement);
       } else if (action === 'moderation-action') {
@@ -269,6 +273,55 @@ export function createForumUiApp({
       actionElement?.dataset?.title ??
       ''
     );
+  }
+
+  async function editOwnContent(actionElement) {
+    if (!forumDataAdapter?.submitContentMutation) return;
+    const dataset = actionElement.dataset ?? {};
+    const current = dataset.currentValue ?? '';
+    const next = windowLike.prompt?.(t('content.editPrompt'), current);
+    if (next == null || !String(next).trim() || String(next).trim() === current) return;
+    await forumDataAdapter.submitContentMutation({
+      action: 'forum.edit',
+      entityType: dataset.entityType,
+      entityId: dataset.entityId,
+      boardId: dataset.boardId,
+      expectedPreviousRevision: dataset.revision,
+      payload:
+        dataset.entityType === 'thread'
+          ? { title: String(next).trim() }
+          : { content: String(next).trim() },
+      sessionViewModel: currentSessionViewModel(),
+    });
+    state = await pageController.loadCurrentRoute();
+    uiNotice = {
+      tone: 'success',
+      title: t('content.updatedTitle'),
+      message: t('content.updatedMessage'),
+    };
+    render();
+  }
+
+  async function deleteOwnContent(actionElement) {
+    if (!forumDataAdapter?.submitContentMutation) return;
+    if (windowLike.confirm && !windowLike.confirm(t('content.deleteConfirm'))) return;
+    const dataset = actionElement.dataset ?? {};
+    await forumDataAdapter.submitContentMutation({
+      action: 'forum.delete',
+      entityType: dataset.entityType,
+      entityId: dataset.entityId,
+      boardId: dataset.boardId,
+      expectedPreviousRevision: dataset.revision,
+      payload: { deletedAt: new Date().toISOString() },
+      sessionViewModel: currentSessionViewModel(),
+    });
+    uiNotice = {
+      tone: 'success',
+      title: t('content.deletedTitle'),
+      message: t('content.deletedMessage'),
+    };
+    state = await pageController.loadCurrentRoute();
+    render();
   }
 
   // Submits a report from an inline report form. The target travels on the

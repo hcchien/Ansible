@@ -539,7 +539,6 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
 
       mutation = Map.put(mutation, "signature", sign(bob_private, signing_payload(mutation)))
       response = post_json("/api/v1/ops", mutation)
-
       assert response.status == 403
       assert Jason.decode!(response.resp_body)["error"] == "not_original_author"
     end

@@ -365,6 +365,76 @@ test('normalizes AppView post content into thread posts', () => {
   assert.equal(thread.posts[0].content, '文章不見了？！');
 });
 
+test('projects signed thread/post updates and deletes from the schema feed', () => {
+  const threads = buildThreadsFromFeed([
+    {
+      log_id: 1,
+      op_id: 'thread-insert',
+      entity_type: 'thread',
+      op_type: 'insert',
+      entity_id: 'thread-1',
+      author_did: 'did:elix:alice',
+      board_id: 'general',
+      created_at: '2026-07-25T01:00:00Z',
+      payload: { title: 'Original' },
+    },
+    {
+      log_id: 2,
+      op_id: 'post-insert',
+      entity_type: 'post',
+      op_type: 'insert',
+      entity_id: 'post-1',
+      author_did: 'did:elix:alice',
+      created_at: '2026-07-25T01:01:00Z',
+      payload: { threadId: 'thread-1', content: 'Original body' },
+    },
+    {
+      log_id: 3,
+      op_id: 'thread-update',
+      entity_type: 'thread',
+      op_type: 'update',
+      entity_id: 'thread-1',
+      author_did: 'did:elix:alice',
+      created_at: '2026-07-25T01:02:00Z',
+      payload: { title: 'Edited' },
+    },
+    {
+      log_id: 4,
+      op_id: 'post-update',
+      entity_type: 'post',
+      op_type: 'update',
+      entity_id: 'post-1',
+      author_did: 'did:elix:alice',
+      created_at: '2026-07-25T01:03:00Z',
+      payload: { content: 'Edited body' },
+    },
+  ]);
+
+  assert.equal(threads[0].title, 'Edited');
+  assert.equal(threads[0].revision, 'thread-update');
+  assert.equal(threads[0].posts[0].content, 'Edited body');
+  assert.equal(threads[0].posts[0].revision, 'post-update');
+
+  assert.deepEqual(buildThreadsFromFeed([
+    {
+      op_id: 'thread-insert',
+      entity_type: 'thread',
+      op_type: 'insert',
+      entity_id: 'thread-1',
+      author_did: 'did:elix:alice',
+      payload: { title: 'Original' },
+    },
+    {
+      op_id: 'thread-delete',
+      entity_type: 'thread',
+      op_type: 'delete',
+      entity_id: 'thread-1',
+      author_did: 'did:elix:alice',
+      payload: { deletedAt: '2026-07-25T01:04:00Z' },
+    },
+  ]), []);
+});
+
 test('submits thread drafts only when the session can post', async () => {
   const submissions = [];
   const adapter = createForumDataAdapter({
