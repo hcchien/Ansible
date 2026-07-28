@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   live-mastodon:
+    environment: main
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
