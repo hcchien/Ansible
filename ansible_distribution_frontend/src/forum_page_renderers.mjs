@@ -22,6 +22,7 @@ import {
   t,
 } from './web_i18n.mjs';
 import { TRUST_TIERS, meetsMinPostTier } from './web_session_client.mjs';
+import { renderElixFaq } from './faq_page.mjs';
 
 export function renderPageBody(viewModel, uiState = {}) {
   const pageId = viewModel?.page?.id ?? viewModel?.route?.pageId;
@@ -48,6 +49,9 @@ export function renderPageBody(viewModel, uiState = {}) {
       break;
     case PAGE_IDS.moderation:
       bodyHtml = renderModeration(viewModel, uiState);
+      break;
+    case PAGE_IDS.faq:
+      bodyHtml = renderElixFaq();
       break;
     default:
       bodyHtml = renderNotFound(viewModel);

@@ -36,6 +36,10 @@ export function parseRoute(hash) {
     return { pageId: PAGE_IDS.moderation, params: {} };
   }
 
+  if (segments.length === 1 && segments[0] === 'about') {
+    return { pageId: PAGE_IDS.faq, params: {} };
+  }
+
   return { pageId: PAGE_IDS.home, params: { recoveredFrom: path } };
 }
 
@@ -62,6 +66,9 @@ export function routeToHash(route) {
     case PAGE_IDS.moderation:
       return '#/moderation';
 
+    case PAGE_IDS.faq:
+      return '#/about';
+
     default:
       return '#/404';
   }
@@ -85,6 +92,10 @@ export function createPageController({
 
     const sessionState = await sessionLifecycle.restore();
     const session = sessionState.viewModel;
+
+    if (route.pageId === PAGE_IDS.faq) {
+      return setState(route, session, null);
+    }
 
     if (route.pageId === PAGE_IDS.home || route.pageId === PAGE_IDS.boards) {
       const forum = await forumDataAdapter.loadForumHome({

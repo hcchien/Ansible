@@ -29,6 +29,7 @@ assert.deepEqual(parseRoute('#/moderation'), {
   pageId: PAGE_IDS.moderation,
   params: {},
 });
+assert.deepEqual(parseRoute('#/about'), { pageId: PAGE_IDS.faq, params: {} });
 assert.deepEqual(parseRoute('#/unknown/path'), {
   pageId: PAGE_IDS.home,
   params: { recoveredFrom: '/unknown/path' },
@@ -45,6 +46,7 @@ assert.equal(
 assert.equal(routeToHash({ pageId: PAGE_IDS.sessions }), '#/sessions');
 assert.equal(routeToHash({ pageId: PAGE_IDS.login }), '#/login');
 assert.equal(routeToHash({ pageId: PAGE_IDS.moderation }), '#/moderation');
+assert.equal(routeToHash({ pageId: PAGE_IDS.faq }), '#/about');
 console.log('ok - serializes route hashes');
 
 const calls = [];
@@ -163,3 +165,17 @@ assert.equal(loginState.route.pageId, PAGE_IDS.login);
 assert.equal(loginState.viewModel.page.title, '登入');
 assert.equal(loginState.viewModel.actions.showLogin, true);
 console.log('ok - loads login page without data dependencies');
+
+const faqController = createPageController({
+  getCurrentHash: () => '#/about',
+  sessionLifecycle: {
+    async restore() {
+      return { status: 'anonymous', viewModel: DEFAULT_SESSION_VIEW_MODEL };
+    },
+  },
+  forumDataAdapter: {},
+});
+const faqState = await faqController.loadCurrentRoute();
+assert.equal(faqState.route.pageId, PAGE_IDS.faq);
+assert.equal(faqState.viewModel.page.title, '認識 Elix');
+console.log('ok - loads FAQ without forum data');

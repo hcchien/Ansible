@@ -20,6 +20,7 @@ assert.match(header, /Elix/);
 assert.match(header, /Local Forum Host/);
 assert.match(header, /class="elix-mark"/);
 assert.match(header, /href="#\/boards"/);
+assert.match(header, /href="#\/about"/);
 assert.match(header, /匿名/);
 assert.match(header, /登入/);
 assert.match(header, /找人、找討論板、找關鍵字/);
@@ -65,6 +66,7 @@ assert.match(shell, /app-footer/);
 assert.match(shell, /以身分支撐的社群 App/);
 assert.match(shell, /href="\/privacy\?lang=zh-Hant"/);
 assert.match(shell, /href="\/terms\?lang=zh-Hant"/);
+assert.match(shell, /href="#\/about"/);
 
 setCurrentLocale('en');
 const englishShell = renderAppShell({

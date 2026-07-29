@@ -21,6 +21,14 @@ import {
 import { PAGE_IDS, buildAppViewModel } from '../src/state_model.mjs';
 import { setCurrentLocale } from '../src/web_i18n.mjs';
 
+const faqHtml = renderPageBody(buildAppViewModel({
+  route: { pageId: PAGE_IDS.faq, params: {} },
+  session: { authenticated: false, trustTier: 'anonymous', scopes: [] },
+}));
+assert.match(faqHtml, /Elix 是什麼？/);
+assert.match(faqHtml, /我一定要做真人驗證嗎？/);
+assert.match(faqHtml, /href="#\/boards"/);
+
 const homeHarness = createFrontendFlowHarness({ routeHash: '#/', sessionMode: 'anonymous' });
 const homeState = await runPublicHomeFlow(homeHarness);
 const homeHtml = renderPageBody(homeState.viewModel);

@@ -9,6 +9,7 @@ export const PAGE_IDS = Object.freeze({
   sessions: 'sessions',
   login: 'login',
   moderation: 'moderation',
+  faq: 'faq',
   notFound: 'not_found',
 });
 
@@ -62,6 +63,7 @@ export function deriveNavigationItems(session = DEFAULT_SESSION_VIEW_MODEL) {
   const items = [
     { id: PAGE_IDS.home, label: t('common.feed'), href: '#/' },
     { id: PAGE_IDS.boards, label: t('common.boards'), href: '#/boards' },
+    { id: PAGE_IDS.faq, label: t('common.aboutElix'), href: '#/about' },
   ];
 
   if (session?.authenticated) {
@@ -109,6 +111,9 @@ function pageDescriptor(route, forum) {
 
     case PAGE_IDS.moderation:
       return { id: PAGE_IDS.moderation, title: t('common.moderation') };
+
+    case PAGE_IDS.faq:
+      return { id: PAGE_IDS.faq, title: t('common.aboutElix') };
 
     default:
       return { id: PAGE_IDS.notFound, title: t('common.notFound') };

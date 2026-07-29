@@ -169,6 +169,24 @@ p {
   line-height: 1.65;
 }
 
+/* ── About / FAQ ───────────────────────────── */
+.faq-page { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0 84px; }
+.faq-hero { padding: 34px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.faq-hero h1 { margin-bottom: 12px; font-size: clamp(32px, 5vw, 50px); }
+.faq-hero p { max-width: 630px; font-size: 17px; }
+.faq-hero .primary-action { display: inline-flex; margin-top: 8px; }
+.faq-start { margin: 26px 0; padding: 28px 32px; border-radius: 20px; background: var(--surface-raised); }
+.faq-start h2 { font-size: 20px; }
+.faq-start ol { display: grid; gap: 16px; margin: 0; padding-left: 24px; }
+.faq-start li { padding-left: 6px; color: var(--text); }
+.faq-start li strong, .faq-start li span { display: block; }
+.faq-start li span { margin-top: 3px; color: var(--muted); line-height: 1.55; }
+.faq-list { display: grid; gap: 10px; }
+.faq-list details { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.faq-list summary { padding: 19px 22px; color: var(--text); cursor: pointer; font-weight: 650; }
+.faq-list details p { margin: 0; padding: 0 22px 20px; }
+@media (max-width: 640px) { .faq-page { width: min(100% - 24px, 760px); padding: 28px 0 82px; } .faq-hero, .faq-start { padding: 24px; } }
+
 /* ── Shell ─────────────────────────────────── */
 .forum-shell {
   display: flex;
