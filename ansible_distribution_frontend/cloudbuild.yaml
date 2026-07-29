@@ -6,6 +6,7 @@ substitutions:
   _REGION: asia-east1
   _REPOSITORY: ansible
   _IMAGE_NAME: ansible-web
+  _SERVICE_NAME: ansible-web
 
 steps:
   - id: verify-identity-contract
@@ -45,7 +46,7 @@ steps:
       - run
       - services
       - update
-      - ansible-web
+      - ${_SERVICE_NAME}
       - --platform=managed
       - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
       - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID

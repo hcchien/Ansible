@@ -6,6 +6,7 @@ substitutions:
   _REGION: asia-east1
   _REPOSITORY: ansible
   _IMAGE_NAME: ansible-appview
+  _SERVICE_NAME: ansible-appview-dev
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
 
 steps:
@@ -93,7 +94,7 @@ steps:
       - run
       - services
       - update
-      - ansible-appview-dev
+      - ${_SERVICE_NAME}
       - --platform=managed
       - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
       - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID

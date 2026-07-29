@@ -6,9 +6,12 @@ substitutions:
   _REGION: asia-east1
   _REPOSITORY: ansible
   _IMAGE_NAME: ansible-relay
+  _SERVICE_NAME: ansible-relay-dev
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
   _ACTIVITY_PUB_DELIVERY_ENABLED: "true"
   _VPC_CONNECTOR: ansible-conn
+  _MIGRATE_JOB_NAME: ansible-relay-dev-migrate
+  _DATABASE_URL_SECRET: relay-database-url:latest
 
 steps:
   - id: verify-identity-contract
@@ -99,7 +102,7 @@ steps:
       - |
         set -eu
         image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA"
-        job="ansible-relay-dev-migrate"
+        job="${_MIGRATE_JOB_NAME}"
         if gcloud run jobs describe "$$job" --region="${_REGION}" --project="$PROJECT_ID" >/dev/null 2>&1; then
           gcloud run jobs update "$$job" --image="$$image" --region="${_REGION}" --project="$PROJECT_ID" --quiet
         else
@@ -109,7 +112,7 @@ steps:
             --project="$PROJECT_ID" \
             --vpc-connector="${_VPC_CONNECTOR}" \
             --vpc-egress=private-ranges-only \
-            --set-secrets=DATABASE_URL=relay-database-url:latest \
+            --set-secrets=DATABASE_URL=${_DATABASE_URL_SECRET} \
             --command=/app/bin/ansible_relay \
             --args='eval,AnsibleRelay.Release.migrate()' \
             --quiet
@@ -123,7 +126,7 @@ steps:
     args:
       - run
       - deploy
-      - ansible-relay-dev
+      - ${_SERVICE_NAME}
       - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
       - --region=${_REGION}
       - --platform=managed
