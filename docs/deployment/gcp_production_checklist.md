@@ -13,9 +13,9 @@ export REGION="asia-east1"
 export RELAY_HOST="relay.elix.cool"
 export APPVIEW_HOST="appview.elix.cool"
 export ISSUER_HOST="issuer.elix.cool"
-export WEB_HOST="elix.cool"
+export WEB_HOST="www.elix.cool"
 export WEBAUTHN_RP_ID="elix.cool"
-export WEBAUTHN_ORIGIN="https://elix.cool"
+export WEBAUTHN_ORIGIN="https://www.elix.cool"
 ```
 
 ---

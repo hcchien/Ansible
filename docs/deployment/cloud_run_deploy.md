@@ -36,9 +36,9 @@ export TAG="$(git rev-parse --short HEAD)"  # image tag for this deploy
 export RELAY_HOST="relay.elix.cool"
 export APPVIEW_HOST="appview.elix.cool"
 export ISSUER_HOST="issuer.elix.cool"
-export WEB_HOST="elix.cool"
+export WEB_HOST="www.elix.cool"
 export WEBAUTHN_RP_ID="elix.cool"
-export WEBAUTHN_ORIGIN="https://elix.cool"
+export WEBAUTHN_ORIGIN="https://www.elix.cool"
 
 export ISSUER_DID="did:web:${ISSUER_HOST}"
 export AR="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}"
