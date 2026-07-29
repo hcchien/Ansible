@@ -66,6 +66,7 @@ assert.match(shell, /app-footer/);
 assert.match(shell, /以身分支撐的社群 App/);
 assert.match(shell, /href="\/privacy\?lang=zh-Hant"/);
 assert.match(shell, /href="\/terms\?lang=zh-Hant"/);
+assert.match(shell, /href="\/support\?lang=zh-Hant"/);
 assert.match(shell, /href="#\/about"/);
 
 setCurrentLocale('en');
@@ -76,6 +77,7 @@ const englishShell = renderAppShell({
 assert.match(englishShell, /identity-backed social app/);
 assert.match(englishShell, /href="\/privacy\?lang=en"/);
 assert.match(englishShell, /href="\/terms\?lang=en"/);
+assert.match(englishShell, /href="\/support\?lang=en"/);
 setCurrentLocale('zh-Hant');
 
 const staleSessionsVm = buildAppViewModel({

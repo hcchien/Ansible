@@ -1,6 +1,6 @@
 # Store Listing — Privacy Policy URLs & Data Disclosure Answers
 
-Effective policy date: **2026-07-07**. Privacy contact: **privacy@elix.cool**.
+Effective policy date: **2026-07-07**. Privacy contact: **privacy@reviz.tw**.
 
 The legal pages are served by the web frontend (`ansible_distribution_frontend`,
 content in `src/legal_pages.mjs`) as real path-based, server-rendered pages —
@@ -12,12 +12,15 @@ is bilingual (zh-Hant first, English under the `#en` anchor).
 | Purpose | URL |
 | --- | --- |
 | Privacy policy (App Store Connect + Play Console) | `https://forum.elix.cool/privacy` |
+| Support URL (App Store Connect) | `https://forum.elix.cool/support` |
 | Terms of service | `https://forum.elix.cool/terms` |
 | About page | `https://forum.elix.cool/about` |
 | Account deletion (Play Console "Account deletion" URL, required) | `https://forum.elix.cool/account-deletion` |
 
 - **App Store Connect** → App Information → Privacy Policy URL:
   `https://forum.elix.cool/privacy`
+- **App Store Connect** → App Information → Support URL:
+  `https://forum.elix.cool/support`
 - **Play Console** → App content → Privacy policy:
   `https://forum.elix.cool/privacy`
 - **Play Console** → App content → Data safety → Account deletion:
@@ -42,7 +45,7 @@ links to the same four pages; the origin is the compile-time dart-define
 - AppView: projection of already-public relay content only.
 - Deletion: in-app local-identity clearing; author deletes propagate to the
   AppView; relay op log is append-only (content removed from serving, signed
-  log retained); full deletion requests via privacy@elix.cool.
+  log retained); full deletion requests via privacy@reviz.tw.
 
 ## App Store Connect — App Privacy questionnaire
 
@@ -105,7 +108,7 @@ local identity in-app (Settings → Sign out this device → Clear local identit
 and delete individual posts, which propagates to reading surfaces. Public posts
 are part of an append-only signed log: deleted content stops being served, and
 the signed log entries are retained for record integrity, as disclosed in the
-privacy policy. Full deletion requests: privacy@elix.cool."
+privacy policy. Full deletion requests: privacy@reviz.tw."
 
 ## Honesty guardrails (do not soften these in console free-text)
 

@@ -17,12 +17,14 @@ import { DEFAULT_LOCALE, resolveLocale } from './web_i18n.mjs';
 
 export const LEGAL_EFFECTIVE_DATE = '2026-07-07';
 export const LEGAL_EFFECTIVE_DATE_ZH = '2026 年 7 月 7 日';
-export const PRIVACY_CONTACT_EMAIL = 'privacy@elix.cool';
+export const PRIVACY_CONTACT_EMAIL = 'privacy@reviz.tw';
+export const SUPPORT_CONTACT_EMAIL = 'support@reviz.tw';
 
 export const LEGAL_PAGE_PATHS = Object.freeze([
   '/privacy',
   '/terms',
   '/about',
+  '/support',
   '/account-deletion',
 ]);
 
@@ -34,6 +36,7 @@ const NAV_ITEMS = Object.freeze([
   { path: '/privacy', zh: '隱私權政策', en: 'Privacy' },
   { path: '/terms', zh: '服務條款', en: 'Terms' },
   { path: '/about', zh: '關於', en: 'About' },
+  { path: '/support', zh: '支援', en: 'Support' },
   { path: '/account-deletion', zh: '刪除帳號', en: 'Delete account' },
 ]);
 
@@ -86,7 +89,7 @@ function localizedHref(path, locale) {
 
 function localizeLegalBodyLinks(body, locale) {
   return String(body).replace(
-    /href="(\/(?:privacy|terms|about|account-deletion))"/g,
+    /href="(\/(?:privacy|terms|about|support|account-deletion))"/g,
     (_, path) => `href="${localizedHref(path, locale)}"`,
   );
 }
@@ -448,6 +451,7 @@ const ABOUT_ZH = `
         <li><a href="/privacy">隱私權政策</a></li>
         <li><a href="/terms">服務條款</a></li>
         <li><a href="/account-deletion">刪除帳號與資料</a></li>
+        <li><a href="/support">支援中心</a></li>
       </ul>
 `;
 
@@ -462,7 +466,62 @@ const ABOUT_EN = `
           <li><a href="/privacy">Privacy Policy</a></li>
           <li><a href="/terms">Terms of Service</a></li>
           <li><a href="/account-deletion">Account &amp; data deletion</a></li>
+          <li><a href="/support">Support</a></li>
         </ul>
+`;
+
+// ---------------------------------------------------------------------------
+// 支援中心 / Support
+// ---------------------------------------------------------------------------
+
+const SUPPORT_ZH = `
+      <h1>Elix 支援中心</h1>
+      <p class="legal-effective">${SUPPORT_CONTACT_EMAIL}</p>
+
+      <p>需要 Elix 的使用協助、想回報問題，或有 App Store 相關問題時，請來信：</p>
+      <p><a href="mailto:${SUPPORT_CONTACT_EMAIL}">${SUPPORT_CONTACT_EMAIL}</a></p>
+
+      <h2>開始使用</h2>
+      <ul>
+        <li>你可以先在 Web 閱讀公開看板與討論。</li>
+        <li>帳號建立、身分與錢包功能會在 Elix App 提供；Web 不會要求你交出私鑰。</li>
+        <li>想了解身分、同步、隱私與簽章標示，請閱讀 <a href="/#/about">認識 Elix</a>。</li>
+      </ul>
+
+      <h2>回報問題時請告訴我們</h2>
+      <ul>
+        <li>使用的平台與 App／瀏覽器版本。</li>
+        <li>你正在做什麼，以及問題發生的時間。</li>
+        <li>畫面上的錯誤訊息或截圖；請勿寄送私鑰、護照號碼、身分證號或驗證碼。</li>
+      </ul>
+
+      <h2>隱私、帳號與資料刪除</h2>
+      <p>隱私權問題與資料權利請參閱<a href="/privacy">隱私權政策</a>。若要提出完整的帳號與資料刪除請求，請依<a href="/account-deletion">刪除帳號與資料</a>頁面的方式聯絡 <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a>。</p>
+`;
+
+const SUPPORT_EN = `
+        <h1>Elix Support</h1>
+        <p class="legal-effective">${SUPPORT_CONTACT_EMAIL}</p>
+
+        <p>For help using Elix, bug reports, or App Store questions, contact:</p>
+        <p><a href="mailto:${SUPPORT_CONTACT_EMAIL}">${SUPPORT_CONTACT_EMAIL}</a></p>
+
+        <h2>Getting started</h2>
+        <ul>
+          <li>You can read public boards and discussions on the web.</li>
+          <li>Account creation, identity, and wallet features are provided in the Elix app; the web never asks for your private key.</li>
+          <li>For identity, sync, privacy, and signature labels, read <a href="/#/about">About Elix</a>.</li>
+        </ul>
+
+        <h2>When reporting a problem</h2>
+        <ul>
+          <li>Tell us your platform and app or browser version.</li>
+          <li>Describe what you were doing and when the problem occurred.</li>
+          <li>Include an error message or screenshot when useful. Never send private keys, passport or national-ID numbers, or verification codes.</li>
+        </ul>
+
+        <h2>Privacy, accounts, and data deletion</h2>
+        <p>See the <a href="/privacy">Privacy Policy</a> for privacy questions and data rights. For a full account and data deletion request, follow the <a href="/account-deletion">Account &amp; data deletion</a> page and contact <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a>.</p>
 `;
 
 // ---------------------------------------------------------------------------
@@ -539,6 +598,10 @@ const PAGES = Object.freeze({
   '/about': {
     titles: { 'zh-Hant': '關於 Elix', en: 'About Elix' },
     bodies: { 'zh-Hant': ABOUT_ZH, en: ABOUT_EN },
+  },
+  '/support': {
+    titles: { 'zh-Hant': 'Elix 支援中心', en: 'Elix Support' },
+    bodies: { 'zh-Hant': SUPPORT_ZH, en: SUPPORT_EN },
   },
   '/account-deletion': {
     titles: { 'zh-Hant': '刪除帳號與資料', en: 'Account & Data Deletion' },

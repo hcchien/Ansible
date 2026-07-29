@@ -5,6 +5,7 @@ import { createFrontendServer } from '../server.mjs';
 import {
   LEGAL_PAGE_PATHS,
   PRIVACY_CONTACT_EMAIL,
+  SUPPORT_CONTACT_EMAIL,
   renderLegalPage,
   resolveLegalLocale,
 } from '../src/legal_pages.mjs';
@@ -25,6 +26,7 @@ try {
     '/privacy',
     '/terms',
     '/about',
+    '/support',
     '/account-deletion',
   ]);
   assert.equal(resolveLegalLocale('en-US,en;q=0.9'), 'en');
@@ -45,6 +47,7 @@ try {
     '/privacy': ['隱私權政策', '個人資料保護法', 'GDPR'],
     '/terms': ['服務條款', '中華民國（台灣）'],
     '/about': ['關於 Elix'],
+    '/support': ['Elix 支援中心', SUPPORT_CONTACT_EMAIL, '回報問題'],
     '/account-deletion': [
       '刪除帳號與資料',
       '清除本機身分',
@@ -54,6 +57,7 @@ try {
     '/privacy': ['Privacy Policy', 'Personal Data Protection Act', 'GDPR'],
     '/terms': ['Terms of Service', 'Republic of China (Taiwan)'],
     '/about': ['About Elix', 'self-sovereign identity'],
+    '/support': ['Elix Support', SUPPORT_CONTACT_EMAIL, 'reporting a problem'],
     '/account-deletion': ['Account &amp; Data Deletion', 'Clear local identity'],
   };
 
@@ -69,7 +73,7 @@ try {
     assert.match(zhPage.body, /<html lang="zh-Hant">/);
     assert.doesNotMatch(zhPage.body, /<section id="en" lang="en">/);
     assert.match(zhPage.body, new RegExp(`href="${path.replace('/', '\\/') + '\\?lang=en'}"`));
-    assert.doesNotMatch(zhPage.body, /href="\/(?:privacy|terms|about|account-deletion)"/);
+    assert.doesNotMatch(zhPage.body, /href="\/(?:privacy|terms|about|support|account-deletion)"/);
 
     const enPage = await request(`${baseUrl}${path}`, {
       headers: { 'accept-language': 'en-US,en;q=0.9,zh-TW;q=0.5' },
@@ -82,7 +86,7 @@ try {
     assert.match(enPage.body, /<html lang="en">/);
     assert.doesNotMatch(enPage.body, /<section id="en" lang="en">/);
     assert.match(enPage.body, new RegExp(`href="${path.replace('/', '\\/') + '\\?lang=zh-Hant'}"`));
-    assert.doesNotMatch(enPage.body, /href="\/(?:privacy|terms|about|account-deletion)"/);
+    assert.doesNotMatch(enPage.body, /href="\/(?:privacy|terms|about|support|account-deletion)"/);
 
     // Footer: effective date + privacy contact.
     assert.ok(zhPage.body.includes('2026-07-07'), `${path} must show effective date`);
