@@ -27,7 +27,20 @@ const faqHtml = renderPageBody(buildAppViewModel({
 }));
 assert.match(faqHtml, /Elix 是什麼？/);
 assert.match(faqHtml, /我一定要做真人驗證嗎？/);
+assert.match(faqHtml, /為什麼需要同步？/);
+assert.match(faqHtml, /我的資料保存在哪裡？/);
+assert.match(faqHtml, /我看到發文者是 did:…，這是 bug 嗎？/);
+assert.match(faqHtml, /背景身分編號/);
 assert.match(faqHtml, /href="#\/boards"/);
+assert.doesNotMatch(faqHtml, /<summary>Relay、Forum Host、AppView 是什麼？<\/summary>/);
+assert.match(faqHtml, /想知道背後怎麼運作？/);
+assert.match(faqHtml, /class="faq-nerds"/);
+assert.match(faqHtml, /可以用 AI 協助我整理社群資料嗎？/);
+assert.match(faqHtml, /本地 MCP 存取預設為唯讀/);
+assert.match(faqHtml, /真人驗證怎麼兼顧隱私？/);
+assert.match(faqHtml, /零知識證明/);
+assert.match(faqHtml, /ZKPassport 證明/);
+assert.match(faqHtml, /數位皮夾怎麼避免揭露太多資料？/);
 
 const homeHarness = createFrontendFlowHarness({ routeHash: '#/', sessionMode: 'anonymous' });
 const homeState = await runPublicHomeFlow(homeHarness);
