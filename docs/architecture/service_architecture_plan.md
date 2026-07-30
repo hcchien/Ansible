@@ -67,8 +67,14 @@ federation, and ranking. Checklist answers:
 └─────────────────────────────┘
 ┌─ Issuer (Go, :4002) ────────┐  ┌─ Frontend (Node, :5173) ──┐
 │  W3C VC · did:web · TW/     │  │  Forum Host public views  │
-│  MobileMoica (fail-closed)  │  │  app-approved web sessions│
-└─────────────────────────────┘  └───────────────────────────┘
+│  MobileMoica · Passport NFC │  │  app-approved web sessions│
+└─────────────┬───────────────┘  └───────────────────────────┘
+              │ private Cloud Run request (OIDC ID token)
+              ▼
+┌─ ZKPassport Verifier (Node, :8080) ─────────────────────────┐
+│ pinned ZKPassport proof/public-input checks · no VC issuance │
+│ Passport NFC Beta                                             │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ⚠ = known architectural debt addressed by this plan.
@@ -103,6 +109,7 @@ relay distributes.
 | G17 | No observability baseline — phase exit criteria (signature rejection rate, op growth, ingest lag) have no metrics to stand on | SOSP C-1 (partial); this review | High |
 | G18 | Canonical user DID is the `did:plc` **local stub** — domain/relay-coupled and not independently resolvable; no portable method and **no cross-relay resolution** (a third party can't resolve a user hosted on another relay). Wrong shape for an open, multi-operator federation | [Layered identity plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md); Base Rule 1 | High |
 | G19 | No Issuer Trust Registry — "anyone can run an issuer" means a valid issuer signature is not enough; verifiers have no governed accept/reject list | [Layered identity plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md) | Medium |
+| G20 | Passport verifier Cloud Run IAM is inconsistent: Cloud Build enables invoker checking, but generic `deploy.sh verifier` still permits unauthenticated invocation | [Embedded ZKPassport design](../superpowers/specs/2026-07-23-embedded-zkpassport-issuance-design.md) | **Passport production blocker** |
 
 ## 3. Target Architecture（目標架構）
 
@@ -124,6 +131,47 @@ implements ActivityPub server endpoints; Nostr/AP stay projections, never the
 canonical store; GCP Pub/Sub is **not** required for single-region scale —
 Phoenix PubSub + WebSocket replaces the genesis C-3 Pub/Sub assumption until
 multi-region demands otherwise (decision D2 below).
+
+### Passport NFC verification boundary (Beta)
+
+Passport NFC is an optional high-assurance Wallet upgrade, not an
+account-creation requirement. The phone reads and proves passport data locally.
+It sends the Issuer a ZK proof envelope and minimum ceremony binding
+(`holder_did`, single-use challenge values, requested nationality, circuit
+version, and verification-key identity), never MRZ, DG data, document number,
+legal name, face image, BAC/PACE material, or raw chip data.
+
+The Go Issuer owns challenge creation/consumption, duplicate-binding policy,
+VC issuance, and durable issuer-side state. It delegates only cryptographic
+proof and public-input verification to the separately deployed Node
+`ansible_zkpassport_verifier`. The verifier returns only validity, verified
+nationality, age predicate, and issuer-scoped binding input; it cannot issue a
+credential. The Issuer stores duplicate-prevention commitments only inside its
+boundary and never puts them in VCs, VPs, Relay, AppView, logs, or federation
+payloads. This is separate from the retired Relay Phase-1 Groth16 anchor flow
+and its `ZkpVerificationKeys` registry; that legacy registry is not a Passport
+NFC verifier.
+
+```text
+Wallet (local NFC + proving)
+  -- minimal proof envelope + holder/challenge binding --> Issuer
+  -- Cloud Run OIDC ID token; IAM invoker = Issuer SA --> ZKPassport Verifier
+  <-- validity + minimum disclosed predicates / scoped binding --
+  <-- separately presentable minimal VCs -- Issuer
+```
+
+Unsupported protocol/circuit, unpinned or mismatched verification material,
+malformed proof, failed public-input relationship, wrong DID/origin/scope/
+challenge, expired or consumed challenge, unavailable verifier, and duplicate
+active binding all prevent issuance. There is no raw-passport or client-
+assertion fallback.
+
+This integration is **Beta** until the exact pinned app/prover/verifier
+combination receives an independent security audit. Production requires Cloud
+Run IAM invocation restricted to the Issuer workload service account. Cloud
+Build's verifier deployment requests IAM checking, but the generic
+`scripts/gcp/deploy.sh verifier` currently uses `--allow-unauthenticated`; that
+path must be corrected before Passport NFC production enablement (G20).
 
 ## 4. Phased Plan（分階段計畫）
 
