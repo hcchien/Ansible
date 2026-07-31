@@ -13,73 +13,73 @@ assert.match(
 );
 assert.match(
   css,
-  /--background:\s*#FAF8CE;/,
-  'Elix Web yellow-paper background token is required',
+  /--background:\s*#ffffff;/,
+  'Elix Web daylight background token is required',
 );
 assert.match(
   css,
-  /--surface:\s*#FFFFFF;/,
-  'Elix Web paper-white card surface token is required',
+  /--surface:\s*#ffffff;/,
+  'Elix Web white card surface token is required',
 );
 assert.match(
   css,
-  /--surface-raised:\s*#F5F1BE;/,
-  'Elix Web soft surface token is required',
+  /--surface-raised:\s*#f7f8fc;/,
+  'Elix Web daylight raised surface token is required',
 );
 assert.match(
   css,
-  /--surface-deep:\s*#EDE7A6;/,
-  'Elix Web deep surface token is required',
+  /--surface-deep:\s*#eef1f9;/,
+  'Elix Web daylight deep surface token is required',
 );
 assert.match(
   css,
-  /--border:\s*#E7E1A6;/,
-  'Elix Web rule token is required',
+  /--border:\s*#dfe3ee;/,
+  'Elix Web daylight rule token is required',
 );
 assert.match(
   css,
-  /--muted-fill:\s*#EDE7A6;/,
-  'Elix Web muted fill token is required',
+  /--muted-fill:\s*#eef1f9;/,
+  'Elix Web daylight muted fill token is required',
 );
 assert.match(
   css,
-  /--accent:\s*#C9AEEB;/,
-  'Elix lavender accent token is required',
+  /--accent:\s*#2550af;/,
+  'Elix cobalt accent token is required',
 );
 assert.match(
   css,
-  /--lavender:\s*#2846A8;/,
-  'Elix deep-lavender signal token is required',
+  /--lavender:\s*#c7b7f9;/,
+  'Elix lavender signal token is required',
 );
 assert.match(
   css,
-  /--highlight:\s*#EBE21C;/,
-  'Elix highlight yellow token is required',
+  /--highlight:\s*#eee500;/,
+  'Elix citron highlight token is required',
 );
 assert.match(
   css,
-  /--warning:\s*#9A4A24;/,
-  'Elix ember warning token is required',
+  /--warning:\s*#a86b00;/,
+  'Elix daylight warning token is required',
 );
 assert.match(
   css,
-  /--danger:\s*#9A4A24;/,
-  'Elix danger token is required',
+  /--danger:\s*#cc3b2e;/,
+  'Elix daylight danger token is required',
 );
 assert.match(
   css,
-  /--success:\s*#6FB2E8;/,
-  'Elix sky success token is required',
+  /--success:\s*#17845c;/,
+  'Elix daylight success token is required',
 );
 assert.match(
   css,
-  /--text:\s*#2A2A0A;/,
-  'Elix Web warm-ink text token is required',
+  /--text:\s*#191919;/,
+  'Elix Web daylight text token is required',
 );
 assert.match(
   css,
-  /--muted:\s*#625F3C;/,
-  'Elix Web muted ink token is required',
+  /--muted:\s*#55607a;/,
+  'Elix Web daylight muted text token is required',
 );
 assert.match(
   css,
