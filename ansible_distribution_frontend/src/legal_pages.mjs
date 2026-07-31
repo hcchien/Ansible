@@ -26,6 +26,7 @@ export const LEGAL_PAGE_PATHS = Object.freeze([
   '/about',
   '/support',
   '/account-deletion',
+  '/child-safety',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ const NAV_ITEMS = Object.freeze([
   { path: '/about', zh: '關於', en: 'About' },
   { path: '/support', zh: '支援', en: 'Support' },
   { path: '/account-deletion', zh: '刪除帳號', en: 'Delete account' },
+  { path: '/child-safety', zh: '兒少安全', en: 'Child safety' },
 ]);
 
 function layout({ path, title, body, locale }) {
@@ -89,7 +91,7 @@ function localizedHref(path, locale) {
 
 function localizeLegalBodyLinks(body, locale) {
   return String(body).replace(
-    /href="(\/(?:privacy|terms|about|support|account-deletion))"/g,
+    /href="(\/(?:privacy|terms|about|support|account-deletion|child-safety))"/g,
     (_, path) => `href="${localizedHref(path, locale)}"`,
   );
 }
@@ -349,6 +351,7 @@ const TERMS_ZH = `
         <li>冒充他人或不實表示與任何個人、組織之關係；</li>
         <li>大量發送垃圾訊息、操縱互動或進行協同性不實行為；</li>
         <li>企圖破壞、規避或濫用本服務之安全機制（包括身分驗證與重複註冊防護）。</li>
+        <li>製作、發布、索取、散布或協助兒少性虐待及剝削（CSAE）或兒少性虐待素材（CSAM）；詳見<a href="/child-safety">兒少安全標準</a>。</li>
       </ul>
 
       <h2>你的內容</h2>
@@ -404,6 +407,7 @@ const TERMS_EN = `
           <li>impersonate any person or misrepresent your affiliation with any person or organization;</li>
           <li>send bulk spam, manipulate engagement, or engage in coordinated inauthentic behavior;</li>
           <li>attempt to break, circumvent, or abuse the Service's security mechanisms (including identity verification and duplicate-signup prevention).</li>
+        <li>create, publish, request, distribute, or facilitate child sexual abuse and exploitation (CSAE) or child sexual abuse material (CSAM); see the <a href="/child-safety">Child Safety Standards</a>.</li>
         </ul>
 
         <h2>Your content</h2>
@@ -451,6 +455,7 @@ const ABOUT_ZH = `
         <li><a href="/privacy">隱私權政策</a></li>
         <li><a href="/terms">服務條款</a></li>
         <li><a href="/account-deletion">刪除帳號與資料</a></li>
+        <li><a href="/child-safety">兒少安全標準</a></li>
         <li><a href="/support">支援中心</a></li>
       </ul>
 `;
@@ -466,6 +471,7 @@ const ABOUT_EN = `
           <li><a href="/privacy">Privacy Policy</a></li>
           <li><a href="/terms">Terms of Service</a></li>
           <li><a href="/account-deletion">Account &amp; data deletion</a></li>
+          <li><a href="/child-safety">Child safety standards</a></li>
           <li><a href="/support">Support</a></li>
         </ul>
 `;
@@ -497,6 +503,9 @@ const SUPPORT_ZH = `
 
       <h2>隱私、帳號與資料刪除</h2>
       <p>隱私權問題與資料權利請參閱<a href="/privacy">隱私權政策</a>。若要提出完整的帳號與資料刪除請求，請依<a href="/account-deletion">刪除帳號與資料</a>頁面的方式聯絡 <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a>。</p>
+
+      <h2>兒少安全</h2>
+      <p>Elix 對兒少性虐待及剝削採取零容忍立場。請參閱<a href="/child-safety">兒少安全標準</a>，並使用 App 內檢舉功能或來信 ${SUPPORT_CONTACT_EMAIL} 回報疑似違規內容。</p>
 `;
 
 const SUPPORT_EN = `
@@ -522,6 +531,9 @@ const SUPPORT_EN = `
 
         <h2>Privacy, accounts, and data deletion</h2>
         <p>See the <a href="/privacy">Privacy Policy</a> for privacy questions and data rights. For a full account and data deletion request, follow the <a href="/account-deletion">Account &amp; data deletion</a> page and contact <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a>.</p>
+
+        <h2>Child safety</h2>
+        <p>Elix has zero tolerance for child sexual abuse and exploitation. See the <a href="/child-safety">Child Safety Standards</a>, and report suspected violations through the in-app Report feature or to ${SUPPORT_CONTACT_EMAIL}.</p>
 `;
 
 // ---------------------------------------------------------------------------
@@ -583,6 +595,66 @@ const DELETION_EN = `
 `;
 
 // ---------------------------------------------------------------------------
+// 兒少安全 / Child safety
+// ---------------------------------------------------------------------------
+
+const CHILD_SAFETY_ZH = `
+      <h1>兒少安全標準</h1>
+      <p class="legal-effective">生效日期：${LEGAL_EFFECTIVE_DATE_ZH}</p>
+
+      <p>Elix 對兒少性虐待及剝削（CSAE）與兒少性虐待素材（CSAM）採取零容忍立場。本標準適用於 Elix 第一方服務所提供、代管或顯示的公開內容與互動功能。</p>
+
+      <h2>禁止內容與行為</h2>
+      <p>你不得使用 Elix 製作、發布、索取、散布、宣傳、協助或以其他方式促成下列內容或行為：</p>
+      <ul>
+        <li>任何 CSAE 或 CSAM；</li>
+        <li>對未成年人進行性剝削、性化、誘導（grooming）、招募、交易或勒索；</li>
+        <li>索取、交換或散布未成年人私密或性化影像、資訊或接觸機會；</li>
+        <li>以任何方式協助、宣傳或規避與兒少性剝削有關的違法行為。</li>
+      </ul>
+
+      <h2>檢舉與聯絡</h2>
+      <p>發現疑似違反本標準的公開內容時，請優先使用 App 內的「檢舉」功能，並選擇最適當的原因。你也可以寄信至 <a href="mailto:${SUPPORT_CONTACT_EMAIL}">${SUPPORT_CONTACT_EMAIL}</a>。請提供內容連結、貼文識別資訊或足以定位內容的資訊；不要以電子郵件傳送可能違法的影像或私密資料。</p>
+
+      <h2>處理方式</h2>
+      <p>我們會依風險與適用法律審查檢舉。對於可信的 CSAE／CSAM 檢舉，Elix 得採取必要措施，包括停止第一方服務對相關內容的提供、限制其在第一方服務的散布或存取、保全依法必要的紀錄，以及在適用法律要求或為保護兒少所必要時，向有權機關通報或配合調查。處置會盡量維持在必要且相稱的範圍內。</p>
+
+      <h2>聯邦與主機範圍</h2>
+      <p>Elix 是可互通的討論服務；外部主機可能有自己的規則與處理程序。本頁說明 Elix 第一方服務的標準，並不取代外部主機的責任。即使內容來自外部來源，Elix 仍可在第一方服務中採取必要的安全措施。</p>
+
+      <h2>緊急情況</h2>
+      <p>若有兒少正面臨立即危險，請先聯絡當地緊急服務或執法機關。這不是緊急通報服務。</p>
+`;
+
+const CHILD_SAFETY_EN = `
+      <h1>Child Safety Standards</h1>
+      <p class="legal-effective">Effective date: ${LEGAL_EFFECTIVE_DATE}</p>
+
+      <p>Elix has zero tolerance for child sexual abuse and exploitation (CSAE) and child sexual abuse material (CSAM). These standards apply to public content and interactive features provided, hosted, or displayed by Elix first-party services.</p>
+
+      <h2>Prohibited content and conduct</h2>
+      <p>You must not use Elix to create, publish, request, distribute, promote, facilitate, or otherwise enable:</p>
+      <ul>
+        <li>any CSAE or CSAM;</li>
+        <li>sexual exploitation, sexualization, grooming, recruitment, trafficking, or extortion of a minor;</li>
+        <li>requesting, exchanging, or distributing sexualized or intimate images, information, or access involving a minor; or</li>
+        <li>assisting, promoting, or evading laws concerning child sexual exploitation.</li>
+      </ul>
+
+      <h2>Reporting and contact</h2>
+      <p>To report public content that may violate these standards, use the in-app <strong>Report</strong> feature and choose the most appropriate reason. You may also contact <a href="mailto:${SUPPORT_CONTACT_EMAIL}">${SUPPORT_CONTACT_EMAIL}</a>. Include a content link, post identifier, or other information that lets us locate the content; do not email potentially unlawful images or private information.</p>
+
+      <h2>How we respond</h2>
+      <p>We review reports according to risk and applicable law. For credible CSAE/CSAM reports, Elix may take necessary action, including stopping first-party serving of the content, restricting its distribution or access in first-party services, preserving records required by law, and reporting to or cooperating with competent authorities where required by applicable law or necessary to protect children. Measures are kept necessary and proportionate.</p>
+
+      <h2>Federation and host scope</h2>
+      <p>Elix is an interoperable discussion service, and external hosts may have their own rules and processes. This page describes standards for Elix first-party services and does not replace an external host's responsibility. Elix may still take necessary safety measures in its first-party services when content originates externally.</p>
+
+      <h2>Immediate danger</h2>
+      <p>If a child is in immediate danger, contact local emergency services or law enforcement first. This is not an emergency reporting service.</p>
+`;
+
+// ---------------------------------------------------------------------------
 // Page registry
 // ---------------------------------------------------------------------------
 
@@ -606,6 +678,10 @@ const PAGES = Object.freeze({
   '/account-deletion': {
     titles: { 'zh-Hant': '刪除帳號與資料', en: 'Account & Data Deletion' },
     bodies: { 'zh-Hant': DELETION_ZH, en: DELETION_EN },
+  },
+  '/child-safety': {
+    titles: { 'zh-Hant': '兒少安全標準', en: 'Child Safety Standards' },
+    bodies: { 'zh-Hant': CHILD_SAFETY_ZH, en: CHILD_SAFETY_EN },
   },
 });
 

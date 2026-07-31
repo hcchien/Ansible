@@ -28,6 +28,7 @@ try {
     '/about',
     '/support',
     '/account-deletion',
+    '/child-safety',
   ]);
   assert.equal(resolveLegalLocale('en-US,en;q=0.9'), 'en');
   assert.equal(resolveLegalLocale('fr-FR, en;q=0.8'), 'en');
@@ -52,6 +53,7 @@ try {
       '刪除帳號與資料',
       '清除本機身分',
     ],
+    '/child-safety': ['兒少安全標準', '零容忍', SUPPORT_CONTACT_EMAIL],
   };
   const enExpectations = {
     '/privacy': ['Privacy Policy', 'Personal Data Protection Act', 'GDPR'],
@@ -59,6 +61,7 @@ try {
     '/about': ['About Elix', 'self-sovereign identity'],
     '/support': ['Elix Support', SUPPORT_CONTACT_EMAIL, 'reporting a problem'],
     '/account-deletion': ['Account &amp; Data Deletion', 'Clear local identity'],
+    '/child-safety': ['Child Safety Standards', 'zero tolerance', SUPPORT_CONTACT_EMAIL],
   };
 
   for (const path of LEGAL_PAGE_PATHS) {
@@ -73,7 +76,7 @@ try {
     assert.match(zhPage.body, /<html lang="zh-Hant">/);
     assert.doesNotMatch(zhPage.body, /<section id="en" lang="en">/);
     assert.match(zhPage.body, new RegExp(`href="${path.replace('/', '\\/') + '\\?lang=en'}"`));
-    assert.doesNotMatch(zhPage.body, /href="\/(?:privacy|terms|about|support|account-deletion)"/);
+    assert.doesNotMatch(zhPage.body, /href="\/(?:privacy|terms|about|support|account-deletion|child-safety)"/);
 
     const enPage = await request(`${baseUrl}${path}`, {
       headers: { 'accept-language': 'en-US,en;q=0.9,zh-TW;q=0.5' },
@@ -86,7 +89,7 @@ try {
     assert.match(enPage.body, /<html lang="en">/);
     assert.doesNotMatch(enPage.body, /<section id="en" lang="en">/);
     assert.match(enPage.body, new RegExp(`href="${path.replace('/', '\\/') + '\\?lang=zh-Hant'}"`));
-    assert.doesNotMatch(enPage.body, /href="\/(?:privacy|terms|about|support|account-deletion)"/);
+    assert.doesNotMatch(enPage.body, /href="\/(?:privacy|terms|about|support|account-deletion|child-safety)"/);
 
     // Footer: effective date + privacy contact.
     assert.ok(zhPage.body.includes('2026-07-07'), `${path} must show effective date`);
