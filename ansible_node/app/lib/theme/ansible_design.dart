@@ -4,67 +4,56 @@ import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Elix Design System — "Threads-style" (yellow paper restyle)
-// Yellow notebook paper ground with white paper-sheet cards, warm ink text,
-// lavender accent · sky "sage" · deep-lavender signals · yellow highlight.
-// Light: Yellow Paper  ·  Dark: Warm Black
+// Elix Design System — "Daylight signal"
+// White ground, cobalt signal, sky / lavender / citron marks.
+// Light is canonical  ·  Dark is the night counterpart  ·  Default = system
+// Type: Outfit (display) + Figtree (UI/body) + Noto Sans TC (zh) + JetBrains Mono
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
   static const brandName = 'Elix';
 
-  // ── Light (Yellow Paper) ──────────────────────────────────────────────────
-  static const paper = Color(0xFFFAF8CE);
-  static const paperElev = Color(0xFFF5F1BE);
-  static const paperDeep = Color(0xFFEDE7A6);
-  static const paperWhite = Color(0xFFFFFFFF); // card sheets on the paper
-  static const ink = Color(0xFF2A2A0A);
-  static const inkMuted = Color(0xFF625F3C);
-  static const inkFaint = Color(0xFF9C9974);
-  static const rule = Color(0xFFE7E1A6);
-  static const ruleSoft = Color(0xFFF0EBBE);
-  static const accent = Color(0xFFC9AEEB); // lavender (trust dot · accents)
-  static const accentSoft = Color(0xFFE6DAF6); // lighter lavender
-  static const spore = Color(0xFF6FB2E8); // sky ("sage" slot)
-  static const moss = Color(0xFF6FB2E8); // alias — "sage"
-  static const lavender = Color(0xFF2846A8); // deep signal — dots · selection
-  static const highlight = Color(0xFFEBE21C); // decorative yellow highlight
-  // Destructive/warning text must stay readable on yellow paper, so it keeps
-  // a warm rust instead of the design file's decorative yellow "ember" slot.
-  static const danger = Color(0xFF9A4A24);
-  static const ember = Color(0xFF9A4A24); // alias — warning text
-  static const ochre = Color(0xFFC9AEEB); // alias — "amber" slot
+  // ── Light (Daylight — canonical) ──────────────────────────────────────────
+  static const paper = Color(0xFFFFFFFF);
+  static const paperElev = Color(0xFFEEF4FF);
+  static const paperDeep = Color(0xFFE6EEFF);
+  static const paperWhite = Color(0xFFFFFFFF); // card sheets
+  static const ink = Color(0xFF191919); static const inkMuted = Color(0xFF4D5C80);
+  static const inkFaint = Color(0xFF7D8BAB); static const rule = Color(0xFFD8E2F6);
+  static const ruleSoft = Color(0xFFE8EEFB); static const accent = Color(0xFF2550AF);
+  static const accentSoft = Color(0xFFDDE6FA); static const signalSoft = Color(0xFF3F74D8);
+  static const tintSky = Color(0xFFEAF2FF); static const tintLavender = Color(0xFFF1ECFE);
+  static const tintCitron = Color(0xFFFBFAD2); static const spore = Color(0xFF75B4F8);
+  static const moss = Color(0xFF17845C); static const lavender = Color(0xFF8B6FE8);
+  static const highlight = Color(0xFFEEE500); static const danger = Color(0xFFCC3B2E);
+  static const ember = danger; static const ochre = accent;
 
-  // ── Dark (Warm Black) ─────────────────────────────────────────────────────
-  static const darkPaper = Color(0xFF17130A);
-  static const darkPaperElev = Color(0xFF1F1A0E);
-  static const darkPaperDeep = Color(0xFF2A2413);
-  static const darkPaperWhite = Color(0xFF14131A); // card sheets (dark)
-  static const darkInk = Color(0xFFF4EEDA);
-  static const darkInkMuted = Color(0xFFB7AD8E);
-  static const darkInkFaint = Color(0xFF726B4F);
-  static const darkRule = Color(0xFF362E17);
-  static const darkRuleSoft = Color(0xFF221D10);
-  static const darkOchre = Color(0xFFD9C6F2); // lavender (dark)
-  static const darkMoss = Color(0xFF8FC4F5); // sky (dark)
-  static const darkLavender = Color(0xFF5C82E0); // deep signal (dark)
-  static const darkHighlight = Color(0xFFF5EE3A); // highlight (dark)
-  static const darkEmber = Color(0xFFC97B52); // warning text (dark)
+  // ── Dark (Night counterpart) ──────────────────────────────────────────────
+  static const darkPaper = Color(0xFF0B1120); static const darkPaperElev = Color(0xFF0E162A);
+  static const darkPaperDeep = Color(0xFF080D1A); static const darkPaperWhite = Color(0xFF151F38);
+  static const darkInk = Color(0xFFEAF0FB); static const darkInkMuted = Color(0xFF9DB0D4);
+  static const darkInkFaint = Color(0xFF7182A6); static const darkRule = Color(0xFF27365A);
+  static const darkRuleSoft = Color(0xFF1B2846); static const darkSignalSoft = Color(0xFF9CC9FB);
+  static const darkTintSky = Color(0xFF14264A); static const darkTintLavender = Color(0xFF241F47);
+  static const darkTintCitron = Color(0xFF2B2A10); static const darkOchre = Color(0xFF75B4F8);
+  static const darkMoss = Color(0xFF58D3A0); static const darkLavender = Color(0xFFC7B7F9);
+  static const darkHighlight = Color(0xFFEEE500);
+  static const darkEmber = Color(0xFFFF7A6B); // warning text (dark)
 
   // ── Typography ────────────────────────────────────────────────────────────
-  // The restyle rides everything on sans (Noto Sans TC); the serif slots stay
-  // as named tokens but resolve to the sans family per the new design.
-  static const serif = 'Noto Sans TC';
-  static const serifEn = 'Noto Sans TC';
-  static const sans = 'Noto Sans TC';
+  // Outfit carries display/brand, Figtree carries UI and body. Chinese always
+  // falls through to Noto Sans TC, so the mixed zh/en rhythm stays even.
+  static const display = 'Outfit';
+  static const serif = 'Figtree'; // legacy slot — resolves to body sans
+  static const serifEn = 'Outfit'; // legacy slot — resolves to display
+  static const sans = 'Figtree';
   static const mono = 'JetBrains Mono';
-  static const appTextScale = 1.08;
-  static const navTextSize = 12.5;
-  static const readingTextSize = 17.0;
-  static const previewTextSize = 16.5;
+  static const appTextScale = 1.06;
+  static const navTextSize = 11.5;
+  static const readingTextSize = 16.0;
+  static const previewTextSize = 15.5;
   static const fallback = [
     'Noto Sans TC',
-    'Noto Serif TC',
     'PingFang TC',
     'Songti TC',
     'PMingLiU',
@@ -113,15 +102,15 @@ class AnsibleDesign {
         filled: true,
         fillColor: paperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: rule),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: rule),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: ink),
         ),
         labelStyle: const TextStyle(color: inkMuted),
@@ -160,7 +149,7 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: ruleSoft, width: 0.5),
         ),
       ),
@@ -215,15 +204,15 @@ class AnsibleDesign {
         filled: true,
         fillColor: darkPaperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkRule),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkRule),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkInk),
         ),
         labelStyle: const TextStyle(color: darkInkMuted),
@@ -262,7 +251,7 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: darkRuleSoft, width: 0.5),
         ),
       ),
@@ -283,17 +272,19 @@ class AnsibleDesign {
 class ElixThemeController extends ChangeNotifier {
   static const _key = 'elix-theme';
 
-  ThemeMode _mode = ThemeMode.light;
+  ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
   bool get isDark => _mode == ThemeMode.dark;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_key);
-    if (saved == 'dark') {
+    if (saved == 'light') {
+      _mode = ThemeMode.light;
+    } else if (saved == 'dark') {
       _mode = ThemeMode.dark;
     } else {
-      _mode = ThemeMode.light;
+      _mode = ThemeMode.system;
     }
     notifyListeners();
   }
@@ -337,12 +328,12 @@ class ElixWordmark extends StatelessWidget {
     return Text(
       AnsibleDesign.brandName,
       style: TextStyle(
-        fontFamily: AnsibleDesign.serifEn,
+        fontFamily: AnsibleDesign.display,
         fontFamilyFallback: AnsibleDesign.fallback,
         fontSize: fontSize,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w800,
         height: 1,
-        letterSpacing: 0,
+        letterSpacing: -0.6,
         color: color ?? AnsibleDesign.ink,
       ),
     );

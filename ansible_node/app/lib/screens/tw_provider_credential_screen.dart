@@ -369,7 +369,7 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
                 const Icon(
                   Icons.verified_user_outlined,
                   size: 56,
-                  color: Color(0xFFFF9F43),
+                  color: Color(0xFFFFB26B),
                 ),
                 const SizedBox(height: 16),
                 Text(
