@@ -178,7 +178,7 @@ class _BootstrapProgressApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: const Color(0xFFFFFDD0),
+        backgroundColor: AnsibleDesign.darkPaper,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -189,9 +189,11 @@ class _BootstrapProgressApp extends StatelessWidget {
                   const Text(
                     'Elix',
                     style: TextStyle(
-                      color: Color(0xFF232307),
+                      fontFamily: AnsibleDesign.display,
+                      color: AnsibleDesign.darkOchre,
                       fontSize: 44,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.2,
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -200,7 +202,7 @@ class _BootstrapProgressApp extends StatelessWidget {
                     height: 28,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF232307),
+                      color: AnsibleDesign.darkOchre,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -210,7 +212,8 @@ class _BootstrapProgressApp extends StatelessWidget {
                       stage,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: Color(0xFF6E6D53),
+                        fontFamily: AnsibleDesign.sans,
+                        color: AnsibleDesign.darkInkMuted,
                         fontSize: 15,
                       ),
                     ),
@@ -236,7 +239,7 @@ class _BootErrorApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: const Color(0xFF1A0000),
+        backgroundColor: AnsibleDesign.darkPaperDeep,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -247,7 +250,8 @@ class _BootErrorApp extends StatelessWidget {
                   const Text(
                     'Startup failed',
                     style: TextStyle(
-                      color: Colors.redAccent,
+                      fontFamily: AnsibleDesign.display,
+                      color: AnsibleDesign.darkEmber,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -255,12 +259,12 @@ class _BootErrorApp extends StatelessWidget {
                   const SizedBox(height: 12),
                   SelectableText(
                     '$error',
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: const TextStyle(color: AnsibleDesign.darkInk, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
                   SelectableText(
                     '$stack',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    style: const TextStyle(color: AnsibleDesign.darkInkMuted, fontSize: 11),
                   ),
                 ],
               ),

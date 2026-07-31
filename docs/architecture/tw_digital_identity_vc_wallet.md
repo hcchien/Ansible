@@ -1,16 +1,24 @@
 # Taiwan Digital Identity VC Wallet Plan
 
-> Status: Draft for implementation planning
+> Status: Historical TW-provider plan; Passport NFC addendum current as of 2026-07-30
 > Owners: identity, wallet, relay, security
-> Last updated: 2026-05-04
+> Last updated: 2026-07-30
 
 ## 1. Purpose
 
-Tris-Aura V2 no longer uses ePassport NFC / MRZ / BAC / PACE as the human
-verification path. The replacement identity proofing path is Taiwan's natural
-person certificate ecosystem, preferably through the mobile natural person
-certificate service (TW FidO / 行動自然人憑證) when formal integration is
-available.
+Taiwan's natural person certificate ecosystem, preferably the mobile natural
+person certificate service (TW FidO / 行動自然人憑證), remains a supported
+optional proofing path when formal integration is available. Passport NFC is
+also an optional high-assurance path, implemented as an embedded, on-device
+ZKPassport proof flow. Neither method is required to create or use a basic
+account.
+
+The Passport NFC direction supersedes this document's former statement that
+ePassport NFC / MRZ / BAC / PACE were not used. Its authoritative design is
+[`2026-07-23-embedded-zkpassport-issuance-design.md`](../superpowers/specs/2026-07-23-embedded-zkpassport-issuance-design.md).
+It is distinct from the retired Relay Phase-1 Groth16 anchor flow; the Relay's
+legacy `ZkpVerificationKeys` configuration is not part of Passport NFC
+verification.
 
 The App must therefore become both:
 
@@ -71,7 +79,8 @@ documents or an official sandbox:
 |---|---|---|
 | Holder | `ansible_node/app` | Owns DID keys, stores VCs, creates VPs |
 | Identity Provider | TW FidO / MOICA | Authenticates the real person |
-| Credential Issuer | `ansible_relay/phoenix` issuer module | Issues Tris-Aura VCs after proofing |
+| Credential Issuer | `ansible_issuer/go` | Owns challenges, duplicate-binding policy, and issues Tris-Aura VCs after proofing |
+| Passport proof verifier | `ansible_zkpassport_verifier` | Independently verifies pinned ZKPassport proofs; returns only minimum results and cannot issue credentials |
 | Verifier | Relay, AppView, communities | Verifies VP and applies trust tier |
 | Registry | DID / PLC / did:web | Resolves issuer and holder public keys |
 
@@ -92,6 +101,13 @@ email, certificate serial, or full MOICA assertion by default. Any product path
 that needs a raw legal-identity claim requires explicit user disclosure or a
 specific legal process; the default verified-human credential remains
 minimal-disclosure.
+
+For Passport NFC, MRZ, DG1/DG2, SOD/DSC, document number, legal name, birth
+date, face image, and BAC/PACE access material remain ephemeral on the device.
+The Issuer receives a proof envelope and ceremony-binding metadata, not those
+raw values. The isolated verifier returns only proof validity, verified
+nationality, an age predicate when requested, and an issuer-scoped
+duplicate-binding input. Those binding inputs are not VC or VP claims.
 
 ### Uniqueness
 
@@ -156,6 +172,32 @@ Acceptance criteria:
   the existing active credential status.
 - The App can recover display state after restart without leaking sensitive
   claims into logs.
+
+### Flow B2 — Passport NFC / ZKPassport (Beta)
+
+```text
+App / Wallet                 Issuer                    ZKPassport Verifier
+    |                           |                                  |
+    | local MRZ + NFC + proof   |                                  |
+    | (raw passport data stays on device)                           |
+    |-- proof + DID/challenge -->|                                  |
+    |                           |-- private /verify + OIDC token -->|
+    |                           |<-- validity + minimum results -----|
+    |<-- separate minimal VCs --|                                  |
+```
+
+The Issuer atomically consumes the single-use challenge after successful
+verification and enforces one active high-assurance binding per person.
+Unknown or unpinned circuit/key/registry material, malformed proofs, wrong
+holder/challenge/origin/scope, replay, expiry, verifier unavailability, or a
+duplicate binding fail closed; no raw-passport fallback is allowed.
+
+The Cloud Run verifier must have IAM invocation enabled and restricted to the
+Issuer workload service account. The Issuer sends a Google OIDC ID token with
+the configured verifier audience. The generic deployment script currently has
+an unauthenticated-verifier exception, so this private boundary is a production
+release gate, not a completed claim. The feature remains `Passport NFC · Beta`
+until the exact pinned integration has an independent security audit.
 
 ### Flow C — Present VC To Relay / Community
 

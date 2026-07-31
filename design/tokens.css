@@ -1,110 +1,61 @@
 /* ============================================================
-   Ansible / Tris-Aura — Design Tokens
-   廢墟 · 訊號 · 菌絲
+   Elix — Design Tokens
+   Daylight signal · 白紙底 · 鈷藍訊號（READr 風格取色）
+   Light (Daylight) is canonical; Dark (Night) is the counterpart.
+   Default mode follows the system.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+TC:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
 :root {
-  /* ── Day — 紙（泛黃檔案紙） ─────────────── */
-  --d-paper:        oklch(0.945 0.012 82);
-  --d-paper-elev:   oklch(0.965 0.010 82);
-  --d-paper-deep:   oklch(0.910 0.013 80);
-  --d-ink:          oklch(0.205 0.015 60);
-  --d-ink-muted:    oklch(0.430 0.012 62);
-  --d-ink-faint:    oklch(0.620 0.010 70);
-  --d-rule:         oklch(0.835 0.012 75);
-  --d-rule-soft:    oklch(0.890 0.010 78);
-  --d-accent:       oklch(0.555 0.135 55);   /* matsutake / iron-oxide */
-  --d-accent-soft:  oklch(0.870 0.045 60);
-  --d-danger:       oklch(0.500 0.150 28);
-  --d-spore:        oklch(0.570 0.075 125);  /* lichen */
+  --d-bg: #ffffff; --d-bg-elev: #eef4ff; --d-bg-deep: #e6eeff;
+  --d-fg: #191919; --d-fg-muted: #4d5c80; --d-fg-faint: #7d8bab;
+  --d-rule: #d8e2f6; --d-rule-soft: #e8eefb; --d-accent: #2550af;
+  --d-accent-soft: #dde6fa; --d-glow: #eee500; --d-danger: #cc3b2e;
+  --d-spore: #75b4f8; --d-lavender: #c7b7f9; --d-tint-sky: #eaf2ff;
+  --d-tint-lav: #f1ecfe; --d-tint-citron: #fbfad2; --d-signal-soft: #3f74d8;
 
-  /* ── Night — 鐵（濕灰燼） ─────────────── */
-  --n-iron:         oklch(0.175 0.010 70);
-  --n-iron-elev:    oklch(0.215 0.012 70);
-  --n-iron-deep:    oklch(0.140 0.010 70);
-  --n-bone:         oklch(0.935 0.012 82);
-  --n-bone-muted:   oklch(0.715 0.010 72);
-  --n-bone-faint:   oklch(0.495 0.008 72);
-  --n-rule:         oklch(0.295 0.012 72);
-  --n-rule-soft:    oklch(0.245 0.010 72);
-  --n-accent:       oklch(0.760 0.135 65);   /* filament amber */
-  --n-accent-soft:  oklch(0.330 0.060 60);
-  --n-danger:       oklch(0.660 0.140 28);
-  --n-spore:        oklch(0.700 0.075 125);
+  --n-bg: #0b1120; --n-bg-elev: #151f38; --n-bg-deep: #080d1a;
+  --n-fg: #eaf0fb; --n-fg-muted: #9db0d4; --n-fg-faint: #7182a6;
+  --n-rule: #27365a; --n-rule-soft: #1b2846; --n-accent: #75b4f8;
+  --n-accent-soft: #14264a; --n-glow: #eee500; --n-danger: #ff7a6b;
+  --n-spore: #58d3a0; --n-lavender: #c7b7f9; --n-tint-sky: #14264a;
+  --n-tint-lav: #241f47; --n-tint-citron: #2b2a10; --n-signal-soft: #9cc9fb;
 
-  /* ── Aliases (default = Day) ─────────────── */
-  --bg:        var(--d-paper);
-  --bg-elev:   var(--d-paper-elev);
-  --bg-deep:   var(--d-paper-deep);
-  --fg:        var(--d-ink);
-  --fg-muted:  var(--d-ink-muted);
-  --fg-faint:  var(--d-ink-faint);
-  --rule:      var(--d-rule);
-  --rule-soft: var(--d-rule-soft);
-  --accent:    var(--d-accent);
-  --accent-soft: var(--d-accent-soft);
-  --danger:    var(--d-danger);
-  --spore:     var(--d-spore);
-
-  /* ── Type ─────────────── */
-  --serif:    'Noto Serif TC', 'Newsreader', 'Songti TC', 'Source Han Serif TC', ui-serif, Georgia, serif;
-  --sans:     'Noto Sans TC', 'IBM Plex Sans', 'PingFang TC', system-ui, -apple-system, sans-serif;
-  --mono:     'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  /* ── Scale ─────────────── */
-  --t-micro:  10.5px;
-  --t-meta:   12px;
-  --t-label:  13px;
-  --t-body:   15px;
-  --t-read:   17px;
-  --t-h6:     18px;
-  --t-h5:     22px;
-  --t-h4:     28px;
-  --t-h3:     38px;
-  --t-h2:     54px;
-  --t-h1:     84px;
-
-  /* ── Geometry ─────────────── */
-  --r-1: 2px;
-  --r-2: 4px;
-  --r-3: 6px;
-  --r-pill: 999px;
-
-  --s-1: 4px;
-  --s-2: 8px;
-  --s-3: 12px;
-  --s-4: 16px;
-  --s-5: 24px;
-  --s-6: 32px;
-  --s-7: 48px;
-  --s-8: 72px;
-  --s-9: 120px;
-
-  --w-hairline: 0.5px;
-  --w-rule:     1px;
-
-  /* ── Motion ─────────────── */
-  --ease-quiet: cubic-bezier(.2,.6,.2,1);
-  --d-fast: 120ms;
-  --d-base: 220ms;
-  --d-slow: 480ms;
+  --bg: var(--d-bg); --bg-elev: var(--d-bg-elev); --bg-deep: var(--d-bg-deep);
+  --fg: var(--d-fg); --fg-muted: var(--d-fg-muted); --fg-faint: var(--d-fg-faint);
+  --rule: var(--d-rule); --rule-soft: var(--d-rule-soft); --accent: var(--d-accent);
+  --accent-soft: var(--d-accent-soft); --glow: var(--d-glow); --danger: var(--d-danger);
+  --spore: var(--d-spore); --lavender: var(--d-lavender); color-scheme: light;
+  --shadow-glow: 0 0 20px color-mix(in oklab, var(--accent) 40%, transparent);
+  --shadow-card: 0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
+  --display: 'Outfit', 'Noto Sans TC', 'PingFang TC', system-ui, sans-serif;
+  --sans: 'Figtree', 'Noto Sans TC', 'PingFang TC', system-ui, sans-serif;
+  --serif: var(--sans); --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --t-micro: 10.5px; --t-meta: 12px; --t-label: 13px; --t-body: 15px; --t-read: 17px;
+  --t-h6: 18px; --t-h5: 22px; --t-h4: 28px; --t-h3: 38px; --t-h2: 54px; --t-h1: 84px;
+  --r-1: 6px; --r-2: 10px; --r-3: 14px; --r-4: 18px; --r-pill: 999px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px;
+  --s-7: 48px; --s-8: 72px; --s-9: 120px; --w-hairline: 0.5px; --w-rule: 1px;
+  --ease-quiet: cubic-bezier(.2,.6,.2,1); --d-fast: 120ms; --d-base: 220ms; --d-slow: 480ms;
 }
 
-/* Night mode override */
-[data-mode="night"] {
-  --bg:        var(--n-iron);
-  --bg-elev:   var(--n-iron-elev);
-  --bg-deep:   var(--n-iron-deep);
-  --fg:        var(--n-bone);
-  --fg-muted:  var(--n-bone-muted);
-  --fg-faint:  var(--n-bone-faint);
-  --rule:      var(--n-rule);
-  --rule-soft: var(--n-rule-soft);
-  --accent:    var(--n-accent);
-  --accent-soft: var(--n-accent-soft);
-  --danger:    var(--n-danger);
-  --spore:     var(--n-spore);
-  color-scheme: dark;
+[data-mode="night"], [data-mode="dark"] {
+  --bg: var(--n-bg); --bg-elev: var(--n-bg-elev); --bg-deep: var(--n-bg-deep);
+  --fg: var(--n-fg); --fg-muted: var(--n-fg-muted); --fg-faint: var(--n-fg-faint);
+  --rule: var(--n-rule); --rule-soft: var(--n-rule-soft); --accent: var(--n-accent);
+  --accent-soft: var(--n-accent-soft); --glow: var(--n-glow); --danger: var(--n-danger);
+  --spore: var(--n-spore); --lavender: var(--n-lavender); color-scheme: dark;
 }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="day"]):not([data-mode="light"]) {
+    --bg: var(--n-bg); --bg-elev: var(--n-bg-elev); --bg-deep: var(--n-bg-deep);
+    --fg: var(--n-fg); --fg-muted: var(--n-fg-muted); --fg-faint: var(--n-fg-faint);
+    --rule: var(--n-rule); --rule-soft: var(--n-rule-soft); --accent: var(--n-accent);
+    --accent-soft: var(--n-accent-soft); --glow: var(--n-glow); --danger: var(--n-danger);
+    --spore: var(--n-spore); --lavender: var(--n-lavender); color-scheme: dark;
+  }
+}
+
+[data-mode="day"], [data-mode="light"] { color-scheme: light; }

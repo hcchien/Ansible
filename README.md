@@ -133,6 +133,9 @@ logged or stored.
 - **[docs/getting-started-dev.md](docs/getting-started-dev.md)** — full dev
   environment setup (all six toolchains), per-service run commands, tests,
   and common pitfalls.
+- **[docs/join-development.md](docs/join-development.md)** — contributor
+  entry point: choose an area, follow the constitution gate, run the smallest
+  relevant checks, and hand off a focused change safely.
 - **Governance:** [AGENTS.md](AGENTS.md) mandates the constitution gate — read
   the [engineering constitution](docs/superpowers/specs/2026-05-24-tris-aura-engineering-constitution-design.md)
   and [compliance review](docs/superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md)

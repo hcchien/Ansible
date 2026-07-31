@@ -327,7 +327,7 @@
 
           <rect x="342" y="108" width="220" height="78" rx="8" fill="#dcfce7" stroke="#22c55e"></rect>
           <text x="360" y="134" class="node-title">Issuer</text>
-          <text x="360" y="153" class="node-sub">email, TW, MobileMoica, passport</text>
+          <text x="360" y="153" class="node-sub">email, TW, MobileMoica, Passport NFC</text>
           <text x="360" y="169" class="node-sub">flows, commitments, VC signing</text>
           <rect x="487" y="118" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
           <text x="518" y="130" class="chip-text" text-anchor="middle">PARTIAL</text>
@@ -352,6 +352,13 @@
           <text x="360" y="493" class="node-sub">binding; AppView labeler missing</text>
           <rect x="487" y="442" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
           <text x="518" y="454" class="chip-text" text-anchor="middle">PARTIAL</text>
+
+          <rect x="646" y="18" width="202" height="70" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-dasharray="5 4"></rect>
+          <text x="664" y="43" class="node-title">ZKPassport Verifier</text>
+          <text x="664" y="60" class="node-sub">pinned proof/public-input checks;</text>
+          <text x="664" y="76" class="node-sub">no issuance · Passport NFC Beta</text>
+          <rect x="774" y="28" width="62" height="17" rx="8" fill="#0ea5e9"></rect>
+          <text x="805" y="40" class="chip-text" text-anchor="middle">PARTIAL</text>
 
           <rect x="342" y="532" width="220" height="72" rx="8" fill="#f1f5f9" stroke="#94a3b8"></rect>
           <text x="360" y="558" class="node-title">Messenger Relay</text>
@@ -432,6 +439,9 @@
           <path d="M248 147 C286 147 304 147 342 147" class="edge" stroke="#16a34a" marker-end="url(#arrowCred)"></path>
           <text x="267" y="136" class="edge-label">offer / issue VC</text>
 
+          <path d="M562 118 C592 70 612 54 646 54" class="edge edge-draft" stroke="#7c3aed" marker-end="url(#arrowPrivate)"></path>
+          <text x="561" y="70" class="edge-label">private verify + OIDC IAM</text>
+
           <path d="M562 128 C690 88 790 88 924 128" class="edge edge-draft" stroke="#16a34a" marker-end="url(#arrowCred)"></path>
           <text x="652" y="101" class="edge-label">issuer proofing only</text>
 
@@ -481,6 +491,7 @@
         <ul>
           <li>Local-first app storage and publication intent.</li>
           <li>Wallet and Issuer credential issuance/presentation boundary.</li>
+          <li>Passport NFC proof verification is an isolated Issuer-internal service boundary; raw passport data remains on the device.</li>
           <li>Forum Host durable discovery, signed create-board intents, and scoped web-thread MVP, with broader board/moderation scope marked partial.</li>
           <li>Web sessions approved by the app without exporting DID keys.</li>
           <li>Nostr direct publish, ActivityPub relay distribution, and AT/PLC compatibility.</li>
@@ -500,6 +511,7 @@
         <ul>
           <li>Private content stays in the user-controlled boundary.</li>
           <li>Raw legal identity and private keys do not flow to Relay, Forum Host, AppView, logs, or federation.</li>
+          <li>The Passport verifier receives proof material and ceremony binding only; Cloud Run IAM must restrict invocation to the Issuer service account.</li>
           <li>External host compliance discovery and display exist; local persistence and ranking/sync/trust-policy use remain explicit current gaps.</li>
         </ul>
       </div>
@@ -545,6 +557,12 @@
           <td><span class="status partial">partial</span></td>
           <td>Go issuer handlers, MobileMoica and passport flows, VC signing, tests</td>
           <td>Production TW provider and MobileMoica brokers intentionally fail closed.</td>
+        </tr>
+        <tr>
+          <td>ZKPassport Verifier</td>
+          <td><span class="status partial">partial / Beta</span></td>
+          <td><code>ansible_zkpassport_verifier</code>, Go <code>HTTPPassportBindingVerifier</code>, verifier tests</td>
+          <td>Independent pinned proof verifier; it cannot issue VCs. Production requires IAM-only Cloud Run invocation by the Issuer service account. Cloud Build enables this, but the generic deploy script still permits unauthenticated invocation and is a release blocker. Exact pinned integration awaits an independent audit.</td>
         </tr>
         <tr>
           <td>Relay / Distribution Server</td>
@@ -622,6 +640,9 @@
         <li>Local-first private content remains inside the user-controlled app boundary.</li>
         <li>Wallet credential presentation requires explicit user consent.</li>
         <li>Issuer proofing may process provider results only inside the Issuer boundary.</li>
+        <li>Passport NFC proofing is optional. Raw MRZ, chip data, document identifiers, legal identity, biometrics, and access keys stay on device; only a minimum proof envelope and holder/challenge binding reach the Issuer/verifier boundary.</li>
+          <li>The Passport verifier is not an issuer and returns only validity, requested predicates, and issuer-scoped duplicate-binding inputs. Unknown or mismatched proof material, invalid bindings, replay/expiry, unavailable verification, and duplicate binding fail closed. It is distinct from the retired Relay Phase-1 Groth16 anchor flow.</li>
+        <li>Passport NFC is Beta until an independent audit of the exact pinned app/prover/verifier integration. IAM-only invocation is a production gate; the current generic verifier deploy exception is explicitly not a compliant production posture.</li>
         <li>Raw legal identity, provider assertions, private keys, biometric material, and private content are not shown flowing to Relay, Forum Host, AppView, public credentials, logs, federation, or external hosts.</li>
         <li>Web sessions are scoped browser sessions and do not imply browser storage of root DID private keys.</li>
         <li>Forum Host moderation is host-level governance, not global truth.</li>
@@ -646,6 +667,7 @@
         <li><code>docs/superpowers/specs/2026-05-14-encrypted-messenger-protocol-design.md</code></li>
         <li><code>docs/superpowers/specs/2026-05-24-tris-aura-engineering-constitution-design.md</code></li>
         <li><code>docs/superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md</code></li>
+        <li><code>docs/superpowers/specs/2026-07-23-embedded-zkpassport-issuance-design.md</code></li>
         <li><code>docs/superpowers/specs/2026-05-31-full-architecture-diagram-design.md</code></li>
       </ul>
     </div>

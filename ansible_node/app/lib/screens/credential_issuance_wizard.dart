@@ -683,7 +683,7 @@ class _PassportNfcCredentialPanelState
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(Icons.nfc, size: 56, color: Color(0xFF1A56A4)),
+        const Icon(Icons.nfc, size: 56, color: Color(0xFF2DD4A8)),
         const SizedBox(height: 16),
         Text(
           'Passport NFC',
@@ -1219,7 +1219,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
         const Icon(
           Icons.verified_user_outlined,
           size: 56,
-          color: Color(0xFF1A56A4),
+          color: Color(0xFF2DD4A8),
         ),
         const SizedBox(height: 16),
         Text(
@@ -1414,7 +1414,7 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
           title: Text(
             step.label,
             style: TextStyle(
-              color: isCurrent ? const Color(0xFF1A56A4) : null,
+              color: isCurrent ? const Color(0xFF2DD4A8) : null,
               fontWeight: isCurrent ? FontWeight.bold : null,
             ),
           ),
