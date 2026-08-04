@@ -15,7 +15,7 @@
       <div class="ctx">${ctx}</div>
     </div>`;
   }
-  const NAV = [['home','動態','home'],['search','發現','discover'],['bell','通知','notif'],['circle','圈內','circle'],['board','看板','board'],['eye','你','you']];
+  const NAV = [['home','動態','home'],['search','發現','discover'],['bell','通知','notif'],['board','看板','board'],['eye','你','you']];
   function railFull(active){
     const items = NAV.map(([i,zh,key])=>`<a class="rail-item ${key===active?'on':''}" href="#">${ic(i,22)}<span>${zh}</span>${key==='notif'?'<span class="nd"></span>':''}</a>`).join('');
     return `<aside class="rail">
@@ -81,12 +81,11 @@
   ].join('');
 
   function pageFeed(size){
-    const tabs = `<div class="feed-tabs"><button class="on">追蹤中</button><button>圈內</button><button>看板</button></div>`;
-    if(size==='m') return mtop()+`<div class="mpad">${tabs}${feedPosts(true)}</div>`+mtab('home');
+    if(size==='m') return mtop()+`<div class="mpad">${feedPosts(true)}</div>`+mtab('home');
     const rail = size==='t'?railIcons('home'):railFull('home');
     const side = size==='t'?trends:trends; // both show trends
     return wtop('home')+`<div class="cols ${size==='t'?'tablet':''}">${rail}
-      <main class="feed">${tabs}<div class="compose"><span class="av">T</span><span class="hint">說點什麼，tris…</span><button class="btn-post">發布</button></div>${feedPosts(false)}</main>${side}</div>`;
+      <main class="feed"><div class="compose"><span class="av">T</span><span class="hint">說點什麼，tris…</span><button class="btn-post">發布</button></div>${feedPosts(false)}</main>${side}</div>`;
   }
 
   const boardThreads = `

@@ -754,114 +754,15 @@ p {
   padding-top: 14px;
 }
 
-.scene-switcher {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--border-soft);
-  border-radius: 999px;
-  background: var(--background-soft);
-}
-
-.scene-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 36px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.scene-tab[aria-selected="true"] {
-  border-color: var(--border);
-  background: var(--background);
-  color: var(--text);
-}
-
-.inline-elix-mark {
-  width: 18px;
-  height: 18px;
-  color: currentColor;
-}
-
-.inline-elix-mark path {
-  stroke: currentColor;
-  stroke-width: 9;
-  stroke-linecap: round;
-  fill: none;
-}
-
-.inline-elix-mark circle {
-  fill: currentColor;
-}
-
-.scene-help {
-  margin: 0;
-  font-family: var(--serif);
-  font-size: 13.5px;
-  font-style: italic;
-  color: var(--faint);
-}
-
-.swipe-coachmark {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  border: 1px dashed var(--border);
-  border-radius: 10px;
-  padding: 14px;
-  background: var(--background-soft);
-}
-
-.swipe-coachmark h3,
-.swipe-coachmark p {
-  margin-bottom: 4px;
-}
-
-.swipe-coachmark button {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 7px 12px;
-  background: var(--background);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.scene-viewport {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--background);
-}
-
-.scene-track {
-  display: flex;
-  width: 200%;
-  transform: translateX(0);
-  transition: transform 220ms ease;
-}
-
-.mobile-focus-stage[data-active-scene="forum"] .scene-track {
-  transform: translateX(-50%);
-}
-
+/* The revised handoff has no tab row above the feed, so the scene switcher,
+   its help copy, the swipe coachmark and the two-panel track are gone; the
+   feed renders as a single stream. */
 .scene-panel {
   display: flex;
   flex-direction: column;
-  flex: 0 0 50%;
-  width: 50%;
+  width: 100%;
   min-width: 0;
-  padding: 18px;
+  padding: 0;
 }
 
 .scene-meta-row,
@@ -2983,12 +2884,6 @@ p {
     bottom: 0;
   }
 
-  .mobile-compose-fab {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .app-footer {
     padding-bottom: 84px;
   }
@@ -3815,21 +3710,10 @@ h2 {
     display: none;
   }
 
-  /* Compose strip stacks so the prompt keeps a readable measure. */
-  .compose-prompt {
-    flex-wrap: wrap;
-  }
-
-  .compose-prompt .hint,
-  .compose-prompt p {
-    flex: 1 1 100%;
-    order: 2;
-    font-size: 15px;
-  }
-
-  .compose-prompt .primary-action,
-  .compose-prompt a.primary-action {
-    order: 1;
-    margin-left: auto;
+  /* On mobile the handoff composes from the tab bar's centre key, so the feed
+     is posts only — no compose strip and no floating action button. */
+  .compose,
+  .mobile-compose-fab {
+    display: none;
   }
 }

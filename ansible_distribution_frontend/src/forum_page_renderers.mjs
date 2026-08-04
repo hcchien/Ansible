@@ -721,90 +721,26 @@ function renderLanguagePicker() {
   `;
 }
 
+/// The feed stage. The handoff's revised web layout drops the tab row above
+/// the feed, so this is a single chronological stream: compose, then posts
+/// carrying their own source labels. Board conversations stay reachable from
+/// the rail's boards destination.
 function renderMobileFocusStage(viewModel, boards, preferences) {
-  const activeScene = preferences.activeScene;
-  const showCoachmark = !preferences.coachmarkDismissed;
-
   return `
-    <section class="mobile-focus-stage" data-active-scene="${escapeAttribute(activeScene)}" data-motion-mode="${escapeAttribute(preferences.motionMode)}" aria-label="${escapeAttribute(t('focus.mobileAria'))}">
-      <div class="scene-switcher" role="tablist" aria-label="${escapeAttribute(t('focus.sceneSwitchAria'))}">
-        ${renderSceneButton('personal', t('focus.personalScene'), activeScene)}
-        ${renderSceneButton('forum', t('focus.forumScene'), activeScene)}
-      </div>
-      <p class="scene-help">${escapeHtml(t('focus.sceneHelp'))}</p>
-      ${
-        showCoachmark
-          ? `<aside class="swipe-coachmark">
-              <div>
-                <p class="section-label">${escapeHtml(t('focus.coachmarkLabel'))}</p>
-                <h3>${escapeHtml(t('focus.coachmarkTitle'))}</h3>
-                <p>${escapeHtml(t('focus.coachmarkBody'))}</p>
-              </div>
-              <button type="button" data-action="dismiss-swipe-coachmark">${escapeHtml(t('focus.coachmarkDismiss'))}</button>
-            </aside>`
-          : ''
-      }
-      <div class="scene-viewport">
-        <div class="scene-track">
-          ${renderPersonalScene(viewModel, boards, preferences)}
-          ${renderForumScene(viewModel, boards, preferences)}
-        </div>
-      </div>
+    <section class="mobile-focus-stage" data-motion-mode="${escapeAttribute(preferences.motionMode)}" aria-label="${escapeAttribute(t('focus.mobileAria'))}">
+      ${renderPersonalScene(viewModel, boards, preferences)}
     </section>
   `;
 }
 
-function renderSceneButton(scene, label, activeScene) {
-  const selected = scene === activeScene;
-  return `
-    <button type="button" class="scene-tab" data-action="select-scene" data-scene="${escapeAttribute(scene)}" role="tab" aria-selected="${selected ? 'true' : 'false'}">
-      ${scene === 'personal' ? renderInlineMark() : ''}
-      <span>${escapeHtml(label)}</span>
-      <i aria-hidden="true"></i>
-    </button>
-  `;
-}
-
+/// The stream itself: compose, then the posts. The scene label and meta row
+/// went with the switcher — each post carries its own source label, which is
+/// how the handoff explains why something is in the feed.
 function renderPersonalScene(viewModel, boards, preferences) {
-  const audience = viewModel.session?.authenticated ? t('home.signedBySession') : t('home.loginRequiredForPosting');
-
   return `
-    <section class="scene-panel personal-scene" data-scene="personal" data-scene-theme="${escapeAttribute(preferences.personalTheme)}" aria-labelledby="personal-board-title">
-      <div class="scene-meta-row">
-        <span>${escapeHtml(t('focus.personal.sources', { count: boards.length }))}</span>
-        <span>${escapeHtml(renderPermissionLabel(viewModel))}</span>
-      </div>
-      <div class="personal-board-head">
-        <div>
-          <p class="section-label">${escapeHtml(t('focus.personalScene'))}</p>
-          <h2 id="personal-board-title">${escapeHtml(t('focus.personal.title'))}</h2>
-        </div>
-        <span class="signed-pill">${escapeHtml(audience)}</span>
-      </div>
+    <section class="scene-panel personal-scene" data-scene="personal" data-scene-theme="${escapeAttribute(preferences.personalTheme)}" aria-label="${escapeAttribute(t('focus.personal.title'))}">
       <div class="forum-list">
         ${renderComposeCard(viewModel)}
-        ${renderRelayFeed(boards, viewModel)}
-      </div>
-      <button class="mobile-compose-fab" type="button" aria-label="${escapeAttribute(t('focus.composeAria'))}">+</button>
-    </section>
-  `;
-}
-
-function renderForumScene(viewModel, boards, preferences) {
-  return `
-    <section class="scene-panel forum-scene" data-scene="forum" data-scene-theme="${escapeAttribute(preferences.forumTheme)}" aria-labelledby="forum-board-title">
-      <div class="scene-meta-row">
-        <span>${escapeHtml(t('focus.forum.sourceCount', { count: boards.length }))}</span>
-        <span>${escapeHtml(t('focus.forum.sources'))}</span>
-      </div>
-      <div class="personal-board-head">
-        <div>
-          <p class="section-label">${escapeHtml(t('focus.forumScene'))}</p>
-          <h2 id="forum-board-title">${escapeHtml(t('focus.forum.title'))}</h2>
-        </div>
-        <a class="scene-inline-action" href="#/boards">${escapeHtml(t('focus.forum.subscribeBoards'))}</a>
-      </div>
-      <div class="forum-list">
         ${renderRelayFeed(boards, viewModel)}
       </div>
     </section>
@@ -1004,7 +940,6 @@ function renderLeftRail(viewModel, active) {
     { id: 'feed', label: t('common.feed'), href: '#/', glyph: 'home' },
     { id: 'discover', label: t('home.discover'), glyph: 'search', upcoming: true },
     { id: 'notifications', label: t('home.notifications'), glyph: 'bell', upcoming: true },
-    { id: 'circle', label: t('home.circleTab'), glyph: 'circle', upcoming: true },
     { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'board' },
     {
       id: authenticated ? 'sessions' : 'login',
@@ -1639,20 +1574,6 @@ function renderThreadActionIcon(kind) {
   };
 
   return `<svg class="thread-action-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">${paths[kind] ?? paths.heart}</svg>`;
-}
-
-function renderInlineMark() {
-  return `
-    <svg class="inline-elix-mark" viewBox="-100 -100 200 200" aria-hidden="true" focusable="false">
-      <g transform="rotate(30)">
-        <path d="M -60 40 L 60 40 M -60 40 L 0 -60 M 60 40 L 0 -60" />
-        <circle cx="-60" cy="40" r="14" />
-        <circle cx="60" cy="40" r="14" />
-        <circle cx="0" cy="-60" r="14" />
-        <circle class="elix-mark__center" cx="0" cy="6" r="8" />
-      </g>
-    </svg>
-  `;
 }
 
 function renderUserGlyph() {

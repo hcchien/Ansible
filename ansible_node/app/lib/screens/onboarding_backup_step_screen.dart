@@ -140,6 +140,12 @@ class _OnboardingBackupStepScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Follow the app theme rather than fixed Paper constants.
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final fg = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final faint = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+
     return AnsibleScreenScaffold(
       title: _copy(zh: '保護你的帳號', en: 'PROTECT YOUR ACCOUNT'),
       child: ListView(
@@ -154,20 +160,20 @@ class _OnboardingBackupStepScreenState
           Text(
             _copy(zh: '帳號已建立', en: 'Account created'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: AnsibleDesign.ink,
+              color: fg,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             widget.handle,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 12,
-              color: AnsibleDesign.inkFaint,
+              color: faint,
             ),
           ),
           const SizedBox(height: 20),
@@ -180,10 +186,10 @@ class _OnboardingBackupStepScreenState
                   'Make an encrypted backup now. Without a backup you cannot '
                   'recover this account if you lose this device.',
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
               height: 1.55,
-              color: AnsibleDesign.ink,
+              color: fg,
             ),
           ),
           if (_anchorPublished == false) ...[
@@ -229,11 +235,11 @@ class _OnboardingBackupStepScreenState
             onPressed: _skip,
             child: Text(
               _copy(zh: '稍後再說', en: 'Maybe later'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AnsibleDesign.mono,
                 fontSize: 12,
                 letterSpacing: 1.1,
-                color: AnsibleDesign.inkMuted,
+                color: muted,
               ),
             ),
           ),
