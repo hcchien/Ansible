@@ -1,4 +1,5 @@
 import { shortIdentity, trustTierLabel } from './forum_ui_text.mjs';
+import { icon } from './icons.mjs';
 import { getCurrentLocale, t } from './web_i18n.mjs';
 
 const DEFAULT_UI_PREFERENCES = Object.freeze({
@@ -39,8 +40,13 @@ function normalizeTheme(value) {
   return ['light', 'dark', 'auto'].includes(value) ? value : 'auto';
 }
 
+/// Top bar — the design's `wtop`: brand lockup, a centered search field, and
+/// a context cluster on the right. Primary navigation lives in the left rail
+/// (desktop/tablet) and the bottom tab bar (mobile), matching the mockups;
+/// the nav links stay in the DOM for rail-less pages, where CSS reveals them.
 export function renderCommandHeader(viewModel) {
   const hostLabel = viewModel.host?.displayName || t('common.relay');
+  const guest = !viewModel.session?.authenticated;
   const nav = viewModel.navigation
     .map((item) => {
       const current = item.id === viewModel.page.id ? ' aria-current="page"' : '';
@@ -49,23 +55,32 @@ export function renderCommandHeader(viewModel) {
     .join('');
 
   return `
-    <header class="command-header topbar">
+    <header class="command-header topbar wtop">
       <a class="brand-lockup" href="#/" aria-label="${escapeAttribute(t('common.elixHomeAria'))}">
         ${renderElixMark()}
         <span class="brand-word">Elix</span>
         <span class="brand-host">${escapeHtml(t('common.socialIdentity'))}</span>
       </a>
       <div class="searchbox" role="search" aria-label="${escapeAttribute(t('common.searchAria'))}">
+        ${icon('search', 16)}
         <span>${escapeHtml(t('common.searchPlaceholder'))}</span>
       </div>
       <div class="command-context">
         <nav class="command-nav" aria-label="${escapeAttribute(t('common.navAria'))}">${nav}</nav>
         <span class="route-title">${escapeHtml(hostLabel)}</span>
+        ${guest ? '' : renderBellButton()}
         ${renderSessionChip(viewModel.session)}
+        ${guest ? `<a class="btn-signin" href="#/login">${escapeHtml(t('common.login'))}</a>` : ''}
         ${renderPrimaryAction(viewModel)}
       </div>
     </header>
   `;
+}
+
+/// Notification bell. Notifications have no route yet, so this is the
+/// design's chrome rendered as a disabled control rather than a dead link.
+function renderBellButton() {
+  return `<span class="icon-btn is-upcoming" role="img" aria-label="${escapeAttribute(`${t('home.notifications')} · ${t('common.comingSoon')}`)}" title="${escapeAttribute(t('common.comingSoon'))}">${icon('bell', 17)}</span>`;
 }
 
 export function renderElixMark() {
@@ -83,16 +98,26 @@ export function renderElixMark() {
 }
 
 export function renderSessionChip(session) {
+  // Guests get the design's ghost pill; signed-in sessions get the chip with
+  // an avatar disc, handle, and trust tier.
   if (!session?.authenticated) {
-    return `<span class="session-chip is-anonymous" aria-label="${escapeAttribute(t('common.session'))}"><span>${escapeHtml(t('common.anonymous'))}</span><strong>${escapeHtml(t('common.readOnly'))}</strong></span>`;
+    return `<span class="ghost-pill session-chip is-anonymous" aria-label="${escapeAttribute(t('common.session'))}"><span>${escapeHtml(t('common.anonymous'))}</span><strong>${escapeHtml(t('common.readOnly'))}</strong></span>`;
   }
 
+  const identity = shortIdentity(session.subjectDid || session.subject);
   return `
     <a class="session-chip is-authenticated" href="#/sessions">
-      <span>${escapeHtml(shortIdentity(session.subjectDid || session.subject))}</span>
-      <strong>${escapeHtml(trustTierLabel(session.trustTier))}</strong>
+      <span class="av" aria-hidden="true">${escapeHtml(sessionInitial(identity))}</span>
+      <span class="who">${escapeHtml(identity)}</span>
+      <strong class="tier">${escapeHtml(trustTierLabel(session.trustTier))}</strong>
     </a>
   `;
+}
+
+function sessionInitial(identity) {
+  const value = String(identity ?? '').replace(/^did:[a-z]+:/i, '');
+  const first = [...value].find((char) => /\S/.test(char));
+  return (first ?? 'E').toUpperCase();
 }
 
 export function renderPrimaryAction(viewModel) {
@@ -132,46 +157,61 @@ function legalHref(path) {
   return `${path}?lang=${encodeURIComponent(getCurrentLocale())}`;
 }
 
+/// Bottom tab bar (mobile) — the design's five-cell `mtabbar`:
+/// 動態 · 看板 · [＋] · 通知 · 你, with the sticker-style centre compose key.
+/// Destinations without a route yet render as disabled cells rather than
+/// dead links.
 function renderMobileTabBar(viewModel) {
+  const authenticated = Boolean(viewModel.session?.authenticated);
   const items = [
-    { id: 'home', label: t('common.feed'), href: '#/', icon: renderElixMark() },
-    { id: 'boards', label: t('common.boards'), href: '#/boards', icon: renderBoardIcon() },
+    { id: 'home', label: t('common.feed'), href: '#/', glyph: 'home' },
+    { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'board' },
+    { id: 'compose', center: true },
+    { id: 'notifications', label: t('home.notifications'), glyph: 'bell', upcoming: true },
     {
-      id: viewModel.session?.authenticated ? 'sessions' : 'login',
-      label: viewModel.session?.authenticated ? t('common.you') : t('common.login'),
-      href: viewModel.session?.authenticated ? '#/sessions' : '#/login',
-      icon: renderUserIcon(),
+      id: authenticated ? 'sessions' : 'login',
+      label: authenticated ? t('common.you') : t('common.login'),
+      href: authenticated ? '#/sessions' : '#/login',
+      glyph: 'eye',
     },
   ];
 
   return `
-    <nav class="mobile-tabbar" aria-label="${escapeAttribute(t('common.mobileNavAria'))}">
-      ${items
-        .map((item) => {
-          const current = item.id === viewModel.page?.id ? ' aria-current="page"' : '';
-          return `<a class="mobile-tab" href="${item.href}"${current}>${item.icon}<span>${item.label}</span></a>`;
-        })
-        .join('')}
+    <nav class="mobile-tabbar mtabbar" aria-label="${escapeAttribute(t('common.mobileNavAria'))}">
+      ${items.map((item) => renderMobileTab(item, viewModel)).join('')}
     </nav>
   `;
 }
 
-function renderBoardIcon() {
-  return `
-    <svg class="mobile-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-      <rect x="3.5" y="3.5" width="13" height="13" rx="2" />
-      <path d="M 6.5 7.5 H 13.5 M 6.5 10 H 13.5 M 6.5 12.5 H 11" />
-    </svg>
-  `;
+function renderMobileTab(item, viewModel) {
+  if (item.center) {
+    return renderComposeTab(viewModel);
+  }
+
+  const label = escapeHtml(item.label);
+  const glyph = icon(item.glyph, 24, 'mobile-icon');
+
+  if (item.upcoming) {
+    return `<span class="mobile-tab is-upcoming" aria-disabled="true" title="${escapeAttribute(t('common.comingSoon'))}">${glyph}<span>${label}</span></span>`;
+  }
+
+  const current = item.id === viewModel.page?.id ? ' aria-current="page"' : '';
+  return `<a class="mobile-tab" href="${escapeAttribute(item.href)}"${current}>${glyph}<span>${label}</span></a>`;
 }
 
-function renderUserIcon() {
-  return `
-    <svg class="mobile-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-      <circle cx="10" cy="7.5" r="3" />
-      <path d="M 4.5 16 C 5.4 12.9 7.2 11.4 10 11.4 C 12.8 11.4 14.6 12.9 15.5 16" />
-    </svg>
-  `;
+/// The centre ＋: composes when the session may post, otherwise routes to
+/// login (the design's compose key is always present).
+function renderComposeTab(viewModel) {
+  const label = escapeAttribute(t('common.createPostAria'));
+  const glyph = icon('plus', 23, 'mobile-icon');
+
+  if (viewModel.actions?.showLogin || !viewModel.session?.authenticated) {
+    return `<a class="mobile-tab center" href="#/login" aria-label="${label}">${glyph}</a>`;
+  }
+
+  const boardId = viewModel.board?.id || viewModel.board?.slug || viewModel.boards?.[0]?.id || viewModel.boards?.[0]?.slug || '';
+  const boardAttribute = boardId ? ` data-board-id="${escapeAttribute(boardId)}"` : '';
+  return `<button class="mobile-tab center" type="button" data-action="new-thread"${boardAttribute} aria-label="${label}">${glyph}</button>`;
 }
 
 function shortFooterIdentity(identity) {

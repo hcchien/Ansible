@@ -10,6 +10,7 @@ import {
   trustTierLabel,
 } from './forum_ui_text.mjs';
 import { escapeHtml } from './forum_shell_renderer.mjs';
+import { icon, sealIcon } from './icons.mjs';
 import {
   REPORT_REASON_CODES,
   actionsForTargetKind,
@@ -967,67 +968,141 @@ function renderComposeCard(viewModel) {
     ? `<a class="primary-action" href="#/login">${escapeHtml(t('home.loginToPost'))}</a>`
     : `<button class="primary-action" type="button" data-action="new-thread"${boardAttribute}>${escapeHtml(t('common.publish'))}</button>`;
 
+  // The design's compose row: avatar · italic prompt · publish pill, with the
+  // post-type and audience affordances on a second line.
   return `
     <section class="compose" aria-label="${escapeAttribute(t('common.createPostAria'))}">
       <div class="compose-prompt">
-        <span class="avatar">E</span>
-        <p>${escapeHtml(t('home.composePrompt'))}</p>
+        <span class="avatar av">${escapeHtml(sessionAvatarInitial(viewModel.session))}</span>
+        <p class="hint">${escapeHtml(t('home.composePrompt'))}</p>
+        ${action}
       </div>
       <div class="compose-actions">
         <button type="button">${escapeHtml(t('common.note'))}</button>
         <button type="button">${escapeHtml(t('common.murmur'))}</button>
         <a href="#/boards">${escapeHtml(t('home.composeBoardAction'))}</a>
         <span>${escapeHtml(audience)}</span>
-        ${action}
       </div>
     </section>
   `;
 }
 
+function sessionAvatarInitial(session) {
+  const identity = session?.subjectDid || session?.subject || '';
+  const value = String(identity).replace(/^did:[a-z]+:/i, '');
+  const first = [...value].find((char) => /\S/.test(char));
+  return (first ?? 'E').toUpperCase();
+}
+
+/// Left rail — the design's `rail`: an icon nav followed by the subscribed
+/// boards. Destinations with no route yet render as disabled rows (the
+/// design's shape, without dead links). At tablet width CSS collapses this
+/// to the icons-only strip.
 function renderLeftRail(viewModel, active) {
+  const authenticated = Boolean(viewModel.session?.authenticated);
   const navItems = [
-    { id: 'feed', label: t('common.feed'), href: '#/' },
-    { id: 'boards', label: t('common.boards'), href: '#/boards' },
+    { id: 'feed', label: t('common.feed'), href: '#/', glyph: 'home' },
+    { id: 'discover', label: t('home.discover'), glyph: 'search', upcoming: true },
+    { id: 'notifications', label: t('home.notifications'), glyph: 'bell', upcoming: true },
+    { id: 'circle', label: t('home.circleTab'), glyph: 'circle', upcoming: true },
+    { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'board' },
+    {
+      id: authenticated ? 'sessions' : 'login',
+      label: authenticated ? t('common.you') : t('common.login'),
+      href: authenticated ? '#/sessions' : '#/login',
+      glyph: 'eye',
+    },
   ];
 
-  if (viewModel.session?.authenticated) {
+  if (authenticated) {
     navItems.push({
       id: 'moderation',
       label: t('common.moderation'),
       href: '#/moderation',
+      glyph: 'finger',
     });
   }
-  const upcomingItems = [t('home.discover'), t('home.notifications'), t('home.circleTab')];
+
+  const boards = viewModel.boards ?? [];
 
   return `
     <aside class="rail" aria-label="${escapeAttribute(t('common.navigationAria'))}">
-      <p class="rail-label">${escapeHtml(t('common.navigate'))}</p>
-      <nav class="rail-nav">
-        ${navItems
-          .map((item) => {
-            const current = item.id === active ? ' aria-current="page"' : '';
-            return `<a href="${escapeAttribute(item.href)}"${current}>${escapeHtml(item.label)}</a>`;
-          })
-          .join('')}
+      <nav class="rail-nav" aria-label="${escapeAttribute(t('common.navAria'))}">
+        <p class="rail-label">${escapeHtml(t('common.navigate'))}</p>
+        ${navItems.map((item) => renderRailNavItem(item, active)).join('')}
       </nav>
-      <div class="rail-block">
-        <p class="rail-label">${escapeHtml(t('common.comingSoon'))}</p>
-        ${upcomingItems.map((label) => `<span class="rail-muted">${escapeHtml(label)}</span>`).join('')}
-      </div>
-      <div class="rail-block">
-        <p class="rail-label">${escapeHtml(t('common.boards'))}</p>
-        <span>${escapeHtml(t('common.boardCount', { count: (viewModel.boards ?? []).length }))}</span>
+      <div class="rail-block rail-boards">
+        <p class="rail-label">${escapeHtml(t('home.subscribedBoards'))} · ${escapeHtml(String(boards.length))}</p>
+        ${
+          boards.length
+            ? boards.slice(0, 6).map((board) => renderRailBoardRow(board)).join('')
+            : `<span class="rail-muted">${escapeHtml(t('common.noBoardsYet'))}</span>`
+        }
       </div>
     </aside>
   `;
 }
 
+function renderRailNavItem(item, active) {
+  const glyph = icon(item.glyph, 22, 'rail-icon');
+  const label = `<span>${escapeHtml(item.label)}</span>`;
+
+  if (item.upcoming) {
+    return `<span class="rail-item is-upcoming" aria-disabled="true" title="${escapeAttribute(t('common.comingSoon'))}">${glyph}${label}</span>`;
+  }
+
+  const current = item.id === active ? ' aria-current="page"' : '';
+  return `<a class="rail-item" href="${escapeAttribute(item.href)}"${current}>${glyph}${label}</a>`;
+}
+
+function renderRailBoardRow(board) {
+  const title = board.title || board.slug || board.id || t('common.board');
+  const href = `#/boards/${encodeURIComponent(board.id || board.slug || '')}`;
+  const permission = board.permissions?.canWrite ? t('board.permissionWrite') : t('board.permissionRead');
+
+  return `
+    <a class="follow-row rail-board-row" href="${escapeAttribute(href)}">
+      <span class="hashav" aria-hidden="true">#</span>
+      <span class="meta">
+        <span class="n">${escapeHtml(title)}</span>
+        ${board.description ? `<span class="h">${escapeHtml(board.description)}</span>` : ''}
+      </span>
+      <span class="ago">${escapeHtml(permission)}</span>
+    </a>
+  `;
+}
+
+/// Right rail — the design's two context cards: the boards the relay is
+/// serving, and the local-first promise block.
 function renderRightRail(viewModel, boards) {
   return `
     <aside class="right-rail" aria-label="${escapeAttribute(t('common.feedContextAria'))}">
-      <section class="side-panel">
+      <section class="side-panel card">
         <p class="section-label">${escapeHtml(t('home.subscribedBoards'))}</p>
-        ${boards.length ? boards.slice(0, 4).map((board) => `<a href="#/boards/${encodeURIComponent(board.id || '')}">#${escapeHtml(board.title || board.id)}</a>`).join('') : `<span>${escapeHtml(t('common.noBoardsYet'))}</span>`}
+        ${
+          boards.length
+            ? boards
+                .slice(0, 4)
+                .map((board) => {
+                  const title = board.title || board.slug || board.id;
+                  const href = `#/boards/${encodeURIComponent(board.id || board.slug || '')}`;
+                  const permission = board.permissions?.canWrite ? t('board.permissionWrite') : t('board.permissionRead');
+                  return `<a class="trend" href="${escapeAttribute(href)}"><span class="tag">#${escapeHtml(title)}</span><span class="n">${escapeHtml(permission)}</span></a>`;
+                })
+                .join('')
+            : `<span>${escapeHtml(t('common.noBoardsYet'))}</span>`
+        }
+      </section>
+      <section class="side-panel card promise-card">
+        <p class="section-label">${escapeHtml(t('home.promiseTitle'))}</p>
+        <div class="mini-promise">
+          <span class="dot is-moss" aria-hidden="true"></span>
+          <span class="tx"><b>${escapeHtml(t('home.promiseLocalTitle'))}</b>${escapeHtml(t('home.promiseLocalBody'))}</span>
+        </div>
+        <div class="mini-promise">
+          <span class="dot is-accent" aria-hidden="true"></span>
+          <span class="tx"><b>${escapeHtml(t('home.promiseConsentTitle'))}</b>${escapeHtml(t('home.promiseConsentBody'))}</span>
+        </div>
       </section>
       <section class="side-note">
         ${escapeHtml(t('home.feedNote'))}
@@ -1040,8 +1115,11 @@ function renderRelayFeed(boards, viewModel) {
   if (!boards.length) {
     return `
       <article class="post empty-state-card">
-        <div class="post-source">${escapeHtml(t('home.subscribedBoards'))}</div>
-        <p class="post-body">${escapeHtml(t('home.emptyBoardsBody'))}</p>
+        <div class="lane"><span class="av" aria-hidden="true">#</span></div>
+        <div class="body">
+          <div class="src">${escapeHtml(t('home.subscribedBoards'))}</div>
+          <div class="text"><p>${escapeHtml(t('home.emptyBoardsBody'))}</p></div>
+        </div>
       </article>
     `;
   }
@@ -1049,27 +1127,34 @@ function renderRelayFeed(boards, viewModel) {
   return boards.map((board) => renderBoardFeedPost(board, viewModel)).join('');
 }
 
+/// Feed card — the design's `post` anatomy: an avatar lane beside a body of
+/// source row → author row → heading → text → action row. The relay feed
+/// carries boards, so the actions are the board's real affordances rendered
+/// as the design's icon buttons (no invented engagement counts).
 function renderBoardFeedPost(board, viewModel) {
-  const title = board.title || board.id || t('common.board');
-  const boardId = board.id || title;
+  const title = board.title || board.slug || board.id || t('common.board');
+  const boardId = board.id || board.slug || title;
   const hostName = viewModel.host?.displayName || t('common.relay');
   const description = board.description;
   const href = `#/boards/${encodeURIComponent(boardId)}`;
+  const canWrite = Boolean(board.permissions?.canWrite);
 
   return `
-    <article class="post post-board">
-      <div class="post-source">${escapeHtml(t('home.boardSource', { slug: boardId }))}</div>
-      <div class="post-author">
-        <span class="avatar">${escapeHtml(title.charAt(0).toUpperCase() || 'B')}</span>
-        <div>
-          <strong>${escapeHtml(title)}</strong>
-          <span>${escapeHtml(hostName)}</span>
-        </div>
+    <article class="post post-board${canWrite ? ' signed' : ''}">
+      <div class="lane">
+        <span class="av" aria-hidden="true">#</span>
       </div>
-      ${description ? `<p class="post-body">${escapeHtml(description)}</p>` : ''}
-      <div class="post-actions">
-        <a href="${escapeAttribute(href)}">${escapeHtml(t('home.openBoard'))}</a>
-        <span>${escapeHtml(board.permissions?.canWrite ? t('home.postingAllowedByRelay') : t('home.readOnlyFromRelay'))}</span>
+      <div class="body">
+        <div class="row1">
+          <a class="handle" href="${escapeAttribute(href)}">${escapeHtml(title)}${canWrite ? sealIcon(13) : ''}</a>
+          <span class="when">${escapeHtml(hostName)}</span>
+        </div>
+        <div class="src">${escapeHtml(t('home.boardSource', { slug: boardId }))}</div>
+        ${description ? `<div class="text"><p>${escapeHtml(description)}</p></div>` : ''}
+        <div class="actions">
+          <a class="act" href="${escapeAttribute(href)}">${icon('board', 21)}<span class="c">${escapeHtml(t('home.openBoard'))}</span></a>
+          <span class="act is-static">${icon(canWrite ? 'write' : 'read', 21)}<span class="c">${escapeHtml(canWrite ? t('home.postingAllowedByRelay') : t('home.readOnlyFromRelay'))}</span></span>
+        </div>
       </div>
     </article>
   `;
@@ -1153,7 +1238,7 @@ function renderThreadItem(thread, context = {}) {
     <span class="board-thread-avatar">${escapeHtml(initial)}</span>
     <span class="board-thread-copy">
       ${boardTitle ? `<span class="board-thread-board"><span aria-hidden="true">#</span>${escapeHtml(boardTitle)}</span>` : ''}
-      <span class="board-thread-status">${escapeHtml(t('board.replyCount', { count: replyCount }))} · ${escapeHtml(status)}</span>
+      <span class="board-thread-status"><span class="d${replyCount === 0 ? ' new' : ''}" aria-hidden="true"></span>${escapeHtml(t('board.replyCount', { count: replyCount }))} · ${escapeHtml(status)}</span>
       <span class="board-thread-title">${titleContent}</span>
       <span class="board-thread-by">
         ${renderThreadIdentity(thread)}

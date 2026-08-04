@@ -1,122 +1,124 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Daylight signal (READr-inspired)
-   White ground · cobalt signal · sky / lavender / citron marks
-   Display = Outfit · UI/body = Figtree · Mono = JetBrains Mono
-   Light is canonical on :root; dark arrives from the system
+   ELIX WEB — Bone paper (design handoff: "Elix Web.html")
+   Warm bone ground · white paper sheets for posts and cards
+   Lavender accent · sky secondary · deep-lavender signals ·
+   citron highlight. All type rides on Noto Sans TC; mono carries
+   handles, DIDs and structural labels.
+   Light is canonical on :root; dark ("Ink") arrives from the system
    preference or an explicit scene theme.
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --background-soft: #f4f6fb;
-  --surface: #ffffff;
-  --surface-raised: #f7f8fc;
-  --surface-deep: #eef1f9;
-  --border: #dfe3ee;
-  --border-soft: #edf0f7;
-  --border-strong: #c3cbe2;
-  --muted-fill: #eef1f9;
-  --accent: #2550af;
-  --lavender: #c7b7f9;
-  --highlight: #eee500;
-  --warning: #a86b00;
-  --danger: #cc3b2e;
-  --success: #17845c;
-  --sky: #75b4f8;
-  --text: #191919;
-  --muted: #55607a;
-  --faint: #8b93a8;
+  --background: #F4F3EC;
+  --background-soft: #ECEAE0;
+  --surface: #FFFFFF;
+  --surface-raised: #ECEAE0;
+  --surface-deep: #E2DFD2;
+  --border: #D8D3C4;
+  --border-soft: #E6E2D6;
+  --border-strong: #C6BFAC;
+  --muted-fill: #E2DFD2;
+  --accent: #C9AEEB;
+  --lavender: #2846A8;
+  --highlight: #EBE21C;
+  --warning: #9A4A24;
+  --danger: #9A4A24;
+  --success: #6FB2E8;
+  --sky: #6FB2E8;
+  --text: #2A2A0A;
+  --muted: #625F3C;
+  --faint: #9C9974;
   --on-accent: #ffffff;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 20%, transparent);
-  --serif: "Figtree", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
+  --serif: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --serif-en: "Outfit", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
+  --serif-en: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --display: "Outfit", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
-  --sans: "Figtree", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
+  --display: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --sans: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
     Menlo, monospace;
   font-family: var(--sans);
 }
 
-/* Daylight theme — explicit selection (wins inside a dark system) */
+/* Paper theme — explicit selection (wins inside a dark system) */
 .forum-shell[data-theme="light"] {
   color-scheme: light;
-  --background: #ffffff;
-  --background-soft: #f4f6fb;
-  --surface: #ffffff;
-  --surface-raised: #f7f8fc;
-  --surface-deep: #eef1f9;
-  --border: #dfe3ee;
-  --border-soft: #edf0f7;
-  --border-strong: #c3cbe2;
-  --muted-fill: #eef1f9;
-  --accent: #2550af;
-  --lavender: #c7b7f9;
-  --highlight: #eee500;
-  --warning: #a86b00;
-  --danger: #cc3b2e;
-  --success: #17845c;
-  --sky: #75b4f8;
-  --text: #191919;
-  --muted: #55607a;
-  --faint: #8b93a8;
+  --background: #F4F3EC;
+  --background-soft: #ECEAE0;
+  --surface: #FFFFFF;
+  --surface-raised: #ECEAE0;
+  --surface-deep: #E2DFD2;
+  --border: #D8D3C4;
+  --border-soft: #E6E2D6;
+  --border-strong: #C6BFAC;
+  --muted-fill: #E2DFD2;
+  --accent: #C9AEEB;
+  --lavender: #2846A8;
+  --highlight: #EBE21C;
+  --warning: #9A4A24;
+  --danger: #9A4A24;
+  --success: #6FB2E8;
+  --sky: #6FB2E8;
+  --text: #2A2A0A;
+  --muted: #625F3C;
+  --faint: #9C9974;
   --on-accent: #ffffff;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 20%, transparent);
 }
 
-/* Night theme — explicit selection */
+/* Ink theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #0b1120;
-  --background-soft: #0e162a;
-  --surface: #151f38;
-  --surface-raised: #1b2846;
-  --surface-deep: #080d1a;
-  --border: #27365a;
-  --border-soft: #1b2846;
-  --border-strong: #3d5388;
-  --muted-fill: #1b2846;
-  --accent: #75b4f8;
-  --lavender: #c7b7f9;
-  --highlight: #eee500;
-  --warning: #ffc76b;
-  --danger: #ff7a6b;
-  --success: #58d3a0;
-  --sky: #75b4f8;
-  --text: #eaf0fb;
-  --muted: #9db0d4;
-  --faint: #7182a6;
-  --on-accent: #071021;
+  --background: #17130A;
+  --background-soft: #1F1A0E;
+  --surface: #14131A;
+  --surface-raised: #1F1A0E;
+  --surface-deep: #2A2413;
+  --border: #362E17;
+  --border-soft: #221D10;
+  --border-strong: #4A4020;
+  --muted-fill: #2A2413;
+  --accent: #D9C6F2;
+  --lavender: #5C82E0;
+  --highlight: #F5EE3A;
+  --warning: #C97B52;
+  --danger: #C97B52;
+  --success: #8FC4F5;
+  --sky: #8FC4F5;
+  --text: #F4EEDA;
+  --muted: #B7AD8E;
+  --faint: #726B4F;
+  --on-accent: #17130A;
   --glow: 0 0 20px color-mix(in oklab, var(--accent) 34%, transparent);
 }
 
-/* Night theme — auto: follow the system */
+/* Ink theme — auto: follow the system */
 @media (prefers-color-scheme: dark) {
   :root,
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #0b1120;
-    --background-soft: #0e162a;
-    --surface: #151f38;
-    --surface-raised: #1b2846;
-    --surface-deep: #080d1a;
-    --border: #27365a;
-    --border-soft: #1b2846;
-    --border-strong: #3d5388;
-    --muted-fill: #1b2846;
-    --accent: #75b4f8;
-    --lavender: #c7b7f9;
-    --highlight: #eee500;
-    --warning: #ffc76b;
-    --danger: #ff7a6b;
-    --success: #58d3a0;
-    --sky: #75b4f8;
-    --text: #eaf0fb;
-    --muted: #9db0d4;
-    --faint: #7182a6;
-    --on-accent: #071021;
+    --background: #17130A;
+    --background-soft: #1F1A0E;
+    --surface: #14131A;
+    --surface-raised: #1F1A0E;
+    --surface-deep: #2A2413;
+    --border: #362E17;
+    --border-soft: #221D10;
+    --border-strong: #4A4020;
+    --muted-fill: #2A2413;
+    --accent: #D9C6F2;
+    --lavender: #5C82E0;
+    --highlight: #F5EE3A;
+    --warning: #C97B52;
+    --danger: #C97B52;
+    --success: #8FC4F5;
+    --sky: #8FC4F5;
+    --text: #F4EEDA;
+    --muted: #B7AD8E;
+    --faint: #726B4F;
+    --on-accent: #17130A;
     --glow: 0 0 20px color-mix(in oklab, var(--accent) 34%, transparent);
   }
 }
@@ -3057,12 +3059,9 @@ p {
 
 /* Legacy 560px contract point — tab bar must be revealed at the smallest sizes. */
 @media (max-width: 560px) {
+  /* The design shows the tab bar on every mobile screen, the feed included. */
   .mobile-tabbar {
     display: flex;
-  }
-
-  .forum-shell[data-page-id="home"] .mobile-tabbar {
-    display: none;
   }
 }
 
@@ -3099,83 +3098,738 @@ h2 {
   border-radius: 10px;
 }
 
-/* Colour layer — cobalt / sky / lavender / citron carry hierarchy. */
-:root,
-.forum-shell[data-theme="light"] {
-  --background: #ffffff;
-  --background-soft: #eef4ff;
-  --surface-deep: #e6eeff;
-  --muted-fill: #e8f0ff;
-  --border: #d8e2f6;
-  --border-soft: #e8eefb;
-  --border-strong: #b3c4e8;
-  --muted: #4d5c80;
-  --faint: #7d8bab;
-  --tint-sky: #eaf2ff;
-  --tint-lavender: #f1ecfe;
-  --tint-citron: #fbfad2;
-  --signal-soft: #3f74d8;
+/* ─────────────────────────────────────────────
+   DESIGN LAYER — "Elix Web.html" structures
+   The bone ground carries the page; posts, cards and rails sit on
+   it as white paper sheets. Everything below is the handoff's
+   component anatomy: icon rail, lane+body post, icon action row,
+   compose strip, board banner, and the five-cell mobile tab bar.
+   ───────────────────────────────────────────── */
+.forum-shell {
+  background: var(--background);
 }
 
-.forum-shell[data-theme="dark"] {
-  --tint-sky: #14264a;
-  --tint-lavender: #241f47;
-  --tint-citron: #2b2a10;
-  --signal-soft: #9cc9fb;
+.forum-main,
+.command-header {
+  background-color: var(--background);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root,
-  .forum-shell[data-theme="auto"] {
-    --tint-sky: #14264a;
-    --tint-lavender: #241f47;
-    --tint-citron: #2b2a10;
-    --signal-soft: #9cc9fb;
+.card,
+.compose,
+.scene-panel,
+.post,
+.side-panel {
+  background-color: var(--surface);
+}
+
+.command-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-word,
+.elix-mark {
+  color: var(--text);
+}
+
+.brand-word {
+  font-weight: 600;
+}
+
+.elix-mark__center {
+  fill: var(--accent) !important;
+}
+
+.brand-host,
+.label-mono,
+.section-label,
+.rail-label {
+  color: var(--faint);
+}
+
+.searchbox {
+  background: var(--background-soft);
+  border-color: var(--border-soft);
+  gap: 10px;
+}
+
+.searchbox .elix-icon {
+  color: var(--faint);
+  flex-shrink: 0;
+}
+
+/* Buttons — the accent pill is the design's primary key. */
+.primary-action,
+.btn-signin {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.primary-action:hover,
+.btn-signin:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  opacity: 0.9;
+}
+
+.btn-signin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.secondary-action {
+  color: var(--muted);
+  border-color: var(--border-strong);
+}
+
+.secondary-action:hover {
+  color: var(--text);
+  background: var(--background-soft);
+  border-color: var(--text);
+}
+
+.route-links a:hover,
+.side-panel a:hover,
+.scene-inline-action:hover {
+  color: var(--lavender);
+}
+
+/* Header context cluster */
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--background-soft);
+  color: var(--text);
+}
+
+.icon-btn.is-upcoming {
+  color: var(--faint);
+}
+
+.ghost-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.session-chip {
+  background: var(--surface);
+  border-color: var(--border);
+  padding: 4px 11px 4px 4px;
+}
+
+.session-chip .av {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--lavender);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.session-chip .who {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.session-chip .tier,
+.session-chip.is-anonymous strong {
+  color: var(--sky);
+}
+
+.permission-copy {
+  color: var(--lavender);
+}
+
+/* ── Left rail — icon nav + board rows ─────── */
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.rail-item:hover {
+  background: var(--background-soft);
+  color: var(--text);
+}
+
+.rail-item[aria-current="page"] {
+  background: var(--background-soft);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.rail-item.is-upcoming {
+  color: var(--faint);
+  cursor: default;
+}
+
+.rail-item .rail-icon,
+.rail-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.rail-board-row:hover {
+  background: var(--background-soft);
+}
+
+.rail-board-row .hashav,
+.hashav {
+  background: var(--lavender);
+  color: #fff;
+  border-color: transparent;
+}
+
+.rail-board-row .ago,
+.follow-row .ago {
+  margin-left: auto;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.rail-boards {
+  gap: 2px;
+}
+
+/* ── Cards ─────────────────────────────────── */
+.card,
+.side-panel {
+  border-color: var(--border);
+  border-radius: 16px;
+}
+
+.side-panel .trend {
+  display: block;
+  padding: 9px 0;
+  border-top: 1px solid var(--border-soft);
+  text-decoration: none;
+}
+
+.side-panel .trend:first-of-type {
+  border-top: none;
+}
+
+.side-panel .trend .tag {
+  display: block;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sky);
+}
+
+.side-panel .trend .n {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.mini-promise {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.mini-promise:first-of-type {
+  margin-top: 0;
+}
+
+.mini-promise .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.mini-promise .dot.is-moss {
+  background: var(--sky);
+}
+
+.mini-promise .dot.is-accent {
+  background: var(--accent);
+}
+
+.mini-promise .tx {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.mini-promise .tx b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.feed-head {
+  border-bottom-color: var(--border);
+}
+
+/* ── Feed tabs (scene switcher) ────────────── */
+.scene-switcher {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0;
+  gap: 0;
+}
+
+.scene-tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  margin-bottom: -1px;
+  padding: 13px 8px;
+  font-size: 14px;
+  color: var(--faint);
+}
+
+.scene-tab[aria-selected="true"] {
+  background: transparent;
+  border-color: transparent;
+  border-bottom-color: var(--text);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.swipe-coachmark {
+  background: var(--background-soft);
+  border-color: var(--border);
+}
+
+.signed-pill {
+  background: var(--surface);
+}
+
+.forum-notice,
+.forum-error {
+  background: var(--background-soft);
+}
+
+/* ── Post card — lane + body (design anatomy) ─ */
+.post {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 13px;
+  padding: 18px 14px;
+  margin: 0 -4px 4px;
+  border-radius: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.post .lane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.post .av {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-deep);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.post.signed .av {
+  background: var(--accent);
+  color: #fff;
+}
+
+.post .thread-line {
+  flex: 1;
+  width: 2px;
+  min-height: 8px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.post .body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.post .row1 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.post .row1 .handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.post .row1 .handle .seal {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.post .row1 .when {
+  margin-left: auto;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.post .src {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.post .src .b {
+  color: var(--sky);
+}
+
+.post .heading {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.post .text {
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+.post .text p {
+  margin: 0 0 8px;
+}
+
+.post .text p:last-child {
+  margin-bottom: 0;
+}
+
+/* Icon action row */
+.post .actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  margin-left: -6px;
+  flex-wrap: wrap;
+}
+
+.act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font-family: var(--sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.act .elix-icon {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+}
+
+.act .c {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.act:hover {
+  background: var(--background-soft);
+  color: var(--text);
+}
+
+.act.is-static {
+  cursor: default;
+  color: var(--faint);
+}
+
+.act.is-static:hover {
+  background: none;
+}
+
+.act.is-static .elix-icon {
+  color: var(--faint);
+}
+
+/* ── Compose strip ─────────────────────────── */
+.compose {
+  border-radius: 16px;
+  padding: 16px 14px;
+}
+
+.compose-prompt .hint,
+.compose-prompt p {
+  font-family: var(--sans);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--faint);
+}
+
+.compose .avatar,
+.compose .av {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.avatar,
+.hashav {
+  border-color: transparent;
+}
+
+/* ── Board banner ──────────────────────────── */
+.board-head {
+  gap: 12px;
+  padding: 28px 4px 20px;
+}
+
+.board-head .heading h1 {
+  font-family: var(--sans);
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.board-head .heading p {
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.permission-state .val {
+  color: var(--lavender);
+  font-weight: 600;
+}
+
+/* Board thread rows sit as paper sheets, like posts. */
+.board-thread-row {
+  background: var(--surface);
+  border-radius: 16px;
+  border-bottom: none;
+  margin: 0 -4px 4px;
+  padding: 17px 14px;
+}
+
+.board-thread-row:hover {
+  background: var(--background-soft);
+}
+
+.board-thread-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.board-thread-status .d {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sky);
+  flex-shrink: 0;
+}
+
+.board-thread-status .d.new {
+  background: var(--highlight);
+}
+
+.board-thread-row.is-signed .board-thread-avatar {
+  background: var(--accent);
+  color: #fff;
+}
+
+.board-thread-title {
+  font-family: var(--sans);
+}
+
+.directory li a:hover {
+  color: var(--lavender);
+}
+
+/* ── Mobile tab bar — five cells + centre key ─ */
+.mobile-tab.is-upcoming {
+  color: var(--faint);
+  cursor: default;
+}
+
+.mobile-tab.center {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 38px;
+  margin: 0 8px;
+  border: none;
+  border-radius: 13px;
+  background: var(--accent);
+  color: var(--highlight);
+  box-shadow: 0 0 0 3px var(--lavender);
+  gap: 0;
+}
+
+.mobile-tab.center:hover {
+  color: var(--highlight);
+}
+
+.mobile-tab.center .mobile-icon {
+  width: 23px;
+  height: 23px;
+}
+
+/* The design carries navigation in the rail (desktop/tablet) and the tab bar
+   (mobile), so the header nav only surfaces on pages that render no rail. */
+@media (min-width: 768px) {
+  .command-nav,
+  .route-title {
+    display: none;
+  }
+
+  .forum-shell[data-page-id="login"] .command-nav,
+  .forum-shell[data-page-id="sessions"] .command-nav,
+  .forum-shell[data-page-id="faq"] .command-nav,
+  .forum-shell[data-page-id="about"] .command-nav,
+  .forum-shell[data-page-id="not-found"] .command-nav,
+  .forum-shell[data-page-id="unknown"] .command-nav {
+    display: flex;
   }
 }
 
-.forum-shell { background: var(--background-soft); }
-.command-header, .forum-main, .card, .compose, .scene-panel { background-color: var(--surface); }
-.command-header { border-bottom: 2px solid var(--accent); }
-.brand-word, .elix-mark { color: var(--accent); }
-.brand-word { font-weight: 700; }
-.elix-mark__center { fill: var(--highlight) !important; }
-.brand-host, .label-mono, .section-label, .rail-label { color: var(--signal-soft); }
-.searchbox { background: var(--tint-sky); border-color: var(--sky); }
-.primary-action { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: 0 6px 18px -10px var(--accent); }
-.primary-action:hover { background: var(--signal-soft); border-color: var(--signal-soft); color: var(--on-accent); opacity: 1; }
-.secondary-action { color: var(--accent); border-color: var(--sky); }
-.secondary-action:hover { color: var(--accent); background: var(--tint-sky); border-color: var(--accent); }
-.route-links a:hover, .side-panel a:hover, .scene-inline-action:hover { color: var(--accent); }
-.session-chip { background: var(--tint-lavender); border-color: var(--lavender); }
-.session-chip.is-anonymous strong, .permission-copy { color: var(--accent); }
-.rail-nav a:hover { background: var(--tint-sky); color: var(--accent); }
-.rail-nav a[aria-current="page"] { background: var(--tint-sky); color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-.rail-icon, .side-note { color: var(--signal-soft); }
-.rail-board-row:hover { background: var(--tint-lavender); }
-.rail-board-row .hashav, .avatar, .compose .avatar, .hashav { background: var(--accent); color: var(--on-accent); border-color: transparent; }
-.card { border-color: var(--sky); box-shadow: 0 10px 26px -22px var(--accent); }
-.feed-head { border-bottom-color: var(--sky); }
-.feed-head h1 { display: inline; box-shadow: inset 0 -0.32em 0 var(--highlight); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
-.scene-switcher { background: var(--tint-lavender); border-radius: 20px; padding: 3px; }
-.scene-tab[aria-selected="true"] { background: var(--surface); border-color: var(--accent); color: var(--accent); }
-.swipe-coachmark { background: var(--tint-lavender); border-color: var(--lavender); }
-.signed-pill { background: var(--tint-citron); border-color: var(--accent); }
-.forum-notice, .forum-error { background: var(--tint-citron); }
+/* ── Tablet · 768–1023: icons-only rail ────── */
+@media (max-width: 1023px) {
+  .rail {
+    align-items: center;
+    gap: 6px;
+  }
 
-.forum-shell[data-theme="dark"] {
-  --background: #0b1120; --background-soft: #0e162a; --surface: #151f38;
-  --surface-raised: #1b2846; --surface-deep: #080d1a; --muted-fill: #1b2846;
-  --border: #27365a; --border-soft: #1b2846; --border-strong: #3d5388;
-  --muted: #9db0d4; --faint: #7182a6;
+  .rail-item {
+    justify-content: center;
+    padding: 11px;
+    width: 44px;
+  }
+
+  .rail-item span {
+    display: none;
+  }
+
+  .rail-label,
+  .rail-boards {
+    display: none;
+  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root,
-  .forum-shell[data-theme="auto"] {
-    --background: #0b1120; --background-soft: #0e162a; --surface: #151f38;
-    --surface-raised: #1b2846; --surface-deep: #080d1a; --muted-fill: #1b2846;
-    --border: #27365a; --border-soft: #1b2846; --border-strong: #3d5388;
-    --muted: #9db0d4; --faint: #7182a6;
+/* ── Mobile · <768 ─────────────────────────── */
+@media (max-width: 767px) {
+  .post {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 11px;
+    padding: 16px 12px;
+  }
+
+  .post .av {
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
+  }
+
+  .post .text {
+    font-size: 15px;
+  }
+
+  .post .heading {
+    font-size: 16px;
+  }
+
+  .board-head .heading h1 {
+    font-size: 26px;
+  }
+
+  .icon-btn,
+  .btn-signin {
+    display: none;
+  }
+
+  /* Compose strip stacks so the prompt keeps a readable measure. */
+  .compose-prompt {
+    flex-wrap: wrap;
+  }
+
+  .compose-prompt .hint,
+  .compose-prompt p {
+    flex: 1 1 100%;
+    order: 2;
+    font-size: 15px;
+  }
+
+  .compose-prompt .primary-action,
+  .compose-prompt a.primary-action {
+    order: 1;
+    margin-left: auto;
   }
 }
