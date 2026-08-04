@@ -3,6 +3,7 @@ import 'package:ansible_node/screens/passkeys_registration_screen.dart';
 import 'package:ansible_node/services/atproto_client.dart';
 import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/services/platform_capabilities.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -307,6 +308,38 @@ void main() {
       find.byKey(const Key('create_identity_button')),
     );
     expect(enabled.onPressed, isNotNull);
+  });
+  testWidgets('onboarding follows the app theme instead of a fixed Paper palette', (
+    tester,
+  ) async {
+    // Regression: the screen used to hard-code the light constants, so under
+    // the Ink theme it rendered a light page with a dark, theme-driven handle
+    // field sitting in the middle of it.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AnsibleDesign.theme(),
+        darkTheme: AnsibleDesign.darkTheme(),
+        themeMode: ThemeMode.dark,
+        home: PasskeysRegistrationScreen(
+          passkeysManager: _FakePasskeysManager('cd' * 32),
+          canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+          atProtoClient: _FakeAtProtoClient(),
+          onRegistered: (_, _) {},
+        ),
+      ),
+    );
+
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    expect(scaffold.backgroundColor, AnsibleDesign.darkPaper);
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    final fill =
+        field.decoration?.fillColor ??
+        Theme.of(
+          tester.element(find.byType(TextField)),
+        ).inputDecorationTheme.fillColor;
+    // The handle field must sit on the same ground as the screen around it.
+    expect(fill, AnsibleDesign.darkPaperElev);
   });
 }
 

@@ -19,6 +19,22 @@ class OnboardingIntroScreen extends StatefulWidget {
 }
 
 class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
+  // Onboarding follows the app theme; these used to be fixed Paper constants,
+  // which left the screen light under the Ink theme.
+  bool get _dark => Theme.of(context).brightness == Brightness.dark;
+  Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+  Color get _bgElev =>
+      _dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+  Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+  Color get _muted =>
+      _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint =>
+      _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+  Color get _ruleSoft =>
+      _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
+
   final _pager = PageController();
   int _page = 0;
 
@@ -43,7 +59,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AnsibleDesign.paper,
+      backgroundColor: _bg,
       body: SafeArea(
         child: PageView(
           controller: _pager,
@@ -87,13 +103,13 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     zh: '你的話、你的圈、\n你的鑰匙。',
                     en: 'Your words, your circle,\nyour keys.',
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontSize: 30,
                     height: 1.32,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.3,
-                    color: AnsibleDesign.ink,
+                    color: _fg,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -107,12 +123,12 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                         'no troll armies — and your account and words stay '
                         'yours, always.',
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontStyle: FontStyle.italic,
                     fontSize: 15.5,
                     height: 1.78,
-                    color: AnsibleDesign.inkMuted,
+                    color: _muted,
                   ),
                 ),
               ],
@@ -134,11 +150,11 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   en: 'No account · No cloud · Never collected',
                 ),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AnsibleDesign.sans,
                   fontSize: 12,
                   letterSpacing: 0.3,
-                  color: AnsibleDesign.inkFaint,
+                  color: _faint,
                 ),
               ),
             ],
@@ -187,13 +203,13 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     zh: '這是一個會跟你\n一起變舊的地方。',
                     en: 'A place that grows\nold alongside you.',
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontSize: 25,
                     height: 1.38,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.25,
-                    color: AnsibleDesign.ink,
+                    color: _fg,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -204,17 +220,17 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                         'Everything you write stays on your device by default — '
                         'no cloud, no indexing, no analysis. Before anything leaves, it asks you.',
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.serif,
                     fontSize: 15,
                     height: 1.78,
-                    color: AnsibleDesign.inkMuted,
+                    color: _muted,
                   ),
                 ),
                 const SizedBox(height: 22),
                 Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+                    border: Border.all(color: _rule, width: 0.5),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -229,7 +245,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                       ),
                       _promiseBlock(
                         context,
-                        dot: AnsibleDesign.accent,
+                        dot: _accent,
                         zh: '送出前會先問你',
                         en: 'ASKS FIRST',
                         items: const [
@@ -269,7 +285,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
       children: [
         Container(
           width: double.infinity,
-          color: AnsibleDesign.paperElev,
+          color: _bgElev,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -287,11 +303,11 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                   const SizedBox(width: 10),
                   Text(
                     zh,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AnsibleDesign.serif,
                       fontSize: 15.5,
                       fontWeight: FontWeight.w600,
-                      color: AnsibleDesign.ink,
+                      color: _fg,
                     ),
                   ),
                 ],
@@ -303,18 +319,18 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
         for (final t in items)
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+                top: BorderSide(color: _ruleSoft, width: 0.5),
               ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             child: Text(
               '· $t',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AnsibleDesign.serif,
                 fontSize: 14.5,
-                color: AnsibleDesign.inkMuted,
+                color: _muted,
               ),
             ),
           ),
@@ -326,11 +342,11 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
     return Text(
       text,
       textAlign: center ? TextAlign.center : null,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: AnsibleDesign.mono,
         fontSize: 10.5,
         letterSpacing: 2,
-        color: AnsibleDesign.inkFaint,
+        color: _faint,
       ),
     );
   }
@@ -339,11 +355,11 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
   Widget _step(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: AnsibleDesign.mono,
         fontSize: 12,
         letterSpacing: 1.2,
-        color: AnsibleDesign.inkFaint,
+        color: _faint,
       ),
     );
   }
@@ -352,10 +368,10 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
   Widget _link(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: AnsibleDesign.sans,
         fontSize: 14,
-        color: AnsibleDesign.inkMuted,
+        color: _muted,
       ),
     );
   }
@@ -364,7 +380,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
     return SizedBox(
       width: double.infinity,
       child: Material(
-        color: AnsibleDesign.ink,
+        color: _fg,
         borderRadius: BorderRadius.circular(999),
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
@@ -376,11 +392,11 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AnsibleDesign.sans,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AnsibleDesign.paper,
+                    color: _bg,
                   ),
                 ),
                 if (trailing != null) ...[
@@ -390,7 +406,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     style: TextStyle(
                       fontFamily: AnsibleDesign.sans,
                       fontSize: 14,
-                      color: AnsibleDesign.paper.withValues(alpha: 0.7),
+                      color: _bg.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

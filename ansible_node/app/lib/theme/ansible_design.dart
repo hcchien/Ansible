@@ -314,10 +314,17 @@ class AnsibleMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AnsibleDesign.ink;
+    // Default to the theme's ink so the mark stays visible on the Ink ground;
+    // the trust dot keeps the accent, which reads on both.
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final c =
+        color ?? (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink);
     return CustomPaint(
       size: Size.square(size),
-      painter: _ElixMarkPainter(c, AnsibleDesign.accent),
+      painter: _ElixMarkPainter(
+        c,
+        dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent,
+      ),
     );
   }
 }
@@ -339,7 +346,11 @@ class ElixWordmark extends StatelessWidget {
         fontWeight: FontWeight.w800,
         height: 1,
         letterSpacing: -0.6,
-        color: color ?? AnsibleDesign.ink,
+        color:
+            color ??
+            (Theme.of(context).brightness == Brightness.dark
+                ? AnsibleDesign.darkInk
+                : AnsibleDesign.ink),
       ),
     );
   }

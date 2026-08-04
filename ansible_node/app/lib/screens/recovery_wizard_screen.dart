@@ -67,6 +67,15 @@ class RecoveryWizardScreen extends StatefulWidget {
 enum _Phase { input, working, recovered }
 
 class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
+  // Onboarding follows the app theme; these used to be fixed Paper constants,
+  // which left the screen light under the Ink theme.
+  bool get _dark => Theme.of(context).brightness == Brightness.dark;
+  Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+  Color get _muted =>
+      _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint =>
+      _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+
   final TextEditingController _blob = TextEditingController();
   final TextEditingController _passphrase = TextEditingController();
   _Phase _phase = _Phase.input;
@@ -231,10 +240,10 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
               'passphrase. We unlock your identity key on this device, '
               'generate a fresh device key for it, and re-anchor your account.',
         ),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           height: 1.5,
-          color: AnsibleDesign.inkMuted,
+          color: _muted,
         ),
       ),
       const SizedBox(height: 18),
@@ -302,10 +311,10 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
               zh: '沒有備份？用另一台裝置核可',
               en: 'No backup? Approve from another device',
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.sans,
               fontSize: 14,
-              color: AnsibleDesign.inkMuted,
+              color: _muted,
             ),
           ),
         ),
@@ -326,10 +335,10 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
         context.uiCopy(zh: '帳號已復原', en: 'Account recovered'),
         key: const Key('recovery_success_text'),
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          color: AnsibleDesign.ink,
+          color: _fg,
         ),
       ),
       const SizedBox(height: 12),
@@ -344,10 +353,10 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
               'recovered (it is never backed up).',
         ),
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           height: 1.5,
-          color: AnsibleDesign.inkMuted,
+          color: _muted,
         ),
       ),
       if (_recoveredDid != null) ...[
@@ -355,10 +364,10 @@ class _RecoveryWizardScreenState extends State<RecoveryWizardScreen> {
         Text(
           _recoveredDid!,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AnsibleDesign.mono,
             fontSize: 11,
-            color: AnsibleDesign.inkFaint,
+            color: _faint,
           ),
         ),
       ],
@@ -380,12 +389,16 @@ class _PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AnsibleDesign.accent,
+          backgroundColor: dark
+              ? AnsibleDesign.darkOchre
+              : AnsibleDesign.accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

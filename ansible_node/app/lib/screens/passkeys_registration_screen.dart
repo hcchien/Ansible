@@ -361,10 +361,29 @@ class _PasskeysRegistrationScreenState
     return context.uiCopy(zh: zh, en: en);
   }
 
+  // Onboarding follows the app theme. These used to be hard-coded Paper
+  // constants, which left the screen looking light under the Ink theme while
+  // theme-driven widgets (the handle field) correctly painted dark.
+  bool get _dark => Theme.of(context).brightness == Brightness.dark;
+  Color get _bg => _dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+  Color get _bgElev =>
+      _dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
+  Color get _fg => _dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+  Color get _muted =>
+      _dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+  Color get _faint =>
+      _dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+  Color get _rule => _dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+  Color get _ruleSoft =>
+      _dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+  Color get _accent => _dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
+  Color get _spore => _dark ? AnsibleDesign.darkMoss : AnsibleDesign.spore;
+  Color get _danger => _dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AnsibleDesign.paper,
+      backgroundColor: _bg,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -378,13 +397,13 @@ class _PasskeysRegistrationScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          children: const [
+                          children: [
                             Text(
                               '1 / 3',
                               style: TextStyle(
                                 fontFamily: AnsibleDesign.mono,
                                 fontSize: 10,
-                                color: AnsibleDesign.inkFaint,
+                                color: _faint,
                                 letterSpacing: 1.4,
                               ),
                             ),
@@ -394,16 +413,16 @@ class _PasskeysRegistrationScreenState
                               style: TextStyle(
                                 fontFamily: AnsibleDesign.mono,
                                 fontSize: 10,
-                                color: AnsibleDesign.inkFaint,
+                                color: _faint,
                                 letterSpacing: 1.4,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 36),
-                        const AnsibleMark(
+                        AnsibleMark(
                           size: 86,
-                          color: AnsibleDesign.accent,
+                          color: _accent,
                         ),
                         const SizedBox(height: 22),
                         const ElixWordmark(fontSize: 38),
@@ -413,10 +432,10 @@ class _PasskeysRegistrationScreenState
                             zh: '先建立身分，\n再開始社群。',
                             en: 'Create identity first,\nthen join the community.',
                           ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 23,
                             height: 1.5,
-                            color: AnsibleDesign.ink,
+                            color: _fg,
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -425,10 +444,10 @@ class _PasskeysRegistrationScreenState
                             zh: 'Elix 是重視身分的社群 App。你追蹤的人、訂閱的板、以及你發出的 Note 與 Murmur，會一起形成動態。',
                             en: 'Elix is an identity-centered social app. People you follow, boards you subscribe to, and your Notes and Murmurs form the feed together.',
                           ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             height: 1.7,
-                            color: AnsibleDesign.inkMuted,
+                            color: _muted,
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -436,16 +455,16 @@ class _PasskeysRegistrationScreenState
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: AnsibleDesign.rule,
+                              color: _rule,
                               width: 0.5,
                             ),
                             borderRadius: BorderRadius.circular(8),
-                            color: AnsibleDesign.paperElev,
+                            color: _bgElev,
                           ),
                           child: Column(
                             children: [
                               _PromiseRow(
-                                dot: AnsibleDesign.spore,
+                                dot: _spore,
                                 label: _copy(
                                   zh: '身分在你這裡',
                                   en: 'Identity stays with you',
@@ -458,7 +477,7 @@ class _PasskeysRegistrationScreenState
                               ),
                               const Divider(height: 1),
                               _PromiseRow(
-                                dot: AnsibleDesign.accent,
+                                dot: _accent,
                                 label: _copy(zh: '社群是首頁', en: 'Feed is home'),
                                 meta: 'FEED',
                                 body: _copy(
@@ -524,11 +543,11 @@ class _PasskeysRegistrationScreenState
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AnsibleDesign.danger.withValues(
+                              color: _danger.withValues(
                                 alpha: 0.08,
                               ),
                               border: Border.all(
-                                color: AnsibleDesign.danger.withValues(
+                                color: _danger.withValues(
                                   alpha: 0.25,
                                 ),
                                 width: 0.5,
@@ -537,8 +556,8 @@ class _PasskeysRegistrationScreenState
                             ),
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(
-                                color: AnsibleDesign.danger,
+                              style: TextStyle(
+                                color: _danger,
                               ),
                             ),
                           ),
@@ -549,11 +568,11 @@ class _PasskeysRegistrationScreenState
                 ),
                 Container(
                   padding: const EdgeInsets.fromLTRB(22, 12, 22, 14),
-                  decoration: const BoxDecoration(
-                    color: AnsibleDesign.paper,
+                  decoration: BoxDecoration(
+                    color: _bg,
                     border: Border(
                       top: BorderSide(
-                        color: AnsibleDesign.ruleSoft,
+                        color: _ruleSoft,
                         width: 0.5,
                       ),
                     ),
@@ -596,9 +615,9 @@ class _PasskeysRegistrationScreenState
                               zh: '已經有帳號？在這台裝置使用或復原',
                               en: 'Use or recover an existing account',
                             ),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
-                              color: AnsibleDesign.inkMuted,
+                              color: _muted,
                             ),
                           ),
                         ),
@@ -609,10 +628,10 @@ class _PasskeysRegistrationScreenState
                           zh: '重視身分的社群 App · 由 passkey 支撐',
                           en: 'Identity-centered social app · powered by passkeys',
                         ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 9,
-                          color: AnsibleDesign.inkFaint,
+                          color: _faint,
                           letterSpacing: 1.3,
                         ),
                       ),
@@ -650,9 +669,9 @@ class _PasskeysRegistrationScreenState
     ];
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border.symmetric(
-          horizontal: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+          horizontal: BorderSide(color: _ruleSoft, width: 0.5),
         ),
       ),
       child: Column(
@@ -673,8 +692,8 @@ class _PasskeysRegistrationScreenState
                   Icon(
                     isDone ? Icons.check_circle : Icons.circle_outlined,
                     color: isDone
-                        ? AnsibleDesign.spore
-                        : AnsibleDesign.inkFaint,
+                        ? _spore
+                        : _faint,
                     size: 14,
                   ),
                 const SizedBox(width: 10),
@@ -682,8 +701,8 @@ class _PasskeysRegistrationScreenState
                   s.label,
                   style: TextStyle(
                     color: isCurrent
-                        ? AnsibleDesign.ink
-                        : AnsibleDesign.inkMuted,
+                        ? _fg
+                        : _muted,
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 10,
                     letterSpacing: 1.1,
@@ -713,6 +732,11 @@ class _PromiseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final fg = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final faint = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+
     return Padding(
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -736,19 +760,16 @@ class _PromiseRow extends StatelessWidget {
                         label,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AnsibleDesign.ink,
-                        ),
+                        style: TextStyle(fontSize: 13, color: fg),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       meta,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AnsibleDesign.mono,
                         fontSize: 8.5,
-                        color: AnsibleDesign.inkFaint,
+                        color: faint,
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -757,11 +778,7 @@ class _PromiseRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    height: 1.55,
-                    color: AnsibleDesign.inkMuted,
-                  ),
+                  style: TextStyle(fontSize: 12, height: 1.55, color: muted),
                 ),
               ],
             ),
