@@ -60,10 +60,13 @@ assert.match(homeHtml, /登入後可簽署發文/);
 assert.match(homeHtml, /class="cols social-home mobile-focus-home"/);
 assert.match(homeHtml, /class="mobile-focus-stage"/);
 assert.match(homeHtml, /data-scene="personal"/);
-assert.match(homeHtml, /個人版/);
-assert.match(homeHtml, /討論區/);
-assert.match(homeHtml, /往左滑/);
-assert.match(homeHtml, /class="mobile-compose-fab"/);
+// The revised handoff drops the tab row above the feed: the home page is one
+// chronological stream, and each post carries its own source label instead.
+assert.doesNotMatch(homeHtml, /scene-switcher|select-scene|scene-help|swipe-coachmark|scene-track/);
+assert.doesNotMatch(homeHtml, /往左滑/);
+// Compose lives in the tab bar's centre key on mobile, so there is no
+// separate floating action button to collide with it.
+assert.doesNotMatch(homeHtml, /class="mobile-compose-fab"/);
 assert.match(homeHtml, /已訂閱看板/);
 assert.doesNotMatch(homeHtml, /Mira Lin|FROM A FOLLOW|關於信任的地形|MURMUR · 0:38|AI · 橫向橋/);
 assert.doesNotMatch(homeHtml, /工作階段/);
@@ -331,9 +334,9 @@ setCurrentLocale('en');
 
 const englishHomeHtml = renderPageBody(homeState.viewModel);
 assert.match(englishHomeHtml, /Available public sources/);
-assert.match(englishHomeHtml, /Swipe left/);
-assert.match(englishHomeHtml, /Forum/);
+assert.match(englishHomeHtml, /Boards/);
 assert.match(englishHomeHtml, /Open board/);
+assert.doesNotMatch(englishHomeHtml, /Swipe left/);
 assert.doesNotMatch(englishHomeHtml, /Mira Lin|FROM A FOLLOW|A terrain of trust|From past murmurs|個人版|討論區|往左滑|橫向橋|共鳴/);
 
 const englishSessionsHtml = renderPageBody(sessionsVm);
