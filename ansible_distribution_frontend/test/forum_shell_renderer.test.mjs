@@ -22,6 +22,9 @@ assert.match(header, /class="elix-mark"/);
 assert.match(header, /href="#\/boards"/);
 assert.match(header, /href="#\/about"/);
 assert.match(header, /匿名/);
+// The feed column carries no permission copy, so the header is the only place
+// that tells an anonymous visitor the session is read-only.
+assert.match(header, /唯讀/);
 assert.match(header, /登入/);
 assert.match(header, /找人、找討論板、找關鍵字/);
 assert.doesNotMatch(header, /class="header-action" href="#\/login"/);

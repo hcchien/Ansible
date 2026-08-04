@@ -51,8 +51,13 @@ const homeState = await runPublicHomeFlow(homeHarness);
 const homeHtml = renderPageBody(homeState.viewModel);
 assert.match(homeHtml, /Local Forum Host/);
 assert.match(homeHtml, /General/);
-assert.match(homeHtml, /唯讀/);
-assert.match(homeHtml, /Elix 是重視身分的社群 App/);
+// The handoff's feed column opens straight into the composer and the stream:
+// no page heading, kicker or blurb. The read-only state is carried by the
+// header's session pill instead — asserted in forum_shell_renderer.test.mjs.
+assert.doesNotMatch(homeHtml, /class="feed-head"/);
+assert.doesNotMatch(homeHtml, /Elix 是重視身分的社群 App/);
+// The heading survives for assistive tech, just not on screen.
+assert.match(homeHtml, /<h1 id="feed-title" class="visually-hidden">/);
 assert.match(homeHtml, /RELAY · BOARD · #general/);
 assert.match(homeHtml, /打開看板/);
 assert.match(homeHtml, /Note/);
