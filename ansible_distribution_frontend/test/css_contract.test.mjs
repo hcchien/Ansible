@@ -11,75 +11,98 @@ assert.match(
   /\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/s,
   'hidden elements must stay hidden even when component classes define display',
 );
+// Palette contract — the "Elix Web.html" handoff (bone paper / Ink).
 assert.match(
   css,
-  /--background:\s*#ffffff;/,
-  'Elix Web daylight background token is required',
+  /--background:\s*#F4F3EC;/,
+  'Elix Web bone-paper background token is required',
 );
 assert.match(
   css,
-  /--surface:\s*#ffffff;/,
-  'Elix Web white card surface token is required',
+  /--surface:\s*#FFFFFF;/,
+  'Elix Web white paper-sheet surface token is required',
 );
 assert.match(
   css,
-  /--surface-raised:\s*#f7f8fc;/,
-  'Elix Web daylight raised surface token is required',
+  /--surface-raised:\s*#ECEAE0;/,
+  'Elix Web soft surface token is required',
 );
 assert.match(
   css,
-  /--surface-deep:\s*#eef1f9;/,
-  'Elix Web daylight deep surface token is required',
+  /--surface-deep:\s*#E2DFD2;/,
+  'Elix Web deep surface token is required',
 );
 assert.match(
   css,
-  /--border:\s*#dfe3ee;/,
-  'Elix Web daylight rule token is required',
+  /--border:\s*#D8D3C4;/,
+  'Elix Web rule token is required',
 );
 assert.match(
   css,
-  /--muted-fill:\s*#eef1f9;/,
-  'Elix Web daylight muted fill token is required',
+  /--muted-fill:\s*#E2DFD2;/,
+  'Elix Web muted fill token is required',
 );
 assert.match(
   css,
-  /--accent:\s*#2550af;/,
-  'Elix cobalt accent token is required',
+  /--accent:\s*#C9AEEB;/,
+  'Elix lavender accent token is required',
 );
 assert.match(
   css,
-  /--lavender:\s*#c7b7f9;/,
-  'Elix lavender signal token is required',
+  /--lavender:\s*#2846A8;/,
+  'Elix deep-lavender signal token is required',
 );
 assert.match(
   css,
-  /--highlight:\s*#eee500;/,
+  /--highlight:\s*#EBE21C;/,
   'Elix citron highlight token is required',
 );
 assert.match(
   css,
-  /--warning:\s*#a86b00;/,
-  'Elix daylight warning token is required',
+  /--sky:\s*#6FB2E8;/,
+  'Elix sky secondary token is required',
 );
 assert.match(
   css,
-  /--danger:\s*#cc3b2e;/,
-  'Elix daylight danger token is required',
+  /--warning:\s*#9A4A24;/,
+  'Elix warning token is required',
 );
 assert.match(
   css,
-  /--success:\s*#17845c;/,
-  'Elix daylight success token is required',
+  /--danger:\s*#9A4A24;/,
+  'Elix danger token is required',
 );
 assert.match(
   css,
-  /--text:\s*#191919;/,
-  'Elix Web daylight text token is required',
+  /--text:\s*#2A2A0A;/,
+  'Elix Web warm-ink text token is required',
 );
 assert.match(
   css,
-  /--muted:\s*#55607a;/,
-  'Elix Web daylight muted text token is required',
+  /--muted:\s*#625F3C;/,
+  'Elix Web muted text token is required',
+);
+// Ink (dark) ground — the design's warm black, not a blue night.
+assert.match(
+  css,
+  /--background:\s*#17130A;/,
+  'Elix Ink background token is required',
+);
+// Design anatomy: the post card is a lane + body grid with an icon action row.
+assert.match(
+  css,
+  /\.post\s*\{[^}]*grid-template-columns:\s*44px minmax\(0,\s*1fr\);/s,
+  'post cards must use the design lane + body grid',
+);
+assert.match(
+  css,
+  /\.mobile-tab\.center\s*\{[^}]*background:\s*var\(--accent\);/s,
+  'the mobile tab bar must carry the design centre compose key',
+);
+assert.match(
+  css,
+  /\.rail-item\s*\{[^}]*display:\s*flex;/s,
+  'the left rail must use the design icon nav rows',
 );
 assert.match(
   css,
@@ -186,10 +209,12 @@ assert.match(
   /@media\s*\(max-width:\s*560px\)[\s\S]*\.mobile-tabbar\s*\{[^}]*display:\s*flex;/,
   'mobile breakpoint must reveal the Elix tab bar',
 );
-assert.match(
+// The handoff renders the tab bar on every mobile screen, the feed included,
+// so the home page must no longer suppress it.
+assert.doesNotMatch(
   css,
-  /@media\s*\(max-width:\s*560px\)[\s\S]*\.forum-shell\[data-page-id="home"\]\s+\.mobile-tabbar\s*\{[^}]*display:\s*none;/,
-  'mobile focus home must not show the legacy tab bar over the swipe scene',
+  /\.forum-shell\[data-page-id="home"\]\s+\.mobile-tabbar\s*\{[^}]*display:\s*none;/,
+  'the mobile tab bar must stay visible on the feed, per the design',
 );
 assert.match(
   css,
