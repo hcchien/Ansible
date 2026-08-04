@@ -1,4 +1,5 @@
 import 'package:ansible_node/screens/note_workspace_screen.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,7 +48,16 @@ void main() {
             widget is RichText && widget.text.toPlainText().contains(body),
       ),
     );
-    expect((bodyText.text as TextSpan).style?.fontSize, 17);
-    expect(tester.widget<Text>(find.text('← 草地')).style?.fontSize, 12.5);
+    // Assert against the design tokens rather than literals: the point is that
+    // the note body rides the reading size and the back link rides the nav
+    // size, so a deliberate retune of the scale does not read as a regression.
+    expect(
+      (bodyText.text as TextSpan).style?.fontSize,
+      AnsibleDesign.readingTextSize,
+    );
+    expect(
+      tester.widget<Text>(find.text('← 草地')).style?.fontSize,
+      AnsibleDesign.navTextSize,
+    );
   });
 }
