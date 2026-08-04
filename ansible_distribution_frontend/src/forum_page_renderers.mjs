@@ -70,14 +70,11 @@ function renderHome(viewModel, uiState = {}) {
     <section class="cols social-home mobile-focus-home" aria-labelledby="feed-title">
       ${renderLeftRail(viewModel, 'feed')}
       <section class="feed focus-feed" aria-labelledby="feed-title">
-        <div class="feed-head">
-          <div>
-            <p class="section-label">${escapeHtml(t('home.kicker'))}</p>
-            <h1 id="feed-title">${escapeHtml(t('home.title'))}</h1>
-            <p>${escapeHtml(t('home.subtitle'))}</p>
-          </div>
-          <span class="permission-copy">${renderPermissionLabel(viewModel)}</span>
-        </div>
+        <!-- The handoff's feed column carries no page heading — it opens
+             straight into the composer and the stream. The heading stays for
+             assistive tech, and the read-only state is already shown by the
+             session pill in the header. -->
+        <h1 id="feed-title" class="visually-hidden">${escapeHtml(t('home.title'))}</h1>
         ${renderMobileFocusStage(viewModel, boards, preferences)}
       </section>
       ${renderRightRail(viewModel, boards)}

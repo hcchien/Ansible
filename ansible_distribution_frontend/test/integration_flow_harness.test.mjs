@@ -28,7 +28,9 @@ const renderedHome = renderAppShell({
 });
 assert.match(renderedHome, /Local Forum Host/);
 assert.match(renderedHome, /匿名/);
-assert.match(renderedHome, /Elix 是重視身分的社群 App/);
+// The feed opens straight into the stream, so the session state reaches the
+// visitor through the header pill rather than a blurb above the posts.
+assert.match(renderedHome, /唯讀/);
 assert.match(renderedHome, /RELAY · BOARD · #general/);
 assert.doesNotMatch(renderedHome, /Anonymous|Read only|Sign in|Open board/);
 console.log('ok - runs public home flow');
