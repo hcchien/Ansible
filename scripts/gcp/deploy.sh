@@ -14,7 +14,7 @@
 #              APP_LINK_ANDROID_SHA256_CERTS ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS]
 #   appview:  RELAY_HOST
 #   issuer:   ISSUER_HOST TW_PROVIDER_AUTH_URL [TW_PROVIDER_AUDIENCE
-#              PASSPORT_VERIFIER_URL]
+#              PASSPORT_VERIFIER_URL PASSPORT_DID_RESOLVER_URL]
 #   verifier: no additional variables
 #   frontend: RELAY_HOST [APPVIEW_HOST UNIVERSAL_LINK_IOS_APP_IDS
 #              APP_LINK_ANDROID_PACKAGE APP_LINK_ANDROID_SHA256_CERTS]
@@ -200,7 +200,7 @@ case "$SERVICE" in
     ENV_VARS+=";TW_PROVIDER_AUDIENCE=${TW_PROVIDER_AUDIENCE:-trisaura-issuer}"
     ENV_VARS+=";VC_TTL_DAYS=${VC_TTL_DAYS:-90}"
     ENV_VARS+=";OTP_TTL_SECONDS=${OTP_TTL_SECONDS:-300}"
-    for OPT in PASSPORT_VERIFIER_URL PASSPORT_VERIFIER_AUDIENCE; do
+    for OPT in PASSPORT_VERIFIER_URL PASSPORT_VERIFIER_AUDIENCE PASSPORT_DID_RESOLVER_URL; do
       [ -z "${!OPT:-}" ] || ENV_VARS+=";${OPT}=${!OPT}"
     done
     # Pepper rotation: previous peppers stay valid for existing commitments.
@@ -236,7 +236,7 @@ case "$SERVICE" in
       --memory=2Gi \
       --cpu=2 \
       --timeout=120 \
-      --allow-unauthenticated
+      --no-allow-unauthenticated
     ;;
 
   frontend)

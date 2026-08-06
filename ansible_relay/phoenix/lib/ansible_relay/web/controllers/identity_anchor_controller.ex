@@ -92,7 +92,10 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
   def show(conn, %{"did" => did}) do
     case AnchorStore.get_active(did) do
       {:ok, object} ->
-        send_json(conn, 200, object)
+        # Consumers that must make a security decision (such as Issuer) need
+        # the byte-exact signed message, not an unauthenticated key cache.
+        # This is public identity material; it contains no passport data.
+        send_json(conn, 200, Map.put(object, "canonical_body", AnchorStore.canonical_body(object)))
 
       {:error, :not_found} ->
         send_json(conn, 404, %{error: "anchor_not_found"})

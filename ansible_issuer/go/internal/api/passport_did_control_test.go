@@ -16,13 +16,16 @@ func TestHTTPPassportDIDControlVerifierAcceptsOnlyCurrentHolderSignature(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	const did = "did:elix:abcdefghijklmnopqrstuvwxyz"
+	const handle = "alice.elix.cool"
+	did := deriveInitialDID(handle, hex.EncodeToString(publicKey), "hardware", "ed25519")
+	canonicalBody := `{"type":"io.trisaura.identity.anchor","did":"` + did + `"}`
+	anchorSignature := hex.EncodeToString(ed25519.Sign(privateKey, []byte(canonicalBody)))
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/identity/public-key/"+did {
+		if r.URL.Path != "/api/v1/identity/anchor/"+did {
 			t.Fatalf("unexpected resolver path %q", r.URL.Path)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"did": did, "public_key_hex": hex.EncodeToString(publicKey), "signing_algorithm": "ed25519",
+			"did": did, "handle": handle, "identity_key": hex.EncodeToString(publicKey), "identity_key_algorithm": "ed25519", "custody_class": "hardware", "reason": "initial", "prev_anchor_cid": nil, "canonical_body": canonicalBody, "sig": anchorSignature,
 		})
 	}))
 	defer server.Close()
