@@ -26,6 +26,10 @@ import 'package:integration_test/integration_test.dart';
 /// mounted directly with hand-seeded data so the run never waits on the network.
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  const tourHoldSeconds = int.fromEnvironment(
+    'SCREENSHOT_TOUR_HOLD_SECONDS',
+    defaultValue: 0,
+  );
 
   const me = 'did:plc:tris';
   const mira = 'did:plc:mira';
@@ -50,6 +54,9 @@ void main() {
 
   Future<void> shoot(WidgetTester tester, String name) async {
     await tester.pumpAndSettle();
+    if (tourHoldSeconds > 0) {
+      await tester.pump(Duration(seconds: tourHoldSeconds));
+    }
     await binding.takeScreenshot(name);
   }
 
@@ -348,12 +355,14 @@ void main() {
       );
     }
 
-    await seedPost('op', mira,
-        '關於默許可見、身分自主、社群健康的長對話。我們把座標交出去，換回了推薦——但那真的划算嗎？如果一個網路預設「先問過你」，它會長成什麼樣子？', 780);
-    await seedPost('r1', kr,
-        '便利往往是監控偽裝成的禮物。願意慢下來的人，才留得住自己的座標。', 660);
-    await seedPost('r2', me,
-        '刪掉社群帳號的第 47 天，第一次聽見自己的想法。這裡的安靜，是設計出來的。', 42);
+    await seedPost(
+      'op',
+      mira,
+      '關於默許可見、身分自主、社群健康的長對話。我們把座標交出去，換回了推薦——但那真的划算嗎？如果一個網路預設「先問過你」，它會長成什麼樣子？',
+      780,
+    );
+    await seedPost('r1', kr, '便利往往是監控偽裝成的禮物。願意慢下來的人，才留得住自己的座標。', 660);
+    await seedPost('r2', me, '刪掉社群帳號的第 47 天，第一次聽見自己的想法。這裡的安靜，是設計出來的。', 42);
 
     await tester.pumpWidget(
       harness(
@@ -407,9 +416,7 @@ void main() {
   });
 
   testWidgets('compose', (tester) async {
-    await tester.pumpWidget(
-      harness(const PostComposerScreen(authorDid: me)),
-    );
+    await tester.pumpWidget(harness(const PostComposerScreen(authorDid: me)));
     await shoot(tester, 'c01_compose');
   });
 

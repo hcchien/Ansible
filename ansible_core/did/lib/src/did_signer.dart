@@ -51,9 +51,13 @@ abstract class DidSigner {
 /// (never held in Dart memory longer than necessary).
 class DidSignerImpl implements DidSigner {
   final FlutterSecureStorage _secureStorage;
+  final bool _reuseAuthenticationContext;
 
-  DidSignerImpl({FlutterSecureStorage? secureStorage})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+  DidSignerImpl({
+    FlutterSecureStorage? secureStorage,
+    bool reuseAuthenticationContext = false,
+  }) : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+       _reuseAuthenticationContext = reuseAuthenticationContext;
 
   @override
   Future<Ed25519Signature> sign(List<int> message) async {
@@ -61,7 +65,10 @@ class DidSignerImpl implements DidSigner {
       key: 'ansible_identity_signing_algorithm',
     );
     if (algorithm == IdentityKeyAlgorithm.p256Sha256.wireName) {
-      final signature = await HardwareIdentityKey().sign(message);
+      final signature = await HardwareIdentityKey().sign(
+        message,
+        reuseAuthenticationContext: _reuseAuthenticationContext,
+      );
       return Ed25519Signature(signature.hex);
     }
     final privateKeyHex = await _secureStorage.read(

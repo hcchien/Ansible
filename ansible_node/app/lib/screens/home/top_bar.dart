@@ -175,7 +175,6 @@ class HomeTopBar extends StatelessWidget {
                         localeController: localeController,
                         readingPreferencesController:
                             readingPreferencesController,
-                        onClearIdentity: onClearIdentity,
                         personalScreenStyle: personalScreenStyle,
                         forumScreenStyle: forumScreenStyle,
                         boardMotion: boardMotion,

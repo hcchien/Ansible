@@ -31,6 +31,7 @@ import 'services/platform_capabilities.dart';
 import 'services/app_locale_controller.dart';
 import 'services/backup_policy_service.dart';
 import 'services/canonical_identity_store.dart';
+import 'services/local_identity_reset_service.dart';
 import 'services/elix_content_link.dart';
 import 'services/elix_content_router.dart';
 import 'services/error_reporter.dart';
@@ -259,12 +260,18 @@ class _BootErrorApp extends StatelessWidget {
                   const SizedBox(height: 12),
                   SelectableText(
                     '$error',
-                    style: const TextStyle(color: AnsibleDesign.darkInk, fontSize: 14),
+                    style: const TextStyle(
+                      color: AnsibleDesign.darkInk,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SelectableText(
                     '$stack',
-                    style: const TextStyle(color: AnsibleDesign.darkInkMuted, fontSize: 11),
+                    style: const TextStyle(
+                      color: AnsibleDesign.darkInkMuted,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -289,10 +296,7 @@ Future<void> _resetLocalIdentityIfRequested() async {
   const reset = AppEnvironment.resetLocalIdentityOnStart;
   if (!reset) return;
 
-  await const SecureCanonicalIdentityStore().delete();
-  await DidPlcManagerImpl().deleteDid();
-  await PasskeysManagerImpl().delete();
-  await DidManagerImpl().delete();
+  await LocalIdentityResetService().eraseLocalIdentity();
 }
 
 class MyApp extends StatefulWidget {

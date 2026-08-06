@@ -126,6 +126,57 @@ void main() {
     );
   });
 
+  test('coalesces concurrent authorization into one passkey prompt', () async {
+    final platform = _FakeWebAuthnPlatform();
+    var optionCalls = 0;
+    var exchangeCalls = 0;
+    final service = SyncCapabilityService(
+      baseUrl: 'https://relay.example',
+      holderDid: 'did:elix:alice',
+      platform: platform,
+      didSigner: _FakeDidSigner(),
+      client: MockClient((request) async {
+        switch (request.url.path) {
+          case '/api/v2/webauthn/authenticate/options':
+            optionCalls += 1;
+            return _json({
+              'challenge_id': 'auth-1',
+              'publicKey': {
+                'challenge': 'YXV0aA',
+                'rpId': 'elix.cool',
+                'allowCredentials': [
+                  {'type': 'public-key', 'id': 'Y3JlZA'},
+                ],
+                'userVerification': 'required',
+              },
+            });
+          case '/api/v2/webauthn/authenticate/exchange':
+            exchangeCalls += 1;
+            return _json({'token': 'capability-token', 'expires_in': 300});
+        }
+        return http.Response('not found', 404);
+      }),
+      now: () => DateTime.utc(2026, 7, 27),
+    );
+
+    final capabilities = await Future.wait([
+      service.authorize(),
+      service.authorize(),
+    ]);
+
+    expect(
+      capabilities.map((item) => item.token),
+      everyElement('capability-token'),
+    );
+    expect(optionCalls, 1);
+    expect(exchangeCalls, 1);
+    expect(platform.authenticateCalls, 1);
+
+    final cached = await service.authorize();
+    expect(cached.token, 'capability-token');
+    expect(platform.authenticateCalls, 1);
+  });
+
   test(
     'reports an empty Relay response without leaking a JSON parser error',
     () async {

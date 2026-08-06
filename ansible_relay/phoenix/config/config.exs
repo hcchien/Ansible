@@ -40,6 +40,7 @@ config :ansible_relay, :activity_pub_private_key_pem, nil
 config :ansible_relay, :identity_write_algorithms, ["p256-sha256"]
 config :ansible_relay, :webauthn_rp_id, "elix.cool"
 config :ansible_relay, :webauthn_origin, "https://elix.cool"
+config :ansible_relay, :identity_handle_domain, "elix.cool"
 config :ansible_relay, :webauthn_sync_capability_required, false
 # Overridden by an operator-controlled secret in production.
 config :ansible_relay, :sync_capability_secret, "dev-only-sync-capability-secret"

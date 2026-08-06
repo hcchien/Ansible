@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Capture the current app screens on an iOS simulator and write a PNG per screen
 # to design/current-screens/ (ready to drop into Claude design for style work).
+# Set SCREENSHOT_OUTPUT_DIR to capture an additional set without overwriting the
+# default design-reference images.
 #
 # Mounts each real screen with seeded zh-Hant data via integration_test, so the
 # run never waits on the network or a registered identity. A background watchdog
@@ -8,12 +10,16 @@
 # same issue install_ios_staging_release.sh --watchdog-clang-probe handles).
 #
 # Usage: IOS_SIM_ID=<udid> ./scripts/capture_screens.sh
+#        SCREENSHOT_OUTPUT_DIR=../../design/app-store-screenshots/iphone \
+#          IOS_SIM_ID=<udid> ./scripts/capture_screens.sh
 #        (defaults to the iPhone 13 Pro simulator if IOS_SIM_ID is unset)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 SIM_ID="${IOS_SIM_ID:-159D7590-D192-4A72-9A7A-EAD1ACC34437}"
+SCREENSHOT_OUTPUT_DIR="${SCREENSHOT_OUTPUT_DIR:-../../design/current-screens}"
+TOUR_HOLD_SECONDS="${TOUR_HOLD_SECONDS:-0}"
 
 echo "Booting simulator $SIM_ID ..."
 xcrun simctl boot "$SIM_ID" 2>/dev/null || true
@@ -36,10 +42,17 @@ open -a Simulator >/dev/null 2>&1 || true
 WATCHDOG_PID=$!
 trap 'kill "$WATCHDOG_PID" 2>/dev/null || true' EXIT
 
-flutter drive \
+drive_args=(
   --driver=test_driver/screenshot_driver.dart \
   --target=integration_test/screens_tour.dart \
   -d "$SIM_ID"
+)
 
-echo "Screens written to design/current-screens/"
-ls -1 ../../design/current-screens/*.png
+if [[ "$TOUR_HOLD_SECONDS" != "0" ]]; then
+  drive_args+=("--dart-define=SCREENSHOT_TOUR_HOLD_SECONDS=$TOUR_HOLD_SECONDS")
+fi
+
+flutter drive "${drive_args[@]}"
+
+echo "Screens written to $SCREENSHOT_OUTPUT_DIR"
+ls -1 "$SCREENSHOT_OUTPUT_DIR"/*.png

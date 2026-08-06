@@ -88,19 +88,45 @@ class SyncCapabilityService {
   final PlatformCapabilities _platformCapabilities;
 
   SyncCapability? _cached;
+  Future<SyncCapability>? _authorizationInFlight;
 
-  Future<SyncCapability> authorize({bool allowEnrollment = true}) async {
+  Future<SyncCapability> authorize({bool allowEnrollment = true}) {
     if (!_platformCapabilities.webAuthn) {
-      throw const SyncCapabilityException(409, 'webauthn_unavailable');
+      return Future.error(
+        const SyncCapabilityException(409, 'webauthn_unavailable'),
+      );
     }
     final cached = _cached;
     if (cached != null &&
         cached.expiresAt.isAfter(
           _now().toUtc().add(const Duration(seconds: 15)),
         )) {
-      return cached;
+      return Future.value(cached);
     }
 
+    final inFlight = _authorizationInFlight;
+    if (inFlight != null) return inFlight;
+
+    final authorization = _authorizeUncached(allowEnrollment: allowEnrollment);
+    _authorizationInFlight = authorization;
+    void clearInFlight() {
+      if (identical(_authorizationInFlight, authorization)) {
+        _authorizationInFlight = null;
+      }
+    }
+
+    // Avoid `whenComplete` here because it creates a second failing Future
+    // when authorization fails, even if the caller handles the original.
+    authorization.then<void>(
+      (_) => clearInFlight(),
+      onError: (Object _, StackTrace _) => clearInFlight(),
+    );
+    return authorization;
+  }
+
+  Future<SyncCapability> _authorizeUncached({
+    required bool allowEnrollment,
+  }) async {
     Map<String, dynamic> challenge;
     try {
       challenge = await _post('/api/v2/webauthn/authenticate/options', {

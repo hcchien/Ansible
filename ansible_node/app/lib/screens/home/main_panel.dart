@@ -497,7 +497,6 @@ class MainPanel extends StatelessWidget {
                               localeController: localeController,
                               readingPreferencesController:
                                   readingPreferencesController,
-                              onClearIdentity: onClearIdentity,
                               personalScreenStyle:
                                   screenStyles[ElixTab.feed] ??
                                   ElixScreenStyle.ink,

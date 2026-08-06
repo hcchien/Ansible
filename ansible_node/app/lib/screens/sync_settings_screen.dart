@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:ansible_did/ansible_did.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
+import '../l10n/user_facing_error.dart';
 import '../services/content_publication_service.dart';
 import '../services/relay_discovery_client.dart';
 import '../services/app_sync_service.dart';
@@ -20,6 +22,7 @@ import '../services/notification_projector.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
 import '../services/relay_reputation_presentation_service.dart';
+import '../services/relay_identity_bootstrap_service.dart';
 import '../services/user_presence_verifier.dart';
 import '../services/sync_capability_service.dart';
 import '../services/platform_capabilities.dart';
@@ -101,6 +104,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   bool _shownInitialForumHostDialog = false;
   final Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
   final Map<String, String> _syncCapabilitiesByNode = {};
+  final Map<String, SyncCapabilityService> _syncCapabilityServices = {};
   String? _expandedNodeId;
 
   @override
@@ -489,17 +493,25 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     bool showSnackBar = true,
     bool publishPublicContent = true,
     bool requireUserPresence = true,
+    bool reuseHardwareAuthenticationContext = false,
   }) async {
+    HardwareAuthenticationSession? hardwareAuthenticationSession;
     if (requireUserPresence) {
-      final authenticated =
-          await (widget.userPresenceVerifier ??
-                  LocalDeviceUserPresenceVerifier())
-              .verify(
-                reason: context.uiCopy(
-                  zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
-                  en: 'Authenticate to sync and sign pending uploads.',
-                ),
-              );
+      final authenticationReason = context.uiCopy(
+        zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
+        en: 'Authenticate to sync and sign pending uploads.',
+      );
+      final verifier = widget.userPresenceVerifier;
+      final authenticated = verifier == null
+          ? (hardwareAuthenticationSession =
+                        await HardwareAuthenticationSession.begin(
+                          localizedReason: authenticationReason,
+                        )) !=
+                    null ||
+                await LocalDeviceUserPresenceVerifier().verify(
+                  reason: authenticationReason,
+                )
+          : await verifier.verify(reason: authenticationReason);
       if (!authenticated) {
         if (mounted && showSnackBar) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -515,7 +527,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         }
         return SyncResult.failure(errorMessage: 'device_auth_cancelled');
       }
+      reuseHardwareAuthenticationContext =
+          hardwareAuthenticationSession != null;
     }
+    final syncDidSigner = DidSignerImpl(
+      reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+    );
     setState(() {
       _syncingNodes[node.id] = true;
     });
@@ -525,8 +542,14 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       if (node.accessToken != null) {
         client.setAccessToken(node.accessToken);
       }
+      // A freshly installed production app may retain its Keychain DID while
+      // the selected Relay has no verified-DID row yet. Establish it before
+      // requesting a sync capability, otherwise the Relay correctly fails
+      // closed with 401 unverified_did.
+      await _ensureRelayIdentity(node, syncDidSigner);
       final boardAccess = BoardAccessPresentationService(
         walletRepository: DriftWalletRepository(widget.db),
+        didSigner: syncDidSigner,
       );
       final boardCapabilities = <String, BoardAccessCapability>{};
       final preparedPrivateBoards = <String>{};
@@ -564,6 +587,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               ),
               boardId: board.hostedBoardId,
               action: 'read',
+              reuseAuthenticationContext: reuseHardwareAuthenticationContext,
             );
             boardCapabilities[board.hostedBoardId] = capability;
           }
@@ -587,9 +611,11 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             await keyClient.registerDevice(
               capability: capability,
               publicKeyHex: publicKey.publicKeyHex,
+              reuseAuthenticationContext: reuseHardwareAuthenticationContext,
             );
             final envelope = await keyClient.currentEnvelope(
               capability: capability,
+              reuseAuthenticationContext: reuseHardwareAuthenticationContext,
             );
             if (envelope.epoch != board.encryptionEpoch ||
                 envelope.policyVersion != board.accessPolicyVersion) {
@@ -603,6 +629,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             method: 'GET',
             requestUri: requestUri,
             scope: 'read',
+            reuseAuthenticationContext: reuseHardwareAuthenticationContext,
           );
         },
       );
@@ -610,16 +637,23 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       final result = await syncService.syncFromNode(client, node);
       String? capabilityToken;
       if (_capabilities.webAuthn) {
-        final capability = await SyncCapabilityService(
-          baseUrl: node.url,
-          holderDid: widget.localDid,
-          platformCapabilities: _capabilities,
-        ).authorize();
+        final capability = await _syncCapabilityServices
+            .putIfAbsent(
+              '${widget.localDid}\u0000${node.url}',
+              () => SyncCapabilityService(
+                baseUrl: node.url,
+                holderDid: widget.localDid,
+                platformCapabilities: _capabilities,
+                didSigner: syncDidSigner,
+              ),
+            )
+            .authorize();
         capabilityToken = capability.token;
         _syncCapabilitiesByNode[node.id] = capability.token;
         await RelayReputationPresentationService(
           walletRepository: DriftWalletRepository(widget.db),
           reputationRepository: DriftDidReputationRepository(widget.db),
+          didSigner: syncDidSigner,
         ).present(holderDid: widget.localDid, node: node);
       }
       final publishSummary = publishPublicContent && capabilityToken != null
@@ -627,6 +661,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               () => _publishPublicContent(
                 showSnackBar: false,
                 syncCapability: capabilityToken,
+                didSigner: syncDidSigner,
               ),
             )
           : PublicPublishSummary(
@@ -681,27 +716,113 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              SubpageL10n.of(
-                context,
-              ).f('syncNodeError', {'name': node.name, 'error': '$e'}),
+              SubpageL10n.of(context).f('syncNodeError', {
+                'name': node.name,
+                'error': userFacingError(context, e),
+              }),
             ),
             backgroundColor: Colors.red,
           ),
         );
       }
       return SyncResult.failure(errorMessage: e.toString());
+    } finally {
+      await hardwareAuthenticationSession?.close();
+    }
+  }
+
+  /// A Relay-local handle is presentation and routing data, not the DID. If a
+  /// new Relay space already owns the suggested name, keep the existing DID
+  /// and let the user choose another name for that one Relay only.
+  Future<void> _ensureRelayIdentity(RemoteNode node, DidSigner signer) async {
+    String? preferredHandleSuffix;
+    while (true) {
+      try {
+        await RelayIdentityBootstrapService.ensureVerified(
+          did: widget.localDid,
+          baseUrl: node.url,
+          signer: signer,
+          preferredHandleSuffix: preferredHandleSuffix,
+        );
+        return;
+      } on RelayHandleConflict catch (conflict) {
+        final selected = await _chooseRelayHandle(
+          node: node,
+          suggestedSuffix: conflict.suggestedSuffix,
+        );
+        if (selected == null) {
+          throw StateError('relay_handle_selection_cancelled');
+        }
+        preferredHandleSuffix = selected;
+      }
+    }
+  }
+
+  Future<String?> _chooseRelayHandle({
+    required RemoteNode node,
+    required String suggestedSuffix,
+  }) async {
+    final controller = TextEditingController(text: suggestedSuffix);
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(
+            dialogContext.uiCopy(
+              zh: '設定此 Relay 的名稱',
+              en: 'Choose a name for this Relay',
+            ),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: dialogContext.uiCopy(zh: '帳號名稱', en: 'Handle'),
+              helperText: dialogContext.uiCopy(
+                zh: '「${node.name}」已有此名稱；你的 DID、內容與憑證不會改變。',
+                en: 'That name is taken on ${node.name}. Your DID, content, and credentials will not change.',
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(dialogContext.uiCopy(zh: '取消同步', en: 'Cancel sync')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(
+                dialogContext,
+              ).pop(controller.text.trim().toLowerCase()),
+              child: Text(
+                dialogContext.uiCopy(zh: '使用此名稱', en: 'Use this name'),
+              ),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
     }
   }
 
   Future<void> _syncAllNodes() async {
-    final authenticated =
-        await (widget.userPresenceVerifier ?? LocalDeviceUserPresenceVerifier())
-            .verify(
-              reason: context.uiCopy(
-                zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
-                en: 'Authenticate to sync and sign pending uploads.',
-              ),
-            );
+    final authenticationReason = context.uiCopy(
+      zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
+      en: 'Authenticate to sync and sign pending uploads.',
+    );
+    HardwareAuthenticationSession? hardwareAuthenticationSession;
+    final verifier = widget.userPresenceVerifier;
+    final authenticated = verifier == null
+        ? (hardwareAuthenticationSession =
+                      await HardwareAuthenticationSession.begin(
+                        localizedReason: authenticationReason,
+                      )) !=
+                  null ||
+              await LocalDeviceUserPresenceVerifier().verify(
+                reason: authenticationReason,
+              )
+        : await verifier.verify(reason: authenticationReason);
     if (!authenticated) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -716,48 +837,61 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       );
       return;
     }
-    var pulledActivities = 0;
-    final pullErrors = <String>[];
-    for (final node in _remoteNodes) {
-      if (node.isActive) {
-        final result = await _performSync(
-          node,
-          showSnackBar: false,
-          publishPublicContent: false,
-          requireUserPresence: false,
-        );
-        if (result.success) {
-          pulledActivities += result.activitiesProcessed;
-        } else {
-          pullErrors.add('${node.name}: ${result.errorMessage}');
+    try {
+      final reuseHardwareAuthenticationContext =
+          hardwareAuthenticationSession != null;
+      final syncDidSigner = DidSignerImpl(
+        reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+      );
+      var pulledActivities = 0;
+      final pullErrors = <String>[];
+      for (final node in _remoteNodes) {
+        if (node.isActive) {
+          final result = await _performSync(
+            node,
+            showSnackBar: false,
+            publishPublicContent: false,
+            requireUserPresence: false,
+            reuseHardwareAuthenticationContext:
+                reuseHardwareAuthenticationContext,
+          );
+          if (result.success) {
+            pulledActivities += result.activitiesProcessed;
+          } else {
+            pullErrors.add('${node.name}: ${result.errorMessage}');
+          }
         }
       }
+      final publishSummary = _capabilities.webAuthn
+          ? await bestEffortPublicPublish(
+              () => _publishPublicContent(
+                showSnackBar: false,
+                syncCapability: _activeSyncCapability(),
+                didSigner: syncDidSigner,
+              ),
+            )
+          : const PublicPublishSummary(
+              publicItems: 0,
+              skippedReasons: {'webauthnUnavailable'},
+            );
+      if (!mounted) return;
+      final message = _syncAllSummaryMessage(
+        pulledActivities: pulledActivities,
+        pullErrors: pullErrors,
+        publishSummary: publishSummary,
+      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      await hardwareAuthenticationSession?.close();
     }
-    final publishSummary = _capabilities.webAuthn
-        ? await bestEffortPublicPublish(
-            () => _publishPublicContent(
-              showSnackBar: false,
-              syncCapability: _activeSyncCapability(),
-            ),
-          )
-        : const PublicPublishSummary(
-            publicItems: 0,
-            skippedReasons: {'webauthnUnavailable'},
-          );
-    if (!mounted) return;
-    final message = _syncAllSummaryMessage(
-      pulledActivities: pulledActivities,
-      pullErrors: pullErrors,
-      publishSummary: publishSummary,
-    );
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<PublicPublishSummary> _publishPublicContent({
     bool showSnackBar = true,
     String? syncCapability,
+    DidSigner? didSigner,
   }) async {
     final publicItems = (await _contentItemRepo.list())
         .where((item) => isPublishableContentForDid(item, widget.localDid))
@@ -781,6 +915,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       remoteNodes: _remoteNodeRepo,
       keyStore: _nostrKeyStore,
       signingBridge: const SchnorrSigningBridge(),
+      didSigner: didSigner,
       relayPublicationClient: HttpRelayPublicationClient(
         accessToken: syncCapability ?? _activeSyncCapability(),
       ),

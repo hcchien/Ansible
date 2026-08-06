@@ -132,23 +132,16 @@ class FediversePreferencesController extends ChangeNotifier {
        _signer = signer ?? DidSignerImpl(),
        _client = client ?? http.Client(),
        _verifiedHumanPresenter = verifiedHumanPresenter,
-       _syncCapabilityProvider =
-           syncCapabilityProvider ??
-           ((node) async {
-             final capability = await SyncCapabilityService(
-               baseUrl: node.url,
-               holderDid: did,
-             ).authorize();
-             return capability.token;
-           });
+       _syncCapabilityProvider = syncCapabilityProvider;
 
   final String did;
   final RemoteNodeRepository remoteNodes;
   final FediversePreferencesStore _store;
   final DidSigner _signer;
   final http.Client _client;
-  final FediverseSyncCapabilityProvider _syncCapabilityProvider;
+  final FediverseSyncCapabilityProvider? _syncCapabilityProvider;
   final FediverseVerifiedHumanPresenter? _verifiedHumanPresenter;
+  final Map<String, SyncCapabilityService> _syncCapabilityServices = {};
 
   FediversePreferences preferences = const FediversePreferences();
   bool loaded = false;
@@ -174,7 +167,7 @@ class FediversePreferencesController extends ChangeNotifier {
       }
       final requestedAt = DateTime.now().toUtc().toIso8601String();
       const reason = 'user_requested';
-      final capability = await _syncCapabilityProvider(node);
+      final capability = await _syncCapability(node);
       final payload = jsonEncode([
         did,
         'delete_fediverse_account',
@@ -246,7 +239,7 @@ class FediversePreferencesController extends ChangeNotifier {
       final signature = await _signer.sign(
         utf8.encode(_signingPayload(normalized)),
       );
-      final capability = await _syncCapabilityProvider(node);
+      final capability = await _syncCapability(node);
       final body = {
         'did': did,
         ...normalized.toJson(),
@@ -293,6 +286,20 @@ class FediversePreferencesController extends ChangeNotifier {
     value.blockedActors,
     value.revision,
   ]);
+
+  Future<String> _syncCapability(RemoteNode node) async {
+    final override = _syncCapabilityProvider;
+    if (override != null) return override(node);
+    final service = _syncCapabilityServices.putIfAbsent(
+      '$did\u0000${node.url}',
+      () => SyncCapabilityService(
+        baseUrl: node.url,
+        holderDid: did,
+        didSigner: _signer,
+      ),
+    );
+    return (await service.authorize()).token;
+  }
 
   static List<String> _domains(List<String> values) =>
       values

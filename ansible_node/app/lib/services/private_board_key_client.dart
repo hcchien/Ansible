@@ -47,6 +47,7 @@ class PrivateBoardKeyClient {
   Future<PrivateBoardDeviceKey> registerDevice({
     required BoardAccessCapability capability,
     required String publicKeyHex,
+    bool reuseAuthenticationContext = false,
   }) async {
     final uri = _base.resolve('device-keys');
     final response = await _http.post(
@@ -58,6 +59,7 @@ class PrivateBoardKeyClient {
           method: 'POST',
           requestUri: uri,
           scope: 'key:read',
+          reuseAuthenticationContext: reuseAuthenticationContext,
         ),
       },
       body: jsonEncode({'agreement_public_key_hex': publicKeyHex}),
@@ -94,6 +96,7 @@ class PrivateBoardKeyClient {
 
   Future<BoardEpochKeyEnvelope> currentEnvelope({
     required BoardAccessCapability capability,
+    bool reuseAuthenticationContext = false,
   }) async {
     final uri = _base.resolve('epochs/current/envelope');
     final response = await _http.get(
@@ -103,6 +106,7 @@ class PrivateBoardKeyClient {
         method: 'GET',
         requestUri: uri,
         scope: 'key:read',
+        reuseAuthenticationContext: reuseAuthenticationContext,
       ),
     );
     return BoardEpochKeyEnvelope.fromJson(

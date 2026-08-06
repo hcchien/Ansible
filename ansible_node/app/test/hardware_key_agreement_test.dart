@@ -92,6 +92,24 @@ void main() {
     expect(aliases, everyElement(isNot(contains('board-b'))));
   });
 
+  test('hardware signing forwards reusable authentication context', () async {
+    MethodCall? captured;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          captured = call;
+          return <String, Object?>{'signature_hex': '30${'55' * 70}'};
+        });
+
+    await HardwareIdentityKey().sign(const [
+      1,
+      2,
+      3,
+    ], reuseAuthenticationContext: true);
+
+    expect(captured?.method, 'sign');
+    expect(captured?.arguments['reuse_authentication_context'], isTrue);
+  });
+
   test('board holder signing keys are hardware-only and unlinkable', () async {
     final aliases = <String>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
