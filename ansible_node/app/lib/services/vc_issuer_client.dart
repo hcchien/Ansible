@@ -240,22 +240,20 @@ class VcIssuerClient {
     required String challengeId,
     required String challengeNonce,
     required String nationality,
-    required String nationalIdHash,
-    required String passportNumberHash,
     required String zkpProof,
     required String zkpCircuitVersion,
     required String verificationKeyHash,
+    required String holderSignature,
   }) async {
     final body = await _postJson('/api/v1/vc/passport/issue', {
       'did': did,
       'challenge_id': challengeId,
       'challenge_nonce': challengeNonce,
       'nationality': nationality,
-      'national_id_hash': nationalIdHash,
-      'passport_number_hash': passportNumberHash,
       'zkp_proof': zkpProof,
       'zkp_circuit_version': zkpCircuitVersion,
       'verification_key_hash': verificationKeyHash,
+      'holder_signature': holderSignature,
     });
     final credentials = body['credentials'] as List<dynamic>? ?? const [];
     return credentials

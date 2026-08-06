@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:ansible_store/ansible_store.dart';
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_vc/ansible_vc.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -478,16 +480,38 @@ class _PassportNfcCredentialPanelState
       if (!mounted) return;
       _stopProofProgressTicker();
       setState(() => _submittingToIssuer = true);
+      final verificationKeyHash = 'sha256:${passportProof.vkHash}';
+      // The passport proof binds this DID in ZK.  This second signature proves
+      // that the device submitting the proof controls that DID key, preventing
+      // a valid proof from being attached to another person's account.
+      final holderSignature = await (DidSignerImpl()).sign(
+        utf8.encode(
+          jsonEncode(<String, String>{
+            'protocol': 'elix-passport-issuance-v1',
+            'action': 'issue',
+            'did': widget.holderDid,
+            'challenge_id': challenge.challengeId,
+            'challenge_nonce': challenge.nonce,
+            'issuer': challenge.issuer.toString(),
+            'scope': challenge.scope,
+            'nationality': data.nationality,
+            'zkp_proof_sha256': sha256
+                .convert(utf8.encode(passportProof.proofHex))
+                .toString(),
+            'zkp_circuit_version': ZkpProof.kCircuitVersion,
+            'verification_key_hash': verificationKeyHash,
+          }),
+        ),
+      );
       final vcJsonList = await _vcIssuerClient.issuePassportCredential(
         did: widget.holderDid,
         challengeId: challenge.challengeId,
         challengeNonce: challenge.nonce,
         nationality: data.nationality,
-        nationalIdHash: passportProof.nationalIdHash,
-        passportNumberHash: passportProof.passportNumberHash,
         zkpProof: passportProof.proofHex,
         zkpCircuitVersion: ZkpProof.kCircuitVersion,
-        verificationKeyHash: 'sha256:${passportProof.vkHash}',
+        verificationKeyHash: verificationKeyHash,
+        holderSignature: holderSignature.hex,
       );
       final credentials = vcJsonList
           .map(

@@ -71,6 +71,12 @@ suspect was ever exposed.
       Cloud KMS does not offer Ed25519 with HSM protection; its software
       protection still keeps private key material non-exportable and retains
       the `eddsa-jcs-2022` verification suite.
+- [ ] Passport NFC issuance (only after its device-security tests pass): set
+      `PASSPORT_VERIFIER_URL` to the **private** verifier service and set
+      `PASSPORT_DID_RESOLVER_URL="https://$RELAY_HOST"`. Issuer refuses to
+      start if only one is set. The verifier must use Cloud Run IAM and grant
+      `roles/run.invoker` exclusively to the Issuer workload service account;
+      never use `--allow-unauthenticated` for this service.
 - [ ] ZKP verification keys: leave `ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS` unset.
       The relay's prod boot overrides the dev placeholders in `config.exs` with
       an empty (disabled, fail-closed) registry, and rejects placeholder or
@@ -175,7 +181,10 @@ These fail closed in production. Going live means accepting them explicitly:
   configure until the real adapter is implemented
   ([`tw_provider_issuer_deployment.md`](tw_provider_issuer_deployment.md)).
 - **Passport issuance returns 503** (`passport_verifier_unconfigured`): no real
-  ZKP/NFC PassportBindingVerifier exists; deliberately unconfigured.
+  ZKP/NFC PassportBindingVerifier exists; deliberately unconfigured until the
+  private verifier IAM, DID-control signature check, and real-device NFC test
+  all pass. Do not set `PASSPORT_VERIFIER_URL` without
+  `PASSPORT_DID_RESOLVER_URL`.
 - **Relay ZKP verification path disabled** (step 2): prod boots with an empty
   verification-key registry until audited circuit keys are supplied.
 - **MobileMoica RP stays disabled** (`MOBILEMOICA_RP_ENABLED` unset) until its

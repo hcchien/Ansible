@@ -75,6 +75,9 @@ export async function verifyPassportRequest(input) {
 
   return {
     verified: true,
+    // Lets Issuer reject a response that belongs to another challenge even if
+    // a transport or service-routing fault returns a syntactically valid body.
+    challenge_binding: binding,
     nationality: disclosedNationality,
     age_over_18: ageOver18.result,
     ...bindings,
