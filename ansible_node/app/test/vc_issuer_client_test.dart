@@ -370,7 +370,7 @@ void main() {
 
   group('VcIssuerClient passport flow', () {
     test(
-      'issuePassportCredential posts personhood hashes and proof fields',
+      'issuePassportCredential posts proof and holder-control fields',
       () async {
         final client = VcIssuerClient(
           baseUrl: 'http://issuer.test',
@@ -383,11 +383,10 @@ void main() {
               'challenge_id': 'challenge-1',
               'challenge_nonce': 'nonce-1',
               'nationality': 'TWN',
-              'national_id_hash': 'national-id-hash-abc123',
-              'passport_number_hash': 'passport-number-hash-abc123',
               'zkp_proof': 'proof-abc123',
               'zkp_circuit_version': 'passport_v1_groth16_bn254',
               'verification_key_hash': 'sha256:vk-hash-abc123',
+              'holder_signature': 'holder-signature',
             });
             expect(body.keys, isNot(contains('verified')));
             expect(body.keys, isNot(contains('passport_uid')));
@@ -411,11 +410,10 @@ void main() {
           challengeId: 'challenge-1',
           challengeNonce: 'nonce-1',
           nationality: 'TWN',
-          nationalIdHash: 'national-id-hash-abc123',
-          passportNumberHash: 'passport-number-hash-abc123',
           zkpProof: 'proof-abc123',
           zkpCircuitVersion: 'passport_v1_groth16_bn254',
           verificationKeyHash: 'sha256:vk-hash-abc123',
+          holderSignature: 'holder-signature',
         );
 
         expect(vc.map((item) => item['id']), [

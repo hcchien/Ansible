@@ -38,6 +38,7 @@ class CredentialIssuanceWizard extends StatefulWidget {
     this.passportMrzScanner,
     this.passportLocalIdService,
     this.passportZkpProver,
+    this.passportIssueSigner,
     this.pollInterval = const Duration(seconds: 2),
     this.pollTimeout = const Duration(minutes: 2),
     this.onCredentialStored,
@@ -56,6 +57,7 @@ class CredentialIssuanceWizard extends StatefulWidget {
   final PassportMrzScanner? passportMrzScanner;
   final PassportLocalIdService? passportLocalIdService;
   final ZkpProver? passportZkpProver;
+  final DidSigner? passportIssueSigner;
   final Duration pollInterval;
   final Duration pollTimeout;
   final VoidCallback? onCredentialStored;
@@ -191,6 +193,7 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
           passportMrzScanner: widget.passportMrzScanner,
           passportLocalIdService: widget.passportLocalIdService,
           passportZkpProver: widget.passportZkpProver,
+          passportIssueSigner: widget.passportIssueSigner,
           onCredentialStored: widget.onCredentialStored,
         );
       case CredentialIssuanceFlow.emailOtp:
@@ -221,6 +224,7 @@ class PassportNfcCredentialPanel extends StatefulWidget {
     this.passportMrzScanner,
     this.passportLocalIdService,
     this.passportZkpProver,
+    this.passportIssueSigner,
     this.onCredentialStored,
   });
 
@@ -231,6 +235,7 @@ class PassportNfcCredentialPanel extends StatefulWidget {
   final PassportMrzScanner? passportMrzScanner;
   final PassportLocalIdService? passportLocalIdService;
   final ZkpProver? passportZkpProver;
+  final DidSigner? passportIssueSigner;
   final VoidCallback? onCredentialStored;
 
   @override
@@ -484,25 +489,26 @@ class _PassportNfcCredentialPanelState
       // The passport proof binds this DID in ZK.  This second signature proves
       // that the device submitting the proof controls that DID key, preventing
       // a valid proof from being attached to another person's account.
-      final holderSignature = await (DidSignerImpl()).sign(
-        utf8.encode(
-          jsonEncode(<String, String>{
-            'protocol': 'elix-passport-issuance-v1',
-            'action': 'issue',
-            'did': widget.holderDid,
-            'challenge_id': challenge.challengeId,
-            'challenge_nonce': challenge.nonce,
-            'issuer': challenge.issuer.toString(),
-            'scope': challenge.scope,
-            'nationality': data.nationality,
-            'zkp_proof_sha256': sha256
-                .convert(utf8.encode(passportProof.proofHex))
-                .toString(),
-            'zkp_circuit_version': ZkpProof.kCircuitVersion,
-            'verification_key_hash': verificationKeyHash,
-          }),
-        ),
-      );
+      final holderSignature =
+          await (widget.passportIssueSigner ?? DidSignerImpl()).sign(
+            utf8.encode(
+              jsonEncode(<String, String>{
+                'protocol': 'elix-passport-issuance-v1',
+                'action': 'issue',
+                'did': widget.holderDid,
+                'challenge_id': challenge.challengeId,
+                'challenge_nonce': challenge.nonce,
+                'issuer': challenge.issuer.toString(),
+                'scope': challenge.scope,
+                'nationality': data.nationality,
+                'zkp_proof_sha256': sha256
+                    .convert(utf8.encode(passportProof.proofHex))
+                    .toString(),
+                'zkp_circuit_version': ZkpProof.kCircuitVersion,
+                'verification_key_hash': verificationKeyHash,
+              }),
+            ),
+          );
       final vcJsonList = await _vcIssuerClient.issuePassportCredential(
         did: widget.holderDid,
         challengeId: challenge.challengeId,

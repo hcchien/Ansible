@@ -4,6 +4,7 @@ import 'package:ansible_node/services/passport_local_id_service.dart';
 import 'package:ansible_node/services/atproto_client.dart';
 import 'package:ansible_node/services/vc_issuer_client.dart';
 import 'package:ansible_store/ansible_store.dart';
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -170,6 +171,7 @@ void main() {
             platformCapabilities: _iosCapabilities,
             passportLocalIdService: localIdService,
             passportZkpProver: const _FakeZkpProver(),
+            passportIssueSigner: const _FakeDidSigner(),
             onCredentialStored: () => storedCallbackCalled = true,
           ),
         ),
@@ -187,11 +189,7 @@ void main() {
     expect(client.passportIssueCalls, 1);
     expect(client.passportIssuedDid, 'did:plc:abcdefghijklmnop');
     expect(client.passportIssuedNationality, 'TWN');
-    expect(client.passportIssuedNationalIdHash, 'national-id-hash-abc123');
-    expect(
-      client.passportIssuedPassportNumberHash,
-      'passport-number-hash-abc123',
-    );
+    expect(client.passportIssuedSignature, 'holder-signature');
 
     final credentials = await repository.listCredentials();
     expect(credentials, hasLength(3));
@@ -298,8 +296,7 @@ class _FakeVcIssuerClient extends VcIssuerClient {
   var passportIssueCalls = 0;
   String? passportIssuedDid;
   String? passportIssuedNationality;
-  String? passportIssuedNationalIdHash;
-  String? passportIssuedPassportNumberHash;
+  String? passportIssuedSignature;
 
   @override
   Future<PassportIssuanceChallenge> requestPassportChallenge({
@@ -341,19 +338,17 @@ class _FakeVcIssuerClient extends VcIssuerClient {
     required String challengeId,
     required String challengeNonce,
     required String nationality,
-    required String nationalIdHash,
-    required String passportNumberHash,
     required String zkpProof,
     required String zkpCircuitVersion,
     required String verificationKeyHash,
+    required String holderSignature,
   }) async {
     passportIssueCalls += 1;
     expect(challengeId, 'challenge-1');
     expect(challengeNonce, 'nonce-1');
     passportIssuedDid = did;
     passportIssuedNationality = nationality;
-    passportIssuedNationalIdHash = nationalIdHash;
-    passportIssuedPassportNumberHash = passportNumberHash;
+    passportIssuedSignature = holderSignature;
     expect(zkpProof, 'proof-abc123');
     expect(zkpCircuitVersion, ZkpProof.kCircuitVersion);
     expect(verificationKeyHash, 'sha256:vk-hash-abc123');
@@ -363,6 +358,14 @@ class _FakeVcIssuerClient extends VcIssuerClient {
       _passportAgeCredentialJson,
     ];
   }
+}
+
+class _FakeDidSigner implements DidSigner {
+  const _FakeDidSigner();
+
+  @override
+  Future<Ed25519Signature> sign(List<int> message) async =>
+      const Ed25519Signature('holder-signature');
 }
 
 class _FakeRelayClient extends AtProtoClient {
