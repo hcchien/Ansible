@@ -1,5 +1,6 @@
 import Foundation
 import JavaScriptCore
+import CryptoKit
 
 private struct CircuitPackageArtifact: Sendable {
   let data: Data
@@ -36,9 +37,9 @@ private actor CircuitPackageArtifactManager {
     expectedHash: String,
     urls: [URL]
   ) async throws -> CircuitPackageArtifact {
-    let normalizedHash = Self.normalizeHash(expectedHash)
-    guard normalizedHash.count == 64,
-          normalizedHash.allSatisfy(\.isHexDigit) else {
+    let expectedVerificationKeyHash = Self.normalizeHash(expectedHash)
+    guard expectedVerificationKeyHash.count == 64,
+          expectedVerificationKeyHash.allSatisfy(\.isHexDigit) else {
       throw ArtifactError.invalidIdentity
     }
     if let bundledURL = urls.first(where: { $0.scheme == "elix-asset" }) {
@@ -52,19 +53,22 @@ private actor CircuitPackageArtifactManager {
         .appendingPathComponent("flutter_assets", isDirectory: true)
         .appendingPathComponent(relativePath, isDirectory: false)
       let data = try Data(contentsOf: assetURL)
-      try validate(data, name: name, expectedHash: normalizedHash)
+      try validateBundled(data, name: name, expectedVerificationKeyHash: expectedVerificationKeyHash)
       return CircuitPackageArtifact(data: data, cacheHit: true)
+    }
+    guard let expectedContentHash = urls.compactMap(Self.contentHashFromPinnedIPFSURL).first else {
+      throw ArtifactError.invalidIdentity
     }
     try fileManager.createDirectory(
       at: cacheDirectory,
       withIntermediateDirectories: true
     )
     let cacheURL = cacheDirectory.appendingPathComponent(
-      "\(normalizedHash).json",
+      "\(expectedContentHash).json",
       isDirectory: false
     )
     if let cached = try? Data(contentsOf: cacheURL),
-       (try? validate(cached, name: name, expectedHash: normalizedHash)) != nil {
+       (try? validateDownloaded(cached, name: name, expectedContentHash: expectedContentHash, expectedVerificationKeyHash: expectedVerificationKeyHash)) != nil {
       return CircuitPackageArtifact(data: cached, cacheHit: true)
     }
     try? fileManager.removeItem(at: cacheURL)
@@ -73,7 +77,7 @@ private actor CircuitPackageArtifactManager {
     for url in urls {
       do {
         let data = try await fetch(url)
-        try validate(data, name: name, expectedHash: normalizedHash)
+        try validateDownloaded(data, name: name, expectedContentHash: expectedContentHash, expectedVerificationKeyHash: expectedVerificationKeyHash)
         try data.write(to: cacheURL, options: [.atomic, .completeFileProtection])
         return CircuitPackageArtifact(data: data, cacheHit: false)
       } catch {
@@ -114,15 +118,56 @@ private actor CircuitPackageArtifactManager {
     }
   }
 
-  private func validate(
+  // Remote packages are addressed by the SHA-256 of their exact bytes. Never
+  // trust a hash merely declared inside attacker-controlled JSON.
+  private func validateDownloaded(
     _ data: Data,
     name: String,
-    expectedHash: String
+    expectedContentHash: String,
+    expectedVerificationKeyHash: String
+  ) throws {
+    let actual = SHA256.hash(data: data)
+      .map { String(format: "%02x", $0) }
+      .joined()
+    guard actual == expectedContentHash else {
+      throw ArtifactError.contentHashMismatch
+    }
+    try validateBundled(data, name: name, expectedVerificationKeyHash: expectedVerificationKeyHash)
+  }
+
+  // CIDv0 is base58btc(multihash(sha2-256, 32 bytes)). The app's signed
+  // manifest pins this CID; using its digest protects both CDN and IPFS bytes.
+  private static func contentHashFromPinnedIPFSURL(_ url: URL) -> String? {
+    guard url.host == "ipfs.zkpassport.id", let cid = url.path.split(separator: "/").last else { return nil }
+    let alphabet = Array("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+    var bytes = [UInt8](repeating: 0, count: 64)
+    var length = 1
+    for char in cid {
+      guard let value = alphabet.firstIndex(of: char) else { return nil }
+      var carry = value
+      for index in stride(from: 63, through: 64 - length, by: -1) {
+        carry += Int(bytes[index]) * 58
+        bytes[index] = UInt8(carry & 0xff)
+        carry >>= 8
+      }
+      while carry > 0 { length += 1; bytes[64 - length] = UInt8(carry & 0xff); carry >>= 8 }
+    }
+    let decoded = Array(bytes[(64 - length)...])
+    guard decoded.count == 34, decoded[0] == 0x12, decoded[1] == 0x20 else { return nil }
+    return decoded.dropFirst(2).map { String(format: "%02x", $0) }.joined()
+  }
+
+  // Bundled assets are covered by the app code signature. Their descriptor
+  // still pins the verification key to catch packaging/configuration errors.
+  private func validateBundled(
+    _ data: Data,
+    name: String,
+    expectedVerificationKeyHash: String
   ) throws {
     guard data.count <= Self.maximumPackageBytes,
           let package = try JSONSerialization.jsonObject(with: data) as? [String: Any],
           package["name"] as? String == name,
-          Self.normalizeHash(package["vkey_hash"] as? String ?? "") == expectedHash,
+          Self.normalizeHash(package["vkey_hash"] as? String ?? "") == expectedVerificationKeyHash,
           package["hash"] as? String != nil,
           package["noir_version"] as? String != nil,
           package["bb_version"] as? String != nil else {
@@ -142,6 +187,7 @@ private actor CircuitPackageArtifactManager {
     case httpStatus(Int)
     case invalidIdentity
     case invalidPackage
+    case contentHashMismatch
     case noSources
     case responseTooLarge
     case timedOut
@@ -154,6 +200,8 @@ private actor CircuitPackageArtifactManager {
         return "Circuit identity is invalid."
       case .invalidPackage:
         return "Circuit package does not match the pinned identity."
+      case .contentHashMismatch:
+        return "Circuit package content does not match the signed manifest."
       case .noSources:
         return "No circuit package source is available."
       case .responseTooLarge:
