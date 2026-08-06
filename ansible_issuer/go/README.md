@@ -52,7 +52,8 @@ ISSUER_TEST_DATABASE_URL="postgres://$USER@localhost:5432/ansible_issuer_test" g
 |---|---|
 | `ISSUER_DID` | Issuer DID, e.g. `did:web:issuer.elix.cool` |
 | `ISSUER_URL` | Public base URL (used in VC IDs) |
-| `ISSUER_PRIVATE_KEY_HEX` | Ed25519 seed (32-byte hex). Its public half is the relay's `ISSUER_PUBLIC_KEY_HEX`. |
+| `ISSUER_PRIVATE_KEY_HEX` | Ed25519 seed (32-byte hex), permitted only for local/non-production development. |
+| `ISSUER_KMS_KEY_VERSION` | Required in production: versioned Cloud KMS `EC_SIGN_ED25519` key. Its private material is non-exportable; Cloud KMS currently provides this algorithm with software protection rather than HSM protection. |
 | `SUBJECT_COMMITMENT_PEPPER` | HMAC pepper for subject commitments |
 | `PORT` | HTTP port (default `4002`; the image sets `8080`) |
 | `VC_TTL_DAYS`, `OTP_TTL_SECONDS` | Credential / OTP TTLs |

@@ -39,7 +39,7 @@ suspect was ever exposed.
 
 | Secret | Consumed as | Notes |
 |---|---|---|
-| `issuer-priv-key` | issuer `ISSUER_PRIVATE_KEY_HEX` | Ed25519 32-byte seed (64 hex). Public half must be pinned on the relay. |
+| `issuer-priv-key` | development issuer `ISSUER_PRIVATE_KEY_HEX` | Ed25519 32-byte seed (64 hex). It must not be injected into production. |
 | `subject-commitment-pepper` | issuer `SUBJECT_COMMITMENT_PEPPER` | ≥32 bytes; issuer refuses dev sentinels at boot. |
 | `tw-provider-shared-secret` | issuer `TW_PROVIDER_SHARED_SECRET` | contract-adapter HMAC secret. |
 | `issuer-admin-token` | issuer `ISSUER_ADMIN_TOKEN` | enables the revocation admin endpoint. |
@@ -65,6 +65,12 @@ suspect was ever exposed.
 - [ ] If new keys were minted: generate with `openssl rand -hex 32` and pipe
       **directly** into `gcloud secrets versions add … --data-file=-` — never
       through shell history, files, or terminal output.
+- [ ] Production issuer signing: configure `ISSUER_KMS_KEY_VERSION` to a
+      versioned Cloud KMS `EC_SIGN_ED25519` key and grant only the issuer Cloud
+      Run service account `roles/cloudkms.signerVerifier` on that key. Google
+      Cloud KMS does not offer Ed25519 with HSM protection; its software
+      protection still keeps private key material non-exportable and retains
+      the `eddsa-jcs-2022` verification suite.
 - [ ] ZKP verification keys: leave `ANSIBLE_RELAY_ZKP_VERIFICATION_KEYS` unset.
       The relay's prod boot overrides the dev placeholders in `config.exs` with
       an empty (disabled, fail-closed) registry, and rejects placeholder or
