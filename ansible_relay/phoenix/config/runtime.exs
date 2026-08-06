@@ -117,6 +117,12 @@ if config_env() == :prod do
          :webauthn_origin,
          System.get_env("WEBAUTHN_ORIGIN") || "https://elix.cool"
 
+  # Human-readable handles belong to this Relay space only. A user keeps the
+  # same DID when moving between spaces and may choose a different handle.
+  config :ansible_relay,
+         :identity_handle_domain,
+         System.get_env("IDENTITY_HANDLE_DOMAIN") || "elix.cool"
+
   config :ansible_relay,
          :webauthn_sync_capability_required,
          env_bool.("WEBAUTHN_SYNC_CAPABILITY_REQUIRED", false)

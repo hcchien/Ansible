@@ -2,10 +2,12 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/identity_anchor_service.dart';
 import '../services/relay_anchor_client.dart';
+import '../services/relay_identity_bootstrap_service.dart';
 import '../services/relay_recovery_client.dart';
 import '../services/secure_device_key_store.dart';
 import '../theme/ansible_design.dart';
@@ -36,6 +38,8 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
   RecoveryCodeStatus? _codeStatus;
   DeviceKey? _localDevice;
   bool _loading = true;
+  bool _anchorMissing = false;
+  bool _creatingInitialAnchor = false;
   String? _error;
 
   @override
@@ -48,6 +52,7 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
     if (mounted) {
       setState(() {
         _loading = true;
+        _anchorMissing = false;
         _error = null;
       });
     }
@@ -70,8 +75,39 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = userFacingError(context, error);
+        _anchorMissing = error.toString().contains('anchor_not_found');
+        _error = _anchorMissing ? null : userFacingError(context, error);
       });
+    }
+  }
+
+  /// A reinstall can retain the self-custodied identity key while clearing the
+  /// local recovery-chain cache. Creating this initial anchor is an explicit
+  /// user action: it publishes only the DID's public verification material and
+  /// enrolled-device attestation to the selected Relay.
+  Future<void> _createInitialAnchor() async {
+    setState(() => _creatingInitialAnchor = true);
+    try {
+      final handle = await RelayIdentityBootstrapService.ensureVerified(
+        did: widget.did,
+        baseUrl: AppEnvironment.atProtoBaseUrl,
+      );
+      await IdentityAnchorService(
+        relayClient: RelayAnchorClient(),
+        anchorRepository: DriftIdentityAnchorRepository(widget.db),
+      ).publishInitialAnchor(
+        did: widget.did,
+        handle: handle,
+        identityKey: const ActiveIdentityKey(),
+      );
+      await _reload();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(userFacingError(context, error))));
+    } finally {
+      if (mounted) setState(() => _creatingInitialAnchor = false);
     }
   }
 
@@ -139,7 +175,32 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
               const Center(child: CircularProgressIndicator())
             else if (_error != null)
               Text(_error!, style: const TextStyle(color: AnsibleDesign.ember))
-            else if (_devices.isEmpty)
+            else if (_anchorMissing) ...[
+              Text(
+                context.uiCopy(
+                  zh: '這台裝置的 DID 尚未在目前 Relay 建立復原 anchor。建立後才能核准其他裝置、設定恢復碼與管理安全紀錄。',
+                  en: 'This device has no recovery anchor on the current Relay yet. Create one before approving devices, setting recovery codes, or viewing security history.',
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                key: const Key('create_initial_anchor_button'),
+                onPressed: _creatingInitialAnchor ? null : _createInitialAnchor,
+                icon: _creatingInitialAnchor
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.verified_user_outlined),
+                label: Text(
+                  context.uiCopy(
+                    zh: '建立此裝置的復原設定',
+                    en: 'Set up recovery for this device',
+                  ),
+                ),
+              ),
+            ] else if (_devices.isEmpty)
               Text(
                 context.uiCopy(
                   zh: '尚無可管理的裝置 anchor。',

@@ -660,19 +660,23 @@ class _FediversePublishingSettingsRow extends StatefulWidget {
 class _FediversePublishingSettingsRowState
     extends State<_FediversePublishingSettingsRow> {
   late final FediversePreferencesController _controller;
+  late final DidSigner _fediverseDidSigner;
 
   @override
   void initState() {
     super.initState();
+    _fediverseDidSigner = DidSignerImpl(reuseAuthenticationContext: true);
     _controller =
         widget.controller ??
         FediversePreferencesController(
           did: widget.did,
           remoteNodes: DriftRemoteNodeRepository(widget.db),
+          signer: _fediverseDidSigner,
           verifiedHumanPresenter: (node) async {
             final result = await RelayReputationPresentationService(
               walletRepository: DriftWalletRepository(widget.db),
               reputationRepository: DriftDidReputationRepository(widget.db),
+              didSigner: _fediverseDidSigner,
             ).present(holderDid: widget.did, node: node);
             if (!result.presented) {
               throw StateError('activity_pub_requires_verified_human');
@@ -684,7 +688,9 @@ class _FediversePublishingSettingsRowState
 
   Future<void> _setEnabled(bool enabled) async {
     try {
-      await _controller.setEnabled(enabled);
+      await _withHardwareAuthenticationSession(
+        () => _controller.setEnabled(enabled),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -693,8 +699,41 @@ class _FediversePublishingSettingsRowState
     }
   }
 
+  Future<T> _withHardwareAuthenticationSession<T>(
+    Future<T> Function() action,
+  ) async {
+    // Injected controllers are a test seam and own their authorization model.
+    if (widget.controller != null) return action();
+    final reason = context.uiCopy(
+      zh: '請驗證裝置持有人，以更新 Fediverse 設定。',
+      en: 'Authenticate to update Fediverse settings.',
+    );
+    final session = await HardwareAuthenticationSession.begin(
+      localizedReason: reason,
+    );
+    if (session == null) {
+      final authenticated = await LocalDeviceUserPresenceVerifier().verify(
+        reason: reason,
+      );
+      if (!authenticated) {
+        throw StateError('device_auth_cancelled');
+      }
+    }
+    try {
+      return await action();
+    } finally {
+      await session?.close();
+    }
+  }
+
   String _message(Object error) {
     final value = error.toString().replaceFirst('Bad state: ', '');
+    if (value == 'device_auth_cancelled') {
+      return context.uiCopy(
+        zh: '未完成裝置驗證，Fediverse 設定未變更。',
+        en: 'Device authentication was not completed. Fediverse settings were unchanged.',
+      );
+    }
     if (value == 'activity_pub_requires_verified_human') {
       return context.uiCopy(
         zh: '需要先通過真人驗證，才能開啟 Fediverse 發布。',
@@ -891,7 +930,9 @@ class _FediversePublishingSettingsRowState
         _controller.preferences.enabled &&
         result.revision == 0) {
       try {
-        final count = await _controller.deleteFederatedAccount();
+        final count = await _withHardwareAuthenticationSession(
+          _controller.deleteFederatedAccount,
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -912,7 +953,9 @@ class _FediversePublishingSettingsRowState
       return;
     }
     try {
-      await _controller.update(result);
+      await _withHardwareAuthenticationSession(
+        () => _controller.update(result),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -951,6 +994,7 @@ class _FediversePublishingSettingsRowState
                         fontFamily: AnsibleDesign.serif,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
+                        color: AnsibleDesign.ink,
                       ),
                     ),
                     Text(

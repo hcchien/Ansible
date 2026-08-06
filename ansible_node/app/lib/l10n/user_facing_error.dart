@@ -19,6 +19,30 @@ import 'app_l10n.dart';
 /// Falls back to a generic message with a trimmed one-line detail so the user
 /// never sees a bare `Exception: ...` stack string.
 String userFacingError(BuildContext context, Object error) {
+  if (error is StateError && error.message == 'missing_identity_handle') {
+    return context.uiCopy(
+      zh: '找不到此身分保存的 alias。請先用既有裝置或備份恢復身分，再連線到新的 Relay。',
+      en:
+          'The saved alias for this identity is unavailable. Restore the '
+          'identity from an existing device or backup before connecting to a '
+          'new Relay.',
+    );
+  }
+  if (error is StateError && error.message == 'relay_handle_mismatch') {
+    return context.uiCopy(
+      zh: 'Relay 回傳的 alias 與此裝置保存的身分不一致；已取消同步以保護身分。',
+      en:
+          'The Relay returned an alias different from this device identity. '
+          'Sync was cancelled to protect the identity.',
+    );
+  }
+  if (error is StateError &&
+      error.message == 'relay_handle_selection_cancelled') {
+    return context.uiCopy(
+      zh: '尚未設定此 Relay space 的名稱，同步已取消。',
+      en: 'A handle has not been chosen for this Relay space. Sync was cancelled.',
+    );
+  }
   if (_isUpgradeRequired(error)) {
     return context.uiCopy(
       zh: '請更新 App 以繼續同步。',

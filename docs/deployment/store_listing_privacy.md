@@ -11,25 +11,25 @@ is bilingual (zh-Hant first, English under the `#en` anchor).
 
 | Purpose | URL |
 | --- | --- |
-| Privacy policy (App Store Connect + Play Console) | `https://forum.elix.cool/privacy` |
-| Support URL (App Store Connect) | `https://forum.elix.cool/support` |
-| Terms of service | `https://forum.elix.cool/terms` |
-| About page | `https://forum.elix.cool/about` |
-| Account deletion (Play Console "Account deletion" URL, required) | `https://forum.elix.cool/account-deletion` |
+| Privacy policy (App Store Connect + Play Console) | `https://www.elix.cool/privacy` |
+| Support URL (App Store Connect) | `https://www.elix.cool/support` |
+| Terms of service | `https://www.elix.cool/terms` |
+| About page | `https://www.elix.cool/about` |
+| Account deletion (Play Console "Account deletion" URL, required) | `https://www.elix.cool/account-deletion` |
 
 - **App Store Connect** → App Information → Privacy Policy URL:
-  `https://forum.elix.cool/privacy`
+  `https://www.elix.cool/privacy`
 - **App Store Connect** → App Information → Support URL:
-  `https://forum.elix.cool/support`
+  `https://www.elix.cool/support`
 - **Play Console** → App content → Privacy policy:
-  `https://forum.elix.cool/privacy`
+  `https://www.elix.cool/privacy`
 - **Play Console** → App content → Data safety → Account deletion:
   in-app deletion **supported** (Settings → Sign out this device → Clear local
-  identity), web resource: `https://forum.elix.cool/account-deletion`
+  identity), web resource: `https://www.elix.cool/account-deletion`
 
 The in-app About screen (`ansible_node/app/lib/screens/about_screen.dart`)
 links to the same four pages; the origin is the compile-time dart-define
-`ANSIBLE_FORUM_WEB_BASE_URL` (default `https://forum.elix.cool`).
+`ANSIBLE_FORUM_WEB_BASE_URL` (default `https://www.elix.cool`).
 
 ## Ground-truth data flows (what the answers below derive from)
 
@@ -85,7 +85,7 @@ iOS permission usage strings already shipped: NFC (ePassport reading), Camera
 - Does your app collect or share any of the required user data types? **Yes**
 - Is all of the user data collected by your app encrypted in transit? **Yes** (HTTPS)
 - Do you provide a way for users to request that their data is deleted? **Yes**
-  (in-app + `https://forum.elix.cool/account-deletion`)
+  (in-app + `https://www.elix.cool/account-deletion`)
 
 | Data type | Collected | Shared | Ephemeral | Required | Purpose |
 | --- | --- | --- | --- | --- | --- |

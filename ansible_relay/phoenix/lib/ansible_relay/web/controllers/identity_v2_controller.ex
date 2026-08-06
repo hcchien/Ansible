@@ -8,8 +8,6 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
   alias AnsibleRelay.{DidAccountCache, IdentityCache, IdentityWritePolicy, SigVerifier}
 
-  @handle_domain "elix.cool"
-
   def register(conn, params) do
     with {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
          {:ok, handle_suffix} <- require_field(params, "handle_suffix"),
@@ -17,24 +15,26 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
          :ok <- IdentityWritePolicy.validate(signing_algorithm),
          :ok <- validate_public_key(signing_algorithm, public_key_hex),
          :ok <- validate_handle_suffix(handle_suffix) do
-      handle = "#{handle_suffix}.#{@handle_domain}"
+      handle = "#{handle_suffix}.#{handle_domain()}"
 
       case DidAccountCache.get_by_handle(handle) do
-        {:ok, _did} ->
-          send_json(conn, 409, %{error: "handle_taken"})
+        {:ok, did} ->
+          # Re-registration is intentionally idempotent for the same
+          # hardware-held identity key.  A reinstall can retain the key while
+          # local app state is cleared; issuing a fresh nonce lets the client
+          # restore the verified-DID cache without claiming another handle.
+          case DidAccountCache.get(did) do
+            {:ok, entry}
+            when entry.public_key_hex == public_key_hex and
+                   entry.signing_algorithm == signing_algorithm ->
+              issue_registration_nonce(conn, public_key_hex, handle)
+
+            _ ->
+              send_json(conn, 409, %{error: "handle_taken"})
+          end
 
         :not_found ->
-          case DidAccountCache.issue_nonce(public_key_hex, handle) do
-            {:ok, %{nonce: nonce, expires_at: expires_at}} ->
-              send_json(conn, 200, %{
-                nonce: nonce,
-                expires_at: DateTime.to_iso8601(expires_at),
-                handle: handle
-              })
-
-            {:error, :handle_pending} ->
-              send_json(conn, 409, %{error: "handle_pending"})
-          end
+          issue_registration_nonce(conn, public_key_hex, handle)
       end
     else
       {:error, {:missing_field, field}} ->
@@ -212,6 +212,23 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
   defp anchor_verified_did(conn, did, public_key_hex, signing_algorithm, handle) do
     case {DidAccountCache.get(did), DidAccountCache.get_by_handle(handle)} do
+      {{:ok, entry}, {:ok, ^did}} ->
+        # This is a retry of the same self-custodied identity.  Refresh the
+        # verified-DID cache (which backs sync capabilities) instead of
+        # turning a harmless reinstall retry into an unverified DID.
+        if entry.public_key_hex == public_key_hex and
+             entry.signing_algorithm == signing_algorithm do
+          :ok = IdentityCache.put(did, public_key_hex, "v2:#{did}", nil, signing_algorithm)
+
+          send_json(conn, 200, %{
+            did: did,
+            handle: handle,
+            expires_at: DateTime.to_iso8601(entry.expires_at)
+          })
+        else
+          send_json(conn, 409, %{error: "duplicate_did"})
+        end
+
       {{:ok, _entry}, _} ->
         send_json(conn, 409, %{error: "duplicate_did"})
 
@@ -235,6 +252,20 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
       # free/duplicate slot — 503 (retryable) rather than a wrong 409/200.
       {{:error, :unavailable}, _} ->
         send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
+    end
+  end
+
+  defp issue_registration_nonce(conn, public_key_hex, handle) do
+    case DidAccountCache.issue_nonce(public_key_hex, handle) do
+      {:ok, %{nonce: nonce, expires_at: expires_at}} ->
+        send_json(conn, 200, %{
+          nonce: nonce,
+          expires_at: DateTime.to_iso8601(expires_at),
+          handle: handle
+        })
+
+      {:error, :handle_pending} ->
+        send_json(conn, 409, %{error: "handle_pending"})
     end
   end
 
@@ -294,7 +325,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   defp validate_did(_), do: {:error, :invalid_did}
 
   defp validate_handle(handle) when is_binary(handle) do
-    if String.match?(handle, ~r/\A[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.elix\.cool\z/) do
+    domain = handle_domain()
+
+    if String.ends_with?(String.downcase(handle), ".#{domain}") and
+         validate_handle_suffix(
+           String.slice(handle, 0, byte_size(handle) - byte_size(domain) - 1)
+         ) == :ok do
       :ok
     else
       {:error, :invalid_handle}
@@ -302,6 +338,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   end
 
   defp validate_handle(_), do: {:error, :invalid_handle}
+
+  defp handle_domain do
+    Application.get_env(:ansible_relay, :identity_handle_domain, "elix.cool")
+    |> String.trim()
+    |> String.downcase()
+  end
 
   defp validate_rotation_time(value) when is_binary(value) do
     with {:ok, issued_at, 0} <- DateTime.from_iso8601(value),

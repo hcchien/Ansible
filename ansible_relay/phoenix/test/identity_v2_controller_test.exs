@@ -59,6 +59,24 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert body["handle"] == "alice.elix.cool"
   end
 
+  test "register uses the configured handle domain for this Relay space" do
+    previous = Application.get_env(:ansible_relay, :identity_handle_domain)
+    Application.put_env(:ansible_relay, :identity_handle_domain, "new-elix.cool")
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :identity_handle_domain, previous)
+    end)
+
+    response =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["handle"] == "alice.new-elix.cool"
+  end
+
   test "register rejects Ed25519 when the first-party write policy is P-256 only" do
     original = Application.get_env(:ansible_relay, :identity_write_algorithms)
     Application.put_env(:ansible_relay, :identity_write_algorithms, ["p256-sha256"])
@@ -180,6 +198,51 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert body["did"] == @valid_did
     assert body["handle"] == "alice.elix.cool"
     assert {:ok, %{public_key_hex: ^public_key_hex}} = DidAccountCache.get(@valid_did)
+    assert {:ok, %{public_key_hex: ^public_key_hex}} = IdentityCache.get(@valid_did)
+  end
+
+  test "same hardware identity can re-anchor after a local reinstall" do
+    {public_key_hex, private_key} = ed25519_keypair()
+
+    first_register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "alice"
+      })
+
+    first_nonce = Jason.decode!(first_register.resp_body)["nonce"]
+
+    first_anchor =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle" => "alice.elix.cool",
+        "registration_sig" => sign_nonce(private_key, first_nonce),
+        "nonce" => first_nonce
+      })
+
+    assert first_anchor.status == 200
+    :ok = IdentityCache.remove(@valid_did)
+
+    retry_register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "alice"
+      })
+
+    assert retry_register.status == 200
+    retry_nonce = Jason.decode!(retry_register.resp_body)["nonce"]
+
+    retry_anchor =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle" => "alice.elix.cool",
+        "registration_sig" => sign_nonce(private_key, retry_nonce),
+        "nonce" => retry_nonce
+      })
+
+    assert retry_anchor.status == 200
     assert {:ok, %{public_key_hex: ^public_key_hex}} = IdentityCache.get(@valid_did)
   end
 

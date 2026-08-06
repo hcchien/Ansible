@@ -16,6 +16,7 @@ import '../widgets/board_form_dialog.dart';
 import '../services/atproto_client.dart';
 import '../services/recovery_veto_service.dart';
 import '../services/relay_anchor_client.dart';
+import '../services/relay_identity_bootstrap_service.dart';
 import '../widgets/recovery_veto_alert.dart';
 import '../widgets/desktop_shortcut_scope.dart';
 import '../services/ai/ai_provider.dart';
@@ -172,6 +173,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final AtProtoClient _atProtoClient;
   late final NetworkStatusMonitor _networkStatusService;
   late final bool _ownsNetworkStatusService;
+  final Map<String, SyncCapabilityService> _syncCapabilityServices = {};
 
   List<Board> _boards = [];
   List<PostCardData> _posts = [];
@@ -1486,47 +1488,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _ensureAnchored() async {
     final did = widget.did;
     if (did.isEmpty) return;
-    final relayUrl = AppEnvironment.atProtoBaseUrl;
     try {
-      // Always attempt register+anchor rather than short-circuiting on a known
-      // public key: a DID can be *verified* (public key on file, enough to
-      // create a board) yet not *anchored* into the account store that
-      // createRecord checks — so publishing 401s with unregistered_did. The
-      // relay's anchor is idempotent (409 duplicate_did / handle_taken for an
-      // already-anchored DID), so re-running is safe and heals that gap.
-      final pubKeyHex =
-          widget.publicKeyHex ?? (await DidManagerImpl().load())?.publicKeyHex;
-      if (pubKeyHex == null || pubKeyHex.isEmpty) return;
-
-      final suffix = _anchorHandleSuffix(did);
-      final client = AtProtoClient(baseUrl: relayUrl);
-      final challenge = await client.register(
-        publicKeyHex: pubKeyHex,
-        handleSuffix: suffix,
-      );
-      final sig = await DidSignerImpl().sign(utf8.encode(challenge.nonce));
-      await client.anchor(
-        AnchorRequest(
-          did: did,
-          publicKeyHex: pubKeyHex,
-          handle: challenge.handle ?? '$suffix.elix.cool',
-          registrationSig: sig.hex,
-          nonce: challenge.nonce,
-        ),
+      await RelayIdentityBootstrapService.ensureVerified(
+        did: did,
+        baseUrl: AppEnvironment.atProtoBaseUrl,
+        publicKeyHex: widget.publicKeyHex,
       );
     } catch (_) {
       // Best-effort; any failure is surfaced when the user performs an action.
     }
-  }
-
-  /// A relay handle suffix derived from the DID (alphanumeric, ≤20 chars). Only
-  /// used to satisfy the relay's register/anchor handshake when re-anchoring.
-  String _anchorHandleSuffix(String did) {
-    final cleaned = did.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
-    final tail = cleaned.length > 20
-        ? cleaned.substring(cleaned.length - 20)
-        : cleaned;
-    return tail.isEmpty ? 'user' : tail;
   }
 
   Future<void> _createBoard() async {
@@ -1876,8 +1846,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     bool reuseHardwareAuthenticationContext = false,
   }) {
     final capabilities = PlatformCapabilities.current;
+    final syncDidSigner = DidSignerImpl(
+      reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+    );
     final boardAccess = BoardAccessPresentationService(
       walletRepository: DriftWalletRepository(widget.db),
+      didSigner: syncDidSigner,
     );
     final boardCapabilities = <String, BoardAccessCapability>{};
     final preparedPrivateBoards = <String>{};
@@ -1966,16 +1940,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
       remoteTombstoneRepository: DriftRemoteTombstoneRepository(widget.db),
       opsQueueRepo: _opsQueueRepo,
-      opsDispatchService: _opsDispatchService,
+      opsDispatchService: OpsDispatchService(
+        repository: _opsQueueRepo,
+        signer: syncDidSigner,
+      ),
       signingBridge: const SchnorrSigningBridge(),
+      didSigner: syncDidSigner,
       reputationPresentationService: RelayReputationPresentationService(
         walletRepository: DriftWalletRepository(widget.db),
         reputationRepository: _didReputationRepo,
+        didSigner: syncDidSigner,
       ),
-      syncCapabilityService: (node) => SyncCapabilityService(
-        baseUrl: node.url,
-        holderDid: widget.did,
-        platformCapabilities: capabilities,
+      syncCapabilityService: (node) => _syncCapabilityServices.putIfAbsent(
+        '${widget.did}\u0000${node.url}',
+        () => SyncCapabilityService(
+          baseUrl: node.url,
+          holderDid: widget.did,
+          platformCapabilities: capabilities,
+        ),
       ),
       allowIdentityWrites: capabilities.webAuthn,
       authorizeBoardRead: (board, requestUri) =>
@@ -2022,7 +2004,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       embedded: embedded,
       localeController: widget.localeController,
       readingPreferencesController: widget.readingPreferencesController,
-      onClearIdentity: widget.onClearIdentity,
       personalScreenStyle: _screenStyles[ElixTab.feed] ?? ElixScreenStyle.paper,
       forumScreenStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
       boardMotion: _boardMotion,

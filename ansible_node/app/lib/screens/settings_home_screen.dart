@@ -1,10 +1,10 @@
+import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../l10n/app_localizations.dart';
 import '../l10n/app_l10n.dart';
-import '../l10n/subpage_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/app_locale_controller.dart';
 import '../services/external_content_preferences_controller.dart';
@@ -17,6 +17,7 @@ import '../services/recovery_readiness_store.dart';
 import '../services/relay_anchor_client.dart';
 import '../services/relay_reputation_presentation_service.dart';
 import '../services/secure_device_key_store.dart';
+import '../services/user_presence_verifier.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -60,7 +61,6 @@ class SettingsHomeScreen extends StatelessWidget {
     this.readingPreferencesController,
     this.externalContentPreferencesController,
     this.fediversePreferencesController,
-    this.onClearIdentity,
     this.personalScreenStyle,
     this.forumScreenStyle,
     this.boardMotion,
@@ -122,7 +122,6 @@ class SettingsHomeScreen extends StatelessWidget {
   /// when null the row builds a default [RecoveryWizardScreen] from production
   /// dependencies.
   final void Function(BuildContext context)? onOpenRecoveryWizard;
-  final VoidCallback? onClearIdentity;
   final ElixScreenStyle? personalScreenStyle;
   final ElixScreenStyle? forumScreenStyle;
   final ElixBoardMotion? boardMotion;
@@ -465,15 +464,6 @@ class SettingsHomeScreen extends StatelessWidget {
                 },
               ),
               AnsibleSettingsRow(glyph: '?', label: text.manual, en: 'MANUAL'),
-              AnsibleSettingsRow(
-                glyph: '!',
-                label: text.signOutDevice,
-                en: 'SIGN OUT',
-                sub: text.signOutSubtitle,
-                danger: true,
-                last: true,
-                onTap: () => _confirmClearIdentity(context),
-              ),
             ],
           ),
           const Padding(
@@ -492,30 +482,6 @@ class SettingsHomeScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _confirmClearIdentity(BuildContext context) async {
-    if (onClearIdentity == null) return;
-    final text = _SettingsText.of(context);
-    final subpageText = SubpageL10n.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(subpageText.t('clearLocalIdentityTitle')),
-        content: Text(subpageText.t('clearLocalIdentityMessage')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(text.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(subpageText.t('clear')),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) onClearIdentity!();
   }
 
   static String _shortDid(String did) {
