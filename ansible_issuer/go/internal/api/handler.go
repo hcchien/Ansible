@@ -63,6 +63,7 @@ type Handler struct {
 	mobileMoicaTTL       time.Duration
 
 	passportVerifier   PassportBindingVerifier
+	passportDIDControl PassportDIDControlVerifier
 	passportChallenges PassportChallengeStore
 	passportIssuerURL  string
 
@@ -209,6 +210,7 @@ func (h *Handler) ConfigureMobileMoicaRP(config MobileMoicaRPConfig) {
 
 func (h *Handler) ConfigurePassport(config PassportConfig) {
 	h.passportVerifier = config.Verifier
+	h.passportDIDControl = config.DIDControlVerifier
 	h.passportChallenges = config.Challenges
 	h.passportIssuerURL = strings.TrimRight(config.IssuerURL, "/")
 }
@@ -593,14 +595,18 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		DID                 string `json:"did"`
-		ChallengeID         string `json:"challenge_id"`
-		ChallengeNonce      string `json:"challenge_nonce"`
-		Nationality         string `json:"nationality"`
+		DID            string `json:"did"`
+		ChallengeID    string `json:"challenge_id"`
+		ChallengeNonce string `json:"challenge_nonce"`
+		Nationality    string `json:"nationality"`
+		// Deprecated client field: current Wallet builds omit it and the verifier
+		// derives the binding from the proof.  Retained briefly for wire-compatible
+		// upgrade tests; it is never persisted or trusted.
 		PassportNumberHash  string `json:"passport_number_hash"`
 		ZKPProof            string `json:"zkp_proof"`
 		ZKPCircuitVersion   string `json:"zkp_circuit_version"`
 		VerificationKeyHash string `json:"verification_key_hash"`
+		HolderSignature     string `json:"holder_signature"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return
@@ -625,6 +631,28 @@ func (h *Handler) passportIssue(w http.ResponseWriter, r *http.Request) {
 		!validateRequired(w, body.ZKPCircuitVersion) ||
 		!validateRequired(w, body.VerificationKeyHash) {
 		return
+	}
+	// Production passport issuance must prove control of the DID in addition to
+	// proving facts about the passport.  Keep legacy test/dev wiring possible
+	// only when no verifier is configured; main.go refuses that configuration
+	// whenever PASSPORT_VERIFIER_URL enables the endpoint.
+	if h.passportDIDControl != nil {
+		err := h.passportDIDControl.VerifyPassportIssue(PassportIssueAuthorization{
+			DID:                 body.DID,
+			ChallengeID:         body.ChallengeID,
+			ChallengeNonce:      body.ChallengeNonce,
+			ChallengeIssuer:     passportChallenge.Issuer,
+			ChallengeScope:      passportChallenge.Scope,
+			Nationality:         body.Nationality,
+			ZKPProof:            body.ZKPProof,
+			ZKPCircuitVersion:   body.ZKPCircuitVersion,
+			VerificationKeyHash: body.VerificationKeyHash,
+			SignatureHex:        body.HolderSignature,
+		})
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "did_control_verification_failed")
+			return
+		}
 	}
 
 	binding, err := h.passportVerifier.VerifyPassportBinding(PassportBindingProof{

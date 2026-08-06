@@ -3,6 +3,8 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -54,16 +56,18 @@ func NewHTTPPassportBindingVerifier(endpoint string, client *http.Client) (*HTTP
 
 func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindingProof) (PassportBindingResult, error) {
 	payload := struct {
-		ProofEnvelope       json.RawMessage `json:"proof_envelope"`
-		DID                 string          `json:"did"`
-		ChallengeID         string          `json:"challenge_id"`
-		ChallengeNonce      string          `json:"challenge_nonce"`
-		ChallengeIssuer     string          `json:"challenge_issuer"`
-		ChallengeScope      string          `json:"challenge_scope"`
-		Nationality         string          `json:"nationality"`
-		PassportNumberHash  string          `json:"passport_number_hash"`
-		CircuitVersion      string          `json:"circuit_version"`
-		VerificationKeyHash string          `json:"verification_key_hash"`
+		ProofEnvelope   json.RawMessage `json:"proof_envelope"`
+		DID             string          `json:"did"`
+		ChallengeID     string          `json:"challenge_id"`
+		ChallengeNonce  string          `json:"challenge_nonce"`
+		ChallengeIssuer string          `json:"challenge_issuer"`
+		ChallengeScope  string          `json:"challenge_scope"`
+		Nationality     string          `json:"nationality"`
+		// Deprecated compatibility input. The production verifier ignores this
+		// and derives the returned hash from the verified passport proof.
+		PassportNumberHash  string `json:"passport_number_hash,omitempty"`
+		CircuitVersion      string `json:"circuit_version"`
+		VerificationKeyHash string `json:"verification_key_hash"`
 	}{
 		ProofEnvelope:       json.RawMessage(proof.ZKPProof),
 		DID:                 proof.DID,
@@ -108,6 +112,7 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 	}
 	var result struct {
 		Verified               bool   `json:"verified"`
+		ChallengeBinding       string `json:"challenge_binding"`
 		Nationality            string `json:"nationality"`
 		PersonhoodBindingInput string `json:"personhood_binding_input"`
 		TWPersonBindingInput   string `json:"tw_person_binding_input"`
@@ -122,6 +127,7 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		personhoodBindingInput = result.TWPersonBindingInput
 	}
 	if result.Nationality != proof.Nationality ||
+		result.ChallengeBinding != passportChallengeBinding(proof) ||
 		personhoodBindingInput == "" ||
 		result.PassportNumberHash == "" {
 		return PassportBindingResult{}, ErrInvalidPassportProof
@@ -133,6 +139,18 @@ func (v *HTTPPassportBindingVerifier) VerifyPassportBinding(proof PassportBindin
 		AgeOver18:              result.AgeOver18,
 		VerifiedAt:             time.Now().UTC(),
 	}, nil
+}
+
+func passportChallengeBinding(proof PassportBindingProof) string {
+	payload, _ := json.Marshal(struct {
+		ChallengeID    string `json:"challenge_id"`
+		ChallengeNonce string `json:"challenge_nonce"`
+		DID            string `json:"did"`
+		Issuer         string `json:"issuer"`
+		Scope          string `json:"scope"`
+	}{proof.ChallengeID, proof.ChallengeNonce, proof.DID, proof.ChallengeIssuer, proof.ChallengeScope})
+	digest := sha256.Sum256(payload)
+	return hex.EncodeToString(digest[:])
 }
 
 func cloudRunIdentityToken(ctx context.Context, audience string) (string, error) {

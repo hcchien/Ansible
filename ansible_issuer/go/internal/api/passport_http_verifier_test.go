@@ -10,6 +10,14 @@ import (
 )
 
 func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *testing.T) {
+	proof := PassportBindingProof{
+		DID: "did:plc:abcdefghijklmnop", ChallengeID: "challenge-1",
+		ChallengeNonce: "nonce-1", ChallengeIssuer: "https://issuer.example",
+		ChallengeScope: "elix-passport-personhood-v1", Nationality: "TWN",
+		PassportNumberHash: "passport-number-hash",
+		ZKPProof:           `{"proofs":[]}`, ZKPCircuitVersion: "0.20.0",
+		VerificationKeyHash: "sha256:test",
+	}
 	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		var body map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -20,6 +28,7 @@ func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *t
 		}
 		response, _ := json.Marshal(map[string]any{
 			"verified":                 true,
+			"challenge_binding":        passportChallengeBinding(proof),
 			"nationality":              "TWN",
 			"personhood_binding_input": "0x00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
 			"passport_number_hash":     "passport-number-hash",
@@ -34,14 +43,7 @@ func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := verifier.VerifyPassportBinding(PassportBindingProof{
-		DID: "did:plc:abcdefghijklmnop", ChallengeID: "challenge-1",
-		ChallengeNonce: "nonce-1", ChallengeIssuer: "https://issuer.example",
-		ChallengeScope: "elix-passport-personhood-v1", Nationality: "TWN",
-		PassportNumberHash: "passport-number-hash",
-		ZKPProof:           `{"proofs":[]}`, ZKPCircuitVersion: "0.20.0",
-		VerificationKeyHash: "sha256:test",
-	})
+	result, err := verifier.VerifyPassportBinding(proof)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,12 +54,21 @@ func TestHTTPPassportBindingVerifierForwardsChallengeAndUsesVerifiedOutputs(t *t
 
 func TestHTTPPassportBindingVerifierAddsWorkloadIdentityToken(t *testing.T) {
 	t.Setenv("PASSPORT_VERIFIER_AUDIENCE", "https://verifier-service.run.app")
+	proof := PassportBindingProof{
+		DID: "did:plc:abcdefghijklmnop", ChallengeID: "challenge-1",
+		ChallengeNonce: "nonce-1", ChallengeIssuer: "https://issuer.example",
+		ChallengeScope: "elix-passport-personhood-v1", Nationality: "TWN",
+		PassportNumberHash: "passport-number-hash",
+		ZKPProof:           `{"proofs":[]}`, ZKPCircuitVersion: "0.20.0",
+		VerificationKeyHash: "sha256:test",
+	}
 	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if got := r.Header.Get("authorization"); got != "Bearer workload-token" {
 			t.Fatalf("authorization header = %q", got)
 		}
 		response, _ := json.Marshal(map[string]any{
 			"verified":                true,
+			"challenge_binding":       passportChallengeBinding(proof),
 			"nationality":             "TWN",
 			"tw_person_binding_input": "0x00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
 			"passport_number_hash":    "passport-number-hash",
@@ -78,14 +89,7 @@ func TestHTTPPassportBindingVerifierAddsWorkloadIdentityToken(t *testing.T) {
 		}
 		return "workload-token", nil
 	}
-	_, err = verifier.VerifyPassportBinding(PassportBindingProof{
-		DID: "did:plc:abcdefghijklmnop", ChallengeID: "challenge-1",
-		ChallengeNonce: "nonce-1", ChallengeIssuer: "https://issuer.example",
-		ChallengeScope: "elix-passport-personhood-v1", Nationality: "TWN",
-		PassportNumberHash: "passport-number-hash",
-		ZKPProof:           `{"proofs":[]}`, ZKPCircuitVersion: "0.20.0",
-		VerificationKeyHash: "sha256:test",
-	})
+	_, err = verifier.VerifyPassportBinding(proof)
 	if err != nil {
 		t.Fatal(err)
 	}

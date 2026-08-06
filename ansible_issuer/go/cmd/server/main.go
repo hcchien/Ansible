@@ -123,7 +123,16 @@ func main() {
 			log.Fatalf("passport verifier init: %v", err)
 		}
 		passportConfig.Verifier = verifier
-		log.Println("passport challenge/replay protection and ZKPassport verifier enabled")
+		resolverURL := strings.TrimSpace(os.Getenv("PASSPORT_DID_RESOLVER_URL"))
+		if resolverURL == "" {
+			log.Fatal("passport DID control init: PASSPORT_DID_RESOLVER_URL is required when PASSPORT_VERIFIER_URL is configured")
+		}
+		didControl, err := api.NewHTTPPassportDIDControlVerifier(resolverURL, nil)
+		if err != nil {
+			log.Fatalf("passport DID control init: %v", err)
+		}
+		passportConfig.DIDControlVerifier = didControl
+		log.Println("passport challenge/replay protection, DID control, and ZKPassport verifier enabled")
 	} else {
 		log.Println("passport challenge/replay protection enabled; issuance disabled until PASSPORT_VERIFIER_URL is configured")
 	}
