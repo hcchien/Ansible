@@ -205,8 +205,11 @@ func configureHostedIssuer(mux *http.ServeMux, pool *pgxpool.Pool) {
 }
 
 // buildIssuerSigner makes raw seed custody an explicit local-development
-// exception. Production must use a versioned HSM key and fails closed if the
-// old secret is still configured, preventing accidental dual custody.
+// exception. Production must use a versioned, non-exportable Cloud KMS key and
+// fails closed if the old secret is still configured, preventing accidental
+// dual custody. Cloud KMS does not offer EC_SIGN_ED25519 with HSM protection;
+// its software-protected KMS key is still non-exportable and preserves the
+// Ed25519 Data Integrity suite used by issued credentials.
 func buildIssuerSigner(ctx context.Context, cfg vc.Config, mockMode bool) (vc.Signer, error) {
 	keyVersion := strings.TrimSpace(os.Getenv("ISSUER_KMS_KEY_VERSION"))
 	production := isProductionEnvironment()
@@ -217,7 +220,7 @@ func buildIssuerSigner(ctx context.Context, cfg vc.Config, mockMode bool) (vc.Si
 		return nil, errors.New("ISSUER_KMS_KEY_VERSION is required in production")
 	}
 	if keyVersion != "" {
-		return vc.NewGCPKMSEd25519Signer(ctx, keyVersion, vc.NewGCPKMSRESTClient(nil), true)
+		return vc.NewGCPKMSEd25519Signer(ctx, keyVersion, vc.NewGCPKMSRESTClient(nil), false)
 	}
 	if !mockMode && cfg.PrivKeyHex == "" {
 		return nil, errors.New("configure ISSUER_KMS_KEY_VERSION, or ISSUER_PRIVATE_KEY_HEX for non-production development only")
