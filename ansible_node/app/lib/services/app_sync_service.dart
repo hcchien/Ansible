@@ -224,25 +224,13 @@ class AppSyncService {
           }
         }
       }
-      await _enqueuePublicContentOps();
-      await _enqueueFederatedFollowOps();
-      await _enqueueProfileOp();
+      await _enqueueLocalRelayOps();
       final activeNode = await _remoteNodeRepo.getActive();
-      final queue = _opsQueueRepo;
-      if (activeNode != null && queue != null) {
-        // A manual sync is an explicit retry boundary. Policy-blocked local
-        // content remains on-device and is retried only here, after credentials
-        // or the board policy may have changed.
-        await queue.retryBlocked();
-        opsSummary = await OpsDispatchService(
-          repository: queue,
-          signer: _didSigner,
-          relayClient: RelayOpsClient(
-            baseUrl: activeNode.url,
-            accessToken: capabilities[activeNode.id],
-            requestHeaders: _boardWriteHeaders,
-          ),
-        ).flushPending();
+      if (activeNode != null) {
+        opsSummary = await _flushLocalOpsTo(
+          activeNode,
+          accessToken: capabilities[activeNode.id],
+        );
       }
     }
     // Synchronisation is confined to the Relay operation stream.  External
@@ -262,6 +250,49 @@ class AppSyncService {
       publishSummary: publishSummary,
       opsSummary: opsSummary,
     );
+  }
+
+  /// Sends the locally queued Relay operation stream to [node]. This is an
+  /// explicit Relay-sync boundary: only public or unlisted, non-local content
+  /// is enqueued; private content remains on-device. It deliberately does not
+  /// invoke ActivityPub or Nostr publication, whose consent and delivery
+  /// lifecycle are separate from Relay sync.
+  Future<OpsDispatchSummary> pushLocalOpsTo(
+    RemoteNode node, {
+    String? accessToken,
+  }) async {
+    if (!_allowIdentityWrites) return const OpsDispatchSummary();
+
+    await _enqueueLocalRelayOps();
+    return _flushLocalOpsTo(node, accessToken: accessToken);
+  }
+
+  Future<void> _enqueueLocalRelayOps() async {
+    await _enqueuePublicContentOps();
+    await _enqueueFederatedFollowOps();
+    await _enqueueProfileOp();
+  }
+
+  Future<OpsDispatchSummary> _flushLocalOpsTo(
+    RemoteNode node, {
+    String? accessToken,
+  }) async {
+    final queue = _opsQueueRepo;
+    if (queue == null) return const OpsDispatchSummary();
+
+    // A manual sync is an explicit retry boundary. Policy-blocked local
+    // content remains on-device and is retried only here, after credentials
+    // or the board policy may have changed.
+    await queue.retryBlocked();
+    return OpsDispatchService(
+      repository: queue,
+      signer: _didSigner,
+      relayClient: RelayOpsClient(
+        baseUrl: node.url,
+        accessToken: accessToken,
+        requestHeaders: _boardWriteHeaders,
+      ),
+    ).flushPending();
   }
 
   Future<Map<String, String>> _boardWriteHeaders(

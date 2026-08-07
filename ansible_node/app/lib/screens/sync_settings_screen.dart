@@ -9,6 +9,7 @@ import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/relay_discovery_client.dart';
+import '../services/app_sync_service.dart';
 import '../services/board_access_presentation_service.dart';
 import '../services/private_board_crypto_service.dart';
 import '../services/private_board_key_client.dart';
@@ -19,6 +20,7 @@ import '../services/notification_preferences_controller.dart';
 import '../services/notification_projector.dart';
 import '../widgets/remote_node_form_dialog.dart';
 import '../services/remote_sync_service.dart';
+import '../services/ops_dispatch_service.dart';
 import '../services/relay_reputation_presentation_service.dart';
 import '../services/relay_identity_bootstrap_service.dart';
 import '../services/user_presence_verifier.dart';
@@ -87,6 +89,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   late final DriftPostRepository _postRepo;
   late final DriftContentItemRepository _contentItemRepo;
   late final DriftPublicationRepository _publicationRepo;
+  late final DriftOpsQueueRepository _opsQueueRepo;
   late final SecureStorageNostrKeyStore _nostrKeyStore;
   late final SecureStorageNostrRelaySettingsStore _nostrRelaySettingsStore;
 
@@ -116,6 +119,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     _postRepo = DriftPostRepository(widget.db);
     _contentItemRepo = DriftContentItemRepository(widget.db);
     _publicationRepo = DriftPublicationRepository(widget.db);
+    _opsQueueRepo = DriftOpsQueueRepository(widget.db);
     _nostrKeyStore = const SecureStorageNostrKeyStore();
     _nostrRelaySettingsStore = const SecureStorageNostrRelaySettingsStore();
     _loadData();
@@ -632,6 +636,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       );
 
       final result = await syncService.syncFromNode(client, node);
+      String? syncCapability;
       if (_capabilities.webAuthn) {
         final capability = await _syncCapabilityServices
             .putIfAbsent(
@@ -644,16 +649,17 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               ),
             )
             .authorize();
-        _syncCapabilitiesByNode[node.id] = capability.token;
+        syncCapability = capability.token;
+        _syncCapabilitiesByNode[node.id] = syncCapability;
         await RelayReputationPresentationService(
           walletRepository: DriftWalletRepository(widget.db),
           reputationRepository: DriftDidReputationRepository(widget.db),
           didSigner: syncDidSigner,
         ).present(holderDid: widget.localDid, node: node);
       }
-      // Relay synchronisation and external distribution intentionally have
-      // different lifecycles. Only an explicit publish action may request
-      // ActivityPub or Nostr delivery.
+      final opsSummary = await _relayPushService(
+        syncDidSigner,
+      ).pushLocalOpsTo(node, accessToken: syncCapability);
 
       setState(() {
         _syncingNodes[node.id] = false;
@@ -664,14 +670,13 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
       if (mounted && showSnackBar) {
         final text = SubpageL10n.of(context);
-        if (result.success) {
+        if (result.success &&
+            opsSummary.rejected == 0 &&
+            opsSummary.retryPending == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                text.f('syncNodePullSummary', {
-                  'name': node.name,
-                  'count': result.activitiesProcessed,
-                }),
+                '${text.f('syncNodePullSummary', {'name': node.name, 'count': result.activitiesProcessed})}${opsSummary.sent == 0 ? '' : context.uiCopy(zh: ' · Relay 已送出 ${opsSummary.sent} 項', en: ' · Relay sent ${opsSummary.sent} item(s)')}',
               ),
             ),
           );
@@ -681,7 +686,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               content: Text(
                 text.f('syncNodeFailed', {
                   'name': node.name,
-                  'error': result.errorMessage ?? '',
+                  'error':
+                      result.errorMessage ??
+                      opsSummary.retryReason ??
+                      'relay_ops_delivery_failed',
                 }),
               ),
               backgroundColor: Colors.red,
@@ -713,6 +721,27 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       await hardwareAuthenticationSession?.close();
     }
   }
+
+  AppSyncService _relayPushService(DidSigner signer) => AppSyncService(
+    remoteNodeRepo: _remoteNodeRepo,
+    boardSyncConfigRepo: _boardSyncConfigRepo,
+    hostedBoardRepo: _hostedBoardRepo,
+    boardRepo: _boardRepo,
+    threadRepo: _threadRepo,
+    postRepo: _postRepo,
+    contentItemRepo: _contentItemRepo,
+    publicationRepo: _publicationRepo,
+    relaySettings: _nostrRelaySettingsStore,
+    keyStore: _nostrKeyStore,
+    opsQueueRepo: _opsQueueRepo,
+    opsDispatchService: OpsDispatchService(
+      repository: _opsQueueRepo,
+      signer: signer,
+    ),
+    didSigner: signer,
+    followerDid: widget.localDid,
+    allowIdentityWrites: _capabilities.webAuthn,
+  );
 
   /// A Relay-local handle is presentation and routing data, not the DID. If a
   /// new Relay space already owns the suggested name, keep the existing DID
@@ -1329,32 +1358,38 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: SwitchListTile(
-                                  key: ValueKey(
-                                    'board_sync_switch_${node.id}_${board.id}',
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    switchTheme:
+                                        AnsibleDesign.paperSwitchTheme(),
                                   ),
-                                  value: isEnabled,
-                                  onChanged: (enabled) {
-                                    _toggleBoardSync(
-                                      node.id,
-                                      board.id,
-                                      enabled,
-                                    );
-                                  },
-                                  title: Text(board.title),
-                                  subtitle: Text(
-                                    isEnabled
-                                        ? context.uiCopy(
-                                            zh: '同步中 · 關閉後仍保留本機資料',
-                                            en: 'Syncing · Turn off to keep a local-only copy',
-                                          )
-                                        : context.uiCopy(
-                                            zh: '已暫停同步 · 本機資料已保留',
-                                            en: 'Sync paused · Local data is preserved',
-                                          ),
+                                  child: SwitchListTile(
+                                    key: ValueKey(
+                                      'board_sync_switch_${node.id}_${board.id}',
+                                    ),
+                                    value: isEnabled,
+                                    onChanged: (enabled) {
+                                      _toggleBoardSync(
+                                        node.id,
+                                        board.id,
+                                        enabled,
+                                      );
+                                    },
+                                    title: Text(board.title),
+                                    subtitle: Text(
+                                      isEnabled
+                                          ? context.uiCopy(
+                                              zh: '同步中 · 關閉後仍保留本機資料',
+                                              en: 'Syncing · Turn off to keep a local-only copy',
+                                            )
+                                          : context.uiCopy(
+                                              zh: '已暫停同步 · 本機資料已保留',
+                                              en: 'Sync paused · Local data is preserved',
+                                            ),
+                                    ),
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
                                   ),
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
                                 ),
                               ),
                               const SizedBox(width: 12),

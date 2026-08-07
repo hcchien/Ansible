@@ -49,7 +49,12 @@ class _SyncSwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch(value: on, onChanged: null),
+          Theme(
+            data: Theme.of(
+              context,
+            ).copyWith(switchTheme: AnsibleDesign.paperSwitchTheme()),
+            child: Switch(value: on, onChanged: null),
+          ),
         ],
       ),
     );

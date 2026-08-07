@@ -81,6 +81,25 @@ class AnsibleDesign {
     'MingLiU',
   ];
 
+  /// Paper screens always use this switch palette, even when the device is in
+  /// dark mode. Some Paper surfaces intentionally stay light, and inheriting
+  /// the app-wide dark switch theme made their selected state look black.
+  static SwitchThemeData paperSwitchTheme() => SwitchThemeData(
+    thumbColor: WidgetStateProperty.resolveWith((states) {
+      return paperWhite;
+    }),
+    trackColor: WidgetStateProperty.resolveWith((states) {
+      final selected = states.contains(WidgetState.selected);
+      if (states.contains(WidgetState.disabled)) {
+        return selected ? moss.withValues(alpha: 0.52) : paperDeep;
+      }
+      return selected ? moss : rule;
+    }),
+    trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+      return states.contains(WidgetState.selected) ? moss : rule;
+    }),
+  );
+
   // ── Light theme ───────────────────────────────────────────────────────────
   static ThemeData theme() {
     final scheme = ColorScheme.fromSeed(
@@ -184,20 +203,7 @@ class AnsibleDesign {
       // colour scheme.  On paper it made ON and OFF settings look almost the
       // same, which is particularly unsafe for consent-bearing controls such
       // as Fediverse publication.  Keep the thumb/track contrast explicit.
-      switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return paperDeep;
-          return paperWhite;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return paperDeep;
-          return states.contains(WidgetState.selected) ? moss : rule;
-        }),
-        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return moss;
-          return rule;
-        }),
-      ),
+      switchTheme: paperSwitchTheme(),
     );
   }
 
