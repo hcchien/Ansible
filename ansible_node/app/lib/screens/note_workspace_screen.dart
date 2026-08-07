@@ -243,7 +243,8 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
     final result = await Navigator.of(context).push<_CreateNoteResult>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => _CreateNoteEditorScreen(murmurs: widget.murmurs),
+        builder: (_) =>
+            _CreateNoteEditorScreen(murmurs: widget.murmurs, authorDid: did),
       ),
     );
     if (result == null) return;

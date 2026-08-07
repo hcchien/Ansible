@@ -88,6 +88,7 @@ class _MurmurScreenState extends State<MurmurScreen> {
         distributionPreference: _distributionPreference,
       ),
       subjectLabel: context.uiCopy(zh: '這條 murmur', en: 'this murmur'),
+      authorDid: widget.authorDid,
     );
     if (choice == null || !mounted) return;
     setState(() {

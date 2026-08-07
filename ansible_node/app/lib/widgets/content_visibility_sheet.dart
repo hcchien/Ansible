@@ -2,17 +2,20 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/fediverse_preferences_controller.dart';
 import '../theme/ansible_design.dart';
 
 Future<ContentVisibility?> showContentVisibilitySheet({
   required BuildContext context,
   required ContentVisibility current,
   required String subjectLabel,
+  String? authorDid,
 }) {
   return showContentDistributionSheet(
     context: context,
     current: ContentDistributionChoice.forVisibility(current),
     subjectLabel: subjectLabel,
+    authorDid: authorDid,
   ).then((choice) => choice?.visibility);
 }
 
@@ -20,15 +23,27 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
   required BuildContext context,
   required ContentDistributionChoice current,
   required String subjectLabel,
-}) {
+  String? authorDid,
+  FediversePreferencesStore preferencesStore =
+      const SharedPreferencesFediversePreferencesStore(),
+}) async {
+  // ActivityPub is an explicit, high-trust distribution rail.  An active Elix
+  // Relay is only a sync endpoint; it is never consent to create an external
+  // actor or distribute content there.  The Relay remains authoritative, but
+  // this local consent check prevents an unverified account from queuing a
+  // request the Relay must reject.
+  final activityPubAvailable =
+      authorDid != null && (await preferencesStore.load(authorDid)).enabled;
+  if (!context.mounted) return null;
   var picked = current.visibility;
-  var distributionPreference = current.distributionPreference;
+  var distributionPreference = _withoutUnavailableActivityPub(
+    current.distributionPreference,
+    activityPubAvailable: activityPubAvailable,
+  );
 
   void normalizeDistribution() {
     if (picked == ContentVisibility.private) {
       distributionPreference = DistributionPreference.localOnly;
-    } else if (distributionPreference == DistributionPreference.localOnly) {
-      distributionPreference = DistributionPreference.nostrAndActivityPub;
     }
   }
 
@@ -96,6 +111,7 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
                           federationEnabled: federationEnabled,
                           nostrEnabled: nostrEnabled,
                           activityPubEnabled: activityPubEnabled,
+                          activityPubAvailable: activityPubAvailable,
                           onPickVisibility: (visibility) => setSheetState(() {
                             picked = visibility;
                             normalizeDistribution();
@@ -166,7 +182,7 @@ class ContentDistributionChoice {
       visibility: visibility,
       distributionPreference: visibility == ContentVisibility.private
           ? DistributionPreference.localOnly
-          : DistributionPreference.nostrAndActivityPub,
+          : DistributionPreference.localOnly,
     );
   }
 
@@ -179,6 +195,18 @@ class ContentDistributionChoice {
     if (activityPub) return DistributionPreference.activityPub;
     return DistributionPreference.localOnly;
   }
+}
+
+DistributionPreference _withoutUnavailableActivityPub(
+  DistributionPreference preference, {
+  required bool activityPubAvailable,
+}) {
+  if (activityPubAvailable) return preference;
+  return switch (preference) {
+    DistributionPreference.activityPub => DistributionPreference.localOnly,
+    DistributionPreference.nostrAndActivityPub => DistributionPreference.nostr,
+    _ => preference,
+  };
 }
 
 ({String label, Color dot}) contentVisibilityMeta(
@@ -207,6 +235,7 @@ class _DistributionSheetMainContent extends StatelessWidget {
   final bool federationEnabled;
   final bool nostrEnabled;
   final bool activityPubEnabled;
+  final bool activityPubAvailable;
   final ValueChanged<ContentVisibility> onPickVisibility;
   final ValueChanged<bool> onNostrChanged;
   final ValueChanged<bool> onActivityPubChanged;
@@ -217,6 +246,7 @@ class _DistributionSheetMainContent extends StatelessWidget {
     required this.federationEnabled,
     required this.nostrEnabled,
     required this.activityPubEnabled,
+    required this.activityPubAvailable,
     required this.onPickVisibility,
     required this.onNostrChanged,
     required this.onActivityPubChanged,
@@ -292,6 +322,7 @@ class _DistributionSheetMainContent extends StatelessWidget {
           enabled: federationEnabled,
           nostrEnabled: nostrEnabled,
           activityPubEnabled: activityPubEnabled,
+          activityPubAvailable: activityPubAvailable,
           onNostrChanged: onNostrChanged,
           onActivityPubChanged: onActivityPubChanged,
         ),
@@ -304,6 +335,7 @@ class _DistributionSettings extends StatelessWidget {
   final bool enabled;
   final bool nostrEnabled;
   final bool activityPubEnabled;
+  final bool activityPubAvailable;
   final ValueChanged<bool> onNostrChanged;
   final ValueChanged<bool> onActivityPubChanged;
 
@@ -311,6 +343,7 @@ class _DistributionSettings extends StatelessWidget {
     required this.enabled,
     required this.nostrEnabled,
     required this.activityPubEnabled,
+    required this.activityPubAvailable,
     required this.onNostrChanged,
     required this.onActivityPubChanged,
   });
@@ -354,10 +387,27 @@ class _DistributionSettings extends StatelessWidget {
               zh: 'ActivityPub 中繼站',
               en: 'ActivityPub relay',
             ),
-            value: enabled && activityPubEnabled,
-            enabled: enabled && (nostrEnabled || !activityPubEnabled),
+            value: enabled && activityPubAvailable && activityPubEnabled,
+            enabled:
+                enabled &&
+                activityPubAvailable &&
+                (nostrEnabled || !activityPubEnabled),
             onChanged: onActivityPubChanged,
           ),
+          if (!activityPubAvailable) ...[
+            const SizedBox(height: 4),
+            Text(
+              context.uiCopy(
+                zh: '需先在設定完成真人驗證並啟用 Fediverse 發布。',
+                en: 'Verify your humanity and enable Fediverse publishing in Settings first.',
+              ),
+              style: const TextStyle(
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 11,
+                color: AnsibleDesign.inkFaint,
+              ),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             summary,

@@ -56,5 +56,23 @@ void main() {
     expect(message, contains('資格情報エラー'));
     expect(message, contains('relay: 401'));
     expect(message, contains('credential expired'));
+    expect(message, isNot(contains('network_error')));
+  });
+
+  test('external publication failure does not fail Relay sync', () {
+    const result = AppSyncResult(
+      pulledActivities: 2,
+      publishSummary: PublicPublishSummary(
+        publicItems: 1,
+        failed: 1,
+        errorMessage: 'activity_pub_requires_verified_human',
+      ),
+    );
+
+    expect(result.success, isTrue);
+    expect(
+      appSyncSummaryMessage(result, text: const SubpageL10n('zh')),
+      isNot(contains('activity_pub_requires_verified_human')),
+    );
   });
 }

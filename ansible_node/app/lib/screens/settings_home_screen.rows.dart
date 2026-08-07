@@ -968,61 +968,88 @@ class _FediversePublishingSettingsRowState
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (context, _) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+      builder: (context, _) {
+        final enabled = _controller.preferences.enabled;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            const AnsibleGlyphBox(glyph: '↗'),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InkWell(
-                onTap: _controller.saving ? null : _editPolicy,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.uiCopy(
-                        zh: '發布到 Fediverse',
-                        en: 'Publish to Fediverse',
+          child: Row(
+            children: [
+              const AnsibleGlyphBox(glyph: '↗'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: _controller.saving ? null : _editPolicy,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.uiCopy(
+                          zh: '發布到 Fediverse',
+                          en: 'Publish to Fediverse',
+                        ),
+                        style: const TextStyle(
+                          fontFamily: AnsibleDesign.serif,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AnsibleDesign.ink,
+                        ),
                       ),
-                      style: const TextStyle(
-                        fontFamily: AnsibleDesign.serif,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AnsibleDesign.ink,
+                      Text(
+                        context.uiCopy(
+                          zh: '僅限真人驗證；點此設定允許與封鎖站台',
+                          en:
+                              'Verified humans only; tap to configure allowed '
+                              'and blocked sites',
+                        ),
+                        style: const TextStyle(
+                          fontFamily: AnsibleDesign.serif,
+                          fontSize: 13,
+                          color: AnsibleDesign.inkMuted,
+                        ),
                       ),
-                    ),
-                    Text(
-                      context.uiCopy(
-                        zh: '僅限真人驗證；點此設定允許與封鎖站台',
-                        en:
-                            'Verified humans only; tap to configure allowed '
-                            'and blocked sites',
-                      ),
-                      style: const TextStyle(
-                        fontFamily: AnsibleDesign.serif,
-                        fontSize: 13,
-                        color: AnsibleDesign.inkMuted,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Switch(
-              value: _controller.preferences.enabled,
-              onChanged: !_controller.loaded || _controller.saving
-                  ? null
-                  : _setEnabled,
-            ),
-          ],
-        ),
-      ),
+              const SizedBox(width: 8),
+              Semantics(
+                label: context.uiCopy(
+                  zh: enabled ? 'Fediverse 發布已啟用' : 'Fediverse 發布已關閉',
+                  en: enabled
+                      ? 'Fediverse publishing is enabled'
+                      : 'Fediverse publishing is off',
+                ),
+                child: Text(
+                  enabled
+                      ? context.uiCopy(zh: '已啟用', en: 'ON')
+                      : context.uiCopy(zh: '關閉', en: 'OFF'),
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: enabled
+                        ? AnsibleDesign.moss
+                        : AnsibleDesign.inkMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Switch(
+                value: enabled,
+                onChanged: !_controller.loaded || _controller.saving
+                    ? null
+                    : _setEnabled,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

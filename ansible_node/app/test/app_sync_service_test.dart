@@ -87,7 +87,7 @@ void main() {
     expect(await publications.listTargets(), isEmpty);
   });
 
-  test('syncAll publishes public content to the active relay', () async {
+  test('syncAll does not publish public content to the active relay', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
 
@@ -137,14 +137,16 @@ void main() {
 
     final result = await service.syncAll(pullRemote: false);
 
-    expect(result.publishSummary.publicItems, 1);
-    expect(result.publishSummary.enqueued, 1);
-    expect(result.publishSummary.published, 1);
+    expect(result.publishSummary.publicItems, 0);
+    expect(result.publishSummary.enqueued, 0);
+    expect(result.publishSummary.published, 0);
     expect(result.publishSummary.failed, 0);
+    expect(result.publishSummary.skippedReasons, {
+      'externalPublicationSeparate',
+    });
 
     final targets = await publicationRepo.listTargets();
-    expect(targets.single.protocol, PublicationProtocol.activityPub);
-    expect(targets.single.status, PublicationStatus.published);
+    expect(targets, isEmpty);
   });
 
   test('syncAll skips local-only public content', () async {

@@ -17,6 +17,7 @@ class _CreateNoteResult {
 class _CreateNoteEditorScreen extends StatefulWidget {
   const _CreateNoteEditorScreen({
     required this.murmurs,
+    this.authorDid,
     this.initialTitle,
     this.initialBody,
     this.initialVisibility = ContentVisibility.private,
@@ -28,6 +29,7 @@ class _CreateNoteEditorScreen extends StatefulWidget {
       _CreateNoteEditorScreenState();
 
   final List<ContentItem> murmurs;
+  final String? authorDid;
   final String? initialTitle;
   final String? initialBody;
   final ContentVisibility initialVisibility;
@@ -328,6 +330,7 @@ class _CreateNoteEditorScreenState extends State<_CreateNoteEditorScreen> {
         distributionPreference: _distributionPreference,
       ),
       subjectLabel: context.l10n.noteSubjectLabel,
+      authorDid: widget.authorDid,
     );
     if (choice == null || !mounted) return;
     setState(() {

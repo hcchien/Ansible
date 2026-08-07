@@ -8,9 +8,7 @@ import 'package:ansible_store/ansible_store.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/subpage_l10n.dart';
 import '../l10n/user_facing_error.dart';
-import '../services/content_publication_service.dart';
 import '../services/relay_discovery_client.dart';
-import '../services/app_sync_service.dart';
 import '../services/board_access_presentation_service.dart';
 import '../services/private_board_crypto_service.dart';
 import '../services/private_board_key_client.dart';
@@ -491,7 +489,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   Future<SyncResult> _performSync(
     RemoteNode node, {
     bool showSnackBar = true,
-    bool publishPublicContent = true,
     bool requireUserPresence = true,
     bool reuseHardwareAuthenticationContext = false,
   }) async {
@@ -635,7 +632,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       );
 
       final result = await syncService.syncFromNode(client, node);
-      String? capabilityToken;
       if (_capabilities.webAuthn) {
         final capability = await _syncCapabilityServices
             .putIfAbsent(
@@ -648,7 +644,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
               ),
             )
             .authorize();
-        capabilityToken = capability.token;
         _syncCapabilitiesByNode[node.id] = capability.token;
         await RelayReputationPresentationService(
           walletRepository: DriftWalletRepository(widget.db),
@@ -656,20 +651,9 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           didSigner: syncDidSigner,
         ).present(holderDid: widget.localDid, node: node);
       }
-      final publishSummary = publishPublicContent && capabilityToken != null
-          ? await bestEffortPublicPublish(
-              () => _publishPublicContent(
-                showSnackBar: false,
-                syncCapability: capabilityToken,
-                didSigner: syncDidSigner,
-              ),
-            )
-          : PublicPublishSummary(
-              publicItems: 0,
-              skippedReasons: _capabilities.webAuthn
-                  ? const {}
-                  : const {'webauthnUnavailable'},
-            );
+      // Relay synchronisation and external distribution intentionally have
+      // different lifecycles. Only an explicit publish action may request
+      // ActivityPub or Nostr delivery.
 
       setState(() {
         _syncingNodes[node.id] = false;
@@ -687,7 +671,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                 text.f('syncNodePullSummary', {
                   'name': node.name,
                   'count': result.activitiesProcessed,
-                  'publish': _publishSummaryMessage(publishSummary),
                 }),
               ),
             ),
@@ -840,9 +823,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     try {
       final reuseHardwareAuthenticationContext =
           hardwareAuthenticationSession != null;
-      final syncDidSigner = DidSignerImpl(
-        reuseAuthenticationContext: reuseHardwareAuthenticationContext,
-      );
       var pulledActivities = 0;
       final pullErrors = <String>[];
       for (final node in _remoteNodes) {
@@ -850,7 +830,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           final result = await _performSync(
             node,
             showSnackBar: false,
-            publishPublicContent: false,
             requireUserPresence: false,
             reuseHardwareAuthenticationContext:
                 reuseHardwareAuthenticationContext,
@@ -862,23 +841,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
           }
         }
       }
-      final publishSummary = _capabilities.webAuthn
-          ? await bestEffortPublicPublish(
-              () => _publishPublicContent(
-                showSnackBar: false,
-                syncCapability: _activeSyncCapability(),
-                didSigner: syncDidSigner,
-              ),
-            )
-          : const PublicPublishSummary(
-              publicItems: 0,
-              skippedReasons: {'webauthnUnavailable'},
-            );
       if (!mounted) return;
       final message = _syncAllSummaryMessage(
         pulledActivities: pulledActivities,
         pullErrors: pullErrors,
-        publishSummary: publishSummary,
       );
       ScaffoldMessenger.of(
         context,
@@ -888,138 +854,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     }
   }
 
-  Future<PublicPublishSummary> _publishPublicContent({
-    bool showSnackBar = true,
-    String? syncCapability,
-    DidSigner? didSigner,
-  }) async {
-    final publicItems = (await _contentItemRepo.list())
-        .where((item) => isPublishableContentForDid(item, widget.localDid))
-        .toList();
-    if (publicItems.isEmpty) {
-      return const PublicPublishSummary(publicItems: 0);
-    }
-    final distributionPreference = _configuredDistributionPreference();
-    if (distributionPreference == DistributionPreference.localOnly) {
-      return PublicPublishSummary(
-        publicItems: publicItems.length,
-        skipped: publicItems.length,
-        skippedReasons: const {'localOnly'},
-      );
-    }
-
-    final service = ContentPublicationService(
-      contentItems: _contentItemRepo,
-      publications: _publicationRepo,
-      relaySettings: _nostrRelaySettingsStore,
-      remoteNodes: _remoteNodeRepo,
-      keyStore: _nostrKeyStore,
-      signingBridge: const SchnorrSigningBridge(),
-      didSigner: didSigner,
-      relayPublicationClient: HttpRelayPublicationClient(
-        accessToken: syncCapability ?? _activeSyncCapability(),
-      ),
-    );
-    var published = 0;
-    var failed = 0;
-    var enqueued = 0;
-    var skipped = 0;
-    final skippedReasons = <String>{};
-    final failureReasons = <String>{};
-    for (final item in publicItems) {
-      final result = await service.publishContentItem(
-        item,
-        distributionPreference: distributionPreference,
-      );
-      published += result.published;
-      failed += result.failed;
-      enqueued += result.enqueued;
-      failureReasons.addAll(result.errors);
-      if (result.enqueued == 0 && result.published == 0 && result.failed == 0) {
-        skipped++;
-        if (result.skippedReason != null) {
-          skippedReasons.add(result.skippedReason!);
-        }
-      }
-    }
-    await _loadData();
-    final summary = PublicPublishSummary(
-      publicItems: publicItems.length,
-      enqueued: enqueued,
-      published: published,
-      failed: failed,
-      skipped: skipped,
-      skippedReasons: skippedReasons,
-      failureReasons: failureReasons,
-    );
-    if (!mounted || !showSnackBar) return summary;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(_publishSummaryMessage(summary))));
-    return summary;
-  }
-
-  String? _activeSyncCapability() {
-    for (final node in _remoteNodes) {
-      if (node.isActive) return _syncCapabilitiesByNode[node.id];
-    }
-    return null;
-  }
-
   String _syncAllSummaryMessage({
     required int pulledActivities,
     required List<String> pullErrors,
-    required PublicPublishSummary publishSummary,
   }) {
     final text = SubpageL10n.of(context);
-    var message = text.f('syncAllComplete', {
-      'count': pulledActivities,
-      'publish': _publishSummaryMessage(publishSummary),
-    });
+    var message = text.f('syncAllComplete', {'count': pulledActivities});
     if (pullErrors.isNotEmpty) {
       message += text.f('syncAllPullErrors', {'errors': pullErrors.join('; ')});
     }
     return message;
-  }
-
-  String _publishSummaryMessage(PublicPublishSummary summary) {
-    final text = SubpageL10n.of(context);
-    if (summary.errorMessage != null) {
-      return text.f('publishFailed', {'error': summary.errorMessage!});
-    }
-    if (summary.publicItems == 0) {
-      return text.t('publishNoPublic');
-    }
-    if (summary.enqueued == 0 &&
-        summary.published == 0 &&
-        summary.failed == 0) {
-      final reasons = summary.skippedReasons.isEmpty
-          ? text.t('publishNoNewTargetsReason')
-          : summary.skippedReasons.join(', ');
-      return text.f('publishNoNewTargets', {'reasons': reasons});
-    }
-    if (summary.failed > 0 && summary.failureReasons.isNotEmpty) {
-      return text.f('publishResultReason', {
-        'published': summary.published,
-        'enqueued': summary.enqueued,
-        'failed': summary.failed,
-        'reason': summary.failureReasons.first,
-      });
-    }
-    return text.f('publishResult', {
-      'published': summary.published,
-      'enqueued': summary.enqueued,
-      'failed': summary.failed,
-    });
-  }
-
-  DistributionPreference _configuredDistributionPreference() {
-    final hasNostr = _nostrRelays.any((relay) => relay.write);
-    final hasRelay = _remoteNodes.any((node) => node.isActive);
-    if (hasNostr && hasRelay) return DistributionPreference.nostrAndActivityPub;
-    if (hasNostr) return DistributionPreference.nostr;
-    if (hasRelay) return DistributionPreference.activityPub;
-    return DistributionPreference.localOnly;
   }
 
   Future<void> _retryNostrTarget(PublicationTarget target) async {

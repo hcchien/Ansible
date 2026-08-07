@@ -145,6 +145,7 @@ class _NoteRow extends StatelessWidget {
         fullscreenDialog: true,
         builder: (_) => _CreateNoteEditorScreen(
           murmurs: murmurs,
+          authorDid: note.authorDid,
           initialTitle: note.title,
           initialBody: note.body,
           initialVisibility: note.visibility,
@@ -226,6 +227,7 @@ class _VisibilityMenu extends StatelessWidget {
       context: context,
       current: ContentDistributionChoice.forVisibility(note.visibility),
       subjectLabel: context.l10n.noteSubjectLabel,
+      authorDid: note.authorDid,
     );
     if (choice == null) return;
     if (!context.mounted) return;

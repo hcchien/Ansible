@@ -6,6 +6,7 @@ import 'package:ansible_store/ansible_store.dart';
 
 import '../l10n/subpage_l10n.dart';
 import 'content_publication_service.dart';
+import 'fediverse_preferences_controller.dart';
 import 'host_moderation_sync_service.dart';
 import 'issuer_attestation_service.dart';
 import 'notification_projector.dart';
@@ -43,7 +44,6 @@ class AppSyncResult {
   bool get success =>
       pullErrors.isEmpty &&
       reputationErrors.isEmpty &&
-      publishSummary.errorMessage == null &&
       opsSummary.rejected == 0 &&
       opsSummary.retryPending == 0;
 }
@@ -115,6 +115,8 @@ class AppSyncService {
     BoardWriteAuthorization? authorizeBoardWrite,
     SelfBackfillStateStore selfBackfillState =
         const CompletedSelfBackfillStateStore(),
+    FediversePreferencesStore fediversePreferencesStore =
+        const SharedPreferencesFediversePreferencesStore(),
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
        _contactRepository = contactRepository,
@@ -144,7 +146,8 @@ class AppSyncService {
        _allowIdentityWrites = allowIdentityWrites,
        _authorizeBoardRead = authorizeBoardRead,
        _authorizeBoardWrite = authorizeBoardWrite,
-       _selfBackfillState = selfBackfillState;
+       _selfBackfillState = selfBackfillState,
+       _fediversePreferencesStore = fediversePreferencesStore;
 
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
@@ -176,6 +179,7 @@ class AppSyncService {
   final BoardReadAuthorization? _authorizeBoardRead;
   final BoardWriteAuthorization? _authorizeBoardWrite;
   final SelfBackfillStateStore _selfBackfillState;
+  final FediversePreferencesStore _fediversePreferencesStore;
 
   // Portable issuer re-verification (federation trust): one service per
   // relay node, kept for the AppSyncService lifetime so its per-DID verified
@@ -241,16 +245,16 @@ class AppSyncService {
         ).flushPending();
       }
     }
-    final publishSummary = effectivePushLocal
-        ? await bestEffortPublicPublish(
-            () => publishPublicContent(syncCapabilities: capabilities),
-          )
-        : PublicPublishSummary(
-            publicItems: 0,
-            skippedReasons: pushLocal
-                ? const {'webauthnUnavailable'}
-                : const {},
-          );
+    // Synchronisation is confined to the Relay operation stream.  External
+    // distribution (ActivityPub and Nostr) is a separate, user-initiated
+    // action: its availability or delivery outcome must never make Relay
+    // synchronisation look failed or trigger an unexpected publication.
+    final publishSummary = PublicPublishSummary(
+      publicItems: 0,
+      skippedReasons: pushLocal && !effectivePushLocal
+          ? const {'webauthnUnavailable'}
+          : const {'externalPublicationSeparate'},
+    );
     return AppSyncResult(
       pulledActivities: pullSummary.pulledActivities,
       pullErrors: pullSummary.pullErrors,
@@ -622,12 +626,15 @@ class AppSyncService {
 
   Future<DistributionPreference> _configuredDistributionPreference() async {
     final nostrRelays = await _relaySettings.list();
-    final remoteNodes = await _remoteNodeRepo.list();
     final hasNostr = nostrRelays.any((relay) => relay.write);
-    final hasRelay = remoteNodes.any((node) => node.isActive);
-    if (hasNostr && hasRelay) return DistributionPreference.nostrAndActivityPub;
+    final did = _followerDid;
+    final activityPubEnabled =
+        did != null && (await _fediversePreferencesStore.load(did)).enabled;
+    if (hasNostr && activityPubEnabled) {
+      return DistributionPreference.nostrAndActivityPub;
+    }
     if (hasNostr) return DistributionPreference.nostr;
-    if (hasRelay) return DistributionPreference.activityPub;
+    if (activityPubEnabled) return DistributionPreference.activityPub;
     return DistributionPreference.localOnly;
   }
 }
@@ -681,10 +688,7 @@ String appSyncSummaryMessage(
   AppSyncResult result, {
   SubpageL10n text = const SubpageL10n('en'),
 }) {
-  var message = text.f('syncAllComplete', {
-    'count': result.pulledActivities,
-    'publish': publicPublishSummaryMessage(result.publishSummary, text: text),
-  });
+  var message = text.f('syncAllComplete', {'count': result.pulledActivities});
   if (result.pullErrors.isNotEmpty) {
     message += text.f('syncAllPullErrors', {
       'errors': result.pullErrors.join('; '),

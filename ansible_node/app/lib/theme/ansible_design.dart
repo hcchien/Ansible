@@ -19,28 +19,44 @@ class AnsibleDesign {
   static const paperElev = Color(0xFFECEAE0);
   static const paperDeep = Color(0xFFE2DFD2);
   static const paperWhite = Color(0xFFFFFFFF); // card sheets on the paper
-  static const ink = Color(0xFF2A2A0A); static const inkMuted = Color(0xFF625F3C);
-  static const inkFaint = Color(0xFF9C9974); static const rule = Color(0xFFD8D3C4);
-  static const ruleSoft = Color(0xFFE6E2D6); static const accent = Color(0xFFC9AEEB);
-  static const accentSoft = Color(0xFFE6DAF6); static const signalSoft = Color(0xFF6FB2E8);
-  static const tintSky = Color(0xFFE3F0FB); static const tintLavender = Color(0xFFF0E9FA);
-  static const tintCitron = Color(0xFFFAF7C9); static const spore = Color(0xFF6FB2E8);
-  static const moss = Color(0xFF6FB2E8); static const lavender = Color(0xFF2846A8);
+  static const ink = Color(0xFF2A2A0A);
+  static const inkMuted = Color(0xFF625F3C);
+  static const inkFaint = Color(0xFF9C9974);
+  static const rule = Color(0xFFD8D3C4);
+  static const ruleSoft = Color(0xFFE6E2D6);
+  static const accent = Color(0xFFC9AEEB);
+  static const accentSoft = Color(0xFFE6DAF6);
+  static const signalSoft = Color(0xFF6FB2E8);
+  static const tintSky = Color(0xFFE3F0FB);
+  static const tintLavender = Color(0xFFF0E9FA);
+  static const tintCitron = Color(0xFFFAF7C9);
+  static const spore = Color(0xFF6FB2E8);
+  static const moss = Color(0xFF6FB2E8);
+  static const lavender = Color(0xFF2846A8);
   static const highlight = Color(0xFFEBE21C);
   // Destructive/warning text must stay readable on bone paper, so it keeps a
   // warm rust; the design's citron "ember" slot is decorative only.
   static const danger = Color(0xFF9A4A24);
-  static const ember = danger; static const ochre = accent;
+  static const ember = danger;
+  static const ochre = accent;
 
   // ── Dark (Ink — warm black counterpart) ───────────────────────────────────
-  static const darkPaper = Color(0xFF17130A); static const darkPaperElev = Color(0xFF1F1A0E);
-  static const darkPaperDeep = Color(0xFF2A2413); static const darkPaperWhite = Color(0xFF14131A);
-  static const darkInk = Color(0xFFF4EEDA); static const darkInkMuted = Color(0xFFB7AD8E);
-  static const darkInkFaint = Color(0xFF726B4F); static const darkRule = Color(0xFF362E17);
-  static const darkRuleSoft = Color(0xFF221D10); static const darkSignalSoft = Color(0xFF8FC4F5);
-  static const darkTintSky = Color(0xFF17252F); static const darkTintLavender = Color(0xFF241E33);
-  static const darkTintCitron = Color(0xFF2B2A10); static const darkOchre = Color(0xFFD9C6F2);
-  static const darkMoss = Color(0xFF8FC4F5); static const darkLavender = Color(0xFF5C82E0);
+  static const darkPaper = Color(0xFF17130A);
+  static const darkPaperElev = Color(0xFF1F1A0E);
+  static const darkPaperDeep = Color(0xFF2A2413);
+  static const darkPaperWhite = Color(0xFF14131A);
+  static const darkInk = Color(0xFFF4EEDA);
+  static const darkInkMuted = Color(0xFFB7AD8E);
+  static const darkInkFaint = Color(0xFF726B4F);
+  static const darkRule = Color(0xFF362E17);
+  static const darkRuleSoft = Color(0xFF221D10);
+  static const darkSignalSoft = Color(0xFF8FC4F5);
+  static const darkTintSky = Color(0xFF17252F);
+  static const darkTintLavender = Color(0xFF241E33);
+  static const darkTintCitron = Color(0xFF2B2A10);
+  static const darkOchre = Color(0xFFD9C6F2);
+  static const darkMoss = Color(0xFF8FC4F5);
+  static const darkLavender = Color(0xFF5C82E0);
   static const darkHighlight = Color(0xFFF5EE3A);
   static const darkEmber = Color(0xFFC97B52); // warning text (dark)
 
@@ -164,6 +180,24 @@ class AnsibleDesign {
         side: const BorderSide(color: rule, width: 0.5),
         labelStyle: const TextStyle(color: inkMuted, fontFamily: mono),
       ),
+      // The Material 3 default uses a very dark unselected track with this
+      // colour scheme.  On paper it made ON and OFF settings look almost the
+      // same, which is particularly unsafe for consent-bearing controls such
+      // as Fediverse publication.  Keep the thumb/track contrast explicit.
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return paperDeep;
+          return paperWhite;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return paperDeep;
+          return states.contains(WidgetState.selected) ? moss : rule;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return moss;
+          return rule;
+        }),
+      ),
     );
   }
 
@@ -266,6 +300,20 @@ class AnsibleDesign {
         side: const BorderSide(color: darkRule, width: 0.5),
         labelStyle: const TextStyle(color: darkInkMuted, fontFamily: mono),
       ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return darkPaperDeep;
+          return darkPaper;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return darkPaperDeep;
+          return states.contains(WidgetState.selected) ? darkMoss : darkRule;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return darkMoss;
+          return darkRule;
+        }),
+      ),
     );
   }
 }
@@ -317,8 +365,7 @@ class AnsibleMark extends StatelessWidget {
     // Default to the theme's ink so the mark stays visible on the Ink ground;
     // the trust dot keeps the accent, which reads on both.
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final c =
-        color ?? (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink);
+    final c = color ?? (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink);
     return CustomPaint(
       size: Size.square(size),
       painter: _ElixMarkPainter(

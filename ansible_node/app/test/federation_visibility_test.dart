@@ -1,4 +1,5 @@
 import 'package:ansible_node/widgets/content_visibility_sheet.dart';
+import 'package:ansible_node/services/fediverse_preferences_controller.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,11 +57,11 @@ void main() {
       onResult: (value) => choice = value,
     );
 
-    expect(find.text('Nostr + ActivityPub'), findsOneWidget);
+    expect(find.text('local only'), findsOneWidget);
     await tester.ensureVisible(
-      find.byKey(const Key('distribution_activitypub_toggle')),
+      find.byKey(const Key('distribution_nostr_toggle')),
     );
-    await tester.tap(find.byKey(const Key('distribution_activitypub_toggle')));
+    await tester.tap(find.byKey(const Key('distribution_nostr_toggle')));
     await tester.pumpAndSettle();
     expect(find.text('Nostr'), findsWidgets);
 
@@ -71,7 +72,7 @@ void main() {
     expect(choice!.distributionPreference, DistributionPreference.nostr);
   });
 
-  testWidgets('unlisted visibility can choose ActivityPub only', (
+  testWidgets('unverified user cannot select ActivityPub distribution', (
     tester,
   ) async {
     ContentDistributionChoice? choice;
@@ -83,17 +84,45 @@ void main() {
       onResult: (value) => choice = value,
     );
 
-    await tester.ensureVisible(
-      find.byKey(const Key('distribution_nostr_toggle')),
+    final activityPubToggle = tester.widget<SwitchListTile>(
+      find.descendant(
+        of: find.byKey(const Key('distribution_activitypub_toggle')),
+        matching: find.byType(SwitchListTile),
+      ),
     );
-    await tester.tap(find.byKey(const Key('distribution_nostr_toggle')));
-    await tester.pumpAndSettle();
-    expect(find.text('ActivityPub'), findsWidgets);
+    expect(activityPubToggle.onChanged, isNull);
+    expect(find.text('需先在設定完成真人驗證並啟用 Fediverse 發布。'), findsOneWidget);
 
     await tester.tap(find.text('確認'));
     await tester.pumpAndSettle();
 
     expect(choice!.visibility, ContentVisibility.unlisted);
+    expect(choice!.distributionPreference, DistributionPreference.localOnly);
+  });
+
+  testWidgets('explicit Fediverse consent permits ActivityPub selection', (
+    tester,
+  ) async {
+    ContentDistributionChoice? choice;
+    await _pumpDistributionSheet(
+      tester,
+      current: ContentDistributionChoice.forVisibility(
+        ContentVisibility.public,
+      ),
+      authorDid: 'did:elix:verified',
+      preferencesStore: _EnabledFediverseStore(),
+      onResult: (value) => choice = value,
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('distribution_activitypub_toggle')),
+    );
+    await tester.tap(find.byKey(const Key('distribution_activitypub_toggle')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('確認'));
+    await tester.pumpAndSettle();
+
     expect(choice!.distributionPreference, DistributionPreference.activityPub);
   });
 
@@ -117,6 +146,8 @@ Future<void> _pumpDistributionSheet(
   WidgetTester tester, {
   required ContentDistributionChoice current,
   required ValueChanged<ContentDistributionChoice?> onResult,
+  String? authorDid,
+  FediversePreferencesStore? preferencesStore,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -131,6 +162,10 @@ Future<void> _pumpDistributionSheet(
                       context: context,
                       current: current,
                       subjectLabel: '這則內容',
+                      authorDid: authorDid,
+                      preferencesStore:
+                          preferencesStore ??
+                          const SharedPreferencesFediversePreferencesStore(),
                     ),
                   );
                 },
@@ -145,4 +180,13 @@ Future<void> _pumpDistributionSheet(
 
   await tester.tap(find.text('Open'));
   await tester.pumpAndSettle();
+}
+
+class _EnabledFediverseStore implements FediversePreferencesStore {
+  @override
+  Future<FediversePreferences> load(String did) async =>
+      const FediversePreferences(enabled: true);
+
+  @override
+  Future<void> save(String did, FediversePreferences preferences) async {}
 }
