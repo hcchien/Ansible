@@ -1,11 +1,30 @@
 import 'package:ansible_node/screens/home/post_card.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
+import 'package:ansible_node/theme/elix_screen_style.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Paper feed cards stay light when the system is dark', () {
+    expect(
+      postCardBackgroundColor(
+        screenStyle: ElixScreenStyle.paper,
+        systemBrightness: Brightness.dark,
+      ),
+      AnsibleDesign.paperWhite,
+    );
+    expect(
+      postCardBackgroundColor(
+        screenStyle: ElixScreenStyle.ink,
+        systemBrightness: Brightness.light,
+      ),
+      AnsibleDesign.darkPaperWhite,
+    );
+  });
+
   test('comment count excludes the opening post', () {
     final now = DateTime.utc(2026, 7, 17);
     Post post(String id) => Post(

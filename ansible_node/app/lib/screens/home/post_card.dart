@@ -90,6 +90,22 @@ class PostCardData {
   );
 }
 
+/// A board's chosen reading style owns its card surface. The system theme is
+/// only relevant for the `system` style; otherwise a Paper feed rendered while
+/// iOS is in dark appearance would pair ink text with an Ink card.
+Color postCardBackgroundColor({
+  required ElixScreenStyle screenStyle,
+  required Brightness systemBrightness,
+}) {
+  final useInkSurface =
+      screenStyle == ElixScreenStyle.ink ||
+      (screenStyle == ElixScreenStyle.system &&
+          systemBrightness == Brightness.dark);
+  return useInkSurface
+      ? AnsibleDesign.darkPaperWhite
+      : AnsibleDesign.paperWhite;
+}
+
 class PostCard extends StatefulWidget {
   const PostCard({
     super.key,
@@ -342,8 +358,9 @@ class _PostCardState extends State<PostCard> {
   Widget build(BuildContext context) {
     final data = widget.data;
     final thread = data.thread;
-    // Theme-aware: the timeline/personal boards render on a dark screen style,
-    // so colours must come from the active screen style, not hardcoded ink.
+    // The board's reading style owns the whole card palette. In particular,
+    // Paper must stay light even when the operating system uses dark mode.
+    final screenStyle = ElixScreenStyleScope.styleOf(context);
     final style = ElixScreenStyleScope.dataOf(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -353,9 +370,10 @@ class _PostCardState extends State<PostCard> {
         onSecondaryTapDown: _openDesktopContextMenu,
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? AnsibleDesign.darkPaperWhite
-                : AnsibleDesign.paperWhite,
+            color: postCardBackgroundColor(
+              screenStyle: screenStyle,
+              systemBrightness: Theme.of(context).brightness,
+            ),
             border: Border.all(color: style.rule, width: 1),
             borderRadius: BorderRadius.circular(18),
           ),
