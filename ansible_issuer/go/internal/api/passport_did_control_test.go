@@ -56,6 +56,58 @@ func TestHTTPPassportDIDControlVerifierAcceptsOnlyCurrentHolderSignature(t *test
 	}
 }
 
+func TestHTTPPassportDIDControlVerifierAcceptsSelfCertifyingV2Identity(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const handle = "alice.elix.cool"
+	did := deriveInitialDID(handle, hex.EncodeToString(publicKey), "hardware", "ed25519")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/v1/identity/anchor/"):
+			w.WriteHeader(http.StatusNotFound)
+		case strings.HasPrefix(r.URL.Path, "/api/v1/identity/public-key/"):
+			requestedDID := strings.TrimPrefix(r.URL.Path, "/api/v1/identity/public-key/")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"did": requestedDID, "public_key_hex": hex.EncodeToString(publicKey), "signing_algorithm": "ed25519",
+			})
+		case strings.HasPrefix(r.URL.Path, "/api/v1/identity/handle/"):
+			requestedDID := strings.TrimPrefix(r.URL.Path, "/api/v1/identity/handle/")
+			_ = json.NewEncoder(w).Encode(map[string]any{"did": requestedDID, "handle": handle})
+		default:
+			t.Fatalf("unexpected resolver path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	auth := PassportIssueAuthorization{
+		DID: did, ChallengeID: "challenge", ChallengeNonce: "nonce", ChallengeIssuer: "https://issuer.elix.cool",
+		ChallengeScope: passportScope, Nationality: "TWN", ZKPProof: `{"proof":"opaque"}`,
+		ZKPCircuitVersion: passportCircuitVersion, VerificationKeyHash: "sha256:pinned",
+	}
+	payload, err := auth.canonicalPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth.SignatureHex = hex.EncodeToString(ed25519.Sign(privateKey, payload))
+	verifier, err := NewHTTPPassportDIDControlVerifier(server.URL, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifier.VerifyPassportIssue(auth); err != nil {
+		t.Fatalf("valid V2 holder signature rejected: %v", err)
+	}
+
+	// The key endpoint cannot substitute an arbitrary key/handle pair: the DID
+	// must still self-certify from exactly those public fields.
+	did = "did:elix:forged"
+	auth.DID = did
+	if err := verifier.VerifyPassportIssue(auth); err == nil {
+		t.Fatal("non-self-certifying V2 identity was accepted")
+	}
+}
+
 func TestHTTPPassportDIDControlVerifierRejectsResolverDIDMismatch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"did":"did:elix:wrongwrongwrongwrongwrongwo","public_key_hex":"00","signing_algorithm":"ed25519"}`))

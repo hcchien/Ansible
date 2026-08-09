@@ -50,18 +50,40 @@ func (v *HTTPPassportDIDControlVerifier) VerifyPassportIssue(auth PassportIssueA
 	if err != nil {
 		return errPassportDIDControl
 	}
-	req, err := http.NewRequest(http.MethodGet, v.endpoint+"/api/v1/identity/anchor/"+url.PathEscape(auth.DID), nil)
+	publicKey, algorithm, err := v.resolveVerificationKey(auth.DID)
 	if err != nil {
 		return errPassportDIDControl
+	}
+	signature, err := hex.DecodeString(auth.SignatureHex)
+	if err != nil {
+		return errPassportDIDControl
+	}
+	return verifyPassportHolderSignature(publicKey, algorithm, payload, signature)
+}
+
+// resolveVerificationKey first uses a self-signed V1 anchor. Newer hardware
+// identities do not create that legacy object: their public key and handle are
+// registered through the V2 flow. For the V2 path we independently recompute
+// the self-certifying DID from that public data before accepting the key.
+func (v *HTTPPassportDIDControlVerifier) resolveVerificationKey(did string) ([]byte, string, error) {
+	req, err := http.NewRequest(http.MethodGet, v.endpoint+"/api/v1/identity/anchor/"+url.PathEscape(did), nil)
+	if err != nil {
+		return nil, "", errPassportDIDControl
 	}
 	resp, err := v.client.Do(req)
 	if err != nil {
-		return errPassportDIDControl
+		return nil, "", errPassportDIDControl
 	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return errPassportDIDControl
+	raw, readErr := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	resp.Body.Close()
+	if readErr != nil {
+		return nil, "", errPassportDIDControl
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return v.resolveV2VerificationKey(did)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", errPassportDIDControl
 	}
 	var key struct {
 		DID              string  `json:"did"`
@@ -74,26 +96,84 @@ func (v *HTTPPassportDIDControlVerifier) VerifyPassportIssue(auth PassportIssueA
 		CanonicalBody    string  `json:"canonical_body"`
 		SignatureHex     string  `json:"sig"`
 	}
-	if json.Unmarshal(raw, &key) != nil || key.DID != auth.DID ||
+	if json.Unmarshal(raw, &key) != nil || key.DID != did ||
 		key.Reason != "initial" || key.PrevAnchorCID != nil ||
 		key.DID != deriveInitialDID(key.Handle, key.PublicKeyHex, key.CustodyClass, key.SigningAlgorithm) {
-		return errPassportDIDControl
+		return nil, "", errPassportDIDControl
 	}
 	publicKey, err := hex.DecodeString(key.PublicKeyHex)
 	if err != nil {
-		return errPassportDIDControl
-	}
-	signature, err := hex.DecodeString(auth.SignatureHex)
-	if err != nil {
-		return errPassportDIDControl
+		return nil, "", errPassportDIDControl
 	}
 	anchorSignature, err := hex.DecodeString(key.SignatureHex)
 	if err != nil {
-		return errPassportDIDControl
+		return nil, "", errPassportDIDControl
 	}
 	switch key.SigningAlgorithm {
 	case "ed25519", "":
-		if len(publicKey) != ed25519.PublicKeySize || len(signature) != ed25519.SignatureSize || len(anchorSignature) != ed25519.SignatureSize || !ed25519.Verify(publicKey, []byte(key.CanonicalBody), anchorSignature) || !ed25519.Verify(publicKey, payload, signature) {
+		if len(publicKey) != ed25519.PublicKeySize || len(anchorSignature) != ed25519.SignatureSize || !ed25519.Verify(publicKey, []byte(key.CanonicalBody), anchorSignature) {
+			return nil, "", errPassportDIDControl
+		}
+	case "p256-sha256":
+		if len(publicKey) != 65 || publicKey[0] != 4 || !elliptic.P256().IsOnCurve(new(big.Int).SetBytes(publicKey[1:33]), new(big.Int).SetBytes(publicKey[33:])) {
+			return nil, "", errPassportDIDControl
+		}
+		pub := &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(publicKey[1:33]), Y: new(big.Int).SetBytes(publicKey[33:])}
+		if !ecdsa.VerifyASN1(pub, []byte(key.CanonicalBody), anchorSignature) {
+			return nil, "", errPassportDIDControl
+		}
+	default:
+		return nil, "", errPassportDIDControl
+	}
+	return publicKey, key.SigningAlgorithm, nil
+}
+
+func (v *HTTPPassportDIDControlVerifier) resolveV2VerificationKey(did string) ([]byte, string, error) {
+	keyURL := v.endpoint + "/api/v1/identity/public-key/" + url.PathEscape(did)
+	handleURL := v.endpoint + "/api/v1/identity/handle/" + url.PathEscape(did)
+	keyResp, err := v.client.Get(keyURL)
+	if err != nil {
+		return nil, "", errPassportDIDControl
+	}
+	keyRaw, keyReadErr := io.ReadAll(io.LimitReader(keyResp.Body, 64<<10))
+	keyResp.Body.Close()
+	if keyReadErr != nil || keyResp.StatusCode != http.StatusOK {
+		return nil, "", errPassportDIDControl
+	}
+	handleResp, err := v.client.Get(handleURL)
+	if err != nil {
+		return nil, "", errPassportDIDControl
+	}
+	handleRaw, handleReadErr := io.ReadAll(io.LimitReader(handleResp.Body, 64<<10))
+	handleResp.Body.Close()
+	if handleReadErr != nil || handleResp.StatusCode != http.StatusOK {
+		return nil, "", errPassportDIDControl
+	}
+	var key struct {
+		DID              string `json:"did"`
+		PublicKeyHex     string `json:"public_key_hex"`
+		SigningAlgorithm string `json:"signing_algorithm"`
+	}
+	var handle struct {
+		DID    string `json:"did"`
+		Handle string `json:"handle"`
+	}
+	if json.Unmarshal(keyRaw, &key) != nil || json.Unmarshal(handleRaw, &handle) != nil ||
+		key.DID != did || handle.DID != did || handle.Handle == "" ||
+		deriveInitialDID(handle.Handle, key.PublicKeyHex, "hardware", key.SigningAlgorithm) != did {
+		return nil, "", errPassportDIDControl
+	}
+	publicKey, err := hex.DecodeString(key.PublicKeyHex)
+	if err != nil {
+		return nil, "", errPassportDIDControl
+	}
+	return publicKey, key.SigningAlgorithm, nil
+}
+
+func verifyPassportHolderSignature(publicKey []byte, algorithm string, payload, signature []byte) error {
+	switch algorithm {
+	case "ed25519", "":
+		if len(publicKey) != ed25519.PublicKeySize || len(signature) != ed25519.SignatureSize || !ed25519.Verify(publicKey, payload, signature) {
 			return errPassportDIDControl
 		}
 	case "p256-sha256":
@@ -101,7 +181,7 @@ func (v *HTTPPassportDIDControlVerifier) VerifyPassportIssue(auth PassportIssueA
 			return errPassportDIDControl
 		}
 		pub := &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(publicKey[1:33]), Y: new(big.Int).SetBytes(publicKey[33:])}
-		if !ecdsa.VerifyASN1(pub, []byte(key.CanonicalBody), anchorSignature) || !ecdsa.VerifyASN1(pub, payload, signature) {
+		if !ecdsa.VerifyASN1(pub, payload, signature) {
 			return errPassportDIDControl
 		}
 	default:
