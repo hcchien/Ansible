@@ -16,6 +16,7 @@ import '../services/passport_local_id_service.dart';
 import '../services/platform_capabilities.dart';
 import '../services/vc_issuer_client.dart';
 import '../services/zkpassport_srs_service.dart';
+import '../theme/ansible_design.dart';
 import 'mobilemoica_rp_credential_screen.dart';
 
 enum CredentialIssuanceFlow { twProvider, passportNfc, emailOtp }
@@ -77,87 +78,93 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    context.uiCopy(zh: '加入憑證', en: 'Add Credential'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+    // Credential issuance is intentionally a Paper surface. It must not
+    // inherit Ink-mode Material control colours when reached from a wallet
+    // that follows the system appearance, otherwise selected and disabled
+    // verification actions lose their readable contrast.
+    return Theme(
+      data: AnsibleDesign.theme(),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      context.uiCopy(zh: '加入憑證', en: 'Add Credential'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    context.uiCopy(
-                      zh: '選擇你要使用的身份驗證方式',
-                      en: 'Choose the verification method to use',
-                    ),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      if (_capabilities.mobileMoica)
-                        _FlowOptionButton(
-                          icon: Icons.badge_outlined,
-                          label: context.uiCopy(
-                            zh: 'TW 身份驗證',
-                            en: 'TW Identity Verification',
-                          ),
-                          selected:
-                              _selectedFlow ==
-                              CredentialIssuanceFlow.twProvider,
-                          onTap: () =>
-                              _select(CredentialIssuanceFlow.twProvider),
-                        ),
-                      if (_capabilities.passportNfc)
-                        _FlowOptionButton(
-                          icon: Icons.nfc,
-                          label: 'Passport NFC',
-                          selected:
-                              _selectedFlow ==
-                              CredentialIssuanceFlow.passportNfc,
-                          onTap: () =>
-                              _select(CredentialIssuanceFlow.passportNfc),
-                        ),
-                      _FlowOptionButton(
-                        icon: Icons.email_outlined,
-                        label: 'Email OTP / Legacy',
-                        selected:
-                            _selectedFlow == CredentialIssuanceFlow.emailOtp,
-                        onTap: () => _select(CredentialIssuanceFlow.emailOtp),
-                      ),
-                    ],
-                  ),
-                  if (_capabilities.desktop) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       context.uiCopy(
-                        zh: 'Mobile MoICA 與 Passport NFC 需要手機硬體；可先在手機完成簽發，憑證會透過你的同步設定出現在此裝置。',
-                        en: 'Mobile MoICA and Passport NFC require phone hardware. Complete issuance on mobile; the credential can then arrive through your configured sync.',
+                        zh: '選擇你要使用的身份驗證方式',
+                        en: 'Choose the verification method to use',
                       ),
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        if (_capabilities.mobileMoica)
+                          _FlowOptionButton(
+                            icon: Icons.badge_outlined,
+                            label: context.uiCopy(
+                              zh: 'TW 身份驗證',
+                              en: 'TW Identity Verification',
+                            ),
+                            selected:
+                                _selectedFlow ==
+                                CredentialIssuanceFlow.twProvider,
+                            onTap: () =>
+                                _select(CredentialIssuanceFlow.twProvider),
+                          ),
+                        if (_capabilities.passportNfc)
+                          _FlowOptionButton(
+                            icon: Icons.nfc,
+                            label: 'Passport NFC',
+                            selected:
+                                _selectedFlow ==
+                                CredentialIssuanceFlow.passportNfc,
+                            onTap: () =>
+                                _select(CredentialIssuanceFlow.passportNfc),
+                          ),
+                        _FlowOptionButton(
+                          icon: Icons.email_outlined,
+                          label: 'Email OTP / Legacy',
+                          selected:
+                              _selectedFlow == CredentialIssuanceFlow.emailOtp,
+                          onTap: () => _select(CredentialIssuanceFlow.emailOtp),
+                        ),
+                      ],
+                    ),
+                    if (_capabilities.desktop) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        context.uiCopy(
+                          zh: 'Mobile MoICA 與 Passport NFC 需要手機硬體；可先在手機完成簽發，憑證會透過你的同步設定出現在此裝置。',
+                          en: 'Mobile MoICA and Passport NFC require phone hardware. Complete issuance on mobile; the credential can then arrive through your configured sync.',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: _buildSelectedPanel(),
                     ),
                   ],
-                  const SizedBox(height: 24),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: _buildSelectedPanel(),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

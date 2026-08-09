@@ -10,6 +10,7 @@ import '../l10n/app_l10n.dart';
 import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
+import '../theme/ansible_design.dart';
 
 const kMobileMoicaRPConsentVersion = 'mobilemoica-rp-v1';
 const kMobileMoicaRPDisclosureCopy =
@@ -43,22 +44,26 @@ class MobileMoicaRPCredentialScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          context.uiCopy(
-            zh: '電子自然人憑證驗證',
-            en: 'MobileMoica identity verification',
+    return Theme(
+      data: AnsibleDesign.theme(),
+      child: Scaffold(
+        backgroundColor: AnsibleDesign.paper,
+        appBar: AppBar(
+          title: Text(
+            context.uiCopy(
+              zh: '電子自然人憑證驗證',
+              en: 'MobileMoica identity verification',
+            ),
           ),
         ),
-      ),
-      body: MobileMoicaRPCredentialPanel(
-        holderDid: holderDid,
-        vcIssuerClient: vcIssuerClient,
-        urlLauncher: urlLauncher,
-        walletRepository: walletRepository,
-        pollInterval: pollInterval,
-        pollTimeout: pollTimeout,
+        body: MobileMoicaRPCredentialPanel(
+          holderDid: holderDid,
+          vcIssuerClient: vcIssuerClient,
+          urlLauncher: urlLauncher,
+          walletRepository: walletRepository,
+          pollInterval: pollInterval,
+          pollTimeout: pollTimeout,
+        ),
       ),
     );
   }

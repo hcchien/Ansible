@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_l10n.dart';
 import '../services/atproto_client.dart';
 import '../services/vc_issuer_client.dart';
+import '../theme/ansible_design.dart';
 import 'credential_issuance_wizard.dart';
 
 class AddCredentialScreen extends StatelessWidget {
@@ -36,19 +37,23 @@ class AddCredentialScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(context.uiCopy(zh: '加入憑證', en: 'Add Credential')),
-      ),
-      body: CredentialIssuanceWizard(
-        holderDid: holderDid,
-        vcIssuerClient: vcIssuerClient,
-        relayClient: relayClient,
-        credentialWallet: credentialWallet,
-        vpBuilder: vpBuilder,
-        walletRepository: walletRepository,
-        onCredentialStored: onCredentialStored,
-        onEmailCredentialAdded: onCredentialAdded,
+    return Theme(
+      data: AnsibleDesign.theme(),
+      child: Scaffold(
+        backgroundColor: AnsibleDesign.paper,
+        appBar: AppBar(
+          title: Text(context.uiCopy(zh: '加入憑證', en: 'Add Credential')),
+        ),
+        body: CredentialIssuanceWizard(
+          holderDid: holderDid,
+          vcIssuerClient: vcIssuerClient,
+          relayClient: relayClient,
+          credentialWallet: credentialWallet,
+          vpBuilder: vpBuilder,
+          walletRepository: walletRepository,
+          onCredentialStored: onCredentialStored,
+          onEmailCredentialAdded: onCredentialAdded,
+        ),
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/ansible_design.dart';
+
 import '../l10n/app_l10n.dart';
 import '../services/oid4vp_presentation_service.dart';
 import '../services/oid4vp_request.dart';
@@ -86,88 +88,94 @@ class _WalletVerifierConsentScreenState
   @override
   Widget build(BuildContext context) {
     final result = _result;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(context.uiCopy(zh: '驗證方請求', en: 'Verifier Request')),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(22),
-        children: [
-          const Icon(Icons.verified_user_outlined, size: 48),
-          const SizedBox(height: 14),
-          Text(
-            result == null
-                ? context.uiCopy(zh: '驗證方請求', en: 'Verifier Request')
-                : context.uiCopy(zh: 'VP 已送出', en: 'VP Submitted'),
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          _InfoRow(
-            label: context.uiCopy(zh: '驗證方', en: 'Verifier'),
-            value: widget.request.verifierLabel,
-          ),
-          _InfoRow(
-            label: context.uiCopy(zh: '憑證', en: 'Credential'),
-            value: widget.request.requiredCredentialType,
-          ),
-          _InfoRow(
-            label: context.uiCopy(zh: '挑戰值', en: 'Challenge'),
-            value: widget.request.nonce,
-          ),
-          _InfoRow(
-            label: context.uiCopy(zh: '回應位置', en: 'Response'),
-            value: widget.request.responseUri.toString(),
-          ),
-          const SizedBox(height: 16),
-          _Section(
-            title: context.uiCopy(zh: '要求的屬性', en: 'Requested claims'),
-            body: widget.request.requestedClaimLabels.join(', '),
-          ),
-          const SizedBox(height: 12),
-          _Section(
-            title: context.uiCopy(zh: '不會揭露', en: 'Not disclosed'),
-            body: context.uiCopy(
-              zh: '身分證字號、姓名、憑證序號、MobileMoica response、duplicate commitment。',
-              en: 'National ID number, legal name, credential serial number, MobileMoica response, duplicate commitment.',
-            ),
-          ),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 16),
+    return Theme(
+      data: AnsibleDesign.theme(),
+      child: Scaffold(
+        backgroundColor: AnsibleDesign.paper,
+        appBar: AppBar(
+          title: Text(context.uiCopy(zh: '驗證方請求', en: 'Verifier Request')),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(22),
+          children: [
+            const Icon(Icons.verified_user_outlined, size: 48),
+            const SizedBox(height: 14),
             Text(
-              _errorMessage!,
-              style: const TextStyle(color: Color(0xFFC0392B)),
+              result == null
+                  ? context.uiCopy(zh: '驗證方請求', en: 'Verifier Request')
+                  : context.uiCopy(zh: 'VP 已送出', en: 'VP Submitted'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
-          ],
-          const SizedBox(height: 24),
-          if (result == null)
-            FilledButton.icon(
-              onPressed: _submitting ? null : _approve,
-              icon: _submitting
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.outbound),
-              label: Text(
-                context.uiCopy(zh: '同意並送出 VP', en: 'Consent and Submit VP'),
+            const SizedBox(height: 16),
+            _InfoRow(
+              label: context.uiCopy(zh: '驗證方', en: 'Verifier'),
+              value: widget.request.verifierLabel,
+            ),
+            _InfoRow(
+              label: context.uiCopy(zh: '憑證', en: 'Credential'),
+              value: widget.request.requiredCredentialType,
+            ),
+            _InfoRow(
+              label: context.uiCopy(zh: '挑戰值', en: 'Challenge'),
+              value: widget.request.nonce,
+            ),
+            _InfoRow(
+              label: context.uiCopy(zh: '回應位置', en: 'Response'),
+              value: widget.request.responseUri.toString(),
+            ),
+            const SizedBox(height: 16),
+            _Section(
+              title: context.uiCopy(zh: '要求的屬性', en: 'Requested claims'),
+              body: widget.request.requestedClaimLabels.join(', '),
+            ),
+            const SizedBox(height: 12),
+            _Section(
+              title: context.uiCopy(zh: '不會揭露', en: 'Not disclosed'),
+              body: context.uiCopy(
+                zh: '身分證字號、姓名、憑證序號、MobileMoica response、duplicate commitment。',
+                en: 'National ID number, legal name, credential serial number, MobileMoica response, duplicate commitment.',
               ),
-            )
-          else
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.check_circle),
-              label: Text(context.uiCopy(zh: '完成', en: 'Done')),
             ),
-          const SizedBox(height: 8),
-          if (result == null)
-            TextButton(
-              onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-              child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
-            ),
-        ],
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(color: Color(0xFFC0392B)),
+              ),
+            ],
+            const SizedBox(height: 24),
+            if (result == null)
+              FilledButton.icon(
+                onPressed: _submitting ? null : _approve,
+                icon: _submitting
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.outbound),
+                label: Text(
+                  context.uiCopy(zh: '同意並送出 VP', en: 'Consent and Submit VP'),
+                ),
+              )
+            else
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.check_circle),
+                label: Text(context.uiCopy(zh: '完成', en: 'Done')),
+              ),
+            const SizedBox(height: 8),
+            if (result == null)
+              TextButton(
+                onPressed: _submitting
+                    ? null
+                    : () => Navigator.of(context).pop(),
+                child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+              ),
+          ],
+        ),
       ),
     );
   }

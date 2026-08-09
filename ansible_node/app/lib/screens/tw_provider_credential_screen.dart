@@ -9,6 +9,7 @@ import '../l10n/app_l10n.dart';
 import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
 import '../services/vc_issuer_client.dart';
+import '../theme/ansible_design.dart';
 
 enum _Phase { idle, starting, polling, issuing, done, error }
 
@@ -32,19 +33,23 @@ class TwProviderCredentialScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          context.uiCopy(zh: 'TW 身份驗證', en: 'TW Identity Verification'),
+    return Theme(
+      data: AnsibleDesign.theme(),
+      child: Scaffold(
+        backgroundColor: AnsibleDesign.paper,
+        appBar: AppBar(
+          title: Text(
+            context.uiCopy(zh: 'TW 身份驗證', en: 'TW Identity Verification'),
+          ),
         ),
-      ),
-      body: TwProviderCredentialPanel(
-        holderDid: holderDid,
-        vcIssuerClient: vcIssuerClient,
-        urlLauncher: urlLauncher,
-        walletRepository: walletRepository,
-        pollInterval: pollInterval,
-        pollTimeout: pollTimeout,
+        body: TwProviderCredentialPanel(
+          holderDid: holderDid,
+          vcIssuerClient: vcIssuerClient,
+          urlLauncher: urlLauncher,
+          walletRepository: walletRepository,
+          pollInterval: pollInterval,
+          pollTimeout: pollTimeout,
+        ),
       ),
     );
   }
