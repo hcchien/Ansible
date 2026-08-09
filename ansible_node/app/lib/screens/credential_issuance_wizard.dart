@@ -72,6 +72,7 @@ class CredentialIssuanceWizard extends StatefulWidget {
 
 class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
   CredentialIssuanceFlow? _selectedFlow;
+  final ScrollController _scrollController = ScrollController();
 
   PlatformCapabilities get _capabilities =>
       widget.platformCapabilities ?? PlatformCapabilities.current;
@@ -86,6 +87,7 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
       data: AnsibleDesign.theme(),
       child: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollController,
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
@@ -175,6 +177,23 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
 
   void _select(CredentialIssuanceFlow flow) {
     setState(() => _selectedFlow = flow);
+    // A flow can be selected after the user has scrolled through another
+    // issuance option. Reset the shared viewport so the new panel's icon and
+    // instructions are never clipped above the Wallet screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Widget _buildSelectedPanel() {
