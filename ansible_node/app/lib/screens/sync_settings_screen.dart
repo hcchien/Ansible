@@ -778,40 +778,68 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     try {
       return await showDialog<String>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(
-            dialogContext.uiCopy(
-              zh: '設定此 Relay 的名稱',
-              en: 'Choose a name for this Relay',
-            ),
-          ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              labelText: dialogContext.uiCopy(zh: '帳號名稱', en: 'Handle'),
-              helperText: dialogContext.uiCopy(
-                zh: '「${node.name}」已有此名稱；你的 DID、內容與憑證不會改變。',
-                en: 'That name is taken on ${node.name}. Your DID, content, and credentials will not change.',
+        // A handle collision is recoverable and must never be interpreted as
+        // a request to abandon sync just because the user tapped the modal
+        // barrier while changing Relay spaces.
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          var invalid = false;
+          return StatefulBuilder(
+            builder: (dialogContext, setDialogState) => AlertDialog(
+              title: Text(
+                dialogContext.uiCopy(
+                  zh: '設定此 Relay 的名稱',
+                  en: 'Choose a name for this Relay',
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(dialogContext.uiCopy(zh: '取消同步', en: 'Cancel sync')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(
-                dialogContext,
-              ).pop(controller.text.trim().toLowerCase()),
-              child: Text(
-                dialogContext.uiCopy(zh: '使用此名稱', en: 'Use this name'),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                onChanged: (_) {
+                  if (invalid) setDialogState(() => invalid = false);
+                },
+                decoration: InputDecoration(
+                  labelText: dialogContext.uiCopy(zh: '帳號名稱', en: 'Handle'),
+                  helperText: dialogContext.uiCopy(
+                    zh: '這個名稱只屬於「${node.name}」；你的 DID、內容與憑證不會改變。',
+                    en: 'This name belongs only to ${node.name}. Your DID, content, and credentials will not change.',
+                  ),
+                  errorText: invalid
+                      ? dialogContext.uiCopy(
+                          zh: '請輸入 3–63 個英數或連字號，且開頭與結尾須為英數。',
+                          en: 'Use 3–63 letters, digits, or hyphens; start and end with a letter or digit.',
+                        )
+                      : null,
+                ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    dialogContext.uiCopy(zh: '取消同步', en: 'Cancel sync'),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final selected = controller.text.trim().toLowerCase();
+                    if (selected.length < 3 ||
+                        !RegExp(
+                          r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$',
+                        ).hasMatch(selected)) {
+                      setDialogState(() => invalid = true);
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(selected);
+                  },
+                  child: Text(
+                    dialogContext.uiCopy(zh: '使用此名稱', en: 'Use this name'),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       );
     } finally {
       controller.dispose();
@@ -1397,6 +1425,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                 width: 132,
                                 child: DropdownButtonFormField<int>(
                                   initialValue: retentionValue,
+                                  isExpanded: true,
                                   decoration: const InputDecoration(
                                     isDense: true,
                                     labelText: null,
@@ -1407,6 +1436,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                                           value: days,
                                           child: Text(
                                             _formatRetention(days, text),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
                                           ),
                                         ),
                                       )
