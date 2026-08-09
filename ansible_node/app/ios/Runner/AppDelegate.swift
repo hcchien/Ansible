@@ -182,7 +182,11 @@ import UIKit
             let reader = PassportReader(masterListURL: trustListUrl)
             let passport = try await reader.readPassport(
               mrzKey: mrzKey,
-              tags: [.COM, .DG1, .DG14, .DG15, .SOD],
+              // The credential protocol consumes only DG1 and SOD.  Reading
+              // optional DG14/DG15 adds APDU exchanges without adding any
+              // verified claim, and some otherwise-valid chips do not expose
+              // one of those optional groups.
+              tags: [.COM, .DG1, .SOD],
               skipSecureElements: true,
               skipCA: false,
               skipPACE: false
@@ -210,9 +214,10 @@ import UIKit
             ])
           } catch {
             try? FileManager.default.removeItem(at: trustListUrl)
+            let failure = self.passportNfcFailure(error)
             result(FlutterError(
-              code: "passport_scan_failed",
-              message: self.passportNfcErrorMessage(error),
+              code: failure.code,
+              message: failure.message,
               details: nil
             ))
           }
@@ -227,19 +232,38 @@ import UIKit
     }
   }
 
-  private func passportNfcErrorMessage(_ error: Error) -> String {
+  private func passportNfcFailure(_ error: Error) -> (code: String, message: String) {
     let message = error.localizedDescription
     let normalized = message.lowercased()
     if normalized.contains("user canceled") || normalized.contains("invalidated by user") {
-      return "Passport scan cancelled."
+      return ("passport_scan_cancelled", "Passport scan cancelled.")
     }
     if normalized.contains("tag") && normalized.contains("lost") {
-      return "The passport moved away from the phone. Hold it still and try again."
+      return ("passport_tag_lost", "The passport moved away from the phone. Hold it still and try again.")
     }
     if normalized.contains("security status") || normalized.contains("mutual authenticate") {
-      return "The passport details do not match the chip. Check the number and dates."
+      return ("passport_access_data_rejected", "The passport details do not match the chip. Check the number and dates.")
     }
-    return message
+    if let passportError = error as? NFCPassportReaderError {
+      switch passportError {
+      case .UserCanceled:
+        return ("passport_scan_cancelled", "Passport scan cancelled.")
+      case .TimeOutError:
+        return ("passport_session_timed_out", "The passport NFC session timed out. Keep the passport against the phone and try again.")
+      case .ConnectionError, .NoConnectedTag:
+        return ("passport_tag_lost", "The passport moved away from the phone. Hold it still and try again.")
+      case .InvalidMRZKey:
+        return ("passport_access_data_rejected", "The passport details do not match the chip. Check the number and dates.")
+      case .MoreThanOneTagFound:
+        return ("passport_multiple_tags", "More than one NFC tag was detected. Remove other NFC cards and try again.")
+      default:
+        break
+      }
+    }
+    // NFCPassportReader turns several Core NFC invalidations into
+    // `UnexpectedError`. Do not surface that opaque library token (or raw
+    // platform diagnostics) to the user.
+    return ("passport_nfc_interrupted", "The passport NFC session was interrupted. Keep the passport against the phone and try again.")
   }
 
   private func registerHardwareIdentityKeyChannel() {

@@ -290,6 +290,37 @@ void main() {
       expect(find.text('這本護照已在此 Wallet 驗證過。'), findsOneWidget);
     },
   );
+
+  testWidgets('passport NFC presents an actionable interrupted-session error', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CredentialIssuanceWizard(
+            holderDid: 'did:plc:abcdefghijklmnop',
+            walletRepository: InMemoryWalletRepository(),
+            vcIssuerClient: _FakeVcIssuerClient(),
+            passportReader: _ErrorPassportReader('passport_nfc_interrupted'),
+            platformCapabilities: _iosCapabilities,
+            passportLocalIdService: PassportLocalIdService.fixedSecret(
+              'wallet-secret',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Passport NFC'));
+    await tester.pumpAndSettle();
+    await _enterPassportAccessData(tester);
+    await tester.ensureVisible(find.text('掃描護照 NFC'));
+    await tester.tap(find.text('掃描護照 NFC'));
+    await tester.pump();
+
+    expect(find.text('護照 NFC 連線意外中斷。請讓護照緊貼手機並保持不動後重試。'), findsOneWidget);
+    expect(find.text('UnexpectedError'), findsNothing);
+  });
 }
 
 class _FakeVcIssuerClient extends VcIssuerClient {
@@ -425,6 +456,27 @@ class _FakePassportReader implements NfcPassportReader {
     required void Function(String) onError,
   }) async {
     onPassportRead(data);
+  }
+
+  @override
+  Future<void> cancel() async {}
+
+  @override
+  Future<bool> isAvailable() async => true;
+}
+
+class _ErrorPassportReader implements NfcPassportReader {
+  const _ErrorPassportReader(this.error);
+
+  final String error;
+
+  @override
+  Future<void> scan({
+    required PassportAccessData accessData,
+    required void Function(PassportData) onPassportRead,
+    required void Function(String) onError,
+  }) async {
+    onError(error);
   }
 
   @override

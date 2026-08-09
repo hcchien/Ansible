@@ -206,15 +206,31 @@ class PlatformNfcPassportReader implements NfcPassportReader {
         ),
       );
     } on PlatformException catch (error) {
-      onError(error.message ?? error.code);
+      onError(_platformErrorCode(error));
     } on Object catch (error) {
-      onError(error.toString());
+      // Do not surface raw platform exceptions. They can contain implementation
+      // details and are not useful guidance for a passport holder.
+      onError('passport_nfc_interrupted');
     }
   }
 
   @override
   Future<void> cancel() async {
     await _channel.invokeMethod<void>('cancel');
+  }
+
+  static String _platformErrorCode(PlatformException error) {
+    switch (error.code) {
+      case 'passport_scan_cancelled':
+      case 'passport_tag_lost':
+      case 'passport_access_data_rejected':
+      case 'passport_session_timed_out':
+      case 'passport_multiple_tags':
+      case 'passport_nfc_interrupted':
+        return error.code;
+      default:
+        return 'passport_nfc_interrupted';
+    }
   }
 }
 
