@@ -1,8 +1,11 @@
 package api
 
 import (
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -105,6 +108,54 @@ func TestHTTPPassportDIDControlVerifierAcceptsSelfCertifyingV2Identity(t *testin
 	auth.DID = did
 	if err := verifier.VerifyPassportIssue(auth); err == nil {
 		t.Fatal("non-self-certifying V2 identity was accepted")
+	}
+}
+
+func TestHTTPPassportDIDControlVerifierAcceptsP256V2HolderSignature(t *testing.T) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicKey := elliptic.Marshal(elliptic.P256(), privateKey.PublicKey.X, privateKey.PublicKey.Y)
+	const handle = "secure.elix.cool"
+	did := deriveInitialDID(handle, hex.EncodeToString(publicKey), "hardware", "p256-sha256")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/v1/identity/anchor/"):
+			w.WriteHeader(http.StatusNotFound)
+		case strings.HasPrefix(r.URL.Path, "/api/v1/identity/public-key/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"did": did, "public_key_hex": hex.EncodeToString(publicKey), "signing_algorithm": "p256-sha256",
+			})
+		case strings.HasPrefix(r.URL.Path, "/api/v1/identity/handle/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{"did": did, "handle": handle})
+		default:
+			t.Fatalf("unexpected resolver path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	auth := PassportIssueAuthorization{
+		DID: did, ChallengeID: "challenge", ChallengeNonce: "nonce", ChallengeIssuer: "https://issuer.elix.cool",
+		ChallengeScope: passportScope, Nationality: "TWN", ZKPProof: `{"proof":"opaque"}`,
+		ZKPCircuitVersion: passportCircuitVersion, VerificationKeyHash: "sha256:pinned",
+	}
+	payload, err := auth.canonicalPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(payload)
+	signature, err := ecdsa.SignASN1(rand.Reader, privateKey, digest[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth.SignatureHex = hex.EncodeToString(signature)
+	verifier, err := NewHTTPPassportDIDControlVerifier(server.URL, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifier.VerifyPassportIssue(auth); err != nil {
+		t.Fatalf("valid P-256 holder signature rejected: %v", err)
 	}
 }
 

@@ -119,7 +119,8 @@ func (v *HTTPPassportDIDControlVerifier) resolveVerificationKey(did string) ([]b
 			return nil, "", errPassportDIDControl
 		}
 		pub := &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(publicKey[1:33]), Y: new(big.Int).SetBytes(publicKey[33:])}
-		if !ecdsa.VerifyASN1(pub, []byte(key.CanonicalBody), anchorSignature) {
+		anchorDigest := sha256.Sum256([]byte(key.CanonicalBody))
+		if !ecdsa.VerifyASN1(pub, anchorDigest[:], anchorSignature) {
 			return nil, "", errPassportDIDControl
 		}
 	default:
@@ -181,7 +182,8 @@ func verifyPassportHolderSignature(publicKey []byte, algorithm string, payload, 
 			return errPassportDIDControl
 		}
 		pub := &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(publicKey[1:33]), Y: new(big.Int).SetBytes(publicKey[33:])}
-		if !ecdsa.VerifyASN1(pub, payload, signature) {
+		digest := sha256.Sum256(payload)
+		if !ecdsa.VerifyASN1(pub, digest[:], signature) {
 			return errPassportDIDControl
 		}
 	default:
