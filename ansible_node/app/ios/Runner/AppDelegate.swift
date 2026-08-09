@@ -18,6 +18,9 @@ import UIKit
   private let zkPassportProver = ZKPassportProver()
   private let zkPassportInputRuntime = ZKPassportInputRuntime()
   private var passportMRZScanner: PassportMRZScanner?
+  // Core NFC permits only one reader session. Guard the platform boundary as
+  // well as Flutter so duplicate method calls cannot terminate both sessions.
+  private var passportNfcScanInProgress = false
   // Exists only for the duration of one explicit sync. It is never persisted
   // and is passed only to Secure Enclave key loading for nonce-bound proofs.
   private var syncAuthenticationContext: LAContext?
@@ -169,7 +172,17 @@ import UIKit
           ))
           return
         }
+        guard !self.passportNfcScanInProgress else {
+          result(FlutterError(
+            code: "passport_scan_in_progress",
+            message: "A passport NFC scan is already in progress.",
+            details: nil
+          ))
+          return
+        }
+        self.passportNfcScanInProgress = true
         Task { @MainActor in
+          defer { self.passportNfcScanInProgress = false }
           let trustListUrl = FileManager.default.temporaryDirectory
             .appendingPathComponent("elix-csca-\(UUID().uuidString).pem")
           do {

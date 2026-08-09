@@ -288,6 +288,7 @@ class _PassportNfcCredentialPanelState
   Timer? _proofProgressTicker;
   bool _submittingToIssuer = false;
   bool _scanningMrz = false;
+  bool _startingNfcScan = false;
   String? _buildLabel;
   final _documentNumberController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
@@ -376,282 +377,296 @@ class _PassportNfcCredentialPanelState
   }
 
   Future<void> _startScan() async {
-    final accessData = PassportAccessData(
-      documentNumber: _documentNumberController.text,
-      dateOfBirth: _dateOfBirthController.text,
-      dateOfExpiry: _dateOfExpiryController.text,
-    );
-    String? preloadedSrsPath;
+    // Availability is asynchronous. Mark the action busy before awaiting it,
+    // otherwise a quick double tap can create two Core NFC sessions and iOS
+    // terminates both with reader-session error 203.
+    if (_startingNfcScan || _phase != _PassportNfcPhase.idle) return;
+    setState(() => _startingNfcScan = true);
     try {
-      accessData.validate();
-    } on FormatException {
-      setState(() {
-        _errorMessage = _copy(
-          zh: '請輸入護照號碼，以及 YYMMDD 格式的出生日期與有效期限。',
-          en: 'Enter the passport number, birth date, and expiry date in YYMMDD format.',
-        );
-      });
-      return;
-    }
-    if (!await _passportReader.isAvailable()) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = _copy(
-          zh: '這台裝置不支援護照 NFC，或 NFC 目前無法使用。',
-          en: 'Passport NFC is not supported or is currently unavailable on this device.',
-        );
-      });
-      return;
-    }
-    setState(() {
-      _phase = _PassportNfcPhase.scanning;
-      _errorMessage = null;
-      _srsDownloadProgress = null;
-      _proofProgress = null;
-      _proofStartedAt = null;
-      _submittingToIssuer = false;
-    });
-
-    try {
-      PassportData? scanned;
-      String? scanError;
-      await _passportReader.scan(
-        accessData: accessData,
-        onPassportRead: (data) => scanned = data,
-        onError: (message) => scanError = message,
+      final accessData = PassportAccessData(
+        documentNumber: _documentNumberController.text,
+        dateOfBirth: _dateOfBirthController.text,
+        dateOfExpiry: _dateOfExpiryController.text,
       );
-      final error = scanError;
-      if (error != null) {
-        throw StateError(error);
-      }
-      final data = scanned;
-      if (data == null) {
-        throw StateError(
-          _copy(
-            zh: '護照 NFC 讀取失敗，請重新嘗試。',
-            en: 'Passport NFC read failed. Please try again.',
-          ),
-        );
-      }
-      if (!data.sodSignatureVerified || !data.dataGroupHashesVerified) {
-        throw StateError(
-          _copy(
-            zh: '晶片資料未通過 SOD 簽章與資料完整性驗證，未建立憑證。',
-            en: 'The chip failed SOD signature or data-integrity verification. No credential was created.',
-          ),
-        );
-      }
-      if (!data.countrySigningCertificateVerified) {
-        throw StateError(
-          _copy(
-            zh: '已讀取護照晶片，但簽發國憑證不在目前受信任清單中，因此未建立真人憑證。',
-            en: 'The passport chip was read, but its country certificate is not in the current trust list. No humanity credential was created.',
-          ),
-        );
-      }
-
-      final passportLocalUniqueId = await _passportLocalIdService
-          .deriveWithStoredSecret(
-            nationality: data.nationality,
-            documentNumber: data.documentNumber,
-          );
-      final existing = await _walletRepository
-          .getPassportExtensionByLocalUniqueId(passportLocalUniqueId);
-      final existingCredential = existing == null
-          ? null
-          : await _walletRepository.getCredential(existing.credentialId);
-      if (existingCredential != null) {
-        if (!mounted) return;
+      String? preloadedSrsPath;
+      try {
+        accessData.validate();
+      } on FormatException {
         setState(() {
-          _phase = _PassportNfcPhase.idle;
           _errorMessage = _copy(
-            zh: '這本護照已在此 Wallet 驗證過。',
-            en: 'This passport has already been verified in this Wallet.',
+            zh: '請輸入護照號碼，以及 YYMMDD 格式的出生日期與有效期限。',
+            en: 'Enter the passport number, birth date, and expiry date in YYMMDD format.',
           );
         });
         return;
       }
-
-      if (!mounted) return;
-      setState(() => _phase = _PassportNfcPhase.issuing);
-
-      // Download the large public parameter file before requesting the
-      // bounded, single-use Issuer challenge.
-      try {
-        preloadedSrsPath = await _passportSrsProvider?.acquire();
-      } on Object catch (error) {
-        throw ZkpProverException('srs-download', error);
+      if (!await _passportReader.isAvailable()) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = _copy(
+            zh: '這台裝置不支援護照 NFC，或 NFC 目前無法使用。',
+            en: 'Passport NFC is not supported or is currently unavailable on this device.',
+          );
+        });
+        return;
       }
-      final challenge = await _vcIssuerClient.requestPassportChallenge(
-        did: widget.holderDid,
-      );
-      if (!challenge.expiresAt.isAfter(DateTime.now().toUtc())) {
-        throw StateError('Issuer returned an expired passport challenge.');
-      }
-      late final ZkpProof passportProof;
+      setState(() {
+        _phase = _PassportNfcPhase.scanning;
+        _errorMessage = null;
+        _srsDownloadProgress = null;
+        _proofProgress = null;
+        _proofStartedAt = null;
+        _submittingToIssuer = false;
+      });
+
       try {
-        passportProof = await _passportZkpProver.prove(
-          passport: data,
-          challenge: ZkpChallengeBinding(
-            challengeId: challenge.challengeId,
-            nonce: challenge.nonce,
-            did: widget.holderDid,
-            issuer: challenge.issuer.toString(),
-            scope: challenge.scope,
-          ),
+        PassportData? scanned;
+        String? scanError;
+        await _passportReader.scan(
+          accessData: accessData,
+          onPassportRead: (data) => scanned = data,
+          onError: (message) => scanError = message,
         );
-      } on ZkpProverException {
-        rethrow;
-      } on Object catch (error) {
-        // Platform channels and JavaScriptCore can surface an unwrapped
-        // PlatformException. Preserve its diagnostic and stage instead of
-        // incorrectly presenting it as an NFC read failure.
-        throw ZkpProverException('pipeline', error);
-      }
-      if (!mounted) return;
-      _stopProofProgressTicker();
-      setState(() => _submittingToIssuer = true);
-      final verificationKeyHash = 'sha256:${passportProof.vkHash}';
-      // The passport proof binds this DID in ZK.  This second signature proves
-      // that the device submitting the proof controls that DID key, preventing
-      // a valid proof from being attached to another person's account.
-      final holderSignature =
-          await (widget.passportIssueSigner ?? DidSignerImpl()).sign(
-            utf8.encode(
-              jsonEncode(<String, String>{
-                'protocol': 'elix-passport-issuance-v1',
-                'action': 'issue',
-                'did': widget.holderDid,
-                'challenge_id': challenge.challengeId,
-                'challenge_nonce': challenge.nonce,
-                'issuer': challenge.issuer.toString(),
-                'scope': challenge.scope,
-                'nationality': data.nationality,
-                'zkp_proof_sha256': sha256
-                    .convert(utf8.encode(passportProof.proofHex))
-                    .toString(),
-                'zkp_circuit_version': ZkpProof.kCircuitVersion,
-                'verification_key_hash': verificationKeyHash,
-              }),
+        final error = scanError;
+        if (error != null) {
+          throw StateError(error);
+        }
+        final data = scanned;
+        if (data == null) {
+          throw StateError(
+            _copy(
+              zh: '護照 NFC 讀取失敗，請重新嘗試。',
+              en: 'Passport NFC read failed. Please try again.',
             ),
           );
-      final vcJsonList = await _vcIssuerClient.issuePassportCredential(
-        did: widget.holderDid,
-        challengeId: challenge.challengeId,
-        challengeNonce: challenge.nonce,
-        nationality: data.nationality,
-        zkpProof: passportProof.proofHex,
-        zkpCircuitVersion: ZkpProof.kCircuitVersion,
-        verificationKeyHash: verificationKeyHash,
-        holderSignature: holderSignature.hex,
-      );
-      final credentials = vcJsonList
-          .map(
-            (value) =>
-                TrisAuraCredential.fromJson(Map<String, Object?>.from(value)),
-          )
-          .toList(growable: false);
-      final humanity = credentials
-          .where(
-            (credential) =>
-                credential.types.contains('TrisAuraHumanityCredential'),
-          )
-          .single;
-      final nationalityCredential = credentials
-          .where(
-            (credential) => credential.types.contains('NationalityCredential'),
-          )
-          .single;
-      if (credentials.any(
-        (credential) => credential.claims['assuranceMethod'] != 'passport_nfc',
-      )) {
-        throw StateError('Issuer returned an unsupported passport credential.');
-      }
-      if (humanity.claims['humanVerified'] != true ||
-          humanity.claims.containsKey('nationality') ||
-          humanity.claims.containsKey('ageOver18')) {
-        throw StateError('Issuer returned an invalid humanity credential.');
-      }
-      if (nationalityCredential.claims['nationality'] != data.nationality ||
-          nationalityCredential.claims['nationalityVerified'] != true) {
-        throw StateError('Issuer returned a mismatched passport credential.');
-      }
-      final ageCredentials = credentials.where(
-        (credential) => credential.types.contains('AgeOver18Credential'),
-      );
-      if (ageCredentials.length > 1 ||
-          ageCredentials.any(
-            (credential) => credential.claims['ageOver18'] != true,
-          )) {
-        throw StateError('Issuer returned an invalid age credential.');
-      }
+        }
+        if (!data.sodSignatureVerified || !data.dataGroupHashesVerified) {
+          throw StateError(
+            _copy(
+              zh: '晶片資料未通過 SOD 簽章與資料完整性驗證，未建立憑證。',
+              en: 'The chip failed SOD signature or data-integrity verification. No credential was created.',
+            ),
+          );
+        }
+        if (!data.countrySigningCertificateVerified) {
+          throw StateError(
+            _copy(
+              zh: '已讀取護照晶片，但簽發國憑證不在目前受信任清單中，因此未建立真人憑證。',
+              en: 'The passport chip was read, but its country certificate is not in the current trust list. No humanity credential was created.',
+            ),
+          );
+        }
 
-      final now = DateTime.now().toUtc();
-      for (final credential in credentials) {
-        final payloadEnvelope = await const SecureCredentialPayloadCodec().seal(
-          credentialId: credential.id,
-          payloadJson: jsonEncode(credential.json),
+        final passportLocalUniqueId = await _passportLocalIdService
+            .deriveWithStoredSecret(
+              nationality: data.nationality,
+              documentNumber: data.documentNumber,
+            );
+        final existing = await _walletRepository
+            .getPassportExtensionByLocalUniqueId(passportLocalUniqueId);
+        final existingCredential = existing == null
+            ? null
+            : await _walletRepository.getCredential(existing.credentialId);
+        if (existingCredential != null) {
+          if (!mounted) return;
+          setState(() {
+            _phase = _PassportNfcPhase.idle;
+            _errorMessage = _copy(
+              zh: '這本護照已在此 Wallet 驗證過。',
+              en: 'This passport has already been verified in this Wallet.',
+            );
+          });
+          return;
+        }
+
+        if (!mounted) return;
+        setState(() => _phase = _PassportNfcPhase.issuing);
+
+        // Download the large public parameter file before requesting the
+        // bounded, single-use Issuer challenge.
+        try {
+          preloadedSrsPath = await _passportSrsProvider?.acquire();
+        } on Object catch (error) {
+          throw ZkpProverException('srs-download', error);
+        }
+        final challenge = await _vcIssuerClient.requestPassportChallenge(
+          did: widget.holderDid,
         );
-        final isHumanity = credential.types.contains(
-          'TrisAuraHumanityCredential',
-        );
-        final isNationality = credential.types.contains(
-          'NationalityCredential',
-        );
-        await _walletRepository.saveCredential(
-          metadata: WalletCredential(
-            credentialId: credential.id,
-            issuerDid: credential.issuerDid,
-            holderDid: credential.holderDid,
-            credentialType: isHumanity
-                ? 'TrisAuraHumanityCredential'
-                : isNationality
-                ? 'NationalityCredential'
-                : 'AgeOver18Credential',
-            status: WalletCredentialStatus.active,
-            validFrom: credential.validFrom,
-            validUntil: credential.validUntil,
-            displayName: isHumanity
-                ? 'Passport Verified Human'
-                : isNationality
-                ? 'Verified Nationality'
-                : 'Age 18 or Older',
-            createdAt: now,
-            updatedAt: now,
-          ),
-          encryptedPayload: payloadEnvelope.encodedPayload,
-          encryptionVersion: payloadEnvelope.encryptionVersion,
-        );
-      }
-      await _walletRepository.savePassportExtension(
-        PassportWalletExtension(
-          credentialId: humanity.id,
-          passportLocalUniqueId: passportLocalUniqueId,
-          nationalIdHash: passportProof.nationalIdHash,
-          passportNumberHash: passportProof.passportNumberHash,
+        if (!challenge.expiresAt.isAfter(DateTime.now().toUtc())) {
+          throw StateError('Issuer returned an expired passport challenge.');
+        }
+        late final ZkpProof passportProof;
+        try {
+          passportProof = await _passportZkpProver.prove(
+            passport: data,
+            challenge: ZkpChallengeBinding(
+              challengeId: challenge.challengeId,
+              nonce: challenge.nonce,
+              did: widget.holderDid,
+              issuer: challenge.issuer.toString(),
+              scope: challenge.scope,
+            ),
+          );
+        } on ZkpProverException {
+          rethrow;
+        } on Object catch (error) {
+          // Platform channels and JavaScriptCore can surface an unwrapped
+          // PlatformException. Preserve its diagnostic and stage instead of
+          // incorrectly presenting it as an NFC read failure.
+          throw ZkpProverException('pipeline', error);
+        }
+        if (!mounted) return;
+        _stopProofProgressTicker();
+        setState(() => _submittingToIssuer = true);
+        final verificationKeyHash = 'sha256:${passportProof.vkHash}';
+        // The passport proof binds this DID in ZK.  This second signature proves
+        // that the device submitting the proof controls that DID key, preventing
+        // a valid proof from being attached to another person's account.
+        final holderSignature =
+            await (widget.passportIssueSigner ?? DidSignerImpl()).sign(
+              utf8.encode(
+                jsonEncode(<String, String>{
+                  'protocol': 'elix-passport-issuance-v1',
+                  'action': 'issue',
+                  'did': widget.holderDid,
+                  'challenge_id': challenge.challengeId,
+                  'challenge_nonce': challenge.nonce,
+                  'issuer': challenge.issuer.toString(),
+                  'scope': challenge.scope,
+                  'nationality': data.nationality,
+                  'zkp_proof_sha256': sha256
+                      .convert(utf8.encode(passportProof.proofHex))
+                      .toString(),
+                  'zkp_circuit_version': ZkpProof.kCircuitVersion,
+                  'verification_key_hash': verificationKeyHash,
+                }),
+              ),
+            );
+        final vcJsonList = await _vcIssuerClient.issuePassportCredential(
+          did: widget.holderDid,
+          challengeId: challenge.challengeId,
+          challengeNonce: challenge.nonce,
           nationality: data.nationality,
-          assuranceMethod: 'passport_nfc',
-          verifiedAt: now,
-        ),
-      );
-      widget.onCredentialStored?.call();
+          zkpProof: passportProof.proofHex,
+          zkpCircuitVersion: ZkpProof.kCircuitVersion,
+          verificationKeyHash: verificationKeyHash,
+          holderSignature: holderSignature.hex,
+        );
+        final credentials = vcJsonList
+            .map(
+              (value) =>
+                  TrisAuraCredential.fromJson(Map<String, Object?>.from(value)),
+            )
+            .toList(growable: false);
+        final humanity = credentials
+            .where(
+              (credential) =>
+                  credential.types.contains('TrisAuraHumanityCredential'),
+            )
+            .single;
+        final nationalityCredential = credentials
+            .where(
+              (credential) =>
+                  credential.types.contains('NationalityCredential'),
+            )
+            .single;
+        if (credentials.any(
+          (credential) =>
+              credential.claims['assuranceMethod'] != 'passport_nfc',
+        )) {
+          throw StateError(
+            'Issuer returned an unsupported passport credential.',
+          );
+        }
+        if (humanity.claims['humanVerified'] != true ||
+            humanity.claims.containsKey('nationality') ||
+            humanity.claims.containsKey('ageOver18')) {
+          throw StateError('Issuer returned an invalid humanity credential.');
+        }
+        if (nationalityCredential.claims['nationality'] != data.nationality ||
+            nationalityCredential.claims['nationalityVerified'] != true) {
+          throw StateError('Issuer returned a mismatched passport credential.');
+        }
+        final ageCredentials = credentials.where(
+          (credential) => credential.types.contains('AgeOver18Credential'),
+        );
+        if (ageCredentials.length > 1 ||
+            ageCredentials.any(
+              (credential) => credential.claims['ageOver18'] != true,
+            )) {
+          throw StateError('Issuer returned an invalid age credential.');
+        }
 
-      if (!mounted) return;
-      _stopProofProgressTicker();
-      setState(() => _phase = _PassportNfcPhase.done);
-    } catch (error) {
-      if (!mounted) return;
-      _stopProofProgressTicker();
-      setState(() {
-        _phase = _PassportNfcPhase.idle;
-        _submittingToIssuer = false;
-        _errorMessage = _formatError(error);
-      });
-    } finally {
-      final path = preloadedSrsPath;
-      if (path != null) {
-        await _passportSrsProvider?.release(path);
+        final now = DateTime.now().toUtc();
+        for (final credential in credentials) {
+          final payloadEnvelope = await const SecureCredentialPayloadCodec()
+              .seal(
+                credentialId: credential.id,
+                payloadJson: jsonEncode(credential.json),
+              );
+          final isHumanity = credential.types.contains(
+            'TrisAuraHumanityCredential',
+          );
+          final isNationality = credential.types.contains(
+            'NationalityCredential',
+          );
+          await _walletRepository.saveCredential(
+            metadata: WalletCredential(
+              credentialId: credential.id,
+              issuerDid: credential.issuerDid,
+              holderDid: credential.holderDid,
+              credentialType: isHumanity
+                  ? 'TrisAuraHumanityCredential'
+                  : isNationality
+                  ? 'NationalityCredential'
+                  : 'AgeOver18Credential',
+              status: WalletCredentialStatus.active,
+              validFrom: credential.validFrom,
+              validUntil: credential.validUntil,
+              displayName: isHumanity
+                  ? 'Passport Verified Human'
+                  : isNationality
+                  ? 'Verified Nationality'
+                  : 'Age 18 or Older',
+              createdAt: now,
+              updatedAt: now,
+            ),
+            encryptedPayload: payloadEnvelope.encodedPayload,
+            encryptionVersion: payloadEnvelope.encryptionVersion,
+          );
+        }
+        await _walletRepository.savePassportExtension(
+          PassportWalletExtension(
+            credentialId: humanity.id,
+            passportLocalUniqueId: passportLocalUniqueId,
+            nationalIdHash: passportProof.nationalIdHash,
+            passportNumberHash: passportProof.passportNumberHash,
+            nationality: data.nationality,
+            assuranceMethod: 'passport_nfc',
+            verifiedAt: now,
+          ),
+        );
+        widget.onCredentialStored?.call();
+
+        if (!mounted) return;
+        _stopProofProgressTicker();
+        setState(() => _phase = _PassportNfcPhase.done);
+      } catch (error) {
+        if (!mounted) return;
+        _stopProofProgressTicker();
+        setState(() {
+          _phase = _PassportNfcPhase.idle;
+          _submittingToIssuer = false;
+          _errorMessage = _formatError(error);
+        });
+      } finally {
+        final path = preloadedSrsPath;
+        if (path != null) {
+          await _passportSrsProvider?.release(path);
+        }
       }
+    } finally {
+      if (mounted) setState(() => _startingNfcScan = false);
     }
   }
 
@@ -755,6 +770,10 @@ class _PassportNfcCredentialPanelState
         zh: '護照 NFC 連線意外中斷。請讓護照緊貼手機並保持不動後重試。',
         en: 'The passport NFC session was interrupted. Hold the passport still against the phone and try again.',
       ),
+      'passport_scan_in_progress' => _copy(
+        zh: '護照 NFC 正在讀取中，請完成或取消目前的讀取後再試。',
+        en: 'A passport NFC scan is already in progress. Finish or cancel it before trying again.',
+      ),
       _ => error.toString(),
     };
   }
@@ -763,6 +782,7 @@ class _PassportNfcCredentialPanelState
   Widget build(BuildContext context) {
     final busy =
         _scanningMrz ||
+        _startingNfcScan ||
         _phase == _PassportNfcPhase.scanning ||
         _phase == _PassportNfcPhase.issuing;
     return Column(

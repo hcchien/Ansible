@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 enum NetworkStatus {
@@ -58,6 +59,8 @@ class NetworkStatusService extends ChangeNotifier
           return 'Mobile';
         case ConnectivityResult.ethernet:
           return 'Ethernet';
+        case ConnectivityResult.satellite:
+          return 'Satellite';
         case ConnectivityResult.vpn:
           return 'VPN';
         case ConnectivityResult.bluetooth:
@@ -80,10 +83,16 @@ class NetworkStatusService extends ChangeNotifier
     checkStatus();
 
     // Listen for connectivity changes
-    _subscription = _connectivity.onConnectivityChanged.listen((results) {
-      _connectivityResults = results;
-      _updateStatus(results);
-    });
+    try {
+      _subscription = _connectivity.onConnectivityChanged.listen((results) {
+        _connectivityResults = results;
+        _updateStatus(results);
+      });
+    } on MissingPluginException {
+      // iOS can run without the optional connectivity platform plugin. The
+      // HTTP reachability check below remains the source of truth.
+      _subscription = null;
+    }
   }
 
   @override
@@ -94,7 +103,12 @@ class NetworkStatusService extends ChangeNotifier
     try {
       _connectivityResults = await _connectivity.checkConnectivity();
       await _updateStatus(_connectivityResults);
-    } catch (e) {
+    } on MissingPluginException {
+      // Do not report offline merely because the optional interface-type
+      // plugin is unavailable. Verify reachability directly instead.
+      _connectivityResults = const [ConnectivityResult.other];
+      await _updateStatus(_connectivityResults);
+    } catch (_) {
       _status = NetworkStatus.offline;
       notifyListeners();
     }
