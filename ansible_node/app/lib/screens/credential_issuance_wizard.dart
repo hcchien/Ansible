@@ -692,7 +692,7 @@ class _PassportNfcCredentialPanelState
       );
     }
     if (error is StateError) {
-      return error.message;
+      return _formatPassportScanError(error.message);
     }
     if (error is ZkpProverException) {
       final diagnostic = error.cause
@@ -708,6 +708,36 @@ class _PassportNfcCredentialPanelState
       zh: '護照 NFC 驗證暫時無法完成，請稍後再試。',
       en: 'Passport NFC verification cannot be completed right now. Please try again later.',
     );
+  }
+
+  String _formatPassportScanError(Object? error) {
+    return switch (error) {
+      'passport_scan_cancelled' => _copy(
+        zh: '已取消護照 NFC 掃描。',
+        en: 'Passport NFC scan was cancelled.',
+      ),
+      'passport_tag_lost' => _copy(
+        zh: '護照離開了手機的 NFC 感應區。請讓護照緊貼手機並保持不動後重試。',
+        en: 'The passport moved away from the phone. Hold it still against the phone and try again.',
+      ),
+      'passport_access_data_rejected' => _copy(
+        zh: '護照號碼、出生日期或有效期限與晶片不符。請確認 MRZ 資料後重試。',
+        en: 'The passport number, birth date, or expiry date does not match the chip. Check the MRZ details and try again.',
+      ),
+      'passport_session_timed_out' => _copy(
+        zh: '護照 NFC 讀取逾時。請讓護照緊貼手機並保持不動後重試。',
+        en: 'The passport NFC session timed out. Hold the passport still against the phone and try again.',
+      ),
+      'passport_multiple_tags' => _copy(
+        zh: '偵測到多張 NFC 卡片。請移開其他卡片後重試。',
+        en: 'More than one NFC tag was detected. Remove other NFC cards and try again.',
+      ),
+      'passport_nfc_interrupted' => _copy(
+        zh: '護照 NFC 連線意外中斷。請讓護照緊貼手機並保持不動後重試。',
+        en: 'The passport NFC session was interrupted. Hold the passport still against the phone and try again.',
+      ),
+      _ => error.toString(),
+    };
   }
 
   @override
