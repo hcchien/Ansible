@@ -25,39 +25,52 @@ class AnsibleScreenScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final leading = leadingLabel ?? context.uiCopy(zh: '← 草地', en: '← Home');
-    final screenStyle = ElixScreenStyleScope.dataOf(context);
-    return Scaffold(
-      backgroundColor: screenStyle.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(22, paddingTop, 22, 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _NavTextButton(label: leading, onTap: onLeading),
-                  ),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: AnsibleDesign.mono,
-                      fontSize: 11,
-                      letterSpacing: 2.4,
-                    ).copyWith(color: screenStyle.muted),
-                  ),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: trailing ?? const SizedBox.shrink(),
+    final style = ElixScreenStyleScope.styleOf(context);
+    final isInk =
+        style == ElixScreenStyle.ink ||
+        (style == ElixScreenStyle.system &&
+            Theme.of(context).brightness == Brightness.dark);
+    final screenStyle = style.dataFor(Theme.of(context).brightness);
+
+    // A Paper screen may be reached while the app follows the system's dark
+    // theme. Its scaffold already uses Paper colours, but Material controls
+    // (disabled buttons, icon buttons, inputs) used to inherit Ink colours,
+    // leaving their labels nearly invisible on the light background.
+    return Theme(
+      data: isInk ? AnsibleDesign.darkTheme() : AnsibleDesign.theme(),
+      child: Scaffold(
+        backgroundColor: screenStyle.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(22, paddingTop, 22, 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _NavTextButton(label: leading, onTap: onLeading),
                     ),
-                  ),
-                ],
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 11,
+                        letterSpacing: 2.4,
+                      ).copyWith(color: screenStyle.muted),
+                    ),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: trailing ?? const SizedBox.shrink(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Expanded(child: child),
-          ],
+              Expanded(child: child),
+            ],
+          ),
         ),
       ),
     );

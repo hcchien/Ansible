@@ -2,6 +2,7 @@ import 'package:ansible_node/screens/credential_issuance_wizard.dart';
 import 'package:ansible_node/screens/wallet_screen.dart';
 import 'package:ansible_node/services/external_url_launcher.dart';
 import 'package:ansible_node/services/vc_issuer_client.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,6 +11,27 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
+  });
+
+  testWidgets('wallet keeps Paper button contrast in system dark mode', (
+    tester,
+  ) async {
+    final repo = InMemoryWalletRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AnsibleDesign.theme(),
+        darkTheme: AnsibleDesign.darkTheme(),
+        themeMode: ThemeMode.dark,
+        home: WalletScreen(holderDid: 'did:elix:test', repository: repo),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final label = find.text('新增憑證');
+    expect(
+      DefaultTextStyle.of(tester.element(label)).style.color,
+      AnsibleDesign.ink,
+    );
   });
 
   testWidgets('wallet screen lists credential status and expiry', (
