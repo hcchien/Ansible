@@ -1924,7 +1924,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       boardRepo: _boardRepo,
       threadRepo: _threadRepo,
       postRepo: _postRepo,
-      reactionRepository: _reactionRepo,
       contentItemRepo: _contentItemRepo,
       publicationRepo: _publicationRepo,
       relaySettings: _nostrRelaySettingsStore,
