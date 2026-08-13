@@ -10,7 +10,8 @@
 /// Relay synchronization performs its separate WebAuthn / FIDO2 RP ceremony.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
+import 'package:flutter/services.dart'
+    show MissingPluginException, PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'did_manager.dart';
@@ -47,7 +48,10 @@ class PasskeysCredential {
 abstract class PasskeysManager {
   /// Generate a new keypair with biometric confirmation and store in Secure Enclave.
   /// Returns the resulting [PasskeysCredential].
-  Future<PasskeysCredential> register({required String username});
+  Future<PasskeysCredential> register({
+    required String username,
+    bool reuseHardwareAuthenticationContext = false,
+  });
 
   /// Load existing credential from secure storage.
   /// Returns null if no credential has been registered yet.
@@ -89,7 +93,9 @@ class PasskeysManagerImpl implements PasskeysManager {
        _allowReducedTrustIdentity = allowReducedTrustIdentity,
        _hardwareKey = hardwareIdentityKey ?? HardwareIdentityKey();
 
-  Future<bool> _authenticateWithBiometrics({required String reason}) async {
+  Future<bool> _authenticateWithPreferredMethod({
+    required String reason,
+  }) async {
     try {
       final bool canCheck = await _localAuth.canCheckBiometrics;
       if (!canCheck) {
@@ -107,7 +113,9 @@ class PasskeysManagerImpl implements PasskeysManager {
       }
       return await _localAuth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(biometricOnly: false),
+        // Use biometrics when enrolled. Device passcode is the exclusive
+        // fallback for devices without biometric enrollment; never ask both.
+        options: AuthenticationOptions(biometricOnly: canCheck),
       );
     } on PlatformException catch (e) {
       if (_allowInsecureFallback || _allowReducedTrustIdentity) {
@@ -131,18 +139,27 @@ class PasskeysManagerImpl implements PasskeysManager {
   }
 
   @override
-  Future<PasskeysCredential> register({required String username}) async {
-    final authed = await _authenticateWithBiometrics(
-      reason: 'Confirm your identity to create a Tris-Aura account',
-    );
-    if (!authed) {
-      throw PasskeysAuthException('Biometric authentication was not confirmed');
+  Future<PasskeysCredential> register({
+    required String username,
+    bool reuseHardwareAuthenticationContext = false,
+  }) async {
+    if (!reuseHardwareAuthenticationContext) {
+      final authed = await _authenticateWithPreferredMethod(
+        reason: 'Confirm your identity to create a Tris-Aura account',
+      );
+      if (!authed) {
+        throw PasskeysAuthException(
+          'Biometric authentication was not confirmed',
+        );
+      }
     }
 
     IdentityPublicKey identityKey;
     String did;
     try {
-      identityKey = await _hardwareKey.generate();
+      identityKey = await _hardwareKey.generate(
+        reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+      );
       did = 'did:key:p256:${identityKey.publicKeyHex.substring(0, 24)}';
     } catch (error) {
       if (!(_allowInsecureFallback || _allowReducedTrustIdentity) ||
@@ -190,7 +207,7 @@ class PasskeysManagerImpl implements PasskeysManager {
     final did = await _secureStorage.read(key: _kPasskeysDidKey);
     if (did == null) return null;
 
-    final authed = await _authenticateWithBiometrics(
+    final authed = await _authenticateWithPreferredMethod(
       reason: 'Confirm your identity to sign in to Tris-Aura',
     );
     if (!authed) {
@@ -250,7 +267,10 @@ class PasskeysManagerStub implements PasskeysManager {
       'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
 
   @override
-  Future<PasskeysCredential> register({required String username}) async {
+  Future<PasskeysCredential> register({
+    required String username,
+    bool reuseHardwareAuthenticationContext = false,
+  }) async {
     debugPrint('[PasskeysManagerStub] register called — returning dev stub');
     return PasskeysCredential(
       did: _stubDid,

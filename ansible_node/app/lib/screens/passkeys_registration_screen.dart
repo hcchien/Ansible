@@ -115,10 +115,25 @@ class _PasskeysRegistrationScreenState
       _errorMessage = null;
     });
 
+    HardwareAuthenticationSession? authenticationSession;
     try {
       // ── Step 1: Biometric / Passkeys key generation ─────────────────────
+      // On iOS this session is reused for key creation and the nonce-bound
+      // registration proof, so account creation has one user-presence prompt.
+      // An injected manager owns its authentication strategy (including test
+      // doubles and reduced-trust implementations), so only open the native
+      // Secure Enclave session for the production manager.
+      if (widget.passkeysManager == null) {
+        authenticationSession = await HardwareAuthenticationSession.begin(
+          localizedReason: _copy(
+            zh: '請使用生物辨識確認，以建立 Tris-Aura 帳號。',
+            en: 'Use biometrics to create your Tris-Aura account.',
+          ),
+        );
+      }
       final credential = await _passkeysManager.register(
         username: handleSuffix,
+        reuseHardwareAuthenticationContext: authenticationSession != null,
       );
 
       // ── Step 2: Canonical did:elix derivation (pure-Dart, no FFI) ────────
@@ -166,6 +181,7 @@ class _PasskeysRegistrationScreenState
                 challenge.nonce,
                 credential.publicKeyHex,
                 credential.signingAlgorithm,
+                reuseAuthenticationContext: authenticationSession != null,
               )
             : await widget.nonceSigner!(
                 challenge.nonce,
@@ -201,6 +217,8 @@ class _PasskeysRegistrationScreenState
         _phase = _Phase.idle;
         _errorMessage = _formatError(e);
       });
+    } finally {
+      await authenticationSession?.close();
     }
   }
 
@@ -233,8 +251,9 @@ class _PasskeysRegistrationScreenState
   Future<String> _signNonce(
     String nonce,
     String publicKeyHex,
-    IdentityKeyAlgorithm algorithm,
-  ) async {
+    IdentityKeyAlgorithm algorithm, {
+    bool reuseAuthenticationContext = false,
+  }) async {
     final expectedLength = algorithm == IdentityKeyAlgorithm.ed25519 ? 64 : 130;
     if (publicKeyHex.length != expectedLength ||
         !RegExp(r'^[0-9a-fA-F]+$').hasMatch(publicKeyHex)) {
@@ -243,7 +262,10 @@ class _PasskeysRegistrationScreenState
       );
     }
     try {
-      final signer = DidSignerImpl(secureStorage: const FlutterSecureStorage());
+      final signer = DidSignerImpl(
+        secureStorage: const FlutterSecureStorage(),
+        reuseAuthenticationContext: reuseAuthenticationContext,
+      );
       final sig = await signer.sign(utf8.encode(nonce));
       final valid = algorithm == IdentityKeyAlgorithm.ed25519
           ? RegExp(r'^[0-9a-fA-F]{128}$').hasMatch(sig.hex)

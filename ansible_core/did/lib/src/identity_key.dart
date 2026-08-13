@@ -68,9 +68,11 @@ class HardwareIdentityKey {
 
   Future<IdentityPublicKey> generate({
     String alias = 'elix.identity.v1',
+    bool reuseAuthenticationContext = false,
   }) async {
     final result = await _channel.invokeMapMethod<String, dynamic>('generate', {
       'alias': alias,
+      'reuse_authentication_context': reuseAuthenticationContext,
     });
     return _decode(result);
   }

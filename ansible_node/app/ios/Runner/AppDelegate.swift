@@ -293,7 +293,11 @@ import UIKit
         let reason = (args?["localized_reason"] as? String) ?? "Authorize Elix sync"
         let context = LAContext()
         context.localizedReason = reason
-        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) {
+        let policy: LAPolicy = context.canEvaluatePolicy(
+          .deviceOwnerAuthenticationWithBiometrics,
+          error: nil
+        ) ? .deviceOwnerAuthenticationWithBiometrics : .deviceOwnerAuthentication
+        context.evaluatePolicy(policy, localizedReason: reason) {
           success, error in
           DispatchQueue.main.async {
             guard success else {
@@ -340,7 +344,12 @@ import UIKit
         }
         switch call.method {
         case "generate":
-          result(try self.generateHardwareIdentityKey(alias: alias))
+          let reuseAuthenticationContext =
+            (args["reuse_authentication_context"] as? Bool) ?? false
+          result(try self.generateHardwareIdentityKey(
+            alias: alias,
+            authenticationContext: reuseAuthenticationContext ? self.syncAuthenticationContext : nil
+          ))
         case "load":
           result(try self.loadHardwareIdentityKey(alias: alias))
         case "sign":
@@ -492,8 +501,11 @@ import UIKit
     return secret.withUnsafeBytes { Data($0) }
   }
 
-  private func generateHardwareIdentityKey(alias: String) throws -> [String: Any] {
-    if let existing = try loadSecureEnclaveKey(alias: alias) { return keyResult(existing) }
+  private func generateHardwareIdentityKey(
+    alias: String,
+    authenticationContext: LAContext? = nil
+  ) throws -> [String: Any] {
+    if let existing = try loadSecureEnclaveKey(alias: alias, authenticationContext: authenticationContext) { return keyResult(existing) }
     var error: Unmanaged<CFError>?
     guard let access = SecAccessControlCreateWithFlags(
       nil,
@@ -501,7 +513,7 @@ import UIKit
       [.privateKeyUsage, .userPresence],
       &error
     ) else { throw error!.takeRetainedValue() as Error }
-    let context = LAContext()
+    let context = authenticationContext ?? LAContext()
     context.localizedReason = "Create your Elix identity"
     let key = try SecureEnclave.P256.Signing.PrivateKey(
       accessControl: access,

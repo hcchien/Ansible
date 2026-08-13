@@ -17,10 +17,13 @@ class LocalDeviceUserPresenceVerifier implements UserPresenceVerifier {
   Future<bool> verify({required String reason}) async {
     try {
       if (!await _localAuthentication.isDeviceSupported()) return false;
+      final hasBiometrics = await _localAuthentication.canCheckBiometrics;
       return _localAuthentication.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(
-          biometricOnly: false,
+        options: AuthenticationOptions(
+          // A device with enrolled biometrics must not fall through to a
+          // second passcode prompt. Passcode is only the single fallback.
+          biometricOnly: hasBiometrics,
           stickyAuth: true,
         ),
       );

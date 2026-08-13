@@ -362,7 +362,10 @@ class _FakePasskeysManager implements PasskeysManager {
   Future<PasskeysCredential?> load() async => null;
 
   @override
-  Future<PasskeysCredential> register({required String username}) async {
+  Future<PasskeysCredential> register({
+    required String username,
+    bool reuseHardwareAuthenticationContext = false,
+  }) async {
     registerCalled = true;
     return PasskeysCredential(
       did: 'did:key:test',

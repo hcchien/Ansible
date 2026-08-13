@@ -1832,6 +1832,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _flushPendingOps() async {
+    // A post remains in the local queue while offline and is delivered on the
+    // next verified online transition. Do not start futile Relay requests.
+    if (_networkStatusService.status != NetworkStatus.online) return;
     final activeNode = await _remoteNodeRepo.getActive();
     final service = activeNode == null
         ? _opsDispatchService
@@ -2038,7 +2041,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (!await _hasConfiguredSyncTargets()) return;
     _lastAutoSyncAt = now;
     await _runForegroundPullIfConfigured();
-    await _runHeaderSync(showSnackBar: false, pullRemote: false);
+    // Opening the app or regaining connectivity is not consent to create new
+    // signatures. Only deliver operations the user already signed while
+    // posting; other local changes stay queued for an explicit sync.
+    await _flushPendingOps();
   }
 
   Future<void> _runForegroundPullIfConfigured() async {
