@@ -30,7 +30,28 @@ class FollowQrScreen extends StatelessWidget {
             'Show this code to let someone follow your public identity.',
           ),
           const SizedBox(height: 24),
-          QrImageView(data: FollowQrLink(localDid).encode(), size: 250),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: QrImageView(
+              data: FollowQrLink(localDid).encode(),
+              version: QrVersions.auto,
+              size: 250,
+              backgroundColor: Colors.white,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Colors.black,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Colors.black,
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
           Text(shortenDid(localDid)),
           const Spacer(),
