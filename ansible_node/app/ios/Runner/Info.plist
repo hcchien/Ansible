@@ -75,6 +75,8 @@
 	<string>Elix uses NFC to read the ePassport chip for identity anchoring.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Elix uses the camera to scan verifier QR requests before presenting wallet credentials.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Elix uses Face ID to confirm it is you before synchronizing and signing your selected account changes.</string>
 	<!-- App Transport Security.
 	     NSAllowsLocalNetworking permits plaintext HTTP to LAN/loopback hosts.
 	     It is required ONLY by the staging build (scripts/install_ios_staging_release.sh),
