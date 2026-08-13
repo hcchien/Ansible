@@ -69,6 +69,65 @@ void main() {
     expect(find.text('到期 2026-08-02'), findsOneWidget);
   });
 
+  testWidgets('wallet lets the user copy the complete holder DID', (tester) async {
+    const holderDid = 'did:elix:5smknabcdefghijklmnopqrstuhf';
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WalletScreen(
+          holderDid: holderDid,
+          repository: InMemoryWalletRepository(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('copy_holder_did')));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('deleting a credential requires confirmation', (tester) async {
+    final credential = WalletCredential(
+      credentialId: 'urn:uuid:test-delete',
+      issuerDid: 'did:web:issuer.elix.cool',
+      holderDid: 'did:plc:abcdefghijklmnop',
+      credentialType: 'TrisAuraHumanityCredential',
+      status: WalletCredentialStatus.active,
+      validFrom: DateTime.utc(2026, 5, 4),
+      validUntil: DateTime.utc(2026, 8, 2),
+      displayName: 'Verified Human',
+      createdAt: DateTime.utc(2026, 5, 4, 10),
+      updatedAt: DateTime.utc(2026, 5, 4, 10),
+    );
+    final repo = InMemoryWalletRepository.withCredentials([credential]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WalletScreen(
+          holderDid: credential.holderDid,
+          repository: repo,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _scrollWallet(tester);
+
+    await tester.tap(find.byTooltip('刪除本機憑證'));
+    await tester.pumpAndSettle();
+    expect(find.text('要刪除本機憑證嗎？'), findsOneWidget);
+    expect(await repo.listCredentials(), hasLength(1));
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(await repo.listCredentials(), hasLength(1));
+
+    await tester.tap(find.byTooltip('刪除本機憑證'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('刪除憑證'));
+    await tester.pumpAndSettle();
+    expect(await repo.listCredentials(), isEmpty);
+  });
+
   testWidgets('credential card opens local privacy-safe details', (
     tester,
   ) async {

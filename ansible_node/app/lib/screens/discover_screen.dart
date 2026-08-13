@@ -17,6 +17,7 @@ import '../widgets/board_gate_badge.dart';
 import 'posts_view_screen.dart';
 import 'threads_list_screen.dart';
 import 'user_profile_screen.dart';
+import 'follow_qr_screen.dart';
 
 /// The three Discover categories, each shown as a tab so users / boards / posts
 /// are always cleanly separated (both while browsing and while searching).
@@ -32,6 +33,7 @@ class DiscoverScreen extends StatefulWidget {
     required this.localDid,
     required this.client,
     this.onOpenBoard,
+    this.onFollowCreated,
     this.startOnBoards = false,
   });
 
@@ -39,6 +41,7 @@ class DiscoverScreen extends StatefulWidget {
   final String localDid;
   final DiscoveryClient client;
   final void Function(BoardSearchResult board)? onOpenBoard;
+  final Future<void> Function()? onFollowCreated;
 
   /// Opens on the 看板 tab (guided first session step 1).
   final bool startOnBoards;
@@ -281,6 +284,28 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                key: const Key('discover_follow_qr'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => FollowQrScreen(
+                      db: widget.db,
+                      localDid: widget.localDid,
+                      onFollowCreated: widget.onFollowCreated,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.qr_code_2, size: 18),
+                label: Text(
+                  context.uiCopy(zh: 'Follow QR Code', en: 'Follow QR Code'),
+                ),
+              ),
+            ),
+          ),
           _searchField(context),
           _tabBar(context),
           Expanded(

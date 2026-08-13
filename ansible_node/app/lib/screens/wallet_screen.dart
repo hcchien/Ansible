@@ -1,5 +1,6 @@
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../l10n/subpage_l10n.dart';
 import '../l10n/app_l10n.dart';
@@ -67,8 +68,43 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _deleteCredential(WalletCredential credential) async {
+    final text = SubpageL10n.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(text.t('deleteLocalCredentialConfirmTitle')),
+        content: Text(
+          text.f('deleteLocalCredentialConfirmMessage', {
+            'name': _credentialDisplayName(context, credential),
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(text.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AnsibleDesign.danger,
+            ),
+            child: Text(text.t('deleteLocalCredentialConfirmAction')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     await widget.repository.deleteCredential(credential.credentialId);
     await _reload();
+  }
+
+  Future<void> _copyHolderDid() async {
+    await Clipboard.setData(ClipboardData(text: widget.holderDid));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(SubpageL10n.of(context).t('holderDidCopied'))),
+    );
   }
 
   void _openAddCredential() {
@@ -160,6 +196,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 uses: text.t('rootUses'),
                 age: text.t('local'),
                 keyFragment: _fragment(widget.holderDid),
+                onCopyDid: _copyHolderDid,
               ),
               const SizedBox(height: 18),
               Column(
@@ -443,6 +480,7 @@ class _IdentityCard extends StatelessWidget {
     required this.uses,
     required this.age,
     required this.keyFragment,
+    this.onCopyDid,
     this.primary = false,
   });
 
@@ -453,6 +491,7 @@ class _IdentityCard extends StatelessWidget {
   final String uses;
   final String age;
   final String keyFragment;
+  final VoidCallback? onCopyDid;
   final bool primary;
 
   @override
@@ -547,14 +586,28 @@ class _IdentityCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
-                keyFragment,
-                style: const TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                  color: AnsibleDesign.inkFaint,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      keyFragment,
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                        color: AnsibleDesign.inkFaint,
+                      ),
+                    ),
+                  ),
+                  if (onCopyDid != null)
+                    IconButton(
+                      key: const Key('copy_holder_did'),
+                      onPressed: onCopyDid,
+                      icon: const Icon(Icons.copy_outlined, size: 17),
+                      tooltip: SubpageL10n.of(context).t('copyFullDid'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
               const Divider(color: AnsibleDesign.ruleSoft, height: 1),
