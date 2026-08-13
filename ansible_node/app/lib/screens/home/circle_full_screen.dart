@@ -5,6 +5,7 @@ import '../../l10n/app_l10n.dart';
 import '../../theme/ansible_design.dart';
 import '../murmur_screen.dart';
 import '../note_workspace_screen.dart';
+import '../edit_profile_screen.dart';
 import 'home_types.dart';
 
 /// Full-screen Circle (圈內) pushed via Navigator for compose flows.
@@ -62,6 +63,34 @@ class _CircleFullScreenState extends State<CircleFullScreen> {
     );
     if (!mounted) return;
     setState(() => _contentItems = latest);
+  }
+
+  Future<void> _offerPublicProfileAfterPost() async {
+    final self = await DriftContactRepository(
+      widget.db,
+    ).contactForDid(widget.did);
+    final isPublic =
+        (self?.handle?.trim().isNotEmpty ?? false) ||
+        (self?.displayName?.trim().isNotEmpty ?? false);
+    if (isPublic || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.uiCopy(
+            zh: '想讓讀者也能找到你？建立公開 profile。',
+            en: 'Want readers to find you? Create a public profile.',
+          ),
+        ),
+        action: SnackBarAction(
+          label: context.uiCopy(zh: '設定', en: 'SET UP'),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EditProfileScreen(db: widget.db, did: widget.did),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -138,6 +167,7 @@ class _CircleFullScreenState extends State<CircleFullScreen> {
                         .toList(),
                     murmurReferenceCounts: widget.murmurReferenceCounts,
                     onSaved: _handleContentItemsChanged,
+                    onPublicPostSaved: _offerPublicProfileAfterPost,
                     onPublishContentItem: widget.onPublishContentItem,
                   ),
                   CircleTab.notes => NoteWorkspaceScreen(
@@ -150,6 +180,7 @@ class _CircleFullScreenState extends State<CircleFullScreen> {
                         .toList(),
                     contentItemRepository: widget.contentItemRepository,
                     onContentItemsChanged: _handleContentItemsChanged,
+                    onPublicPostSaved: _offerPublicProfileAfterPost,
                     onPublishContentItem: widget.onPublishContentItem,
                     onSummonAI: ({noteId, noteTitle, noteBody}) =>
                         widget.onSummonAiForNote(

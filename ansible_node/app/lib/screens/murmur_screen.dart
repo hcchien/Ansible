@@ -16,6 +16,7 @@ class MurmurScreen extends StatefulWidget {
     this.recentMurmurs = const [],
     this.murmurReferenceCounts = const {},
     this.onSaved,
+    this.onPublicPostSaved,
     this.onPublishContentItem,
   });
 
@@ -24,6 +25,7 @@ class MurmurScreen extends StatefulWidget {
   final List<ContentItem> recentMurmurs;
   final Map<String, int> murmurReferenceCounts;
   final Future<void> Function()? onSaved;
+  final Future<void> Function()? onPublicPostSaved;
   final Future<void> Function(
     ContentItem item,
     DistributionPreference preference,
@@ -70,6 +72,9 @@ class _MurmurScreenState extends State<MurmurScreen> {
     }
     if (!mounted) return;
     await widget.onSaved?.call();
+    if (_visibility == ContentVisibility.public) {
+      await widget.onPublicPostSaved?.call();
+    }
     if (!mounted) return;
     setState(() {
       _saving = false;

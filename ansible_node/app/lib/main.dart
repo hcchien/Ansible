@@ -16,6 +16,7 @@ import 'l10n/app_l10n.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_shell.dart';
 import 'screens/identity_backup_screen.dart'; // Backup blob creation (nag-once)
+import 'screens/edit_profile_screen.dart';
 import 'screens/onboarding_backup_step_screen.dart'; // Post-registration backup + initial anchor
 import 'screens/onboarding_intro_screen.dart';
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
@@ -566,6 +567,18 @@ class _MyAppState extends State<MyApp> {
     // Pop the onboarding backup step (if still on the stack) and enter the app.
     _navigatorKey.currentState?.popUntil((route) => route.isFirst);
     setState(() => _anchoredDid = did);
+    // Being listed in Discover is an explicit, skippable choice. Offer it at
+    // onboarding instead of requiring a user to discover a Settings subpage.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final navigator = _navigatorKey.currentState;
+      if (navigator == null) return;
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              EditProfileScreen(db: widget.db, did: did, isOnboarding: true),
+        ),
+      );
+    });
   }
 
   /// Nag-once: if the user skipped the at-creation backup, open the backup

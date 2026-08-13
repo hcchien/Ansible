@@ -238,6 +238,28 @@ class SettingsHomeScreen extends StatelessWidget {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+            child: FutureBuilder<ContactRecord?>(
+              future: DriftContactRepository(db).contactForDid(did),
+              builder: (context, snapshot) {
+                final profile = snapshot.data;
+                final isPublic = (profile?.handle?.trim().isNotEmpty ?? false) ||
+                    (profile?.displayName?.trim().isNotEmpty ?? false);
+                return TextButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => EditProfileScreen(db: db, did: did),
+                    ),
+                  ),
+                  icon: Icon(isPublic ? Icons.public : Icons.visibility_off_outlined, size: 18),
+                  label: Text(isPublic
+                      ? context.uiCopy(zh: '公開 profile：已設定（同步後可被探索）', en: 'Public profile: set (discoverable after sync)')
+                      : context.uiCopy(zh: '公開 profile：未設定，不會出現在探索', en: 'Public profile: not set — not shown in Discover')),
+                );
+              },
+            ),
+          ),
           if (onOpenPersonalBoard != null)
             _SettingsSection(
               label: context.uiCopy(zh: '我的內容', en: 'MY CONTENT'),

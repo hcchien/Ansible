@@ -4,15 +4,22 @@ import 'package:flutter/material.dart';
 import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
+import 'sync_settings_screen.dart';
 
 /// Edits the local user's **public** profile (display name + handle). Stored in
 /// the contacts table keyed by the user's own DID, and published as a `profile`
 /// op on the next sync so others can find them in discovery.
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key, required this.db, required this.did});
+  const EditProfileScreen({
+    super.key,
+    required this.db,
+    required this.did,
+    this.isOnboarding = false,
+  });
 
   final AppDatabase db;
   final String did;
+  final bool isOnboarding;
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -73,23 +80,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (!mounted) return;
     setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          context.uiCopy(
-            zh: '已儲存，下次同步將公開發布',
-            en: 'Saved — will be published on next sync',
-          ),
-        ),
+    // Publication needs a fresh, user-authorized signature. Go straight to
+    // the sync surface rather than implying that a local save was published.
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SyncSettingsScreen(db: widget.db, localDid: widget.did),
       ),
     );
-    Navigator.of(context).pop(true);
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
     return AnsibleScreenScaffold(
-      title: context.uiCopy(zh: '編輯個人檔案', en: 'EDIT PROFILE'),
+      title: widget.isOnboarding
+          ? context.uiCopy(zh: '讓大家找到你', en: 'LET PEOPLE FIND YOU')
+          : context.uiCopy(zh: '編輯個人檔案', en: 'EDIT PROFILE'),
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
       child: _loading
           ? const Padding(
@@ -110,6 +116,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     color: AnsibleDesign.inkMuted,
                   ),
                 ),
+                if (widget.isOnboarding)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(context.uiCopy(zh: '暫時不要', en: 'Not now')),
+                    ),
+                  ),
                 const SizedBox(height: 18),
                 _label(context, context.uiCopy(zh: '顯示名稱', en: 'DISPLAY NAME')),
                 _field(

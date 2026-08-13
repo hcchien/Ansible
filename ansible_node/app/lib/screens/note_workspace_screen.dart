@@ -21,6 +21,7 @@ class NoteWorkspaceScreen extends StatefulWidget {
     this.murmurs = const [],
     this.contentItemRepository,
     this.onContentItemsChanged,
+    this.onPublicPostSaved,
     this.onPublishContentItem,
     this.onSummonAI,
     this.openCreateEditorOnStart = false,
@@ -31,6 +32,7 @@ class NoteWorkspaceScreen extends StatefulWidget {
   final List<ContentItem> murmurs;
   final ContentItemRepository? contentItemRepository;
   final Future<void> Function()? onContentItemsChanged;
+  final Future<void> Function()? onPublicPostSaved;
   final Future<void> Function(
     ContentItem item,
     DistributionPreference preference,
@@ -271,6 +273,9 @@ class _NoteWorkspaceScreenState extends State<NoteWorkspaceScreen> {
       );
     }
     await widget.onContentItemsChanged?.call();
+    if (result.visibility == ContentVisibility.public) {
+      await widget.onPublicPostSaved?.call();
+    }
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,

@@ -18,6 +18,7 @@ import 'posts_view_screen.dart';
 import 'threads_list_screen.dart';
 import 'user_profile_screen.dart';
 import 'follow_qr_screen.dart';
+import 'edit_profile_screen.dart';
 
 /// The three Discover categories, each shown as a tab so users / boards / posts
 /// are always cleanly separated (both while browsing and while searching).
@@ -311,13 +312,75 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.only(bottom: 24),
-              children: _tabContent(context),
+              children: [
+                _publicProfileStatus(context),
+                ..._tabContent(context),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _publicProfileStatus(
+    BuildContext context,
+  ) => FutureBuilder<ContactRecord?>(
+    future: DriftContactRepository(widget.db).contactForDid(widget.localDid),
+    builder: (context, snapshot) {
+      final profile = snapshot.data;
+      final isPublic =
+          (profile?.handle?.trim().isNotEmpty ?? false) ||
+          (profile?.displayName?.trim().isNotEmpty ?? false);
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isPublic
+              ? AnsibleDesign.paperDeep
+              : AnsibleDesign.ochre.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AnsibleDesign.ruleSoft),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isPublic ? Icons.public : Icons.visibility_off_outlined,
+              color: AnsibleDesign.inkMuted,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isPublic
+                    ? context.uiCopy(
+                        zh: '公開 profile 將在同步後出現在使用者搜尋。',
+                        en: 'Your public profile appears in people search after sync.',
+                      )
+                    : context.uiCopy(
+                        zh: '你目前不會出現在使用者搜尋中。公開 profile 是可選的。',
+                        en: 'You are not currently in people search. A public profile is optional.',
+                      ),
+                style: const TextStyle(fontSize: 12.5, height: 1.45),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      EditProfileScreen(db: widget.db, did: widget.localDid),
+                ),
+              ),
+              child: Text(
+                isPublic
+                    ? context.uiCopy(zh: '管理', en: 'Manage')
+                    : context.uiCopy(zh: '設定', en: 'Set up'),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 
   Widget _tabBar(BuildContext context) {
     return Container(
