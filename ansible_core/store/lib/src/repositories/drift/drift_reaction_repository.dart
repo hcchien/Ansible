@@ -10,7 +10,18 @@ class DriftReactionRepository implements ReactionRepository {
 
   @override
   Future<void> create(entity.Reaction reaction) async {
-    await _db.into(_db.reactions).insert(
+    final existing = await getByUserAndTarget(
+      reaction.userId,
+      reaction.targetType.name,
+      reaction.targetId,
+    );
+    // Preserve the canonical local id when a duplicate arrives from a retry or
+    // another device. A later delete therefore still addresses the reaction
+    // the UI originally created.
+    if (existing != null && existing.id != reaction.id) return;
+    await _db
+        .into(_db.reactions)
+        .insert(
           ReactionsCompanion.insert(
             id: reaction.id,
             userId: reaction.userId,
@@ -29,22 +40,34 @@ class DriftReactionRepository implements ReactionRepository {
   }
 
   @override
-  Future<List<entity.Reaction>> listByTarget(String targetType, String targetId) async {
-    final rows = await (_db.select(_db.reactions)
-          ..where((r) => r.targetType.equals(targetType) & r.targetId.equals(targetId)))
-        .get();
+  Future<List<entity.Reaction>> listByTarget(
+    String targetType,
+    String targetId,
+  ) async {
+    final rows =
+        await (_db.select(_db.reactions)..where(
+              (r) =>
+                  r.targetType.equals(targetType) & r.targetId.equals(targetId),
+            ))
+            .get();
     return rows.map(_mapRowToEntity).toList();
   }
 
   @override
   Future<entity.Reaction?> getByUserAndTarget(
-      String userId, String targetType, String targetId) async {
-    final row = await (_db.select(_db.reactions)
-          ..where((r) =>
-              r.userId.equals(userId) &
-              r.targetType.equals(targetType) &
-              r.targetId.equals(targetId)))
-        .getSingleOrNull();
+    String userId,
+    String targetType,
+    String targetId,
+  ) async {
+    final row =
+        await ((_db.select(_db.reactions)..where(
+                (r) =>
+                    r.userId.equals(userId) &
+                    r.targetType.equals(targetType) &
+                    r.targetId.equals(targetId),
+              ))
+              ..limit(1))
+            .getSingleOrNull();
     if (row == null) return null;
     return _mapRowToEntity(row);
   }
@@ -53,9 +76,13 @@ class DriftReactionRepository implements ReactionRepository {
     return entity.Reaction(
       id: row.id,
       userId: row.userId,
-      targetType: entity.TargetType.values.firstWhere((e) => e.name == row.targetType),
+      targetType: entity.TargetType.values.firstWhere(
+        (e) => e.name == row.targetType,
+      ),
       targetId: row.targetId,
-      reactionType: entity.ReactionType.values.firstWhere((e) => e.name == row.reactionType),
+      reactionType: entity.ReactionType.values.firstWhere(
+        (e) => e.name == row.reactionType,
+      ),
       createdAt: row.createdAt,
     );
   }

@@ -100,62 +100,82 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
               padding: const EdgeInsets.only(bottom: 18),
               child: Material(
                 type: MaterialType.transparency,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: _DistributionSheetMainContent(
-                          subjectLabel: subjectLabel,
-                          picked: picked,
-                          federationEnabled: federationEnabled,
-                          nostrEnabled: nostrEnabled,
-                          activityPubEnabled: activityPubEnabled,
-                          activityPubAvailable: activityPubAvailable,
-                          onPickVisibility: (visibility) => setSheetState(() {
-                            picked = visibility;
-                            normalizeDistribution();
-                          }),
-                          onNostrChanged: (value) =>
-                              setDistribution(nostr: value),
-                          onActivityPubChanged: (value) =>
-                              setDistribution(activityPub: value),
+                child: Theme(
+                  // This sheet deliberately uses a paper surface, including
+                  // when the app follows a dark system theme. Keep controls
+                  // on the same palette so their labels and selected states
+                  // remain visible.
+                  data: Theme.of(
+                    context,
+                  ).copyWith(switchTheme: AnsibleDesign.paperSwitchTheme()),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: _DistributionSheetMainContent(
+                            subjectLabel: subjectLabel,
+                            picked: picked,
+                            federationEnabled: federationEnabled,
+                            nostrEnabled: nostrEnabled,
+                            activityPubEnabled: activityPubEnabled,
+                            activityPubAvailable: activityPubAvailable,
+                            onPickVisibility: (visibility) => setSheetState(() {
+                              picked = visibility;
+                              normalizeDistribution();
+                            }),
+                            onNostrChanged: (value) =>
+                                setDistribution(nostr: value),
+                            onActivityPubChanged: (value) =>
+                                setDistribution(activityPub: value),
+                          ),
                         ),
                       ),
-                    ),
-                    const Divider(height: 0.5, color: AnsibleDesign.rule),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.of(sheetContext).pop(),
-                              child: Text(
-                                context.uiCopy(zh: '取消', en: 'Cancel'),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 2,
-                            child: FilledButton(
-                              onPressed: () => Navigator.of(sheetContext).pop(
-                                ContentDistributionChoice(
-                                  visibility: picked,
-                                  distributionPreference:
-                                      distributionPreference,
+                      const Divider(height: 0.5, color: AnsibleDesign.rule),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AnsibleDesign.ink,
+                                  side: const BorderSide(
+                                    color: AnsibleDesign.inkMuted,
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    Navigator.of(sheetContext).pop(),
+                                child: Text(
+                                  context.uiCopy(zh: '取消', en: 'Cancel'),
                                 ),
                               ),
-                              child: Text(
-                                context.uiCopy(zh: '確認', en: 'Confirm'),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 2,
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AnsibleDesign.accent,
+                                  foregroundColor: AnsibleDesign.ink,
+                                ),
+                                onPressed: () => Navigator.of(sheetContext).pop(
+                                  ContentDistributionChoice(
+                                    visibility: picked,
+                                    distributionPreference:
+                                        distributionPreference,
+                                  ),
+                                ),
+                                child: Text(
+                                  context.uiCopy(zh: '確認', en: 'Confirm'),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

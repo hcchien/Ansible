@@ -447,16 +447,20 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           store.TargetType.thread.name,
           t.id,
         );
-        final countMap = <String, int>{};
+        final usersByReactionType = <String, Set<String>>{};
         for (final r in reactions) {
-          countMap[r.reactionType.name] =
-              (countMap[r.reactionType.name] ?? 0) + 1;
+          usersByReactionType
+              .putIfAbsent(r.reactionType.name, () => <String>{})
+              .add(r.userId);
           if (r.userId == widget.did &&
               r.reactionType == store.ReactionType.thumbsUp) {
             userReacted[t.id] = true;
           }
         }
-        reactionCounts[t.id] = countMap;
+        reactionCounts[t.id] = {
+          for (final entry in usersByReactionType.entries)
+            entry.key: entry.value.length,
+        };
       }
     }
 
@@ -1204,16 +1208,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         store.TargetType.thread.name,
         entry.thread.id,
       );
-      final countMap = <String, int>{};
+      final usersByReactionType = <String, Set<String>>{};
       var reacted = false;
       for (final reaction in reactions) {
-        countMap[reaction.reactionType.name] =
-            (countMap[reaction.reactionType.name] ?? 0) + 1;
+        usersByReactionType
+            .putIfAbsent(reaction.reactionType.name, () => <String>{})
+            .add(reaction.userId);
         if (reaction.userId == widget.did &&
             reaction.reactionType == store.ReactionType.thumbsUp) {
           reacted = true;
         }
       }
+      final countMap = {
+        for (final entry in usersByReactionType.entries)
+          entry.key: entry.value.length,
+      };
       final board = entry.board ?? boardMap[entry.post.boardId];
       cards.add(
         PostCardData(

@@ -2,6 +2,64 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('CrdtOpBuilder reaction', () {
+    test('createReaction carries signed target and board routing metadata', () {
+      final op = CrdtOpBuilder.createReaction(
+        authorDid: 'did:key:alice',
+        entityId: 'reaction-1',
+        targetType: 'thread',
+        targetId: 'thread-1',
+        reactionType: 'thumbsUp',
+        boardId: 'board-1',
+      );
+
+      expect(op.entityType, 'reaction');
+      expect(op.opType, 'insert');
+      final payload = CrdtOpBuilder.decodePayload(op.payload);
+      expect(payload['targetType'], 'thread');
+      expect(payload['targetId'], 'thread-1');
+      expect(payload['reactionType'], 'thumbsUp');
+      expect(payload['boardId'], 'board-1');
+      expect(payload.containsKey('createdAt'), isTrue);
+    });
+
+    test('deleteReaction preserves target and board routing metadata', () {
+      final op = CrdtOpBuilder.deleteReaction(
+        authorDid: 'did:key:alice',
+        entityId: 'reaction-1',
+        targetType: 'thread',
+        targetId: 'thread-1',
+        boardId: 'board-1',
+      );
+
+      final payload = CrdtOpBuilder.decodePayload(op.payload);
+      expect(payload['targetType'], 'thread');
+      expect(payload['targetId'], 'thread-1');
+      expect(payload['boardId'], 'board-1');
+    });
+
+    test(
+      'updateReaction retains its entity id and carries the replacement',
+      () {
+        final op = CrdtOpBuilder.updateReaction(
+          authorDid: 'did:key:alice',
+          entityId: 'reaction-1',
+          targetType: 'thread',
+          targetId: 'thread-1',
+          reactionType: 'happy',
+          boardId: 'board-1',
+        );
+
+        expect(op.entityType, 'reaction');
+        expect(op.entityId, 'reaction-1');
+        expect(op.opType, 'update');
+        final payload = CrdtOpBuilder.decodePayload(op.payload);
+        expect(payload['reactionType'], 'happy');
+        expect(payload['targetId'], 'thread-1');
+      },
+    );
+  });
+
   group('CrdtOpBuilder murmur/note', () {
     test(
       'createMurmur builds a murmur op with a public distributable payload',

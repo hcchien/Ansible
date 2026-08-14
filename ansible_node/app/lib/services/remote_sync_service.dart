@@ -217,7 +217,14 @@ class RelayApiClient {
       return jsonDecode(utf8.decode(base64Decode(payload)))
           as Map<String, dynamic>;
     } catch (_) {
-      return {'rawPayload': payload};
+      // Web publication records created before the shared Relay reaction
+      // encoder stored JSON directly. Read them without losing their routing
+      // fields while current writes remain base64 JSON.
+      try {
+        return jsonDecode(payload) as Map<String, dynamic>;
+      } catch (_) {
+        return {'rawPayload': payload};
+      }
     }
   }
 
@@ -440,6 +447,7 @@ class RemoteSyncService {
   final BoardRepository _boardRepo;
   final ThreadRepository _threadRepo;
   final PostRepository _postRepo;
+  final ReactionRepository? _reactionRepo;
   // Optional follow-aware ingestion: when a follow repository and the local
   // follower DID are provided, ops authored by followed users are retained even
   // when their board is not synced, and standalone murmur/note ops are folded
@@ -471,6 +479,7 @@ class RemoteSyncService {
     required BoardRepository boardRepo,
     required ThreadRepository threadRepo,
     required PostRepository postRepo,
+    ReactionRepository? reactionRepository,
     FollowRepository? followRepository,
     ContentItemRepository? contentItemRepo,
     DidReputationRepository? didReputationRepo,
@@ -491,6 +500,7 @@ class RemoteSyncService {
        _boardRepo = boardRepo,
        _threadRepo = threadRepo,
        _postRepo = postRepo,
+       _reactionRepo = reactionRepository,
        _followRepo = followRepository,
        _contentItemRepo = contentItemRepo,
        _didReputationRepo = didReputationRepo,
@@ -625,11 +635,15 @@ class RemoteSyncService {
           );
           final allowedBySelf =
               localDid != null && entry.activity.authorId == localDid;
+          final allowedByReactionBoard =
+              entry.activity.entityType.toLowerCase() == 'reaction' &&
+              enabledBoardIdSet.contains(entry.activity.boardId);
           if (requireBoardSyncConfig &&
               !allowedByLegacy &&
               hostedRoute == null &&
               !allowedByFollowedAuthor &&
-              !allowedBySelf) {
+              !allowedBySelf &&
+              !allowedByReactionBoard) {
             continue;
           }
           final activity = hostedRoute?.activity ?? entry.activity;
@@ -925,7 +939,11 @@ class RemoteSyncService {
       // A remote host controls only its own projection. It must never erase
       // the user's canonical local copy, including entity kinds this client
       // does not currently render (for example an account/profile tombstone).
-      await _recordRemoteDelete(activity, sourceNodeId);
+      if (activity.entityType.toLowerCase() == 'reaction') {
+        await _applyReactionDelete(activity);
+      } else {
+        await _recordRemoteDelete(activity, sourceNodeId);
+      }
       return;
     }
     await _remoteTombstones?.remove(
@@ -950,7 +968,83 @@ class RemoteSyncService {
       case 'comment':
         await _applyCommentActivity(activity, sourceNodeId);
         break;
+      case 'reaction':
+        await _applyReactionActivity(activity);
+        break;
     }
+  }
+
+  Future<void> _applyReactionDelete(Activity activity) async {
+    await _reactionRepo?.delete(activity.entityId);
+  }
+
+  /// Projects a signature-verified reaction into the local cache used by all
+  /// Flutter surfaces (web, mobile, and desktop). The target must already be
+  /// locally known and, when supplied, must agree with its signed board route;
+  /// this prevents a reaction from being injected into an unrelated board.
+  Future<void> _applyReactionActivity(Activity activity) async {
+    final repo = _reactionRepo;
+    if (repo == null) return;
+    final payload = activity.payload;
+    final targetTypeName = payload['targetType']?.toString();
+    final targetId = payload['targetId']?.toString();
+    final reactionTypeName = payload['reactionType']?.toString();
+    if (targetTypeName == null ||
+        targetId == null ||
+        reactionTypeName == null ||
+        targetId.isEmpty) {
+      return;
+    }
+
+    final targetType = _reactionTargetType(targetTypeName);
+    final reactionType = _reactionType(reactionTypeName);
+    if (targetType == null || reactionType == null) return;
+
+    final routedBoardId = activity.boardId;
+    String? targetBoardId;
+    switch (targetType) {
+      case TargetType.thread:
+        targetBoardId = (await _threadRepo.getById(targetId))?.boardId;
+        // Standalone content historically uses the thread target kind too.
+        // Preserve that wire compatibility while requiring it to be boardless.
+        if (targetBoardId == null &&
+            await _contentItemRepo?.getById(targetId) != null) {
+          targetBoardId = '';
+        }
+        break;
+      case TargetType.post:
+        targetBoardId = (await _postRepo.getById(targetId))?.boardId;
+        break;
+    }
+    if (targetBoardId == null ||
+        (routedBoardId != null && routedBoardId != targetBoardId)) {
+      return;
+    }
+
+    await repo.create(
+      Reaction(
+        id: activity.entityId,
+        userId: activity.authorId,
+        targetType: targetType,
+        targetId: targetId,
+        reactionType: reactionType,
+        createdAt: activity.createdAt,
+      ),
+    );
+  }
+
+  TargetType? _reactionTargetType(String value) {
+    for (final type in TargetType.values) {
+      if (type.name == value) return type;
+    }
+    return null;
+  }
+
+  ReactionType? _reactionType(String value) {
+    for (final type in ReactionType.values) {
+      if (type.name == value) return type;
+    }
+    return null;
   }
 
   /// Ingests a comment on standalone content. Stored as a local post keyed by

@@ -563,6 +563,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         boardRepo: _boardRepo,
         threadRepo: _threadRepo,
         postRepo: _postRepo,
+        reactionRepository: DriftReactionRepository(widget.db),
         notificationProjector: NotificationProjector(
           notifications: DriftNotificationRepository(widget.db),
           localDid: widget.localDid,
@@ -729,6 +730,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     boardRepo: _boardRepo,
     threadRepo: _threadRepo,
     postRepo: _postRepo,
+    reactionRepository: DriftReactionRepository(widget.db),
     contentItemRepo: _contentItemRepo,
     publicationRepo: _publicationRepo,
     relaySettings: _nostrRelaySettingsStore,

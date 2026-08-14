@@ -407,10 +407,20 @@ class CrdtOpBuilder {
     required String targetType,
     required String targetId,
     required String reactionType,
+    String? boardId,
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
-    final payload = _encodeYrsDelta(entityId, 'reactionType', reactionType);
+    // Reactions are immutable facts rather than a mutable document, so their
+    // signed payload must carry enough routing data for another device to
+    // materialize and scope the reaction without guessing from local state.
+    final payload = _encodeJsonPayload({
+      'targetType': targetType,
+      'targetId': targetId,
+      'reactionType': reactionType,
+      if (boardId != null && boardId.isNotEmpty) 'boardId': boardId,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    });
     return OpsQueueEntry(
       opId: opId,
       authorDid: authorDid,
@@ -429,11 +439,13 @@ class CrdtOpBuilder {
     required String entityId,
     required String targetType,
     required String targetId,
+    String? boardId,
   }) {
     final opId = _uuid.v4();
     final payload = _encodeJsonPayload({
       'targetType': targetType,
       'targetId': targetId,
+      if (boardId != null && boardId.isNotEmpty) 'boardId': boardId,
       'deletedAt': DateTime.now().toIso8601String(),
     });
     return OpsQueueEntry(
@@ -442,6 +454,38 @@ class CrdtOpBuilder {
       entityType: 'reaction',
       entityId: entityId,
       opType: 'delete',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  /// Change the single active reaction for an author/target pair without
+  /// creating another countable entity. The entity id remains stable, so every
+  /// replica replaces the prior type rather than incrementing both types.
+  static OpsQueueEntry updateReaction({
+    required String authorDid,
+    required String entityId,
+    required String targetType,
+    required String targetId,
+    required String reactionType,
+    String? boardId,
+  }) {
+    final opId = _uuid.v4();
+    final payload = _encodeJsonPayload({
+      'targetType': targetType,
+      'targetId': targetId,
+      'reactionType': reactionType,
+      if (boardId != null && boardId.isNotEmpty) 'boardId': boardId,
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'reaction',
+      entityId: entityId,
+      opType: 'update',
       payload: payload,
       signature: _stubSignature(opId, payload),
       schemaVersion: opSchemaVersion,

@@ -204,8 +204,9 @@ defmodule AnsibleRelay.WebPublication do
   defp append_sync_op(operation, operation_hash, proof, receipt) do
     {_scope, _default_entity_type, op_type} = @actions[operation["action"]]
 
-    payload =
+    payload_map =
       operation["payload"]
+      |> maybe_add_reaction_target(operation)
       |> Map.put("boardId", operation["board_id"])
       |> Map.put("threadId", operation["parent_id"])
       |> Map.put("createdAt", operation["created_at"])
@@ -216,7 +217,11 @@ defmodule AnsibleRelay.WebPublication do
       |> Map.put("web_operation_hash", operation_hash)
       |> Map.put("web_operation", operation)
       |> Map.put("web_host_receipt", receipt)
-      |> Jason.encode!()
+
+    # Relay delta clients use base64 JSON payloads for every operation. Keeping
+    # web publication on that wire format lets mobile and desktop materialize
+    # and delete reactions just like directly-synced ones.
+    payload = payload_map |> Jason.encode!() |> Base.encode64()
 
     op = %{
       op_id: operation["operation_id"],
@@ -231,6 +236,11 @@ defmodule AnsibleRelay.WebPublication do
     }
 
     case operation["action"] do
+      "forum.react" ->
+        # Web publication previously called append/1 directly and bypassed the
+        # semantic per-author/per-target reaction lock.
+        OpStore.append_reaction_insert(op, "post", operation["parent_id"])
+
       action when action in ["forum.edit", "forum.delete"] ->
         OpStore.append_author_mutation(op, operation["expected_previous_revision"])
 
@@ -238,6 +248,14 @@ defmodule AnsibleRelay.WebPublication do
         OpStore.append(op)
     end
   end
+
+  defp maybe_add_reaction_target(payload, %{"action" => "forum.react"} = operation) do
+    payload
+    |> Map.put("targetType", "post")
+    |> Map.put("targetId", operation["parent_id"])
+  end
+
+  defp maybe_add_reaction_target(payload, _operation), do: payload
 
   defp enqueue_federation(%{"federate" => false}, _proof), do: :ok
 

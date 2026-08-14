@@ -4906,6 +4906,10 @@ class $ReactionsTable extends Reactions
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {userId, targetType, targetId},
+  ];
+  @override
   Reaction map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Reaction(
@@ -8096,7 +8100,7 @@ class OpsQueueData extends DataClass implements Insertable<OpsQueueData> {
   /// Ed25519 signature over (opId || payload), hex-encoded
   final String signature;
 
-  /// "pending" | "sent" | "synced" | "rejected"
+  /// "pending" | "blocked" | "sent" | "synced" | "rejected"
   final String status;
   final DateTime createdAt;
 

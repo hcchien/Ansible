@@ -117,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 32;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -248,6 +248,23 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           "UPDATE posts SET signature_verified = 1 WHERE author_id LIKE 'did:%'",
         );
+      }
+      if (from < 32) {
+        // Keep the newest reaction when older builds have already written the
+        // same user's reaction to the same target more than once. Do this
+        // before adding the unique index so every existing device can upgrade.
+        await customStatement('''
+          DELETE FROM reactions
+          WHERE rowid NOT IN (
+            SELECT MAX(rowid)
+            FROM reactions
+            GROUP BY user_id, target_type, target_id
+          )
+        ''');
+        await customStatement('''
+          CREATE UNIQUE INDEX IF NOT EXISTS reactions_user_target_unique
+          ON reactions (user_id, target_type, target_id)
+        ''');
       }
       if (from < 26) {
         // Compliance-review gap #2: persist the host-declared constitution

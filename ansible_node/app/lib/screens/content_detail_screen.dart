@@ -14,6 +14,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
+import '../widgets/reaction_picker.dart';
 
 /// Detail view for a standalone content item (murmur/note): the full content as
 /// the head, plus a comment thread. Comments are `post` ops keyed by the
@@ -65,6 +66,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   bool _loading = true;
   bool _posting = false;
   bool _reacted = false;
+  ReactionType? _selectedReaction;
   bool _isReacting = false;
   int _likeCount = 0;
 
@@ -119,16 +121,17 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       widget.contentId,
     );
     var reacted = false;
-    var count = 0;
+    final reactingUsers = <String>{};
     for (final r in reactions) {
-      if (r.reactionType == ReactionType.thumbsUp) {
-        count++;
-        if (r.userId == widget.localDid) reacted = true;
+      reactingUsers.add(r.userId);
+      if (r.userId == widget.localDid) {
+        reacted = true;
+        _selectedReaction = r.reactionType;
       }
     }
     if (mounted) {
       setState(() {
-        _likeCount = count;
+        _likeCount = reactingUsers.length;
         _reacted = reacted;
       });
     }
@@ -136,14 +139,19 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   Future<void> _toggleReaction() async {
     if (_isReacting) return;
+    final choice = await showReactionPicker(
+      context,
+      selected: _selectedReaction,
+    );
+    if (choice == null) return;
     setState(() => _isReacting = true);
     try {
-      if (_reacted) {
-        final existing = await _reactionRepo.getByUserAndTarget(
-          widget.localDid,
-          TargetType.thread.name,
-          widget.contentId,
-        );
+      final existing = await _reactionRepo.getByUserAndTarget(
+        widget.localDid,
+        TargetType.thread.name,
+        widget.contentId,
+      );
+      if (choice.remove) {
         if (existing != null) {
           await _reactionRepo.delete(existing.id);
           await widget.opsDispatchService.signAndEnqueue(
@@ -157,16 +165,41 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           unawaited(widget.onFlushPendingOps());
           setState(() {
             _reacted = false;
+            _selectedReaction = null;
             _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
           });
         }
+      } else if (existing != null) {
+        final next = choice.type!;
+        await _reactionRepo.create(
+          Reaction(
+            id: existing.id,
+            userId: existing.userId,
+            targetType: existing.targetType,
+            targetId: existing.targetId,
+            reactionType: next,
+            createdAt: existing.createdAt,
+          ),
+        );
+        await widget.opsDispatchService.signAndEnqueue(
+          CrdtOpBuilder.updateReaction(
+            authorDid: widget.localDid,
+            entityId: existing.id,
+            targetType: existing.targetType.name,
+            targetId: existing.targetId,
+            reactionType: next.name,
+          ),
+        );
+        unawaited(widget.onFlushPendingOps());
+        setState(() => _selectedReaction = next);
       } else {
+        final next = choice.type!;
         final reaction = Reaction(
           id: const Uuid().v4(),
           userId: widget.localDid,
           targetType: TargetType.thread,
           targetId: widget.contentId,
-          reactionType: ReactionType.thumbsUp,
+          reactionType: next,
           createdAt: DateTime.now(),
         );
         await _reactionRepo.create(reaction);
@@ -182,6 +215,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         unawaited(widget.onFlushPendingOps());
         setState(() {
           _reacted = true;
+          _selectedReaction = next;
           _likeCount += 1;
         });
       }

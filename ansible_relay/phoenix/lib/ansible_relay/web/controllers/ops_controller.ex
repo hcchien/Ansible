@@ -37,6 +37,8 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          :ok <- validate_enum(params["op_type"], @valid_op_types, "op_type"),
          :ok <- validate_schema_version(params["schema_version"]),
          :ok <- check_content_visibility(params["entity_type"], params["payload"]),
+         {:ok, reaction_target} <-
+           reaction_target(params["entity_type"], params["op_type"], params["payload"]),
          author_did = params["author_did"],
          :ok <- check_sync_capability(conn, author_did),
          :ok <- check_did_verified(author_did),
@@ -83,7 +85,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
         received_at: DateTime.utc_now() |> DateTime.to_iso8601()
       }
 
-      case append_op(op) do
+      case append_op(op, reaction_target) do
         {:ok, log_id} ->
           AnsibleRelay.Metrics.inc("relay_op_ingest_total", %{
             entity_type: op.entity_type,
@@ -97,6 +99,12 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
         {:error, :duplicate} ->
           send_json(conn, 409, %{error: "duplicate_op_id"})
+
+        {:error, :active_reaction_exists} ->
+          send_json(conn, 409, %{error: "active_reaction_exists"})
+
+        {:error, :invalid_reaction_payload} ->
+          send_json(conn, 422, %{error: "invalid_reaction_payload"})
 
         {:error, :not_original_author} ->
           send_json(conn, 403, %{error: "not_original_author"})
@@ -207,7 +215,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   defp check_original_author(entity_type, entity_id, op_type, author_did)
        when op_type in ["update", "delete"] and
-              entity_type in ["thread", "post", "comment"] do
+              entity_type in ["thread", "post", "comment", "reaction"] do
     case OpStore.create_op_author(entity_type, entity_id) do
       ^author_did -> :ok
       nil -> {:error, :original_content_not_found}
@@ -518,10 +526,40 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   defp check_original_author(_entity_type, _entity_id, _op_type, _author_did), do: :ok
 
   defp append_op(%{entity_type: entity_type, op_type: op_type} = op)
-       when entity_type in ["thread", "post", "comment"] and op_type in ["update", "delete"],
+       when entity_type in ["thread", "post", "comment", "reaction"] and
+              op_type in ["update", "delete"],
        do: OpStore.append_author_mutation(op)
 
   defp append_op(op), do: OpStore.append(op)
+
+  defp append_op(%{entity_type: "reaction", op_type: "insert"} = op, {target_type, target_id}),
+    do: OpStore.append_reaction_insert(op, target_type, target_id)
+
+  defp append_op(op, _reaction_target), do: append_op(op)
+
+  defp reaction_target("reaction", op_type, payload) when op_type in ["insert", "update"] do
+    with {:ok, %{} = map} <- decode_payload(payload),
+         target_type when target_type in ["thread", "post"] <- map["targetType"],
+         target_id when is_binary(target_id) and target_id != "" <- map["targetId"],
+         reaction_type when reaction_type in ["happy", "sad", "thumbsUp", "angry"] <-
+           map["reactionType"] do
+      {:ok, {target_type, target_id}}
+    else
+      _ -> {:error, :invalid_reaction_payload}
+    end
+  end
+
+  defp reaction_target("reaction", "delete", payload) do
+    with {:ok, %{} = map} <- decode_payload(payload),
+         target_type when target_type in ["thread", "post"] <- map["targetType"],
+         target_id when is_binary(target_id) and target_id != "" <- map["targetId"] do
+      {:ok, {target_type, target_id}}
+    else
+      _ -> {:error, :invalid_reaction_payload}
+    end
+  end
+
+  defp reaction_target(_, _, _), do: {:ok, nil}
 
   # Thread/post creation in a hosted board must satisfy that board's
   # posting_policy["min_post_tier"]. The author's tier is resolved at

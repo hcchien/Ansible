@@ -94,6 +94,19 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
     Map.put(op, "signature", sign(private_key, signing_payload(op)))
   end
 
+  defp reaction_op(did, private_key, entity_id, op_type, payload_map) do
+    op = %{
+      "op_id" => "op-#{System.unique_integer()}",
+      "author_did" => did,
+      "entity_type" => "reaction",
+      "entity_id" => entity_id,
+      "op_type" => op_type,
+      "payload" => Base.encode64(Jason.encode!(payload_map))
+    }
+
+    Map.put(op, "signature", sign(private_key, signing_payload(op)))
+  end
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(AnsibleRelay.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(AnsibleRelay.Repo, {:shared, self()})
@@ -544,6 +557,99 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
       assert response.status == 403
       assert Jason.decode!(response.resp_body)["error"] == "not_original_author"
     end
+  end
+
+  test "reaction state permits one active type, replacement, and cancellation" do
+    alice = "did:key:z6MkReactionAlice#{System.unique_integer()}"
+    bob = "did:key:z6MkReactionBob#{System.unique_integer()}"
+    {alice_public, alice_private} = ed25519_keypair()
+    {bob_public, bob_private} = ed25519_keypair()
+    seed_did(alice, alice_public)
+    seed_did(bob, bob_public)
+
+    payload = %{
+      "targetType" => "thread",
+      "targetId" => "thread-1",
+      "reactionType" => "thumbsUp"
+    }
+
+    insert = reaction_op(alice, alice_private, "reaction-1", "insert", payload)
+    assert post_json("/api/v1/ops", insert).status == 202
+
+    duplicate =
+      reaction_op(
+        alice,
+        alice_private,
+        "reaction-2",
+        "insert",
+        Map.put(payload, "reactionType", "happy")
+      )
+
+    duplicate_response = post_json("/api/v1/ops", duplicate)
+    assert duplicate_response.status == 409
+    assert Jason.decode!(duplicate_response.resp_body)["error"] == "active_reaction_exists"
+
+    replacement =
+      reaction_op(
+        alice,
+        alice_private,
+        "reaction-1",
+        "update",
+        Map.put(payload, "reactionType", "angry")
+      )
+
+    assert post_json("/api/v1/ops", replacement).status == 202
+
+    foreign_update = reaction_op(bob, bob_private, "reaction-1", "update", payload)
+    foreign_response = post_json("/api/v1/ops", foreign_update)
+    assert foreign_response.status == 403
+    assert Jason.decode!(foreign_response.resp_body)["error"] == "not_original_author"
+
+    delete =
+      reaction_op(
+        alice,
+        alice_private,
+        "reaction-1",
+        "delete",
+        Map.take(payload, ["targetType", "targetId"])
+      )
+
+    assert post_json("/api/v1/ops", delete).status == 202
+
+    assert post_json("/api/v1/ops", duplicate).status == 202
+  end
+
+  test "web publication payloads share the reaction deduplication lock" do
+    did = "did:key:z6MkWebReaction#{System.unique_integer()}"
+
+    payload =
+      Jason.encode!(%{
+        "targetType" => "post",
+        "targetId" => "post-1",
+        "reactionType" => "thumbsUp",
+        "threadId" => "post-1"
+      })
+
+    first = %{
+      op_id: "web-reaction-#{System.unique_integer()}",
+      author_did: did,
+      entity_type: "reaction",
+      entity_id: "reaction-1",
+      op_type: "insert",
+      payload: payload,
+      signature: "webauthn-proof"
+    }
+
+    duplicate = %{
+      first
+      | op_id: "web-reaction-#{System.unique_integer()}",
+        entity_id: "reaction-2"
+    }
+
+    assert {:ok, _} = OpStore.append_reaction_insert(first, "post", "post-1")
+
+    assert {:error, :active_reaction_exists} =
+             OpStore.append_reaction_insert(duplicate, "post", "post-1")
   end
 
   test "author mutation compare-and-swap rejects a stale revision" do

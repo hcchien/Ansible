@@ -165,6 +165,7 @@ class _MurmurScreenState extends State<MurmurScreen> {
                 child: TextField(
                   key: const Key('murmur_body_field'),
                   controller: _bodyController,
+                  cursorColor: AnsibleDesign.accent,
                   maxLength: _limit,
                   minLines: 8,
                   maxLines: 12,

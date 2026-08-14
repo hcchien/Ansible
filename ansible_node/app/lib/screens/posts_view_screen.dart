@@ -18,6 +18,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
+import '../widgets/reaction_picker.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
@@ -90,6 +91,11 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   List<Post> _posts = [];
   bool _isLoading = true;
 
+  /// Local authored ops carry the only trustworthy answer to whether the
+  /// Relay accepted a post. A local signature alone must never be presented as
+  /// successful publication.
+  Map<String, String> _relayStatusByEntityId = const {};
+
   bool get _dark {
     switch (widget.screenStyle) {
       case ElixScreenStyle.ink:
@@ -145,6 +151,15 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
     final posts = [...await _postRepo.list(threadId: widget.thread.id)];
+    final queuedOps = await DriftOpsQueueRepository(
+      widget.db,
+    ).listAll(limit: 1000);
+    final relayStatusByEntityId = <String, String>{
+      for (final op in queuedOps)
+        if (op.authorDid == _authorDid &&
+            (op.entityType == 'thread' || op.entityType == 'post'))
+          op.entityId: op.status,
+    };
     final openingPost = widget.openingPost;
     if (openingPost != null &&
         !posts.any((post) => post.id == openingPost.id)) {
@@ -197,6 +212,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     }
     setState(() {
       _posts = posts;
+      _relayStatusByEntityId = relayStatusByEntityId;
       _board = board;
       _hostedProjection = projection;
       _postingBlocked = postingBlocked;
@@ -886,11 +902,11 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         style: base,
         children: [
           TextSpan(text: _formatDate(context, post.createdAt)),
-          if (post.signatureVerified) ...[
+          if (_publicationLabel(context, post) case final publication?) ...[
             const TextSpan(text: ' · '),
             TextSpan(
-              text: context.uiCopy(zh: '已簽署', en: 'signed'),
-              style: TextStyle(color: _accent),
+              text: publication.$1,
+              style: TextStyle(color: publication.$2),
             ),
           ],
           TextSpan(
@@ -907,6 +923,41 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     );
   }
 
+  /// Returns a user-facing publication state derived from the Relay queue, not
+  /// merely from local signing. Remote authors have already passed Relay's
+  /// verification boundary before they reach this local projection.
+  (String, Color)? _publicationLabel(BuildContext context, Post post) {
+    if (post.authorId != _authorDid) {
+      return post.signatureVerified
+          ? (context.uiCopy(zh: 'Relay 已驗證', en: 'Relay verified'), _accent)
+          : null;
+    }
+
+    switch (_relayStatusByEntityId[post.id]) {
+      case 'synced':
+        return (
+          context.uiCopy(zh: '已上傳 Relay', en: 'Uploaded to Relay'),
+          _accent,
+        );
+      case 'pending':
+      case 'sent':
+        return (
+          context.uiCopy(zh: '待上傳 Relay', en: 'Waiting for Relay'),
+          _muted,
+        );
+      case 'blocked':
+      case 'rejected':
+        return (
+          context.uiCopy(zh: 'Relay 同步失敗', en: 'Relay sync failed'),
+          AnsibleDesign.danger,
+        );
+      default:
+        return post.signatureVerified
+            ? (context.uiCopy(zh: '僅本機已簽署', en: 'Signed locally only'), _muted)
+            : null;
+    }
+  }
+
   /// Threads-style OP action row: heart · comment · repost · share.
   Widget _opActions(BuildContext context, Post post) {
     final replyCount = (_posts.length - 1).clamp(0, 1 << 30);
@@ -916,6 +967,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           key: ValueKey('post_reactions_${post.id}'),
           db: widget.db,
           postId: post.id,
+          boardId: widget.thread.boardId,
           localDid: widget.authorDid,
           opsDispatchService: widget.opsDispatchService,
           onFlushPendingOps: widget.onFlushPendingOps,
@@ -1068,6 +1120,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                     key: ValueKey('post_reactions_${post.id}'),
                     db: widget.db,
                     postId: post.id,
+                    boardId: widget.thread.boardId,
                     localDid: widget.authorDid,
                     opsDispatchService: widget.opsDispatchService,
                     onFlushPendingOps: widget.onFlushPendingOps,
@@ -1349,6 +1402,7 @@ class _PostReactionBar extends StatefulWidget {
     super.key,
     required this.db,
     required this.postId,
+    required this.boardId,
     required this.localDid,
     required this.opsDispatchService,
     required this.onFlushPendingOps,
@@ -1357,6 +1411,7 @@ class _PostReactionBar extends StatefulWidget {
 
   final AppDatabase db;
   final String postId;
+  final String boardId;
   final String? localDid;
   final OpsDispatchService? opsDispatchService;
   final Future<void> Function()? onFlushPendingOps;
@@ -1371,6 +1426,7 @@ class _PostReactionBarState extends State<_PostReactionBar> {
   bool _loading = true;
   bool _busy = false;
   bool _reacted = false;
+  ReactionType? _selectedReaction;
   int _likeCount = 0;
 
   bool get _canReact =>
@@ -1388,15 +1444,14 @@ class _PostReactionBarState extends State<_PostReactionBar> {
       TargetType.post.name,
       widget.postId,
     );
-    final likes = reactions
-        .where((r) => r.reactionType == ReactionType.thumbsUp)
-        .toList();
     if (!mounted) return;
     setState(() {
-      _likeCount = likes.length;
-      _reacted =
-          widget.localDid != null &&
-          likes.any((r) => r.userId == widget.localDid);
+      _likeCount = reactions.map((reaction) => reaction.userId).toSet().length;
+      final mine = widget.localDid == null
+          ? null
+          : reactions.where((r) => r.userId == widget.localDid).firstOrNull;
+      _reacted = mine != null;
+      _selectedReaction = mine?.reactionType;
       _loading = false;
     });
   }
@@ -1405,14 +1460,19 @@ class _PostReactionBarState extends State<_PostReactionBar> {
     final localDid = widget.localDid;
     final ops = widget.opsDispatchService;
     if (localDid == null || ops == null) return;
+    final choice = await showReactionPicker(
+      context,
+      selected: _selectedReaction,
+    );
+    if (choice == null) return;
     setState(() => _busy = true);
     try {
-      if (_reacted) {
-        final existing = await _reactionRepo.getByUserAndTarget(
-          localDid,
-          TargetType.post.name,
-          widget.postId,
-        );
+      final existing = await _reactionRepo.getByUserAndTarget(
+        localDid,
+        TargetType.post.name,
+        widget.postId,
+      );
+      if (choice.remove) {
         if (existing != null) {
           await _reactionRepo.delete(existing.id);
           await ops.signAndEnqueue(
@@ -1421,6 +1481,7 @@ class _PostReactionBarState extends State<_PostReactionBar> {
               entityId: existing.id,
               targetType: TargetType.post.name,
               targetId: widget.postId,
+              boardId: widget.boardId,
             ),
           );
           if (widget.onFlushPendingOps != null) {
@@ -1429,17 +1490,45 @@ class _PostReactionBarState extends State<_PostReactionBar> {
           if (mounted) {
             setState(() {
               _reacted = false;
+              _selectedReaction = null;
               _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
             });
           }
         }
+      } else if (existing != null) {
+        final next = choice.type!;
+        await _reactionRepo.create(
+          Reaction(
+            id: existing.id,
+            userId: existing.userId,
+            targetType: existing.targetType,
+            targetId: existing.targetId,
+            reactionType: next,
+            createdAt: existing.createdAt,
+          ),
+        );
+        await ops.signAndEnqueue(
+          CrdtOpBuilder.updateReaction(
+            authorDid: localDid,
+            entityId: existing.id,
+            targetType: existing.targetType.name,
+            targetId: existing.targetId,
+            reactionType: next.name,
+            boardId: widget.boardId,
+          ),
+        );
+        if (widget.onFlushPendingOps != null) {
+          unawaited(widget.onFlushPendingOps!());
+        }
+        if (mounted) setState(() => _selectedReaction = next);
       } else {
+        final next = choice.type!;
         final reaction = Reaction(
           id: const Uuid().v4(),
           userId: localDid,
           targetType: TargetType.post,
           targetId: widget.postId,
-          reactionType: ReactionType.thumbsUp,
+          reactionType: next,
           createdAt: DateTime.now(),
         );
         await _reactionRepo.create(reaction);
@@ -1450,6 +1539,7 @@ class _PostReactionBarState extends State<_PostReactionBar> {
             targetType: reaction.targetType.name,
             targetId: reaction.targetId,
             reactionType: reaction.reactionType.name,
+            boardId: widget.boardId,
           ),
         );
         if (widget.onFlushPendingOps != null) {
@@ -1458,6 +1548,7 @@ class _PostReactionBarState extends State<_PostReactionBar> {
         if (mounted) {
           setState(() {
             _reacted = true;
+            _selectedReaction = next;
             _likeCount += 1;
           });
         }

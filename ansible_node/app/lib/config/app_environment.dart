@@ -96,6 +96,14 @@ class AppEnvironment {
     defaultValue: false,
   );
 
+  /// Temporarily exposes the Android native eMRTD reader diagnostic. This is
+  /// deliberately separate from the Passport VC feature: it performs local
+  /// passive authentication only and never invokes the prover or Issuer.
+  static const enableAndroidPassportNfcReaderTest = bool.fromEnvironment(
+    'ANSIBLE_ENABLE_ANDROID_PASSPORT_NFC_READER_TEST',
+    defaultValue: false,
+  );
+
   static const defaultHandleSuffix = String.fromEnvironment(
     'ANSIBLE_DEFAULT_HANDLE_SUFFIX',
     defaultValue: 'user',
@@ -145,6 +153,11 @@ class AppEnvironment {
     if (allowInsecureIdentityFallback ??
         AppEnvironment.allowInsecureIdentityFallback) {
       issues.add('ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK must be false.');
+    }
+    if (AppEnvironment.enableAndroidPassportNfcReaderTest) {
+      issues.add(
+        'ANSIBLE_ENABLE_ANDROID_PASSPORT_NFC_READER_TEST must be false for prod builds.',
+      );
     }
     if (_isExampleIdentifier(iosBundleIdentifier)) {
       issues.add('iOS bundle identifier must not use com.example.');

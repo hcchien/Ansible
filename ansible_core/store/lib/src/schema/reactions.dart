@@ -11,4 +11,12 @@ class Reactions extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  /// A person can have one active reaction per target. This is deliberately a
+  /// local invariant too: sync retries or a second device must not inflate a
+  /// displayed count while the Relay rejects the duplicate remotely.
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {userId, targetType, targetId},
+  ];
 }

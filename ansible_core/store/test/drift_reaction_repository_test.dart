@@ -105,5 +105,31 @@ void main() {
       final retrieved = await repo.getByUserAndTarget('user-1', 'thread', 't1');
       expect(retrieved!.reactionType, entity.ReactionType.angry);
     });
+
+    test('ignores a duplicate author reaction for the same target', () async {
+      final first = entity.Reaction(
+        id: 'r1',
+        userId: 'user-1',
+        targetType: entity.TargetType.thread,
+        targetId: 't1',
+        reactionType: entity.ReactionType.thumbsUp,
+        createdAt: DateTime(2026, 8, 14),
+      );
+      final retry = entity.Reaction(
+        id: 'r2',
+        userId: 'user-1',
+        targetType: entity.TargetType.thread,
+        targetId: 't1',
+        reactionType: entity.ReactionType.thumbsUp,
+        createdAt: DateTime(2026, 8, 14, 1),
+      );
+
+      await repo.create(first);
+      await repo.create(retry);
+
+      final reactions = await repo.listByTarget('thread', 't1');
+      expect(reactions, hasLength(1));
+      expect(reactions.single.id, 'r1');
+    });
   });
 }

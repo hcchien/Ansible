@@ -90,6 +90,7 @@ class AppSyncService {
     required BoardRepository boardRepo,
     required ThreadRepository threadRepo,
     required PostRepository postRepo,
+    ReactionRepository? reactionRepository,
     required ContentItemRepository contentItemRepo,
     required PublicationRepository publicationRepo,
     required NostrRelaySettingsStore relaySettings,
@@ -132,6 +133,7 @@ class AppSyncService {
        _boardRepo = boardRepo,
        _threadRepo = threadRepo,
        _postRepo = postRepo,
+       _reactionRepository = reactionRepository,
        _contentItemRepo = contentItemRepo,
        _publicationRepo = publicationRepo,
        _relaySettings = relaySettings,
@@ -164,6 +166,7 @@ class AppSyncService {
   final BoardRepository _boardRepo;
   final ThreadRepository _threadRepo;
   final PostRepository _postRepo;
+  final ReactionRepository? _reactionRepository;
   final ContentItemRepository _contentItemRepo;
   final PublicationRepository _publicationRepo;
   final NostrRelaySettingsStore _relaySettings;
@@ -546,6 +549,7 @@ class AppSyncService {
         boardRepo: _boardRepo,
         threadRepo: _threadRepo,
         postRepo: _postRepo,
+        reactionRepository: _reactionRepository,
         followRepository: _followRepository,
         contentItemRepo: _contentItemRepo,
         didReputationRepo: _didReputationRepo,

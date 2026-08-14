@@ -798,6 +798,132 @@ void main() {
     expect((await postRepo.list()).single.content, 'post-1');
   });
 
+  test('projects and removes reactions from an enabled board sync', () async {
+    final boardRepo = InMemoryBoardRepository();
+    final threadRepo = InMemoryThreadRepository();
+    final postRepo = InMemoryPostRepository();
+    final reactionRepo = InMemoryReactionRepository();
+    final remoteNodeRepo = _FakeRemoteNodeRepository();
+    final boardSyncConfigRepo = _FakeBoardSyncConfigRepository(
+      configs: [
+        BoardSyncConfig(
+          id: 'config-1',
+          remoteNodeId: 'remote-1',
+          boardId: 'board-1',
+          createdAt: DateTime.utc(2026, 5, 4),
+          updatedAt: DateTime.utc(2026, 5, 4),
+        ),
+      ],
+    );
+    await threadRepo.create(
+      Thread(
+        id: 'thread-1',
+        boardId: 'board-1',
+        title: 'Thread',
+        authorId: 'did:key:author',
+        createdAt: DateTime.utc(2026, 5, 4),
+        updatedAt: DateTime.utc(2026, 5, 4),
+      ),
+    );
+    final client = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 1,
+          'activity': {
+            'activityId': 'reaction-1',
+            'type': 'create',
+            'entityType': 'reaction',
+            'entityId': 'reaction-1',
+            'boardId': 'board-1',
+            'authorId': 'did:key:reader',
+            'createdAt': '2026-05-04T00:00:00Z',
+            'payload': {
+              'targetType': 'thread',
+              'targetId': 'thread-1',
+              'reactionType': 'thumbsUp',
+              'boardId': 'board-1',
+            },
+          },
+        },
+      ],
+    );
+    final remoteNode = RemoteNode(
+      id: 'remote-1',
+      name: 'Remote',
+      url: 'https://relay.example',
+      createdAt: DateTime.utc(2026, 5, 4),
+      updatedAt: DateTime.utc(2026, 5, 4),
+    );
+
+    final service = RemoteSyncService(
+      remoteNodeRepo: remoteNodeRepo,
+      boardSyncConfigRepo: boardSyncConfigRepo,
+      boardRepo: boardRepo,
+      threadRepo: threadRepo,
+      postRepo: postRepo,
+      reactionRepository: reactionRepo,
+      opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+    );
+    expect((await service.syncFromNode(client, remoteNode)).success, isTrue);
+    expect(
+      await reactionRepo.listByTarget(TargetType.thread.name, 'thread-1'),
+      hasLength(1),
+    );
+
+    final updateClient = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 2,
+          'activity': {
+            'activityId': 'reaction-1-update',
+            'type': 'update',
+            'entityType': 'reaction',
+            'entityId': 'reaction-1',
+            'boardId': 'board-1',
+            'authorId': 'did:key:reader',
+            'createdAt': '2026-05-04T00:00:30Z',
+            'payload': {
+              'targetType': 'thread',
+              'targetId': 'thread-1',
+              'reactionType': 'happy',
+              'boardId': 'board-1',
+            },
+          },
+        },
+      ],
+    );
+    await service.syncFromNode(updateClient, remoteNode);
+    final replaced = await reactionRepo.listByTarget(
+      TargetType.thread.name,
+      'thread-1',
+    );
+    expect(replaced, hasLength(1));
+    expect(replaced.single.reactionType, ReactionType.happy);
+
+    final deleteClient = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 3,
+          'activity': {
+            'activityId': 'reaction-1-delete',
+            'type': 'delete',
+            'entityType': 'reaction',
+            'entityId': 'reaction-1',
+            'boardId': 'board-1',
+            'authorId': 'did:key:reader',
+            'createdAt': '2026-05-04T00:01:00Z',
+            'payload': const <String, dynamic>{},
+          },
+        },
+      ],
+    );
+    await service.syncFromNode(deleteClient, remoteNode);
+    expect(
+      await reactionRepo.listByTarget(TargetType.thread.name, 'thread-1'),
+      isEmpty,
+    );
+  });
+
   test(
     'pull sync uses hosted board subscriptions when legacy config is absent',
     () async {

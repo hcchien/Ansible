@@ -255,44 +255,57 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
-                      key: const Key('thread_composer_title_field'),
-                      controller: _titleController,
-                      autofocus: true,
-                      textInputAction: TextInputAction.next,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        height: 1.2,
-                        color: AnsibleDesign.ink,
-                        fontWeight: FontWeight.w500,
+                    Theme(
+                      // The app-wide dark selection colour made selected ink
+                      // text unreadable on this fixed Paper composer surface.
+                      data: Theme.of(context).copyWith(
+                        textSelectionTheme: TextSelectionThemeData(
+                          cursorColor: AnsibleDesign.ink,
+                          selectionColor: AnsibleDesign.accent.withValues(
+                            alpha: 0.58,
+                          ),
+                          selectionHandleColor: AnsibleDesign.accent,
+                        ),
                       ),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: l10n.discussionTitleHint,
-                        hintStyle: const TextStyle(
-                          color: AnsibleDesign.inkFaint,
+                      child: TextField(
+                        key: const Key('thread_composer_title_field'),
+                        controller: _titleController,
+                        autofocus: true,
+                        textInputAction: TextInputAction.next,
+                        style: const TextStyle(
                           fontSize: 28,
+                          height: 1.2,
+                          color: AnsibleDesign.ink,
                           fontWeight: FontWeight.w500,
                         ),
-                        border: const UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AnsibleDesign.ruleSoft,
-                            width: 0.5,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: l10n.discussionTitleHint,
+                          hintStyle: const TextStyle(
+                            color: AnsibleDesign.inkFaint,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w500,
                           ),
-                        ),
-                        enabledBorder: const UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AnsibleDesign.ruleSoft,
-                            width: 0.5,
+                          border: const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: AnsibleDesign.ruleSoft,
+                              width: 0.5,
+                            ),
                           ),
-                        ),
-                        focusedBorder: const UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AnsibleDesign.accent,
-                            width: 1,
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: AnsibleDesign.ruleSoft,
+                              width: 0.5,
+                            ),
                           ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: AnsibleDesign.accent,
+                              width: 1,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
                         ),
-                        contentPadding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
                       ),
                     ),
                     const SizedBox(height: 14),

@@ -64,6 +64,32 @@ defmodule AnsibleRelay.OpStore do
     end
   end
 
+  @doc """
+  Append the first active reaction for an author/target pair.
+
+  This lock is intentionally keyed by the semantic reaction target rather
+  than the client-generated entity id, so concurrent devices cannot create
+  two countable reactions for the same user and target.
+  """
+  def append_reaction_insert(op, target_type, target_id) do
+    Repo.transaction(fn ->
+      lock_reaction(op.author_did, target_type, target_id)
+
+      if active_reaction_exists?(op.author_did, target_type, target_id) do
+        Repo.rollback(:active_reaction_exists)
+      else
+        case do_append(op) do
+          {:ok, log_id} -> log_id
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end
+    end)
+    |> case do
+      {:ok, log_id} -> {:ok, log_id}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp do_append(op) do
     attrs = %{
       op_id: op.op_id,
@@ -195,6 +221,55 @@ defmodule AnsibleRelay.OpStore do
     # authorize a mutation.  The lock is released with this transaction.
     Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", ["#{entity_type}:#{entity_id}"])
     :ok
+  end
+
+  defp lock_reaction(author_did, target_type, target_id) do
+    Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
+      "reaction:#{author_did}:#{target_type}:#{target_id}"
+    ])
+
+    :ok
+  end
+
+  defp active_reaction_exists?(author_did, target_type, target_id) do
+    from(o in Op,
+      where:
+        o.author_did == ^author_did and o.entity_type == "reaction" and o.op_type == "insert",
+      select: {o.entity_id, o.payload}
+    )
+    |> Repo.all()
+    |> Enum.any?(fn {entity_id, payload} ->
+      reaction_target?(payload, target_type, target_id) and reaction_active?(entity_id)
+    end)
+  end
+
+  defp reaction_target?(payload, target_type, target_id) do
+    with {:ok, %{} = map} <- decode_reaction_payload(payload) do
+      map["targetType"] == target_type and map["targetId"] == target_id
+    else
+      _ -> false
+    end
+  end
+
+  # Direct Relay sync operations are base64 JSON. Web publication operations
+  # historically stored JSON directly, so accept both while enforcing the same
+  # semantic author/target invariant for every ingress path.
+  defp decode_reaction_payload(payload) do
+    case Base.decode64(payload) do
+      {:ok, decoded} -> Jason.decode(decoded)
+      :error -> Jason.decode(payload)
+    end
+  end
+
+  defp reaction_active?(entity_id) do
+    Repo.one(
+      from(o in Op,
+        where: o.entity_type == "reaction" and o.entity_id == ^entity_id,
+        order_by: [desc: o.id],
+        limit: 1,
+        select: o.op_type
+      )
+    ) != "delete"
   end
 
   defp verify_original_author(op) do

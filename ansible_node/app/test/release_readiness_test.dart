@@ -56,7 +56,13 @@ void main() {
 
     expect(android, contains('applicationId = "com.reviz.elix"'));
     expect(ios, contains('PRODUCT_BUNDLE_IDENTIFIER = com.reviz.elix;'));
-    expect(ios, contains('DEVELOPMENT_TEAM = K3X2X4CL3H;'));
+    expect(
+      ios,
+      anyOf(
+        contains('DEVELOPMENT_TEAM = K3X2X4CL3H;'),
+        contains('"DEVELOPMENT_TEAM[sdk=iphoneos*]" = K3X2X4CL3H;'),
+      ),
+    );
     expect(ios, isNot(contains('com.example.ansibleNode')));
     expect(
       ios,
