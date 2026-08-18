@@ -51,6 +51,13 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+
+    // BouncyCastle splits this OSGi metadata across its provider, utility and
+    // PKIX jars. It is Java-module metadata, not Android runtime code, so one
+    // copy is sufficient in the APK.
+    packaging {
+        resources.excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+    }
 }
 
 // The native ZK backend is a source-built, pinned Rust cdylib rather than an
