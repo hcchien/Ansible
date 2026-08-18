@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Forest Letter
-   Warm paper, forest ink, ochre trust signals and moss board context.
+   ELIX WEB — Lavender Signal
+   Neutral paper, lavender trust signals and sky-blue board context.
    Editorial serif carries discussion; sans carries chrome; mono carries
    handles, policy and provenance labels.
    Light is canonical on :root; dark ("Ink") arrives from the system
@@ -8,26 +8,26 @@
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #FBF7DC;
-  --background-soft: #F4EEC6;
-  --surface: #FBF7DC;
-  --surface-raised: #F4EEC6;
-  --surface-deep: #E8DEAA;
-  --border: #D6CB94;
-  --border-soft: #E3DAB0;
-  --border-strong: #C4B77A;
-  --muted-fill: #E8DEAA;
-  --accent: #B88C2E;
-  --lavender: #5A6E3A;
-  --highlight: #B88C2E;
-  --warning: #7E4A1E;
-  --danger: #7E4A1E;
-  --success: #5A6E3A;
-  --sky: #5A6E3A;
-  --text: #1F2E20;
-  --muted: #3D4E3D;
-  --faint: #88826E;
-  --on-accent: #FBF7DC;
+  --background: #F4F3EC;
+  --background-soft: #ECEAE0;
+  --surface: #FFFFFF;
+  --surface-raised: #ECEAE0;
+  --surface-deep: #E2DFD2;
+  --border: #D8D3C4;
+  --border-soft: #E6E2D6;
+  --border-strong: #C6BFAC;
+  --muted-fill: #E2DFD2;
+  --accent: #C9AEEB;
+  --lavender: #2846A8;
+  --highlight: #EBE21C;
+  --warning: #9A4A24;
+  --danger: #9A4A24;
+  --success: #6FB2E8;
+  --sky: #6FB2E8;
+  --text: #2A2A0A;
+  --muted: #625F3C;
+  --faint: #9C9974;
+  --on-accent: #FFFFFF;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
   --serif: "Noto Serif TC", "Newsreader", serif;
   --serif-en: "Newsreader", "Noto Serif TC", serif;
@@ -42,52 +42,52 @@
 /* Paper theme — explicit selection (wins inside a dark system) */
 .forum-shell[data-theme="light"] {
   color-scheme: light;
-  --background: #FBF7DC;
-  --background-soft: #F4EEC6;
-  --surface: #FBF7DC;
-  --surface-raised: #F4EEC6;
-  --surface-deep: #E8DEAA;
-  --border: #D6CB94;
-  --border-soft: #E3DAB0;
-  --border-strong: #C4B77A;
-  --muted-fill: #E8DEAA;
-  --accent: #B88C2E;
-  --lavender: #5A6E3A;
-  --highlight: #B88C2E;
-  --warning: #7E4A1E;
-  --danger: #7E4A1E;
-  --success: #5A6E3A;
-  --sky: #5A6E3A;
-  --text: #1F2E20;
-  --muted: #3D4E3D;
-  --faint: #88826E;
-  --on-accent: #FBF7DC;
+  --background: #F4F3EC;
+  --background-soft: #ECEAE0;
+  --surface: #FFFFFF;
+  --surface-raised: #ECEAE0;
+  --surface-deep: #E2DFD2;
+  --border: #D8D3C4;
+  --border-soft: #E6E2D6;
+  --border-strong: #C6BFAC;
+  --muted-fill: #E2DFD2;
+  --accent: #C9AEEB;
+  --lavender: #2846A8;
+  --highlight: #EBE21C;
+  --warning: #9A4A24;
+  --danger: #9A4A24;
+  --success: #6FB2E8;
+  --sky: #6FB2E8;
+  --text: #2A2A0A;
+  --muted: #625F3C;
+  --faint: #9C9974;
+  --on-accent: #FFFFFF;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 /* Ink theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #0E1A0F;
-  --background-soft: #16221A;
-  --surface: #0E1A0F;
-  --surface-raised: #16221A;
-  --surface-deep: #1F2D24;
-  --border: #2A3526;
-  --border-soft: #1F291E;
-  --border-strong: #3D4E3D;
-  --muted-fill: #1F2D24;
-  --accent: #D9AB4E;
-  --lavender: #93A971;
-  --highlight: #D9AB4E;
+  --background: #17130A;
+  --background-soft: #1F1A0E;
+  --surface: #14131A;
+  --surface-raised: #1F1A0E;
+  --surface-deep: #2A2413;
+  --border: #362E17;
+  --border-soft: #221D10;
+  --border-strong: #4A4020;
+  --muted-fill: #2A2413;
+  --accent: #D9C6F2;
+  --lavender: #5C82E0;
+  --highlight: #F5EE3A;
   --warning: #C98757;
   --danger: #C98757;
-  --success: #93A971;
-  --sky: #93A971;
-  --text: #E8E0BE;
-  --muted: #B8B49A;
-  --faint: #7C8071;
-  --on-accent: #0E1A0F;
+  --success: #8FC4F5;
+  --sky: #8FC4F5;
+  --text: #F4EEDA;
+  --muted: #B7AD8E;
+  --faint: #726B4F;
+  --on-accent: #17130A;
   --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
@@ -96,26 +96,26 @@
   :root,
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #0E1A0F;
-    --background-soft: #16221A;
-    --surface: #0E1A0F;
-    --surface-raised: #16221A;
-    --surface-deep: #1F2D24;
-    --border: #2A3526;
-    --border-soft: #1F291E;
-    --border-strong: #3D4E3D;
-    --muted-fill: #1F2D24;
-    --accent: #D9AB4E;
-    --lavender: #93A971;
-    --highlight: #D9AB4E;
+    --background: #17130A;
+    --background-soft: #1F1A0E;
+    --surface: #14131A;
+    --surface-raised: #1F1A0E;
+    --surface-deep: #2A2413;
+    --border: #362E17;
+    --border-soft: #221D10;
+    --border-strong: #4A4020;
+    --muted-fill: #2A2413;
+    --accent: #D9C6F2;
+    --lavender: #5C82E0;
+    --highlight: #F5EE3A;
     --warning: #C98757;
     --danger: #C98757;
-    --success: #93A971;
-    --sky: #93A971;
-    --text: #E8E0BE;
-    --muted: #B8B49A;
-    --faint: #7C8071;
-    --on-accent: #0E1A0F;
+    --success: #8FC4F5;
+    --sky: #8FC4F5;
+    --text: #F4EEDA;
+    --muted: #B7AD8E;
+    --faint: #726B4F;
+    --on-accent: #17130A;
     --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
   }
 }
