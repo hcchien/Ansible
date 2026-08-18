@@ -171,3 +171,5 @@ vite.config.ts.timestamp-*
 *.db
 *.db-shm
 *.db-wal
+ansible_node/app/android/app/src/main/jniLibs/
+ansible_node/app/android/zkpassport-prover/target/

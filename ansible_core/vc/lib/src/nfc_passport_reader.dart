@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'passport_data.dart';
 
@@ -90,7 +92,7 @@ class PlatformPassportMrzScanner implements PassportMrzScanner {
 
   @override
   Future<PassportAccessData> scan() async {
-    if (!Platform.isIOS) {
+    if (!Platform.isIOS && !Platform.isAndroid) {
       throw UnsupportedError('MRZ camera scanning is not available.');
     }
     final recognized = await _channel.invokeMethod<String>('scan');
@@ -140,7 +142,7 @@ class PlatformNfcPassportReader implements NfcPassportReader {
 
   @override
   Future<bool> isAvailable() async {
-    if (!Platform.isIOS) return false;
+    if (!Platform.isIOS && !Platform.isAndroid) return false;
     return await _channel.invokeMethod<bool>('isAvailable') ?? false;
   }
 
@@ -156,6 +158,11 @@ class PlatformNfcPassportReader implements NfcPassportReader {
       );
       final result = await _channel.invokeMapMethod<String, Object?>('scan', {
         'mrz_key': accessData.mrzKey,
+        // Android's JMRTD bridge derives BAC/PACE keys from the three ICAO
+        // fields. They stay in native process memory and are never persisted.
+        'document_number': accessData.normalizedDocumentNumber,
+        'date_of_birth': accessData.dateOfBirth,
+        'date_of_expiry': accessData.dateOfExpiry,
         'trusted_csca_pem': trustedCscaPem,
       });
       if (result == null) {
@@ -177,15 +184,15 @@ class PlatformNfcPassportReader implements NfcPassportReader {
         onError('Passport reader returned incomplete chip data.');
         return;
       }
-      final mrz = (result['mrz'] as String?)?.replaceAll('\n', '') ?? '';
-      if (mrz.length != 88) {
-        onError('Passport reader returned an invalid TD3 MRZ.');
-        return;
-      }
-      final parsed = PassportData.fromMrz(
-        mrz.substring(0, 44),
-        mrz.substring(44, 88),
-      );
+      // iOS returns the complete TD3 MRZ. Android intentionally returns only
+      // parsed DG1 fields, avoiding another raw-MRZ copy across the platform
+      // boundary. Both paths derive the exact same local passport secret.
+      final rawMrz = (result['mrz'] as String?)?.replaceAll('\n', '');
+      final passportSecret = rawMrz != null && rawMrz.length == 88
+          ? PassportData.fromMrz(rawMrz.substring(0, 44), rawMrz.substring(44)).passportSecret
+          : sha256
+                .convert(utf8.encode('$documentNumber$dateOfBirth$dateOfExpiry'))
+                .toString();
       onPassportRead(
         PassportData(
           documentNumber: documentNumber,
@@ -194,7 +201,7 @@ class PlatformNfcPassportReader implements NfcPassportReader {
           nationality: nationality,
           dg1Bytes: dg1,
           sodBytes: sod,
-          passportSecret: parsed.passportSecret,
+          passportSecret: passportSecret,
           sodSignatureVerified:
               result['sod_signature_verified'] as bool? ?? false,
           dataGroupHashesVerified:
@@ -207,7 +214,7 @@ class PlatformNfcPassportReader implements NfcPassportReader {
       );
     } on PlatformException catch (error) {
       onError(_platformErrorCode(error));
-    } on Object catch (error) {
+    } on Object {
       // Do not surface raw platform exceptions. They can contain implementation
       // details and are not useful guidance for a passport holder.
       onError('passport_nfc_interrupted');
@@ -227,6 +234,7 @@ class PlatformNfcPassportReader implements NfcPassportReader {
       case 'passport_session_timed_out':
       case 'passport_multiple_tags':
       case 'passport_nfc_interrupted':
+      case 'passport_nfc_unsupported_tag':
         return error.code;
       default:
         return 'passport_nfc_interrupted';

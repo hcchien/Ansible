@@ -79,6 +79,8 @@ class PlatformCapabilities {
         platform: ElixPlatform.android,
         hardwareIdentityKey: true,
         webAuthn: true,
+        // Kept off until the native reader and the Android-native ZK prover
+        // ship together. Never expose a reader-only personhood flow.
         passportNfc: false,
         mobileMoica: true,
         cameraScanner: true,

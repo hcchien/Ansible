@@ -19,6 +19,10 @@ import javax.crypto.KeyAgreement
 // prompt used by passkey registration requires a FragmentActivity host —
 // with plain FlutterActivity registration fails at the device-auth step.
 class MainActivity : FlutterFragmentActivity() {
+    private val passportNfcReader by lazy { AndroidPassportNfcReader(this) }
+    private val zkPassportProver by lazy { AndroidZkPassportProver() }
+    private val zkPassportInputRuntime by lazy { AndroidZkPassportInputRuntime(this) }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(
@@ -51,6 +55,77 @@ class MainActivity : FlutterFragmentActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "elix/passport_nfc"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isAvailable" -> result.success(passportNfcReader.isAvailable())
+                "scan" -> passportNfcReader.scan(call.arguments as? Map<*, *>, result)
+                "cancel" -> {
+                    passportNfcReader.cancel()
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "elix/zkpassport_prover"
+        ).setMethodCallHandler { call, result ->
+            val arguments = call.arguments as? Map<*, *>
+            if (arguments == null && call.method != "clear") {
+                result.error("invalid_arguments", "Missing prover arguments", null)
+                return@setMethodCallHandler
+            }
+            if (call.method == "plan") {
+                zkPassportInputRuntime.createProofPlan(
+                    arguments!!,
+                    progress = { stage ->
+                        flutterEngine.dartExecutor.binaryMessenger.let { messenger ->
+                            MethodChannel(messenger, "elix/zkpassport_prover")
+                                .invokeMethod("plan_progress", stage)
+                        }
+                    },
+                ) { outcome ->
+                    outcome.fold(
+                        onSuccess = { result.success(it) },
+                        onFailure = { error ->
+                            val safeCode = (error as? ZkPassportNativeException)?.safeCode ?: "plan_failed"
+                            result.error("zkpassport_prover_failed", safeCode, null)
+                        },
+                    )
+                }
+                return@setMethodCallHandler
+            }
+            // Never run the prover on the UI thread.  Raw exception messages
+            // are intentionally not passed back to Flutter, as a parser error
+            // can include witness-derived input.
+            Thread {
+                try {
+                    val value: Any? = when (call.method) {
+                        "initialize_srs" -> { zkPassportProver.initializeSrs(arguments!!); null }
+                        "prepare" -> zkPassportProver.prepare(arguments!!)
+                        "prove" -> zkPassportProver.prove(arguments!!)
+                        "verify" -> zkPassportProver.verify(arguments!!)
+                        "clear" -> { zkPassportProver.clear(); null }
+                        else -> {
+                            runOnUiThread { result.notImplemented() }
+                            return@Thread
+                        }
+                    }
+                    runOnUiThread { result.success(value) }
+                } catch (error: ZkPassportNativeException) {
+                    runOnUiThread {
+                        result.error("zkpassport_prover_failed", error.safeCode, null)
+                    }
+                } catch (_: Throwable) {
+                    runOnUiThread {
+                        result.error("zkpassport_prover_failed", "native_failed", null)
+                    }
+                }
+            }.start()
         }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,

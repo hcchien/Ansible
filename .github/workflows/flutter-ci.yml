@@ -159,6 +159,14 @@ jobs:
           channel: stable
           cache: true
 
+      # The Android Passport prover is a source-built Rust/JNI library.  Keep
+      # its targets explicit so a debug APK tests the same native boundary as
+      # a Play bundle.
+      - name: Set up Rust for Android ZKPassport prover
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
       - name: Show Flutter version
         run: flutter --version
 

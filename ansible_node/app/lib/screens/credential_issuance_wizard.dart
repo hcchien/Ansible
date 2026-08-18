@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../l10n/app_l10n.dart';
+import '../config/app_environment.dart';
 import '../services/atproto_client.dart';
 import '../services/credential_payload_codec.dart';
 import '../services/external_url_launcher.dart';
@@ -19,7 +20,12 @@ import '../services/zkpassport_srs_service.dart';
 import '../theme/ansible_design.dart';
 import 'mobilemoica_rp_credential_screen.dart';
 
-enum CredentialIssuanceFlow { twProvider, passportNfc, emailOtp }
+enum CredentialIssuanceFlow {
+  twProvider,
+  passportNfc,
+  androidPassportNfcReaderTest,
+  emailOtp,
+}
 
 enum _EmailOtpPhase { idle, requesting, waitingOtp, issuing, presenting, done }
 
@@ -140,6 +146,21 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                             onTap: () =>
                                 _select(CredentialIssuanceFlow.passportNfc),
                           ),
+                        if (AppEnvironment.enableAndroidPassportNfcReaderTest &&
+                            _capabilities.platform == ElixPlatform.android)
+                          _FlowOptionButton(
+                            icon: Icons.nfc_outlined,
+                            label: context.uiCopy(
+                              zh: 'Android 護照 NFC 測試',
+                              en: 'Android Passport NFC Test',
+                            ),
+                            selected:
+                                _selectedFlow ==
+                                CredentialIssuanceFlow.androidPassportNfcReaderTest,
+                            onTap: () => _select(
+                              CredentialIssuanceFlow.androidPassportNfcReaderTest,
+                            ),
+                          ),
                         _FlowOptionButton(
                           icon: Icons.email_outlined,
                           label: 'Email OTP / Legacy',
@@ -222,6 +243,10 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
           passportIssueSigner: widget.passportIssueSigner,
           onCredentialStored: widget.onCredentialStored,
         );
+      case CredentialIssuanceFlow.androidPassportNfcReaderTest:
+        return const AndroidPassportNfcReaderTestPanel(
+          key: ValueKey('android-passport-nfc-reader-test-panel'),
+        );
       case CredentialIssuanceFlow.emailOtp:
         return EmailOtpCredentialPanel(
           key: const ValueKey('email-otp-panel'),
@@ -238,6 +263,177 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
         return const SizedBox.shrink(key: ValueKey('no-flow-selected'));
     }
   }
+}
+
+/// Debug-only Android reader diagnostic. It validates the physical passport
+/// locally, but intentionally does not build a proof, call the Issuer, or
+/// write anything to the Wallet.
+class AndroidPassportNfcReaderTestPanel extends StatefulWidget {
+  const AndroidPassportNfcReaderTestPanel({super.key});
+
+  @override
+  State<AndroidPassportNfcReaderTestPanel> createState() =>
+      _AndroidPassportNfcReaderTestPanelState();
+}
+
+class _AndroidPassportNfcReaderTestPanelState
+    extends State<AndroidPassportNfcReaderTestPanel> {
+  final _documentNumber = TextEditingController();
+  final _dateOfBirth = TextEditingController();
+  final _dateOfExpiry = TextEditingController();
+  final NfcPassportReader _reader = const PlatformNfcPassportReader();
+  bool _scanning = false;
+  String? _message;
+
+  @override
+  void dispose() {
+    unawaited(_reader.cancel());
+    _documentNumber.dispose();
+    _dateOfBirth.dispose();
+    _dateOfExpiry.dispose();
+    super.dispose();
+  }
+
+  Future<void> _scan() async {
+    final access = PassportAccessData(
+      documentNumber: _documentNumber.text,
+      dateOfBirth: _dateOfBirth.text,
+      dateOfExpiry: _dateOfExpiry.text,
+    );
+    try {
+      access.validate();
+    } on FormatException {
+      setState(() {
+        _message = context.uiCopy(
+          zh: '請輸入護照號碼，以及 YYMMDD 格式的出生日期與有效期限。',
+          en: 'Enter the passport number, birth date, and expiry date in YYMMDD format.',
+        );
+      });
+      return;
+    }
+    if (!await _reader.isAvailable()) {
+      if (!mounted) return;
+      setState(() {
+        _message = context.uiCopy(
+          zh: '這台裝置不支援護照 NFC，或 NFC 目前無法使用。',
+          en: 'Passport NFC is not supported or is currently unavailable on this device.',
+        );
+      });
+      return;
+    }
+    setState(() {
+      _scanning = true;
+      _message = null;
+    });
+    try {
+      String? error;
+      var verified = false;
+      await _reader.scan(
+        accessData: access,
+        onPassportRead: (passport) {
+          verified = passport.sodSignatureVerified &&
+              passport.dataGroupHashesVerified &&
+              passport.countrySigningCertificateVerified;
+        },
+        onError: (value) => error = value,
+      );
+      if (!mounted) return;
+      setState(() {
+        _message = error == null && verified
+            ? context.uiCopy(
+                zh: '護照晶片與簽發國信任鏈驗證成功。此測試不會建立憑證或傳送資料。',
+                en: 'Passport chip and country trust chain verified. This test creates no credential and sends no data.',
+              )
+            : context.uiCopy(
+                zh: '護照 NFC 驗證未完成，請確認資料並重試。',
+                en: 'Passport NFC verification did not complete. Check the details and try again.',
+              );
+      });
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          context.uiCopy(
+            zh: 'Android 護照 NFC Reader 測試',
+            en: 'Android Passport NFC Reader Test',
+          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.uiCopy(
+            zh: '僅在本機讀取 DG1/SOD 並驗證晶片；不建立 ZK proof、不發行 VC，也不傳送護照資料。',
+            en: 'Reads and verifies DG1/SOD locally only. It creates no ZK proof, issues no VC, and sends no passport data.',
+          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _documentNumber,
+          textCapitalization: TextCapitalization.characters,
+          decoration: InputDecoration(
+            labelText: context.uiCopy(zh: '護照號碼', en: 'Passport number'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _dateOfBirth,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: context.uiCopy(zh: '出生日期 YYMMDD', en: 'Birth date YYMMDD'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _dateOfExpiry,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: context.uiCopy(zh: '有效期限 YYMMDD', en: 'Expiry YYMMDD'),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (_message != null) ...[
+          const SizedBox(height: 16),
+          Text(_message!, textAlign: TextAlign.center),
+        ],
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          onPressed: _scanning ? null : _scan,
+          icon: _scanning
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.nfc),
+          label: Text(
+            _scanning
+                ? context.uiCopy(zh: '讀取護照中', en: 'Reading passport')
+                : context.uiCopy(zh: '測試護照 NFC', en: 'Test passport NFC'),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class PassportNfcCredentialPanel extends StatefulWidget {

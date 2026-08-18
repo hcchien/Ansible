@@ -71,6 +71,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Set up Rust for Android ZKPassport prover
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
       - name: Require Android upload-key secrets
         shell: bash
         run: |

@@ -53,6 +53,31 @@ android {
     }
 }
 
+// The native ZK backend is a source-built, pinned Rust cdylib rather than an
+// opaque downloaded binary.  Its ABI files are generated before every Android
+// build and are never checked into the repository.
+val buildZkPassportNative by tasks.registering(Exec::class) {
+    workingDir = file("../zkpassport-prover")
+    commandLine("bash", "scripts/build-android.sh")
+    environment("ANDROID_NDK_HOME", android.ndkDirectory.absolutePath)
+}
+
+tasks.configureEach {
+    if (name.startsWith("pre") && name.endsWith("Build")) {
+        dependsOn(buildZkPassportNative)
+    }
+}
+
+dependencies {
+    implementation("androidx.webkit:webkit:1.12.1")
+    // ICAO 9303 eMRTD protocol stack.  The reader uses only BAC/PACE plus
+    // DG1/SOD; it never requests DG2 or other biometric data groups.
+    implementation("org.jmrtd:jmrtd:0.8.6")
+    implementation("net.sf.scuba:scuba-sc-android:0.0.26")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.84")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.84")
+}
+
 flutter {
     source = "../.."
 }
