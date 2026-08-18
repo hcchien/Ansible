@@ -523,8 +523,10 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             : context.uiCopy(zh: '建立討論串', en: 'Create thread'),
         backgroundColor: _postingBlocked ? _deep : _fg,
         foregroundColor: _postingBlocked ? _faint : _bg,
-        elevation: 1,
-        child: Icon(Icons.add),
+        elevation: 0,
+        highlightElevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

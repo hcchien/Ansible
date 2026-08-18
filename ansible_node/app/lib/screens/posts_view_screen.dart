@@ -863,9 +863,9 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
             _thread.title,
             style: TextStyle(
               fontFamily: AnsibleDesign.serif,
-              fontSize: 20,
+              fontSize: 22,
               height: 1.4,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               color: _fg,
             ),
           ),
@@ -1190,7 +1190,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     return Container(
       decoration: BoxDecoration(
         color: _bg,
-        border: Border(top: BorderSide(color: _ruleSoft, width: 1)),
+        border: Border(top: BorderSide(color: _ruleSoft, width: 0.5)),
       ),
       padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
       child: SafeArea(
@@ -1214,7 +1214,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
                         ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: _rule, width: 1),
+                          border: Border.all(color: _rule, width: 0.5),
                         ),
                         child: Text(
                           context.uiCopy(

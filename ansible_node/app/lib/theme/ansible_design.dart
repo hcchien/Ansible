@@ -4,36 +4,35 @@ import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Elix Design System — "Bone paper" (design handoff: Elix Screens.html)
-// Warm bone ground, white paper sheets for cards, lavender accent,
-// sky secondary, deep-lavender signals, citron highlight.
-// Light (Paper) is canonical  ·  Dark (Ink) is the warm-black counterpart
-// Type: Noto Sans TC throughout + JetBrains Mono for labels and DIDs
+// Elix Design System — "Forest Letter".
+// The forum surfaces use warm paper, forest ink, ochre trust signals and
+// restrained hairlines.  Content is editorial serif; product chrome is sans;
+// handles, policies and timestamps are mono.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
   static const brandName = 'Elix';
 
   // ── Light (Paper — canonical) ─────────────────────────────────────────────
-  static const paper = Color(0xFFF4F3EC);
-  static const paperElev = Color(0xFFECEAE0);
-  static const paperDeep = Color(0xFFE2DFD2);
-  static const paperWhite = Color(0xFFFFFFFF); // card sheets on the paper
-  static const ink = Color(0xFF2A2A0A);
-  static const inkMuted = Color(0xFF625F3C);
-  static const inkFaint = Color(0xFF9C9974);
-  static const rule = Color(0xFFD8D3C4);
-  static const ruleSoft = Color(0xFFE6E2D6);
-  static const accent = Color(0xFFC9AEEB);
-  static const accentSoft = Color(0xFFE6DAF6);
-  static const signalSoft = Color(0xFF6FB2E8);
-  static const tintSky = Color(0xFFE3F0FB);
-  static const tintLavender = Color(0xFFF0E9FA);
-  static const tintCitron = Color(0xFFFAF7C9);
-  static const spore = Color(0xFF6FB2E8);
-  static const moss = Color(0xFF6FB2E8);
-  static const lavender = Color(0xFF2846A8);
-  static const highlight = Color(0xFFEBE21C);
+  static const paper = Color(0xFFFBF7DC);
+  static const paperElev = Color(0xFFF4EEC6);
+  static const paperDeep = Color(0xFFE8DEAA);
+  static const paperWhite = Color(0xFFFBF7DC);
+  static const ink = Color(0xFF1F2E20);
+  static const inkMuted = Color(0xFF3D4E3D);
+  static const inkFaint = Color(0xFF88826E);
+  static const rule = Color(0xFFD6CB94);
+  static const ruleSoft = Color(0xFFE3DAB0);
+  static const accent = Color(0xFFB88C2E);
+  static const accentSoft = Color(0xFFF4E8BE);
+  static const signalSoft = Color(0xFF93A971);
+  static const tintSky = Color(0xFFF1EFD8);
+  static const tintLavender = Color(0xFFF4EEC6);
+  static const tintCitron = Color(0xFFE8DEAA);
+  static const spore = Color(0xFF5A6E3A);
+  static const moss = Color(0xFF5A6E3A);
+  static const lavender = Color(0xFF5A6E3A);
+  static const highlight = Color(0xFFB88C2E);
   // Destructive/warning text must stay readable on bone paper, so it keeps a
   // warm rust; the design's citron "ember" slot is decorative only.
   static const danger = Color(0xFF9A4A24);
@@ -41,32 +40,29 @@ class AnsibleDesign {
   static const ochre = accent;
 
   // ── Dark (Ink — warm black counterpart) ───────────────────────────────────
-  static const darkPaper = Color(0xFF17130A);
-  static const darkPaperElev = Color(0xFF1F1A0E);
-  static const darkPaperDeep = Color(0xFF2A2413);
-  static const darkPaperWhite = Color(0xFF14131A);
-  static const darkInk = Color(0xFFF4EEDA);
-  static const darkInkMuted = Color(0xFFB7AD8E);
-  static const darkInkFaint = Color(0xFF726B4F);
-  static const darkRule = Color(0xFF362E17);
-  static const darkRuleSoft = Color(0xFF221D10);
-  static const darkSignalSoft = Color(0xFF8FC4F5);
-  static const darkTintSky = Color(0xFF17252F);
-  static const darkTintLavender = Color(0xFF241E33);
-  static const darkTintCitron = Color(0xFF2B2A10);
-  static const darkOchre = Color(0xFFD9C6F2);
-  static const darkMoss = Color(0xFF8FC4F5);
-  static const darkLavender = Color(0xFF5C82E0);
-  static const darkHighlight = Color(0xFFF5EE3A);
+  static const darkPaper = Color(0xFF0E1A0F);
+  static const darkPaperElev = Color(0xFF16221A);
+  static const darkPaperDeep = Color(0xFF1F2D24);
+  static const darkPaperWhite = Color(0xFF0E1A0F);
+  static const darkInk = Color(0xFFE8E0BE);
+  static const darkInkMuted = Color(0xFFB8B49A);
+  static const darkInkFaint = Color(0xFF7C8071);
+  static const darkRule = Color(0xFF2A3526);
+  static const darkRuleSoft = Color(0xFF1F291E);
+  static const darkSignalSoft = Color(0xFF93A971);
+  static const darkTintSky = Color(0xFF16221A);
+  static const darkTintLavender = Color(0xFF1F2D24);
+  static const darkTintCitron = Color(0xFF1F2D24);
+  static const darkOchre = Color(0xFFD9AB4E);
+  static const darkMoss = Color(0xFF93A971);
+  static const darkLavender = Color(0xFF93A971);
+  static const darkHighlight = Color(0xFFD9AB4E);
   static const darkEmber = Color(0xFFC97B52); // warning text (dark)
 
   // ── Typography ────────────────────────────────────────────────────────────
-  // The handoff rides everything on Noto Sans TC (the display/serif slots stay
-  // as named tokens so call sites keep working) and uses mono for labels,
-  // fingerprints and timestamps.
-  static const display = 'Noto Sans TC';
-  static const serif = 'Noto Sans TC'; // legacy slot — resolves to body sans
-  static const serifEn = 'Noto Sans TC'; // legacy slot — resolves to body sans
+  static const display = 'Noto Serif TC';
+  static const serif = 'Noto Serif TC';
+  static const serifEn = 'Newsreader';
   static const sans = 'Noto Sans TC';
   static const mono = 'JetBrains Mono';
   static const appTextScale = 1.06;
@@ -74,6 +70,8 @@ class AnsibleDesign {
   static const readingTextSize = 16.0;
   static const previewTextSize = 15.5;
   static const fallback = [
+    'Noto Serif TC',
+    'Newsreader',
     'Noto Sans TC',
     'PingFang TC',
     'Songti TC',

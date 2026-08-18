@@ -1,40 +1,37 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Bone paper (design handoff: "Elix Web.html")
-   Warm bone ground · white paper sheets for posts and cards
-   Lavender accent · sky secondary · deep-lavender signals ·
-   citron highlight. All type rides on Noto Sans TC; mono carries
-   handles, DIDs and structural labels.
+   ELIX WEB — Forest Letter
+   Warm paper, forest ink, ochre trust signals and moss board context.
+   Editorial serif carries discussion; sans carries chrome; mono carries
+   handles, policy and provenance labels.
    Light is canonical on :root; dark ("Ink") arrives from the system
    preference or an explicit scene theme.
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
-  --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #C6BFAC;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #2846A8;
-  --highlight: #EBE21C;
-  --warning: #9A4A24;
-  --danger: #9A4A24;
-  --success: #6FB2E8;
-  --sky: #6FB2E8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #ffffff;
-  --glow: 0 0 18px color-mix(in oklab, var(--accent) 20%, transparent);
-  --serif: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --serif-en: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --display: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --background: #FBF7DC;
+  --background-soft: #F4EEC6;
+  --surface: #FBF7DC;
+  --surface-raised: #F4EEC6;
+  --surface-deep: #E8DEAA;
+  --border: #D6CB94;
+  --border-soft: #E3DAB0;
+  --border-strong: #C4B77A;
+  --muted-fill: #E8DEAA;
+  --accent: #B88C2E;
+  --lavender: #5A6E3A;
+  --highlight: #B88C2E;
+  --warning: #7E4A1E;
+  --danger: #7E4A1E;
+  --success: #5A6E3A;
+  --sky: #5A6E3A;
+  --text: #1F2E20;
+  --muted: #3D4E3D;
+  --faint: #88826E;
+  --on-accent: #FBF7DC;
+  --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
+  --serif: "Noto Serif TC", "Newsreader", serif;
+  --serif-en: "Newsreader", "Noto Serif TC", serif;
+  --display: "Noto Serif TC", "Newsreader", serif;
   --sans: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
@@ -45,53 +42,53 @@
 /* Paper theme — explicit selection (wins inside a dark system) */
 .forum-shell[data-theme="light"] {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
-  --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #C6BFAC;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #2846A8;
-  --highlight: #EBE21C;
-  --warning: #9A4A24;
-  --danger: #9A4A24;
-  --success: #6FB2E8;
-  --sky: #6FB2E8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #ffffff;
-  --glow: 0 0 18px color-mix(in oklab, var(--accent) 20%, transparent);
+  --background: #FBF7DC;
+  --background-soft: #F4EEC6;
+  --surface: #FBF7DC;
+  --surface-raised: #F4EEC6;
+  --surface-deep: #E8DEAA;
+  --border: #D6CB94;
+  --border-soft: #E3DAB0;
+  --border-strong: #C4B77A;
+  --muted-fill: #E8DEAA;
+  --accent: #B88C2E;
+  --lavender: #5A6E3A;
+  --highlight: #B88C2E;
+  --warning: #7E4A1E;
+  --danger: #7E4A1E;
+  --success: #5A6E3A;
+  --sky: #5A6E3A;
+  --text: #1F2E20;
+  --muted: #3D4E3D;
+  --faint: #88826E;
+  --on-accent: #FBF7DC;
+  --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 /* Ink theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #17130A;
-  --background-soft: #1F1A0E;
-  --surface: #14131A;
-  --surface-raised: #1F1A0E;
-  --surface-deep: #2A2413;
-  --border: #362E17;
-  --border-soft: #221D10;
-  --border-strong: #4A4020;
-  --muted-fill: #2A2413;
-  --accent: #D9C6F2;
-  --lavender: #5C82E0;
-  --highlight: #F5EE3A;
-  --warning: #C97B52;
-  --danger: #C97B52;
-  --success: #8FC4F5;
-  --sky: #8FC4F5;
-  --text: #F4EEDA;
-  --muted: #B7AD8E;
-  --faint: #726B4F;
-  --on-accent: #17130A;
-  --glow: 0 0 20px color-mix(in oklab, var(--accent) 34%, transparent);
+  --background: #0E1A0F;
+  --background-soft: #16221A;
+  --surface: #0E1A0F;
+  --surface-raised: #16221A;
+  --surface-deep: #1F2D24;
+  --border: #2A3526;
+  --border-soft: #1F291E;
+  --border-strong: #3D4E3D;
+  --muted-fill: #1F2D24;
+  --accent: #D9AB4E;
+  --lavender: #93A971;
+  --highlight: #D9AB4E;
+  --warning: #C98757;
+  --danger: #C98757;
+  --success: #93A971;
+  --sky: #93A971;
+  --text: #E8E0BE;
+  --muted: #B8B49A;
+  --faint: #7C8071;
+  --on-accent: #0E1A0F;
+  --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
 /* Ink theme — auto: follow the system */
@@ -99,27 +96,27 @@
   :root,
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #17130A;
-    --background-soft: #1F1A0E;
-    --surface: #14131A;
-    --surface-raised: #1F1A0E;
-    --surface-deep: #2A2413;
-    --border: #362E17;
-    --border-soft: #221D10;
-    --border-strong: #4A4020;
-    --muted-fill: #2A2413;
-    --accent: #D9C6F2;
-    --lavender: #5C82E0;
-    --highlight: #F5EE3A;
-    --warning: #C97B52;
-    --danger: #C97B52;
-    --success: #8FC4F5;
-    --sky: #8FC4F5;
-    --text: #F4EEDA;
-    --muted: #B7AD8E;
-    --faint: #726B4F;
-    --on-accent: #17130A;
-    --glow: 0 0 20px color-mix(in oklab, var(--accent) 34%, transparent);
+    --background: #0E1A0F;
+    --background-soft: #16221A;
+    --surface: #0E1A0F;
+    --surface-raised: #16221A;
+    --surface-deep: #1F2D24;
+    --border: #2A3526;
+    --border-soft: #1F291E;
+    --border-strong: #3D4E3D;
+    --muted-fill: #1F2D24;
+    --accent: #D9AB4E;
+    --lavender: #93A971;
+    --highlight: #D9AB4E;
+    --warning: #C98757;
+    --danger: #C98757;
+    --success: #93A971;
+    --sky: #93A971;
+    --text: #E8E0BE;
+    --muted: #B8B49A;
+    --faint: #7C8071;
+    --on-accent: #0E1A0F;
+    --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
   }
 }
 
@@ -1136,13 +1133,15 @@ p {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 20px 4px;
-  border-bottom: 1px solid var(--border);
+  padding: 22px 24px;
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
 }
 
 .board-head .heading h1 {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: clamp(28px, 3.5vw, 44px);
+  font-weight: 500;
   margin-bottom: 8px;
 }
 
@@ -1252,14 +1251,15 @@ p {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
-  padding: 17px 14px;
-  margin: 0 -4px 4px;
-  border-radius: 16px;
-  background: var(--surface);
+  padding: 18px 4px;
+  margin: 0;
+  border-radius: 0;
+  border-bottom: 0.5px solid var(--border-soft);
+  background: transparent;
 }
 
 .board-thread-row:hover {
-  background: var(--background-soft);
+  background: color-mix(in oklab, var(--background-soft) 48%, transparent);
 }
 
 .board-thread-link {
@@ -1459,9 +1459,10 @@ p {
 }
 
 .thread-detail-shell {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 0 4px 18px;
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0 22px 18px;
+  background: var(--surface);
 }
 
 .thread-hd {
@@ -1483,9 +1484,9 @@ p {
 
 .thread-hd h1 {
   font-family: var(--serif);
-  font-size: 42px;
-  line-height: 1.04;
-  font-weight: 700;
+  font-size: clamp(28px, 3.5vw, 44px);
+  line-height: 1.18;
+  font-weight: 500;
   letter-spacing: 0;
   margin: 0;
   color: var(--text);
@@ -1571,8 +1572,10 @@ p {
 }
 
 .thread-source {
-  font-family: var(--sans);
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--faint);
 }
 
@@ -1654,11 +1657,12 @@ p {
   display: flex;
   align-items: center;
   padding: 0 14px;
-  border: 1px solid var(--border);
+  border: 0.5px solid var(--border);
   border-radius: 999px;
   background: var(--background-soft);
   color: var(--faint);
-  font-family: var(--sans);
+  font-family: var(--serif);
+  font-style: italic;
   font-size: 13.5px;
   text-align: left;
 }

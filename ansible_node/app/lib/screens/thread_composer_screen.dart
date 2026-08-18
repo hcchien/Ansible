@@ -272,7 +272,9 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
                         controller: _titleController,
                         autofocus: true,
                         textInputAction: TextInputAction.next,
+                        cursorColor: AnsibleDesign.ink,
                         style: const TextStyle(
+                          fontFamily: AnsibleDesign.serif,
                           fontSize: 28,
                           height: 1.2,
                           color: AnsibleDesign.ink,
@@ -315,7 +317,9 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
                       minLines: 6,
                       maxLines: null,
                       keyboardType: TextInputType.multiline,
+                      cursorColor: AnsibleDesign.ink,
                       style: const TextStyle(
+                        fontFamily: AnsibleDesign.serif,
                         fontSize: AnsibleDesign.readingTextSize,
                         height: 1.8,
                         color: AnsibleDesign.ink,
