@@ -41,7 +41,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('建立帳號（Passkeys）'));
+      await tester.tap(find.text('建立身分並啟用裝置保護'));
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 10));
       }
@@ -89,7 +89,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('建立帳號（Passkeys）'));
+    await tester.tap(find.text('建立身分並啟用裝置保護'));
     await tester.pumpAndSettle();
 
     expect(find.text('此帳號名稱已被使用，請嘗試不同的名稱。'), findsOneWidget);
@@ -122,7 +122,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('建立帳號（Passkeys）'));
+    await tester.tap(find.text('建立身分並啟用裝置保護'));
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 10));
     }
@@ -154,7 +154,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('建立帳號（Passkeys）'));
+    await tester.tap(find.text('建立身分並啟用裝置保護'));
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 10));
     }
@@ -194,7 +194,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('建立帳號（Passkeys）'));
+    await tester.tap(find.text('建立身分並啟用裝置保護'));
     await tester.pumpAndSettle();
 
     expect(find.text('此帳號名稱已被使用，請嘗試不同的名稱。'), findsOneWidget);
@@ -266,21 +266,24 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField), '-bad');
-    await tester.tap(find.text('建立帳號（Passkeys）'));
+    await tester.tap(find.text('建立身分並啟用裝置保護'));
     await tester.pump();
 
     expect(find.text('帳號名稱格式無效，請使用 1–63 個英數字或中間連字號。'), findsOneWidget);
     expect(passkeys.registerCalled, isFalse);
     expect(atProto.registeredPublicKeyHex, isNull);
   });
-  testWidgets('reduced-trust desktop requires explicit consent', (tester) async {
+  testWidgets('reduced-trust desktop requires explicit consent', (
+    tester,
+  ) async {
     final passkeys = _FakePasskeysManager('ef' * 32);
 
     await tester.pumpWidget(
       MaterialApp(
         home: PasskeysRegistrationScreen(
-          platformCapabilities:
-              PlatformCapabilities.forPlatform(ElixPlatform.windows),
+          platformCapabilities: PlatformCapabilities.forPlatform(
+            ElixPlatform.windows,
+          ),
           passkeysManager: passkeys,
           canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
           atProtoClient: _FakeAtProtoClient(),
@@ -309,38 +312,39 @@ void main() {
     );
     expect(enabled.onPressed, isNotNull);
   });
-  testWidgets('onboarding follows the app theme instead of a fixed Paper palette', (
-    tester,
-  ) async {
-    // Regression: the screen used to hard-code the light constants, so under
-    // the Ink theme it rendered a light page with a dark, theme-driven handle
-    // field sitting in the middle of it.
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AnsibleDesign.theme(),
-        darkTheme: AnsibleDesign.darkTheme(),
-        themeMode: ThemeMode.dark,
-        home: PasskeysRegistrationScreen(
-          passkeysManager: _FakePasskeysManager('cd' * 32),
-          canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
-          atProtoClient: _FakeAtProtoClient(),
-          onRegistered: (_, _) {},
+  testWidgets(
+    'onboarding follows the app theme instead of a fixed Paper palette',
+    (tester) async {
+      // Regression: the screen used to hard-code the light constants, so under
+      // the Ink theme it rendered a light page with a dark, theme-driven handle
+      // field sitting in the middle of it.
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AnsibleDesign.theme(),
+          darkTheme: AnsibleDesign.darkTheme(),
+          themeMode: ThemeMode.dark,
+          home: PasskeysRegistrationScreen(
+            passkeysManager: _FakePasskeysManager('cd' * 32),
+            canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+            atProtoClient: _FakeAtProtoClient(),
+            onRegistered: (_, _) {},
+          ),
         ),
-      ),
-    );
+      );
 
-    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-    expect(scaffold.backgroundColor, AnsibleDesign.darkPaper);
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(scaffold.backgroundColor, AnsibleDesign.darkPaper);
 
-    final field = tester.widget<TextField>(find.byType(TextField));
-    final fill =
-        field.decoration?.fillColor ??
-        Theme.of(
-          tester.element(find.byType(TextField)),
-        ).inputDecorationTheme.fillColor;
-    // The handle field must sit on the same ground as the screen around it.
-    expect(fill, AnsibleDesign.darkPaperElev);
-  });
+      final field = tester.widget<TextField>(find.byType(TextField));
+      final fill =
+          field.decoration?.fillColor ??
+          Theme.of(
+            tester.element(find.byType(TextField)),
+          ).inputDecorationTheme.fillColor;
+      // The handle field must sit on the same ground as the screen around it.
+      expect(fill, AnsibleDesign.darkPaperElev);
+    },
+  );
 }
 
 class _FakePasskeysManager implements PasskeysManager {

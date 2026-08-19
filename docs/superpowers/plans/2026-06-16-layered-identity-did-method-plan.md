@@ -1,5 +1,12 @@
 # Layered Identity & `did:elix` Method（Plan）
 
+> Current custody terminology: this plan's early references to a single
+> "backupable root key" describe the legacy/reduced-trust implementation.
+> Hardware-capable clients now use purpose-separated, non-exportable device
+> keys; encrypted identity recovery material does not contain a device hardware
+> key, and recovery enrolls a new one. See
+> [`did:elix` Method Rationale and Interoperability](../../architecture/did_elix_method.md).
+
 > Status: **In implementation (v0.1)** — defines the canonical user identity
 > method, the alias layer, the issuer trust model, and the cross-relay
 > resolution protocol.

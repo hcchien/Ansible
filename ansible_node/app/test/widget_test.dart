@@ -40,7 +40,9 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text('Identity-centered social app · powered by passkeys'),
+      find.text(
+        'You control your account and content · protected by device keys',
+      ),
       findsOneWidget,
     );
   });
@@ -96,43 +98,44 @@ void main() {
     expect(find.text('清除身份 (Clear Identity)'), findsNothing);
   });
 
-  testWidgets('swipe shell controls do not overflow on phone width in English', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    SharedPreferences.setMockInitialValues({'elix_board_swipe_shown': true});
+  testWidgets(
+    'swipe shell controls do not overflow on phone width in English',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'elix_board_swipe_shown': true});
 
-    final db = AppDatabase(NativeDatabase.memory());
-    final localeController = AppLocaleController(
-      store: InMemoryAppLocalePreferenceStore(),
-    );
-    addTearDown(() => db.close());
-    await localeController.setPreference(AppLocalePreference.en);
+      final db = AppDatabase(NativeDatabase.memory());
+      final localeController = AppLocaleController(
+        store: InMemoryAppLocalePreferenceStore(),
+      );
+      addTearDown(() => db.close());
+      await localeController.setPreference(AppLocalePreference.en);
 
-    await tester.pumpWidget(
-      MyApp(
-        db: db,
-        didManager: _EmptyDidManager(),
-        didPlcManager: _ExistingDidPlcManager(),
-        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
-        localeController: localeController,
-        initialBoard: HomeBoard.personal,
-      ),
-    );
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+      await tester.pumpWidget(
+        MyApp(
+          db: db,
+          didManager: _EmptyDidManager(),
+          didPlcManager: _ExistingDidPlcManager(),
+          canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+          localeController: localeController,
+          initialBoard: HomeBoard.personal,
+        ),
+      );
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
 
-    expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
-    expect(find.byKey(const Key('screen_style_button')), findsNothing);
-    expect(find.byKey(const Key('settings_button')), findsOneWidget);
-    expect(find.byKey(const Key('board_switch_personal')), findsNothing);
-    expect(find.byKey(const Key('board_switch_timeline')), findsOneWidget);
-    expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
-  });
+      expect(find.byKey(const Key('board_swipe_page_view')), findsOneWidget);
+      expect(find.byKey(const Key('screen_style_button')), findsNothing);
+      expect(find.byKey(const Key('settings_button')), findsOneWidget);
+      expect(find.byKey(const Key('board_switch_personal')), findsNothing);
+      expect(find.byKey(const Key('board_switch_timeline')), findsOneWidget);
+      expect(find.byKey(const Key('board_switch_forum')), findsOneWidget);
+    },
+  );
 
   testWidgets('applies the app text size step globally', (tester) async {
     SharedPreferences.setMockInitialValues({

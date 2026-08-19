@@ -442,10 +442,7 @@ class _PasskeysRegistrationScreenState
                           ],
                         ),
                         const SizedBox(height: 36),
-                        AnsibleMark(
-                          size: 86,
-                          color: _accent,
-                        ),
+                        AnsibleMark(size: 86, color: _accent),
                         const SizedBox(height: 22),
                         const ElixWordmark(fontSize: 38),
                         const SizedBox(height: 22),
@@ -476,10 +473,7 @@ class _PasskeysRegistrationScreenState
                         const SizedBox(height: 24),
                         Container(
                           decoration: BoxDecoration(
-                            border: Border.all(
-                              color: _rule,
-                              width: 0.5,
-                            ),
+                            border: Border.all(color: _rule, width: 0.5),
                             borderRadius: BorderRadius.circular(8),
                             color: _bgElev,
                           ),
@@ -541,7 +535,8 @@ class _PasskeysRegistrationScreenState
                             value: _reducedTrustAccepted,
                             onChanged: _phase == _Phase.idle
                                 ? (value) => setState(
-                                    () => _reducedTrustAccepted = value ?? false,
+                                    () =>
+                                        _reducedTrustAccepted = value ?? false,
                                   )
                                 : null,
                             controlAffinity: ListTileControlAffinity.leading,
@@ -565,22 +560,16 @@ class _PasskeysRegistrationScreenState
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: _danger.withValues(
-                                alpha: 0.08,
-                              ),
+                              color: _danger.withValues(alpha: 0.08),
                               border: Border.all(
-                                color: _danger.withValues(
-                                  alpha: 0.25,
-                                ),
+                                color: _danger.withValues(alpha: 0.25),
                                 width: 0.5,
                               ),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               _errorMessage!,
-                              style: TextStyle(
-                                color: _danger,
-                              ),
+                              style: TextStyle(color: _danger),
                             ),
                           ),
                         ],
@@ -593,10 +582,7 @@ class _PasskeysRegistrationScreenState
                   decoration: BoxDecoration(
                     color: _bg,
                     border: Border(
-                      top: BorderSide(
-                        color: _ruleSoft,
-                        width: 0.5,
-                      ),
+                      top: BorderSide(color: _ruleSoft, width: 0.5),
                     ),
                   ),
                   child: Column(
@@ -616,10 +602,10 @@ class _PasskeysRegistrationScreenState
                           label: Text(
                             _copy(
                               zh: _capabilities.hardwareIdentityKey
-                                  ? '建立帳號（Passkeys）'
+                                  ? '建立身分並啟用裝置保護'
                                   : '建立降低信任帳號',
                               en: _capabilities.hardwareIdentityKey
-                                  ? 'Create Account (Passkeys)'
+                                  ? 'Create identity with device protection'
                                   : 'Create reduced-trust account',
                             ),
                           ),
@@ -637,18 +623,15 @@ class _PasskeysRegistrationScreenState
                               zh: '已經有帳號？在這台裝置使用或復原',
                               en: 'Use or recover an existing account',
                             ),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _muted,
-                            ),
+                            style: TextStyle(fontSize: 13, color: _muted),
                           ),
                         ),
                       ],
                       const SizedBox(height: 10),
                       Text(
                         _copy(
-                          zh: '重視身分的社群 App · 由 passkey 支撐',
-                          en: 'Identity-centered social app · powered by passkeys',
+                          zh: '帳號與內容由你掌控 · 裝置金鑰保護',
+                          en: 'You control your account and content · protected by device keys',
                         ),
                         style: TextStyle(
                           fontFamily: AnsibleDesign.mono,
@@ -713,18 +696,14 @@ class _PasskeysRegistrationScreenState
                 else
                   Icon(
                     isDone ? Icons.check_circle : Icons.circle_outlined,
-                    color: isDone
-                        ? _spore
-                        : _faint,
+                    color: isDone ? _spore : _faint,
                     size: 14,
                   ),
                 const SizedBox(width: 10),
                 Text(
                   s.label,
                   style: TextStyle(
-                    color: isCurrent
-                        ? _fg
-                        : _muted,
+                    color: isCurrent ? _fg : _muted,
                     fontFamily: AnsibleDesign.mono,
                     fontSize: 10,
                     letterSpacing: 1.1,
