@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/canonical_identity_store.dart';
 import '../services/recovery_readiness_store.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -34,6 +35,7 @@ class IdentityBackupScreen extends StatefulWidget {
     required this.identityPrivateKeyHex,
     this.handle,
     this.readinessStore = const SharedPreferencesRecoveryReadinessStore(),
+    this.canonicalIdentityStore = const SecureCanonicalIdentityStore(),
     this.onBackupCreated,
     this.encryptBackup = IdentityKeyBackup.encrypt,
   });
@@ -49,6 +51,11 @@ class IdentityBackupScreen extends StatefulWidget {
   final Future<String?> Function() identityPrivateKeyHex;
 
   final RecoveryReadinessStore readinessStore;
+
+  /// Raw recovery export is only available to explicitly reduced-trust keys.
+  /// Hardware/passkey custody is recovered by its platform or recovery flow,
+  /// never by exporting an app-readable private key.
+  final CanonicalIdentityStore canonicalIdentityStore;
 
   /// The encrypt function. Defaults to the real [IdentityKeyBackup.encrypt];
   /// injectable so widget tests can avoid the (real-timer) PBKDF2 path, which
@@ -109,6 +116,10 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
       _blob = null;
     });
     try {
+      final identity = await widget.canonicalIdentityStore.load();
+      if (identity?.did == widget.did && identity?.custody == 'hardware') {
+        throw StateError('hardware_key_not_exportable');
+      }
       final keyHex = await widget.identityPrivateKeyHex();
       if (keyHex == null) {
         throw StateError('No identity key available to back up.');
@@ -126,14 +137,19 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
         _blob = blob;
         _working = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _working = false;
-        _error = context.uiCopy(
-          zh: '建立備份時發生錯誤，請再試一次。',
-          en: 'Could not create the backup. Please try again.',
-        );
+        _error = error.toString().contains('hardware_key_not_exportable')
+            ? context.uiCopy(
+                zh: '此帳號使用不可匯出的裝置硬體金鑰；請使用平台的 passkey 同步或帳號復原流程。',
+                en: 'This account uses a non-exportable hardware key. Use your platform passkey sync or account recovery flow.',
+              )
+            : context.uiCopy(
+                zh: '建立備份時發生錯誤，請再試一次。',
+                en: 'Could not create the backup. Please try again.',
+              );
       });
     }
   }

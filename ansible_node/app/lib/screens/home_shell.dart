@@ -2089,6 +2089,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _runHeaderSync({
     bool showSnackBar = true,
     bool pullRemote = true,
+    bool pushLocal = true,
+    bool requireUserPresence = true,
   }) async {
     if (_syncing) return;
     if (showSnackBar &&
@@ -2103,7 +2105,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       return;
     }
     HardwareAuthenticationSession? hardwareAuthenticationSession;
-    if (showSnackBar) {
+    if (requireUserPresence) {
       if (!mounted) return;
       final verifier = widget.userPresenceVerifier;
       final authenticationReason = context.uiCopy(
@@ -2148,7 +2150,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               // iOS keeps this LAContext only for the current explicit sync.
               // Every capability proof still has its own nonce and signature.
               pullRemote: pullRemote,
-              pushLocal: showSnackBar,
+              pushLocal: pushLocal,
             )
           : await runner();
       await _loadData();
@@ -2614,8 +2616,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       },
       // Refresh is read-only. Pulling remote data must never require a fresh
       // biometric/device ceremony or silently upload local operations.
-      onRefresh: () =>
-          unawaited(_runHeaderSync(showSnackBar: false, pullRemote: true)),
+      onRefresh: () => unawaited(
+        _runHeaderSync(
+          showSnackBar: false,
+          pullRemote: true,
+          pushLocal: false,
+          requireUserPresence: false,
+        ),
+      ),
       child: shell,
     );
   }
