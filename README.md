@@ -42,15 +42,17 @@ docs/
 
 ```
 User taps "建立帳號"
-  → app creates/loads a local Ed25519 identity key
-  → derives the canonical did:elix (+ a did:key wallet alias) and publishes a
-    self-certifying anchor; a did:plc bridge alias is minted only on opt-in
+  → app creates a hardware-backed P-256 identity key where supported, or an
+    explicitly accepted reduced-trust Ed25519 key on unsupported desktops
+  → derives a v1 did:elix from an immutable public genesis commitment and
+    publishes a schema-v4 self-certifying anchor; a did:plc bridge alias is
+    minted only on opt-in
   → Relay marks DID as "Active"; Reputation Labeler tier = Basic
 ```
 
-Hardware-held signing keys and explicit reduced-trust mode are still compliance
-gaps; do not treat current secure-storage-backed key paths as complete Secure
-Enclave / StrongBox custody.
+Hardware-capable platforms keep identity signing in platform hardware. The
+explicit reduced-trust desktop fallback remains a compatibility gap and cannot
+perform high-sensitivity identity operations.
 
 ## Public Distribution Flow (Current MVP)
 
@@ -74,7 +76,7 @@ User creates public/unlisted content or a forum intent
 | Nostr adapter | ✅ partial | App-side publication/settings/retry surfaces; production key custody remains incomplete |
 | ActivityPub adapter | ✅ partial | Relay-side actor/WebFinger/outbox/projection/retry (outbound); full federation behavior remains incomplete |
 | Inbound federation (curated AP ingest) | ✅ MVP | Pull-based ingest of an admin-curated actor allowlist into an isolated external lane (`source=activitypub`, never `sig_verified`); surfaces only on boards with `external_inclusion` (mutually exclusive with 真人版) AND per-user opt-in, badged with origin + compliance level; never on verified surfaces (regression-tested) |
-| `did:elix` identity + AT Protocol bridge | ✅ did:elix canonical; bridge pending | Canonical `did:elix` (self-certifying anchor chain + cross-relay resolution v0 at `GET /api/v1/identity/did/:did`) with a `did:key` wallet alias; Issuer Trust Registry gates VC issuers. XRPC `createRecord`/`resolveHandle` remain. The `did:plc` *creation* path has been retired; the real DAG-CBOR opt-in Bluesky bridge is future work (Phase D) |
+| `did:elix` identity + AT Protocol bridge | ✅ v1 candidate method; bridge pending | New accounts use the immutable genesis-commitment v1 identifier and schema-v4 anchor chain. Relays expose the full proof chain, DID document, migration evidence, and Universal Resolver-compatible binding. A `did:key` wallet alias remains; the `did:plc` creation path is retired and the opt-in Bluesky bridge remains Phase D. |
 | AppView Aggregator | ✅ MVP | `ansible_appview/phoenix` folds the relay op firehose into a PostgreSQL read model (follow graph, feed items) and serves the following/home feed; ETS by default, Redis + read replica for scale-out |
 | Following / home feed | ✅ MVP | Fan-out-on-read over the federated follow set, plus Phase C fan-out-on-write home timelines (Redis ZSET + per-item object cache) with celebrity hybrid and cold-reader fallback |
 | Discovery | ✅ MVP | Who-to-follow + explore + unified people/post search (AppView), board search (relay), in-app Discover screen; public-only, reputation-tier ranked; bilingual trigram search |
@@ -197,8 +199,9 @@ flutter run
 **Progressive trust replaces passport-gated onboarding.** V1.x used a Groth16
 ZKP over ePassport NFC data to prove "real human, unique identity". V2.0 moves
 ordinary onboarding to app-held DID keys and progressive trust. Hardware-held
-signing keys are still a known gap until platform-backed custody and explicit
-reduced-trust mode are implemented.
+signing is used where the platform supports it; unsupported desktops require an
+explicit reduced-trust acknowledgement and cannot perform sensitive custody
+operations.
 
 **`did:elix` is the canonical identity; AT Protocol / `did:plc` is an opt-in
 bridge.** Users are `did:elix` (domain-independent, self-certifying, portable
@@ -208,8 +211,11 @@ Bluesky-bridge alias (its creation path retired; real DAG-CBOR genesis is
 Phase D) — one bridge beside Nostr, ActivityPub, and Forum Host, never the
 canonical identity. See the public
 [`did:elix` method rationale and interoperability note](docs/architecture/did_elix_method.md)
+and the normative
+[`did:elix` v1 method specification](docs/architecture/did_elix_method_v1.md),
+including the [portable conformance vectors](docs/architecture/did_elix_v1_conformance_vectors.json),
 for the method comparison, resolution model, current interoperability limits,
-and governance work; implementation detail remains in the
+and governance work. Implementation detail remains in the
 [layered identity plan](docs/superpowers/plans/2026-06-16-layered-identity-did-method-plan.md).
 
 **Forum Hosts own forum state.** Hosted boards, rules, moderation policy, and

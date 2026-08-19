@@ -190,12 +190,26 @@ class IdentityAnchorService {
     required String did,
     required String handle,
     required IdentityKey identityKey,
+    Map<String, Object?>? genesisCommitment,
   }) async {
     final identityKeyHex = await identityKey.publicKeyHex();
     final identityAlgorithm = await identityKey.algorithm();
     final identityCustody = await identityKey.custodyClass();
     final deviceKey = await _ensureDeviceKey();
     final enrolledAt = now();
+
+    if (genesisCommitment != null) {
+      final expected = deriveDidElixV1(
+        genesisKey: genesisCommitment['genesis_key'] as String? ?? '',
+        genesisNonceHex: genesisCommitment['genesis_nonce'] as String? ?? '',
+      );
+      if (expected != did ||
+          genesisCommitment['method'] != 'did:elix' ||
+          genesisCommitment['method_version'] != 1 ||
+          genesisCommitment['genesis_key'] != identityKeyHex) {
+        throw StateError('The v1 genesis commitment does not match the DID.');
+      }
+    }
 
     final deviceRecord = await _attestDevice(
       deviceKey: deviceKey,
@@ -208,6 +222,10 @@ class IdentityAnchorService {
       identityKeyHex: identityKeyHex,
       identityKeyAlgorithm: identityAlgorithm,
       identityCustody: identityCustody,
+      schemaVersion: genesisCommitment == null
+          ? IdentityAnchor.legacySchemaVersion
+          : IdentityAnchor.currentSchemaVersion,
+      genesisCommitment: genesisCommitment,
       did: did,
       handle: handle,
       alsoKnownAs: identityAlgorithm == 'ed25519'
@@ -269,6 +287,10 @@ class IdentityAnchorService {
       devices: [deviceRecord],
       prevAnchorCid: previous.computeCid(),
       createdAt: enrolledAt,
+      schemaVersion: previous.schemaVersion,
+      genesisCommitment: previous.genesisCommitment,
+      identityKeyAlgorithm: await identityKey.algorithm(),
+      identityCustody: await identityKey.custodyClass(),
     );
 
     final result = await relayClient.submitAnchor(anchor);
@@ -342,10 +364,12 @@ class IdentityAnchorService {
     }
 
     final unsigned = IdentityAnchor(
+      schemaVersion: previous.schemaVersion,
       did: did,
       handle: previous.handle,
       identityKey: await identityKey.publicKeyHex(),
       identityKeyAlgorithm: await identityKey.algorithm(),
+      genesisCommitment: previous.genesisCommitment,
       alsoKnownAs: previous.alsoKnownAs,
       custodyClass: identityCustody,
       devices: remaining,
@@ -365,6 +389,7 @@ class IdentityAnchorService {
       handle: unsigned.handle,
       identityKey: unsigned.identityKey,
       identityKeyAlgorithm: unsigned.identityKeyAlgorithm,
+      genesisCommitment: unsigned.genesisCommitment,
       alsoKnownAs: unsigned.alsoKnownAs,
       custodyClass: unsigned.custodyClass,
       devices: unsigned.devices,
@@ -412,6 +437,8 @@ class IdentityAnchorService {
     required String identityKeyHex,
     String identityKeyAlgorithm = 'ed25519',
     CustodyClass identityCustody = CustodyClass.software,
+    int schemaVersion = IdentityAnchor.legacySchemaVersion,
+    Map<String, Object?>? genesisCommitment,
     required String did,
     required String handle,
     required List<String> alsoKnownAs,
@@ -423,10 +450,12 @@ class IdentityAnchorService {
   }) async {
     // Build an unsigned anchor first to compute the canonical body, then sign.
     final unsigned = IdentityAnchor(
+      schemaVersion: schemaVersion,
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
       identityKeyAlgorithm: identityKeyAlgorithm,
+      genesisCommitment: genesisCommitment,
       alsoKnownAs: alsoKnownAs,
       custodyClass: identityCustody,
       devices: devices,
@@ -438,10 +467,12 @@ class IdentityAnchorService {
     final body = utf8.encode(unsigned.canonicalBodyJson());
     final sig = await identityKey.sign(body);
     return IdentityAnchor(
+      schemaVersion: schemaVersion,
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
       identityKeyAlgorithm: identityKeyAlgorithm,
+      genesisCommitment: genesisCommitment,
       alsoKnownAs: alsoKnownAs,
       custodyClass: identityCustody,
       devices: devices,
@@ -466,13 +497,20 @@ class IdentityAnchorService {
     required List<AnchorDeviceRecord> devices,
     required String? prevAnchorCid,
     required DateTime createdAt,
+    required int schemaVersion,
+    required Map<String, Object?>? genesisCommitment,
+    required String identityKeyAlgorithm,
+    required CustodyClass identityCustody,
   }) async {
     final unsigned = IdentityAnchor(
+      schemaVersion: schemaVersion,
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
+      identityKeyAlgorithm: identityKeyAlgorithm,
+      genesisCommitment: genesisCommitment,
       alsoKnownAs: alsoKnownAs,
-      custodyClass: CustodyClass.software,
+      custodyClass: identityCustody,
       devices: devices,
       prevAnchorCid: prevAnchorCid,
       reason: AnchorReason.rotation,
@@ -485,11 +523,14 @@ class IdentityAnchorService {
     // previous active anchor's identity_key — equal here.
     final sig = await identityKey.sign(body);
     return IdentityAnchor(
+      schemaVersion: schemaVersion,
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
+      identityKeyAlgorithm: identityKeyAlgorithm,
+      genesisCommitment: genesisCommitment,
       alsoKnownAs: alsoKnownAs,
-      custodyClass: CustodyClass.software,
+      custodyClass: identityCustody,
       devices: devices,
       prevAnchorCid: prevAnchorCid,
       reason: AnchorReason.rotation,

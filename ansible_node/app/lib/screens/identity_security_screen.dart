@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
+import '../services/canonical_identity_store.dart';
 import '../services/identity_anchor_service.dart';
 import '../services/relay_anchor_client.dart';
 import '../services/relay_identity_bootstrap_service.dart';
@@ -88,6 +89,8 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
   Future<void> _createInitialAnchor() async {
     setState(() => _creatingInitialAnchor = true);
     try {
+      final canonicalIdentity = await const SecureCanonicalIdentityStore()
+          .load();
       final handle = await RelayIdentityBootstrapService.ensureVerified(
         did: widget.did,
         baseUrl: AppEnvironment.atProtoBaseUrl,
@@ -99,6 +102,7 @@ class _IdentitySecurityScreenState extends State<IdentitySecurityScreen> {
         did: widget.did,
         handle: handle,
         identityKey: const ActiveIdentityKey(),
+        genesisCommitment: canonicalIdentity?.genesisCommitment,
       );
       await _reload();
     } catch (error) {

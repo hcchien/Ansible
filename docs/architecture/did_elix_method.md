@@ -1,7 +1,8 @@
 # `did:elix` Method Rationale and Interoperability
 
-> Status: Public architecture note; the method remains project-defined while
-> its resolver and operation-log contracts mature.
+> Status: Public architecture note for the implemented v1 candidate method.
+> The method remains project-defined pending independent deployment testing
+> and any external registry process.
 
 ## Summary
 
@@ -49,8 +50,9 @@ linked `did:plc` alias when they enable the AT Protocol bridge.
 
 ## Identifier and Resolution Model
 
-A `did:elix:<id>` identifier is derived from the signed genesis anchor. Later
-anchors form a hash-linked, signed operation chain and can change the current
+A v1 `did:elix:z<id>` identifier is derived from the immutable public genesis
+commitment carried by the signed schema-v4 genesis anchor. Later anchors form a
+hash-linked, signed operation chain and can change the current
 verification key, handle aliases, and home Relay without changing the DID.
 
 A resolver returns both the projected DID document and the anchor-chain
@@ -81,8 +83,7 @@ exportable or non-exportable.
 
 `did:elix` is currently a project-defined DID method. That creates real costs:
 generic DID resolvers will need a method driver, and the operation and
-resolution formats require stable versioning. Before claiming broad DID
-interoperability, the project must publish:
+resolution formats require stable versioning. The v1 candidate now publishes:
 
 1. identifier syntax and canonical encoding;
 2. genesis and update operation schemas;
@@ -91,10 +92,14 @@ interoperability, the project must publish:
 5. test vectors and resolver conformance tests;
 6. versioning, security-contact, and governance procedures.
 
-Until those artifacts are complete, product and developer documentation must
-label the method as project-defined and state which Elix components can resolve
-it. Existing standards remain in use at interoperability boundaries rather
-than being replaced unnecessarily.
+The normative v1 document, deterministic portable vectors, executable Dart and
+Elixir conformance suites, full-chain endpoint, DID Core projection, and
+Universal Resolver-compatible HTTP binding cover those repository-level
+requirements. Broad interoperability is still not claimed until an independent
+implementation runs the vectors against a public deployment and the project
+completes any external governance or registry process. Existing standards
+remain in use at interoperability boundaries rather than being replaced
+unnecessarily.
 
 ## Constitution Review
 
@@ -115,6 +120,8 @@ than being replaced unnecessarily.
 
 ## Related Documents
 
+- [Normative did:elix v1 method specification](did_elix_method_v1.md)
+- [Portable did:elix v1 conformance vectors](did_elix_v1_conformance_vectors.json)
 - [Layered identity and method implementation plan](../superpowers/plans/2026-06-16-layered-identity-did-method-plan.md)
 - [Engineering constitution](../superpowers/specs/2026-05-24-tris-aura-engineering-constitution-design.md)
 - [Current constitution compliance review](../superpowers/specs/2026-05-24-engineering-constitution-compliance-review.md)

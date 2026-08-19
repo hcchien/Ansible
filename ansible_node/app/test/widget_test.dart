@@ -4,6 +4,7 @@ import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/home_shell.dart';
+import 'package:ansible_node/screens/settings_home_screen.dart';
 import 'package:ansible_node/services/app_locale_controller.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
@@ -89,12 +90,17 @@ void main() {
     expect(find.text('SETTINGS'), findsOneWidget);
     expect(find.text('Wallet'), findsOneWidget);
     expect(find.text('Sync'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.text('Sign out of this device'),
-      find.byType(ListView),
-      const Offset(0, -300),
+    final securityRow = find.byKey(const Key('settings_identity_security_row'));
+    final settingsScroll = find.descendant(
+      of: find.byType(SettingsHomeScreen),
+      matching: find.byType(Scrollable),
     );
-    expect(find.text('Sign out of this device'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      securityRow,
+      300,
+      scrollable: settingsScroll,
+    );
+    expect(securityRow, findsOneWidget);
     expect(find.text('清除身份 (Clear Identity)'), findsNothing);
   });
 

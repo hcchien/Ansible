@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// The persisted canonical identity of this device's account.
@@ -13,12 +15,16 @@ class CanonicalIdentity {
   final String signingAlgorithm;
   final String custody;
 
+  /// Public immutable v1 commitment. Null only for pre-v1 identities.
+  final Map<String, Object?>? genesisCommitment;
+
   const CanonicalIdentity({
     required this.did,
     required this.handle,
     required this.publicKeyHex,
     this.signingAlgorithm = 'ed25519',
     this.custody = 'reduced_trust',
+    this.genesisCommitment,
   });
 }
 
@@ -46,6 +52,7 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
   static const _kPublicKey = 'ansible_canonical_public_key';
   static const _kAlgorithm = 'ansible_canonical_signing_algorithm';
   static const _kCustody = 'ansible_canonical_custody';
+  static const _kGenesisCommitment = 'ansible_canonical_genesis_commitment';
 
   @override
   Future<void> save(CanonicalIdentity identity) async {
@@ -54,6 +61,14 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
     await _storage.write(key: _kPublicKey, value: identity.publicKeyHex);
     await _storage.write(key: _kAlgorithm, value: identity.signingAlgorithm);
     await _storage.write(key: _kCustody, value: identity.custody);
+    if (identity.genesisCommitment == null) {
+      await _storage.delete(key: _kGenesisCommitment);
+    } else {
+      await _storage.write(
+        key: _kGenesisCommitment,
+        value: jsonEncode(identity.genesisCommitment),
+      );
+    }
   }
 
   @override
@@ -63,6 +78,7 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
     final publicKeyHex = await _storage.read(key: _kPublicKey);
     final signingAlgorithm = await _storage.read(key: _kAlgorithm) ?? 'ed25519';
     final custody = await _storage.read(key: _kCustody) ?? 'reduced_trust';
+    final genesisCommitmentJson = await _storage.read(key: _kGenesisCommitment);
     if (did == null || handle == null || publicKeyHex == null) return null;
     return CanonicalIdentity(
       did: did,
@@ -70,6 +86,9 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
       publicKeyHex: publicKeyHex,
       signingAlgorithm: signingAlgorithm,
       custody: custody,
+      genesisCommitment: genesisCommitmentJson == null
+          ? null
+          : (jsonDecode(genesisCommitmentJson) as Map).cast<String, Object?>(),
     );
   }
 
@@ -80,6 +99,7 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
     await _storage.delete(key: _kPublicKey);
     await _storage.delete(key: _kAlgorithm);
     await _storage.delete(key: _kCustody);
+    await _storage.delete(key: _kGenesisCommitment);
   }
 }
 

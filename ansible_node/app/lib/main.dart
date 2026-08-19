@@ -557,6 +557,7 @@ class _MyAppState extends State<MyApp> {
           did: did,
           handle: handle,
           anchorService: _buildAnchorService(),
+          canonicalIdentityStore: _canonicalIdentityStore,
           onComplete: _completeOnboarding,
         ),
       ),

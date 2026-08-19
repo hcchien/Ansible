@@ -127,7 +127,7 @@ void main() {
     expect(reloadCount, 1);
   });
 
-  testWidgets('note workspace creates public note from editor visibility', (
+  testWidgets('public note stays local until an external rail is selected', (
     tester,
   ) async {
     final repository = InMemoryContentItemRepository();
@@ -171,10 +171,7 @@ void main() {
     expect(notes.single.localOnly, isFalse);
     expect(notes.single.publishedAt, isNotNull);
     expect(published.single.item.id, notes.single.id);
-    expect(
-      published.single.preference,
-      DistributionPreference.nostrAndActivityPub,
-    );
+    expect(published.single.preference, DistributionPreference.localOnly);
   });
 
   testWidgets('note creation requires title and body', (tester) async {

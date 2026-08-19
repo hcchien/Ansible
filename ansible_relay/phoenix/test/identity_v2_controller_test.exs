@@ -299,4 +299,76 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert response.status == 401
     assert Jason.decode!(response.resp_body)["error"] == "handle_mismatch"
   end
+
+  test "v1 registration binds nonce, DID, and genesis commitment" do
+    {public_key_hex, private_key} = ed25519_keypair()
+
+    register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "v1alice"
+      })
+
+    nonce = Jason.decode!(register.resp_body)["nonce"]
+
+    commitment = %{
+      "method" => "did:elix",
+      "method_version" => 1,
+      "genesis_key" => public_key_hex,
+      "genesis_nonce" => String.duplicate("01", 32)
+    }
+
+    {:ok, did} = AnsibleRelay.DidElix.derive_v1(commitment)
+    proof = AnsibleRelay.DidElix.registration_payload(nonce, did, commitment)
+
+    response =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => did,
+        "public_key_hex" => public_key_hex,
+        "handle" => "v1alice.elix.cool",
+        "registration_sig" => sign_nonce(private_key, proof),
+        "nonce" => nonce,
+        "genesis_commitment" => commitment
+      })
+
+    assert response.status == 200
+    assert Jason.decode!(response.resp_body)["did"] == did
+  end
+
+  test "v1 registration rejects commitment substitution without consuming nonce" do
+    {public_key_hex, private_key} = ed25519_keypair()
+
+    register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "bound"
+      })
+
+    nonce = Jason.decode!(register.resp_body)["nonce"]
+
+    commitment = %{
+      "method" => "did:elix",
+      "method_version" => 1,
+      "genesis_key" => public_key_hex,
+      "genesis_nonce" => String.duplicate("02", 32)
+    }
+
+    {:ok, did} = AnsibleRelay.DidElix.derive_v1(commitment)
+    proof = AnsibleRelay.DidElix.registration_payload(nonce, did, commitment)
+    substituted = %{commitment | "genesis_nonce" => String.duplicate("03", 32)}
+
+    response =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => did,
+        "public_key_hex" => public_key_hex,
+        "handle" => "bound.elix.cool",
+        "registration_sig" => sign_nonce(private_key, proof),
+        "nonce" => nonce,
+        "genesis_commitment" => substituted
+      })
+
+    assert response.status == 422
+    assert Jason.decode!(response.resp_body)["error"] == "did_mismatch"
+    assert :ok = DidAccountCache.consume_nonce(public_key_hex, nonce)
+  end
 end

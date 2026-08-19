@@ -258,6 +258,33 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     assert AnchorStore.compute_cid(anchor) == expected_cid
   end
 
+  test "v4 canonical body places genesis commitment before aliases" do
+    anchor = %{
+      "type" => @anchor_type,
+      "schema_version" => 4,
+      "did" => "did:elix:ztest",
+      "handle" => "a.elix.cool",
+      "identity_key" => String.duplicate("aa", 32),
+      "identity_key_algorithm" => "ed25519",
+      "genesis_commitment" => %{
+        "method" => "did:elix",
+        "method_version" => 1,
+        "genesis_key" => String.duplicate("aa", 32),
+        "genesis_nonce" => String.duplicate("01", 32)
+      },
+      "also_known_as" => [],
+      "custody_class" => "software",
+      "devices" => [],
+      "prev_anchor_cid" => nil,
+      "reason" => "initial",
+      "created_at" => "2026-08-19T00:00:00.000Z"
+    }
+
+    body = AnchorStore.canonical_body(anchor)
+    assert body =~ ~s("identity_key_algorithm":"ed25519","genesis_commitment":)
+    assert body =~ ~s("genesis_commitment":{"method":"did:elix","method_version":1)
+  end
+
   # =========================================================================
   # initial
   # =========================================================================
@@ -300,7 +327,8 @@ defmodule AnsibleRelay.Web.IdentityAnchorControllerTest do
     assert [vm] = doc["verificationMethod"]
     assert vm["controller"] == did
     assert vm["type"] == "Ed25519VerificationKey2020"
-    assert vm["publicKeyMultibase"] == "zRESOLVEKEY"
+    assert {:ok, expected_multibase} = AnsibleRelay.DidElix.ed25519_multibase(id_pub)
+    assert vm["publicKeyMultibase"] == expected_multibase
     assert [svc] = doc["service"]
     assert svc["type"] == "AnsibleRelay"
   end

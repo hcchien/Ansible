@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
@@ -26,15 +28,16 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
   String? authorDid,
   FediversePreferencesStore preferencesStore =
       const SharedPreferencesFediversePreferencesStore(),
-}) async {
+}) {
   // ActivityPub is an explicit, high-trust distribution rail.  An active Elix
   // Relay is only a sync endpoint; it is never consent to create an external
   // actor or distribute content there.  The Relay remains authoritative, but
   // this local consent check prevents an unverified account from queuing a
   // request the Relay must reject.
-  final activityPubAvailable =
-      authorDid != null && (await preferencesStore.load(authorDid)).enabled;
-  if (!context.mounted) return null;
+  var activityPubAvailable = false;
+  var sheetClosed = false;
+  var distributionChanged = false;
+  StateSetter? refreshSheet;
   var picked = current.visibility;
   var distributionPreference = _withoutUnavailableActivityPub(
     current.distributionPreference,
@@ -47,7 +50,7 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
     }
   }
 
-  return showModalBottomSheet<ContentDistributionChoice>(
+  final sheet = showModalBottomSheet<ContentDistributionChoice>(
     context: context,
     backgroundColor: Colors.transparent,
     barrierColor: AnsibleDesign.ink.withValues(alpha: 0.20),
@@ -55,6 +58,7 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
     builder: (sheetContext) {
       return StatefulBuilder(
         builder: (context, setSheetState) {
+          refreshSheet = setSheetState;
           final nostrEnabled =
               distributionPreference == DistributionPreference.nostr ||
               distributionPreference ==
@@ -71,6 +75,7 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
             final nextActivityPub = activityPub ?? activityPubEnabled;
             if (!nextNostr && !nextActivityPub) return;
             setSheetState(() {
+              distributionChanged = true;
               distributionPreference = ContentDistributionChoice.preferenceFor(
                 nostr: nextNostr,
                 activityPub: nextActivityPub,
@@ -184,6 +189,39 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
       );
     },
   );
+
+  if (authorDid != null) {
+    unawaited(
+      preferencesStore
+          .load(authorDid)
+          .then((preferences) {
+            if (sheetClosed) return;
+            void applyAvailability() {
+              activityPubAvailable = preferences.enabled;
+              distributionPreference =
+                  preferences.enabled && !distributionChanged
+                  ? current.distributionPreference
+                  : _withoutUnavailableActivityPub(
+                      distributionPreference,
+                      activityPubAvailable: preferences.enabled,
+                    );
+            }
+
+            final update = refreshSheet;
+            if (update == null) {
+              applyAvailability();
+            } else {
+              update(applyAvailability);
+            }
+          })
+          .catchError((Object _) {
+            // A missing or unreadable local preference is equivalent to no
+            // ActivityPub consent. The visibility controls remain usable.
+          }),
+    );
+  }
+
+  return sheet.whenComplete(() => sheetClosed = true);
 }
 
 class ContentDistributionChoice {

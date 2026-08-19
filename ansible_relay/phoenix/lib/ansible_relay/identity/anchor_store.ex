@@ -59,6 +59,8 @@ defmodule AnsibleRelay.Identity.AnchorStore do
                    custody_class devices prev_anchor_cid reason created_at)
   @body_keys_v3 ~w(type schema_version did handle identity_key identity_key_algorithm
                    also_known_as custody_class devices prev_anchor_cid reason created_at)
+  @body_keys_v4 ~w(type schema_version did handle identity_key identity_key_algorithm genesis_commitment
+                   also_known_as custody_class devices prev_anchor_cid reason created_at)
   @device_keys ~w(device_id device_key custody_class enrolled_at attestation_sig)
   # The fields an enrolled device's `attestation_sig` actually signs: the
   # device record MINUS `attestation_sig`, in the same order (design
@@ -79,7 +81,9 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   end
 
   defp body_keys(anchor) do
-    if schema_version(anchor) >= 3, do: @body_keys_v3, else: @body_keys_v2
+    if schema_version(anchor) >= 4,
+      do: @body_keys_v4,
+      else: if(schema_version(anchor) >= 3, do: @body_keys_v3, else: @body_keys_v2)
   end
 
   defp body_value("type", _anchor), do: @anchor_type
@@ -101,7 +105,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     case fetch(anchor, "schema_version") do
       nil -> 1
       v when is_integer(v) -> v
-      v when is_binary(v) -> String.to_integer(v)
+      _ -> 0
     end
   end
 
@@ -115,6 +119,10 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp encode_pair("devices", {:devices, list}) do
     inner = Enum.map_join(list, ",", &canonical_device/1)
     Jason.encode!("devices") <> ":[" <> inner <> "]"
+  end
+
+  defp encode_pair("genesis_commitment", commitment) when is_map(commitment) do
+    Jason.encode!("genesis_commitment") <> ":" <> DidElix.canonical_v1_commitment(commitment)
   end
 
   defp encode_pair(key, value) do
@@ -172,7 +180,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     * `{:ok, :pending, anchor}` — recovery held in the grace window
     * `{:error, reason}` where reason is one of
       `:malformed | :unknown_reason | :invalid_signature |
-       :invalid_attestation | :invalid_recovery_proof | :conflict |
+       :invalid_attestation | :invalid_recovery_proof | :invalid_transition | :conflict |
        :chain_mismatch | :locked`
   """
   def submit(anchor, opts \\ []) when is_map(anchor) do
@@ -181,6 +189,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
     with {:ok, did, reason} <- validate_shape(anchor),
          :ok <- IdentityWritePolicy.validate(identity_key_algorithm(anchor)),
+         :ok <- validate_protocol(anchor, did, reason),
          :ok <- ensure_not_frozen(did),
          :ok <- verify_device_attestations(anchor),
          body = canonical_body(anchor),
@@ -231,29 +240,138 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     sig = fetch(anchor, "sig")
     type = fetch(anchor, "type")
     prev = fetch(anchor, "prev_anchor_cid")
+    schema = fetch(anchor, "schema_version")
+    custody = fetch(anchor, "custody_class")
+    aliases = fetch(anchor, "also_known_as")
+    created_at = fetch(anchor, "created_at")
 
     cond do
-      type != @anchor_type -> {:error, :malformed}
-      not is_binary(did) or did == "" -> {:error, :malformed}
-      not is_binary(identity_key) or identity_key == "" -> {:error, :malformed}
-      not is_binary(handle) or handle == "" -> {:error, :malformed}
-      not is_binary(sig) or sig == "" -> {:error, :malformed}
-      not is_nil(prev) and not is_binary(prev) -> {:error, :malformed}
-      not valid_devices?(fetch(anchor, "devices")) -> {:error, :malformed}
-      reason not in @reasons -> {:error, :unknown_reason}
-      true -> {:ok, did, reason}
+      type != @anchor_type ->
+        {:error, :malformed}
+
+      not is_binary(did) or did == "" ->
+        {:error, :malformed}
+
+      not is_binary(identity_key) or identity_key == "" ->
+        {:error, :malformed}
+
+      not is_binary(handle) or handle == "" ->
+        {:error, :malformed}
+
+      not is_binary(sig) or sig == "" ->
+        {:error, :malformed}
+
+      not is_nil(prev) and not is_binary(prev) ->
+        {:error, :malformed}
+
+      not is_nil(schema) and not is_integer(schema) ->
+        {:error, :malformed}
+
+      not is_nil(custody) and custody not in ["software", "hardware"] ->
+        {:error, :malformed}
+
+      not is_nil(aliases) and
+          (not is_list(aliases) or not Enum.all?(aliases, &is_binary/1)) ->
+        {:error, :malformed}
+
+      not valid_anchor_timestamp?(created_at, schema_version(anchor)) ->
+        {:error, :malformed}
+
+      not valid_devices?(fetch(anchor, "devices"), schema_version(anchor)) ->
+        {:error, :malformed}
+
+      reason not in @reasons ->
+        {:error, :unknown_reason}
+
+      true ->
+        {:ok, did, reason}
     end
   end
 
-  defp valid_devices?(nil), do: true
-  defp valid_devices?(list) when is_list(list), do: Enum.all?(list, &valid_device?/1)
-  defp valid_devices?(_), do: false
+  defp valid_devices?(nil, _schema_version), do: true
 
-  defp valid_device?(d) when is_map(d) do
-    is_binary(fetch(d, "device_id")) and is_binary(fetch(d, "device_key"))
+  defp valid_devices?(list, schema_version) when is_list(list) do
+    ids = Enum.map(list, fn device -> if is_map(device), do: fetch(device, "device_id") end)
+
+    Enum.all?(list, &valid_device?(&1, schema_version)) and
+      length(ids) == length(Enum.uniq(ids))
   end
 
-  defp valid_device?(_), do: false
+  defp valid_devices?(_, _schema_version), do: false
+
+  defp valid_device?(d, schema_version) when is_map(d) do
+    device_id = fetch(d, "device_id")
+    device_key = fetch(d, "device_key")
+    custody = fetch(d, "custody_class")
+    attestation = fetch(d, "attestation_sig")
+
+    is_binary(device_id) and device_id != "" and is_binary(device_key) and
+      String.match?(device_key, ~r/\A[0-9a-f]{64}\z/) and
+      custody in ["software", "hardware"] and
+      valid_anchor_timestamp?(fetch(d, "enrolled_at"), schema_version) and
+      is_binary(attestation) and
+      attestation != ""
+  end
+
+  defp valid_device?(_, _schema_version), do: false
+
+  defp valid_anchor_timestamp?(value, schema_version) when schema_version >= 4,
+    do: canonical_timestamp?(value)
+
+  defp valid_anchor_timestamp?(value, _schema_version) when is_binary(value),
+    do: match?({:ok, _datetime, _offset}, DateTime.from_iso8601(value))
+
+  defp valid_anchor_timestamp?(_, _schema_version), do: false
+
+  defp canonical_timestamp?(value) when is_binary(value) do
+    String.match?(
+      value,
+      ~r/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:(?!000)\d{3})?Z\z/
+    ) and
+      match?({:ok, _datetime, 0}, DateTime.from_iso8601(value))
+  end
+
+  defp canonical_timestamp?(_), do: false
+
+  defp validate_protocol(anchor, did, reason) do
+    version = schema_version(anchor)
+    commitment = fetch(anchor, "genesis_commitment")
+    previous = if reason == "initial", do: nil, else: active_anchor(did)
+
+    cond do
+      version < 1 or version > 4 ->
+        {:error, :unsupported_schema_version}
+
+      version == 4 ->
+        with :ok <- DidElix.validate_v1_commitment(commitment),
+             true <- DidElix.matches_v1?(did, commitment) || {:error, :did_mismatch},
+             :ok <- validate_v1_transition(anchor, reason, previous, commitment) do
+          :ok
+        end
+
+      previous != nil and previous.schema_version >= 4 ->
+        # Once a DID enters v1 it can never drop the immutable commitment from
+        # a successor anchor.
+        {:error, :invalid_genesis_commitment}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_v1_transition(anchor, "initial", _previous, commitment) do
+    if commitment["genesis_key"] == fetch(anchor, "identity_key"),
+      do: :ok,
+      else: {:error, :invalid_genesis_commitment}
+  end
+
+  defp validate_v1_transition(_anchor, _reason, nil, _commitment), do: :ok
+
+  defp validate_v1_transition(_anchor, _reason, previous, commitment) do
+    if previous.schema_version == 4 and previous.genesis_commitment == commitment,
+      do: :ok,
+      else: {:error, :invalid_genesis_commitment}
+  end
 
   # --- Reason dispatch ---
 
@@ -291,6 +409,10 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp dispatch("rotation", anchor, did, body, cid, _proof, _recovery_authorized) do
     with {:ok, prev} <- require_chain_link(anchor, did),
          new_key = fetch(anchor, "identity_key"),
+         true <-
+           {identity_key_algorithm(anchor), new_key} !=
+             {prev.identity_key_algorithm || "ed25519", prev.identity_key} ||
+             {:error, :invalid_transition},
          old_sig = fetch(anchor, "device_sig"),
          true <-
            verify(identity_key_algorithm(anchor), new_key, body, fetch(anchor, "sig")) ||
@@ -309,6 +431,13 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   # remains accepted during migration. Immediate.
   defp dispatch("device_change", anchor, did, body, cid, _proof, _recovery_authorized) do
     with {:ok, prev} <- require_chain_link(anchor, did),
+         true <-
+           {identity_key_algorithm(anchor), fetch(anchor, "identity_key")} ==
+             {prev.identity_key_algorithm || "ed25519", prev.identity_key} ||
+             {:error, :invalid_transition},
+         true <-
+           (fetch(anchor, "custody_class") || "software") == prev.custody_class ||
+             {:error, :invalid_transition},
          true <-
            verify(
              identity_key_algorithm(anchor),
@@ -332,6 +461,11 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp dispatch("recovery", anchor, did, body, cid, recovery_proof, recovery_authorized) do
     with {:ok, prev} <- require_chain_link(anchor, did),
          true <-
+           (schema_version(anchor) < 4 or
+              {identity_key_algorithm(anchor), fetch(anchor, "identity_key")} !=
+                {prev.identity_key_algorithm || "ed25519", prev.identity_key}) ||
+             {:error, :invalid_transition},
+         true <-
            verify(
              identity_key_algorithm(anchor),
              fetch(anchor, "identity_key"),
@@ -340,9 +474,10 @@ defmodule AnsibleRelay.Identity.AnchorStore do
            ) ||
              {:error, :invalid_signature},
          true <-
-           recovery_authorized || active_authority_signed?(prev, body, recovery_proof) ||
+           (schema_version(anchor) < 4 and recovery_authorized) ||
+             active_authority_signed?(prev, body, recovery_proof) ||
              {:error, :invalid_recovery_proof} do
-      insert_pending_recovery(anchor, did, body, cid, prev)
+      insert_pending_recovery(anchor, did, body, cid, prev, recovery_proof)
     else
       {:error, _} = err -> err
     end
@@ -351,13 +486,20 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   # did:elix genesis must hash to its own (identity_key, handle, custody_class).
   # Non-elix DIDs (e.g. a did:plc bridge alias anchoring) are not gated here.
   defp genesis_did_self_certifies?(anchor, "did:elix:" <> _ = did) do
-    DidElix.matches?(
-      did,
-      fetch(anchor, "identity_key"),
-      fetch(anchor, "handle"),
-      fetch(anchor, "custody_class") || "software",
-      identity_key_algorithm(anchor)
-    )
+    if schema_version(anchor) >= 4 do
+      commitment = fetch(anchor, "genesis_commitment")
+
+      is_map(commitment) and fetch(commitment, "genesis_key") == fetch(anchor, "identity_key") and
+        DidElix.matches_v1?(did, commitment)
+    else
+      DidElix.matches?(
+        did,
+        fetch(anchor, "identity_key"),
+        fetch(anchor, "handle"),
+        fetch(anchor, "custody_class") || "software",
+        identity_key_algorithm(anchor)
+      )
+    end
   end
 
   defp genesis_did_self_certifies?(_anchor, _did), do: true
@@ -438,9 +580,20 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     end
   end
 
-  defp insert_pending_recovery(anchor, did, body, cid, _prev) do
+  defp insert_pending_recovery(anchor, did, body, cid, _prev, recovery_proof) do
     grace_until = DateTime.add(DateTime.utc_now(), grace_seconds(), :second)
-    attrs = anchor_attrs(anchor, did, body, cid, "recovery", "pending", grace_until)
+
+    attrs =
+      anchor_attrs(
+        anchor,
+        did,
+        body,
+        cid,
+        "recovery",
+        "pending",
+        grace_until,
+        recovery_proof
+      )
 
     case insert_anchor(attrs) do
       {:ok, row} ->
@@ -457,7 +610,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     end
   end
 
-  defp anchor_attrs(anchor, did, body, cid, reason, state, grace_until) do
+  defp anchor_attrs(anchor, did, body, cid, reason, state, grace_until, authorization_sig \\ nil) do
     %{
       did: did,
       anchor_cid: cid,
@@ -465,6 +618,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       reason: reason,
       identity_key: fetch(anchor, "identity_key"),
       identity_key_algorithm: identity_key_algorithm(anchor),
+      genesis_commitment: fetch(anchor, "genesis_commitment"),
       handle: fetch(anchor, "handle"),
       also_known_as: also_known_as(anchor),
       custody_class: fetch(anchor, "custody_class") || "software",
@@ -472,6 +626,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       devices: %{"records" => devices(anchor)},
       sig: fetch(anchor, "sig"),
       device_sig: fetch(anchor, "device_sig"),
+      authorization_sig: authorization_sig,
       canonical_body: body,
       state: state,
       grace_until: grace_until,
@@ -627,7 +782,7 @@ defmodule AnsibleRelay.Identity.AnchorStore do
   defp veto_sig_valid?(did, body, sig) do
     did
     |> previously_enrolled_keys()
-    |> Enum.any?(fn key -> verify("ed25519", key, body, sig) end)
+    |> Enum.any?(fn {algorithm, key} -> verify(algorithm, key, body, sig) end)
   end
 
   defp previously_enrolled_keys(did) do
@@ -638,20 +793,21 @@ defmodule AnsibleRelay.Identity.AnchorStore do
         )
       )
 
-    identity_keys = Enum.map(anchors, & &1.identity_key)
+    identity_keys =
+      Enum.map(anchors, &{&1.identity_key_algorithm || "ed25519", &1.identity_key})
 
     device_keys =
       anchors
       |> Enum.flat_map(fn a ->
         case a.devices do
           %{"records" => records} when is_list(records) ->
-            records |> Enum.map(&fetch(&1, "device_key"))
+            records |> Enum.map(&{"ed25519", fetch(&1, "device_key")})
 
           _ ->
             []
         end
       end)
-      |> Enum.filter(&is_binary/1)
+      |> Enum.filter(fn {_algorithm, key} -> is_binary(key) end)
 
     Enum.uniq(identity_keys ++ device_keys)
   end
@@ -669,6 +825,145 @@ defmodule AnsibleRelay.Identity.AnchorStore do
       frozen?(did) -> {:error, :locked}
       anchor = active_anchor(did) -> {:ok, to_object(anchor)}
       true -> {:error, :not_found}
+    end
+  end
+
+  @doc "Ordered public genesis-to-active chain for independent DID verification."
+  def get_chain(did) when is_binary(did) do
+    cond do
+      frozen?(did) ->
+        {:error, :locked}
+
+      active_anchor(did) == nil ->
+        {:error, :not_found}
+
+      true ->
+        rows =
+          Repo.all(
+            from(a in IdentityAnchor,
+              where: a.did == ^did and a.state in ["active", "superseded"]
+            )
+          )
+
+        by_cid = Map.new(rows, &{&1.anchor_cid, &1})
+        active = active_anchor(did)
+
+        with {:ok, ordered} <- walk_chain(active, by_cid, MapSet.new(), []),
+             true <- length(ordered) == map_size(by_cid),
+             :ok <- verify_served_chain(ordered) do
+          {:ok, Enum.map(ordered, &to_object/1)}
+        else
+          _ -> {:error, :invalid_chain}
+        end
+    end
+  end
+
+  defp walk_chain(nil, _by_cid, _seen, _acc), do: {:error, :invalid_chain}
+
+  defp walk_chain(row, by_cid, seen, acc) do
+    object = to_object(row)
+
+    cond do
+      MapSet.member?(seen, row.anchor_cid) ->
+        {:error, :invalid_chain}
+
+      canonical_body(object) != row.canonical_body ->
+        {:error, :invalid_chain}
+
+      cid_of_body(row.canonical_body) != row.anchor_cid ->
+        {:error, :invalid_chain}
+
+      is_nil(row.prev_anchor_cid) and row.reason == "initial" ->
+        {:ok, [row | acc]}
+
+      is_nil(row.prev_anchor_cid) ->
+        {:error, :invalid_chain}
+
+      true ->
+        previous = Map.get(by_cid, row.prev_anchor_cid)
+        walk_chain(previous, by_cid, MapSet.put(seen, row.anchor_cid), [row | acc])
+    end
+  end
+
+  defp verify_served_chain([genesis | rest]) do
+    with true <- genesis_did_self_certifies?(to_object(genesis), genesis.did),
+         :ok <- verify_served_anchor(genesis),
+         :ok <- verify_served_successors(genesis, rest) do
+      :ok
+    else
+      _ -> {:error, :invalid_chain}
+    end
+  end
+
+  defp verify_served_chain(_), do: {:error, :invalid_chain}
+
+  defp verify_served_successors(_previous, []), do: :ok
+
+  defp verify_served_successors(previous, [current | rest]) do
+    authorization_sig =
+      if current.reason == "recovery", do: current.authorization_sig, else: current.device_sig
+
+    with true <- current.did == previous.did,
+         true <- current.prev_anchor_cid == previous.anchor_cid,
+         true <- current.reason in ["rotation", "recovery", "device_change"],
+         true <- served_reason_matches_transition?(previous, current),
+         true <- v1_commitment_continues?(previous, current),
+         :ok <- verify_served_anchor(current),
+         true <- served_transition_authorized?(previous, current, authorization_sig) do
+      verify_served_successors(current, rest)
+    else
+      _ -> {:error, :invalid_chain}
+    end
+  end
+
+  defp served_transition_authorized?(_previous, current, nil)
+       when current.schema_version < 4 and current.reason == "recovery",
+       do: true
+
+  defp served_transition_authorized?(previous, current, signature),
+    do: active_authority_signed?(previous, current.canonical_body, signature)
+
+  defp served_reason_matches_transition?(previous, current) do
+    previous_key = {previous.identity_key_algorithm || "ed25519", previous.identity_key}
+    current_key = {current.identity_key_algorithm || "ed25519", current.identity_key}
+
+    case current.reason do
+      "rotation" ->
+        current_key != previous_key
+
+      "recovery" ->
+        current.schema_version < 4 or current_key != previous_key
+
+      "device_change" ->
+        current_key == previous_key and current.custody_class == previous.custody_class
+    end
+  end
+
+  defp verify_served_anchor(row) do
+    object = to_object(row)
+
+    if verify_device_attestations(object) == :ok and
+         verify(
+           row.identity_key_algorithm || "ed25519",
+           row.identity_key,
+           row.canonical_body,
+           row.sig
+         ) do
+      :ok
+    else
+      {:error, :invalid_chain}
+    end
+  end
+
+  defp v1_commitment_continues?(previous, current) do
+    cond do
+      previous.schema_version >= 4 ->
+        current.schema_version == 4 and
+          current.genesis_commitment == previous.genesis_commitment and
+          DidElix.matches_v1?(current.did, current.genesis_commitment)
+
+      true ->
+        current.schema_version < 4
     end
   end
 
@@ -709,31 +1004,24 @@ defmodule AnsibleRelay.Identity.AnchorStore do
 
   @doc "Reconstruct the on-the-wire anchor object map from a stored row."
   def to_object(%IdentityAnchor{} = a) do
-    base = %{
-      "type" => @anchor_type,
-      "schema_version" => a.schema_version,
-      "did" => a.did,
-      "handle" => a.handle,
-      "identity_key" => a.identity_key,
-      "identity_key_algorithm" => a.identity_key_algorithm || "ed25519",
-      "also_known_as" => a.also_known_as || [],
-      "custody_class" => a.custody_class,
-      "devices" => device_records(a),
-      "prev_anchor_cid" => a.prev_anchor_cid,
-      "reason" => a.reason,
-      "created_at" => DateTime.to_iso8601(a.created_at),
-      "anchor_cid" => a.anchor_cid,
-      "state" => a.state,
-      "sig" => a.sig
-    }
+    # `created_at` precision and JSON representation are signed. Reconstructing
+    # from typed DB columns can change `.000Z` into `.000000Z`, so always start
+    # from the exact canonical body stored at acceptance time.
+    base =
+      a.canonical_body
+      |> Jason.decode!()
+      |> Map.merge(%{
+        "anchor_cid" => a.anchor_cid,
+        "state" => a.state,
+        "sig" => a.sig
+      })
 
-    if a.device_sig, do: Map.put(base, "device_sig", a.device_sig), else: base
+    base = if a.device_sig, do: Map.put(base, "device_sig", a.device_sig), else: base
+
+    if a.authorization_sig,
+      do: Map.put(base, "recovery_proof", a.authorization_sig),
+      else: base
   end
-
-  defp device_records(%IdentityAnchor{devices: %{"records" => records}}) when is_list(records),
-    do: records
-
-  defp device_records(_), do: []
 
   @doc "True if the DID is frozen by a veto."
   def frozen?(did) when is_binary(did) do

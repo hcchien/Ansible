@@ -42,6 +42,7 @@ class AnchorRequest {
   final String registrationSig;
   final String nonce;
   final String signingAlgorithm;
+  final Map<String, Object?>? genesisCommitment;
 
   const AnchorRequest({
     required this.did,
@@ -50,6 +51,7 @@ class AnchorRequest {
     required this.registrationSig,
     required this.nonce,
     this.signingAlgorithm = 'ed25519',
+    this.genesisCommitment,
   });
 
   Map<String, Object?> toJson() => {
@@ -60,6 +62,7 @@ class AnchorRequest {
     'registration_sig': registrationSig,
     'nonce': nonce,
     'signing_algorithm': signingAlgorithm,
+    if (genesisCommitment != null) 'genesis_commitment': genesisCommitment,
   };
 }
 

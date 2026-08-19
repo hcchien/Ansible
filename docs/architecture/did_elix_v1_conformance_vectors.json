@@ -1,0 +1,395 @@
+{
+  "anchors": {
+    "genesis": {
+      "canonical_body": "{\"type\":\"io.trisaura.identity.anchor\",\"schema_version\":4,\"did\":\"did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq\",\"handle\":\"alice.elix.cool\",\"identity_key\":\"d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737\",\"identity_key_algorithm\":\"ed25519\",\"genesis_commitment\":{\"method\":\"did:elix\",\"method_version\":1,\"genesis_key\":\"d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737\",\"genesis_nonce\":\"0101010101010101010101010101010101010101010101010101010101010101\"},\"also_known_as\":[],\"custody_class\":\"software\",\"devices\":[],\"prev_anchor_cid\":null,\"reason\":\"initial\",\"created_at\":\"2026-08-19T00:00:00.000Z\"}",
+      "cid": "sha256:94d87193adee8a64edbe4f77d9d1376a40fd4d28e7acc411b752e0e9420fa580",
+      "object": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T00:00:00.000Z",
+        "custody_class": "software",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice.elix.cool",
+        "identity_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": null,
+        "reason": "initial",
+        "schema_version": 4,
+        "sig": "10a4377c6f3cbc03a15eb6e4c41934f16552f16493c51d4d41ef9bafc0c6f7a317dca4eece748756f227ee0a9a524f5126f971ac0101a94e27889ee4e39a9103",
+        "type": "io.trisaura.identity.anchor"
+      }
+    },
+    "recovery": {
+      "canonical_body": "{\"type\":\"io.trisaura.identity.anchor\",\"schema_version\":4,\"did\":\"did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq\",\"handle\":\"alice-renamed.elix.cool\",\"identity_key\":\"17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce\",\"identity_key_algorithm\":\"ed25519\",\"genesis_commitment\":{\"method\":\"did:elix\",\"method_version\":1,\"genesis_key\":\"d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737\",\"genesis_nonce\":\"0101010101010101010101010101010101010101010101010101010101010101\"},\"also_known_as\":[],\"custody_class\":\"software\",\"devices\":[],\"prev_anchor_cid\":\"sha256:168a8e9bdd6fff452307f553a0d648fae174ef8c35a9909071c8018ea15aba61\",\"reason\":\"recovery\",\"created_at\":\"2026-08-19T02:00:00.000Z\"}",
+      "cid": "sha256:8562acb05f08f91826a0bba7c9bc970ea43bff4c2a4f8e6c352c8c45b784123b",
+      "object": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T02:00:00.000Z",
+        "custody_class": "software",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice-renamed.elix.cool",
+        "identity_key": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:168a8e9bdd6fff452307f553a0d648fae174ef8c35a9909071c8018ea15aba61",
+        "reason": "recovery",
+        "recovery_proof": "96ce9541839d5b38fb0071afca6eba883d2e42efe4bea19dc31cc23be7db2ab00969dfa5504ff7b166514f8ae21aaa22dd060a9dfca99da51ee0fa29a5699400",
+        "schema_version": 4,
+        "sig": "546806b1f938237a42bc3fd9ea9761db0c9b3ec1a49cc79b84eb6c4dfe62e7884fdcbb6ffb3067dba68992b6c3576904fde8bcfa34f2f8a17575a71666477306",
+        "type": "io.trisaura.identity.anchor"
+      }
+    },
+    "resolved_chain": [
+      {
+        "also_known_as": [],
+        "created_at": "2026-08-19T00:00:00.000Z",
+        "custody_class": "software",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice.elix.cool",
+        "identity_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": null,
+        "reason": "initial",
+        "schema_version": 4,
+        "sig": "10a4377c6f3cbc03a15eb6e4c41934f16552f16493c51d4d41ef9bafc0c6f7a317dca4eece748756f227ee0a9a524f5126f971ac0101a94e27889ee4e39a9103",
+        "type": "io.trisaura.identity.anchor"
+      },
+      {
+        "also_known_as": [],
+        "created_at": "2026-08-19T01:00:00.000Z",
+        "custody_class": "software",
+        "device_sig": "96ab02d8298d2231fe0cdffa3276d0e6c7d73a6b2989ae10be9b9079c80f23b708fe8c97488749837b1ec59460d25cf237f9180c9f93a0e14bf5b8f2e211e80d",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice-renamed.elix.cool",
+        "identity_key": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:94d87193adee8a64edbe4f77d9d1376a40fd4d28e7acc411b752e0e9420fa580",
+        "reason": "rotation",
+        "schema_version": 4,
+        "sig": "34b2bc135e65821f7d4471dcecafa3dea576bd50e15379d3f20ce4663dc76193d9c01a3def97e32274267eaeda74dfc6ae2b6bdec406d5399d4a0dd1f6411007",
+        "type": "io.trisaura.identity.anchor"
+      },
+      {
+        "also_known_as": [],
+        "created_at": "2026-08-19T02:00:00.000Z",
+        "custody_class": "software",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice-renamed.elix.cool",
+        "identity_key": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:168a8e9bdd6fff452307f553a0d648fae174ef8c35a9909071c8018ea15aba61",
+        "reason": "recovery",
+        "recovery_proof": "96ce9541839d5b38fb0071afca6eba883d2e42efe4bea19dc31cc23be7db2ab00969dfa5504ff7b166514f8ae21aaa22dd060a9dfca99da51ee0fa29a5699400",
+        "schema_version": 4,
+        "sig": "546806b1f938237a42bc3fd9ea9761db0c9b3ec1a49cc79b84eb6c4dfe62e7884fdcbb6ffb3067dba68992b6c3576904fde8bcfa34f2f8a17575a71666477306",
+        "type": "io.trisaura.identity.anchor"
+      }
+    ],
+    "rotation": {
+      "canonical_body": "{\"type\":\"io.trisaura.identity.anchor\",\"schema_version\":4,\"did\":\"did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq\",\"handle\":\"alice-renamed.elix.cool\",\"identity_key\":\"a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0\",\"identity_key_algorithm\":\"ed25519\",\"genesis_commitment\":{\"method\":\"did:elix\",\"method_version\":1,\"genesis_key\":\"d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737\",\"genesis_nonce\":\"0101010101010101010101010101010101010101010101010101010101010101\"},\"also_known_as\":[],\"custody_class\":\"software\",\"devices\":[],\"prev_anchor_cid\":\"sha256:94d87193adee8a64edbe4f77d9d1376a40fd4d28e7acc411b752e0e9420fa580\",\"reason\":\"rotation\",\"created_at\":\"2026-08-19T01:00:00.000Z\"}",
+      "cid": "sha256:168a8e9bdd6fff452307f553a0d648fae174ef8c35a9909071c8018ea15aba61",
+      "object": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T01:00:00.000Z",
+        "custody_class": "software",
+        "device_sig": "96ab02d8298d2231fe0cdffa3276d0e6c7d73a6b2989ae10be9b9079c80f23b708fe8c97488749837b1ec59460d25cf237f9180c9f93a0e14bf5b8f2e211e80d",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice-renamed.elix.cool",
+        "identity_key": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:94d87193adee8a64edbe4f77d9d1376a40fd4d28e7acc411b752e0e9420fa580",
+        "reason": "rotation",
+        "schema_version": 4,
+        "sig": "34b2bc135e65821f7d4471dcecafa3dea576bd50e15379d3f20ce4663dc76193d9c01a3def97e32274267eaeda74dfc6ae2b6bdec406d5399d4a0dd1f6411007",
+        "type": "io.trisaura.identity.anchor"
+      }
+    }
+  },
+  "encoding": "UTF-8 JSON with normative property order and no insignificant whitespace",
+  "genesis": {
+    "canonical_commitment": "{\"method\":\"did:elix\",\"method_version\":1,\"genesis_key\":\"d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737\",\"genesis_nonce\":\"0101010101010101010101010101010101010101010101010101010101010101\"}",
+    "commitment": {
+      "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+      "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+      "method": "did:elix",
+      "method_version": 1
+    },
+    "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq"
+  },
+  "invalid": [
+    {
+      "commitment": {
+        "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "genesis_nonce": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "did:elix",
+        "method_version": 1
+      },
+      "expected_error": "invalid_genesis_commitment",
+      "name": "uppercase_nonce"
+    },
+    {
+      "commitment": {
+        "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+        "method": "did:elix",
+        "method_version": 1,
+        "network": "example"
+      },
+      "expected_error": "invalid_genesis_commitment",
+      "name": "unknown_commitment_property"
+    },
+    {
+      "anchor": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T00:00:00.000Z",
+        "custody_class": "software",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0202020202020202020202020202020202020202020202020202020202020202",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice.elix.cool",
+        "identity_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": null,
+        "reason": "initial",
+        "schema_version": 4,
+        "sig": "c3077cf4f865550da5145879d564b3cc2588025b73d81e2ac132198a32f6c81c1b301c95b31c89bb9e4bf852eab745ec705b59d04c20d2ee123d568a09bab800",
+        "type": "io.trisaura.identity.anchor"
+      },
+      "expected_error": "did_mismatch",
+      "name": "commitment_substitution"
+    },
+    {
+      "anchor": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T00:00:00.000Z",
+        "custody_class": "software",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice.elix.cool",
+        "identity_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": null,
+        "reason": "initial",
+        "schema_version": 4,
+        "sig": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "type": "io.trisaura.identity.anchor"
+      },
+      "expected_error": "invalid_signature",
+      "name": "invalid_signature"
+    },
+    {
+      "anchor": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T01:00:00.000Z",
+        "custody_class": "software",
+        "device_sig": "2f857efcd6d1aba9864ec96900fe1375062580a1ae51f0f9148f6e705a8f5226bd940ec64b363921932aaccd039bd1405361c2f90e9dc0eec39d8c2e2ecbfc08",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice-renamed.elix.cool",
+        "identity_key": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "reason": "rotation",
+        "schema_version": 4,
+        "sig": "3a8992e1528d5b711ce9f50fa9c73caf9d8421017c0bb0d8e3d36de428958b9bede88e01ba98a818f68c629d4b5b0e1d7655d9ca1d8c4ee726838c067805760c",
+        "type": "io.trisaura.identity.anchor"
+      },
+      "expected_error": "chain_mismatch",
+      "name": "missing_link"
+    },
+    {
+      "anchor": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T01:30:00.000Z",
+        "custody_class": "software",
+        "device_sig": "bb1e01c6ba6e5dba5cb634fe6fea1292287c1afebb0543419df2d7861411351ef74f6a5ac5c69376baec59e95b021f35e4144eb0fae399d3a60c3a2e5de24903",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "fork.elix.cool",
+        "identity_key": "c6822637c7d310ec57627be00ba259d253749f4aaf644470cffbe53a35f73242",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:94d87193adee8a64edbe4f77d9d1376a40fd4d28e7acc411b752e0e9420fa580",
+        "reason": "rotation",
+        "schema_version": 4,
+        "sig": "843eb15c253931f781d70141928c8e3b43274a40bf87c489987ad8dfb6b09d5f4757e69e5c593317e5661b013ef85d4253b2095499950765f4b31f85f435f302",
+        "type": "io.trisaura.identity.anchor"
+      },
+      "expected_error": "chain_mismatch",
+      "name": "fork"
+    },
+    {
+      "anchor": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T01:00:00.000Z",
+        "custody_class": "software",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice-renamed.elix.cool",
+        "identity_key": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:94d87193adee8a64edbe4f77d9d1376a40fd4d28e7acc411b752e0e9420fa580",
+        "reason": "rotation",
+        "schema_version": 4,
+        "sig": "34b2bc135e65821f7d4471dcecafa3dea576bd50e15379d3f20ce4663dc76193d9c01a3def97e32274267eaeda74dfc6ae2b6bdec406d5399d4a0dd1f6411007",
+        "type": "io.trisaura.identity.anchor"
+      },
+      "expected_error": "invalid_signature",
+      "name": "missing_previous_authority"
+    },
+    {
+      "anchor": {
+        "also_known_as": [],
+        "created_at": "2026-08-19T01:45:00.000Z",
+        "custody_class": "software",
+        "device_sig": "63b6fb85e747f82db40c6a0cc56651fbd52501332ebed08b16b3205edb8a0e65df1e71f8e10edcd56fbe5ecfeda2d599ff4e13e3c1bb1b2f18d9bc7e840cf201",
+        "devices": [],
+        "did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+        "genesis_commitment": {
+          "genesis_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+          "genesis_nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+          "method": "did:elix",
+          "method_version": 1
+        },
+        "handle": "alice.elix.cool",
+        "identity_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "identity_key_algorithm": "ed25519",
+        "prev_anchor_cid": "sha256:94d87193adee8a64edbe4f77d9d1376a40fd4d28e7acc411b752e0e9420fa580",
+        "reason": "rotation",
+        "schema_version": 4,
+        "sig": "63b6fb85e747f82db40c6a0cc56651fbd52501332ebed08b16b3205edb8a0e65df1e71f8e10edcd56fbe5ecfeda2d599ff4e13e3c1bb1b2f18d9bc7e840cf201",
+        "type": "io.trisaura.identity.anchor"
+      },
+      "expected_error": "invalid_transition",
+      "name": "reason_key_mismatch"
+    }
+  ],
+  "legacy": {
+    "canonical_body": "{\"type\":\"io.trisaura.identity.anchor\",\"schema_version\":3,\"did\":\"did:elix:n7kcbfge3agerq4zpjvxikqnka\",\"handle\":\"legacy.elix.cool\",\"identity_key\":\"d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48\",\"identity_key_algorithm\":\"ed25519\",\"also_known_as\":[],\"custody_class\":\"software\",\"devices\":[],\"prev_anchor_cid\":null,\"reason\":\"initial\",\"created_at\":\"2026-08-19T00:00:00.000Z\"}",
+    "cid": "sha256:b0167f615897581389fa86051b53984e44a02f518a22f49b9b68e31b6b9907c5",
+    "object": {
+      "also_known_as": [],
+      "created_at": "2026-08-19T00:00:00.000Z",
+      "custody_class": "software",
+      "devices": [],
+      "did": "did:elix:n7kcbfge3agerq4zpjvxikqnka",
+      "handle": "legacy.elix.cool",
+      "identity_key": "d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+      "identity_key_algorithm": "ed25519",
+      "prev_anchor_cid": null,
+      "reason": "initial",
+      "schema_version": 3,
+      "sig": "66e57ec1d9d22acadccc072d7b6b8e149700e188390aadf4c8416528bd4b71edf0dfab4b7e5c384634e43a684225b55d55c04ae4ca14fb7216bd159af1b53b00",
+      "type": "io.trisaura.identity.anchor"
+    }
+  },
+  "migration": {
+    "canonical_body": "{\"type\":\"io.trisaura.identity.migration\",\"version\":1,\"legacy_did\":\"did:elix:n7kcbfge3agerq4zpjvxikqnka\",\"v1_did\":\"did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq\",\"created_at\":\"2026-08-19T03:00:00.000Z\"}",
+    "object": {
+      "created_at": "2026-08-19T03:00:00.000Z",
+      "legacy_did": "did:elix:n7kcbfge3agerq4zpjvxikqnka",
+      "legacy_sig": "cb659ff771bfd22d1c02d4a9292a0abd241e28783b5ef1caf90071cd194afdfb6077357c18f8b7ca3810a1e2733ac62e58959b4a802d0725cbf94259dfaa360c",
+      "type": "io.trisaura.identity.migration",
+      "v1_did": "did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq",
+      "v1_sig": "e017822f160bdefabd047b8af6c4db6386279759dbad107eaa77e204a52f42780cc52c6b92d7ae44da851484526ea16a95a8511426189f9c279a6579510c740a",
+      "version": 1
+    }
+  },
+  "registration": {
+    "canonical_payload": "{\"type\":\"io.trisaura.identity.registration\",\"version\":1,\"nonce\":\"relay-nonce-0001\",\"did\":\"did:elix:za2bdevqnegqzoc5ug5xkag6uy4ds2uuewzd5ttjk6h3sqctm27pq\",\"genesis_commitment\":{\"method\":\"did:elix\",\"method_version\":1,\"genesis_key\":\"d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737\",\"genesis_nonce\":\"0101010101010101010101010101010101010101010101010101010101010101\"}}",
+    "relay_nonce": "relay-nonce-0001",
+    "signature": "af9ec5aa709dc8bd94e8cbb1e29058a24814579f09f912cdcc3f2f9d9d9baf9b395cdef8769435aef9184abdd5e3167b9fb4323adf3f0bd75fbf5c357596650f"
+  },
+  "suite": "did:elix-v1",
+  "test_only_keys": {
+    "fork": {
+      "public_key": "c6822637c7d310ec57627be00ba259d253749f4aaf644470cffbe53a35f73242",
+      "seed": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "genesis": {
+      "public_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+      "seed": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "legacy": {
+      "public_key": "d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+      "seed": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "recovery": {
+      "public_key": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+      "seed": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    "rotation": {
+      "public_key": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+      "seed": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  },
+  "version": 1
+}
