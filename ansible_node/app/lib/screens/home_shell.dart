@@ -31,6 +31,7 @@ import '../services/app_view_timeline_client.dart';
 import '../services/app_sync_service.dart';
 import '../services/board_access_presentation_service.dart';
 import '../services/contact_resolver.dart';
+import '../services/canonical_identity_store.dart';
 import '../services/discovery_client.dart';
 import '../services/contact_source_sync_service.dart';
 import '../services/messenger_contact_resolver.dart';
@@ -95,6 +96,8 @@ class HomeShell extends StatefulWidget {
     required this.db,
     required this.did,
     this.publicKeyHex,
+    this.identityAliases = const [],
+    this.onIdentityMigrated,
     this.onClearIdentity,
     this.syncRunner,
     this.pullRefreshRunner,
@@ -115,6 +118,8 @@ class HomeShell extends StatefulWidget {
   final AppDatabase db;
   final String did;
   final String? publicKeyHex;
+  final List<String> identityAliases;
+  final ValueChanged<CanonicalIdentity>? onIdentityMigrated;
 
   /// When true (default), a default relay node is seeded on first run if the
   /// local node list is empty. Tests that assert first-run-without-relay set
@@ -209,6 +214,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     for (final tab in ElixTab.values) tab: ElixScreenStyle.paper,
   };
   final _uuid = const Uuid();
+
+  Set<String> get _localDids => {widget.did, ...widget.identityAliases};
 
   @override
   void initState() {
@@ -399,11 +406,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     final l10n = context.l10n;
-    await ContactSourceSyncService(
-      followRepository: _followRepo,
-      contactRepository: _contactRepo,
-      messengerRepository: _messengerRepo,
-    ).syncForIdentity(widget.did);
+    for (final did in _localDids) {
+      await ContactSourceSyncService(
+        followRepository: _followRepo,
+        contactRepository: _contactRepo,
+        messengerRepository: _messengerRepo,
+      ).syncForIdentity(did);
+    }
     if (!_notificationBackfillDone) {
       await _notificationRebuilder.rebuild();
       _notificationBackfillDone = true;
@@ -420,7 +429,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final hasActiveRelay = hasActiveRemoteNode || hasActiveForumHost;
     final showFirstRunDiscovery = !hasActiveRelay && !hasHostedBoards;
     final boards = await _boardRepo.list();
-    final contentItems = await _contentItemRepo.list(authorDid: widget.did);
+    final contentItemsByDid = await Future.wait(
+      _localDids.map((did) => _contentItemRepo.list(authorDid: did)),
+    );
+    final contentItems = {
+      for (final item in contentItemsByDid.expand((items) => items))
+        item.id: item,
+    }.values.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     final murmurReferenceCounts = <String, int>{};
     for (final item in contentItems) {
       if (item.mode != ContentMode.murmur) continue;
@@ -452,7 +467,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           usersByReactionType
               .putIfAbsent(r.reactionType.name, () => <String>{})
               .add(r.userId);
-          if (r.userId == widget.did &&
+          if (_localDids.contains(r.userId) &&
               r.reactionType == store.ReactionType.thumbsUp) {
             userReacted[t.id] = true;
           }
@@ -1214,7 +1229,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         usersByReactionType
             .putIfAbsent(reaction.reactionType.name, () => <String>{})
             .add(reaction.userId);
-        if (reaction.userId == widget.did &&
+        if (_localDids.contains(reaction.userId) &&
             reaction.reactionType == store.ReactionType.thumbsUp) {
           reacted = true;
         }
@@ -2029,6 +2044,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         setState(() => _dest = _ShellDest.board);
         _selectBoardSwipe(HomeBoard.personal);
       },
+      onIdentityMigrated: widget.onIdentityMigrated,
     );
   }
 

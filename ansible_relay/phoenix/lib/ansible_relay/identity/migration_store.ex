@@ -11,7 +11,7 @@ defmodule AnsibleRelay.Identity.MigrationStore do
 
   alias AnsibleRelay.{Repo, SigVerifier}
   alias AnsibleRelay.Db.DidElixMigration
-  alias AnsibleRelay.Identity.AnchorStore
+  alias AnsibleRelay.Identity.{AccountMigration, AnchorStore}
 
   @migration_type "io.trisaura.identity.migration"
 
@@ -26,6 +26,25 @@ defmodule AnsibleRelay.Identity.MigrationStore do
   end
 
   def submit(params) when is_map(params) do
+    with :ok <- validate_shape(params) do
+      case Repo.get(DidElixMigration, params["legacy_did"]) do
+        %DidElixMigration{} = existing ->
+          if existing.v1_did == params["v1_did"] and
+               existing.canonical_body == canonical_body(params) do
+            {:ok, :existing, to_object(existing)}
+          else
+            {:error, :conflict}
+          end
+
+        nil ->
+          submit_new(params)
+      end
+    end
+  rescue
+    _ -> {:error, :unavailable}
+  end
+
+  defp submit_new(params) do
     legacy_did = params["legacy_did"]
     v1_did = params["v1_did"]
     legacy_sig = params["legacy_sig"]
@@ -53,27 +72,24 @@ defmodule AnsibleRelay.Identity.MigrationStore do
              v1_sig
            ) || {:error, :invalid_signature},
          {:ok, created_at, 0} <- DateTime.from_iso8601(params["created_at"]),
-         {:ok, row} <-
-           %DidElixMigration{}
-           |> DidElixMigration.changeset(%{
-             legacy_did: legacy_did,
-             v1_did: v1_did,
-             canonical_body: body,
-             legacy_sig: legacy_sig,
-             v1_sig: v1_sig,
-             created_at: created_at
-           })
-           |> Repo.insert() do
-      {:ok, to_object(row)}
+         :ok <- validate_anchor_pair(legacy, v1),
+         {:ok, disposition, row} <-
+           AccountMigration.complete(params, legacy, v1, body, created_at) do
+      {:ok, disposition, to_object(row)}
     else
       {:error, :not_found} -> {:error, :did_not_found}
       {:error, :locked} -> {:error, :locked}
       {:error, :invalid_chain} -> {:error, :invalid_chain}
-      {:error, %Ecto.Changeset{}} -> {:error, :conflict}
       {:error, _} = error -> error
       nil -> {:error, :did_not_found}
       _ -> {:error, :malformed}
     end
+  end
+
+  defp validate_anchor_pair(legacy, v1) do
+    if legacy.handle == v1.handle,
+      do: :ok,
+      else: {:error, :handle_mismatch}
   end
 
   def get(legacy_did) when is_binary(legacy_did) do
@@ -86,7 +102,9 @@ defmodule AnsibleRelay.Identity.MigrationStore do
   def aliases_for(did) when is_binary(did) do
     Repo.all(
       from(m in DidElixMigration,
-        where: m.legacy_did == ^did or m.v1_did == ^did,
+        where:
+          m.state == "completed" and
+            (m.legacy_did == ^did or m.v1_did == ^did),
         select: {m.legacy_did, m.v1_did}
       )
     )
@@ -95,6 +113,38 @@ defmodule AnsibleRelay.Identity.MigrationStore do
       {legacy_did, ^did} -> legacy_did
     end)
   end
+
+  @doc "Return the active canonical DID for either side of a completed pair."
+  def canonical_did(did) when is_binary(did) do
+    case canonical_did_result(did) do
+      {:ok, canonical_did} -> canonical_did
+      {:error, :unavailable} -> did
+    end
+  end
+
+  @doc "Resolve a canonical DID while preserving database outage semantics."
+  def canonical_did_result(did) when is_binary(did) do
+    canonical =
+      Repo.one(
+        from(m in DidElixMigration,
+          where:
+            m.state == "completed" and
+              (m.legacy_did == ^did or m.v1_did == ^did),
+          select: m.v1_did,
+          limit: 1
+        )
+      )
+
+    {:ok, canonical || did}
+  rescue
+    _ -> {:error, :unavailable}
+  end
+
+  def equivalent?(left, right) when is_binary(left) and is_binary(right) do
+    left == right or canonical_did(left) == canonical_did(right)
+  end
+
+  def equivalent?(_, _), do: false
 
   defp validate_shape(params) do
     legacy_did = params["legacy_did"]
@@ -156,7 +206,12 @@ defmodule AnsibleRelay.Identity.MigrationStore do
     |> Map.merge(%{
       "legacy_sig" => row.legacy_sig,
       "v1_sig" => row.v1_sig,
-      "canonical_body" => row.canonical_body
+      "canonical_body" => row.canonical_body,
+      "handle" => row.handle,
+      "state" => row.state || "completed",
+      "completed_at" => row.completed_at && DateTime.to_iso8601(row.completed_at)
     })
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.new()
   end
 end

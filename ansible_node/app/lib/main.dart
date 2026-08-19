@@ -337,6 +337,7 @@ class _MyAppState extends State<MyApp> {
   // Identity state: null = not anchored, non-null = DID string
   String? _anchoredDid;
   String? _anchoredPublicKeyHex;
+  List<String> _identityAliases = const [];
   bool _loadingIdentity = true;
   // First-run: show the onboarding intro (Welcome/Promise) before the passkey
   // ("first key") screen.
@@ -506,6 +507,7 @@ class _MyAppState extends State<MyApp> {
         setState(() {
           _anchoredDid = c.did;
           _anchoredPublicKeyHex = c.publicKeyHex;
+          _identityAliases = c.legacyDids;
           _loadingIdentity = false;
         });
         unawaited(_maybeNagForBackup());
@@ -519,6 +521,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _anchoredDid = plcDid?.did ?? ownedDid?.did;
         _anchoredPublicKeyHex = plcDid?.publicKeyHex ?? ownedDid?.publicKeyHex;
+        _identityAliases = const [];
         _loadingIdentity = false;
       });
       // recovery design Task 2 "nag-once": a user who skipped the at-creation
@@ -530,6 +533,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _anchoredDid = null;
         _anchoredPublicKeyHex = null;
+        _identityAliases = const [];
         _loadingIdentity = false;
       });
     }
@@ -567,7 +571,10 @@ class _MyAppState extends State<MyApp> {
   void _completeOnboarding(String did) {
     // Pop the onboarding backup step (if still on the stack) and enter the app.
     _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-    setState(() => _anchoredDid = did);
+    setState(() {
+      _anchoredDid = did;
+      _identityAliases = const [];
+    });
     // Being listed in Discover is an explicit, skippable choice. Offer it at
     // onboarding instead of requiring a user to discover a Settings subpage.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -663,9 +670,18 @@ class _MyAppState extends State<MyApp> {
               ? const Scaffold(body: Center(child: CircularProgressIndicator()))
               : _anchoredDid != null
               ? HomeShell(
+                  key: ValueKey(_anchoredDid),
                   db: widget.db,
                   did: _anchoredDid!,
                   publicKeyHex: _anchoredPublicKeyHex,
+                  identityAliases: _identityAliases,
+                  onIdentityMigrated: (identity) {
+                    setState(() {
+                      _anchoredDid = identity.did;
+                      _anchoredPublicKeyHex = identity.publicKeyHex;
+                      _identityAliases = identity.legacyDids;
+                    });
+                  },
                   localeController: _localeController,
                   readingPreferencesController: _readingPreferencesController,
                   onClearIdentity: () => setState(() => _anchoredDid = null),

@@ -79,6 +79,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
 
       {:error, :locked} ->
         send_json(conn, 423, %{error: "account_frozen"})
+
+      {:error, :migrated} ->
+        send_json(conn, 409, %{error: "identity_migrated"})
+
+      {:error, :unavailable} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
     end
   end
 

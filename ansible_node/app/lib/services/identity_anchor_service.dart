@@ -34,9 +34,11 @@ abstract class IdentityKey {
 class ActiveIdentityKey implements IdentityKey {
   const ActiveIdentityKey({
     this.identityStore = const SecureCanonicalIdentityStore(),
+    this.reuseAuthenticationContext = false,
   });
 
   final CanonicalIdentityStore identityStore;
+  final bool reuseAuthenticationContext;
 
   Future<CanonicalIdentity> _identity() async =>
       await identityStore.load() ??
@@ -46,8 +48,9 @@ class ActiveIdentityKey implements IdentityKey {
   Future<String> publicKeyHex() async => (await _identity()).publicKeyHex;
 
   @override
-  Future<String> sign(List<int> message) async =>
-      (await DidSignerImpl().sign(message)).hex;
+  Future<String> sign(List<int> message) async => (await DidSignerImpl(
+    reuseAuthenticationContext: reuseAuthenticationContext,
+  ).sign(message)).hex;
 
   @override
   Future<String> algorithm() async => (await _identity()).signingAlgorithm;

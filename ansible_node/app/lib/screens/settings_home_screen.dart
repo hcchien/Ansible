@@ -27,6 +27,7 @@ import 'about_screen.dart';
 import 'blocked_list_screen.dart';
 import 'credential_admin_screen.dart';
 import 'identity_backup_screen.dart';
+import 'identity_migration_screen.dart';
 import 'identity_security_screen.dart';
 import 'hosted_issuer_onboarding_screen.dart';
 import 'hosted_issuer_administrators_screen.dart';
@@ -72,6 +73,7 @@ class SettingsHomeScreen extends StatelessWidget {
     this.identityPrivateKeyProvider = _defaultIdentityPrivateKey,
     this.onOpenRecoveryWizard,
     this.onOpenPersonalBoard,
+    this.onIdentityMigrated,
     this.embedded = false,
     this.showLocalAiAccess,
     this.platformCapabilities,
@@ -97,6 +99,7 @@ class SettingsHomeScreen extends StatelessWidget {
   /// the top entry here because the personal board no longer has its own cell in
   /// the bottom navigation. When null the entry is hidden.
   final VoidCallback? onOpenPersonalBoard;
+  final ValueChanged<CanonicalIdentity>? onIdentityMigrated;
 
   final AppDatabase db;
   final String did;
@@ -244,7 +247,8 @@ class SettingsHomeScreen extends StatelessWidget {
               future: DriftContactRepository(db).contactForDid(did),
               builder: (context, snapshot) {
                 final profile = snapshot.data;
-                final isPublic = (profile?.handle?.trim().isNotEmpty ?? false) ||
+                final isPublic =
+                    (profile?.handle?.trim().isNotEmpty ?? false) ||
                     (profile?.displayName?.trim().isNotEmpty ?? false);
                 return TextButton.icon(
                   onPressed: () => Navigator.of(context).push(
@@ -252,10 +256,21 @@ class SettingsHomeScreen extends StatelessWidget {
                       builder: (_) => EditProfileScreen(db: db, did: did),
                     ),
                   ),
-                  icon: Icon(isPublic ? Icons.public : Icons.visibility_off_outlined, size: 18),
-                  label: Text(isPublic
-                      ? context.uiCopy(zh: '公開 profile：已設定（同步後可被探索）', en: 'Public profile: set (discoverable after sync)')
-                      : context.uiCopy(zh: '公開 profile：未設定，不會出現在探索', en: 'Public profile: not set — not shown in Discover')),
+                  icon: Icon(
+                    isPublic ? Icons.public : Icons.visibility_off_outlined,
+                    size: 18,
+                  ),
+                  label: Text(
+                    isPublic
+                        ? context.uiCopy(
+                            zh: '公開 profile：已設定（同步後可被探索）',
+                            en: 'Public profile: set (discoverable after sync)',
+                          )
+                        : context.uiCopy(
+                            zh: '公開 profile：未設定，不會出現在探索',
+                            en: 'Public profile: not set — not shown in Discover',
+                          ),
+                  ),
                 );
               },
             ),
@@ -336,6 +351,11 @@ class SettingsHomeScreen extends StatelessWidget {
               ),
               _IssuerToolsFold(did: did, capabilities: _capabilities),
               _IdentityCustodyRow(did: did, capabilities: _capabilities),
+              _IdentityMigrationRow(
+                db: db,
+                did: did,
+                onMigrated: onIdentityMigrated,
+              ),
               AnsibleSettingsRow(
                 key: const Key('settings_identity_security_row'),
                 glyph: '⇄',

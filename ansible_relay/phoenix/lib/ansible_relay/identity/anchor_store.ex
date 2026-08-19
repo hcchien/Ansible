@@ -229,7 +229,17 @@ defmodule AnsibleRelay.Identity.AnchorStore do
     do: fetch(anchor, "identity_key_algorithm") || "ed25519"
 
   defp ensure_not_frozen(did) do
-    if frozen?(did), do: {:error, :locked}, else: :ok
+    cond do
+      frozen?(did) ->
+        {:error, :locked}
+
+      true ->
+        case AnsibleRelay.Identity.MigrationStore.canonical_did_result(did) do
+          {:ok, ^did} -> :ok
+          {:ok, _canonical_did} -> {:error, :migrated}
+          {:error, :unavailable} -> {:error, :unavailable}
+        end
+    end
   end
 
   defp validate_shape(anchor) do

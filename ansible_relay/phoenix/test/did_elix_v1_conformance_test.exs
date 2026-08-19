@@ -456,9 +456,19 @@ defmodule AnsibleRelay.DidElixV1ConformanceTest do
   end
 
   test "legacy migration is dual-signed, resolvable, and reflected as an alias" do
+    original_persistence = Application.get_env(:ansible_relay, :persist_did_accounts)
+    Application.put_env(:ansible_relay, :persist_did_accounts, true)
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :persist_did_accounts, original_persistence)
+    end)
+
     {legacy_key, legacy_private} = keypair()
     {legacy_did, legacy} = legacy_anchor(legacy_key, legacy_private, "legacy.elix.cool")
     assert post_json("/api/v1/identity/anchor", legacy).status == 201
+
+    nullifier = "migration-person-#{System.unique_integer([:positive])}"
+    :ok = AnsibleRelay.IdentityCache.put(legacy_did, legacy_key, nullifier)
 
     {v1_key, v1_private} = keypair()
     genesis_commitment = commitment(v1_key, String.duplicate("04", 32))
@@ -468,7 +478,7 @@ defmodule AnsibleRelay.DidElixV1ConformanceTest do
       v1_anchor(
         %{
           "did" => v1_did,
-          "handle" => "migrated.elix.cool",
+          "handle" => "legacy.elix.cool",
           "identity_key" => v1_key,
           "genesis_commitment" => genesis_commitment
         },
@@ -496,8 +506,44 @@ defmodule AnsibleRelay.DidElixV1ConformanceTest do
       )
 
     assert response.status == 201
-    assert Jason.decode!(response.resp_body)["created_at"] == migration["created_at"]
+    migration_response = Jason.decode!(response.resp_body)
+    assert migration_response["created_at"] == migration["created_at"]
+    assert migration_response["state"] == "completed"
+    assert migration_response["handle"] == "legacy.elix.cool"
     assert get("/api/v1/identity/migration/#{legacy_did}").status == 200
+
+    # Handle/trust routing switches through the committed proof without
+    # rewriting the durable legacy account or its signed history.
+    assert {:ok, ^v1_did} =
+             AnsibleRelay.DidAccountCache.get_by_handle("legacy.elix.cool")
+
+    assert {:ok, projected} = AnsibleRelay.DidAccountCache.get(v1_did)
+    assert projected.public_key_hex == v1_key
+    assert projected.handle == "legacy.elix.cool"
+
+    assert {:ok, assurance} = AnsibleRelay.IdentityCache.get(v1_did)
+    assert assurance.public_key_hex == v1_key
+    assert assurance.nullifier == nullifier
+
+    assert Repo.get_by(AnsibleRelay.Db.IdentityRecoveryAuditEvent,
+             did: v1_did,
+             event_type: "identity_migrated"
+           )
+
+    blocked_legacy_anchor = post_json("/api/v1/identity/anchor", legacy)
+    assert blocked_legacy_anchor.status == 409
+    assert Jason.decode!(blocked_legacy_anchor.resp_body)["error"] == "identity_migrated"
+
+    retry_response =
+      post_json(
+        "/api/v1/identity/migration",
+        migration
+        |> Map.put("legacy_sig", sign(legacy_private, body))
+        |> Map.put("v1_sig", sign(v1_private, body))
+      )
+
+    assert retry_response.status == 200
+    assert Jason.decode!(retry_response.resp_body)["v1_did"] == v1_did
 
     document = get("/api/v1/identity/did/#{legacy_did}")
     assert document.status == 200

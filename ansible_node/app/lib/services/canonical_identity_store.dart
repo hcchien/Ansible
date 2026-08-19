@@ -18,6 +18,10 @@ class CanonicalIdentity {
   /// Public immutable v1 commitment. Null only for pre-v1 identities.
   final Map<String, Object?>? genesisCommitment;
 
+  /// Previous identifiers retained as resolver-verifiable historical aliases.
+  /// They are never used to sign new operations after migration.
+  final List<String> legacyDids;
+
   const CanonicalIdentity({
     required this.did,
     required this.handle,
@@ -25,6 +29,7 @@ class CanonicalIdentity {
     this.signingAlgorithm = 'ed25519',
     this.custody = 'reduced_trust',
     this.genesisCommitment,
+    this.legacyDids = const [],
   });
 }
 
@@ -53,6 +58,7 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
   static const _kAlgorithm = 'ansible_canonical_signing_algorithm';
   static const _kCustody = 'ansible_canonical_custody';
   static const _kGenesisCommitment = 'ansible_canonical_genesis_commitment';
+  static const _kLegacyDids = 'ansible_canonical_legacy_dids';
 
   @override
   Future<void> save(CanonicalIdentity identity) async {
@@ -69,6 +75,14 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
         value: jsonEncode(identity.genesisCommitment),
       );
     }
+    if (identity.legacyDids.isEmpty) {
+      await _storage.delete(key: _kLegacyDids);
+    } else {
+      await _storage.write(
+        key: _kLegacyDids,
+        value: jsonEncode(identity.legacyDids),
+      );
+    }
   }
 
   @override
@@ -79,6 +93,7 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
     final signingAlgorithm = await _storage.read(key: _kAlgorithm) ?? 'ed25519';
     final custody = await _storage.read(key: _kCustody) ?? 'reduced_trust';
     final genesisCommitmentJson = await _storage.read(key: _kGenesisCommitment);
+    final legacyDidsJson = await _storage.read(key: _kLegacyDids);
     if (did == null || handle == null || publicKeyHex == null) return null;
     return CanonicalIdentity(
       did: did,
@@ -89,6 +104,9 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
       genesisCommitment: genesisCommitmentJson == null
           ? null
           : (jsonDecode(genesisCommitmentJson) as Map).cast<String, Object?>(),
+      legacyDids: legacyDidsJson == null
+          ? const []
+          : (jsonDecode(legacyDidsJson) as List).cast<String>(),
     );
   }
 
@@ -100,6 +118,7 @@ class SecureCanonicalIdentityStore implements CanonicalIdentityStore {
     await _storage.delete(key: _kAlgorithm);
     await _storage.delete(key: _kCustody);
     await _storage.delete(key: _kGenesisCommitment);
+    await _storage.delete(key: _kLegacyDids);
   }
 }
 

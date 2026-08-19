@@ -23,10 +23,12 @@ void main() {
           handle: 'alice.elix.cool',
           publicKeyHex: 'aa' * 32,
           genesisCommitment: commitment,
+          legacyDids: const ['did:elix:legacyalias'],
         ),
       );
 
       expect((await store.load())?.genesisCommitment, commitment);
+      expect((await store.load())?.legacyDids, const ['did:elix:legacyalias']);
       await store.delete();
       expect(await store.load(), isNull);
     },
