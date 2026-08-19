@@ -199,9 +199,10 @@ class AppSyncService {
   Future<AppSyncResult> syncAll({
     bool pullRemote = true,
     bool pushLocal = true,
+    bool allowBoardProofs = true,
   }) async {
     final pullSummary = pullRemote
-        ? await pullLatestFromRelays()
+        ? await pullLatestFromRelays(allowBoardProofs: allowBoardProofs)
         : const RelayPullSummary(pulledActivities: 0);
 
     final reputationErrors = <String>[];
@@ -533,7 +534,11 @@ class AppSyncService {
     return trimmed;
   }
 
-  Future<RelayPullSummary> pullLatestFromRelays() async {
+  /// Read-only refreshes must not mint a new protected-board proof. Callers
+  /// enable [allowBoardProofs] only after explicit user-presence consent.
+  Future<RelayPullSummary> pullLatestFromRelays({
+    bool allowBoardProofs = true,
+  }) async {
     final nodes = await _remoteNodeRepo.list();
     var pulledActivities = 0;
     final pullErrors = <String>[];
@@ -558,7 +563,7 @@ class AppSyncService {
         remoteTombstoneRepository: _remoteTombstoneRepository,
         issuerAttestationService: _attestationServiceFor(node.url),
         identityClient: _identityClient,
-        authorizeBoardRead: _authorizeBoardRead,
+        authorizeBoardRead: allowBoardProofs ? _authorizeBoardRead : null,
         selfBackfillState: _selfBackfillState,
       ).syncFromNode(client, node, requireBoardSyncConfig: false);
       if (result.success) {

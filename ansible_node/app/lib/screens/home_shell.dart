@@ -2064,7 +2064,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     try {
       final runner = widget.pullRefreshRunner;
       final result = runner == null
-          ? await _appSyncService().pullLatestFromRelays()
+          ? await _appSyncService().pullLatestFromRelays(
+              allowBoardProofs: false,
+            )
           : await runner();
       if (result.pulledActivities > 0) {
         await _loadData();
@@ -2151,6 +2153,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               // Every capability proof still has its own nonce and signature.
               pullRemote: pullRemote,
               pushLocal: pushLocal,
+              allowBoardProofs: requireUserPresence,
             )
           : await runner();
       await _loadData();
