@@ -21,8 +21,9 @@ void main() {
         home: SettingsHomeScreen(
           db: db,
           did: 'did:elix:mac',
-          platformCapabilities:
-              PlatformCapabilities.forPlatform(ElixPlatform.macos),
+          platformCapabilities: PlatformCapabilities.forPlatform(
+            ElixPlatform.macos,
+          ),
         ),
       ),
     );
@@ -40,7 +41,9 @@ void main() {
     expect(row.sub, contains('裝置硬體'));
   });
 
-  testWidgets('Windows labels software custody as reduced trust', (tester) async {
+  testWidgets('Windows labels software custody as reduced trust', (
+    tester,
+  ) async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
@@ -49,8 +52,9 @@ void main() {
         home: SettingsHomeScreen(
           db: db,
           did: 'did:elix:windows',
-          platformCapabilities:
-              PlatformCapabilities.forPlatform(ElixPlatform.windows),
+          platformCapabilities: PlatformCapabilities.forPlatform(
+            ElixPlatform.windows,
+          ),
         ),
       ),
     );
@@ -75,4 +79,41 @@ void main() {
     expect(issuer.onTap, isNull);
     expect(issuer.sub, contains('降低信任'));
   });
+
+  testWidgets(
+    'hardware custody distinguishes device key from recovery backup',
+    (tester) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      FlutterSecureStorage.setMockInitialValues({
+        'ansible_canonical_did': 'did:elix:hardware',
+        'ansible_canonical_handle': 'hardware.elix.cool',
+        'ansible_canonical_public_key': '04',
+        'ansible_canonical_signing_algorithm': 'p256-sha256',
+        'ansible_canonical_custody': 'hardware',
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsHomeScreen(
+            db: db,
+            did: 'did:elix:hardware',
+            platformCapabilities: PlatformCapabilities.forPlatform(
+              ElixPlatform.macos,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('settings_identity_custody_row')),
+        300,
+      );
+
+      final row = tester.widget<AnsibleSettingsRow>(
+        find.byKey(const Key('settings_identity_custody_row')),
+      );
+      expect(row.sub, contains('身分復原備份不包含這把金鑰'));
+    },
+  );
 }

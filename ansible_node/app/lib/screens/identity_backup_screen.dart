@@ -10,7 +10,8 @@ import '../widgets/ansible_screen_chrome.dart';
 /// "Back up your identity" screen (recovery design Task 2 / D5-b).
 ///
 /// The user enters a passphrase; we derive a key from it and encrypt the
-/// identity (content) key into a self-describing blob they can copy/export.
+/// legacy/reduced-trust identity recovery material into a self-describing blob
+/// they can copy/export. A device hardware key is never part of this blob.
 ///
 /// Constitution must-haves honored here:
 ///   - backup is **opt-in**: nothing happens until the user types a passphrase
@@ -149,12 +150,13 @@ class _IdentityBackupScreenState extends State<IdentityBackupScreen> {
           Text(
             context.uiCopy(
               zh:
-                  '用一句只有你知道的密語，把你的身分金鑰加密成一份備份。'
-                  '備份只會以加密形式存在——沒有密語就無法解開。',
+                  '用一句只有你知道的密語，加密復原帳號所需的身分資料。'
+                  '這份備份不包含這台裝置的硬體金鑰；復原時會在新裝置建立新金鑰。'
+                  '沒有密語就無法解開備份。',
               en:
-                  'Encrypt your identity key with a passphrase only you know. '
-                  'The backup exists only in encrypted form — without the '
-                  'passphrase it cannot be opened.',
+                  'Encrypt the identity material needed to recover your account with a passphrase only you know. '
+                  'This backup does not contain this device\'s hardware key; recovery creates a new key on the new device. '
+                  'Without the passphrase, the backup cannot be opened.',
             ),
             style: const TextStyle(
               fontSize: 13,

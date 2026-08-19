@@ -499,8 +499,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     HardwareAuthenticationSession? hardwareAuthenticationSession;
     if (requireUserPresence) {
       final authenticationReason = context.uiCopy(
-        zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
-        en: 'Authenticate to sync and sign pending uploads.',
+        zh: '即將以你的身分簽署並上傳待同步的公開或不公開資料。請確認由你本人操作。',
+        en: 'Pending public or unlisted data will be signed with your identity and uploaded. Confirm that this is you.',
       );
       final verifier = widget.userPresenceVerifier;
       final authenticated = verifier == null
@@ -519,8 +519,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
             SnackBar(
               content: Text(
                 context.uiCopy(
-                  zh: '未完成裝置驗證，同步已取消；本機資料未變更。',
-                  en: 'Device authentication was not completed. Sync was cancelled and local data was unchanged.',
+                  zh: '未完成裝置驗證，未上傳任何資料；本機資料未變更。',
+                  en: 'Device authentication was not completed. Nothing was uploaded and local data was unchanged.',
                 ),
               ),
             ),
@@ -850,8 +850,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
 
   Future<void> _syncAllNodes() async {
     final authenticationReason = context.uiCopy(
-      zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
-      en: 'Authenticate to sync and sign pending uploads.',
+      zh: '即將以你的身分簽署並上傳待同步的公開或不公開資料。請確認由你本人操作。',
+      en: 'Pending public or unlisted data will be signed with your identity and uploaded. Confirm that this is you.',
     );
     HardwareAuthenticationSession? hardwareAuthenticationSession;
     final verifier = widget.userPresenceVerifier;
@@ -871,8 +871,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
         SnackBar(
           content: Text(
             context.uiCopy(
-              zh: '未完成裝置驗證，同步已取消；本機資料未變更。',
-              en: 'Device authentication was not completed. Sync was cancelled and local data was unchanged.',
+              zh: '未完成裝置驗證，未上傳任何資料；本機資料未變更。',
+              en: 'Device authentication was not completed. Nothing was uploaded and local data was unchanged.',
             ),
           ),
         ),

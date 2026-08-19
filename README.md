@@ -206,8 +206,11 @@ across relays), with a `did:key` wallet alias and `did:web` reserved for
 issuers. The repo keeps XRPC primitives, but `did:plc` is now only an opt-in
 Bluesky-bridge alias (its creation path retired; real DAG-CBOR genesis is
 Phase D) — one bridge beside Nostr, ActivityPub, and Forum Host, never the
-canonical identity. See the
-[layered identity & `did:elix` method plan](docs/superpowers/plans/2026-06-16-layered-identity-did-method-plan.md).
+canonical identity. See the public
+[`did:elix` method rationale and interoperability note](docs/architecture/did_elix_method.md)
+for the method comparison, resolution model, current interoperability limits,
+and governance work; implementation detail remains in the
+[layered identity plan](docs/superpowers/plans/2026-06-16-layered-identity-did-method-plan.md).
 
 **Forum Hosts own forum state.** Hosted boards, rules, moderation policy, and
 distribution-facing forum state belong to a Forum Host. The current Phoenix

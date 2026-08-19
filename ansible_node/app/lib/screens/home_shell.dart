@@ -2107,8 +2107,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (!mounted) return;
       final verifier = widget.userPresenceVerifier;
       final authenticationReason = context.uiCopy(
-        zh: '請驗證裝置持有人，以同步並簽署待上傳的資料。',
-        en: 'Authenticate to sync and sign pending uploads.',
+        zh: '即將以你的身分簽署並上傳待同步的公開或不公開資料。請確認由你本人操作。',
+        en: 'Pending public or unlisted data will be signed with your identity and uploaded. Confirm that this is you.',
       );
       final authenticated = verifier == null && widget.syncRunner != null
           ? true
@@ -2128,8 +2128,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           SnackBar(
             content: Text(
               context.uiCopy(
-                zh: '未完成裝置驗證，同步已取消；本機資料未變更。',
-                en: 'Device authentication was not completed. Sync was cancelled and local data was unchanged.',
+                zh: '未完成裝置驗證，未上傳任何資料；本機資料未變更。',
+                en: 'Device authentication was not completed. Nothing was uploaded and local data was unchanged.',
               ),
             ),
           ),
@@ -2612,7 +2612,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           _openCompose(context);
         }
       },
-      onRefresh: () => unawaited(_runHeaderSync()),
+      // Refresh is read-only. Pulling remote data must never require a fresh
+      // biometric/device ceremony or silently upload local operations.
+      onRefresh: () =>
+          unawaited(_runHeaderSync(showSnackBar: false, pullRemote: true)),
       child: shell,
     );
   }

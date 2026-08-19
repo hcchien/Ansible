@@ -166,8 +166,8 @@ class _IdentityCustodyRowState extends State<_IdentityCustodyRow> {
           en: 'KEY CUSTODY',
           sub: hardware
               ? context.uiCopy(
-                  zh: '私鑰不可匯出；簽章需要裝置授權',
-                  en: 'Non-exportable; signing requires device authorization',
+                  zh: '裝置硬體金鑰無法被 Elix 讀取或匯出；身分復原備份不包含這把金鑰',
+                  en: 'This device hardware key cannot be read or exported by Elix; identity recovery backups do not contain it',
                 )
               : widget.capabilities.hardwareIdentityKey
               ? context.uiCopy(

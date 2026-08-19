@@ -164,7 +164,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(syncCalls, 1);
-    expect(find.textContaining('已發佈 1/1'), findsOneWidget);
+    expect(find.textContaining('同步完成'), findsOneWidget);
 
     await _disposeWidgetTree(tester);
   });
@@ -206,7 +206,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(syncCalls, 0);
-    expect(find.textContaining('同步已取消'), findsOneWidget);
+    expect(find.textContaining('未上傳任何資料'), findsOneWidget);
     await _disposeWidgetTree(tester);
   });
 
