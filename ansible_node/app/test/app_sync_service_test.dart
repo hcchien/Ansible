@@ -524,6 +524,179 @@ void main() {
       );
     },
   );
+
+  group('sync authorization planning', () {
+    test('pure public pull requires no user presence', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final queue = InMemoryOpsQueueRepository();
+      final service = _planningService(db, queue: queue);
+
+      final requirement = await service.authorizationRequirement();
+
+      expect(requirement.isRequired, isFalse);
+      expect(requirement.protectedBoardReads, isFalse);
+      expect(requirement.relayWrites, isFalse);
+    });
+
+    test(
+      'new public content requires signing but private content does not',
+      () async {
+        final db = AppDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+        final now = DateTime.utc(2026, 8, 20);
+        final content = DriftContentItemRepository(db);
+        final queue = InMemoryOpsQueueRepository();
+        await content.create(
+          ContentItem(
+            id: 'private-note',
+            authorDid: 'did:elix:alice',
+            mode: ContentMode.note,
+            body: 'stays local',
+            status: ContentStatus.active,
+            visibility: ContentVisibility.private,
+            localOnly: false,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        final service = _planningService(
+          db,
+          queue: queue,
+          contentItems: content,
+        );
+
+        expect((await service.authorizationRequirement()).relayWrites, isFalse);
+
+        await content.create(
+          ContentItem(
+            id: 'public-note',
+            authorDid: 'did:elix:alice',
+            mode: ContentMode.note,
+            body: 'chosen for Relay sync',
+            status: ContentStatus.active,
+            visibility: ContentVisibility.public,
+            localOnly: false,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        expect((await service.authorizationRequirement()).relayWrites, isTrue);
+      },
+    );
+
+    test(
+      'an already-synced op does not re-prompt for the same content',
+      () async {
+        final db = AppDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+        final now = DateTime.utc(2026, 8, 20);
+        final content = DriftContentItemRepository(db);
+        final queue = InMemoryOpsQueueRepository();
+        await content.create(
+          ContentItem(
+            id: 'public-note',
+            authorDid: 'did:elix:alice',
+            mode: ContentMode.note,
+            body: 'already synchronized',
+            status: ContentStatus.active,
+            visibility: ContentVisibility.public,
+            localOnly: false,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await queue.enqueue(
+          OpsQueueEntry(
+            opId: 'op-public-note',
+            authorDid: 'did:elix:alice',
+            entityType: 'note',
+            entityId: 'public-note',
+            opType: 'insert',
+            payload: '',
+            signature: 'signed',
+            status: 'synced',
+            createdAt: now,
+          ),
+        );
+
+        final requirement = await _planningService(
+          db,
+          queue: queue,
+          contentItems: content,
+        ).authorizationRequirement();
+
+        expect(requirement.relayWrites, isFalse);
+      },
+    );
+
+    test('protected subscribed boards require one signed read grant', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final now = DateTime.utc(2026, 8, 20);
+      final hosted = DriftHostedBoardRepository(db);
+      await hosted.upsertProjection(
+        HostedBoardProjection(
+          localBoardId: 'local-private',
+          forumHostId: 'relay',
+          hostedBoardId: 'private',
+          canonicalBoardUri: 'https://relay.example/boards/private',
+          remoteSlug: 'private',
+          localSlug: 'private',
+          title: 'Private',
+          contentVisibility: 'end_to_end_encrypted',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await hosted.upsertSubscription(
+        BoardSubscription(
+          subscriptionId: 'relay_private',
+          forumHostId: 'relay',
+          hostedBoardId: 'private',
+          localBoardId: 'local-private',
+          readEnabled: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final requirement = await _planningService(
+        db,
+        queue: InMemoryOpsQueueRepository(),
+        hostedBoards: hosted,
+      ).authorizationRequirement(remoteNodeId: 'relay');
+
+      expect(requirement.protectedBoardReads, isTrue);
+      expect(requirement.relayWrites, isFalse);
+    });
+  });
+}
+
+AppSyncService _planningService(
+  AppDatabase db, {
+  required InMemoryOpsQueueRepository queue,
+  DriftContentItemRepository? contentItems,
+  DriftHostedBoardRepository? hostedBoards,
+}) {
+  return AppSyncService(
+    remoteNodeRepo: DriftRemoteNodeRepository(db),
+    boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+    hostedBoardRepo: hostedBoards ?? DriftHostedBoardRepository(db),
+    boardRepo: DriftBoardRepository(db),
+    threadRepo: DriftThreadRepository(db),
+    postRepo: DriftPostRepository(db),
+    contentItemRepo: contentItems ?? DriftContentItemRepository(db),
+    publicationRepo: DriftPublicationRepository(db),
+    relaySettings: const EmptyNostrRelaySettingsStore(),
+    keyStore: const InMemoryNostrKeyStore(),
+    followerDid: 'did:elix:alice',
+    opsQueueRepo: queue,
+    opsDispatchService: OpsDispatchService(
+      repository: queue,
+      signer: _FakeDidSigner(),
+    ),
+  );
 }
 
 class EmptyNostrRelaySettingsStore implements NostrRelaySettingsStore {

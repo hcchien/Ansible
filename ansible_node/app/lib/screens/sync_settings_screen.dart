@@ -25,6 +25,7 @@ import '../services/relay_reputation_presentation_service.dart';
 import '../services/relay_identity_bootstrap_service.dart';
 import '../services/user_presence_verifier.dart';
 import '../services/sync_capability_service.dart';
+import '../services/sync_authorization_controller.dart';
 import '../services/platform_capabilities.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
@@ -53,6 +54,7 @@ class SyncSettingsScreen extends StatefulWidget {
   final Future<String?> Function(String url)? complianceFetcher;
   final UserPresenceVerifier? userPresenceVerifier;
   final PlatformCapabilities? platformCapabilities;
+  final SyncAuthorizationController? syncAuthorizationController;
 
   const SyncSettingsScreen({
     super.key,
@@ -62,13 +64,15 @@ class SyncSettingsScreen extends StatefulWidget {
     this.complianceFetcher,
     this.userPresenceVerifier,
     this.platformCapabilities,
+    this.syncAuthorizationController,
   });
 
   @override
   State<SyncSettingsScreen> createState() => _SyncSettingsScreenState();
 }
 
-class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
+class _SyncSettingsScreenState extends State<SyncSettingsScreen>
+    with WidgetsBindingObserver {
   static const int _retainForeverValue = 0;
   PlatformCapabilities get _capabilities =>
       widget.platformCapabilities ?? PlatformCapabilities.current;
@@ -106,11 +110,18 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   final Map<String, bool> _syncingNodes = {}; // nodeId -> isSyncing
   final Map<String, String> _syncCapabilitiesByNode = {};
   final Map<String, SyncCapabilityService> _syncCapabilityServices = {};
+  late final SyncAuthorizationController _syncAuthorizationController;
   String? _expandedNodeId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _syncAuthorizationController =
+        widget.syncAuthorizationController ??
+        (widget.userPresenceVerifier == null
+            ? SyncAuthorizationController.shared
+            : SyncAuthorizationController());
     _remoteNodeRepo = DriftRemoteNodeRepository(widget.db);
     _boardSyncConfigRepo = DriftBoardSyncConfigRepository(widget.db);
     _hostedBoardRepo = DriftHostedBoardRepository(widget.db);
@@ -123,6 +134,31 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     _nostrKeyStore = const SecureStorageNostrKeyStore();
     _nostrRelaySettingsStore = const SecureStorageNostrRelaySettingsStore();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant SyncSettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.localDid != widget.localDid) {
+      unawaited(_syncAuthorizationController.invalidate());
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      // `inactive` may be emitted while Face ID is on screen; treating that as
+      // backgrounding would invalidate the context that is being authorized.
+      unawaited(_syncAuthorizationController.invalidate());
+    }
   }
 
   Future<void> _loadData() async {
@@ -490,181 +526,248 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     });
   }
 
+  Future<SyncAuthenticationSession?> _beginSyncAuthentication(
+    String reason,
+  ) async {
+    final verifier = widget.userPresenceVerifier;
+    if (verifier != null) {
+      return await verifier.verify(reason: reason)
+          ? const PresenceOnlySyncAuthenticationSession()
+          : null;
+    }
+    final hardware = await HardwareAuthenticationSession.begin(
+      localizedReason: reason,
+    );
+    if (hardware != null) return HardwareSyncAuthenticationSession(hardware);
+    return await LocalDeviceUserPresenceVerifier().verify(reason: reason)
+        ? const PresenceOnlySyncAuthenticationSession()
+        : null;
+  }
+
+  RemoteSyncService _remoteSyncService({
+    DidSigner? signer,
+    bool allowProtectedBoardReads = false,
+    bool reuseHardwareAuthenticationContext = false,
+  }) {
+    BoardReadAuthorization? authorizeBoardRead;
+    if (allowProtectedBoardReads && signer != null) {
+      final boardAccess = BoardAccessPresentationService(
+        walletRepository: DriftWalletRepository(widget.db),
+        didSigner: signer,
+      );
+      final boardCapabilities = <String, BoardAccessCapability>{};
+      final preparedPrivateBoards = <String>{};
+      final privateCrypto = PrivateBoardCryptoService();
+      authorizeBoardRead = (board, requestUri) async {
+        var capability = boardCapabilities[board.hostedBoardId];
+        if (capability == null ||
+            capability.policyVersion != board.accessPolicyVersion ||
+            !capability.expiresAt.isAfter(
+              DateTime.now().toUtc().add(const Duration(seconds: 5)),
+            )) {
+          capability = await boardAccess.authorize(
+            forumHost: requestUri.replace(
+              path: '',
+              query: null,
+              fragment: null,
+            ),
+            boardId: board.hostedBoardId,
+            action: 'read',
+            reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+          );
+          boardCapabilities[board.hostedBoardId] = capability;
+        }
+        final privateKey =
+            '${board.hostedBoardId}:${board.encryptionEpoch}:${board.accessPolicyVersion}';
+        if (board.contentVisibility == 'end_to_end_encrypted' &&
+            !preparedPrivateBoards.contains(privateKey)) {
+          final host = requestUri.replace(
+            path: '',
+            query: null,
+            fragment: null,
+          );
+          final keyClient = PrivateBoardKeyClient(
+            forumHost: host,
+            boardId: board.hostedBoardId,
+            access: boardAccess,
+          );
+          final publicKey = await privateCrypto.ensureDeviceKey(
+            board.hostedBoardId,
+          );
+          await keyClient.registerDevice(
+            capability: capability,
+            publicKeyHex: publicKey.publicKeyHex,
+            reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+          );
+          final envelope = await keyClient.currentEnvelope(
+            capability: capability,
+            reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+          );
+          if (envelope.epoch != board.encryptionEpoch ||
+              envelope.policyVersion != board.accessPolicyVersion) {
+            throw const PrivateBoardCryptoException('stale_epoch_envelope');
+          }
+          await privateCrypto.unwrapEpochKey(envelope);
+          preparedPrivateBoards.add(privateKey);
+        }
+        return boardAccess.proofHeaders(
+          capability: capability,
+          method: 'GET',
+          requestUri: requestUri,
+          scope: 'read',
+          reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+        );
+      };
+    }
+
+    return RemoteSyncService(
+      remoteNodeRepo: _remoteNodeRepo,
+      boardSyncConfigRepo: _boardSyncConfigRepo,
+      hostedBoardRepo: _hostedBoardRepo,
+      boardRepo: _boardRepo,
+      threadRepo: _threadRepo,
+      postRepo: _postRepo,
+      reactionRepository: DriftReactionRepository(widget.db),
+      notificationProjector: NotificationProjector(
+        notifications: DriftNotificationRepository(widget.db),
+        localDid: widget.localDid,
+        threadRepository: _threadRepo,
+        postRepository: _postRepo,
+        contactRepository: DriftContactRepository(widget.db),
+        isCategoryEnabled: NotificationPreferencesController().categoryEnabled,
+      ),
+      remoteTombstoneRepository: DriftRemoteTombstoneRepository(widget.db),
+      authorizeBoardRead: authorizeBoardRead,
+    );
+  }
+
+  SyncResult _mergeSyncResults(SyncResult initial, SyncResult signed) {
+    final processed = initial.activitiesProcessed + signed.activitiesProcessed;
+    if (!initial.success || !signed.success) {
+      return SyncResult.failure(
+        errorMessage: [
+          if (!initial.success) initial.errorMessage,
+          if (!signed.success) signed.errorMessage,
+        ].whereType<String>().join('; '),
+        activitiesProcessed: processed,
+        newCursor: signed.newCursor != 0 ? signed.newCursor : initial.newCursor,
+      );
+    }
+    return SyncResult.success(
+      activitiesProcessed: processed,
+      newCursor: signed.newCursor != 0 ? signed.newCursor : initial.newCursor,
+    );
+  }
+
   Future<SyncResult> _performSync(
     RemoteNode node, {
     bool showSnackBar = true,
     bool requireUserPresence = true,
-    bool reuseHardwareAuthenticationContext = false,
   }) async {
-    HardwareAuthenticationSession? hardwareAuthenticationSession;
-    if (requireUserPresence) {
-      final authenticationReason = context.uiCopy(
-        zh: '即將以你的身分簽署並上傳待同步的公開或不公開資料。請確認由你本人操作。',
-        en: 'Pending public or unlisted data will be signed with your identity and uploaded. Confirm that this is you.',
-      );
-      final verifier = widget.userPresenceVerifier;
-      final authenticated = verifier == null
-          ? (hardwareAuthenticationSession =
-                        await HardwareAuthenticationSession.begin(
-                          localizedReason: authenticationReason,
-                        )) !=
-                    null ||
-                await LocalDeviceUserPresenceVerifier().verify(
-                  reason: authenticationReason,
-                )
-          : await verifier.verify(reason: authenticationReason);
-      if (!authenticated) {
-        if (mounted && showSnackBar) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                context.uiCopy(
-                  zh: '未完成裝置驗證，未上傳任何資料；本機資料未變更。',
-                  en: 'Device authentication was not completed. Nothing was uploaded and local data was unchanged.',
-                ),
-              ),
-            ),
-          );
-        }
-        return SyncResult.failure(errorMessage: 'device_auth_cancelled');
-      }
-      reuseHardwareAuthenticationContext =
-          hardwareAuthenticationSession != null;
+    if (_syncingNodes.values.any((value) => value)) {
+      return SyncResult.failure(errorMessage: 'sync_in_progress');
     }
-    final syncDidSigner = DidSignerImpl(
-      reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+    final authenticationReason = context.uiCopy(
+      zh: '即將以你的身分簽署並上傳待同步資料，或存取受保護看板。請確認由你本人操作。',
+      en: 'Elix needs to sign pending sync data or access a protected board. Confirm that this is you.',
     );
     setState(() {
       _syncingNodes[node.id] = true;
     });
+    SyncAuthorizationGrant? authorizationGrant;
 
     try {
       final client = RelayApiClient(baseUrl: node.url);
       if (node.accessToken != null) {
         client.setAccessToken(node.accessToken);
       }
-      // A freshly installed production app may retain its Keychain DID while
-      // the selected Relay has no verified-DID row yet. Establish it before
-      // requesting a sync capability, otherwise the Relay correctly fails
-      // closed with 401 unverified_did.
-      await _ensureRelayIdentity(node, syncDidSigner);
-      final boardAccess = BoardAccessPresentationService(
-        walletRepository: DriftWalletRepository(widget.db),
-        didSigner: syncDidSigner,
+      // Public data is pulled before asking for user presence. Protected-board
+      // cursors remain untouched until an authenticated pass.
+      final initialResult = await _remoteSyncService().syncFromNode(
+        client,
+        node,
       );
-      final boardCapabilities = <String, BoardAccessCapability>{};
-      final preparedPrivateBoards = <String>{};
-      final privateCrypto = PrivateBoardCryptoService();
-
-      final syncService = RemoteSyncService(
-        remoteNodeRepo: _remoteNodeRepo,
-        boardSyncConfigRepo: _boardSyncConfigRepo,
-        hostedBoardRepo: _hostedBoardRepo,
-        boardRepo: _boardRepo,
-        threadRepo: _threadRepo,
-        postRepo: _postRepo,
-        reactionRepository: DriftReactionRepository(widget.db),
-        notificationProjector: NotificationProjector(
-          notifications: DriftNotificationRepository(widget.db),
-          localDid: widget.localDid,
-          threadRepository: _threadRepo,
-          postRepository: _postRepo,
-          contactRepository: DriftContactRepository(widget.db),
-          isCategoryEnabled:
-              NotificationPreferencesController().categoryEnabled,
-        ),
-        remoteTombstoneRepository: DriftRemoteTombstoneRepository(widget.db),
-        authorizeBoardRead: (board, requestUri) async {
-          var capability = boardCapabilities[board.hostedBoardId];
-          if (capability == null ||
-              capability.policyVersion != board.accessPolicyVersion ||
-              !capability.expiresAt.isAfter(
-                DateTime.now().toUtc().add(const Duration(seconds: 5)),
-              )) {
-            capability = await boardAccess.authorize(
-              forumHost: requestUri.replace(
-                path: '',
-                query: null,
-                fragment: null,
-              ),
-              boardId: board.hostedBoardId,
-              action: 'read',
-              reuseAuthenticationContext: reuseHardwareAuthenticationContext,
-            );
-            boardCapabilities[board.hostedBoardId] = capability;
-          }
-          final privateKey =
-              '${board.hostedBoardId}:${board.encryptionEpoch}:${board.accessPolicyVersion}';
-          if (board.contentVisibility == 'end_to_end_encrypted' &&
-              !preparedPrivateBoards.contains(privateKey)) {
-            final host = requestUri.replace(
-              path: '',
-              query: null,
-              fragment: null,
-            );
-            final keyClient = PrivateBoardKeyClient(
-              forumHost: host,
-              boardId: board.hostedBoardId,
-              access: boardAccess,
-            );
-            final publicKey = await privateCrypto.ensureDeviceKey(
-              board.hostedBoardId,
-            );
-            await keyClient.registerDevice(
-              capability: capability,
-              publicKeyHex: publicKey.publicKeyHex,
-              reuseAuthenticationContext: reuseHardwareAuthenticationContext,
-            );
-            final envelope = await keyClient.currentEnvelope(
-              capability: capability,
-              reuseAuthenticationContext: reuseHardwareAuthenticationContext,
-            );
-            if (envelope.epoch != board.encryptionEpoch ||
-                envelope.policyVersion != board.accessPolicyVersion) {
-              throw const PrivateBoardCryptoException('stale_epoch_envelope');
-            }
-            await privateCrypto.unwrapEpochKey(envelope);
-            preparedPrivateBoards.add(privateKey);
-          }
-          return boardAccess.proofHeaders(
-            capability: capability,
-            method: 'GET',
-            requestUri: requestUri,
-            scope: 'read',
-            reuseAuthenticationContext: reuseHardwareAuthenticationContext,
-          );
-        },
-      );
-
-      final result = await syncService.syncFromNode(client, node);
-      String? syncCapability;
-      if (_capabilities.webAuthn) {
-        final capability = await _syncCapabilityServices
-            .putIfAbsent(
-              '${widget.localDid}\u0000${node.url}',
-              () => SyncCapabilityService(
-                baseUrl: node.url,
-                holderDid: widget.localDid,
-                platformCapabilities: _capabilities,
-                didSigner: syncDidSigner,
-              ),
+      final planningService = _relayPushService(DidSignerImpl());
+      final requirement = requireUserPresence
+          ? await planningService.authorizationRequirement(
+              remoteNodeId: node.id,
             )
-            .authorize();
-        syncCapability = capability.token;
-        _syncCapabilitiesByNode[node.id] = syncCapability;
-        await RelayReputationPresentationService(
-          walletRepository: DriftWalletRepository(widget.db),
-          reputationRepository: DriftDidReputationRepository(widget.db),
-          didSigner: syncDidSigner,
-        ).present(holderDid: widget.localDid, node: node);
-      }
-      final opsSummary = await _relayPushService(
-        syncDidSigner,
-      ).pushLocalOpsTo(node, accessToken: syncCapability);
+          : const SyncAuthorizationRequirement();
+      String? syncCapability;
+      var result = initialResult;
+      var opsSummary = const OpsDispatchSummary();
 
-      setState(() {
-        _syncingNodes[node.id] = false;
-      });
+      if (requirement.isRequired) {
+        authorizationGrant = await _syncAuthorizationController.acquire(
+          scope: widget.localDid,
+          authenticate: () => _beginSyncAuthentication(authenticationReason),
+        );
+        if (authorizationGrant == null) {
+          await _loadData();
+          if (mounted && showSnackBar) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  context.uiCopy(
+                    zh: '已完成公開資料拉取；未完成裝置驗證，因此未處理需簽署的同步項目。',
+                    en: 'Public data was pulled. Signed sync work was skipped because device authentication was not completed.',
+                  ),
+                ),
+              ),
+            );
+          }
+          return SyncResult.failure(
+            errorMessage: 'device_auth_cancelled',
+            activitiesProcessed: initialResult.activitiesProcessed,
+            newCursor: initialResult.newCursor,
+          );
+        }
+
+        final reuseHardwareAuthenticationContext =
+            authorizationGrant.reuseHardwareAuthenticationContext;
+        final syncDidSigner = DidSignerImpl(
+          reuseAuthenticationContext: reuseHardwareAuthenticationContext,
+        );
+        if (requirement.relayWrites) {
+          // Registration is a write prerequisite, not a read prerequisite.
+          await _ensureRelayIdentity(node, syncDidSigner);
+        }
+        if (requirement.protectedBoardReads) {
+          final protectedResult = await _remoteSyncService(
+            signer: syncDidSigner,
+            allowProtectedBoardReads: true,
+            reuseHardwareAuthenticationContext:
+                reuseHardwareAuthenticationContext,
+          ).syncFromNode(client, node);
+          result = _mergeSyncResults(initialResult, protectedResult);
+        }
+
+        if (requirement.relayWrites) {
+          if (_capabilities.webAuthn) {
+            final capability = await _syncCapabilityServices
+                .putIfAbsent(
+                  '${widget.localDid}\u0000${node.url}',
+                  () => SyncCapabilityService(
+                    baseUrl: node.url,
+                    holderDid: widget.localDid,
+                    platformCapabilities: _capabilities,
+                    didSigner: syncDidSigner,
+                  ),
+                )
+                .authorize();
+            syncCapability = capability.token;
+            _syncCapabilitiesByNode[node.id] = syncCapability;
+            await RelayReputationPresentationService(
+              walletRepository: DriftWalletRepository(widget.db),
+              reputationRepository: DriftDidReputationRepository(widget.db),
+              didSigner: syncDidSigner,
+            ).present(holderDid: widget.localDid, node: node);
+          }
+          opsSummary = await _relayPushService(
+            syncDidSigner,
+          ).pushLocalOpsTo(node, accessToken: syncCapability);
+        }
+      }
 
       // Reload to update last sync time
       await _loadData();
@@ -700,10 +803,6 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       }
       return result;
     } catch (e) {
-      setState(() {
-        _syncingNodes[node.id] = false;
-      });
-
       if (mounted && showSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -719,7 +818,12 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
       }
       return SyncResult.failure(errorMessage: e.toString());
     } finally {
-      await hardwareAuthenticationSession?.close();
+      await authorizationGrant?.release();
+      if (mounted) {
+        setState(() {
+          _syncingNodes[node.id] = false;
+        });
+      }
     }
   }
 
@@ -849,68 +953,28 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
   }
 
   Future<void> _syncAllNodes() async {
-    final authenticationReason = context.uiCopy(
-      zh: '即將以你的身分簽署並上傳待同步的公開或不公開資料。請確認由你本人操作。',
-      en: 'Pending public or unlisted data will be signed with your identity and uploaded. Confirm that this is you.',
-    );
-    HardwareAuthenticationSession? hardwareAuthenticationSession;
-    final verifier = widget.userPresenceVerifier;
-    final authenticated = verifier == null
-        ? (hardwareAuthenticationSession =
-                      await HardwareAuthenticationSession.begin(
-                        localizedReason: authenticationReason,
-                      )) !=
-                  null ||
-              await LocalDeviceUserPresenceVerifier().verify(
-                reason: authenticationReason,
-              )
-        : await verifier.verify(reason: authenticationReason);
-    if (!authenticated) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.uiCopy(
-              zh: '未完成裝置驗證，未上傳任何資料；本機資料未變更。',
-              en: 'Device authentication was not completed. Nothing was uploaded and local data was unchanged.',
-            ),
-          ),
-        ),
-      );
-      return;
-    }
-    try {
-      final reuseHardwareAuthenticationContext =
-          hardwareAuthenticationSession != null;
-      var pulledActivities = 0;
-      final pullErrors = <String>[];
-      for (final node in _remoteNodes) {
-        if (node.isActive) {
-          final result = await _performSync(
-            node,
-            showSnackBar: false,
-            requireUserPresence: false,
-            reuseHardwareAuthenticationContext:
-                reuseHardwareAuthenticationContext,
-          );
-          if (result.success) {
-            pulledActivities += result.activitiesProcessed;
-          } else {
-            pullErrors.add('${node.name}: ${result.errorMessage}');
-          }
+    var pulledActivities = 0;
+    final pullErrors = <String>[];
+    for (final node in _remoteNodes) {
+      if (node.isActive) {
+        final result = await _performSync(node, showSnackBar: false);
+        pulledActivities += result.activitiesProcessed;
+        if (!result.success) {
+          pullErrors.add('${node.name}: ${result.errorMessage}');
+          // One cancelled ceremony must not turn "sync all" into a series of
+          // repeated Face ID prompts for the remaining nodes.
+          if (result.errorMessage == 'device_auth_cancelled') break;
         }
       }
-      if (!mounted) return;
-      final message = _syncAllSummaryMessage(
-        pulledActivities: pulledActivities,
-        pullErrors: pullErrors,
-      );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    } finally {
-      await hardwareAuthenticationSession?.close();
     }
+    if (!mounted) return;
+    final message = _syncAllSummaryMessage(
+      pulledActivities: pulledActivities,
+      pullErrors: pullErrors,
+    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _syncAllSummaryMessage({
@@ -1186,6 +1250,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
     final text = SubpageL10n.of(context);
     final isExpanded = _expandedNodeId == node.id;
     final isSyncing = _syncingNodes[node.id] ?? false;
+    final anyNodeSyncing = _syncingNodes.values.any((value) => value);
     final boardSyncStatus = _boardSyncStatusByNode[node.id] ?? {};
     final boardRetention = _boardRetentionByNode[node.id] ?? {};
     final nodeBoards = _boardsForNode(node.id);
@@ -1299,7 +1364,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen> {
                   ),
                   // Actions
                   IconButton(
-                    onPressed: isSyncing ? null : () => _performSync(node),
+                    onPressed: anyNodeSyncing ? null : () => _performSync(node),
                     icon: isSyncing
                         ? const SizedBox(
                             width: 20,

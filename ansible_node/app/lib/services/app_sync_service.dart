@@ -82,6 +82,18 @@ class RelayPullSummary {
   bool get success => pullErrors.isEmpty;
 }
 
+class SyncAuthorizationRequirement {
+  const SyncAuthorizationRequirement({
+    this.protectedBoardReads = false,
+    this.relayWrites = false,
+  });
+
+  final bool protectedBoardReads;
+  final bool relayWrites;
+
+  bool get isRequired => protectedBoardReads || relayWrites;
+}
+
 class AppSyncService {
   AppSyncService({
     required RemoteNodeRepository remoteNodeRepo,
@@ -194,6 +206,160 @@ class AppSyncService {
       nodeUrl,
       () => IssuerAttestationService(relayBaseUrl: nodeUrl),
     );
+  }
+
+  /// Determines whether the next explicit sync needs a fresh local
+  /// user-presence grant. This is a read-only planning pass: it never creates
+  /// signatures, capabilities, Relay registrations, or outbound requests.
+  ///
+  /// Public Relay pulls are intentionally excluded. Protected-board reads and
+  /// any local Relay write remain explicit signed actions. Detection fails
+  /// closed: an unexpected local repository error asks for authorization
+  /// rather than silently skipping user-selected outbound work.
+  Future<SyncAuthorizationRequirement> authorizationRequirement({
+    bool includeProtectedBoardReads = true,
+    bool includeRelayWrites = true,
+    String? remoteNodeId,
+  }) async {
+    try {
+      final protectedBoardReads =
+          includeProtectedBoardReads &&
+          await _hasProtectedBoardReads(remoteNodeId: remoteNodeId);
+      final relayWrites =
+          includeRelayWrites &&
+          _allowIdentityWrites &&
+          await _hasRelayWriteWork();
+      return SyncAuthorizationRequirement(
+        protectedBoardReads: protectedBoardReads,
+        relayWrites: relayWrites,
+      );
+    } catch (_) {
+      return SyncAuthorizationRequirement(
+        protectedBoardReads: includeProtectedBoardReads,
+        relayWrites: includeRelayWrites && _allowIdentityWrites,
+      );
+    }
+  }
+
+  Future<bool> _hasProtectedBoardReads({String? remoteNodeId}) async {
+    final hostedBoards = _hostedBoardRepo;
+    if (hostedBoards == null) return false;
+    final subscriptions = await hostedBoards.listSubscriptions(
+      forumHostId: remoteNodeId,
+    );
+    if (!subscriptions.any((item) => item.readEnabled)) return false;
+    final projections = await hostedBoards.listProjections(
+      forumHostId: remoteNodeId,
+    );
+    final projectionById = {
+      for (final projection in projections)
+        projection.hostedBoardId: projection,
+    };
+    for (final subscription in subscriptions.where(
+      (item) => item.readEnabled,
+    )) {
+      final projection = projectionById[subscription.hostedBoardId];
+      if (projection == null) continue;
+      if (projection.contentVisibility != 'public') return true;
+      final read = projection.accessPolicy['read'];
+      if (read is Map && read['requirement'] != 'public') return true;
+    }
+    return false;
+  }
+
+  Future<bool> _hasRelayWriteWork() async {
+    final queue = _opsQueueRepo;
+    final dispatch = _opsDispatchService;
+    if (queue == null || dispatch == null) return false;
+    final existingOps = await queue.listAll(limit: 1000);
+    if (existingOps.any(
+      (op) => op.status == 'pending' || op.status == 'blocked',
+    )) {
+      return true;
+    }
+    if (await _hasUnsignedPublicContent(existingOps)) return true;
+    if (await _hasUnpublishedFederatedFollow(existingOps)) return true;
+    return _hasUnpublishedProfile(existingOps);
+  }
+
+  Future<bool> _hasUnsignedPublicContent(
+    List<OpsQueueEntry> existingOps,
+  ) async {
+    final existingEntityIds = {for (final op in existingOps) op.entityId};
+    final items = await _contentItemRepo.list();
+    return items.any((item) {
+      final isFeedMode =
+          item.mode == ContentMode.murmur || item.mode == ContentMode.note;
+      return isFeedMode &&
+          (_followerDid == null ||
+              isPublishableContentForDid(item, _followerDid)) &&
+          item.visibility != ContentVisibility.private &&
+          !item.localOnly &&
+          item.status == ContentStatus.active &&
+          !item.isDeleted &&
+          !existingEntityIds.contains(item.id);
+    });
+  }
+
+  Future<bool> _hasUnpublishedFederatedFollow(
+    List<OpsQueueEntry> existingOps,
+  ) async {
+    final follows = _followRepository;
+    final followerDid = _followerDid;
+    if (follows == null || followerDid == null || followerDid.isEmpty) {
+      return false;
+    }
+    final desired = <String>{};
+    final edges = await follows.listFollowing(
+      followerDid,
+      targetType: FollowTargetType.user,
+    );
+    for (final edge in edges.where(
+      (item) =>
+          item.status == FollowStatus.accepted &&
+          item.visibility == FollowVisibility.federated,
+    )) {
+      final target = await follows.getTarget(edge.targetId);
+      final did = target?.did ?? target?.canonicalUri;
+      if (did != null && did.isNotEmpty) desired.add(did);
+    }
+    final latest = <String, OpsQueueEntry>{};
+    for (final op in existingOps.where((item) => item.entityType == 'follow')) {
+      final previous = latest[op.entityId];
+      if (previous == null || op.createdAt.isAfter(previous.createdAt)) {
+        latest[op.entityId] = op;
+      }
+    }
+    if (desired.any((did) => latest[did]?.opType != 'insert')) return true;
+    return latest.entries.any(
+      (entry) => entry.value.opType == 'insert' && !desired.contains(entry.key),
+    );
+  }
+
+  Future<bool> _hasUnpublishedProfile(List<OpsQueueEntry> existingOps) async {
+    final contacts = _contactRepository;
+    final did = _followerDid;
+    if (contacts == null || did == null || did.isEmpty) return false;
+    final self = await contacts.contactForDid(did);
+    if (self == null) return false;
+    final handle = _blank(self.handle);
+    final displayName = _blank(self.displayName);
+    final avatarUrl = _blank(self.avatarUrl);
+    if (handle == null && displayName == null) return false;
+
+    OpsQueueEntry? latest;
+    for (final op in existingOps.where(
+      (item) => item.entityType == 'profile',
+    )) {
+      if (latest == null || op.createdAt.isAfter(latest.createdAt)) {
+        latest = op;
+      }
+    }
+    if (latest == null) return true;
+    final previous = CrdtOpBuilder.decodePayload(latest.payload);
+    return _blank(previous['handle'] as String?) != handle ||
+        _blank(previous['displayName'] as String?) != displayName ||
+        _blank(previous['avatarUrl'] as String?) != avatarUrl;
   }
 
   Future<AppSyncResult> syncAll({
