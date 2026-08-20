@@ -116,6 +116,24 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert Jason.decode!(second.resp_body)["error"] == "handle_pending"
   end
 
+  test "register returns the same pending nonce to the same identity key" do
+    first =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    second =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => @valid_public_key,
+        "handle_suffix" => "alice"
+      })
+
+    assert first.status == 200
+    assert second.status == 200
+    assert Jason.decode!(second.resp_body)["nonce"] == Jason.decode!(first.resp_body)["nonce"]
+  end
+
   test "register rejects the legacy public_key field" do
     response =
       post_json("/api/v2/identity/register", %{

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ansible_did/ansible_did.dart';
+import 'package:ansible_store/ansible_store.dart';
 
 import 'atproto_client.dart';
 import 'canonical_identity_store.dart';
@@ -29,6 +30,7 @@ class RelayIdentityBootstrapService {
     String? publicKeyHex,
     DidSigner? signer,
     String? preferredHandleSuffix,
+    AtProtoClient? atProtoClient,
   }) async {
     if (did.trim().isEmpty) {
       throw StateError('missing_did');
@@ -46,7 +48,7 @@ class RelayIdentityBootstrapService {
           _suffixFromHandle(storedHandle) ??
           _suffixFromHandle(canonical.handle),
     );
-    final client = AtProtoClient(baseUrl: baseUrl);
+    final client = atProtoClient ?? AtProtoClient(baseUrl: baseUrl);
     try {
       late final RegistrationChallenge challenge;
       try {
@@ -65,8 +67,16 @@ class RelayIdentityBootstrapService {
       if (handle == null || _suffixFromHandle(handle) != suffix) {
         throw StateError('relay_handle_mismatch');
       }
+      final genesisCommitment = canonical.genesisCommitment;
+      final registrationProof = genesisCommitment == null
+          ? challenge.nonce
+          : didElixV1RegistrationPayload(
+              nonce: challenge.nonce,
+              did: did,
+              genesisCommitment: genesisCommitment,
+            );
       final signature = await (signer ?? DidSignerImpl()).sign(
-        utf8.encode(challenge.nonce),
+        utf8.encode(registrationProof),
       );
       final anchored = await client.anchor(
         AnchorRequest(
@@ -76,6 +86,7 @@ class RelayIdentityBootstrapService {
           registrationSig: signature.hex,
           nonce: challenge.nonce,
           signingAlgorithm: canonical.signingAlgorithm,
+          genesisCommitment: genesisCommitment,
         ),
       );
       if (anchored.did != did || anchored.handle != handle) {

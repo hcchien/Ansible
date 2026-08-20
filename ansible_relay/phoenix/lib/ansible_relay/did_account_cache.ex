@@ -379,21 +379,27 @@ defmodule AnsibleRelay.DidAccountCache do
   @doc "Issue a registration nonce for a public key (TTL: 5 minutes)."
   def issue_nonce(public_key_hex, handle) when is_binary(public_key_hex) and is_binary(handle) do
     now = DateTime.utc_now()
-    expires_at = DateTime.add(now, @nonce_ttl_seconds, :second)
-    nonce = random_nonce()
 
-    with :ok <- ensure_handle_not_pending(handle, now) do
-      :ets.insert(
-        @nonce_table,
-        {public_key_hex, %{nonce: nonce, expires_at: expires_at, handle: handle}}
-      )
+    case pending_nonce(public_key_hex, handle, now) do
+      {:ok, existing} ->
+        {:ok, existing}
 
-      :ets.insert(
-        @pending_handle_table,
-        {handle, %{public_key_hex: public_key_hex, expires_at: expires_at}}
-      )
+      :available ->
+        expires_at = DateTime.add(now, @nonce_ttl_seconds, :second)
+        nonce = random_nonce()
+        entry = %{nonce: nonce, expires_at: expires_at, handle: handle}
 
-      {:ok, %{nonce: nonce, expires_at: expires_at, handle: handle}}
+        :ets.insert(@nonce_table, {public_key_hex, entry})
+
+        :ets.insert(
+          @pending_handle_table,
+          {handle, %{public_key_hex: public_key_hex, expires_at: expires_at}}
+        )
+
+        {:ok, entry}
+
+      {:error, :handle_pending} = error ->
+        error
     end
   end
 
@@ -442,18 +448,34 @@ defmodule AnsibleRelay.DidAccountCache do
     {:ok, %{}}
   end
 
-  defp ensure_handle_not_pending(handle, now) do
+  defp pending_nonce(public_key_hex, handle, now) do
     case :ets.lookup(@pending_handle_table, handle) do
+      [{^handle, %{public_key_hex: ^public_key_hex, expires_at: expires_at}}] ->
+        if DateTime.compare(now, expires_at) == :lt do
+          case :ets.lookup(@nonce_table, public_key_hex) do
+            [
+              {^public_key_hex, %{nonce: nonce, expires_at: ^expires_at, handle: ^handle}}
+            ] ->
+              {:ok, %{nonce: nonce, expires_at: expires_at, handle: handle}}
+
+            _ ->
+              {:error, :handle_pending}
+          end
+        else
+          :ets.delete(@pending_handle_table, handle)
+          :available
+        end
+
       [{^handle, %{expires_at: expires_at}}] ->
         if DateTime.compare(now, expires_at) == :lt do
           {:error, :handle_pending}
         else
           :ets.delete(@pending_handle_table, handle)
-          :ok
+          :available
         end
 
       [] ->
-        :ok
+        :available
     end
   end
 
