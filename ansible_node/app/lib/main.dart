@@ -38,6 +38,7 @@ import 'services/elix_content_router.dart';
 import 'services/error_reporter.dart';
 import 'services/reading_preferences_controller.dart';
 import 'services/relay_identity_client.dart';
+import 'theme/elix_screen_style.dart';
 import 'services/web_session_approval_client.dart';
 import 'services/web_session_grant_service.dart';
 import 'theme/ansible_design.dart';
@@ -438,8 +439,12 @@ class _MyAppState extends State<MyApp> {
   /// graceful message rather than a dead end.
   Future<void> _handleContentLink(ElixContentRef ref) async {
     final resolution = await ElixContentRouter(widget.db).resolve(ref);
+    if (!mounted) return;
     final navigator = _navigatorKey.currentState;
     if (navigator == null) return;
+    final screenStyle = ElixScreenStyle.forAppBrightness(
+      Theme.of(navigator.context).brightness,
+    );
 
     switch (resolution) {
       case ResolvedThread(:final thread):
@@ -449,6 +454,7 @@ class _MyAppState extends State<MyApp> {
               db: widget.db,
               thread: thread,
               authorDid: _anchoredDid,
+              screenStyle: screenStyle,
             ),
           ),
         );
@@ -459,6 +465,7 @@ class _MyAppState extends State<MyApp> {
               db: widget.db,
               board: board,
               localDid: _anchoredDid,
+              screenStyle: screenStyle,
             ),
           ),
         );

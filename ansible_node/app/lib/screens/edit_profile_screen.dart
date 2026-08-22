@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
+import '../services/canonical_identity_store.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import 'sync_settings_screen.dart';
 
@@ -49,11 +50,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _load() async {
     final self = await _contacts.contactForDid(widget.did);
+    final canonical = await const SecureCanonicalIdentityStore().load();
+    final canonicalHandle = canonical?.did == widget.did
+        ? canonical!.handle.trim()
+        : '';
     if (!mounted) return;
     setState(() {
       _existing = self;
       _displayNameController.text = self?.displayName ?? '';
-      _handleController.text = self?.handle ?? '';
+      // Existing self-custody identities already own a public handle. Seed the
+      // editor from that source of truth instead of showing an empty field and
+      // inviting the person to create a conflicting second identity.
+      _handleController.text = self?.handle ?? canonicalHandle;
       _loading = false;
     });
   }
@@ -132,7 +140,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 _label(context, context.uiCopy(zh: 'HANDLE', en: 'HANDLE')),
-                _field(controller: _handleController, hint: 'name.example'),
+                _field(controller: _handleController, hint: 'name.elix.cool'),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _saving ? null : _save,

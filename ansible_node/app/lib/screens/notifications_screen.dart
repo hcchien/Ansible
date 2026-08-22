@@ -5,6 +5,7 @@ import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
 import '../services/messenger_sync_service.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 import 'messenger_thread_screen.dart';
@@ -159,6 +160,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           db: widget.db,
           thread: thread,
           authorDid: widget.did,
+          screenStyle: ElixScreenStyle.forAppBrightness(
+            Theme.of(context).brightness,
+          ),
         ),
       ),
     );

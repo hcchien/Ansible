@@ -802,9 +802,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           // preference.  Its effective appearance must therefore match the
           // app-wide Light/Dark choice.  Passing the resolved style also keeps
           // a board opened from the shell consistent with one opened directly.
-          screenStyle: Theme.of(context).brightness == Brightness.dark
-              ? ElixScreenStyle.ink
-              : ElixScreenStyle.paper,
+          screenStyle: ElixScreenStyle.forAppBrightness(
+            Theme.of(context).brightness,
+          ),
         ),
       ),
     );

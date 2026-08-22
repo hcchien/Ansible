@@ -908,8 +908,8 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
                 decoration: InputDecoration(
                   labelText: dialogContext.uiCopy(zh: '帳號名稱', en: 'Handle'),
                   helperText: dialogContext.uiCopy(
-                    zh: '這個名稱只屬於「${node.name}」；你的 DID、內容與憑證不會改變。',
-                    en: 'This name belongs only to ${node.name}. Your DID, content, and credentials will not change.',
+                    zh: '可輸入名稱或完整 handle（例如 name.elix.cool）。這個名稱只屬於「${node.name}」；你的 DID、內容與憑證不會改變。',
+                    en: 'Enter a name or full handle (for example name.elix.cool). It belongs only to ${node.name}; your DID, content, and credentials do not change.',
                   ),
                   errorText: invalid
                       ? dialogContext.uiCopy(
@@ -929,14 +929,20 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
                 FilledButton(
                   onPressed: () {
                     final selected = controller.text.trim().toLowerCase();
-                    if (selected.length < 3 ||
+                    final suffix = selected.endsWith('.elix.cool')
+                        ? selected.substring(
+                            0,
+                            selected.length - '.elix.cool'.length,
+                          )
+                        : selected;
+                    if (suffix.length < 3 ||
                         !RegExp(
                           r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$',
-                        ).hasMatch(selected)) {
+                        ).hasMatch(suffix)) {
                       setDialogState(() => invalid = true);
                       return;
                     }
-                    Navigator.of(dialogContext).pop(selected);
+                    Navigator.of(dialogContext).pop(suffix);
                   },
                   child: Text(
                     dialogContext.uiCopy(zh: '使用此名稱', en: 'Use this name'),
