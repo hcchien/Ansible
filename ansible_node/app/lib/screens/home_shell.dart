@@ -798,8 +798,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           localDid: widget.did,
           opsDispatchService: _opsDispatchService,
           onFlushPendingOps: _flushPendingOps,
-          // Follow the Forum board's Paper/Ink choice into the board detail.
-          screenStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
+          // A board detail is a focused reading surface, not a separate theme
+          // preference.  Its effective appearance must therefore match the
+          // app-wide Light/Dark choice.  Passing the resolved style also keeps
+          // a board opened from the shell consistent with one opened directly.
+          screenStyle: Theme.of(context).brightness == Brightness.dark
+              ? ElixScreenStyle.ink
+              : ElixScreenStyle.paper,
         ),
       ),
     );

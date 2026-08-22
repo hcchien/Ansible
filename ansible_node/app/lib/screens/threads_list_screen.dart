@@ -22,6 +22,7 @@ import '../widgets/external_content_section.dart';
 import '../widgets/posting_gate_notice.dart';
 import 'thread_composer_screen.dart';
 import 'posts_view_screen.dart';
+import 'user_profile_screen.dart';
 
 /// Fetches a board's curated external items. Mirrors the AppView client method
 /// signature so tests can inject a fake without a real HTTP client.
@@ -569,8 +570,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             '${context.uiCopy(zh: '看板', en: 'Board')} · ${widget.board.title}',
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
-              letterSpacing: 1.4,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
               color: _accent,
             ),
           ),
@@ -586,13 +588,16 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 10),
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: _ruleSoft, width: 0.5)),
             ),
-            child: Row(
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
                   context.uiCopy(
@@ -601,19 +606,20 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                   ),
                   style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
-                    fontSize: 9,
-                    letterSpacing: 0.8,
-                    color: _faint,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.35,
+                    color: _muted,
                   ),
                 ),
-                const SizedBox(width: 14),
                 Text(
                   _postingPolicyLabel(context),
                   style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
-                    fontSize: 9,
-                    letterSpacing: 0.8,
-                    color: _accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.35,
+                    color: _postingBlocked ? AnsibleDesign.danger : _accent,
                   ),
                 ),
               ],
@@ -751,83 +757,104 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               ),
             ],
             const SizedBox(height: 10),
-            // post-author: avatar + name (+ sig/lock) + last-activity byline.
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _authorAvatar(thread.authorId, signed),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+            // Author is an explicit navigation target: this lets a reader
+            // inspect the public profile and make a deliberate follow choice.
+            InkWell(
+              key: Key('open_author_profile_${thread.id}'),
+              borderRadius: BorderRadius.circular(8),
+              onTap: widget.localDid == null
+                  ? null
+                  : () => _openAuthorProfile(thread.authorId),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    _authorAvatar(thread.authorId, signed),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: AuthorLabel(
-                              did: thread.authorId,
-                              style: TextStyle(
-                                fontFamily: AnsibleDesign.serif,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: _fg,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: AuthorLabel(
+                                  did: thread.authorId,
+                                  style: TextStyle(
+                                    fontFamily: AnsibleDesign.serif,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: _fg,
+                                  ),
+                                ),
                               ),
+                              if (signed) ...[
+                                const SizedBox(width: 5),
+                                Container(
+                                  width: 4,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: _accent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
+                              if (lock != null) ...[
+                                const SizedBox(width: 5),
+                                Tooltip(
+                                  message: context.uiCopy(
+                                    zh: '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
+                                    en: 'Locked by the board moderators (${moderationReasonLabel(context, lock.reasonCode)})',
+                                  ),
+                                  child: Icon(
+                                    Icons.lock_outline,
+                                    key: Key('thread_lock_icon_${thread.id}'),
+                                    size: 13,
+                                    color: _faint,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            replies > 0
+                                ? context.uiCopy(
+                                    zh: '最後回應 · ${_shortTime(context, lastActivity)}',
+                                    en: 'LAST REPLY · ${_shortTime(context, lastActivity)}',
+                                  )
+                                : context.uiCopy(
+                                    zh: '起頭 · ${_shortTime(context, lastActivity)}',
+                                    en: 'STARTED · ${_shortTime(context, lastActivity)}',
+                                  ),
+                            style: TextStyle(
+                              fontFamily: AnsibleDesign.mono,
+                              fontSize: 9,
+                              letterSpacing: 0.5,
+                              color: _faint,
                             ),
                           ),
-                          if (signed) ...[
-                            const SizedBox(width: 5),
-                            Container(
-                              width: 4,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: _accent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                          if (lock != null) ...[
-                            const SizedBox(width: 5),
-                            Tooltip(
-                              message: context.uiCopy(
-                                zh: '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
-                                en:
-                                    'Locked by the board moderators '
-                                    '(${moderationReasonLabel(context, lock.reasonCode)})',
-                              ),
-                              child: Icon(
-                                Icons.lock_outline,
-                                key: Key('thread_lock_icon_${thread.id}'),
-                                size: 13,
-                                color: _faint,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
-                      const SizedBox(height: 1),
-                      Text(
-                        replies > 0
-                            ? context.uiCopy(
-                                zh: '最後回應 · ${_shortTime(context, lastActivity)}',
-                                en: 'LAST REPLY · ${_shortTime(context, lastActivity)}',
-                              )
-                            : context.uiCopy(
-                                zh: '起頭 · ${_shortTime(context, lastActivity)}',
-                                en: 'STARTED · ${_shortTime(context, lastActivity)}',
-                              ),
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 9,
-                          letterSpacing: 0.5,
-                          color: _faint,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _openAuthorProfile(String authorDid) {
+    if (authorDid.isEmpty || authorDid == widget.localDid) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UserProfileScreen(
+          db: widget.db,
+          followerDid: widget.localDid!,
+          did: authorDid,
         ),
       ),
     );
