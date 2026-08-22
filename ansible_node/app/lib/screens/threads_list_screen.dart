@@ -96,6 +96,7 @@ class ThreadsListScreen extends StatefulWidget {
 class _ThreadsListScreenState extends State<ThreadsListScreen> {
   late final DriftThreadRepository _threadRepo;
   late final DriftPostRepository _postRepo;
+  late final DriftReactionRepository _reactionRepo;
   List<Thread> _threads = [];
   bool _isLoading = true;
 
@@ -103,6 +104,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   /// for the Threads-style content-forward rows.
   final Map<String, Post?> _firstPostByThread = {};
   final Map<String, int> _replyCountByThread = {};
+  final Map<String, int> _reactionCountByThread = {};
 
   /// Per-thread last activity: timestamp of the most recent post (the opening
   /// post when there are no replies yet). Drives the "最後回應" byline.
@@ -164,6 +166,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     super.initState();
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
+    _reactionRepo = DriftReactionRepository(widget.db);
     _externalPrefs =
         widget.externalContentPreferences ??
         ExternalContentPreferencesController();
@@ -194,12 +197,19 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final externalItems = await _loadExternalItems(projection);
     final firstPostByThread = <String, Post?>{};
     final replyCountByThread = <String, int>{};
+    final reactionCountByThread = <String, int>{};
     final lastActivityByThread = <String, DateTime>{};
     for (final t in threads) {
       final posts = await _postRepo.list(threadId: t.id);
       firstPostByThread[t.id] = posts.isNotEmpty ? posts.first : null;
       // Replies = posts after the opening post.
       replyCountByThread[t.id] = posts.isEmpty ? 0 : posts.length - 1;
+      reactionCountByThread[t.id] = posts.isEmpty
+          ? 0
+          : (await _reactionRepo.listByTarget(
+              TargetType.post.name,
+              posts.first.id,
+            )).length;
       // Last activity = most recent post, else the thread's own timestamp.
       lastActivityByThread[t.id] = posts.isEmpty
           ? t.createdAt
@@ -221,6 +231,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       _replyCountByThread
         ..clear()
         ..addAll(replyCountByThread);
+      _reactionCountByThread
+        ..clear()
+        ..addAll(reactionCountByThread);
       _lastActivityByThread
         ..clear()
         ..addAll(lastActivityByThread);
@@ -699,6 +712,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final firstPost = _firstPostByThread[thread.id];
     final signed = firstPost?.signatureVerified ?? false;
     final replies = _replyCountByThread[thread.id] ?? 0;
+    final reactions = _reactionCountByThread[thread.id] ?? 0;
     final title = thread.title.trim();
     final lastActivity = _lastActivityByThread[thread.id] ?? thread.createdAt;
 
@@ -775,6 +789,20 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                   height: 1.35,
                   fontWeight: FontWeight.w500,
                   color: _fg,
+                ),
+              ),
+            ],
+            if ((firstPost?.content.trim().isNotEmpty ?? false)) ...[
+              const SizedBox(height: 8),
+              Text(
+                firstPost!.content,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 14,
+                  height: 1.6,
+                  color: _muted,
                 ),
               ),
             ],
@@ -862,6 +890,24 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.favorite_border, size: 19, color: _muted),
+                if (reactions > 0) ...[
+                  const SizedBox(width: 6),
+                  Text('$reactions', style: TextStyle(color: _muted)),
+                ],
+                const SizedBox(width: 24),
+                Icon(Icons.mode_comment_outlined, size: 19, color: _muted),
+                if (replies > 0) ...[
+                  const SizedBox(width: 6),
+                  Text('$replies', style: TextStyle(color: _muted)),
+                ],
+                const SizedBox(width: 24),
+                Icon(Icons.repeat, size: 19, color: _muted),
+              ],
             ),
           ],
         ),

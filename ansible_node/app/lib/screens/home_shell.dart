@@ -798,13 +798,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           localDid: widget.did,
           opsDispatchService: _opsDispatchService,
           onFlushPendingOps: _flushPendingOps,
-          // A board detail is a focused reading surface, not a separate theme
-          // preference.  Its effective appearance must therefore match the
-          // app-wide Light/Dark choice.  Passing the resolved style also keeps
-          // a board opened from the shell consistent with one opened directly.
-          screenStyle: ElixScreenStyle.forAppBrightness(
-            Theme.of(context).brightness,
-          ),
+          // This is the user's Forum Paper/Ink choice. It is independent of
+          // the device appearance, so opening the board from this list must
+          // not turn a Paper forum dark merely because iOS is dark.
+          screenStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
         ),
       ),
     );
