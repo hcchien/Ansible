@@ -11,6 +11,7 @@ import '../l10n/moderation_copy.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../services/app_view_timeline_client.dart';
+import '../services/board_policy_draft.dart';
 import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
 import '../services/forum_publication_service.dart';
@@ -632,6 +633,27 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
 
   /// Mono policy chip for the header card, reflecting the real posting gate.
   String _postingPolicyLabel(BuildContext context) {
+    final policy = BoardPolicyDraft.fromPolicies(
+      postingPolicy: _hostedProjection?.postingPolicy ?? const {},
+      accessPolicy: _hostedProjection?.accessPolicy ?? const {},
+    );
+    switch (policy.mode) {
+      case BoardAudienceMode.taiwanCitizenPost:
+        return context.uiCopy(zh: '限台灣國籍發文', en: 'TAIWAN CITIZENS ONLY');
+      case BoardAudienceMode.adultPost:
+        return context.uiCopy(zh: '限成年資格發文', en: 'ADULTS ONLY');
+      case BoardAudienceMode.memberPost:
+        return context.uiCopy(zh: '限會員資格發文', en: 'MEMBERS ONLY');
+      case BoardAudienceMode.customPost:
+        return context.uiCopy(zh: '需憑證資格發文', en: 'CREDENTIAL REQUIRED');
+      case BoardAudienceMode.memberRead:
+        return context.uiCopy(zh: '限會員閱讀與發文', en: 'MEMBERS ONLY');
+      case BoardAudienceMode.customRead:
+        return context.uiCopy(zh: '需憑證閱讀與發文', en: 'CREDENTIAL REQUIRED');
+      case BoardAudienceMode.public:
+      case BoardAudienceMode.verifiedHumanPost:
+        break;
+    }
     if (_requiredTier == null) {
       return context.uiCopy(zh: '公開 · 可發文', en: 'OPEN · POST FREELY');
     }

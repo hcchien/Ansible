@@ -96,6 +96,7 @@ void main() {
     Future<store.Board> seedBoard(
       AppDatabase db, {
       Map<String, Object?> postingPolicy = const {},
+      Map<String, Object?> accessPolicy = const {},
     }) async {
       final now = DateTime.now().toUtc();
       final board = store.Board(
@@ -116,6 +117,7 @@ void main() {
           localSlug: 'gated',
           title: 'Gated Board',
           postingPolicy: postingPolicy,
+          accessPolicy: accessPolicy,
           createdAt: now,
           updatedAt: now,
         ),
@@ -190,6 +192,33 @@ void main() {
         find.byType(FloatingActionButton),
       );
       expect(fab.onPressed, isNotNull);
+    });
+
+    testWidgets('citizenship posting rule is visible in the board summary', (
+      tester,
+    ) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      final board = await seedBoard(
+        db,
+        accessPolicy: const {
+          'post': {'requirement': 'member'},
+          'requirements': {
+            'member': {
+              'credential_type': 'NationalityCredential',
+              'claims': [
+                {'path': 'nationalityVerified', 'op': 'equals', 'value': true},
+                {'path': 'nationality', 'op': 'equals', 'value': 'TWN'},
+              ],
+            },
+          },
+        },
+      );
+
+      await pumpThreads(tester, db, board);
+
+      expect(find.text('限台灣國籍發文'), findsOneWidget);
+      expect(find.text('公開 · 可發文'), findsNothing);
     });
   });
 
