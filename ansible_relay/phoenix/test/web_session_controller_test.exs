@@ -593,6 +593,7 @@ defmodule AnsibleRelay.Web.WebSessionControllerTest do
     assert me.status == 200
     me_body = Jason.decode!(me.resp_body)
     assert me_body["subject_did"] == "did:plc:me23456789"
+    assert me_body["identity_aliases"] == []
     assert me_body["session_id"] == session_id(session.session_token)
     refute Map.has_key?(me_body, "session_token")
 

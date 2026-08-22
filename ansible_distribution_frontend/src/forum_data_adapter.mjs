@@ -10,6 +10,10 @@ import {
 } from './forum_host_client.mjs';
 import { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed } from './appview_client.mjs';
 import {
+  createWebNotificationReadStore,
+  projectWebReplyNotifications,
+} from './web_notifications.mjs';
+import {
   createPasskeySignedOperation,
   createPasskeySignedThread,
 } from './web_publication_client.mjs';
@@ -55,6 +59,8 @@ export function createForumDataAdapter({
   webPublicationClient = { createPasskeySignedThread, createPasskeySignedOperation },
   appViewClient = { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed },
 }) {
+  const notificationReadStore = createWebNotificationReadStore({ storage });
+
   async function loadForumHome({ sessionViewModel } = {}) {
     const [host, boardsResponse] = await Promise.all([
       forumHostClient.fetchForumHostInfo({ relayBaseUrl, fetchImpl }),
@@ -178,6 +184,55 @@ export function createForumDataAdapter({
     } catch {
       return { items: [] };
     }
+  }
+
+  async function loadNotifications({ sessionViewModel, boards = null } = {}) {
+    const subjectDid = sessionViewModel?.subjectDid;
+    if (!sessionViewModel?.authenticated || !subjectDid) {
+      return { items: [], unreadCount: 0 };
+    }
+
+    let availableBoards = boards;
+    if (!Array.isArray(availableBoards)) {
+      const response = await forumHostClient.fetchHostedBoards({
+        relayBaseUrl,
+        fetchImpl,
+      });
+      availableBoards = (response?.boards ?? []).map(normalizeHostedBoard);
+    }
+
+    const feeds = await Promise.all(
+      availableBoards.map(async (board) => ({
+        boardId: board.id,
+        ...(await loadBoardFeed(board.id)),
+      })),
+    );
+    const subjectDids = [
+      subjectDid,
+      ...(sessionViewModel.identityAliases ?? []),
+    ];
+    const items = projectWebReplyNotifications({
+      feeds,
+      subjectDids,
+      readIds: notificationReadStore.readIds(subjectDid),
+    });
+    return {
+      items,
+      unreadCount: items.filter((item) => !item.isRead).length,
+    };
+  }
+
+  function markNotificationRead({ sessionViewModel, notificationId }) {
+    if (!sessionViewModel?.subjectDid || !notificationId) return;
+    notificationReadStore.markRead(sessionViewModel.subjectDid, notificationId);
+  }
+
+  function markAllNotificationsRead({ sessionViewModel, notificationIds }) {
+    if (!sessionViewModel?.subjectDid) return;
+    notificationReadStore.markAllRead(
+      sessionViewModel.subjectDid,
+      notificationIds ?? [],
+    );
   }
 
   // External (federated) content is fetched ONLY when the board host opted in
@@ -447,6 +502,9 @@ export function createForumDataAdapter({
     loadForumHome,
     loadBoardPage,
     loadThreadPage,
+    loadNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
     submitThreadDraft,
     submitContentMutation,
     submitReport,

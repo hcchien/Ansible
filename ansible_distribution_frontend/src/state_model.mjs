@@ -6,6 +6,7 @@ export const PAGE_IDS = Object.freeze({
   boards: 'boards',
   board: 'board',
   thread: 'thread',
+  notifications: 'notifications',
   sessions: 'sessions',
   login: 'login',
   moderation: 'moderation',
@@ -44,6 +45,7 @@ export function buildAppViewModel({
     board: forum?.board ?? null,
     thread: forum?.thread ?? null,
     threads: forum?.threads ?? [],
+    notifications: forum?.notifications ?? { items: [], unreadCount: 0 },
     externalContent: forum?.externalContent ?? null,
     moderation: forum?.moderation ?? null,
     moderationState: forum?.moderationState ?? null,
@@ -67,6 +69,11 @@ export function deriveNavigationItems(session = DEFAULT_SESSION_VIEW_MODEL) {
   ];
 
   if (session?.authenticated) {
+    items.push({
+      id: PAGE_IDS.notifications,
+      label: t('home.notifications'),
+      href: '#/notifications',
+    });
     items.push({
       id: PAGE_IDS.moderation,
       label: t('common.moderation'),
@@ -105,6 +112,9 @@ function pageDescriptor(route, forum) {
 
     case PAGE_IDS.sessions:
       return { id: PAGE_IDS.sessions, title: t('common.you') };
+
+    case PAGE_IDS.notifications:
+      return { id: PAGE_IDS.notifications, title: t('home.notifications') };
 
     case PAGE_IDS.login:
       return { id: PAGE_IDS.login, title: t('common.login') };

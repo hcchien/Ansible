@@ -24,6 +24,10 @@ assert.deepEqual(parseRoute('#/sessions'), {
   pageId: PAGE_IDS.sessions,
   params: {},
 });
+assert.deepEqual(parseRoute('#/notifications'), {
+  pageId: PAGE_IDS.notifications,
+  params: {},
+});
 assert.deepEqual(parseRoute('#/login'), { pageId: PAGE_IDS.login, params: {} });
 assert.deepEqual(parseRoute('#/moderation'), {
   pageId: PAGE_IDS.moderation,
@@ -44,6 +48,7 @@ assert.equal(
   '#/boards/general/threads/thread-9',
 );
 assert.equal(routeToHash({ pageId: PAGE_IDS.sessions }), '#/sessions');
+assert.equal(routeToHash({ pageId: PAGE_IDS.notifications }), '#/notifications');
 assert.equal(routeToHash({ pageId: PAGE_IDS.login }), '#/login');
 assert.equal(routeToHash({ pageId: PAGE_IDS.moderation }), '#/moderation');
 assert.equal(routeToHash({ pageId: PAGE_IDS.faq }), '#/about');

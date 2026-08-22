@@ -43,6 +43,7 @@ const authenticatedVm = buildAppViewModel({
   forum: {
     board: { id: 'general', title: 'General' },
     threads: [],
+    notifications: { items: [{ id: 'reply:1' }], unreadCount: 1 },
     capabilities: { canCreateThread: true, canReply: false },
   },
 });
@@ -71,6 +72,10 @@ assert.match(shell, /href="\/privacy\?lang=zh-Hant"/);
 assert.match(shell, /href="\/terms\?lang=zh-Hant"/);
 assert.match(shell, /href="\/support\?lang=zh-Hant"/);
 assert.match(shell, /href="#\/about"/);
+assert.match(shell, /href="#\/notifications"/);
+assert.match(shell, /notification-button has-unread/);
+assert.match(shell, /notification-badge/);
+assert.match(shell, /mobile-tab has-unread/);
 
 setCurrentLocale('en');
 const englishShell = renderAppShell({

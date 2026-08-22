@@ -68,7 +68,7 @@ export function renderCommandHeader(viewModel) {
       <div class="command-context">
         <nav class="command-nav" aria-label="${escapeAttribute(t('common.navAria'))}">${nav}</nav>
         <span class="route-title">${escapeHtml(hostLabel)}</span>
-        ${guest ? '' : renderBellButton()}
+        ${guest ? '' : renderBellButton(viewModel)}
         ${renderSessionChip(viewModel.session)}
         ${guest ? `<a class="btn-signin" href="#/login">${escapeHtml(t('common.login'))}</a>` : ''}
         ${renderPrimaryAction(viewModel)}
@@ -77,10 +77,15 @@ export function renderCommandHeader(viewModel) {
   `;
 }
 
-/// Notification bell. Notifications have no route yet, so this is the
-/// design's chrome rendered as a disabled control rather than a dead link.
-function renderBellButton() {
-  return `<span class="icon-btn is-upcoming" role="img" aria-label="${escapeAttribute(`${t('home.notifications')} · ${t('common.comingSoon')}`)}" title="${escapeAttribute(t('common.comingSoon'))}">${icon('bell', 17)}</span>`;
+/// Notification truth is projected in this browser from verified forum feeds;
+/// the Relay never receives read receipts.
+function renderBellButton(viewModel) {
+  const unreadCount = viewModel.notifications?.unreadCount ?? 0;
+  const unreadClass = unreadCount > 0 ? ' has-unread' : '';
+  const badge = unreadCount > 0
+    ? `<span class="notification-badge" aria-hidden="true">${unreadCount > 99 ? '99+' : unreadCount}</span>`
+    : '';
+  return `<a class="icon-btn notification-button${unreadClass}" href="#/notifications" aria-label="${escapeAttribute(t('home.notifications'))}">${icon('bell', 17)}${badge}</a>`;
 }
 
 export function renderElixMark() {
@@ -167,7 +172,13 @@ function renderMobileTabBar(viewModel) {
     { id: 'home', label: t('common.feed'), href: '#/', glyph: 'home' },
     { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'board' },
     { id: 'compose', center: true },
-    { id: 'notifications', label: t('home.notifications'), glyph: 'bell', upcoming: true },
+    {
+      id: 'notifications',
+      label: t('home.notifications'),
+      href: '#/notifications',
+      glyph: 'bell',
+      unreadCount: viewModel.notifications?.unreadCount ?? 0,
+    },
     {
       id: authenticated ? 'sessions' : 'login',
       label: authenticated ? t('common.you') : t('common.login'),
@@ -196,7 +207,11 @@ function renderMobileTab(item, viewModel) {
   }
 
   const current = item.id === viewModel.page?.id ? ' aria-current="page"' : '';
-  return `<a class="mobile-tab" href="${escapeAttribute(item.href)}"${current}>${glyph}<span>${label}</span></a>`;
+  const unreadClass = item.unreadCount > 0 ? ' has-unread' : '';
+  const badge = item.unreadCount > 0
+    ? '<span class="mobile-notification-dot" aria-hidden="true"></span>'
+    : '';
+  return `<a class="mobile-tab${unreadClass}" href="${escapeAttribute(item.href)}"${current}>${glyph}${badge}<span>${label}</span></a>`;
 }
 
 /// The centre ＋: composes when the session may post, otherwise routes to

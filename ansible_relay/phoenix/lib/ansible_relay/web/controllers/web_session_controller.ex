@@ -4,6 +4,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
   import Plug.Conn
 
   alias AnsibleRelay.{AbuseDetector, IdentityCache, WebSessionStore}
+  alias AnsibleRelay.Identity.MigrationStore
 
   @allowed_scopes MapSet.new([
                     "forum:read",
@@ -196,6 +197,7 @@ defmodule AnsibleRelay.Web.Controllers.WebSessionController do
     response = %{
       session_id: session_id(session.session_token),
       subject_did: session.subject_did,
+      identity_aliases: MigrationStore.aliases_for(session.subject_did),
       approving_device_id: session.approving_device_id,
       web_origin: session.web_origin,
       relay_origin: session.relay_origin,

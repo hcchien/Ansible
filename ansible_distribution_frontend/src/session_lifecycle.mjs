@@ -194,6 +194,9 @@ export function sessionViewModel(session) {
     authenticated: true,
     trustTier: tier,
     subjectDid: session.subject_did ?? null,
+    ...(Array.isArray(session.identity_aliases ?? session.legacy_dids)
+      ? { identityAliases: [...(session.identity_aliases ?? session.legacy_dids)] }
+      : {}),
     scopes,
     expiresAt: session.expires_at ?? null,
     challenge: null,

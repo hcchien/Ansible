@@ -67,6 +67,7 @@ test('restores an app-approved DID session into a capability view model', async 
         return {
           session_id: 'wsi_current',
           subject_did: 'did:plc:abc',
+          identity_aliases: ['did:elix:legacy-abc'],
           trust_tier: 'self_custody_did',
           scopes: ['forum:read', 'forum:post', 'session:revoke'],
           expires_at: '2026-05-12T01:00:00Z',
@@ -83,6 +84,7 @@ test('restores an app-approved DID session into a capability view model', async 
     authenticated: true,
     trustTier: 'self_custody_did',
     subjectDid: 'did:plc:abc',
+    identityAliases: ['did:elix:legacy-abc'],
     scopes: ['forum:read', 'forum:post', 'session:revoke'],
     expiresAt: '2026-05-12T01:00:00Z',
     challenge: null,
