@@ -244,6 +244,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _notificationProjector = NotificationProjector(
       notifications: _notificationRepo,
       localDid: widget.did,
+      localDidAliases: widget.identityAliases,
       threadRepository: _threadRepo,
       postRepository: _postRepo,
       contactRepository: _contactRepo,
@@ -255,6 +256,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       posts: _postRepo,
       messenger: _messengerRepo,
       localDid: widget.did,
+      localDidAliases: widget.identityAliases,
     );
     _messengerSyncService = MessengerSyncService(
       repository: _messengerRepo,
@@ -2048,6 +2050,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       did: widget.did,
       embedded: embedded,
       messengerService: _messengerSyncService,
+      onUnreadChanged: _refreshNotificationUnread,
     );
   }
 

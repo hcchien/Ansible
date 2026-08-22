@@ -48,6 +48,9 @@ export function renderPageBody(viewModel, uiState = {}) {
     case PAGE_IDS.sessions:
       bodyHtml = renderSessions(viewModel, uiState);
       break;
+    case PAGE_IDS.notifications:
+      bodyHtml = renderNotifications(viewModel);
+      break;
     case PAGE_IDS.moderation:
       bodyHtml = renderModeration(viewModel, uiState);
       break;
@@ -59,6 +62,46 @@ export function renderPageBody(viewModel, uiState = {}) {
   }
 
   return `${renderThreadDraftForm(uiState.threadDraft)}${bodyHtml}`;
+}
+
+function renderNotifications(viewModel) {
+  const notifications = viewModel.notifications?.items ?? [];
+  const hasUnread = notifications.some((notification) => !notification.isRead);
+  return `
+    <section class="cols" aria-labelledby="notifications-title">
+      ${renderLeftRail(viewModel, 'notifications')}
+      <section class="feed notifications-page" aria-labelledby="notifications-title">
+        <div class="feed-head notifications-head">
+          <div>
+            <p class="section-label">${escapeHtml(t('notifications.kicker'))}</p>
+            <h1 id="notifications-title">${escapeHtml(t('notifications.title'))}</h1>
+            <p>${escapeHtml(t('notifications.localOnly'))}</p>
+          </div>
+          ${hasUnread ? `<button class="secondary-action" type="button" data-action="mark-all-notifications-read">${escapeHtml(t('notifications.markAllRead'))}</button>` : ''}
+        </div>
+        <section class="card notification-list">
+          ${notifications.length === 0 ? `<p class="notification-empty">${escapeHtml(t('notifications.empty'))}</p>` : notifications.map(renderNotificationRow).join('')}
+        </section>
+      </section>
+      ${renderRightRail(viewModel, viewModel.boards ?? [])}
+    </section>
+  `;
+}
+
+function renderNotificationRow(notification) {
+  const actor = notification.actorHandle || shortIdentity(notification.actorDid);
+  const label = notification.type === 'reply_to_post'
+    ? t('notifications.replyToPost')
+    : t('notifications.replyToThread');
+  const href = `#/boards/${encodeURIComponent(notification.boardId)}/threads/${encodeURIComponent(notification.threadId)}`;
+  return `
+    <a class="notification-row${notification.isRead ? '' : ' is-unread'}" href="${escapeAttribute(href)}" data-action="open-notification" data-notification-id="${escapeAttribute(notification.id)}">
+      <span class="notification-avatar" aria-hidden="true">${escapeHtml((actor || 'E').charAt(0).toUpperCase())}</span>
+      <span class="notification-copy"><strong>${escapeHtml(actor)}</strong><span>${escapeHtml(label)}</span></span>
+      ${renderThreadTime(notification.createdAt, 'notification-time')}
+      ${notification.isRead ? '' : '<span class="notification-unread-dot" aria-hidden="true"></span>'}
+    </a>
+  `;
 }
 
 function renderHome(viewModel, uiState = {}) {

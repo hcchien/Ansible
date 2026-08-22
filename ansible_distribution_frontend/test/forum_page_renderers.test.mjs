@@ -656,4 +656,34 @@ assert.match(englishLockedThreadDetailHtml, /Removed from this board · Spam/);
 assert.match(englishLockedThreadDetailHtml, /Thread locked · Harassment/);
 setCurrentLocale('zh-Hant');
 
+const notificationsHtml = renderPageBody(
+  buildAppViewModel({
+    route: { pageId: PAGE_IDS.notifications, params: {} },
+    session: moderatedSession,
+    forum: {
+      boards: [{ id: 'general', title: 'General' }],
+      notifications: {
+        unreadCount: 1,
+        items: [
+          {
+            id: 'reply:post-2',
+            type: 'reply_to_thread',
+            actorDid: 'did:elix:alice',
+            actorHandle: 'alice.elix.cool',
+            boardId: 'general',
+            threadId: 'thread-1',
+            createdAt: '2026-08-22T01:02:00Z',
+            isRead: false,
+          },
+        ],
+      },
+    },
+  }),
+);
+assert.match(notificationsHtml, /回覆了你的討論串/);
+assert.match(notificationsHtml, /data-action="open-notification"/);
+assert.match(notificationsHtml, /data-action="mark-all-notifications-read"/);
+assert.match(notificationsHtml, /notification-unread-dot/);
+assert.match(notificationsHtml, /只保存在這個瀏覽器/);
+
 console.log('ok - forum page renderers');

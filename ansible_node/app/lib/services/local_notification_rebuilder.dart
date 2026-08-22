@@ -8,26 +8,30 @@ import 'package:ansible_store/ansible_store.dart';
 /// device. Live sync continues to use [NotificationProjector]; this service
 /// covers data that existed before notification projection was enabled.
 class LocalNotificationRebuilder {
-  const LocalNotificationRebuilder({
+  LocalNotificationRebuilder({
     required NotificationRepository notifications,
     required ThreadRepository threads,
     required PostRepository posts,
     required MessengerRepository messenger,
     required String localDid,
+    Iterable<String> localDidAliases = const [],
   }) : _notifications = notifications,
        _threads = threads,
        _posts = posts,
        _messenger = messenger,
-       _localDid = localDid;
+       _localDids = {
+         localDid,
+         ...localDidAliases,
+       }.map((did) => did.trim()).where((did) => did.isNotEmpty).toSet();
 
   final NotificationRepository _notifications;
   final ThreadRepository _threads;
   final PostRepository _posts;
   final MessengerRepository _messenger;
-  final String _localDid;
+  final Set<String> _localDids;
 
   Future<void> rebuild() async {
-    if (_localDid.isEmpty) return;
+    if (_localDids.isEmpty) return;
     await _rebuildReplies();
     await _rebuildMessenger();
   }
@@ -40,20 +44,21 @@ class LocalNotificationRebuilder {
     for (final post in posts) {
       if (post.isDeleted ||
           !post.signatureVerified ||
-          post.authorId == _localDid) {
+          _localDids.contains(post.authorId)) {
         continue;
       }
 
       NotificationType? type;
       final parentId = post.parentPostId;
-      if (parentId != null && postsById[parentId]?.authorId == _localDid) {
+      if (parentId != null &&
+          _localDids.contains(postsById[parentId]?.authorId)) {
         type = NotificationType.replyToPost;
       } else {
         final thread = threadsById.containsKey(post.threadId)
             ? threadsById[post.threadId]
             : await _threads.getById(post.threadId);
         threadsById[post.threadId] = thread;
-        if (thread?.authorId == _localDid) {
+        if (_localDids.contains(thread?.authorId)) {
           type = NotificationType.replyToThread;
         }
       }

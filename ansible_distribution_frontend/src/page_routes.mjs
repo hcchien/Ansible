@@ -28,6 +28,10 @@ export function parseRoute(hash) {
     return { pageId: PAGE_IDS.sessions, params: {} };
   }
 
+  if (segments.length === 1 && segments[0] === 'notifications') {
+    return { pageId: PAGE_IDS.notifications, params: {} };
+  }
+
   if (segments.length === 1 && segments[0] === 'login') {
     return { pageId: PAGE_IDS.login, params: {} };
   }
@@ -59,6 +63,9 @@ export function routeToHash(route) {
 
     case PAGE_IDS.sessions:
       return '#/sessions';
+
+    case PAGE_IDS.notifications:
+      return '#/notifications';
 
     case PAGE_IDS.login:
       return '#/login';
@@ -94,14 +101,14 @@ export function createPageController({
     const session = sessionState.viewModel;
 
     if (route.pageId === PAGE_IDS.faq) {
-      return setState(route, session, null);
+      return setStateWithNotifications(route, session, null);
     }
 
     if (route.pageId === PAGE_IDS.home || route.pageId === PAGE_IDS.boards) {
       const forum = await forumDataAdapter.loadForumHome({
         sessionViewModel: session,
       });
-      return setState(route, session, forum);
+      return setStateWithNotifications(route, session, forum);
     }
 
     if (route.pageId === PAGE_IDS.board) {
@@ -109,7 +116,7 @@ export function createPageController({
         boardId: route.params.boardId,
         sessionViewModel: session,
       });
-      return setState(route, session, forum);
+      return setStateWithNotifications(route, session, forum);
     }
 
     if (route.pageId === PAGE_IDS.thread) {
@@ -118,17 +125,38 @@ export function createPageController({
         threadId: route.params.threadId,
         sessionViewModel: session,
       });
-      return setState(route, session, forum);
+      return setStateWithNotifications(route, session, forum);
     }
 
     if (route.pageId === PAGE_IDS.moderation) {
       const forum = await forumDataAdapter.loadModerationConsole({
         sessionViewModel: session,
       });
-      return setState(route, session, forum);
+      return setStateWithNotifications(route, session, forum);
     }
 
-    return setState(route, session, null);
+    if (route.pageId === PAGE_IDS.notifications) {
+      const forum = await forumDataAdapter.loadForumHome({
+        sessionViewModel: session,
+      });
+      return setStateWithNotifications(route, session, forum);
+    }
+
+    return setStateWithNotifications(route, session, null);
+  }
+
+  async function setStateWithNotifications(route, session, forum) {
+    if (
+      session?.authenticated &&
+      typeof forumDataAdapter.loadNotifications === 'function'
+    ) {
+      const notifications = await forumDataAdapter.loadNotifications({
+        sessionViewModel: session,
+        boards: forum?.boards ?? null,
+      });
+      forum = { ...(forum ?? {}), notifications };
+    }
+    return setState(route, session, forum);
   }
 
   function getState() {

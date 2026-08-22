@@ -83,6 +83,10 @@ export function createForumUiApp({
         await submitReport(actionElement);
       } else if (action === 'moderation-action') {
         await submitModerationAction(actionElement);
+      } else if (action === 'open-notification') {
+        await openNotification(actionElement);
+      } else if (action === 'mark-all-notifications-read') {
+        await markAllNotificationsRead();
       }
     } catch (error) {
       renderUiError(error);
@@ -125,6 +129,25 @@ export function createForumUiApp({
   async function start() {
     bindEvents();
     return loadCurrentRoute();
+  }
+
+  async function openNotification(actionElement) {
+    forumDataAdapter?.markNotificationRead?.({
+      sessionViewModel: currentSessionViewModel(),
+      notificationId: actionElement.dataset.notificationId,
+    });
+    const href = actionElement.getAttribute?.('href') ?? actionElement.href;
+    if (href) await navigate(href);
+  }
+
+  async function markAllNotificationsRead() {
+    forumDataAdapter?.markAllNotificationsRead?.({
+      sessionViewModel: currentSessionViewModel(),
+      notificationIds: (state?.viewModel?.notifications?.items ?? []).map(
+        (notification) => notification.id,
+      ),
+    });
+    await loadCurrentRoute();
   }
 
   async function navigate(hash) {

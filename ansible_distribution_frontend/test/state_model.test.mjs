@@ -71,6 +71,7 @@ assert.deepEqual(deriveNavigationItems(authenticatedSession), [
   { id: PAGE_IDS.home, label: '動態', href: '#/' },
   { id: PAGE_IDS.boards, label: '看板', href: '#/boards' },
   { id: PAGE_IDS.faq, label: '認識 Elix', href: '#/about' },
+  { id: PAGE_IDS.notifications, label: '通知', href: '#/notifications' },
   { id: PAGE_IDS.moderation, label: '板務', href: '#/moderation' },
   { id: PAGE_IDS.sessions, label: '你', href: '#/sessions' },
 ]);

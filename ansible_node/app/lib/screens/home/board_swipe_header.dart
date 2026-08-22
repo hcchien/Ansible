@@ -485,7 +485,10 @@ class _NotificationBell extends StatelessWidget {
         IconButton(
           key: const Key('notifications_button'),
           onPressed: onPressed,
-          icon: const Icon(Icons.notifications_none, size: 23),
+          icon: Icon(
+            unreadCount > 0 ? Icons.notifications : Icons.notifications_none,
+            size: 23,
+          ),
           color: color,
           tooltip: context.uiCopy(zh: '通知', en: 'Notifications'),
           constraints: const BoxConstraints.tightFor(width: 44, height: 44),
