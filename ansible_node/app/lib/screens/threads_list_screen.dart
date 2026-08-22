@@ -11,6 +11,7 @@ import '../l10n/moderation_copy.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../services/app_view_timeline_client.dart';
+import '../services/board_policy_draft.dart';
 import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
 import '../services/forum_publication_service.dart';
@@ -22,6 +23,7 @@ import '../widgets/external_content_section.dart';
 import '../widgets/posting_gate_notice.dart';
 import 'thread_composer_screen.dart';
 import 'posts_view_screen.dart';
+import 'user_profile_screen.dart';
 
 /// Fetches a board's curated external items. Mirrors the AppView client method
 /// signature so tests can inject a fake without a real HTTP client.
@@ -94,6 +96,7 @@ class ThreadsListScreen extends StatefulWidget {
 class _ThreadsListScreenState extends State<ThreadsListScreen> {
   late final DriftThreadRepository _threadRepo;
   late final DriftPostRepository _postRepo;
+  late final DriftReactionRepository _reactionRepo;
   List<Thread> _threads = [];
   bool _isLoading = true;
 
@@ -101,6 +104,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   /// for the Threads-style content-forward rows.
   final Map<String, Post?> _firstPostByThread = {};
   final Map<String, int> _replyCountByThread = {};
+  final Map<String, int> _reactionCountByThread = {};
 
   /// Per-thread last activity: timestamp of the most recent post (the opening
   /// post when there are no replies yet). Drives the "最後回應" byline.
@@ -162,6 +166,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     super.initState();
     _threadRepo = DriftThreadRepository(widget.db);
     _postRepo = DriftPostRepository(widget.db);
+    _reactionRepo = DriftReactionRepository(widget.db);
     _externalPrefs =
         widget.externalContentPreferences ??
         ExternalContentPreferencesController();
@@ -192,12 +197,19 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final externalItems = await _loadExternalItems(projection);
     final firstPostByThread = <String, Post?>{};
     final replyCountByThread = <String, int>{};
+    final reactionCountByThread = <String, int>{};
     final lastActivityByThread = <String, DateTime>{};
     for (final t in threads) {
       final posts = await _postRepo.list(threadId: t.id);
       firstPostByThread[t.id] = posts.isNotEmpty ? posts.first : null;
       // Replies = posts after the opening post.
       replyCountByThread[t.id] = posts.isEmpty ? 0 : posts.length - 1;
+      reactionCountByThread[t.id] = posts.isEmpty
+          ? 0
+          : (await _reactionRepo.listByTarget(
+              TargetType.post.name,
+              posts.first.id,
+            )).length;
       // Last activity = most recent post, else the thread's own timestamp.
       lastActivityByThread[t.id] = posts.isEmpty
           ? t.createdAt
@@ -219,6 +231,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       _replyCountByThread
         ..clear()
         ..addAll(replyCountByThread);
+      _reactionCountByThread
+        ..clear()
+        ..addAll(reactionCountByThread);
       _lastActivityByThread
         ..clear()
         ..addAll(lastActivityByThread);
@@ -569,8 +584,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             '${context.uiCopy(zh: '看板', en: 'Board')} · ${widget.board.title}',
             style: TextStyle(
               fontFamily: AnsibleDesign.mono,
-              fontSize: 9.5,
-              letterSpacing: 1.4,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
               color: _accent,
             ),
           ),
@@ -586,13 +602,16 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 10),
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: _ruleSoft, width: 0.5)),
             ),
-            child: Row(
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
                   context.uiCopy(
@@ -601,19 +620,20 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                   ),
                   style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
-                    fontSize: 9,
-                    letterSpacing: 0.8,
-                    color: _faint,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.35,
+                    color: _muted,
                   ),
                 ),
-                const SizedBox(width: 14),
                 Text(
                   _postingPolicyLabel(context),
                   style: TextStyle(
                     fontFamily: AnsibleDesign.mono,
-                    fontSize: 9,
-                    letterSpacing: 0.8,
-                    color: _accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.35,
+                    color: _postingBlocked ? AnsibleDesign.danger : _accent,
                   ),
                 ),
               ],
@@ -626,6 +646,27 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
 
   /// Mono policy chip for the header card, reflecting the real posting gate.
   String _postingPolicyLabel(BuildContext context) {
+    final policy = BoardPolicyDraft.fromPolicies(
+      postingPolicy: _hostedProjection?.postingPolicy ?? const {},
+      accessPolicy: _hostedProjection?.accessPolicy ?? const {},
+    );
+    switch (policy.mode) {
+      case BoardAudienceMode.taiwanCitizenPost:
+        return context.uiCopy(zh: '限台灣國籍發文', en: 'TAIWAN CITIZENS ONLY');
+      case BoardAudienceMode.adultPost:
+        return context.uiCopy(zh: '限成年資格發文', en: 'ADULTS ONLY');
+      case BoardAudienceMode.memberPost:
+        return context.uiCopy(zh: '限會員資格發文', en: 'MEMBERS ONLY');
+      case BoardAudienceMode.customPost:
+        return context.uiCopy(zh: '需憑證資格發文', en: 'CREDENTIAL REQUIRED');
+      case BoardAudienceMode.memberRead:
+        return context.uiCopy(zh: '限會員閱讀與發文', en: 'MEMBERS ONLY');
+      case BoardAudienceMode.customRead:
+        return context.uiCopy(zh: '需憑證閱讀與發文', en: 'CREDENTIAL REQUIRED');
+      case BoardAudienceMode.public:
+      case BoardAudienceMode.verifiedHumanPost:
+        break;
+    }
     if (_requiredTier == null) {
       return context.uiCopy(zh: '公開 · 可發文', en: 'OPEN · POST FREELY');
     }
@@ -671,6 +712,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final firstPost = _firstPostByThread[thread.id];
     final signed = firstPost?.signatureVerified ?? false;
     final replies = _replyCountByThread[thread.id] ?? 0;
+    final reactions = _reactionCountByThread[thread.id] ?? 0;
     final title = thread.title.trim();
     final lastActivity = _lastActivityByThread[thread.id] ?? thread.createdAt;
 
@@ -750,84 +792,137 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 ),
               ),
             ],
+            if ((firstPost?.content.trim().isNotEmpty ?? false)) ...[
+              const SizedBox(height: 8),
+              Text(
+                firstPost!.content,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 14,
+                  height: 1.6,
+                  color: _muted,
+                ),
+              ),
+            ],
             const SizedBox(height: 10),
-            // post-author: avatar + name (+ sig/lock) + last-activity byline.
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _authorAvatar(thread.authorId, signed),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+            // Author is an explicit navigation target: this lets a reader
+            // inspect the public profile and make a deliberate follow choice.
+            InkWell(
+              key: Key('open_author_profile_${thread.id}'),
+              borderRadius: BorderRadius.circular(8),
+              onTap: widget.localDid == null
+                  ? null
+                  : () => _openAuthorProfile(thread.authorId),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    _authorAvatar(thread.authorId, signed),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: AuthorLabel(
-                              did: thread.authorId,
-                              style: TextStyle(
-                                fontFamily: AnsibleDesign.serif,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: _fg,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: AuthorLabel(
+                                  did: thread.authorId,
+                                  style: TextStyle(
+                                    fontFamily: AnsibleDesign.serif,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: _fg,
+                                  ),
+                                ),
                               ),
+                              if (signed) ...[
+                                const SizedBox(width: 5),
+                                Container(
+                                  width: 4,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: _accent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
+                              if (lock != null) ...[
+                                const SizedBox(width: 5),
+                                Tooltip(
+                                  message: context.uiCopy(
+                                    zh: '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
+                                    en: 'Locked by the board moderators (${moderationReasonLabel(context, lock.reasonCode)})',
+                                  ),
+                                  child: Icon(
+                                    Icons.lock_outline,
+                                    key: Key('thread_lock_icon_${thread.id}'),
+                                    size: 13,
+                                    color: _faint,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            replies > 0
+                                ? context.uiCopy(
+                                    zh: '最後回應 · ${_shortTime(context, lastActivity)}',
+                                    en: 'LAST REPLY · ${_shortTime(context, lastActivity)}',
+                                  )
+                                : context.uiCopy(
+                                    zh: '起頭 · ${_shortTime(context, lastActivity)}',
+                                    en: 'STARTED · ${_shortTime(context, lastActivity)}',
+                                  ),
+                            style: TextStyle(
+                              fontFamily: AnsibleDesign.mono,
+                              fontSize: 9,
+                              letterSpacing: 0.5,
+                              color: _faint,
                             ),
                           ),
-                          if (signed) ...[
-                            const SizedBox(width: 5),
-                            Container(
-                              width: 4,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: _accent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                          if (lock != null) ...[
-                            const SizedBox(width: 5),
-                            Tooltip(
-                              message: context.uiCopy(
-                                zh: '已被板務鎖定（${moderationReasonLabel(context, lock.reasonCode)}）',
-                                en:
-                                    'Locked by the board moderators '
-                                    '(${moderationReasonLabel(context, lock.reasonCode)})',
-                              ),
-                              child: Icon(
-                                Icons.lock_outline,
-                                key: Key('thread_lock_icon_${thread.id}'),
-                                size: 13,
-                                color: _faint,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
-                      const SizedBox(height: 1),
-                      Text(
-                        replies > 0
-                            ? context.uiCopy(
-                                zh: '最後回應 · ${_shortTime(context, lastActivity)}',
-                                en: 'LAST REPLY · ${_shortTime(context, lastActivity)}',
-                              )
-                            : context.uiCopy(
-                                zh: '起頭 · ${_shortTime(context, lastActivity)}',
-                                en: 'STARTED · ${_shortTime(context, lastActivity)}',
-                              ),
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 9,
-                          letterSpacing: 0.5,
-                          color: _faint,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.favorite_border, size: 19, color: _muted),
+                if (reactions > 0) ...[
+                  const SizedBox(width: 6),
+                  Text('$reactions', style: TextStyle(color: _muted)),
+                ],
+                const SizedBox(width: 24),
+                Icon(Icons.mode_comment_outlined, size: 19, color: _muted),
+                if (replies > 0) ...[
+                  const SizedBox(width: 6),
+                  Text('$replies', style: TextStyle(color: _muted)),
+                ],
+                const SizedBox(width: 24),
+                Icon(Icons.repeat, size: 19, color: _muted),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _openAuthorProfile(String authorDid) {
+    if (authorDid.isEmpty || authorDid == widget.localDid) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UserProfileScreen(
+          db: widget.db,
+          followerDid: widget.localDid!,
+          did: authorDid,
         ),
       ),
     );

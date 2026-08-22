@@ -688,9 +688,10 @@ class RemoteSyncService {
         final projection =
             hostedProjectionByBoardId[subscription.hostedBoardId];
         final authorize = _authorizeBoardRead;
-        if (projection == null || authorize == null) {
-          throw StateError('credential_required');
-        }
+        // A background/read-only refresh is allowed to sync public content but
+        // must never mint a new presentation proof. Leave this board's cursor
+        // untouched; an explicit authenticated sync resumes it later.
+        if (projection == null || authorize == null) continue;
         var boardCursor = subscription.syncCursor;
         var boardHasMore = true;
         while (boardHasMore) {

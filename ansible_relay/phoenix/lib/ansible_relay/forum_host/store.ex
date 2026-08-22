@@ -91,11 +91,12 @@ defmodule AnsibleRelay.ForumHost.Store do
   """
   def list_boards_created_by(did) when is_binary(did) do
     ensure_seeded!()
+    equivalent_dids = [did | AnsibleRelay.Identity.MigrationStore.aliases_for(did)]
 
     created_ids =
       from(i in ForumHostAcceptedIntent,
         where:
-          i.author_did == ^did and i.action == "create_board" and
+          i.author_did in ^equivalent_dids and i.action == "create_board" and
             i.result_kind == "forum_host_board",
         select: i.result_id
       )
@@ -612,7 +613,8 @@ defmodule AnsibleRelay.ForumHost.Store do
       board ->
         creator = board_creator(board_id)
 
-        if is_binary(creator) and creator == author_did do
+        if is_binary(creator) and
+             AnsibleRelay.Identity.MigrationStore.equivalent?(creator, author_did) do
           {:ok, board}
         else
           {:error, :not_board_creator}
@@ -885,7 +887,8 @@ defmodule AnsibleRelay.ForumHost.Store do
 
     valid_governance? =
       is_list(admins) and admins != [] and Enum.all?(admins, &non_empty_string?/1) and
-        is_integer(threshold) and threshold in 1..length(admins) and creator in admins
+        is_integer(threshold) and threshold in 1..length(admins) and
+        equivalent_member?(creator, admins)
 
     approval_payload =
       %{
@@ -906,17 +909,25 @@ defmodule AnsibleRelay.ForumHost.Store do
     additional =
       request.approvals
       |> Enum.count(fn {did, signature} ->
-        did in admins and did != request.author_did and is_binary(signature) and
+        equivalent_member?(did, admins) and
+          not AnsibleRelay.Identity.MigrationStore.equivalent?(did, request.author_did) and
+          is_binary(signature) and
           AnsibleRelay.IdentityCache.verify_signature(did, approval_payload, signature)
       end)
 
     cond do
       not valid_governance? -> {:error, :invalid_board_governance}
-      request.author_did not in admins -> {:error, :not_board_governor}
+      not equivalent_member?(request.author_did, admins) -> {:error, :not_board_governor}
       1 + additional < threshold -> {:error, :policy_approval_threshold_not_met}
       true -> :ok
     end
   end
+
+  defp equivalent_member?(did, members) when is_binary(did) and is_list(members) do
+    Enum.any?(members, &AnsibleRelay.Identity.MigrationStore.equivalent?(&1, did))
+  end
+
+  defp equivalent_member?(_, _), do: false
 
   defp require_sensitive_delay(board, request) do
     minimum = DateTime.add(DateTime.utc_now(), 86_400, :second)

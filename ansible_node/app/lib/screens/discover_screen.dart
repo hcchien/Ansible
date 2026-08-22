@@ -11,6 +11,7 @@ import '../services/elix_content_link.dart';
 import '../services/elix_content_router.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 import '../widgets/board_gate_badge.dart';
@@ -253,6 +254,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           db: widget.db,
           board: local,
           localDid: widget.localDid,
+          screenStyle: ElixScreenStyle.forAppBrightness(
+            Theme.of(context).brightness,
+          ),
         ),
       ),
     );
@@ -810,6 +814,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             db: widget.db,
             thread: resolution.thread,
             authorDid: widget.localDid,
+            screenStyle: ElixScreenStyle.forAppBrightness(
+              Theme.of(context).brightness,
+            ),
           ),
         ),
       );

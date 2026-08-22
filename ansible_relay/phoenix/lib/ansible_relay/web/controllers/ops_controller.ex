@@ -217,9 +217,16 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
        when op_type in ["update", "delete"] and
               entity_type in ["thread", "post", "comment", "reaction"] do
     case OpStore.create_op_author(entity_type, entity_id) do
-      ^author_did -> :ok
-      nil -> {:error, :original_content_not_found}
-      _ -> {:error, :not_original_author}
+      ^author_did ->
+        :ok
+
+      nil ->
+        {:error, :original_content_not_found}
+
+      original_author ->
+        if AnsibleRelay.Identity.MigrationStore.equivalent?(original_author, author_did),
+          do: :ok,
+          else: {:error, :not_original_author}
     end
   end
 
@@ -511,19 +518,6 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   defp check_op_not_duplicate(op_id) do
     if OpStore.exists?(op_id), do: {:error, :duplicate_op}, else: :ok
   end
-
-  defp check_original_author(_entity_type, _entity_id, "insert", _author_did), do: :ok
-
-  defp check_original_author(entity_type, entity_id, op_type, author_did)
-       when op_type in ["update", "delete"] and entity_type in ["thread", "post", "comment"] do
-    case OpStore.create_op_author(entity_type, entity_id) do
-      ^author_did -> :ok
-      nil -> {:error, :original_content_not_found}
-      _ -> {:error, :not_original_author}
-    end
-  end
-
-  defp check_original_author(_entity_type, _entity_id, _op_type, _author_did), do: :ok
 
   defp append_op(%{entity_type: entity_type, op_type: op_type} = op)
        when entity_type in ["thread", "post", "comment", "reaction"] and

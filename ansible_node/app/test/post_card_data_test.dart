@@ -25,6 +25,14 @@ void main() {
     );
   });
 
+  test(
+    'post detail follows the active app mode instead of its source feed',
+    () {
+      expect(postDetailScreenStyle(Brightness.light), ElixScreenStyle.paper);
+      expect(postDetailScreenStyle(Brightness.dark), ElixScreenStyle.ink);
+    },
+  );
+
   test('comment count excludes the opening post', () {
     final now = DateTime.utc(2026, 7, 17);
     Post post(String id) => Post(

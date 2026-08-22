@@ -6,7 +6,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   POST /api/v2/identity/anchor  — verify Ed25519 sig and anchor DID
   """
 
-  alias AnsibleRelay.{DidAccountCache, IdentityCache, IdentityWritePolicy, SigVerifier}
+  alias AnsibleRelay.{DidAccountCache, DidElix, IdentityCache, IdentityWritePolicy, SigVerifier}
 
   def register(conn, params) do
     with {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
@@ -67,16 +67,19 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
          {:ok, registration_sig} <- require_field(params, "registration_sig"),
          {:ok, nonce} <- require_field(params, "nonce"),
          signing_algorithm = Map.get(params, "signing_algorithm", "ed25519"),
+         genesis_commitment = Map.get(params, "genesis_commitment"),
          :ok <- IdentityWritePolicy.validate(signing_algorithm),
          :ok <- validate_did(did),
          :ok <- validate_public_key(signing_algorithm, public_key_hex),
-         :ok <- validate_handle(handle) do
+         :ok <- validate_handle(handle),
+         :ok <- validate_registration_binding(did, public_key_hex, genesis_commitment),
+         proof = registration_proof(nonce, did, genesis_commitment) do
       # Verify signature BEFORE consuming the nonce so an invalid sig does not
       # burn the nonce — the client can retry without requesting a new one.
       if not valid_registration_signature?(
            signing_algorithm,
            public_key_hex,
-           nonce,
+           proof,
            registration_sig
          ) do
         send_json(conn, 401, %{error: "invalid_sig"})
@@ -113,6 +116,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
       {:error, :invalid_handle} ->
         send_json(conn, 422, %{error: "invalid_handle"})
+
+      {:error, :invalid_genesis_commitment} ->
+        send_json(conn, 422, %{error: "invalid_genesis_commitment"})
+
+      {:error, :did_mismatch} ->
+        send_json(conn, 422, %{error: "did_mismatch"})
     end
   end
 
@@ -323,6 +332,34 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   end
 
   defp validate_did(_), do: {:error, :invalid_did}
+
+  defp validate_registration_binding(did, _public_key_hex, nil) do
+    if String.match?(did, ~r/\Adid:elix:z[a-z2-7]{52}\z/),
+      do: {:error, :invalid_genesis_commitment},
+      else: :ok
+  end
+
+  defp validate_registration_binding(did, public_key_hex, commitment)
+       when is_map(commitment) do
+    with :ok <- DidElix.validate_v1_commitment(commitment),
+         ^public_key_hex <- commitment["genesis_key"],
+         true <- DidElix.matches_v1?(did, commitment) do
+      :ok
+    else
+      false -> {:error, :did_mismatch}
+      nil -> {:error, :invalid_genesis_commitment}
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_genesis_commitment}
+    end
+  end
+
+  defp validate_registration_binding(_did, _public_key_hex, _commitment),
+    do: {:error, :invalid_genesis_commitment}
+
+  defp registration_proof(nonce, _did, nil), do: nonce
+
+  defp registration_proof(nonce, did, commitment),
+    do: DidElix.registration_payload(nonce, did, commitment)
 
   defp validate_handle(handle) when is_binary(handle) do
     domain = handle_domain()

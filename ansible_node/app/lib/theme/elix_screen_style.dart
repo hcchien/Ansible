@@ -2,7 +2,20 @@ import 'package:flutter/material.dart';
 
 import 'ansible_design.dart';
 
-enum ElixScreenStyle { paper, ink, system }
+enum ElixScreenStyle {
+  paper,
+  ink,
+  system;
+
+  /// The app-wide appearance is authoritative when a screen is pushed from a
+  /// route which is outside a board's own widget tree. This prevents the same
+  /// board from silently falling back to Paper when opened through search,
+  /// notifications, or a content link.
+  static ElixScreenStyle forAppBrightness(Brightness brightness) =>
+      brightness == Brightness.dark
+      ? ElixScreenStyle.ink
+      : ElixScreenStyle.paper;
+}
 
 enum ElixBoardMotion { slide, book, cube }
 

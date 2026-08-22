@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
 import '../theme/ansible_design.dart';
+import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import 'murmur_detail_screen.dart';
 import 'posts_view_screen.dart';
@@ -314,6 +315,9 @@ class _SearchScreenState extends State<SearchScreen> {
               db: db,
               board: board,
               localDid: widget.localDid,
+              screenStyle: ElixScreenStyle.forAppBrightness(
+                Theme.of(context).brightness,
+              ),
             ),
           ),
         );
@@ -332,6 +336,9 @@ class _SearchScreenState extends State<SearchScreen> {
               thread: thread,
               openingPost: openingPost,
               authorDid: widget.localDid,
+              screenStyle: ElixScreenStyle.forAppBrightness(
+                Theme.of(context).brightness,
+              ),
             ),
           ),
         );

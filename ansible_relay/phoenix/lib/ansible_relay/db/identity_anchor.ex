@@ -20,6 +20,7 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
     field(:reason, :string)
     field(:identity_key, :string)
     field(:identity_key_algorithm, :string, default: "ed25519")
+    field(:genesis_commitment, :map)
     field(:handle, :string)
     # v2: verifiable aliases (at://handle, did:key, optional did:plc). Part of
     # the signed body, so stored to keep `to_object` consistent with
@@ -30,6 +31,9 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
     field(:devices, :map, default: %{})
     field(:sig, :string)
     field(:device_sig, :string)
+    # Previous-authority proof for delayed recovery. Kept outside the signed
+    # canonical body, like device_sig, so resolvers can verify the transition.
+    field(:authorization_sig, :string)
     field(:canonical_body, :string)
     field(:state, :string, default: "pending")
     field(:grace_until, :utc_datetime_usec)
@@ -38,8 +42,8 @@ defmodule AnsibleRelay.Db.IdentityAnchor do
     timestamps()
   end
 
-  @castable ~w(did anchor_cid prev_anchor_cid reason identity_key identity_key_algorithm handle
-               also_known_as custody_class schema_version devices sig device_sig
+  @castable ~w(did anchor_cid prev_anchor_cid reason identity_key identity_key_algorithm genesis_commitment handle
+               also_known_as custody_class schema_version devices sig device_sig authorization_sig
                canonical_body state grace_until created_at)a
 
   def changeset(struct, attrs) do

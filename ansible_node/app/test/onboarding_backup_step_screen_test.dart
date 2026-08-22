@@ -1,4 +1,5 @@
 import 'package:ansible_node/screens/onboarding_backup_step_screen.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/services/identity_anchor_service.dart';
 import 'package:ansible_node/services/recovery_readiness_store.dart';
 import 'package:ansible_node/services/relay_anchor_client.dart';
@@ -44,17 +45,64 @@ IdentityAnchorService _service(_RecordingRelayClient relay) {
 Widget _wrap(Widget child) => MaterialApp(home: child);
 
 void main() {
-  testWidgets('publishInitialAnchor is invoked after the v2 anchor',
-      (tester) async {
+  testWidgets('new v1 identity publishes the persisted schema v4 commitment', (
+    tester,
+  ) async {
     final relay = _RecordingRelayClient();
-    await tester.pumpWidget(_wrap(OnboardingBackupStepScreen(
-      did: 'did:plc:alice',
-      handle: 'alice.elix.cool',
-      anchorService: _service(relay),
-      identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
-      readinessStore: InMemoryRecoveryReadinessStore(),
-      onComplete: (_) {},
-    )));
+    final identityKey = InMemoryIdentityKey(_keyHex);
+    final publicKey = await identityKey.publicKeyHex();
+    final commitment = buildDidElixV1GenesisCommitment(
+      genesisKey: publicKey,
+      genesisNonceHex: '01' * 32,
+    );
+    final did = deriveDidElixV1(
+      genesisKey: publicKey,
+      genesisNonceHex: '01' * 32,
+    );
+    final canonicalStore = InMemoryCanonicalIdentityStore(
+      CanonicalIdentity(
+        did: did,
+        handle: 'v1.elix.cool',
+        publicKeyHex: publicKey,
+        genesisCommitment: commitment,
+      ),
+    );
+
+    await tester.pumpWidget(
+      _wrap(
+        OnboardingBackupStepScreen(
+          did: did,
+          handle: 'v1.elix.cool',
+          anchorService: _service(relay),
+          identityKeyForAnchor: identityKey,
+          canonicalIdentityStore: canonicalStore,
+          readinessStore: InMemoryRecoveryReadinessStore(),
+          onComplete: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(relay.submitted.single.schemaVersion, 4);
+    expect(relay.submitted.single.genesisCommitment, commitment);
+  });
+
+  testWidgets('publishInitialAnchor is invoked after the v2 anchor', (
+    tester,
+  ) async {
+    final relay = _RecordingRelayClient();
+    await tester.pumpWidget(
+      _wrap(
+        OnboardingBackupStepScreen(
+          did: 'did:plc:alice',
+          handle: 'alice.elix.cool',
+          anchorService: _service(relay),
+          identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
+          readinessStore: InMemoryRecoveryReadinessStore(),
+          onComplete: (_) {},
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(relay.submitted, hasLength(1));
@@ -66,14 +114,18 @@ void main() {
 
   testWidgets('the backup step appears after create', (tester) async {
     final relay = _RecordingRelayClient();
-    await tester.pumpWidget(_wrap(OnboardingBackupStepScreen(
-      did: 'did:plc:alice',
-      handle: 'alice.elix.cool',
-      anchorService: _service(relay),
-      identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
-      readinessStore: InMemoryRecoveryReadinessStore(),
-      onComplete: (_) {},
-    )));
+    await tester.pumpWidget(
+      _wrap(
+        OnboardingBackupStepScreen(
+          did: 'did:plc:alice',
+          handle: 'alice.elix.cool',
+          anchorService: _service(relay),
+          identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
+          readinessStore: InMemoryRecoveryReadinessStore(),
+          onComplete: (_) {},
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('onboarding_backup_button')), findsOneWidget);
@@ -82,19 +134,24 @@ void main() {
     expect(find.textContaining('沒有備份'), findsOneWidget);
   });
 
-  testWidgets('skipping sets the nag flag and leaves readiness false',
-      (tester) async {
+  testWidgets('skipping sets the nag flag and leaves readiness false', (
+    tester,
+  ) async {
     final relay = _RecordingRelayClient();
     final store = InMemoryRecoveryReadinessStore();
     String? completedDid;
-    await tester.pumpWidget(_wrap(OnboardingBackupStepScreen(
-      did: 'did:plc:alice',
-      handle: 'alice.elix.cool',
-      anchorService: _service(relay),
-      identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
-      readinessStore: store,
-      onComplete: (did) => completedDid = did,
-    )));
+    await tester.pumpWidget(
+      _wrap(
+        OnboardingBackupStepScreen(
+          did: 'did:plc:alice',
+          handle: 'alice.elix.cool',
+          anchorService: _service(relay),
+          identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
+          readinessStore: store,
+          onComplete: (did) => completedDid = did,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('onboarding_skip_button')));
@@ -107,15 +164,19 @@ void main() {
 
   testWidgets('tapping create backup opens the backup screen', (tester) async {
     final relay = _RecordingRelayClient();
-    await tester.pumpWidget(_wrap(OnboardingBackupStepScreen(
-      did: 'did:plc:alice',
-      handle: 'alice.elix.cool',
-      anchorService: _service(relay),
-      identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
-      identityPrivateKeyHex: () async => _keyHex,
-      readinessStore: InMemoryRecoveryReadinessStore(),
-      onComplete: (_) {},
-    )));
+    await tester.pumpWidget(
+      _wrap(
+        OnboardingBackupStepScreen(
+          did: 'did:plc:alice',
+          handle: 'alice.elix.cool',
+          anchorService: _service(relay),
+          identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
+          identityPrivateKeyHex: () async => _keyHex,
+          readinessStore: InMemoryRecoveryReadinessStore(),
+          onComplete: (_) {},
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('onboarding_backup_button')));
@@ -126,8 +187,9 @@ void main() {
     expect(find.byKey(const Key('backup_create_button')), findsOneWidget);
   });
 
-  testWidgets('completing the backup (readiness true) finishes onboarding',
-      (tester) async {
+  testWidgets('completing the backup (readiness true) finishes onboarding', (
+    tester,
+  ) async {
     // When the backup screen returns and a backup exists, the step completes
     // onboarding into the app. We seed readiness=true to simulate a completed
     // backup without driving the real PBKDF2 path (covered by the store tests).
@@ -136,31 +198,37 @@ void main() {
       backupAt: DateTime.utc(2026, 6, 16),
     );
     String? completedDid;
-    await tester.pumpWidget(_wrap(OnboardingBackupStepScreen(
-      did: 'did:plc:alice',
-      handle: 'alice.elix.cool',
-      anchorService: _service(relay),
-      identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
-      identityPrivateKeyHex: () async => _keyHex,
-      readinessStore: store,
-      onComplete: (did) => completedDid = did,
-    )));
+    await tester.pumpWidget(
+      _wrap(
+        OnboardingBackupStepScreen(
+          did: 'did:plc:alice',
+          handle: 'alice.elix.cool',
+          anchorService: _service(relay),
+          identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
+          identityPrivateKeyHex: () async => _keyHex,
+          readinessStore: store,
+          onComplete: (did) => completedDid = did,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Open then immediately back out of the backup screen; because readiness is
     // already true, the step treats it as a completed backup and finishes.
     await tester.tap(find.byKey(const Key('onboarding_backup_button')));
     await tester.pumpAndSettle();
-    Navigator.of(tester.element(find.byKey(const Key('backup_create_button'))))
-        .pop();
+    Navigator.of(
+      tester.element(find.byKey(const Key('backup_create_button'))),
+    ).pop();
     await tester.pumpAndSettle();
 
     expect(completedDid, 'did:plc:alice');
     expect(await store.hasBackup(), isTrue);
   });
 
-  testWidgets('publishInitialAnchor failure is tolerated (account still works)',
-      (tester) async {
+  testWidgets('publishInitialAnchor failure is tolerated (account still works)', (
+    tester,
+  ) async {
     // A relay that throws on submit — the step must still let the user proceed.
     final service = IdentityAnchorService(
       relayClient: _ThrowingRelayClient(),
@@ -170,14 +238,18 @@ void main() {
       now: () => DateTime.utc(2026, 6, 16),
     );
     String? completedDid;
-    await tester.pumpWidget(_wrap(OnboardingBackupStepScreen(
-      did: 'did:plc:alice',
-      handle: 'alice.elix.cool',
-      anchorService: service,
-      identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
-      readinessStore: InMemoryRecoveryReadinessStore(),
-      onComplete: (did) => completedDid = did,
-    )));
+    await tester.pumpWidget(
+      _wrap(
+        OnboardingBackupStepScreen(
+          did: 'did:plc:alice',
+          handle: 'alice.elix.cool',
+          anchorService: service,
+          identityKeyForAnchor: InMemoryIdentityKey(_keyHex),
+          readinessStore: InMemoryRecoveryReadinessStore(),
+          onComplete: (did) => completedDid = did,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Recovery-not-set-up warning is surfaced, but the user can still proceed.

@@ -14,7 +14,7 @@ defmodule AnsibleRelay.DidAccountCache do
   import Ecto.Query
   require Logger
 
-  alias AnsibleRelay.{Repo, Db.DidAccount, Db.VerifiedDid}
+  alias AnsibleRelay.{Repo, Db.DidAccount, Db.DidElixMigration, Db.IdentityAnchor, Db.VerifiedDid}
 
   @table :did_account_cache
   @handle_table :handle_index
@@ -113,7 +113,7 @@ defmodule AnsibleRelay.DidAccountCache do
   defp get_from_db(did) do
     case Repo.get(DidAccount, did) do
       nil ->
-        :not_found
+        get_from_migration(did)
 
       %DidAccount{} = account ->
         entry = %{
@@ -142,6 +142,43 @@ defmodule AnsibleRelay.DidAccountCache do
     _ -> {:error, :unavailable}
   end
 
+  # The durable legacy account row is retained for provenance. Once a
+  # dual-signed migration exists, project its handle/trust metadata through the
+  # active v1 anchor so new writes and routing use the canonical v1 DID without
+  # rewriting historical account state.
+  defp get_from_migration(v1_did) do
+    query =
+      from(m in DidElixMigration,
+        join: legacy in DidAccount,
+        on: legacy.did == m.legacy_did,
+        join: anchor in IdentityAnchor,
+        on: anchor.did == m.v1_did and anchor.state == "active",
+        where: m.state == "completed" and m.v1_did == ^v1_did,
+        select: {legacy, anchor}
+      )
+
+    case Repo.one(query) do
+      nil ->
+        :not_found
+
+      {%DidAccount{} = legacy, %IdentityAnchor{} = anchor} ->
+        entry = %{
+          public_key_hex: anchor.identity_key,
+          signing_algorithm: anchor.identity_key_algorithm || "ed25519",
+          key_version: legacy.key_version || 1,
+          handle: legacy.handle,
+          pds_endpoint: legacy.pds_endpoint,
+          reputation_tier: legacy.reputation_tier,
+          registered_at: legacy.registered_at,
+          expires_at: legacy.expires_at
+        }
+
+        :ets.insert(@table, {v1_did, entry})
+        :ets.insert(@handle_table, {legacy.handle, v1_did})
+        {:ok, entry}
+    end
+  end
+
   @doc "Returns true if the DID is registered and not expired."
   def active?(did) do
     case get(did) do
@@ -163,13 +200,31 @@ defmodule AnsibleRelay.DidAccountCache do
         # Same redeploy rehydration as get/1: fall back to the persisted row.
         try do
           case Repo.get_by(DidAccount, handle: handle) do
-            nil -> :not_found
-            %DidAccount{did: did} -> get_from_db(did) |> then(fn _ -> {:ok, did} end)
+            nil ->
+              :not_found
+
+            %DidAccount{did: did} ->
+              canonical_did = canonical_did_for_account(did)
+
+              case get_from_db(canonical_did) do
+                {:ok, _entry} -> {:ok, canonical_did}
+                other -> other
+              end
           end
         rescue
           _ -> :not_found
         end
     end
+  end
+
+  defp canonical_did_for_account(did) do
+    Repo.one(
+      from(m in DidElixMigration,
+        where: m.state == "completed" and m.legacy_did == ^did,
+        select: m.v1_did
+      )
+    ) ||
+      did
   end
 
   @doc "Return the public key hex for a DID, or nil."
@@ -261,6 +316,19 @@ defmodule AnsibleRelay.DidAccountCache do
     :ok
   end
 
+  @doc "Evict a DID and any known handle from the process-local read cache."
+  def invalidate(did, handle \\ nil) when is_binary(did) do
+    :ets.delete(@table, did)
+
+    if is_binary(handle) do
+      :ets.delete(@handle_table, handle)
+    end
+
+    :ok
+  rescue
+    ArgumentError -> :ok
+  end
+
   @doc "Store a short-lived relay-local Nostr pubkey trust binding."
   def put_nostr_binding(nostr_pubkey, holder_did, reputation_tier, opts \\ [])
       when is_binary(nostr_pubkey) and is_binary(holder_did) and is_binary(reputation_tier) do
@@ -311,21 +379,27 @@ defmodule AnsibleRelay.DidAccountCache do
   @doc "Issue a registration nonce for a public key (TTL: 5 minutes)."
   def issue_nonce(public_key_hex, handle) when is_binary(public_key_hex) and is_binary(handle) do
     now = DateTime.utc_now()
-    expires_at = DateTime.add(now, @nonce_ttl_seconds, :second)
-    nonce = random_nonce()
 
-    with :ok <- ensure_handle_not_pending(handle, now) do
-      :ets.insert(
-        @nonce_table,
-        {public_key_hex, %{nonce: nonce, expires_at: expires_at, handle: handle}}
-      )
+    case pending_nonce(public_key_hex, handle, now) do
+      {:ok, existing} ->
+        {:ok, existing}
 
-      :ets.insert(
-        @pending_handle_table,
-        {handle, %{public_key_hex: public_key_hex, expires_at: expires_at}}
-      )
+      :available ->
+        expires_at = DateTime.add(now, @nonce_ttl_seconds, :second)
+        nonce = random_nonce()
+        entry = %{nonce: nonce, expires_at: expires_at, handle: handle}
 
-      {:ok, %{nonce: nonce, expires_at: expires_at, handle: handle}}
+        :ets.insert(@nonce_table, {public_key_hex, entry})
+
+        :ets.insert(
+          @pending_handle_table,
+          {handle, %{public_key_hex: public_key_hex, expires_at: expires_at}}
+        )
+
+        {:ok, entry}
+
+      {:error, :handle_pending} = error ->
+        error
     end
   end
 
@@ -374,18 +448,34 @@ defmodule AnsibleRelay.DidAccountCache do
     {:ok, %{}}
   end
 
-  defp ensure_handle_not_pending(handle, now) do
+  defp pending_nonce(public_key_hex, handle, now) do
     case :ets.lookup(@pending_handle_table, handle) do
+      [{^handle, %{public_key_hex: ^public_key_hex, expires_at: expires_at}}] ->
+        if DateTime.compare(now, expires_at) == :lt do
+          case :ets.lookup(@nonce_table, public_key_hex) do
+            [
+              {^public_key_hex, %{nonce: nonce, expires_at: ^expires_at, handle: ^handle}}
+            ] ->
+              {:ok, %{nonce: nonce, expires_at: expires_at, handle: handle}}
+
+            _ ->
+              {:error, :handle_pending}
+          end
+        else
+          :ets.delete(@pending_handle_table, handle)
+          :available
+        end
+
       [{^handle, %{expires_at: expires_at}}] ->
         if DateTime.compare(now, expires_at) == :lt do
           {:error, :handle_pending}
         else
           :ets.delete(@pending_handle_table, handle)
-          :ok
+          :available
         end
 
       [] ->
-        :ok
+        :available
     end
   end
 

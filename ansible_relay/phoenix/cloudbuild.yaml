@@ -10,8 +10,11 @@ substitutions:
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
   _ACTIVITY_PUB_DELIVERY_ENABLED: "true"
   _VPC_CONNECTOR: ansible-conn
-  _MIGRATE_JOB_NAME: ansible-relay-dev-migrate
-  _DATABASE_URL_SECRET: relay-database-url:latest
+  # Derive these from _SERVICE_NAME unless a trigger deliberately overrides
+  # them.  This keeps prod builds from ever reusing the dev migration job or
+  # database secret.
+  _MIGRATE_JOB_NAME: __AUTO__
+  _DATABASE_URL_SECRET: __AUTO__
 
 steps:
   - id: verify-identity-contract
@@ -102,7 +105,34 @@ steps:
       - |
         set -eu
         image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA"
+        service="${_SERVICE_NAME}"
         job="${_MIGRATE_JOB_NAME}"
+        database_secret="${_DATABASE_URL_SECRET}"
+
+        if [ "$$job" = "__AUTO__" ]; then
+          job="$${service}-migrate"
+        fi
+
+        if [ "$$database_secret" = "__AUTO__" ]; then
+          case "$$service" in
+            *-prod) database_secret="relay-prod-database-url:latest" ;;
+            *-dev) database_secret="relay-dev-database-url:latest" ;;
+            *) echo "refusing to infer database secret for service $$service" >&2; exit 1 ;;
+          esac
+        fi
+
+        case "$$service" in
+          *-prod)
+            case "$$job:$$database_secret" in
+              *-prod-migrate:relay-prod-database-url:*) ;;
+              *)
+                echo "refusing production deploy with non-production migration target: $$job / $$database_secret" >&2
+                exit 1
+                ;;
+            esac
+            ;;
+        esac
+
         if gcloud run jobs describe "$$job" --region="${_REGION}" --project="$PROJECT_ID" >/dev/null 2>&1; then
           gcloud run jobs update "$$job" --image="$$image" --region="${_REGION}" --project="$PROJECT_ID" --quiet
         else
@@ -112,7 +142,7 @@ steps:
             --project="$PROJECT_ID" \
             --vpc-connector="${_VPC_CONNECTOR}" \
             --vpc-egress=private-ranges-only \
-            --set-secrets=DATABASE_URL=${_DATABASE_URL_SECRET} \
+            --set-secrets=DATABASE_URL=$$database_secret \
             --command=/app/bin/ansible_relay \
             --args='eval,AnsibleRelay.Release.migrate()' \
             --quiet

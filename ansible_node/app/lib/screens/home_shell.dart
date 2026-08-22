@@ -31,6 +31,7 @@ import '../services/app_view_timeline_client.dart';
 import '../services/app_sync_service.dart';
 import '../services/board_access_presentation_service.dart';
 import '../services/contact_resolver.dart';
+import '../services/canonical_identity_store.dart';
 import '../services/discovery_client.dart';
 import '../services/contact_source_sync_service.dart';
 import '../services/messenger_contact_resolver.dart';
@@ -58,6 +59,7 @@ import '../services/relay_ops_client.dart';
 import '../services/relay_reputation_presentation_service.dart';
 import '../services/user_presence_verifier.dart';
 import '../services/sync_capability_service.dart';
+import '../services/sync_authorization_controller.dart';
 import '../services/self_backfill_state_store.dart';
 import '../widgets/ai_provider_setup_sheet.dart';
 import '../widgets/feed_filter_tabs.dart';
@@ -95,6 +97,8 @@ class HomeShell extends StatefulWidget {
     required this.db,
     required this.did,
     this.publicKeyHex,
+    this.identityAliases = const [],
+    this.onIdentityMigrated,
     this.onClearIdentity,
     this.syncRunner,
     this.pullRefreshRunner,
@@ -102,6 +106,7 @@ class HomeShell extends StatefulWidget {
     this.defaultSubscriptionsDiscoveryLoader,
     this.networkStatusMonitor,
     this.userPresenceVerifier,
+    this.syncAuthorizationController,
     this.localeController,
     this.readingPreferencesController,
     this.autoSeedDefaultRelay = true,
@@ -115,6 +120,8 @@ class HomeShell extends StatefulWidget {
   final AppDatabase db;
   final String did;
   final String? publicKeyHex;
+  final List<String> identityAliases;
+  final ValueChanged<CanonicalIdentity>? onIdentityMigrated;
 
   /// When true (default), a default relay node is seeded on first run if the
   /// local node list is empty. Tests that assert first-run-without-relay set
@@ -127,6 +134,7 @@ class HomeShell extends StatefulWidget {
   final Future<RelayDiscovery> Function()? defaultSubscriptionsDiscoveryLoader;
   final NetworkStatusMonitor? networkStatusMonitor;
   final UserPresenceVerifier? userPresenceVerifier;
+  final SyncAuthorizationController? syncAuthorizationController;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
 
@@ -174,6 +182,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final NetworkStatusMonitor _networkStatusService;
   late final bool _ownsNetworkStatusService;
   final Map<String, SyncCapabilityService> _syncCapabilityServices = {};
+  late final SyncAuthorizationController _syncAuthorizationController;
 
   List<Board> _boards = [];
   List<PostCardData> _posts = [];
@@ -209,6 +218,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     for (final tab in ElixTab.values) tab: ElixScreenStyle.paper,
   };
   final _uuid = const Uuid();
+
+  Set<String> get _localDids => {widget.did, ...widget.identityAliases};
 
   @override
   void initState() {
@@ -288,6 +299,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _atProtoClient = AtProtoClient();
     _networkStatusService =
         widget.networkStatusMonitor ?? NetworkStatusService();
+    _syncAuthorizationController =
+        widget.syncAuthorizationController ??
+        (widget.userPresenceVerifier == null
+            ? SyncAuthorizationController.shared
+            : SyncAuthorizationController());
     _ownsNetworkStatusService = widget.networkStatusMonitor == null;
     _lastNetworkStatus = _networkStatusService.status;
     _networkStatusService.addListener(_handleNetworkStatusChanged);
@@ -377,6 +393,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_syncAuthorizationController.invalidate());
     _networkStatusService.removeListener(_handleNetworkStatusChanged);
     if (_ownsNetworkStatusService) {
       _networkStatusService.dispose();
@@ -393,17 +410,34 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       // A content-free identity_alert wake resumes the app here — re-check
       // for a pending recovery so the veto alert appears without a restart.
       unawaited(_checkPendingRecovery());
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      // Do not invalidate on `inactive`: iOS can transiently report it while
+      // presenting the Face ID system sheet itself. Background/lock states
+      // still close the authorization window immediately.
+      unawaited(_syncAuthorizationController.invalidate());
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.did != widget.did) {
+      unawaited(_syncAuthorizationController.invalidate());
     }
   }
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
     final l10n = context.l10n;
-    await ContactSourceSyncService(
-      followRepository: _followRepo,
-      contactRepository: _contactRepo,
-      messengerRepository: _messengerRepo,
-    ).syncForIdentity(widget.did);
+    for (final did in _localDids) {
+      await ContactSourceSyncService(
+        followRepository: _followRepo,
+        contactRepository: _contactRepo,
+        messengerRepository: _messengerRepo,
+      ).syncForIdentity(did);
+    }
     if (!_notificationBackfillDone) {
       await _notificationRebuilder.rebuild();
       _notificationBackfillDone = true;
@@ -420,7 +454,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final hasActiveRelay = hasActiveRemoteNode || hasActiveForumHost;
     final showFirstRunDiscovery = !hasActiveRelay && !hasHostedBoards;
     final boards = await _boardRepo.list();
-    final contentItems = await _contentItemRepo.list(authorDid: widget.did);
+    final contentItemsByDid = await Future.wait(
+      _localDids.map((did) => _contentItemRepo.list(authorDid: did)),
+    );
+    final contentItems = {
+      for (final item in contentItemsByDid.expand((items) => items))
+        item.id: item,
+    }.values.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     final murmurReferenceCounts = <String, int>{};
     for (final item in contentItems) {
       if (item.mode != ContentMode.murmur) continue;
@@ -452,7 +492,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           usersByReactionType
               .putIfAbsent(r.reactionType.name, () => <String>{})
               .add(r.userId);
-          if (r.userId == widget.did &&
+          if (_localDids.contains(r.userId) &&
               r.reactionType == store.ReactionType.thumbsUp) {
             userReacted[t.id] = true;
           }
@@ -758,7 +798,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           localDid: widget.did,
           opsDispatchService: _opsDispatchService,
           onFlushPendingOps: _flushPendingOps,
-          // Follow the Forum board's Paper/Ink choice into the board detail.
+          // This is the user's Forum Paper/Ink choice. It is independent of
+          // the device appearance, so opening the board from this list must
+          // not turn a Paper forum dark merely because iOS is dark.
           screenStyle: _screenStyles[ElixTab.circle] ?? ElixScreenStyle.paper,
         ),
       ),
@@ -1214,7 +1256,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         usersByReactionType
             .putIfAbsent(reaction.reactionType.name, () => <String>{})
             .add(reaction.userId);
-        if (reaction.userId == widget.did &&
+        if (_localDids.contains(reaction.userId) &&
             reaction.reactionType == store.ReactionType.thumbsUp) {
           reacted = true;
         }
@@ -1906,9 +1948,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         await keyClient.registerDevice(
           capability: capability,
           publicKeyHex: publicKey.publicKeyHex,
+          reuseAuthenticationContext: reuseHardwareAuthenticationContext,
         );
         final envelope = await keyClient.currentEnvelope(
           capability: capability,
+          reuseAuthenticationContext: reuseHardwareAuthenticationContext,
         );
         if (envelope.epoch != board.encryptionEpoch ||
             envelope.policyVersion != board.accessPolicyVersion) {
@@ -1969,6 +2013,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           baseUrl: node.url,
           holderDid: widget.did,
           platformCapabilities: capabilities,
+          didSigner: syncDidSigner,
         ),
       ),
       allowIdentityWrites: capabilities.webAuthn,
@@ -2029,6 +2074,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         setState(() => _dest = _ShellDest.board);
         _selectBoardSwipe(HomeBoard.personal);
       },
+      onIdentityMigrated: widget.onIdentityMigrated,
     );
   }
 
@@ -2064,7 +2110,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     try {
       final runner = widget.pullRefreshRunner;
       final result = runner == null
-          ? await _appSyncService().pullLatestFromRelays()
+          ? await _appSyncService().pullLatestFromRelays(
+              allowBoardProofs: false,
+            )
           : await runner();
       if (result.pulledActivities > 0) {
         await _loadData();
@@ -2086,11 +2134,60 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return relays.any((relay) => relay.write);
   }
 
+  Future<SyncAuthenticationSession?> _beginSyncAuthentication(
+    String reason,
+  ) async {
+    final verifier = widget.userPresenceVerifier;
+    if (verifier != null) {
+      return await verifier.verify(reason: reason)
+          ? const PresenceOnlySyncAuthenticationSession()
+          : null;
+    }
+    final hardware = await HardwareAuthenticationSession.begin(
+      localizedReason: reason,
+    );
+    if (hardware != null) return HardwareSyncAuthenticationSession(hardware);
+    return await LocalDeviceUserPresenceVerifier().verify(reason: reason)
+        ? const PresenceOnlySyncAuthenticationSession()
+        : null;
+  }
+
+  AppSyncResult _mergePullResult(
+    RelayPullSummary initialPull,
+    AppSyncResult signedResult,
+  ) {
+    return AppSyncResult(
+      pulledActivities:
+          initialPull.pulledActivities + signedResult.pulledActivities,
+      pullErrors: {
+        ...initialPull.pullErrors,
+        ...signedResult.pullErrors,
+      }.toList(),
+      reputationErrors: signedResult.reputationErrors,
+      publishSummary: signedResult.publishSummary,
+      opsSummary: signedResult.opsSummary,
+    );
+  }
+
+  AppSyncResult _pullOnlyResult(RelayPullSummary pull) {
+    return AppSyncResult(
+      pulledActivities: pull.pulledActivities,
+      pullErrors: pull.pullErrors,
+      publishSummary: const PublicPublishSummary(publicItems: 0),
+    );
+  }
+
   Future<void> _runHeaderSync({
     bool showSnackBar = true,
     bool pullRemote = true,
+    bool pushLocal = true,
+    bool requireUserPresence = true,
   }) async {
     if (_syncing) return;
+    final authenticationReason = context.uiCopy(
+      zh: '即將以你的身分簽署並上傳待同步資料，或存取受保護看板。請確認由你本人操作。',
+      en: 'Elix needs to sign pending sync data or access a protected board. Confirm that this is you.',
+    );
     if (showSnackBar &&
         widget.syncRunner == null &&
         !await _hasConfiguredSyncTargets()) {
@@ -2102,55 +2199,87 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
       return;
     }
-    HardwareAuthenticationSession? hardwareAuthenticationSession;
-    if (showSnackBar) {
-      if (!mounted) return;
-      final verifier = widget.userPresenceVerifier;
-      final authenticationReason = context.uiCopy(
-        zh: '即將以你的身分簽署並上傳待同步的公開或不公開資料。請確認由你本人操作。',
-        en: 'Pending public or unlisted data will be signed with your identity and uploaded. Confirm that this is you.',
-      );
-      final authenticated = verifier == null && widget.syncRunner != null
-          ? true
-          : verifier == null
-          ? (hardwareAuthenticationSession =
-                        await HardwareAuthenticationSession.begin(
-                          localizedReason: authenticationReason,
-                        )) !=
-                    null ||
-                await LocalDeviceUserPresenceVerifier().verify(
-                  reason: authenticationReason,
-                )
-          : await verifier.verify(reason: authenticationReason);
-      if (!authenticated) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.uiCopy(
-                zh: '未完成裝置驗證，未上傳任何資料；本機資料未變更。',
-                en: 'Device authentication was not completed. Nothing was uploaded and local data was unchanged.',
-              ),
-            ),
-          ),
-        );
-        return;
-      }
-    }
     setState(() => _syncing = true);
+    SyncAuthorizationGrant? authorizationGrant;
     try {
       final runner = widget.syncRunner;
-      final result = runner == null
-          ? await _appSyncService(
-              reuseHardwareAuthenticationContext:
-                  hardwareAuthenticationSession != null,
-            ).syncAll(
-              // iOS keeps this LAContext only for the current explicit sync.
-              // Every capability proof still has its own nonce and signature.
-              pullRemote: pullRemote,
-              pushLocal: showSnackBar,
-            )
-          : await runner();
+      AppSyncResult result;
+      if (runner != null) {
+        // Injected runners are a test seam. A supplied verifier still exercises
+        // the same short-lived authorization-window behavior.
+        if (requireUserPresence && widget.userPresenceVerifier != null) {
+          authorizationGrant = await _syncAuthorizationController.acquire(
+            scope: widget.did,
+            authenticate: () => _beginSyncAuthentication(authenticationReason),
+          );
+          if (authorizationGrant == null) {
+            if (mounted && showSnackBar) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    context.uiCopy(
+                      zh: '未完成裝置驗證，未上傳任何資料；本機資料未變更。',
+                      en: 'Device authentication was not completed. Nothing was uploaded and local data was unchanged.',
+                    ),
+                  ),
+                ),
+              );
+            }
+            return;
+          }
+        }
+        result = await runner();
+      } else {
+        // Always perform the public/read-only pull first. It does not create a
+        // signature and therefore must not trigger Face ID.
+        final planningService = _appSyncService();
+        final initialPull = pullRemote
+            ? await planningService.pullLatestFromRelays(
+                allowBoardProofs: false,
+              )
+            : const RelayPullSummary(pulledActivities: 0);
+        final requirement = requireUserPresence
+            ? await planningService.authorizationRequirement(
+                includeProtectedBoardReads: pullRemote,
+                includeRelayWrites: pushLocal,
+              )
+            : const SyncAuthorizationRequirement();
+
+        if (!requirement.isRequired) {
+          result = _pullOnlyResult(initialPull);
+        } else {
+          authorizationGrant = await _syncAuthorizationController.acquire(
+            scope: widget.did,
+            authenticate: () => _beginSyncAuthentication(authenticationReason),
+          );
+          if (authorizationGrant == null) {
+            if (initialPull.pulledActivities > 0) await _loadData();
+            if (mounted && showSnackBar) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    context.uiCopy(
+                      zh: '已完成公開資料拉取；未完成裝置驗證，因此未處理需簽署的同步項目。',
+                      en: 'Public data was pulled. Signed sync work was skipped because device authentication was not completed.',
+                    ),
+                  ),
+                ),
+              );
+            }
+            return;
+          }
+          final signedResult =
+              await _appSyncService(
+                reuseHardwareAuthenticationContext:
+                    authorizationGrant.reuseHardwareAuthenticationContext,
+              ).syncAll(
+                pullRemote: requirement.protectedBoardReads,
+                pushLocal: requirement.relayWrites,
+                allowBoardProofs: requirement.protectedBoardReads,
+              );
+          result = _mergePullResult(initialPull, signedResult);
+        }
+      }
       await _loadData();
       if (!mounted) return;
       if (showSnackBar) {
@@ -2172,7 +2301,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ),
       );
     } finally {
-      await hardwareAuthenticationSession?.close();
+      await authorizationGrant?.release();
       if (mounted) {
         setState(() => _syncing = false);
       }
@@ -2614,8 +2743,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       },
       // Refresh is read-only. Pulling remote data must never require a fresh
       // biometric/device ceremony or silently upload local operations.
-      onRefresh: () =>
-          unawaited(_runHeaderSync(showSnackBar: false, pullRemote: true)),
+      onRefresh: () => unawaited(
+        _runHeaderSync(
+          showSnackBar: false,
+          pullRemote: true,
+          pushLocal: false,
+          requireUserPresence: false,
+        ),
+      ),
       child: shell,
     );
   }

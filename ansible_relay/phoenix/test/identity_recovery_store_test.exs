@@ -100,6 +100,61 @@ defmodule AnsibleRelay.Identity.RecoveryStoreTest do
     assert RecoveryStore.status(did)["remaining"] == 1
   end
 
+  test "v1 rejects recovery-code-only authority without consuming the code" do
+    {old_public, old_private} = keypair()
+
+    commitment = %{
+      "method" => "did:elix",
+      "method_version" => 1,
+      "genesis_key" => old_public,
+      "genesis_nonce" => String.duplicate("01", 32)
+    }
+
+    {:ok, did} = AnsibleRelay.DidElix.derive_v1(commitment)
+
+    initial =
+      v1_anchor(did, old_public, old_private, commitment, "initial", nil)
+
+    assert {:ok, :active, active} = AnchorStore.submit(initial)
+
+    code = "ABCDE-FGHIJ-KLMNO-PQRST"
+
+    config = %{
+      "type" => "io.trisaura.identity.recoveryCodes",
+      "version" => 1,
+      "did" => did,
+      "generated_at" => "2026-08-19T12:00:00Z",
+      "code_hashes" => [
+        %{"id" => "code-1", "hash" => RecoveryStore.hash_code(did, code), "hint" => "ABCD"}
+      ]
+    }
+
+    assert {:ok, _} =
+             RecoveryStore.configure(
+               Map.put(
+                 config,
+                 "signature",
+                 sign(old_private, RecoveryStore.canonical_configuration(config))
+               )
+             )
+
+    {new_public, new_private} = keypair()
+
+    recovery =
+      v1_anchor(
+        did,
+        new_public,
+        new_private,
+        commitment,
+        "recovery",
+        active.anchor_cid
+      )
+
+    assert {:error, :invalid_recovery_proof} = RecoveryStore.recover(recovery, code)
+    assert RecoveryStore.status(did)["remaining"] == 1
+    assert RecoveryStore.status(did)["used"] == 0
+  end
+
   defp anchor(did, public, private, reason, previous_cid) do
     unsigned = %{
       "type" => "io.trisaura.identity.anchor",
@@ -113,6 +168,26 @@ defmodule AnsibleRelay.Identity.RecoveryStoreTest do
       "prev_anchor_cid" => previous_cid,
       "reason" => reason,
       "created_at" => "2026-07-22T12:00:00Z"
+    }
+
+    Map.put(unsigned, "sig", sign(private, AnchorStore.canonical_body(unsigned)))
+  end
+
+  defp v1_anchor(did, public, private, commitment, reason, previous_cid) do
+    unsigned = %{
+      "type" => "io.trisaura.identity.anchor",
+      "schema_version" => 4,
+      "did" => did,
+      "handle" => "recovery.elix.cool",
+      "identity_key" => public,
+      "identity_key_algorithm" => "ed25519",
+      "genesis_commitment" => commitment,
+      "also_known_as" => [],
+      "custody_class" => "software",
+      "devices" => [],
+      "prev_anchor_cid" => previous_cid,
+      "reason" => reason,
+      "created_at" => "2026-08-19T12:00:00.000Z"
     }
 
     Map.put(unsigned, "sig", sign(private, AnchorStore.canonical_body(unsigned)))

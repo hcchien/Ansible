@@ -14,10 +14,6 @@ void main() {
     'registration mints a self-certifying did:elix and anchors it with the relay',
     (tester) async {
       final passkeyPublicKey = 'ab' * 32;
-      final expectedDid = deriveDidElix(
-        identityKey: passkeyPublicKey,
-        handle: 'user.elix.cool',
-      );
       final passkeys = _FakePasskeysManager(passkeyPublicKey);
       final store = InMemoryCanonicalIdentityStore();
       final atProto = _FakeAtProtoClient();
@@ -46,13 +42,23 @@ void main() {
         await tester.pump(const Duration(milliseconds: 10));
       }
 
-      expect(expectedDid, startsWith('did:elix:'));
+      final commitment = atProto.anchorRequest!.genesisCommitment!;
+      final expectedDid = deriveDidElixV1(
+        genesisKey: passkeyPublicKey,
+        genesisNonceHex: commitment['genesis_nonce']! as String,
+      );
+      final expectedProof = didElixV1RegistrationPayload(
+        nonce: 'nonce-1',
+        did: expectedDid,
+        genesisCommitment: commitment,
+      );
+      expect(expectedDid, startsWith('did:elix:z'));
       expect(atProto.registeredPublicKeyHex, passkeyPublicKey);
       expect(atProto.anchorRequest?.did, expectedDid);
       expect(atProto.anchorRequest?.publicKeyHex, passkeyPublicKey);
-      expect(atProto.anchorRequest?.registrationSig, 'sig-for-nonce-1');
+      expect(atProto.anchorRequest?.registrationSig, 'sig-for-$expectedProof');
       expect(atProto.anchorRequest?.nonce, 'nonce-1');
-      expect(signedNonce, 'nonce-1');
+      expect(signedNonce, expectedProof);
       expect(signingPublicKey, passkeyPublicKey);
       expect(registeredDid, expectedDid);
 
@@ -61,6 +67,7 @@ void main() {
       expect(persisted?.did, expectedDid);
       expect(persisted?.handle, 'user.elix.cool');
       expect(persisted?.publicKeyHex, passkeyPublicKey);
+      expect(persisted?.genesisCommitment, commitment);
     },
   );
 
@@ -128,10 +135,8 @@ void main() {
     }
 
     expect(atProto.anchorRequest?.registrationSig, startsWith('dev-sig-'));
-    expect(
-      registeredDid,
-      deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'),
-    );
+    expect(registeredDid, startsWith('did:elix:z'));
+    expect(atProto.anchorRequest?.genesisCommitment, isNotNull);
   });
 
   testWidgets('registration can complete locally when dev relay is offline', (
@@ -160,10 +165,7 @@ void main() {
     }
 
     expect(atProto.registerCalled, isTrue);
-    expect(
-      registeredDid,
-      deriveDidElix(identityKey: 'cd' * 32, handle: 'user.elix.cool'),
-    );
+    expect(registeredDid, startsWith('did:elix:z'));
     expect(await store.load(), isNotNull);
     expect(passkeys.deleteCalled, isFalse);
   });

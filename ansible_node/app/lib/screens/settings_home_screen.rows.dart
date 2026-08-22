@@ -194,6 +194,94 @@ class _IdentityCustodyRowState extends State<_IdentityCustodyRow> {
   }
 }
 
+class _IdentityMigrationRow extends StatefulWidget {
+  const _IdentityMigrationRow({
+    required this.db,
+    required this.did,
+    this.onMigrated,
+  });
+
+  final AppDatabase db;
+  final String did;
+  final ValueChanged<CanonicalIdentity>? onMigrated;
+
+  @override
+  State<_IdentityMigrationRow> createState() => _IdentityMigrationRowState();
+}
+
+class _IdentityMigrationRowState extends State<_IdentityMigrationRow> {
+  late Future<CanonicalIdentity?> _identity;
+
+  @override
+  void initState() {
+    super.initState();
+    _identity = const SecureCanonicalIdentityStore().load();
+  }
+
+  Future<void> _open(CanonicalIdentity identity) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => IdentityMigrationScreen(db: widget.db, did: widget.did),
+      ),
+    );
+
+    // The secure canonical identity switches only after Relay confirmation.
+    // Re-read it when the route closes so system-back and the explicit Done
+    // button both refresh every DID-scoped service in HomeShell.
+    final latest = await const SecureCanonicalIdentityStore().load();
+    if (!mounted || latest == null || latest.did == identity.did) return;
+    widget.onMigrated?.call(latest);
+    setState(() => _identity = Future.value(latest));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<CanonicalIdentity?>(
+      future: _identity,
+      builder: (context, snapshot) {
+        final identity = snapshot.data;
+        final isV1 =
+            identity != null &&
+            RegExp(r'^did:elix:z[a-z2-7]{52}$').hasMatch(identity.did);
+        final isLegacy =
+            identity != null &&
+            RegExp(r'^did:elix:[a-z2-7]{10,}$').hasMatch(identity.did) &&
+            !isV1;
+        return AnsibleSettingsRow(
+          key: const Key('settings_identity_migration_row'),
+          glyph: '↗',
+          label: context.uiCopy(
+            zh: 'did:elix 身分版本',
+            en: 'did:elix identity version',
+          ),
+          en: 'IDENTITY',
+          sub: isV1
+              ? context.uiCopy(
+                  zh: '已使用 v1；歷史 DID 保留為可驗證別名。請確認已建立新的恢復碼',
+                  en: 'Using v1; historical DIDs remain verifiable aliases. Confirm fresh recovery codes are configured',
+                )
+              : isLegacy
+              ? context.uiCopy(
+                  zh: '保留帳號名稱與歷史簽章，明確同意後升級',
+                  en: 'Keep the handle and signed history; upgrade with explicit consent',
+                )
+              : context.uiCopy(
+                  zh: '此身分類型目前無法使用 v1 遷移',
+                  en: 'This identity type is not eligible for v1 migration',
+                ),
+          value: isV1
+              ? context.uiCopy(zh: 'v1', en: 'v1')
+              : isLegacy
+              ? context.uiCopy(zh: '可升級', en: 'Upgrade')
+              : context.uiCopy(zh: '不適用', en: 'N/A'),
+          valueColor: isV1 ? AnsibleDesign.spore : AnsibleDesign.ochre,
+          onTap: isLegacy ? () => _open(identity) : null,
+        );
+      },
+    );
+  }
+}
+
 class _LanguageSettingsRow extends StatelessWidget {
   const _LanguageSettingsRow({
     required this.localeController,

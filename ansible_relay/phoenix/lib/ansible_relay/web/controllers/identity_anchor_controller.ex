@@ -18,7 +18,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.Identity.{AnchorStore, FederatedResolver}
+  alias AnsibleRelay.Identity.{AnchorStore, FederatedResolver, MigrationStore}
 
   # POST /api/v1/identity/anchor
   def submit(conn, params) do
@@ -53,6 +53,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
       {:error, :did_mismatch} ->
         send_json(conn, 422, %{error: "did_mismatch"})
 
+      {:error, :invalid_genesis_commitment} ->
+        send_json(conn, 422, %{error: "invalid_genesis_commitment"})
+
+      {:error, :unsupported_schema_version} ->
+        send_json(conn, 422, %{error: "unsupported_schema_version"})
+
       {:error, :invalid_signature} ->
         send_json(conn, 401, %{error: "invalid_signature"})
 
@@ -62,6 +68,9 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
       {:error, :invalid_recovery_proof} ->
         send_json(conn, 401, %{error: "invalid_recovery_proof"})
 
+      {:error, :invalid_transition} ->
+        send_json(conn, 422, %{error: "invalid_transition"})
+
       {:error, :conflict} ->
         send_json(conn, 409, %{error: "conflict"})
 
@@ -70,6 +79,12 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
 
       {:error, :locked} ->
         send_json(conn, 423, %{error: "account_frozen"})
+
+      {:error, :migrated} ->
+        send_json(conn, 409, %{error: "identity_migrated"})
+
+      {:error, :unavailable} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
     end
   end
 
@@ -95,13 +110,26 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
         # Consumers that must make a security decision (such as Issuer) need
         # the byte-exact signed message, not an unauthenticated key cache.
         # This is public identity material; it contains no passport data.
-        send_json(conn, 200, Map.put(object, "canonical_body", AnchorStore.canonical_body(object)))
+        send_json(
+          conn,
+          200,
+          Map.put(object, "canonical_body", AnchorStore.canonical_body(object))
+        )
 
       {:error, :not_found} ->
         send_json(conn, 404, %{error: "anchor_not_found"})
 
       {:error, :locked} ->
         send_json(conn, 423, %{error: "account_frozen"})
+    end
+  end
+
+  def chain(conn, %{"did" => did}) do
+    case AnchorStore.get_chain(did) do
+      {:ok, anchors} -> send_json(conn, 200, %{did: did, anchors: anchors})
+      {:error, :not_found} -> send_json(conn, 404, %{error: "anchor_not_found"})
+      {:error, :locked} -> send_json(conn, 423, %{error: "account_frozen"})
+      {:error, :invalid_chain} -> send_json(conn, 409, %{error: "invalid_chain"})
     end
   end
 
@@ -116,13 +144,47 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
       {:ok, object, source} ->
         conn
         |> put_resp_header("x-ansible-resolved-via", resolved_via(source))
-        |> send_json(200, did_document(conn, object))
+        |> send_json(200, did_document(conn, object, source))
 
       {:error, :not_found} ->
         send_json(conn, 404, %{error: "did_not_found"})
 
       {:error, :locked} ->
         send_json(conn, 423, %{error: "account_frozen"})
+    end
+  end
+
+  # Universal Resolver-compatible HTTP binding. The DID document remains the
+  # same verified projection; metadata is separated into the DID Resolution
+  # result envelope expected by independent resolver clients.
+  def resolve_universal(conn, %{"did" => did}) do
+    case FederatedResolver.resolve(did) do
+      {:ok, object, source} ->
+        document = did_document(conn, object, source)
+        {metadata, did_document} = Map.pop(document, "didResolutionMetadata", %{})
+
+        send_json(conn, 200, %{
+          "didDocument" => did_document,
+          "didResolutionMetadata" => Map.put(metadata, "contentType", "application/did+ld+json"),
+          "didDocumentMetadata" => %{
+            "equivalentId" => MigrationStore.aliases_for(did),
+            "updated" => object["created_at"]
+          }
+        })
+
+      {:error, :not_found} ->
+        send_json(conn, 404, %{
+          "didDocument" => nil,
+          "didResolutionMetadata" => %{"error" => "notFound"},
+          "didDocumentMetadata" => %{}
+        })
+
+      {:error, :locked} ->
+        send_json(conn, 423, %{
+          "didDocument" => nil,
+          "didResolutionMetadata" => %{"error" => "deactivated"},
+          "didDocumentMetadata" => %{}
+        })
     end
   end
 
@@ -171,26 +233,13 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
   end
 
   # Project a W3C DID document from the active-anchor object map.
-  defp did_document(conn, object) do
+  defp did_document(conn, object, source) do
     did = object["did"]
-    aka = object["also_known_as"] || []
+    aka = Enum.uniq((object["also_known_as"] || []) ++ MigrationStore.aliases_for(did))
     vm_id = "#{did}#identity"
 
     verification_method =
-      case did_key_multibase(aka) do
-        nil ->
-          []
-
-        multibase ->
-          [
-            %{
-              "id" => vm_id,
-              "type" => "Ed25519VerificationKey2020",
-              "controller" => did,
-              "publicKeyMultibase" => multibase
-            }
-          ]
-      end
+      verification_method(object, aka, vm_id, did)
 
     %{
       "@context" => ["https://www.w3.org/ns/did/v1"],
@@ -205,17 +254,56 @@ defmodule AnsibleRelay.Web.Controllers.IdentityAnchorController do
           "type" => "AnsibleRelay",
           "serviceEndpoint" => relay_endpoint(conn)
         }
-      ]
+      ],
+      "didResolutionMetadata" => %{
+        "methodVersion" => if(object["schema_version"] >= 4, do: 1, else: 0),
+        "anchorCid" => object["anchor_cid"],
+        "source" => resolved_via(source)
+      }
     }
   end
 
-  # The `did:key` alias carries the multibase form of the identity key; the
-  # DID document's `publicKeyMultibase` is exactly that suffix.
-  defp did_key_multibase(also_known_as) do
-    Enum.find_value(also_known_as, fn
-      "did:key:" <> multibase -> multibase
-      _ -> nil
-    end)
+  defp verification_method(
+         %{"identity_key_algorithm" => "p256-sha256"} = object,
+         _aka,
+         vm_id,
+         did
+       ) do
+    with {:ok, <<4, x::binary-size(32), y::binary-size(32)>>} <-
+           Base.decode16(object["identity_key"], case: :mixed) do
+      [
+        %{
+          "id" => vm_id,
+          "type" => "JsonWebKey2020",
+          "controller" => did,
+          "publicKeyJwk" => %{
+            "kty" => "EC",
+            "crv" => "P-256",
+            "x" => Base.url_encode64(x, padding: false),
+            "y" => Base.url_encode64(y, padding: false)
+          }
+        }
+      ]
+    else
+      _ -> []
+    end
+  end
+
+  defp verification_method(object, _aka, vm_id, did) do
+    case AnsibleRelay.DidElix.ed25519_multibase(object["identity_key"]) do
+      {:error, _} ->
+        []
+
+      {:ok, multibase} ->
+        [
+          %{
+            "id" => vm_id,
+            "type" => "Ed25519VerificationKey2020",
+            "controller" => did,
+            "publicKeyMultibase" => multibase
+          }
+        ]
+    end
   end
 
   defp relay_endpoint(conn) do

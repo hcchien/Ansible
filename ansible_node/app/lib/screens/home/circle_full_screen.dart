@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_l10n.dart';
 import '../../theme/ansible_design.dart';
+import '../../services/canonical_identity_store.dart';
 import '../murmur_screen.dart';
 import '../note_workspace_screen.dart';
 import '../edit_profile_screen.dart';
@@ -69,9 +70,11 @@ class _CircleFullScreenState extends State<CircleFullScreen> {
     final self = await DriftContactRepository(
       widget.db,
     ).contactForDid(widget.did);
+    final canonical = await const SecureCanonicalIdentityStore().load();
     final isPublic =
         (self?.handle?.trim().isNotEmpty ?? false) ||
-        (self?.displayName?.trim().isNotEmpty ?? false);
+        (self?.displayName?.trim().isNotEmpty ?? false) ||
+        (canonical?.did == widget.did && canonical!.handle.trim().isNotEmpty);
     if (isPublic || !mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

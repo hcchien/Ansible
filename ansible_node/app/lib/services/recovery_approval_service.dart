@@ -102,6 +102,7 @@ class RecoveryApprovalService {
     approvedDevices.add(deviceRecord);
 
     final unsigned = IdentityAnchor(
+      schemaVersion: previous.schemaVersion,
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
@@ -111,6 +112,7 @@ class RecoveryApprovalService {
           ? buildAlsoKnownAs(handle: handle, identityKeyHex: identityKeyHex)
           : ['at://$handle'],
       identityKeyAlgorithm: identityAlgorithm,
+      genesisCommitment: previous.genesisCommitment,
       custodyClass: identityCustody,
       devices: approvedDevices,
       prevAnchorCid: previous.computeCid(),
@@ -122,10 +124,12 @@ class RecoveryApprovalService {
       utf8.encode(unsigned.canonicalBodyJson()),
     );
     final anchor = IdentityAnchor(
+      schemaVersion: unsigned.schemaVersion,
       did: did,
       handle: handle,
       identityKey: identityKeyHex,
       identityKeyAlgorithm: identityAlgorithm,
+      genesisCommitment: unsigned.genesisCommitment,
       alsoKnownAs: unsigned.alsoKnownAs,
       custodyClass: identityCustody,
       devices: approvedDevices,
@@ -151,6 +155,7 @@ class RecoveryApprovalService {
         custody: request.anchor.custodyClass == CustodyClass.hardware
             ? 'hardware'
             : 'reduced_trust',
+        genesisCommitment: request.anchor.genesisCommitment,
       ),
     );
     await deviceKeyStore.save(request.deviceKey);

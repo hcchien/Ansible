@@ -14,10 +14,10 @@ class AnchorChainVerification {
   final String? detail;
 
   const AnchorChainVerification.valid()
-      : isValid = true,
-        error = null,
-        failedAtIndex = null,
-        detail = null;
+    : isValid = true,
+      error = null,
+      failedAtIndex = null,
+      detail = null;
 
   const AnchorChainVerification.invalid(
     this.error, {
@@ -39,6 +39,9 @@ enum AnchorChainError {
   badReason,
   nonGenesisMissingPrev,
   schemaVersionUnsupported,
+  invalidGenesisCommitment,
+  genesisCommitmentChanged,
+  didMismatch,
 }
 
 /// Verifies that an ordered list of anchors (genesis first, newest last) forms
@@ -65,6 +68,8 @@ class IdentityAnchorChain {
       return const AnchorChainVerification.invalid(AnchorChainError.empty);
     }
 
+    Map<String, Object?>? v1Commitment;
+
     for (var i = 0; i < anchors.length; i++) {
       final anchor = anchors[i];
 
@@ -72,8 +77,54 @@ class IdentityAnchorChain {
         return AnchorChainVerification.invalid(
           AnchorChainError.schemaVersionUnsupported,
           failedAtIndex: i,
-          detail: 'schema_version ${anchor.schemaVersion} > '
+          detail:
+              'schema_version ${anchor.schemaVersion} > '
               '${IdentityAnchor.currentSchemaVersion}',
+        );
+      }
+
+      if (anchor.schemaVersion >= 4) {
+        final commitment = anchor.genesisCommitment;
+        try {
+          if (commitment == null ||
+              commitment['method'] != 'did:elix' ||
+              commitment['method_version'] != 1) {
+            throw const FormatException();
+          }
+          final expectedDid = deriveDidElixV1(
+            genesisKey: commitment['genesis_key'] as String? ?? '',
+            genesisNonceHex: commitment['genesis_nonce'] as String? ?? '',
+          );
+          if (expectedDid != anchor.did) {
+            return AnchorChainVerification.invalid(
+              AnchorChainError.didMismatch,
+              failedAtIndex: i,
+            );
+          }
+          if (i == 0 && commitment['genesis_key'] != anchor.identityKey) {
+            return const AnchorChainVerification.invalid(
+              AnchorChainError.invalidGenesisCommitment,
+              failedAtIndex: 0,
+            );
+          }
+          if (v1Commitment != null &&
+              !_sameCommitment(v1Commitment, commitment)) {
+            return AnchorChainVerification.invalid(
+              AnchorChainError.genesisCommitmentChanged,
+              failedAtIndex: i,
+            );
+          }
+          v1Commitment ??= commitment;
+        } catch (_) {
+          return AnchorChainVerification.invalid(
+            AnchorChainError.invalidGenesisCommitment,
+            failedAtIndex: i,
+          );
+        }
+      } else if (v1Commitment != null) {
+        return AnchorChainVerification.invalid(
+          AnchorChainError.genesisCommitmentChanged,
+          failedAtIndex: i,
         );
       }
 
@@ -114,7 +165,8 @@ class IdentityAnchorChain {
           return AnchorChainVerification.invalid(
             AnchorChainError.brokenLink,
             failedAtIndex: i,
-            detail: 'prev_anchor_cid ${anchor.prevAnchorCid} != '
+            detail:
+                'prev_anchor_cid ${anchor.prevAnchorCid} != '
                 'expected $expectedPrev',
           );
         }
@@ -122,5 +174,15 @@ class IdentityAnchorChain {
     }
 
     return const AnchorChainVerification.valid();
+  }
+
+  static bool _sameCommitment(
+    Map<String, Object?> expected,
+    Map<String, Object?> actual,
+  ) {
+    return expected['method'] == actual['method'] &&
+        expected['method_version'] == actual['method_version'] &&
+        expected['genesis_key'] == actual['genesis_key'] &&
+        expected['genesis_nonce'] == actual['genesis_nonce'];
   }
 }

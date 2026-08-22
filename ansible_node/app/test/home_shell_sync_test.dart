@@ -3,6 +3,7 @@ import 'package:ansible_node/services/app_sync_service.dart';
 import 'package:ansible_node/services/network_status_service.dart';
 import 'package:ansible_node/services/relay_discovery_client.dart';
 import 'package:ansible_node/services/user_presence_verifier.dart';
+import 'package:ansible_node/services/sync_authorization_controller.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/native.dart';
@@ -209,6 +210,77 @@ void main() {
     expect(find.textContaining('未上傳任何資料'), findsOneWidget);
     await _disposeWidgetTree(tester);
   });
+
+  testWidgets(
+    'manual sync reuses one short authorization until app backgrounding',
+    (tester) async {
+      tester.view.physicalSize = const Size(1600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final verifier = _FakeUserPresenceVerifier(true);
+      final authorization = SyncAuthorizationController();
+      var syncCalls = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeShell(
+            db: db,
+            did: 'did:plc:alice',
+            networkStatusMonitor: _FakeNetworkStatusMonitor(
+              NetworkStatus.online,
+            ),
+            relayDiscoveryLoader: () async => _emptyDiscovery(),
+            userPresenceVerifier: verifier,
+            syncAuthorizationController: authorization,
+            syncRunner: () async {
+              syncCalls += 1;
+              return const AppSyncResult(
+                pulledActivities: 0,
+                publishSummary: PublicPublishSummary(publicItems: 0),
+              );
+            },
+          ),
+        ),
+      );
+      for (var i = 0; i < 8; i += 1) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+
+      expect(syncCalls, 2);
+      expect(verifier.calls, 1);
+
+      // iOS may emit `inactive` while its own Face ID sheet is visible. That
+      // transient state must not invalidate the grant being established.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+
+      expect(syncCalls, 3);
+      expect(verifier.calls, 1);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.tap(find.byTooltip('同步'));
+      await tester.pumpAndSettle();
+
+      expect(syncCalls, 4);
+      expect(verifier.calls, 2);
+      await _disposeWidgetTree(tester);
+    },
+  );
 
   testWidgets('compact header keeps network chrome out of focus navigation', (
     tester,
@@ -625,12 +697,16 @@ class _FakeNetworkStatusMonitor extends ChangeNotifier
 }
 
 class _FakeUserPresenceVerifier implements UserPresenceVerifier {
-  const _FakeUserPresenceVerifier(this.result);
+  _FakeUserPresenceVerifier(this.result);
 
   final bool result;
+  int calls = 0;
 
   @override
-  Future<bool> verify({required String reason}) async => result;
+  Future<bool> verify({required String reason}) async {
+    calls += 1;
+    return result;
+  }
 }
 
 Future<void> _disposeWidgetTree(WidgetTester tester) async {

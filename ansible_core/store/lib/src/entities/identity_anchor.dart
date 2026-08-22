@@ -58,6 +58,97 @@ String deriveDidElix({
   return 'did:elix:${_base32NoPad(digest.bytes.sublist(0, 16))}';
 }
 
+/// v1 canonical identifier: immutable genesis public key plus a public random
+/// nonce. Unlike the legacy derivation above it is unaffected by rotation,
+/// recovery, handle changes, or Relay migration.
+String deriveDidElixV1({
+  required String genesisKey,
+  required String genesisNonceHex,
+}) {
+  final commitment = buildDidElixV1GenesisCommitment(
+    genesisKey: genesisKey,
+    genesisNonceHex: genesisNonceHex,
+  );
+  final digest = sha256.convert(utf8.encode(jsonEncode(commitment)));
+  return 'did:elix:z${_base32NoPad(digest.bytes)}';
+}
+
+/// Build the canonical v1 genesis commitment in its normative key order.
+Map<String, Object?> buildDidElixV1GenesisCommitment({
+  required String genesisKey,
+  required String genesisNonceHex,
+}) {
+  if (!RegExp(r'^(?:[0-9a-f]{64}|04[0-9a-f]{128})$').hasMatch(genesisKey)) {
+    throw ArgumentError.value(
+      genesisKey,
+      'genesisKey',
+      'must be a lowercase Ed25519 or uncompressed P-256 public key',
+    );
+  }
+  if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(genesisNonceHex)) {
+    throw ArgumentError.value(
+      genesisNonceHex,
+      'genesisNonceHex',
+      'must be a 32-byte lowercase hex nonce',
+    );
+  }
+  return <String, Object?>{
+    'method': 'did:elix',
+    'method_version': 1,
+    'genesis_key': genesisKey,
+    'genesis_nonce': genesisNonceHex,
+  };
+}
+
+/// Validate and normalize a decoded v1 commitment. Extensions are rejected:
+/// otherwise a peer could attach unsigned properties that are absent from the
+/// canonical bytes and present them as if the identity key had signed them.
+Map<String, Object?> normalizeDidElixV1GenesisCommitment(
+  Map<String, Object?> commitment,
+) {
+  const expectedKeys = {
+    'method',
+    'method_version',
+    'genesis_key',
+    'genesis_nonce',
+  };
+  if (commitment.keys.toSet().difference(expectedKeys).isNotEmpty ||
+      expectedKeys.difference(commitment.keys.toSet()).isNotEmpty ||
+      commitment['method'] != 'did:elix' ||
+      commitment['method_version'] != 1) {
+    throw const FormatException('Invalid did:elix v1 genesis commitment.');
+  }
+  return buildDidElixV1GenesisCommitment(
+    genesisKey: commitment['genesis_key'] as String? ?? '',
+    genesisNonceHex: commitment['genesis_nonce'] as String? ?? '',
+  );
+}
+
+/// Canonical proof signed during v1 registration. This binds the one-time
+/// Relay nonce to both the DID and the immutable genesis commitment, so a
+/// network intermediary cannot substitute either while replaying a signature.
+String didElixV1RegistrationPayload({
+  required String nonce,
+  required String did,
+  required Map<String, Object?> genesisCommitment,
+}) {
+  final normalized = normalizeDidElixV1GenesisCommitment(genesisCommitment);
+  if (deriveDidElixV1(
+        genesisKey: normalized['genesis_key']! as String,
+        genesisNonceHex: normalized['genesis_nonce']! as String,
+      ) !=
+      did) {
+    throw ArgumentError('Invalid did:elix v1 genesis commitment.');
+  }
+  return jsonEncode(<String, Object?>{
+    'type': 'io.trisaura.identity.registration',
+    'version': 1,
+    'nonce': nonce,
+    'did': did,
+    'genesis_commitment': normalized,
+  });
+}
+
 /// Bitcoin/IPFS base58btc alphabet.
 const String _base58Alphabet =
     '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -226,7 +317,8 @@ class IdentityAnchor {
 
   /// v2 (2026-06-16): adds `also_known_as` and makes `did` a `did:elix`
   /// (was the `did:plc` stub). Bumped together with the layered-identity work.
-  static const int currentSchemaVersion = 3;
+  static const int currentSchemaVersion = 4;
+  static const int legacySchemaVersion = 3;
 
   final int schemaVersion;
 
@@ -239,6 +331,9 @@ class IdentityAnchor {
   /// Ed25519 identity (content) public key, hex-encoded.
   final String identityKey;
   final String identityKeyAlgorithm;
+
+  /// Immutable public v1 genesis commitment. Required for schema v4 anchors.
+  final Map<String, Object?>? genesisCommitment;
 
   /// Verifiable aliases of this same identity, bound by being inside the
   /// signed anchor body: `at://<handle>`, the wallet `did:key:…` (the same
@@ -266,11 +361,14 @@ class IdentityAnchor {
   final String? deviceSig;
 
   const IdentityAnchor({
-    this.schemaVersion = currentSchemaVersion,
+    // Existing callers create legacy anchors unless they explicitly provide
+    // the v1 genesis commitment. New-v1 creation paths pass schema 4.
+    this.schemaVersion = legacySchemaVersion,
     required this.did,
     required this.handle,
     required this.identityKey,
     this.identityKeyAlgorithm = 'ed25519',
+    this.genesisCommitment,
     this.alsoKnownAs = const [],
     required this.custodyClass,
     this.devices = const [],
@@ -291,6 +389,7 @@ class IdentityAnchor {
     'handle': handle,
     'identity_key': identityKey,
     if (schemaVersion >= 3) 'identity_key_algorithm': identityKeyAlgorithm,
+    if (schemaVersion >= 4) 'genesis_commitment': _validatedGenesisCommitment(),
     'also_known_as': alsoKnownAs,
     'custody_class': custodyClass.storageValue,
     'devices': devices.map((d) => d.toCanonicalMap()).toList(),
@@ -327,6 +426,20 @@ class IdentityAnchor {
     return 'sha256:${digest.toString()}';
   }
 
+  Map<String, Object?> _validatedGenesisCommitment() {
+    final commitment = genesisCommitment;
+    if (commitment == null) {
+      throw StateError('Schema v4 anchors require a did:elix v1 commitment.');
+    }
+    try {
+      return normalizeDidElixV1GenesisCommitment(commitment);
+    } on Object {
+      throw StateError(
+        'Schema v4 anchors require a valid did:elix v1 commitment.',
+      );
+    }
+  }
+
   factory IdentityAnchor.fromCanonicalJson(String json) {
     final map = jsonDecode(json) as Map<String, Object?>;
     return IdentityAnchor.fromMap(map);
@@ -337,16 +450,24 @@ class IdentityAnchor {
     if (type != typeName) {
       throw ArgumentError.value(type, 'type', 'Not an identity anchor object');
     }
+    final schemaVersion =
+        (map['schema_version'] as num?)?.toInt() ?? legacySchemaVersion;
     final rawDevices = (map['devices'] as List?) ?? const [];
+    final rawCommitment = (map['genesis_commitment'] as Map?)
+        ?.cast<String, Object?>();
     return IdentityAnchor(
-      schemaVersion:
-          (map['schema_version'] as num?)?.toInt() ?? currentSchemaVersion,
+      schemaVersion: schemaVersion,
       did: map['did']! as String,
       handle: map['handle']! as String,
       identityKey: map['identity_key']! as String,
       identityKeyAlgorithm:
           map['identity_key_algorithm'] as String? ?? 'ed25519',
       alsoKnownAs: ((map['also_known_as'] as List?) ?? const []).cast<String>(),
+      genesisCommitment: schemaVersion >= 4
+          ? normalizeDidElixV1GenesisCommitment(
+              rawCommitment ?? const <String, Object?>{},
+            )
+          : rawCommitment,
       custodyClass: CustodyClass.parse(map['custody_class']! as String),
       devices: rawDevices
           .map(

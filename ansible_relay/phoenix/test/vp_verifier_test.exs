@@ -1,12 +1,15 @@
 defmodule AnsibleRelay.VpVerifierTest do
   use ExUnit.Case, async: false
 
-  alias AnsibleRelay.{DidAccountCache, VpVerifier}
+  alias AnsibleRelay.{DidAccountCache, Repo, VpVerifier}
 
   @issuer_did "did:web:issuer.elix.cool"
   @holder_did "did:plc:abcdefghijklmnop"
 
   setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+
     case DidAccountCache.start_link([]) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok

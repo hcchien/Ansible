@@ -1,6 +1,7 @@
 import 'package:ansible_node/screens/identity_backup_screen.dart';
 import 'package:ansible_node/screens/settings_home_screen.dart';
 import 'package:ansible_node/services/recovery_readiness_store.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,46 @@ const _keyHex =
     '5162738495a6b7c8d9e0f1a2b3c4d5e6f70819202122232425262728292a2b';
 
 void main() {
+  testWidgets('hardware custody never exports raw recovery material', (
+    tester,
+  ) async {
+    final identities = InMemoryCanonicalIdentityStore();
+    await identities.save(
+      const CanonicalIdentity(
+        did: 'did:elix:hardware',
+        handle: 'hardware.elix.cool',
+        publicKeyHex: '04',
+        signingAlgorithm: 'p256-sha256',
+        custody: 'hardware',
+      ),
+    );
+    var keyRead = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: IdentityBackupScreen(
+          did: 'did:elix:hardware',
+          identityPrivateKeyHex: () async {
+            keyRead = true;
+            return _keyHex;
+          },
+          canonicalIdentityStore: identities,
+        ),
+      ),
+    );
+    await tester.enterText(
+      find.byKey(const Key('backup_passphrase_field')),
+      'passphrase',
+    );
+    await tester.enterText(
+      find.byKey(const Key('backup_passphrase_confirm_field')),
+      'passphrase',
+    );
+    await tester.tap(find.byKey(const Key('backup_create_button')));
+    await tester.pumpAndSettle();
+    expect(keyRead, isFalse);
+    expect(find.textContaining('不可匯出的裝置硬體金鑰'), findsOneWidget);
+  });
+
   testWidgets('backup screen produces an encrypted blob from a passphrase', (
     tester,
   ) async {
@@ -28,6 +69,7 @@ void main() {
           did: 'did:plc:alice',
           identityPrivateKeyHex: () async => _keyHex,
           readinessStore: store,
+          canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
           encryptBackup:
               ({
                 required String passphrase,

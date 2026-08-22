@@ -34,8 +34,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -420));
     await tester.pumpAndSettle();
     await tester.tap(find.text('同意並送出 VP'));
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(service.approvedWithHolderDid, 'did:key:z6Mkholder');
     expect(service.approvedAt, DateTime.utc(2026, 5, 30, 10));

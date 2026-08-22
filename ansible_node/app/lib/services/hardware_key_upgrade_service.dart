@@ -83,6 +83,8 @@ class HardwareKeyUpgradeService {
       publicKeyHex: hardware.publicKeyHex,
       signingAlgorithm: hardware.algorithm.wireName,
       custody: IdentityKeyCustody.hardware.wireName,
+      genesisCommitment: identity.genesisCommitment,
+      legacyDids: identity.legacyDids,
     );
     await _identityStore.save(upgraded);
     await _storage.write(

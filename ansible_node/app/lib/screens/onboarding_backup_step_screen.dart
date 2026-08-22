@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../l10n/app_l10n.dart';
+import '../services/canonical_identity_store.dart';
 import '../services/identity_anchor_service.dart';
 import '../services/recovery_readiness_store.dart';
 import '../theme/ansible_design.dart';
@@ -34,6 +35,7 @@ class OnboardingBackupStepScreen extends StatefulWidget {
     required this.onComplete,
     this.identityPrivateKeyHex = _defaultIdentityPrivateKey,
     this.identityKeyForAnchor,
+    this.canonicalIdentityStore,
     this.readinessStore = const SharedPreferencesRecoveryReadinessStore(),
     this.autoPublishAnchor = true,
   });
@@ -55,6 +57,7 @@ class OnboardingBackupStepScreen extends StatefulWidget {
   /// The identity key used to sign the initial anchor. Defaults to
   /// [SecureStorageIdentityKey]; injectable for tests.
   final IdentityKey? identityKeyForAnchor;
+  final CanonicalIdentityStore? canonicalIdentityStore;
 
   final RecoveryReadinessStore readinessStore;
 
@@ -91,10 +94,16 @@ class _OnboardingBackupStepScreenState
     try {
       final identityKey =
           widget.identityKeyForAnchor ?? const ActiveIdentityKey();
+      final identity = await widget.canonicalIdentityStore?.load();
+      if (identity != null &&
+          (identity.did != widget.did || identity.handle != widget.handle)) {
+        throw StateError('Canonical identity changed during onboarding.');
+      }
       await widget.anchorService.publishInitialAnchor(
         did: widget.did,
         handle: widget.handle,
         identityKey: identityKey,
+        genesisCommitment: identity?.genesisCommitment,
       );
       if (!mounted) return;
       setState(() => _anchorPublished = true);
@@ -186,11 +195,7 @@ class _OnboardingBackupStepScreenState
                   'Make an encrypted backup now. Without a backup you cannot '
                   'recover this account if you lose this device.',
             ),
-            style: TextStyle(
-              fontSize: 13.5,
-              height: 1.55,
-              color: fg,
-            ),
+            style: TextStyle(fontSize: 13.5, height: 1.55, color: fg),
           ),
           if (_anchorPublished == false) ...[
             const SizedBox(height: 14),

@@ -15,7 +15,12 @@ defmodule AnsibleRelay.IdentityCache do
   import Ecto.Query
   require Logger
 
-  alias AnsibleRelay.{Repo, Db.VerifiedDid}
+  alias AnsibleRelay.{
+    Repo,
+    Db.DidElixMigration,
+    Db.IdentityAnchor,
+    Db.VerifiedDid
+  }
 
   @table :verified_did_cache
   @nullifier_table :nullifier_index
@@ -93,7 +98,7 @@ defmodule AnsibleRelay.IdentityCache do
   defp read_through(did) do
     case Repo.get_by(VerifiedDid, did: did) do
       nil ->
-        :not_found
+        read_through_migration(did)
 
       %VerifiedDid{} = row ->
         if DateTime.compare(DateTime.utc_now(), row.expires_at) == :lt do
@@ -121,6 +126,40 @@ defmodule AnsibleRelay.IdentityCache do
     # A DB error is an outage, not a missing row — surface it as :unavailable so
     # the ingest path can 503 rather than falsely 401 "unverified_did".
     _ -> {:error, :unavailable}
+  end
+
+  defp read_through_migration(v1_did) do
+    query =
+      from(m in DidElixMigration,
+        join: legacy in VerifiedDid,
+        on: legacy.did == m.legacy_did,
+        join: anchor in IdentityAnchor,
+        on: anchor.did == m.v1_did and anchor.state == "active",
+        where: m.state == "completed" and m.v1_did == ^v1_did,
+        select: {legacy, anchor}
+      )
+
+    case Repo.one(query) do
+      nil ->
+        :not_found
+
+      {%VerifiedDid{} = legacy, %IdentityAnchor{} = anchor} ->
+        if DateTime.compare(DateTime.utc_now(), legacy.expires_at) == :lt do
+          entry = %{
+            public_key_hex: anchor.identity_key,
+            signing_algorithm: anchor.identity_key_algorithm || "ed25519",
+            key_version: legacy.key_version || 1,
+            nullifier: blank_to_nil(legacy.nullifier),
+            verified_at: legacy.verified_at,
+            expires_at: legacy.expires_at
+          }
+
+          :ets.insert(@table, {v1_did, entry})
+          {:ok, entry}
+        else
+          :not_found
+        end
+    end
   end
 
   defp blank_to_nil(""), do: nil
@@ -176,6 +215,14 @@ defmodule AnsibleRelay.IdentityCache do
     # on this or any other instance.
     Repo.delete_all(from(v in VerifiedDid, where: v.did == ^did))
     :ok
+  end
+
+  @doc "Evict a DID from the process-local cache without changing durable state."
+  def invalidate(did) when is_binary(did) do
+    :ets.delete(@table, did)
+    :ok
+  rescue
+    ArgumentError -> :ok
   end
 
   @doc "Return the public key hex for a verified DID, or nil."

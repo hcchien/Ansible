@@ -150,6 +150,20 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.pending(conn, %{"did" => did})
   end
 
+  get "/api/v1/identity/chain/:did" do
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.chain(conn, %{"did" => did})
+  end
+
+  post "/api/v1/identity/migration" do
+    AnsibleRelay.Web.Controllers.IdentityMigrationController.submit(conn, conn.body_params)
+  end
+
+  get "/api/v1/identity/migration/:legacy_did" do
+    AnsibleRelay.Web.Controllers.IdentityMigrationController.show(conn, %{
+      "legacy_did" => legacy_did
+    })
+  end
+
   get "/api/v1/identity/anchor/:did" do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.show(conn, %{"did" => did})
   end
@@ -157,6 +171,12 @@ defmodule AnsibleRelay.Web.Router do
   # did:elix resolution → projected W3C DID document (layered identity).
   get "/api/v1/identity/did/:did" do
     AnsibleRelay.Web.Controllers.IdentityAnchorController.resolve_did(conn, %{"did" => did})
+  end
+
+  get "/1.0/identifiers/:did" do
+    AnsibleRelay.Web.Controllers.IdentityAnchorController.resolve_universal(conn, %{
+      "did" => did
+    })
   end
 
   get "/api/v1/identity/public-key/:did" do

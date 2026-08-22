@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_store/ansible_store.dart';
@@ -137,17 +138,22 @@ class _PasskeysRegistrationScreenState
       );
 
       // ── Step 2: Canonical did:elix derivation (pure-Dart, no FFI) ────────
-      // Domain-independent, self-certifying: did:elix = hash(identity_key +
-      // handle). The same key is also the wallet did:key (an alias); did:plc is
-      // only minted later if the user opts into the Bluesky bridge.
+      // Domain-independent and stable across handle/key changes: v1 hashes an
+      // immutable public genesis commitment. The random nonce is public, but
+      // generated with the platform CSPRNG and persisted for anchor creation.
       setState(() => _phase = _Phase.creatingDid);
-      final did = deriveDidElix(
-        identityKey: credential.publicKeyHex,
-        handle: handle,
-        custodyClass: credential.custody == IdentityKeyCustody.hardware
-            ? CustodyClass.hardware
-            : CustodyClass.software,
-        identityKeyAlgorithm: credential.signingAlgorithm.wireName,
+      final secureRandom = Random.secure();
+      final genesisNonce = List<int>.generate(
+        32,
+        (_) => secureRandom.nextInt(256),
+      ).map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+      final did = deriveDidElixV1(
+        genesisKey: credential.publicKeyHex,
+        genesisNonceHex: genesisNonce,
+      );
+      final genesisCommitment = buildDidElixV1GenesisCommitment(
+        genesisKey: credential.publicKeyHex,
+        genesisNonceHex: genesisNonce,
       );
       await _canonicalIdentityStore.save(
         CanonicalIdentity(
@@ -156,6 +162,7 @@ class _PasskeysRegistrationScreenState
           publicKeyHex: credential.publicKeyHex,
           signingAlgorithm: credential.signingAlgorithm.wireName,
           custody: credential.custody.wireName,
+          genesisCommitment: genesisCommitment,
         ),
       );
 
@@ -174,17 +181,22 @@ class _PasskeysRegistrationScreenState
           );
         }
 
-        // Sign the nonce with the DID private key so the Relay can verify
-        // ownership of the public key presented during register().
+        // Bind the one-time nonce to the v1 DID and genesis commitment. This
+        // prevents DID/commitment substitution with a replayed nonce proof.
+        final registrationPayload = didElixV1RegistrationPayload(
+          nonce: challenge.nonce,
+          did: did,
+          genesisCommitment: genesisCommitment,
+        );
         final registrationSig = widget.nonceSigner == null
             ? await _signNonce(
-                challenge.nonce,
+                registrationPayload,
                 credential.publicKeyHex,
                 credential.signingAlgorithm,
                 reuseAuthenticationContext: authenticationSession != null,
               )
             : await widget.nonceSigner!(
-                challenge.nonce,
+                registrationPayload,
                 credential.publicKeyHex,
               );
 
@@ -196,6 +208,7 @@ class _PasskeysRegistrationScreenState
             registrationSig: registrationSig,
             nonce: challenge.nonce,
             signingAlgorithm: credential.signingAlgorithm.wireName,
+            genesisCommitment: genesisCommitment,
           ),
         );
 

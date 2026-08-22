@@ -22,6 +22,7 @@ import '../widgets/reaction_picker.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
 import '../widgets/report_dialog.dart';
+import 'user_profile_screen.dart';
 
 /// Seam for invoking the platform share sheet. Defaults to share_plus; tests
 /// inject a fake to assert the constructed URL without a real share sheet.
@@ -807,35 +808,54 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         children: [
           Row(
             children: [
-              _avatar(post.authorId, size: 40, signed: post.signatureVerified),
-              const SizedBox(width: 11),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: AuthorLabel(
-                            did: post.authorId,
-                            style: TextStyle(
-                              fontFamily: AnsibleDesign.sans,
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600,
-                              height: 1.2,
-                              color: _fg,
+                child: InkWell(
+                  key: Key('open_author_profile_${post.id}'),
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _openAuthorProfile(post.authorId),
+                  child: Row(
+                    children: [
+                      _avatar(
+                        post.authorId,
+                        size: 40,
+                        signed: post.signatureVerified,
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: AuthorLabel(
+                                    did: post.authorId,
+                                    style: TextStyle(
+                                      fontFamily: AnsibleDesign.sans,
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.2,
+                                      color: _fg,
+                                    ),
+                                  ),
+                                ),
+                                if (post.signatureVerified) ...[
+                                  const SizedBox(width: 5),
+                                  Icon(
+                                    Icons.verified,
+                                    size: 14,
+                                    color: _accent,
+                                  ),
+                                ],
+                              ],
                             ),
-                          ),
+                            const SizedBox(height: 2),
+                            _opSub(context, post, edited),
+                          ],
                         ),
-                        if (post.signatureVerified) ...[
-                          const SizedBox(width: 5),
-                          Icon(Icons.verified, size: 14, color: _accent),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    _opSub(context, post, edited),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               _postMenu(context, post),
@@ -1061,76 +1081,107 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _avatar(post.authorId, size: 34, signed: post.signatureVerified),
-          const SizedBox(width: 11),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: AuthorLabel(
-                        did: post.authorId,
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.sans,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: _fg,
+            child: InkWell(
+              key: Key('open_author_profile_${post.id}'),
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _openAuthorProfile(post.authorId),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _avatar(
+                    post.authorId,
+                    size: 34,
+                    signed: post.signatureVerified,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: AuthorLabel(
+                                did: post.authorId,
+                                style: TextStyle(
+                                  fontFamily: AnsibleDesign.sans,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: _fg,
+                                ),
+                              ),
+                            ),
+                            if (post.signatureVerified) ...[
+                              const SizedBox(width: 4),
+                              Icon(Icons.verified, size: 13, color: _accent),
+                            ],
+                            const SizedBox(width: 6),
+                            Text(
+                              _formatDate(context, post.createdAt) +
+                                  (edited
+                                      ? context.uiCopy(
+                                          zh: '（已編輯）',
+                                          en: ' (edited)',
+                                        )
+                                      : ''),
+                              style: TextStyle(
+                                fontFamily: AnsibleDesign.sans,
+                                fontSize: 12,
+                                color: _faint,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                        if (removal != null) ...[
+                          const SizedBox(height: 6),
+                          _ownPostRemovalNotice(context, removal),
+                        ],
+                        const SizedBox(height: 5),
+                        Text(
+                          post.content,
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.serif,
+                            fontSize: 14.5,
+                            height: 1.68,
+                            color: _fg,
+                          ),
+                        ),
+                        if (removal == null) ...[
+                          const SizedBox(height: 8),
+                          _PostReactionBar(
+                            key: ValueKey('post_reactions_${post.id}'),
+                            db: widget.db,
+                            postId: post.id,
+                            boardId: widget.thread.boardId,
+                            localDid: widget.authorDid,
+                            opsDispatchService: widget.opsDispatchService,
+                            onFlushPendingOps: widget.onFlushPendingOps,
+                            dark: _dark,
+                          ),
+                        ],
+                      ],
                     ),
-                    if (post.signatureVerified) ...[
-                      const SizedBox(width: 4),
-                      Icon(Icons.verified, size: 13, color: _accent),
-                    ],
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatDate(context, post.createdAt) +
-                          (edited
-                              ? context.uiCopy(zh: '（已編輯）', en: ' (edited)')
-                              : ''),
-                      style: TextStyle(
-                        fontFamily: AnsibleDesign.sans,
-                        fontSize: 12,
-                        color: _faint,
-                      ),
-                    ),
-                    const Spacer(),
-                    _postMenu(context, post),
-                  ],
-                ),
-                if (removal != null) ...[
-                  const SizedBox(height: 6),
-                  _ownPostRemovalNotice(context, removal),
-                ],
-                const SizedBox(height: 5),
-                Text(
-                  post.content,
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontSize: 14.5,
-                    height: 1.68,
-                    color: _fg,
-                  ),
-                ),
-                if (removal == null) ...[
-                  const SizedBox(height: 8),
-                  _PostReactionBar(
-                    key: ValueKey('post_reactions_${post.id}'),
-                    db: widget.db,
-                    postId: post.id,
-                    boardId: widget.thread.boardId,
-                    localDid: widget.authorDid,
-                    opsDispatchService: widget.opsDispatchService,
-                    onFlushPendingOps: widget.onFlushPendingOps,
-                    dark: _dark,
                   ),
                 ],
-              ],
+              ),
             ),
           ),
+          _postMenu(context, post),
         ],
+      ),
+    );
+  }
+
+  void _openAuthorProfile(String authorDid) {
+    if (authorDid.isEmpty || authorDid == _authorDid) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UserProfileScreen(
+          db: widget.db,
+          followerDid: _authorDid,
+          did: authorDid,
+        ),
       ),
     );
   }
