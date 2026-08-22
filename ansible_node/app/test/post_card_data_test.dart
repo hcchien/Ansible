@@ -25,13 +25,14 @@ void main() {
     );
   });
 
-  test(
-    'post detail follows the active app mode instead of its source feed',
-    () {
-      expect(postDetailScreenStyle(Brightness.light), ElixScreenStyle.paper);
-      expect(postDetailScreenStyle(Brightness.dark), ElixScreenStyle.ink);
-    },
-  );
+  test('post detail preserves the source board reading style', () {
+    expect(postDetailScreenStyle(ElixScreenStyle.paper), ElixScreenStyle.paper);
+    expect(postDetailScreenStyle(ElixScreenStyle.ink), ElixScreenStyle.ink);
+    expect(
+      postDetailScreenStyle(ElixScreenStyle.system),
+      ElixScreenStyle.system,
+    );
+  });
 
   test('comment count excludes the opening post', () {
     final now = DateTime.utc(2026, 7, 17);
