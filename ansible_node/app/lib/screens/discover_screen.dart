@@ -59,6 +59,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   List<DiscoveredActor> _suggestions = const [];
   List<DiscoveredPost> _explore = const [];
   List<BoardSearchResult> _browseBoards = const [];
+  Set<String> _subscribedBoardIds = const {};
   SearchResults _results = const SearchResults();
   bool _loadingFeed = true;
   bool _searching = false;
@@ -87,6 +88,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       _feedError = null;
     });
     try {
+      final subscriptions = await DriftHostedBoardRepository(
+        widget.db,
+      ).listSubscriptions();
       final suggestions = await widget.client.suggestFollows(
         readerDid: widget.localDid,
         limit: 20,
@@ -99,6 +103,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _suggestions = suggestions;
         _explore = explore;
         _browseBoards = boards;
+        _subscribedBoardIds = {
+          for (final subscription in subscriptions)
+            if (subscription.readEnabled) subscription.hostedBoardId,
+        };
         _loadingFeed = false;
       });
     } catch (error) {
@@ -235,6 +243,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         updatedAt: now,
       ),
     );
+    if (mounted) {
+      setState(() {
+        _subscribedBoardIds = {..._subscribedBoardIds, board.hostedBoardId};
+      });
+    }
     _toast(alreadySubscribed ? alreadyMsg : followingMsg);
     return localBoard;
   }
@@ -676,65 +689,95 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _boardRow(BuildContext context, BoardSearchResult board) {
-    return InkWell(
-      onTap: () => _openDiscoveredBoard(board),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
-          ),
+    final subscribed = _subscribedBoardIds.contains(board.hostedBoardId);
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          board.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: AnsibleDesign.ink,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              key: Key('board_open_${board.hostedBoardId}'),
+              onTap: () => _openDiscoveredBoard(board),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 12, 10, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            board.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: AnsibleDesign.ink,
+                            ),
                           ),
                         ),
-                      ),
-                      if (board.minPostTier ==
-                          PostingGate.verifiedHumanTier) ...[
-                        const SizedBox(width: 6),
-                        const BoardGateBadge(),
+                        if (board.minPostTier ==
+                            PostingGate.verifiedHumanTier) ...[
+                          const SizedBox(width: 6),
+                          const BoardGateBadge(),
+                        ],
                       ],
-                    ],
-                  ),
-                  if ((board.description ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      board.description!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AnsibleDesign.inkMuted,
-                      ),
                     ),
+                    if ((board.description ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        board.description!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AnsibleDesign.inkMuted,
+                        ),
+                      ),
+                    ],
                   ],
+                ),
+              ),
+            ),
+          ),
+          InkWell(
+            key: Key('board_follow_${board.hostedBoardId}'),
+            onTap: subscribed ? null : () => _subscribeToBoard(board),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 16, 22, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    subscribed ? Icons.check_circle : Icons.add_circle_outline,
+                    size: 18,
+                    color: subscribed
+                        ? AnsibleDesign.inkMuted
+                        : AnsibleDesign.accent,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subscribed
+                        ? context.uiCopy(zh: '已訂閱', en: 'Following')
+                        : context.uiCopy(zh: '訂閱', en: 'Follow'),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: subscribed
+                          ? AnsibleDesign.inkMuted
+                          : AnsibleDesign.accent,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
-            const Icon(
-              Icons.add_circle_outline,
-              size: 18,
-              color: AnsibleDesign.accent,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
