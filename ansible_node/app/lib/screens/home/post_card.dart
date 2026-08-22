@@ -107,6 +107,13 @@ Color postCardBackgroundColor({
       : AnsibleDesign.paperWhite;
 }
 
+/// A pushed post detail is a standalone destination, not a continuation of
+/// the source board's old Paper/Ink preference. Resolve it from the active app
+/// mode so the same thread cannot become dark merely because it was opened
+/// from a different feed.
+ElixScreenStyle postDetailScreenStyle(Brightness brightness) =>
+    ElixScreenStyle.forAppBrightness(brightness);
+
 class PostCard extends StatefulWidget {
   const PostCard({
     super.key,
@@ -249,7 +256,7 @@ class _PostCardState extends State<PostCard> {
           authorDid: widget.authorDid,
           opsDispatchService: widget.opsDispatchService,
           onFlushPendingOps: widget.onFlushPendingOps,
-          screenStyle: ElixScreenStyleScope.styleOf(context),
+          screenStyle: postDetailScreenStyle(Theme.of(context).brightness),
         ),
       ),
     );
