@@ -113,7 +113,9 @@ class HomeBottomBar extends StatelessWidget {
               _compose(context),
               _action(
                 context,
-                Icons.notifications_none,
+                unreadCount > 0
+                    ? Icons.notifications
+                    : Icons.notifications_none,
                 context.uiCopy(zh: '通知', en: 'Alerts'),
                 onNotifications,
                 showDot: unreadCount > 0,

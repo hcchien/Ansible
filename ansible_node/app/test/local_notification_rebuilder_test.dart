@@ -76,6 +76,53 @@ void main() {
     expect(rows.single.dedupKey, 'reply:reply-1');
   });
 
+  test(
+    'backfills replies to a thread authored by a legacy DID alias',
+    () async {
+      const legacyDid = 'did:plc:legacy-local';
+      await threads.create(
+        Thread(
+          id: 'legacy-thread',
+          boardId: 'board-1',
+          title: 'Migrated Forum Host thread',
+          authorId: legacyDid,
+          createdAt: DateTime.utc(2026, 7, 22),
+          updatedAt: DateTime.utc(2026, 7, 22),
+        ),
+      );
+      await posts.create(
+        Post(
+          id: 'legacy-reply',
+          threadId: 'legacy-thread',
+          boardId: 'board-1',
+          authorId: remoteDid,
+          content: 'reply after migration',
+          createdAt: DateTime.utc(2026, 7, 22, 1),
+          updatedAt: DateTime.utc(2026, 7, 22, 1),
+          lastEditAt: DateTime.utc(2026, 7, 22, 1),
+          signatureVerified: true,
+        ),
+      );
+      rebuilder = LocalNotificationRebuilder(
+        notifications: notifications,
+        threads: threads,
+        posts: posts,
+        messenger: DriftMessengerRepository(db),
+        localDid: localDid,
+        localDidAliases: const [legacyDid],
+      );
+
+      await rebuilder.rebuild();
+
+      expect(
+        (await notifications.list()).map(
+          (notification) => notification.dedupKey,
+        ),
+        contains('reply:legacy-reply'),
+      );
+    },
+  );
+
   test('does not turn unverified local rows into notifications', () async {
     final now = DateTime.utc(2026, 7, 22, 1);
     await posts.create(

@@ -22,8 +22,9 @@ void main() {
       actorDid: actorDid,
       targetRef: id,
       threadId: type == NotificationType.replyToThread ? 'thread-1' : null,
-      conversationId:
-          type == NotificationType.messengerMessage ? actorDid : null,
+      conversationId: type == NotificationType.messengerMessage
+          ? actorDid
+          : null,
       createdAt: DateTime.utc(2026, 6, 13),
       readAt: readAt,
       dedupKey: id,
@@ -33,14 +34,16 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester,
     AppDatabase db,
-    NotificationRepository repository,
-  ) async {
+    NotificationRepository repository, {
+    VoidCallback? onUnreadChanged,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: NotificationsScreen(
           db: db,
           did: localDid,
           repository: repository,
+          onUnreadChanged: onUnreadChanged,
         ),
       ),
     );
@@ -92,11 +95,13 @@ void main() {
     );
     expect(await repo.unreadCount(), 2);
 
-    await pumpScreen(tester, db, repo);
+    var unreadChanges = 0;
+    await pumpScreen(tester, db, repo, onUnreadChanged: () => unreadChanges++);
     await tester.tap(find.text('全部已讀'));
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(await repo.unreadCount(), 0);
+    expect(unreadChanges, 1);
   });
 
   testWidgets('tapping a follower notification marks it read', (tester) async {
@@ -182,9 +187,7 @@ void main() {
     );
     await tester.pump();
 
-    final replyToggle = find.byKey(
-      const Key('notification_toggle_reply'),
-    );
+    final replyToggle = find.byKey(const Key('notification_toggle_reply'));
     expect(replyToggle, findsOneWidget);
 
     // The row itself is not tappable — toggle the switch inside it.

@@ -19,13 +19,17 @@ class NotificationProjector {
   NotificationProjector({
     required NotificationRepository notifications,
     required String localDid,
+    Iterable<String> localDidAliases = const [],
     ThreadRepository? threadRepository,
     PostRepository? postRepository,
     ContactRepository? contactRepository,
     NotificationCategoryEnabled? isCategoryEnabled,
     DateTime Function()? now,
   }) : _notifications = notifications,
-       _localDid = localDid,
+       _localDids = {
+         localDid,
+         ...localDidAliases,
+       }.map((did) => did.trim()).where((did) => did.isNotEmpty).toSet(),
        _threadRepo = threadRepository,
        _postRepo = postRepository,
        _contactRepo = contactRepository,
@@ -33,7 +37,7 @@ class NotificationProjector {
        _now = now ?? (() => DateTime.now().toUtc());
 
   final NotificationRepository _notifications;
-  final String _localDid;
+  final Set<String> _localDids;
   final ThreadRepository? _threadRepo;
   final PostRepository? _postRepo;
   final ContactRepository? _contactRepo;
@@ -48,9 +52,9 @@ class NotificationProjector {
   /// break the sync pass.
   Future<void> onSyncedActivity(Activity activity) async {
     try {
-      if (_localDid.isEmpty) return;
+      if (_localDids.isEmpty) return;
       // Self-actions (own replies/follows echoed back by the relay).
-      if (activity.authorId == _localDid) return;
+      if (_localDids.contains(activity.authorId)) return;
       if (activity.type.toLowerCase() != 'create') return;
 
       switch (activity.entityType.toLowerCase()) {
@@ -74,7 +78,7 @@ class NotificationProjector {
     DateTime? receivedAt,
   }) async {
     try {
-      if (_localDid.isNotEmpty && senderDid == _localDid) return;
+      if (_localDids.contains(senderDid)) return;
       if (await _isSenderBlocked(senderDid)) return;
       if (!await _enabled(NotificationCategory.messenger)) return;
 
@@ -140,7 +144,7 @@ class NotificationProjector {
     // Reply to one of my posts?
     if (parentPostId != null && parentPostId.isNotEmpty) {
       final parent = await _postRepo?.getById(parentPostId);
-      if (parent != null && parent.authorId == _localDid) {
+      if (parent != null && _localDids.contains(parent.authorId)) {
         if (!await _enabled(NotificationCategory.reply)) return;
         await _emitReply(activity, NotificationType.replyToPost);
         return;
@@ -151,7 +155,7 @@ class NotificationProjector {
     final threadId = activity.threadId;
     if (threadId == null || threadId.isEmpty) return;
     final thread = await _threadRepo?.getById(threadId);
-    if (thread == null || thread.authorId != _localDid) return;
+    if (thread == null || !_localDids.contains(thread.authorId)) return;
     if (!await _enabled(NotificationCategory.reply)) return;
     await _emitReply(activity, NotificationType.replyToThread);
   }
@@ -177,7 +181,7 @@ class NotificationProjector {
 
   Future<void> _onFollowCreated(Activity activity) async {
     // Follow ops carry the target DID as entityId (see CrdtOpBuilder).
-    if (activity.entityId != _localDid) return;
+    if (!_localDids.contains(activity.entityId)) return;
     if (!await _enabled(NotificationCategory.follow)) return;
 
     final dedupKey = 'follower:${activity.authorId}';

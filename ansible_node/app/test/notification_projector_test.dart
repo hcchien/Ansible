@@ -87,6 +87,34 @@ void main() {
     expect(all.single.threadId, 'thread-1');
   });
 
+  test(
+    'Forum Host reply to a thread authored by my legacy DID notifies',
+    () async {
+      const legacyDid = 'did:plc:legacy-local-user';
+      projector = NotificationProjector(
+        notifications: notifications,
+        localDid: localDid,
+        localDidAliases: const [legacyDid],
+        threadRepository: DriftThreadRepository(db),
+        postRepository: DriftPostRepository(db),
+        contactRepository: DriftContactRepository(db),
+      );
+      await seedThread(authorId: legacyDid);
+
+      await projector.onSyncedActivity(
+        activity(
+          entityId: 'hosted-reply-1',
+          boardId: 'board-1',
+          threadId: 'thread-1',
+        ),
+      );
+
+      final notification = (await notifications.list()).single;
+      expect(notification.type, NotificationType.replyToThread);
+      expect(notification.dedupKey, 'reply:hosted-reply-1');
+    },
+  );
+
   test('reply to my post emits reply_to_post', () async {
     await seedThread(authorId: otherDid);
     final now = DateTime.now().toUtc();
@@ -206,14 +234,8 @@ void main() {
   });
 
   test('messenger message emits notification once', () async {
-    await projector.onMessengerMessage(
-      senderDid: otherDid,
-      messageId: 'msg-1',
-    );
-    await projector.onMessengerMessage(
-      senderDid: otherDid,
-      messageId: 'msg-1',
-    );
+    await projector.onMessengerMessage(senderDid: otherDid, messageId: 'msg-1');
+    await projector.onMessengerMessage(senderDid: otherDid, messageId: 'msg-1');
 
     final all = await notifications.list();
     expect(all, hasLength(1));
@@ -250,8 +272,7 @@ void main() {
       final prefs = NotificationPreferencesController(
         store: InMemoryNotificationPreferencesStore(
           enabled: {
-            for (final category in NotificationCategory.values)
-              category: false,
+            for (final category in NotificationCategory.values) category: false,
           },
         ),
       );
@@ -291,10 +312,7 @@ void main() {
       ),
     );
 
-    await projector.onMessengerMessage(
-      senderDid: otherDid,
-      messageId: 'msg-1',
-    );
+    await projector.onMessengerMessage(senderDid: otherDid, messageId: 'msg-1');
 
     expect(await notifications.list(), isEmpty);
   });

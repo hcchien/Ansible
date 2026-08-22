@@ -22,6 +22,7 @@ class NotificationsScreen extends StatefulWidget {
     required this.did,
     this.repository,
     this.messengerService,
+    this.onUnreadChanged,
     this.embedded = false,
   });
 
@@ -40,6 +41,10 @@ class NotificationsScreen extends StatefulWidget {
   /// Needed to open messenger conversations; omitted in contexts (or tests)
   /// without a messenger stack, where tapping still marks the row read.
   final MessengerSyncService? messengerService;
+
+  /// Refreshes device-local navigation chrome after read state changes.
+  /// This callback never sends a read receipt or performs a server mutation.
+  final VoidCallback? onUnreadChanged;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -101,11 +106,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllRead() async {
     await _repo.markAllRead();
+    widget.onUnreadChanged?.call();
     await _load();
   }
 
   Future<void> _openNotification(AppNotification notification) async {
     await _repo.markRead(notification.id);
+    widget.onUnreadChanged?.call();
     if (!mounted) return;
     switch (notification.type) {
       case NotificationType.replyToThread:
