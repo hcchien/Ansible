@@ -13,12 +13,14 @@ class OpsDispatchSummary {
     this.rejected = 0,
     this.retryPending = 0,
     this.retryReason,
+    this.rejectionReasons = const [],
   });
 
   final int sent;
   final int rejected;
   final int retryPending;
   final String? retryReason;
+  final List<String> rejectionReasons;
 
   bool get hasActivity => sent > 0 || rejected > 0 || retryPending > 0;
 }
@@ -58,6 +60,7 @@ class OpsDispatchService {
     final entries = await repository.listPending(limit: limit);
     var sent = 0;
     var rejected = 0;
+    final rejectionReasons = <String>[];
 
     for (final entry in entries) {
       try {
@@ -74,6 +77,7 @@ class OpsDispatchService {
         if (error.isPermanentRejection) {
           await repository.markRejected(entry.opId);
           rejected += 1;
+          rejectionReasons.add('${entry.opId}: ${error.toString()}');
           continue;
         }
         if (error.isPolicyBlock) {
@@ -83,6 +87,7 @@ class OpsDispatchService {
             rejected: rejected,
             retryPending: 1,
             retryReason: error.toString(),
+            rejectionReasons: rejectionReasons,
           );
         }
         if (error.isRetryable) {
@@ -96,6 +101,7 @@ class OpsDispatchService {
           rejected: rejected,
           retryPending: 1,
           retryReason: error.toString(),
+          rejectionReasons: rejectionReasons,
         );
       } catch (error) {
         // Network, TLS, and request-header failures happen before a Relay
@@ -107,10 +113,15 @@ class OpsDispatchService {
           rejected: rejected,
           retryPending: 1,
           retryReason: error.toString(),
+          rejectionReasons: rejectionReasons,
         );
       }
     }
-    return OpsDispatchSummary(sent: sent, rejected: rejected);
+    return OpsDispatchSummary(
+      sent: sent,
+      rejected: rejected,
+      rejectionReasons: rejectionReasons,
+    );
   }
 
   String _devSignature(OpsQueueEntry entry) {

@@ -1,4 +1,5 @@
 import 'package:ansible_node/services/app_sync_service.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/services/content_publication_service.dart';
 import 'package:ansible_node/services/nostr_relay_settings_store.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
@@ -451,6 +452,13 @@ void main() {
       final now = DateTime.utc(2026, 6, 4, 14);
       final opsQueue = InMemoryOpsQueueRepository();
       final contacts = DriftContactRepository(db);
+      final canonicalIdentityStore = InMemoryCanonicalIdentityStore(
+        const CanonicalIdentity(
+          did: 'did:plc:reader',
+          handle: 'canonical.elix.cool',
+          publicKeyHex: 'test-key',
+        ),
+      );
 
       await contacts.upsertContact(
         ContactRecord(
@@ -482,6 +490,7 @@ void main() {
         ),
         didSigner: _FakeDidSigner(),
         relayPublicationClient: _RecordingRelayPublicationClient(),
+        canonicalIdentityStore: canonicalIdentityStore,
       );
 
       await build().syncAll(pullRemote: false);
@@ -492,7 +501,7 @@ void main() {
       expect(profileOps.single.entityId, 'did:plc:reader');
       expect(
         CrdtOpBuilder.decodePayload(profileOps.single.payload)['handle'],
-        'me.example',
+        'canonical.elix.cool',
       );
 
       // Unchanged profile -> no new op.

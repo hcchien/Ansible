@@ -105,10 +105,13 @@ void main() {
       ),
     );
 
-    await service.flushPending();
+    final summary = await service.flushPending();
 
     expect(await repo.countPending(), 0);
     expect((await repo.listAll()).single.status, 'rejected');
+    expect(summary.rejectionReasons, [
+      'op-1: RelayOpsException(422 invalid_value)',
+    ]);
   });
 
   test(

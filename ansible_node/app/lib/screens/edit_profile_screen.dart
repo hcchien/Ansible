@@ -49,11 +49,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _load() async {
-    final self = await _contacts.contactForDid(widget.did);
+    var self = await _contacts.contactForDid(widget.did);
     final canonical = await const SecureCanonicalIdentityStore().load();
     final canonicalHandle = canonical?.did == widget.did
         ? canonical!.handle.trim()
         : '';
+    if (self != null &&
+        canonicalHandle.isNotEmpty &&
+        self.handle?.trim() != canonicalHandle) {
+      self = self.copyWith(handle: canonicalHandle, updatedAt: DateTime.now());
+      await _contacts.upsertContact(self);
+    }
     if (!mounted) return;
     setState(() {
       _existing = self;
@@ -61,7 +67,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Existing self-custody identities already own a public handle. Seed the
       // editor from that source of truth instead of showing an empty field and
       // inviting the person to create a conflicting second identity.
-      _handleController.text = self?.handle ?? canonicalHandle;
+      // Repair installs where an older profile editor allowed the public
+      // contact projection to drift away from the identity anchor. The
+      // canonical store wins whenever it belongs to this DID.
+      _handleController.text = canonicalHandle.isNotEmpty
+          ? canonicalHandle
+          : (self?.handle ?? '');
       _loading = false;
     });
   }
@@ -70,7 +81,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _saving = true);
     final now = DateTime.now();
     final displayName = _displayNameController.text.trim();
-    final handle = _handleController.text.trim();
+    // The handle is identity-anchor data, not an editable profile attribute.
+    // Keep publishing the canonical value so a display-profile edit can never
+    // silently fork the DID/Relay binding.
+    final canonical = await const SecureCanonicalIdentityStore().load();
+    final handle = canonical?.did == widget.did
+        ? canonical!.handle.trim()
+        : _handleController.text.trim();
 
     await _contacts.upsertContact(
       ContactRecord(
@@ -140,7 +157,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 _label(context, context.uiCopy(zh: 'HANDLE', en: 'HANDLE')),
-                _field(controller: _handleController, hint: 'name.elix.cool'),
+                _field(
+                  controller: _handleController,
+                  hint: 'name.elix.cool',
+                  readOnly: true,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  context.uiCopy(
+                    zh: 'Handle 與你的 DID 身分綁定，不能在個人檔案中直接變更。你仍可自由修改上方的顯示名稱。',
+                    en: 'Your handle is bound to your DID and cannot be changed from profile settings. You can still change your display name above.',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    height: 1.5,
+                    color: AnsibleDesign.inkMuted,
+                  ),
+                ),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _saving ? null : _save,
@@ -163,9 +196,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _field({
     required TextEditingController controller,
     required String hint,
+    bool readOnly = false,
   }) {
     return TextField(
       controller: controller,
+      readOnly: readOnly,
       style: const TextStyle(fontSize: 14, color: AnsibleDesign.ink),
       decoration: InputDecoration(
         hintText: hint,

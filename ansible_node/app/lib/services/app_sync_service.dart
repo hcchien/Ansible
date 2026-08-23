@@ -5,6 +5,7 @@ import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
 
 import '../l10n/subpage_l10n.dart';
+import 'canonical_identity_store.dart';
 import 'content_publication_service.dart';
 import 'fediverse_preferences_controller.dart';
 import 'host_moderation_sync_service.dart';
@@ -130,6 +131,8 @@ class AppSyncService {
         const CompletedSelfBackfillStateStore(),
     FediversePreferencesStore fediversePreferencesStore =
         const SharedPreferencesFediversePreferencesStore(),
+    CanonicalIdentityStore canonicalIdentityStore =
+        const SecureCanonicalIdentityStore(),
   }) : _remoteNodeRepo = remoteNodeRepo,
        _followRepository = followRepository,
        _contactRepository = contactRepository,
@@ -161,7 +164,8 @@ class AppSyncService {
        _authorizeBoardRead = authorizeBoardRead,
        _authorizeBoardWrite = authorizeBoardWrite,
        _selfBackfillState = selfBackfillState,
-       _fediversePreferencesStore = fediversePreferencesStore;
+       _fediversePreferencesStore = fediversePreferencesStore,
+       _canonicalIdentityStore = canonicalIdentityStore;
 
   final RemoteNodeRepository _remoteNodeRepo;
   final FollowRepository? _followRepository;
@@ -195,6 +199,7 @@ class AppSyncService {
   final BoardWriteAuthorization? _authorizeBoardWrite;
   final SelfBackfillStateStore _selfBackfillState;
   final FediversePreferencesStore _fediversePreferencesStore;
+  final CanonicalIdentityStore _canonicalIdentityStore;
 
   // Portable issuer re-verification (federation trust): one service per
   // relay node, kept for the AppSyncService lifetime so its per-DID verified
@@ -656,7 +661,10 @@ class AppSyncService {
       final self = await contacts.contactForDid(did);
       if (self == null) return 0;
 
-      final handle = _blank(self.handle);
+      final canonical = await _canonicalIdentityStore.load();
+      final handle = _blank(
+        canonical?.did == did ? canonical!.handle : self.handle,
+      );
       final displayName = _blank(self.displayName);
       final avatarUrl = _blank(self.avatarUrl);
       // Nothing public to announce yet.
@@ -911,7 +919,10 @@ String appSyncSummaryMessage(
       'rejected': result.opsSummary.rejected,
       'retry': result.opsSummary.retryPending,
       'reason':
-          result.opsSummary.retryReason ?? text.t('syncAllOpsUnknownReason'),
+          result.opsSummary.retryReason ??
+          (result.opsSummary.rejectionReasons.isNotEmpty
+              ? result.opsSummary.rejectionReasons.join('; ')
+              : text.t('syncAllOpsUnknownReason')),
     });
   }
   return message;
