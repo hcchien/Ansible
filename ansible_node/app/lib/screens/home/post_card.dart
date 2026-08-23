@@ -416,23 +416,25 @@ class _PostCardState extends State<PostCard> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
-      child: GestureDetector(
-        onTap: _openDetail,
-        onSecondaryTapDown: _openDesktopContextMenu,
-        child: Container(
-          decoration: BoxDecoration(
-            color: postCardBackgroundColor(
-              screenStyle: screenStyle,
-              systemBrightness: Theme.of(context).brightness,
-            ),
-            border: Border.all(color: style.rule, width: 1),
-            borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          color: postCardBackgroundColor(
+            screenStyle: screenStyle,
+            systemBrightness: Theme.of(context).brightness,
           ),
-          padding: const EdgeInsets.fromLTRB(16, 15, 16, 13),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          border: Border.all(color: style.rule, width: 1),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 15, 16, 13),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: widget.onOpenAuthor == null
+                  ? null
+                  : () => widget.onOpenAuthor!(data.author),
+              child: Row(
                 children: [
                   _avatar(
                     style,
@@ -446,21 +448,16 @@ class _PostCardState extends State<PostCard> {
                         Row(
                           children: [
                             Flexible(
-                              child: GestureDetector(
-                                onTap: widget.onOpenAuthor == null
-                                    ? null
-                                    : () => widget.onOpenAuthor!(data.author),
-                                child: AuthorLabel(
-                                  did: data.author,
-                                  displayName: data.authorDisplayName,
-                                  handle: data.authorHandle,
-                                  style: TextStyle(
-                                    fontFamily: AnsibleDesign.sans,
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.2,
-                                    color: style.foreground,
-                                  ),
+                              child: AuthorLabel(
+                                did: data.author,
+                                displayName: data.authorDisplayName,
+                                handle: data.authorHandle,
+                                style: TextStyle(
+                                  fontFamily: AnsibleDesign.sans,
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.2,
+                                  color: style.foreground,
                                 ),
                               ),
                             ),
@@ -511,74 +508,84 @@ class _PostCardState extends State<PostCard> {
                   ],
                 ],
               ),
-              if (data.title.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  data.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    fontSize: 16.5,
-                    height: 1.4,
-                    fontWeight: FontWeight.w700,
-                    color: _hover ? style.accent : style.foreground,
-                  ),
-                ),
-              ],
-              if (data.content.trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  data.content,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AnsibleDesign.serif,
-                    color: style.foreground,
-                    height: 1.72,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 10),
-              Row(
+            ),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _openDetail,
+              onSecondaryTapDown: _openDesktopContextMenu,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _feedAction(
-                    _reacted ? Icons.favorite : Icons.favorite_border,
-                    count: _likeCount,
-                    active: _reacted,
-                    color: style,
-                    onTap: _isReacting
-                        ? null
-                        : () async {
-                            setState(() => _isReacting = true);
-                            try {
-                              await _toggleThumbsUp(thread.id);
-                            } finally {
-                              setState(() => _isReacting = false);
-                            }
-                          },
-                  ),
-                  const SizedBox(width: 26),
-                  _feedAction(
-                    Icons.mode_comment_outlined,
-                    count: data.comments,
-                    color: style,
-                    onTap: _openDetail,
-                  ),
-                  const SizedBox(width: 26),
-                  _feedAction(Icons.repeat, color: style, onTap: _share),
-                  const Spacer(),
-                  _feedAction(
-                    Icons.ios_share,
-                    color: style,
-                    onTap: _share,
-                    tooltip: context.uiCopy(zh: '分享貼文', en: 'Share post'),
-                  ),
+                  if (data.title.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      data.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        fontSize: 16.5,
+                        height: 1.4,
+                        fontWeight: FontWeight.w700,
+                        color: _hover ? style.accent : style.foreground,
+                      ),
+                    ),
+                  ],
+                  if (data.content.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      data.content,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.serif,
+                        color: style.foreground,
+                        height: 1.72,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _feedAction(
+                  _reacted ? Icons.favorite : Icons.favorite_border,
+                  count: _likeCount,
+                  active: _reacted,
+                  color: style,
+                  onTap: _isReacting
+                      ? null
+                      : () async {
+                          setState(() => _isReacting = true);
+                          try {
+                            await _toggleThumbsUp(thread.id);
+                          } finally {
+                            setState(() => _isReacting = false);
+                          }
+                        },
+                ),
+                const SizedBox(width: 26),
+                _feedAction(
+                  Icons.mode_comment_outlined,
+                  count: data.comments,
+                  color: style,
+                  onTap: _openDetail,
+                ),
+                const SizedBox(width: 26),
+                _feedAction(Icons.repeat, color: style, onTap: _share),
+                const Spacer(),
+                _feedAction(
+                  Icons.ios_share,
+                  color: style,
+                  onTap: _share,
+                  tooltip: context.uiCopy(zh: '分享貼文', en: 'Share post'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

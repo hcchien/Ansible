@@ -105,4 +105,54 @@ void main() {
     expect(sharedText, 'Original post body');
     expect(find.byTooltip('分享貼文'), findsOneWidget);
   });
+
+  testWidgets('reaction action does not open the post thread', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final now = DateTime.utc(2026, 7, 17);
+    final thread = Thread(
+      id: 'thread-1',
+      boardId: 'board-1',
+      title: 'Title',
+      authorId: 'did:elix:alice',
+      createdAt: now,
+      updatedAt: now,
+    );
+    var openedContent = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PostCard(
+            db: db,
+            authorDid: 'did:elix:local',
+            opsDispatchService: OpsDispatchService(
+              repository: InMemoryOpsQueueRepository(),
+            ),
+            onFlushPendingOps: () async {},
+            onOpenContent: (_) => openedContent = true,
+            data: PostCardData(
+              thread: thread,
+              category: 'General',
+              title: thread.title,
+              content: 'Original post body',
+              author: thread.authorId,
+              board: 'General',
+              timeAgo: 'now',
+              reactions: const {'👍': 0},
+              comments: 0,
+              reacted: false,
+              openableThread: false,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.favorite_border));
+    await tester.pumpAndSettle();
+
+    expect(openedContent, isFalse);
+    expect(find.text('👍'), findsOneWidget);
+  });
 }
