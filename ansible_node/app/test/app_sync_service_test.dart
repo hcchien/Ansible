@@ -534,6 +534,61 @@ void main() {
     },
   );
 
+  test(
+    'syncAll preserves a legacy profile handle when canonical handle is empty',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      final now = DateTime.utc(2026, 8, 23);
+      final opsQueue = InMemoryOpsQueueRepository();
+      final contacts = DriftContactRepository(db);
+      await contacts.upsertContact(
+        ContactRecord(
+          subjectDid: 'did:elix:legacy',
+          handle: 'legacy.elix.cool',
+          source: 'self',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final service = AppSyncService(
+        remoteNodeRepo: DriftRemoteNodeRepository(db),
+        boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+        boardRepo: DriftBoardRepository(db),
+        threadRepo: DriftThreadRepository(db),
+        postRepo: DriftPostRepository(db),
+        contentItemRepo: DriftContentItemRepository(db),
+        publicationRepo: DriftPublicationRepository(db),
+        relaySettings: const EmptyNostrRelaySettingsStore(),
+        keyStore: const InMemoryNostrKeyStore(),
+        contactRepository: contacts,
+        followerDid: 'did:elix:legacy',
+        opsQueueRepo: opsQueue,
+        opsDispatchService: OpsDispatchService(
+          repository: opsQueue,
+          signer: _FakeDidSigner(),
+        ),
+        didSigner: _FakeDidSigner(),
+        relayPublicationClient: _RecordingRelayPublicationClient(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(
+          const CanonicalIdentity(
+            did: 'did:elix:legacy',
+            handle: '',
+            publicKeyHex: 'test-key',
+          ),
+        ),
+      );
+
+      await service.syncAll(pullRemote: false);
+      final profile = (await opsQueue.listAll()).single;
+      expect(
+        CrdtOpBuilder.decodePayload(profile.payload)['handle'],
+        'legacy.elix.cool',
+      );
+    },
+  );
+
   group('sync authorization planning', () {
     test('pure public pull requires no user presence', () async {
       final db = AppDatabase(NativeDatabase.memory());

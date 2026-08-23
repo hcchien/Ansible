@@ -32,6 +32,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _handleController = TextEditingController();
 
   ContactRecord? _existing;
+  String _canonicalHandle = '';
   bool _loading = true;
   bool _saving = false;
 
@@ -63,6 +64,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!mounted) return;
     setState(() {
       _existing = self;
+      _canonicalHandle = canonicalHandle;
       _displayNameController.text = self?.displayName ?? '';
       // Existing self-custody identities already own a public handle. Seed the
       // editor from that source of truth instead of showing an empty field and
@@ -85,8 +87,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     // Keep publishing the canonical value so a display-profile edit can never
     // silently fork the DID/Relay binding.
     final canonical = await const SecureCanonicalIdentityStore().load();
-    final handle = canonical?.did == widget.did
+    final canonicalHandle = canonical?.did == widget.did
         ? canonical!.handle.trim()
+        : '';
+    // A missing/empty canonical handle is a legacy or incomplete identity,
+    // not proof that a local profile value must be discarded. Keep that
+    // onboarding path editable; once anchored, the canonical value wins.
+    final handle = canonicalHandle.isNotEmpty
+        ? canonicalHandle
         : _handleController.text.trim();
 
     await _contacts.upsertContact(
@@ -160,20 +168,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 _field(
                   controller: _handleController,
                   hint: 'name.elix.cool',
-                  readOnly: true,
+                  readOnly: _canonicalHandle.isNotEmpty,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  context.uiCopy(
-                    zh: 'Handle 與你的 DID 身分綁定，不能在個人檔案中直接變更。你仍可自由修改上方的顯示名稱。',
-                    en: 'Your handle is bound to your DID and cannot be changed from profile settings. You can still change your display name above.',
+                if (_canonicalHandle.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    context.uiCopy(
+                      zh: 'Handle 與你的 DID 身分綁定，不能在個人檔案中直接變更。你仍可自由修改上方的顯示名稱。',
+                      en: 'Your handle is bound to your DID and cannot be changed from profile settings. You can still change your display name above.',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      height: 1.5,
+                      color: AnsibleDesign.inkMuted,
+                    ),
                   ),
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    height: 1.5,
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                ),
+                ],
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _saving ? null : _save,

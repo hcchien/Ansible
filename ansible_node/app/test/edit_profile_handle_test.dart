@@ -52,4 +52,32 @@ void main() {
       'canonical.elix.cool',
     );
   });
+
+  testWidgets('legacy identity without a canonical handle can still set one', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final now = DateTime.utc(2026, 8, 23);
+    await DriftContactRepository(db).upsertContact(
+      ContactRecord(
+        subjectDid: 'did:plc:legacy',
+        source: 'self',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EditProfileScreen(db: db, did: 'did:plc:legacy'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final fields = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .toList();
+    expect(fields, hasLength(2));
+    expect(fields[1].readOnly, isFalse);
+    expect(find.textContaining('Handle 與你的 DID 身分綁定'), findsNothing);
+  });
 }

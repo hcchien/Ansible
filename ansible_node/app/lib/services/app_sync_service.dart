@@ -662,9 +662,10 @@ class AppSyncService {
       if (self == null) return 0;
 
       final canonical = await _canonicalIdentityStore.load();
-      final handle = _blank(
-        canonical?.did == did ? canonical!.handle : self.handle,
-      );
+      final canonicalHandle = canonical?.did == did
+          ? _blank(canonical!.handle)
+          : null;
+      final handle = canonicalHandle ?? _blank(self.handle);
       final displayName = _blank(self.displayName);
       final avatarUrl = _blank(self.avatarUrl);
       // Nothing public to announce yet.
