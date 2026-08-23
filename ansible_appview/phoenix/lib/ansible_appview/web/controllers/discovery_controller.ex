@@ -35,6 +35,20 @@ defmodule AnsibleAppview.Web.Controllers.DiscoveryController do
     end)
   end
 
+  # GET /api/v1/profiles/:did
+  #
+  # Resolve only the public profile projection.  A raw DID remains the stable
+  # identity; display_name is presentation data and must never be treated as an
+  # authorization or verification signal by clients.
+  def profile(conn, %{"did" => did}) do
+    instrument("profile", fn ->
+      case Profiles.get(did) do
+        nil -> send_json(conn, 404, %{error: "profile_not_found"})
+        profile -> send_json(conn, 200, Profiles.to_map(profile))
+      end
+    end)
+  end
+
   # GET /api/v1/search?q=&limit=  -> {actors: [...], posts: [...]}
   def search(conn, params) do
     instrument("search", fn ->

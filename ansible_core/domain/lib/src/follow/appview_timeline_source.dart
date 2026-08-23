@@ -10,6 +10,8 @@ class AppViewTimelineItem {
   final String entityType;
   final String entityId;
   final String authorDid;
+  final String? authorDisplayName;
+  final String? authorHandle;
   final String? boardId;
   final String? threadId;
   final String? visibility;
@@ -21,6 +23,8 @@ class AppViewTimelineItem {
     required this.entityId,
     required this.authorDid,
     required this.payload,
+    this.authorDisplayName,
+    this.authorHandle,
     this.boardId,
     this.threadId,
     this.visibility,
@@ -183,6 +187,8 @@ class AppViewTimelineSource implements FollowFeedSource {
             board: null,
             reasons: const {FollowFeedReason.followedUser},
           ),
+          authorDisplayName: raw.authorDisplayName,
+          authorHandle: raw.authorHandle,
         );
       case 'murmur':
       case 'note':
@@ -207,6 +213,8 @@ class AppViewTimelineSource implements FollowFeedSource {
             item: item,
             reasons: const {FollowFeedReason.followedUser},
           ),
+          authorDisplayName: raw.authorDisplayName,
+          authorHandle: raw.authorHandle,
           signatureVerified: true,
         );
       default:

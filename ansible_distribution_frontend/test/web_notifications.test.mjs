@@ -32,6 +32,7 @@ const feed = {
       entity_id: 'reply-thread',
       board_id: 'general',
       author_did: 'did:elix:alice',
+      author_display_name: 'Alice',
       author_handle: 'alice.elix.cool',
       created_at: '2026-08-22T01:02:00Z',
       payload: { threadId: 'thread-1', content: 'reply' },
@@ -73,6 +74,7 @@ assert.deepEqual(
     { id: 'reply:reply-thread', type: 'reply_to_thread', isRead: true },
   ],
 );
+assert.equal(projected[1].actorDisplayName, 'Alice');
 console.log('ok - projects Forum Host replies for canonical and legacy DIDs');
 
 const values = new Map();

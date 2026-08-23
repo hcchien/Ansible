@@ -957,10 +957,27 @@ class RemoteSyncService {
         await _applyBoardActivity(activity, sourceNodeId);
         break;
       case 'thread':
+        if (activity.boardId == null || activity.boardId!.isEmpty) {
+          throw FormatException(
+            'invalid_remote_thread_missing_board_id:${activity.entityId}',
+          );
+        }
         await _applyThreadActivity(activity, sourceNodeId);
         break;
       case 'post':
-        await _applyPostActivity(activity, sourceNodeId);
+        // Older standalone-content replies were encoded as boardless `post`
+        // ops. They are comments, not malformed forum posts. Route them to the
+        // compatibility projector instead of dereferencing boardId with `!`.
+        if (activity.boardId == null || activity.boardId!.isEmpty) {
+          await _applyCommentActivity(activity, sourceNodeId);
+        } else {
+          if (activity.threadId == null || activity.threadId!.isEmpty) {
+            throw FormatException(
+              'invalid_remote_post_missing_thread_id:${activity.entityId}',
+            );
+          }
+          await _applyPostActivity(activity, sourceNodeId);
+        }
         break;
       case 'murmur':
       case 'note':
@@ -1328,7 +1345,7 @@ class RemoteSyncService {
       final now = DateTime.now();
       final thread = Thread(
         id: activity.entityId,
-        boardId: activity.boardId!,
+        boardId: activity.boardId ?? '',
         title: payload['title'] as String? ?? 'Untitled',
         authorId: activity.authorId,
         createdAt: activity.createdAt,
@@ -1363,8 +1380,8 @@ class RemoteSyncService {
 
       final post = Post(
         id: activity.entityId,
-        threadId: activity.threadId!,
-        boardId: activity.boardId!,
+        threadId: activity.threadId ?? '',
+        boardId: activity.boardId ?? '',
         authorId: activity.authorId,
         content: payload['content'] as String? ?? '',
         parentPostId: payload['parentPostId'] as String?,

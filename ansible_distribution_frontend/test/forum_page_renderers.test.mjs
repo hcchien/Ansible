@@ -518,12 +518,14 @@ const handledThreadDetailVm = buildAppViewModel({
       id: 'thread-handled',
       title: 'Handle thread',
       authorDid: 'did:plc:threadauthorabcdef',
+      authorDisplayName: 'Thread Author',
       authorHandle: 'thread-author.elix.cool',
       posts: [
         {
           id: 'post-handled',
           content: 'reply with handle',
           authorDid: 'did:plc:replyauthorabcdef',
+          authorDisplayName: 'Reply Author',
           authorHandle: 'reply-author.elix.cool',
         },
       ],
@@ -533,15 +535,17 @@ const handledThreadDetailVm = buildAppViewModel({
   },
 });
 const handledThreadDetailHtml = renderPageBody(handledThreadDetailVm);
-assert.match(handledThreadDetailHtml, /thread-author\.elix\.cool/);
-assert.match(handledThreadDetailHtml, /reply-author\.elix\.cool/);
+assert.match(handledThreadDetailHtml, /Thread Author/);
+assert.match(handledThreadDetailHtml, /Reply Author/);
+assert.doesNotMatch(handledThreadDetailHtml, /thread-author\.elix\.cool/);
+assert.doesNotMatch(handledThreadDetailHtml, /reply-author\.elix\.cool/);
 assert.doesNotMatch(handledThreadDetailHtml, /did:plc\.\.\.abcdef/);
 
 const anonymousHandledThreadDetailHtml = renderPageBody({
   ...handledThreadDetailVm,
   session: { authenticated: false, trustTier: 'anonymous', scopes: [] },
 });
-assert.match(anonymousHandledThreadDetailHtml, /reply-author\.elix\.cool/);
+assert.match(anonymousHandledThreadDetailHtml, /Reply Author/);
 assert.doesNotMatch(anonymousHandledThreadDetailHtml, />匿名<\/span>/);
 
 const lockedThreadDetailVm = buildAppViewModel({

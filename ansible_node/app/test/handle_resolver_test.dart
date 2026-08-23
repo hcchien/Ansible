@@ -43,4 +43,33 @@ void main() {
     expect(await resolver.handleFor('@alice.elix.cool'), 'alice.elix.cool');
     expect(requests, 0);
   });
+
+  test('prefers a published display name over the handle', () async {
+    final fallback = HandleResolver(
+      baseUrl: 'https://relay.example',
+      client: MockClient((_) async => http.Response('', 404)),
+    );
+    final resolver = PublicProfileResolver(
+      baseUrl: 'https://appview.example/base',
+      handleResolver: fallback,
+      client: MockClient((request) async {
+        expect(request.url.pathSegments, [
+          'base',
+          'api',
+          'v1',
+          'profiles',
+          'did:elix:alice',
+        ]);
+        return http.Response(
+          '{"did":"did:elix:alice","display_name":"Alice","handle":"alice.elix.cool"}',
+          200,
+        );
+      }),
+    );
+
+    expect(
+      (await resolver.profileFor('did:elix:alice'))?.preferredLabel,
+      'Alice',
+    );
+  });
 }

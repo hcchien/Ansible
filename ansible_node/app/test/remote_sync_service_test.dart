@@ -9,6 +9,58 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('legacy boardless post is projected as a standalone comment', () async {
+    final postRepo = InMemoryPostRepository();
+    final backfillState = InMemorySelfBackfillStateStore();
+    final client = _FakeRelayApiClient(
+      activities: [
+        {
+          'logId': 1,
+          'activity': {
+            'activityId': 'comment-op',
+            'type': 'create',
+            'entityType': 'post',
+            'entityId': 'comment-1',
+            'threadId': 'content-1',
+            'authorId': 'did:key:local',
+            'createdAt': '2026-08-23T04:00:00Z',
+            'payload': {'threadId': 'content-1', 'content': 'legacy reply'},
+          },
+        },
+      ],
+    );
+    final now = DateTime.utc(2026, 8, 23);
+    final result =
+        await RemoteSyncService(
+          remoteNodeRepo: _FakeRemoteNodeRepository(),
+          boardSyncConfigRepo: _FakeBoardSyncConfigRepository(
+            configs: const [],
+          ),
+          boardRepo: InMemoryBoardRepository(),
+          threadRepo: InMemoryThreadRepository(),
+          postRepo: postRepo,
+          contentItemRepo: InMemoryContentItemRepository(),
+          followerDid: 'did:key:local',
+          selfBackfillState: backfillState,
+          opSignatureVerifier: _TrustingRemoteOpSignatureVerifier(),
+        ).syncFromNode(
+          client,
+          RemoteNode(
+            id: 'remote-1',
+            name: 'Relay',
+            url: 'https://relay.example',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+    expect(result.success, isTrue);
+    final comment = await postRepo.getById('comment-1');
+    expect(comment, isNotNull);
+    expect(comment!.threadId, 'content-1');
+    expect(comment.boardId, isEmpty);
+  });
+
   test(
     'RelayApiClient reads relay ops delta and maps it to activities',
     () async {

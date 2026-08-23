@@ -44,6 +44,8 @@ class PostCardData {
     required this.reacted,
     this.openingPost,
     this.authorTier = 'basic',
+    this.authorDisplayName,
+    this.authorHandle,
     this.signatureVerified = false,
     this.openableThread = true,
   }) : sortTimestamp = sortTimestamp ?? thread.createdAt;
@@ -61,6 +63,8 @@ class PostCardData {
   final bool reacted;
   final Post? openingPost;
   final String authorTier;
+  final String? authorDisplayName;
+  final String? authorHandle;
 
   /// True when the post's authoring op is signature-verified — drives the
   /// "signed" badge.
@@ -86,6 +90,8 @@ class PostCardData {
     reacted: reacted,
     openingPost: openingPost,
     authorTier: authorTier ?? this.authorTier,
+    authorDisplayName: authorDisplayName,
+    authorHandle: authorHandle,
     signatureVerified: signatureVerified,
     openableThread: openableThread,
   );
@@ -446,6 +452,8 @@ class _PostCardState extends State<PostCard> {
                                     : () => widget.onOpenAuthor!(data.author),
                                 child: AuthorLabel(
                                   did: data.author,
+                                  displayName: data.authorDisplayName,
+                                  handle: data.authorHandle,
                                   style: TextStyle(
                                     fontFamily: AnsibleDesign.sans,
                                     fontSize: 14.5,
