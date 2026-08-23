@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Lavender Signal
-   Neutral paper, lavender trust signals and sky-blue board context.
+   ELIX WEB — Forest Letter
+   Bone paper, forest ink, ochre trust signals and moss board context.
    Editorial serif carries discussion; sans carries chrome; mono carries
    handles, policy and provenance labels.
    Light is canonical on :root; dark ("Ink") arrives from the system
@@ -8,26 +8,26 @@
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
-  --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #C6BFAC;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #2846A8;
-  --highlight: #EBE21C;
-  --warning: #9A4A24;
-  --danger: #9A4A24;
-  --success: #6FB2E8;
-  --sky: #6FB2E8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #FFFFFF;
+  --background: #FBF7DC;
+  --background-soft: #F4EEC6;
+  --surface: #FBF7DC;
+  --surface-raised: #F4EEC6;
+  --surface-deep: #E8DEAA;
+  --border: #D6CB94;
+  --border-soft: #E3DAB0;
+  --border-strong: #C9BB7C;
+  --muted-fill: #E8DEAA;
+  --accent: #B88C2E;
+  --lavender: #5A6E3A;
+  --highlight: #FBF7DC;
+  --warning: #7E4A1E;
+  --danger: #7E4A1E;
+  --success: #5A6E3A;
+  --sky: #5A6E3A;
+  --text: #1F2E20;
+  --muted: #3D4E3D;
+  --faint: #88826E;
+  --on-accent: #FBF7DC;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
   --serif: "Noto Serif TC", "Newsreader", serif;
   --serif-en: "Newsreader", "Noto Serif TC", serif;
@@ -42,52 +42,52 @@
 /* Paper theme — explicit selection (wins inside a dark system) */
 .forum-shell[data-theme="light"] {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
-  --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #C6BFAC;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #2846A8;
-  --highlight: #EBE21C;
-  --warning: #9A4A24;
-  --danger: #9A4A24;
-  --success: #6FB2E8;
-  --sky: #6FB2E8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #FFFFFF;
+  --background: #FBF7DC;
+  --background-soft: #F4EEC6;
+  --surface: #FBF7DC;
+  --surface-raised: #F4EEC6;
+  --surface-deep: #E8DEAA;
+  --border: #D6CB94;
+  --border-soft: #E3DAB0;
+  --border-strong: #C9BB7C;
+  --muted-fill: #E8DEAA;
+  --accent: #B88C2E;
+  --lavender: #5A6E3A;
+  --highlight: #FBF7DC;
+  --warning: #7E4A1E;
+  --danger: #7E4A1E;
+  --success: #5A6E3A;
+  --sky: #5A6E3A;
+  --text: #1F2E20;
+  --muted: #3D4E3D;
+  --faint: #88826E;
+  --on-accent: #FBF7DC;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 /* Ink theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #17130A;
-  --background-soft: #1F1A0E;
-  --surface: #14131A;
-  --surface-raised: #1F1A0E;
-  --surface-deep: #2A2413;
-  --border: #362E17;
-  --border-soft: #221D10;
-  --border-strong: #4A4020;
-  --muted-fill: #2A2413;
-  --accent: #D9C6F2;
-  --lavender: #5C82E0;
-  --highlight: #F5EE3A;
+  --background: #0E1A0F;
+  --background-soft: #16221A;
+  --surface: #0E1A0F;
+  --surface-raised: #16221A;
+  --surface-deep: #1F2D24;
+  --border: #2A3526;
+  --border-soft: #1F291E;
+  --border-strong: #405038;
+  --muted-fill: #1F2D24;
+  --accent: #D9AB4E;
+  --lavender: #93A971;
+  --highlight: #0E1A0F;
   --warning: #C98757;
   --danger: #C98757;
-  --success: #8FC4F5;
-  --sky: #8FC4F5;
-  --text: #F4EEDA;
-  --muted: #B7AD8E;
-  --faint: #726B4F;
-  --on-accent: #17130A;
+  --success: #93A971;
+  --sky: #93A971;
+  --text: #E8E0BE;
+  --muted: #B8B49A;
+  --faint: #7C8071;
+  --on-accent: #0E1A0F;
   --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
@@ -96,26 +96,26 @@
   :root,
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #17130A;
-    --background-soft: #1F1A0E;
-    --surface: #14131A;
-    --surface-raised: #1F1A0E;
-    --surface-deep: #2A2413;
-    --border: #362E17;
-    --border-soft: #221D10;
-    --border-strong: #4A4020;
-    --muted-fill: #2A2413;
-    --accent: #D9C6F2;
-    --lavender: #5C82E0;
-    --highlight: #F5EE3A;
+    --background: #0E1A0F;
+    --background-soft: #16221A;
+    --surface: #0E1A0F;
+    --surface-raised: #16221A;
+    --surface-deep: #1F2D24;
+    --border: #2A3526;
+    --border-soft: #1F291E;
+    --border-strong: #405038;
+    --muted-fill: #1F2D24;
+    --accent: #D9AB4E;
+    --lavender: #93A971;
+    --highlight: #0E1A0F;
     --warning: #C98757;
     --danger: #C98757;
-    --success: #8FC4F5;
-    --sky: #8FC4F5;
-    --text: #F4EEDA;
-    --muted: #B7AD8E;
-    --faint: #726B4F;
-    --on-accent: #17130A;
+    --success: #93A971;
+    --sky: #93A971;
+    --text: #E8E0BE;
+    --muted: #B8B49A;
+    --faint: #7C8071;
+    --on-accent: #0E1A0F;
     --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
   }
 }
@@ -3740,6 +3740,215 @@ h2 {
   height: 23px;
 }
 
+/* ── Forest Letter fidelity pass ─────────────────────────────────────── */
+/* The handoff is intentionally quiet: paper surfaces are separated by ink
+   hairlines, while ochre is reserved for trust and the one compose action. */
+.command-header {
+  border-bottom: 0.5px solid var(--border);
+  padding: 14px 28px;
+}
+
+.cols {
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  gap: 28px;
+  width: min(1280px, 100%);
+  padding: 24px 28px 56px;
+}
+
+.rail,
+.right-rail {
+  gap: 22px;
+  top: 78px;
+}
+
+.rail-item,
+.rail-nav a {
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.rail-nav a[aria-current="page"] {
+  border: 0.5px solid var(--border-soft);
+  background: var(--background-soft);
+  font-weight: 500;
+}
+
+.card,
+.side-panel,
+.compose,
+.post,
+.thread-detail-shell,
+.board-head,
+.login-page,
+.settings-session-card,
+.settings-preference-block,
+.thread-draft-form {
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.card,
+.side-panel,
+.post,
+.thread-detail-shell,
+.board-head,
+.login-page,
+.settings-session-card,
+.settings-preference-block,
+.thread-draft-form {
+  background: var(--background);
+}
+
+.side-panel a,
+.feed-head,
+.post-source,
+.post-actions,
+.thread-action-row {
+  border-color: var(--border-soft);
+}
+
+.section-label,
+.rail-label,
+.label-mono,
+.post-source,
+.thread-crumb {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+h1,
+h2,
+h3,
+h4,
+.brand-word {
+  font-family: var(--serif);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.feed-head h1,
+.board-head h1,
+.thread-hd h1 {
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.primary-action,
+.btn-signin {
+  background: var(--text);
+  border: none;
+  color: var(--background);
+  font-family: var(--serif);
+  font-weight: 500;
+}
+
+.primary-action:hover,
+.btn-signin:hover {
+  background: var(--text);
+  color: var(--background);
+}
+
+.pk-pill,
+.signed-pill,
+.tier-chip,
+.session-chip .tier {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.session-chip .av,
+.rail-board-row .hashav {
+  background: var(--accent);
+  color: var(--background);
+}
+
+.signed-pill {
+  border-style: solid;
+  border-width: 0.5px;
+  border-radius: 999px;
+  transform: none;
+}
+
+.forum-shell button:focus-visible,
+.forum-shell a:focus-visible,
+.forum-shell input:focus-visible,
+.forum-shell textarea:focus-visible,
+.forum-shell select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+@media (max-width: 767px) {
+  .command-header {
+    padding: 12px 16px;
+  }
+
+  .cols {
+    display: block;
+    width: 100%;
+    padding: 0 0 86px;
+  }
+
+  .feed {
+    width: 100%;
+  }
+
+  .mobile-tabbar {
+    justify-content: space-around;
+    padding: 10px 16px 14px;
+    border-top: 0.5px solid var(--border);
+    background: var(--background);
+  }
+
+  .mobile-tab,
+  .mobile-tab.center {
+    flex: 1 1 0;
+    width: auto;
+    height: auto;
+    min-height: 38px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.14em;
+  }
+
+  .mobile-tab[aria-current="page"] {
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  .mobile-compose-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 16px;
+    bottom: 80px;
+    width: 50px;
+    height: 50px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--background);
+    box-shadow: 0 6px 20px rgb(31 46 32 / 18%);
+    z-index: 8;
+  }
+
+  .mobile-compose-fab:hover {
+    color: var(--background);
+  }
+}
+
 /* The design carries navigation in the rail (desktop/tablet) and the tab bar
    (mobile), so the header nav only surfaces on pages that render no rail. */
 @media (min-width: 768px) {
@@ -3812,10 +4021,9 @@ h2 {
     display: none;
   }
 
-  /* On mobile the handoff composes from the tab bar's centre key, so the feed
-     is posts only — no compose strip and no floating action button. */
-  .compose,
-  .mobile-compose-fab {
+  /* The feed has no inline composer on mobile; the independent FAB supplies
+     the primary action above the handoff's four-cell navigation. */
+  .compose {
     display: none;
   }
 }

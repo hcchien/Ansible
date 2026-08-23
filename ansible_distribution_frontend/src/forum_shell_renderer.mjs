@@ -20,6 +20,7 @@ export function renderAppShell({ viewModel, bodyHtml, uiPreferences = DEFAULT_UI
         ${bodyHtml}
       </main>
       ${renderAppFooter(viewModel)}
+      ${renderMobileComposeFab(viewModel)}
       ${renderMobileTabBar(viewModel)}
     </div>
   `;
@@ -162,16 +163,16 @@ function legalHref(path) {
   return `${path}?lang=${encodeURIComponent(getCurrentLocale())}`;
 }
 
-/// Bottom tab bar (mobile) — the design's five-cell `mtabbar`:
-/// 動態 · 看板 · [＋] · 通知 · 你, with the sticker-style centre compose key.
+/// Bottom tab bar (mobile) — the handoff's four equal cells:
+/// 動態 · 發現 · 通知 · 你. Compose is a separate floating action, so the
+/// navigation remains calm and the primary action never impersonates a tab.
 /// Destinations without a route yet render as disabled cells rather than
 /// dead links.
 function renderMobileTabBar(viewModel) {
   const authenticated = Boolean(viewModel.session?.authenticated);
   const items = [
     { id: 'home', label: t('common.feed'), href: '#/', glyph: 'home' },
-    { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'board' },
-    { id: 'compose', center: true },
+    { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'search' },
     {
       id: 'notifications',
       label: t('home.notifications'),
@@ -195,10 +196,6 @@ function renderMobileTabBar(viewModel) {
 }
 
 function renderMobileTab(item, viewModel) {
-  if (item.center) {
-    return renderComposeTab(viewModel);
-  }
-
   const label = escapeHtml(item.label);
   const glyph = icon(item.glyph, 24, 'mobile-icon');
 
@@ -214,19 +211,20 @@ function renderMobileTab(item, viewModel) {
   return `<a class="mobile-tab${unreadClass}" href="${escapeAttribute(item.href)}"${current}>${glyph}${badge}<span>${label}</span></a>`;
 }
 
-/// The centre ＋: composes when the session may post, otherwise routes to
-/// login (the design's compose key is always present).
-function renderComposeTab(viewModel) {
+/// The handoff puts compose above the mobile navigation as a round FAB.
+/// It retains the existing login / signed-publication behavior.
+function renderMobileComposeFab(viewModel) {
+  if (viewModel.page?.id !== 'home') return '';
   const label = escapeAttribute(t('common.createPostAria'));
   const glyph = icon('plus', 23, 'mobile-icon');
 
   if (viewModel.actions?.showLogin || !viewModel.session?.authenticated) {
-    return `<a class="mobile-tab center" href="#/login" aria-label="${label}">${glyph}</a>`;
+    return `<a class="mobile-compose-fab" href="#/login" aria-label="${label}">${glyph}</a>`;
   }
 
   const boardId = viewModel.board?.id || viewModel.board?.slug || viewModel.boards?.[0]?.id || viewModel.boards?.[0]?.slug || '';
   const boardAttribute = boardId ? ` data-board-id="${escapeAttribute(boardId)}"` : '';
-  return `<button class="mobile-tab center" type="button" data-action="new-thread"${boardAttribute} aria-label="${label}">${glyph}</button>`;
+  return `<button class="mobile-compose-fab" type="button" data-action="new-thread"${boardAttribute} aria-label="${label}">${glyph}</button>`;
 }
 
 function shortFooterIdentity(identity) {
