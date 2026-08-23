@@ -45,6 +45,7 @@ export function buildAppViewModel({
     board: forum?.board ?? null,
     thread: forum?.thread ?? null,
     threads: forum?.threads ?? [],
+    publicFeed: forum?.publicFeed ?? null,
     notifications: forum?.notifications ?? { items: [], unreadCount: 0 },
     externalContent: forum?.externalContent ?? null,
     moderation: forum?.moderation ?? null,

@@ -61,17 +61,54 @@ export function createForumDataAdapter({
 }) {
   const notificationReadStore = createWebNotificationReadStore({ storage });
 
-  async function loadForumHome({ sessionViewModel } = {}) {
+  async function loadForumHome({ sessionViewModel, includePublicFeed = false } = {}) {
     const [host, boardsResponse] = await Promise.all([
       forumHostClient.fetchForumHostInfo({ relayBaseUrl, fetchImpl }),
       forumHostClient.fetchHostedBoards({ relayBaseUrl, fetchImpl }),
     ]);
 
-    return buildForumHomeViewModel({
+    const home = buildForumHomeViewModel({
       host,
       boards: boardsResponse.boards ?? [],
       sessionViewModel,
     });
+
+    if (!includePublicFeed) return home;
+
+    const readableBoards = home.boards.filter(isAnonymousReadableBoard);
+    const feedResults = await Promise.all(
+      readableBoards.map(async (board) => {
+        try {
+          const response = await appViewClient.fetchBoardFeed({
+            appViewBaseUrl,
+            fetchImpl,
+            boardId: board.id,
+          });
+          return { board, items: response?.items ?? [], unavailable: false };
+        } catch {
+          return { board, items: [], unavailable: true };
+        }
+      }),
+    );
+
+    const threads = feedResults
+      .flatMap(({ board, items }) =>
+        buildThreadsFromFeed(items).map((thread) => ({
+          ...thread,
+          boardId: board.id,
+          boardSlug: board.slug || board.id,
+          boardTitle: board.title || board.slug || board.id,
+        })),
+      )
+      .sort(compareThreadsNewestFirst);
+
+    return {
+      ...home,
+      publicFeed: {
+        threads,
+        unavailable: feedResults.some((result) => result.unavailable),
+      },
+    };
   }
 
   async function loadBoardPage({ boardId, sessionViewModel } = {}) {
@@ -589,6 +626,7 @@ export function normalizeHostedBoard(board) {
     },
     accessPolicy: {
       version: accessPolicy.version ?? 1,
+      readRequirement: accessPolicy?.read?.requirement ?? 'public',
       postRequirement,
       contentVisibility: accessPolicy.content_visibility ?? 'public',
       federation: accessPolicy.federation ?? 'enabled',
@@ -617,6 +655,20 @@ export function normalizeHostedBoard(board) {
         : null,
     },
   };
+}
+
+function isAnonymousReadableBoard(board) {
+  return (
+    board?.permissions?.canRead === true &&
+    board?.accessPolicy?.contentVisibility === 'public' &&
+    board?.accessPolicy?.readRequirement === 'public'
+  );
+}
+
+function compareThreadsNewestFirst(left, right) {
+  const leftTime = Date.parse(left?.updatedAt ?? left?.createdAt ?? '') || 0;
+  const rightTime = Date.parse(right?.updatedAt ?? right?.createdAt ?? '') || 0;
+  return rightTime - leftTime;
 }
 
 function isProhibitedCredentialClaim(path) {

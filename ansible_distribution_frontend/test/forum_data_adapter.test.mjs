@@ -53,6 +53,7 @@ test('normalizes hosted boards into UI-ready board records', () => {
       postingPolicy: { minPostTier: null, externalInclusion: false },
       accessPolicy: {
         version: 1,
+        readRequirement: 'public',
         postRequirement: 'posting_policy',
         contentVisibility: 'public',
         federation: 'enabled',
@@ -150,6 +151,7 @@ test('builds forum home data from host, boards, and session capabilities', () =>
         postingPolicy: { minPostTier: null, externalInclusion: false },
         accessPolicy: {
           version: 1,
+          readRequirement: 'public',
           postRequirement: 'posting_policy',
           contentVisibility: 'public',
           federation: 'enabled',
@@ -201,6 +203,99 @@ test('loads forum home data through the Forum Host client', async () => {
   ]);
   assert.equal(home.primaryBoardId, 'general');
   assert.equal(home.capabilities.canCreateThread, false);
+});
+
+test('loads and merges anonymous-readable board threads for the public home feed', async () => {
+  const feedCalls = [];
+  const adapter = createForumDataAdapter({
+    relayBaseUrl: 'http://localhost:4001',
+    appViewBaseUrl: 'http://localhost:5174',
+    forumHostClient: {
+      async fetchForumHostInfo() {
+        return { forum_host_id: 'host', display_name: 'Host' };
+      },
+      async fetchHostedBoards() {
+        return {
+          boards: [
+            {
+              board_id: 1,
+              hosted_board_id: 'public',
+              slug: 'public',
+              title: 'Public',
+              permissions: { read: true },
+              access_policy: {
+                content_visibility: 'public',
+                read: { requirement: 'public' },
+              },
+            },
+            {
+              board_id: 2,
+              hosted_board_id: 'members',
+              permissions: { read: true },
+              access_policy: {
+                content_visibility: 'restricted',
+                read: { requirement: 'member' },
+              },
+            },
+          ],
+        };
+      },
+    },
+    appViewClient: {
+      async fetchBoardFeed({ boardId }) {
+        feedCalls.push(boardId);
+        return {
+          items: [
+            {
+              entity_type: 'thread',
+              op_type: 'insert',
+              entity_id: 'thread-1',
+              board_id: 'legacy_public',
+              author_did: 'did:elix:author',
+              created_at: '2026-08-23T01:00:00Z',
+              payload: { title: 'Anonymous readers can see this' },
+            },
+          ],
+        };
+      },
+    },
+  });
+
+  const home = await adapter.loadForumHome({
+    sessionViewModel: { authenticated: false },
+    includePublicFeed: true,
+  });
+
+  assert.deepEqual(feedCalls, ['1']);
+  assert.equal(home.publicFeed.unavailable, false);
+  assert.equal(home.publicFeed.threads.length, 1);
+  assert.equal(home.publicFeed.threads[0].boardId, '1');
+  assert.equal(home.publicFeed.threads[0].boardSlug, 'public');
+  assert.equal(home.publicFeed.threads[0].title, 'Anonymous readers can see this');
+});
+
+test('reports a degraded public home feed instead of confusing failure with no posts', async () => {
+  const adapter = createForumDataAdapter({
+    relayBaseUrl: 'http://localhost:4001',
+    forumHostClient: {
+      async fetchForumHostInfo() {
+        return {};
+      },
+      async fetchHostedBoards() {
+        return {
+          boards: [{ hosted_board_id: 'general', permissions: { read: true } }],
+        };
+      },
+    },
+    appViewClient: {
+      async fetchBoardFeed() {
+        throw new Error('appview unavailable');
+      },
+    },
+  });
+
+  const home = await adapter.loadForumHome({ includePublicFeed: true });
+  assert.deepEqual(home.publicFeed, { threads: [], unavailable: true });
 });
 
 test('loads board data and marks missing boards with a semantic error', async () => {

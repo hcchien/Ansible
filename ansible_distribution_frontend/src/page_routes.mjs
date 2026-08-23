@@ -107,6 +107,7 @@ export function createPageController({
     if (route.pageId === PAGE_IDS.home || route.pageId === PAGE_IDS.boards) {
       const forum = await forumDataAdapter.loadForumHome({
         sessionViewModel: session,
+        includePublicFeed: route.pageId === PAGE_IDS.home,
       });
       return setStateWithNotifications(route, session, forum);
     }
