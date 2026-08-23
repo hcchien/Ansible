@@ -1087,8 +1087,31 @@ function renderRightRail(viewModel, boards) {
 }
 
 function renderRelayFeed(boards, viewModel) {
+  let unavailableNotice = '';
+  if (viewModel.publicFeed) {
+    const threads = viewModel.publicFeed.threads ?? [];
+    if (threads.length) {
+      return `
+        <section class="card thread-list home-public-feed" aria-label="${escapeAttribute(t('common.feed'))}">
+          ${renderThreadList(threads, { session: viewModel.session })}
+        </section>
+      `;
+    }
+
+    if (!viewModel.publicFeed.unavailable) {
+      return `<p class="empty-state">${escapeHtml(t('board.noThreads'))}</p>`;
+    }
+
+    unavailableNotice = `
+      <aside class="info-banner is-warning" role="status">
+        <span class="icon"></span>
+        <div><span>${escapeHtml(t('home.publicFeedUnavailable'))}</span></div>
+      </aside>
+    `;
+  }
+
   if (!boards.length) {
-    return `
+    return `${unavailableNotice}
       <article class="post empty-state-card">
         <div class="lane"><span class="av" aria-hidden="true">#</span></div>
         <div class="body">
@@ -1099,7 +1122,7 @@ function renderRelayFeed(boards, viewModel) {
     `;
   }
 
-  return boards.map((board) => renderBoardFeedPost(board, viewModel)).join('');
+  return `${unavailableNotice}${boards.map((board) => renderBoardFeedPost(board, viewModel)).join('')}`;
 }
 
 /// Feed card — the design's `post` anatomy: an avatar lane beside a body of
@@ -1194,8 +1217,8 @@ function renderThreadItem(thread, context = {}) {
   const threadId = thread.id ?? '';
   const authenticated = Boolean(context.session?.authenticated);
   const boardId = thread.boardId || context.boardId || '';
-  const boardSlug = context.boardSlug || boardId;
-  const boardTitle = context.boardTitle || boardId;
+  const boardSlug = thread.boardSlug || context.boardSlug || boardId;
+  const boardTitle = thread.boardTitle || context.boardTitle || boardId;
   const href = threadId && boardSlug
     ? `#/boards/${encodeURIComponent(boardSlug)}/threads/${encodeURIComponent(threadId)}`
     : null;
