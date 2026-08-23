@@ -46,6 +46,12 @@ export function projectWebReplyNotifications({ feeds = [], subjectDids = [], rea
         id,
         type,
         actorDid: item.author_did ?? '',
+        actorDisplayName:
+          item.author_display_name ??
+          item.authorDisplayName ??
+          payload.author_display_name ??
+          payload.authorDisplayName ??
+          null,
         actorHandle: item.author_handle ?? payload.author_handle ?? null,
         boardId: item.board_id ?? feed.boardId ?? thread?.board_id ?? '',
         threadId,

@@ -1241,6 +1241,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           _contentFollowCard(
             item.entry.item,
             signatureVerified: item.signatureVerified,
+            authorDisplayName: item.authorDisplayName,
+            authorHandle: item.authorHandle,
           ),
         );
         continue;
@@ -1282,6 +1284,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           reacted: reacted,
           openingPost: entry.post,
           signatureVerified: entry.post.signatureVerified,
+          authorDisplayName: item.authorDisplayName,
+          authorHandle: item.authorHandle,
         ),
       );
     }
@@ -1290,7 +1294,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   /// Render a followed user's standalone murmur/note as a feed card. These have
   /// no board/thread, so a lightweight synthetic thread carries the card.
-  PostCardData _contentFollowCard(ContentItem item, {bool? signatureVerified}) {
+  PostCardData _contentFollowCard(
+    ContentItem item, {
+    bool? signatureVerified,
+    String? authorDisplayName,
+    String? authorHandle,
+  }) {
     final isNote = item.mode == ContentMode.note;
     final label = isNote ? 'NOTE' : 'MURMUR';
     final title = (item.title != null && item.title!.trim().isNotEmpty)
@@ -1316,6 +1325,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       comments: 0,
       reacted: false,
       signatureVerified: signatureVerified ?? item.signatureVerified,
+      authorDisplayName: authorDisplayName,
+      authorHandle: authorHandle,
       // Murmur/note have no thread — tapping must not open an empty thread view.
       openableThread: false,
     );

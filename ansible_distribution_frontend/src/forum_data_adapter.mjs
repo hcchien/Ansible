@@ -726,6 +726,7 @@ export function buildThreadsFromFeed(items) {
         title: payload.title || '',
         boardId: item.board_id || payload.boardId || payload.board_id || '',
         authorDid: item.author_did,
+        authorDisplayName: normalizeAuthorDisplayName(item, payload),
         authorHandle: normalizeAuthorHandle(item, payload),
         updatedAt: item.created_at,
         replyCount: 0,
@@ -754,6 +755,7 @@ export function buildThreadsFromFeed(items) {
           id: item.entity_id,
           content: payload.content || '',
           authorDid: item.author_did,
+          authorDisplayName: normalizeAuthorDisplayName(item, payload),
           authorHandle: normalizeAuthorHandle(item, payload),
           createdAt: item.created_at,
           revision: item.op_id ?? String(item.log_id ?? ''),
@@ -808,6 +810,19 @@ function normalizeAuthorHandle(item, payload = {}) {
     null;
   const handle = String(value ?? '').trim();
   return handle || null;
+}
+
+function normalizeAuthorDisplayName(item, payload = {}) {
+  const value =
+    item?.author_display_name ??
+    item?.authorDisplayName ??
+    payload?.author_display_name ??
+    payload?.authorDisplayName ??
+    payload?.display_name ??
+    payload?.displayName ??
+    null;
+  const displayName = String(value ?? '').trim();
+  return displayName || null;
 }
 
 function boardMatchesRoute(board, routeBoardId) {

@@ -112,6 +112,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert length(alice.items) == 1
     assert hd(alice.items).author_did == "did:key:alice"
     assert hd(alice.items).author_handle == "alice.elix.cool"
+    assert hd(alice.items).author_display_name == "Alice"
     assert hd(alice.items).public_key_hex == pub
     assert hd(alice.items).reputation_tier == "verified_human"
 

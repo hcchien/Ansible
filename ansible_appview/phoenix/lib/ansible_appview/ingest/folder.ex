@@ -196,6 +196,7 @@ defmodule AnsibleAppview.Ingest.Folder do
       op_id: row.op_id,
       author_did: row.author_did,
       author_handle: author_handle(row.author_did),
+      author_display_name: author_display_name(row.author_did),
       entity_type: row.entity_type,
       entity_id: row.entity_id,
       op_type: row.op_type,
@@ -217,6 +218,18 @@ defmodule AnsibleAppview.Ingest.Folder do
   end
 
   defp author_handle(_did), do: nil
+
+  defp author_display_name(did) when is_binary(did) do
+    case Profiles.get(did) do
+      %{display_name: display_name} when is_binary(display_name) and display_name != "" ->
+        display_name
+
+      _ ->
+        nil
+    end
+  end
+
+  defp author_display_name(_did), do: nil
 
   # Per-op preparation, guarded so a single malformed op (decode/verify raising)
   # is dead-lettered and skipped rather than crashing the whole page fold. A

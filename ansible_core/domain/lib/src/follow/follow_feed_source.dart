@@ -11,7 +11,10 @@ sealed class FollowTimelineItem {
 
 class PostTimelineItem extends FollowTimelineItem {
   final FollowFeedEntry entry;
-  PostTimelineItem(this.entry);
+  final String? authorDisplayName;
+  final String? authorHandle;
+
+  PostTimelineItem(this.entry, {this.authorDisplayName, this.authorHandle});
 
   @override
   DateTime get timestamp => entry.post.lastEditAt;
@@ -23,10 +26,17 @@ class PostTimelineItem extends FollowTimelineItem {
 
 class ContentTimelineItem extends FollowTimelineItem {
   final ContentFeedEntry entry;
+  final String? authorDisplayName;
+  final String? authorHandle;
   @override
   final bool signatureVerified;
 
-  ContentTimelineItem(this.entry, {this.signatureVerified = false});
+  ContentTimelineItem(
+    this.entry, {
+    this.signatureVerified = false,
+    this.authorDisplayName,
+    this.authorHandle,
+  });
 
   @override
   DateTime get timestamp => entry.item.publishedAt ?? entry.item.createdAt;

@@ -89,7 +89,10 @@ function renderNotifications(viewModel) {
 }
 
 function renderNotificationRow(notification) {
-  const actor = notification.actorHandle || shortIdentity(notification.actorDid);
+  const actor =
+    String(notification.actorDisplayName ?? '').trim() ||
+    notification.actorHandle ||
+    shortIdentity(notification.actorDid);
   const label = notification.type === 'reply_to_post'
     ? t('notifications.replyToPost')
     : t('notifications.replyToThread');
@@ -285,6 +288,11 @@ function authorHandle(entity) {
 }
 
 function authorDisplayName(entity) {
+  if (!entity || typeof entity !== 'object') return shortIdentity(threadAuthor(entity));
+  const displayName = String(
+    entity.authorDisplayName ?? entity.author_display_name ?? entity.displayName ?? entity.display_name ?? '',
+  ).trim();
+  if (displayName) return displayName;
   const handle = authorHandle(entity);
   if (handle) return handle;
   return shortIdentity(threadAuthor(entity));

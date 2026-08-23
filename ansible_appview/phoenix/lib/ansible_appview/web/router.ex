@@ -72,6 +72,12 @@ defmodule AnsibleAppview.Web.Router do
     AnsibleAppview.Web.Controllers.DiscoveryController.search_actors(conn, conn.query_params)
   end
 
+  # Public profile ops are an explicit directory opt-in. This endpoint never
+  # consults relay account records or returns private profile fields.
+  get "/api/v1/profiles/:did" do
+    AnsibleAppview.Web.Controllers.DiscoveryController.profile(conn, conn.params)
+  end
+
   get "/api/v1/search" do
     AnsibleAppview.Web.Controllers.DiscoveryController.search(conn, conn.query_params)
   end
