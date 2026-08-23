@@ -1,6 +1,7 @@
 import 'package:ansible_node/screens/thread_composer_screen.dart';
 import 'package:ansible_node/screens/threads_list_screen.dart';
 import 'package:ansible_node/services/forum_publication_service.dart';
+import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -229,6 +230,30 @@ void main() {
       );
       expect(done.onPressed, isNotNull);
     });
+  });
+
+  testWidgets('title ink stays legible when the app uses its dark theme', (
+    tester,
+  ) async {
+    final open = await seedBoard('board-1', 'General');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AnsibleDesign.darkTheme(),
+        home: ThreadComposerScreen(
+          boards: [open],
+          initialBoardId: open.id,
+          authorDid: localDid,
+          db: db,
+        ),
+      ),
+    );
+
+    final title = tester.widget<TextField>(
+      find.byKey(const Key('thread_composer_title_field')),
+    );
+    final decoration = title.decoration!;
+    expect(decoration.filled, isFalse);
+    expect(title.style?.color, AnsibleDesign.ink);
   });
 
   group('composer cross-post selector', () {

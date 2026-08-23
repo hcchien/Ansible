@@ -537,8 +537,8 @@ const handledThreadDetailVm = buildAppViewModel({
 const handledThreadDetailHtml = renderPageBody(handledThreadDetailVm);
 assert.match(handledThreadDetailHtml, /Thread Author/);
 assert.match(handledThreadDetailHtml, /Reply Author/);
-assert.doesNotMatch(handledThreadDetailHtml, /thread-author\.elix\.cool/);
-assert.doesNotMatch(handledThreadDetailHtml, /reply-author\.elix\.cool/);
+assert.match(handledThreadDetailHtml, /Thread Author · @thread-author\.elix\.cool/);
+assert.match(handledThreadDetailHtml, /Reply Author · @reply-author\.elix\.cool/);
 assert.doesNotMatch(handledThreadDetailHtml, /did:plc\.\.\.abcdef/);
 
 const anonymousHandledThreadDetailHtml = renderPageBody({

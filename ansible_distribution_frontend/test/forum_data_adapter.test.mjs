@@ -534,6 +534,56 @@ test('projects signed thread/post updates and deletes from the schema feed', () 
   ]), []);
 });
 
+test('projects active reactions into thread and reply counts without double-counting updates', () => {
+  const [thread] = buildThreadsFromFeed([
+    {
+      log_id: 1,
+      entity_type: 'thread',
+      op_type: 'insert',
+      entity_id: 'thread-1',
+      payload: { title: 'Reaction target' },
+    },
+    {
+      log_id: 2,
+      entity_type: 'post',
+      op_type: 'insert',
+      entity_id: 'post-1',
+      payload: { threadId: 'thread-1', content: 'Reply target' },
+    },
+    {
+      log_id: 3,
+      entity_type: 'reaction',
+      op_type: 'insert',
+      entity_id: 'reaction-a',
+      payload: { targetType: 'thread', targetId: 'thread-1', reactionType: 'thumbsUp' },
+    },
+    {
+      log_id: 4,
+      entity_type: 'reaction',
+      op_type: 'update',
+      entity_id: 'reaction-a',
+      payload: { targetType: 'thread', targetId: 'thread-1', reactionType: 'happy' },
+    },
+    {
+      log_id: 5,
+      entity_type: 'reaction',
+      op_type: 'insert',
+      entity_id: 'reaction-b',
+      payload: { targetType: 'post', targetId: 'post-1', reactionType: 'happy' },
+    },
+    {
+      log_id: 6,
+      entity_type: 'reaction',
+      op_type: 'delete',
+      entity_id: 'reaction-b',
+      payload: { targetType: 'post', targetId: 'post-1' },
+    },
+  ]);
+
+  assert.equal(thread.likeCount, 1);
+  assert.equal(thread.posts[0].likeCount ?? 0, 0);
+});
+
 test('submits thread drafts only when the session can post', async () => {
   const submissions = [];
   const adapter = createForumDataAdapter({

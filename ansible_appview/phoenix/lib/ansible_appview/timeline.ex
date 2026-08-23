@@ -293,10 +293,23 @@ defmodule AnsibleAppview.Timeline do
     # top-level feeds, but a thread/content view is exactly where comments belong.
     limit = limit |> min(200) |> max(1)
 
+    # Reactions are routed by payload.targetId rather than thread_id. Include
+    # those on the thread itself and on its replies so web readers can show the
+    # same public aggregate as the app without inferring it from local state.
+    reply_ids =
+      from(f in FeedItem,
+        where: f.thread_id == ^thread_id and f.entity_type == "post",
+        select: f.entity_id
+      )
+
     base =
       from(f in FeedItem,
         where:
-          f.thread_id == ^thread_id and f.deleted == false and
+          (f.thread_id == ^thread_id or
+             (f.entity_type == "reaction" and
+                (fragment("?->>'targetId'", f.payload) == ^thread_id or
+                   fragment("?->>'targetId'", f.payload) in subquery(reply_ids)))) and
+            f.deleted == false and
             f.sig_verified == true and
             (is_nil(f.visibility) or f.visibility in ^@relayable),
         order_by: [asc: f.log_id],

@@ -292,8 +292,9 @@ function authorDisplayName(entity) {
   const displayName = String(
     entity.authorDisplayName ?? entity.author_display_name ?? entity.displayName ?? entity.display_name ?? '',
   ).trim();
-  if (displayName) return displayName;
   const handle = authorHandle(entity);
+  if (displayName && handle) return `${displayName} · @${handle.replace(/^@/, '')}`;
+  if (displayName) return displayName;
   if (handle) return handle;
   return shortIdentity(threadAuthor(entity));
 }

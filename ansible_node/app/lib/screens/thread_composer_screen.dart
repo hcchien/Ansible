@@ -281,6 +281,10 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
                           fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
+                          // The composer surface is always Paper, even when
+                          // the rest of the app follows the system dark theme.
+                          // Do not inherit darkTheme's filled input background.
+                          filled: false,
                           isDense: true,
                           hintText: l10n.discussionTitleHint,
                           hintStyle: const TextStyle(

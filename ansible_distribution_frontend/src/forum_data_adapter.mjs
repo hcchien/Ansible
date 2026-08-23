@@ -717,8 +717,19 @@ export function normalizeThreadSubmission(response) {
 export function buildThreadsFromFeed(items) {
   const threadsById = new Map();
   const postsByThread = new Map();
+  const activeReactions = new Map();
 
-  for (const item of items) {
+  // Board feeds are newest-first, while a state projection needs to see an
+  // insert before a later update/delete. Items without a log id retain their
+  // incoming order for compatibility with older AppViews.
+  const orderedItems = [...items].sort((left, right) => {
+    const leftLogId = Number(left?.log_id);
+    const rightLogId = Number(right?.log_id);
+    if (Number.isFinite(leftLogId) && Number.isFinite(rightLogId)) return leftLogId - rightLogId;
+    return 0;
+  });
+
+  for (const item of orderedItems) {
     if (item.entity_type === 'thread' && item.op_type === 'insert') {
       const payload = item.payload ?? {};
       threadsById.set(item.entity_id, {
@@ -781,6 +792,19 @@ export function buildThreadsFromFeed(items) {
         }
         break;
       }
+    } else if (item.entity_type === 'reaction') {
+      const payload = item.payload ?? {};
+      const targetType = String(payload.targetType ?? '').toLowerCase();
+      const targetId = String(payload.targetId ?? '').trim();
+      if (!targetId || !['thread', 'post'].includes(targetType)) continue;
+
+      if (item.op_type === 'delete') {
+        activeReactions.delete(item.entity_id);
+      } else if (item.op_type === 'insert' || item.op_type === 'update') {
+        // Relay enforces one active reaction per author/target and updates keep
+        // the entity id stable, so replacing this entry avoids double-counting.
+        activeReactions.set(item.entity_id, { targetType, targetId });
+      }
     }
   }
 
@@ -793,6 +817,18 @@ export function buildThreadsFromFeed(items) {
     if (posts.length > 0) {
       thread.updatedAt = posts[posts.length - 1].createdAt;
     }
+  }
+
+  const threadById = new Map(threads.map((thread) => [thread.id, thread]));
+  const postById = new Map();
+  for (const thread of threads) {
+    for (const post of thread.posts) postById.set(post.id, post);
+  }
+  for (const reaction of activeReactions.values()) {
+    const target = reaction.targetType === 'thread'
+      ? threadById.get(reaction.targetId)
+      : postById.get(reaction.targetId);
+    if (target) target.likeCount = (target.likeCount ?? 0) + 1;
   }
 
   threads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
