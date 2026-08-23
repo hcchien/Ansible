@@ -8,11 +8,19 @@ import '../theme/ansible_design.dart';
 /// A·03). Editorial styling: serif headings/body, mono small-caps labels, the
 /// constellation mark + wordmark, dark pill CTA.
 class OnboardingIntroScreen extends StatefulWidget {
-  const OnboardingIntroScreen({super.key, required this.onContinue});
+  const OnboardingIntroScreen({
+    super.key,
+    required this.onContinue,
+    this.reviewPublicContent,
+  });
 
   /// Called when the user finishes the intro — the host shows the passkey
   /// registration screen next.
   final VoidCallback onContinue;
+
+  /// Present only in the specially built Google Play review artifact. This
+  /// opens a public, read-only surface and never creates an identity.
+  final VoidCallback? reviewPublicContent;
 
   @override
   State<OnboardingIntroScreen> createState() => _OnboardingIntroScreenState();
@@ -143,6 +151,19 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                 context.uiCopy(zh: '進入', en: 'Enter'),
                 trailing: '→',
               ),
+              if (widget.reviewPublicContent != null) ...[
+                const SizedBox(height: 8),
+                TextButton(
+                  key: const Key('google_play_review_public_content'),
+                  onPressed: widget.reviewPublicContent,
+                  child: Text(
+                    context.uiCopy(
+                      zh: '查看公開內容（Google Play 審查）',
+                      en: 'Review public content (Google Play)',
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               Text(
                 context.uiCopy(

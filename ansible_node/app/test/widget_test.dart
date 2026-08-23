@@ -48,6 +48,32 @@ void main() {
     );
   });
 
+  testWidgets('review build exposes credential-free public-content access', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _EmptyDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+        googlePlayReviewAccessEnabled: true,
+      ),
+    );
+    await tester.pump();
+
+    final access = find.byKey(const Key('google_play_review_public_content'));
+    expect(access, findsOneWidget);
+    await tester.tap(access);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Google Play review access'), findsOneWidget);
+    expect(find.text('Elix public content'), findsOneWidget);
+  });
+
   testWidgets('uses swipe shell navigation on phone width', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

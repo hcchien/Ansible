@@ -109,6 +109,14 @@ class AppEnvironment {
     defaultValue: 'user',
   );
 
+  /// Enables the credential-free, read-only public-content entry point used
+  /// only in a Google Play review build. It never creates an identity or
+  /// authorizes writes; normal builds leave it hidden.
+  static const enableGooglePlayReviewAccess = bool.fromEnvironment(
+    'ANSIBLE_GOOGLE_PLAY_REVIEW_ACCESS',
+    defaultValue: false,
+  );
+
   /// Public web frontend origin (forum). Legal / policy pages required for
   /// store submission live here (`/privacy`, `/terms`, `/about`,
   /// `/account-deletion`) and are opened from the in-app About screen.

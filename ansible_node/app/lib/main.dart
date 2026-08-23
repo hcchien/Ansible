@@ -20,6 +20,7 @@ import 'screens/edit_profile_screen.dart';
 import 'screens/onboarding_backup_step_screen.dart'; // Post-registration backup + initial anchor
 import 'screens/onboarding_intro_screen.dart';
 import 'screens/passkeys_registration_screen.dart'; // V2.0: Passkeys registration
+import 'screens/google_play_review_screen.dart';
 import 'screens/posts_view_screen.dart';
 import 'screens/recovery_wizard_screen.dart'; // Restore-from-backup recovery
 import 'screens/threads_list_screen.dart';
@@ -316,6 +317,10 @@ class MyApp extends StatefulWidget {
   /// Board shown on launch (forwarded to [HomeShell]). Defaults to the Timeline.
   final HomeBoard initialBoard;
 
+  /// Test seam for the Google Play review-only public-content entry point.
+  /// Production configuration controls this unless a widget test overrides it.
+  final bool? googlePlayReviewAccessEnabled;
+
   const MyApp({
     super.key,
     required this.db,
@@ -328,6 +333,7 @@ class MyApp extends StatefulWidget {
     this.webSessionLinks,
     this.relayIdentityClient,
     this.initialBoard = HomeBoard.timeline,
+    this.googlePlayReviewAccessEnabled,
   });
 
   @override
@@ -353,6 +359,10 @@ class _MyAppState extends State<MyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<Uri>? _webSessionLinkSubscription;
+
+  bool get _googlePlayReviewAccessEnabled =>
+      widget.googlePlayReviewAccessEnabled ??
+      AppEnvironment.enableGooglePlayReviewAccess;
 
   @override
   void initState() {
@@ -701,6 +711,13 @@ class _MyAppState extends State<MyApp> {
                 )
               : OnboardingIntroScreen(
                   onContinue: () => setState(() => _introDone = true),
+                  reviewPublicContent: _googlePlayReviewAccessEnabled
+                      ? () => _navigatorKey.currentState?.push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const GooglePlayReviewScreen(),
+                          ),
+                        )
+                      : null,
                 ),
         );
       },
