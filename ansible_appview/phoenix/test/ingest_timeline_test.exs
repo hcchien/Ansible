@@ -167,15 +167,28 @@ defmodule AnsibleAppview.IngestTimelineTest do
         pub: pub,
         priv: priv,
         payload: %{"boardId" => "1784609094692_fifa2026", "title" => "世界盃討論"}
+      ),
+      signed_op(
+        log_id: 4,
+        author_did: "did:key:author",
+        entity_type: "thread",
+        entity_id: "e-election-canonical-namespaced",
+        pub: pub,
+        priv: priv,
+        payload: %{"boardId" => "1785979771777_42", "title" => "數字 ID 舊文"}
       )
     ]
 
-    {3, 3} = Folder.apply_ops(ops)
+    {4, 4} = Folder.apply_ops(ops)
 
     election = Timeline.for_board("42", "2026", nil, 50)
     fifa = Timeline.for_board("43", "fifa2026", nil, 50)
 
-    assert Enum.map(election.items, & &1.entity_id) == ["e-election-legacy", "e-election-current"]
+    assert Enum.map(election.items, & &1.entity_id) == [
+             "e-election-canonical-namespaced",
+             "e-election-legacy",
+             "e-election-current"
+           ]
     assert Enum.map(fifa.items, & &1.entity_id) == ["e-fifa-legacy"]
   end
 

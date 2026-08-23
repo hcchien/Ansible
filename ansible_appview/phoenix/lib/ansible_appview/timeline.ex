@@ -245,6 +245,8 @@ defmodule AnsibleAppview.Timeline do
 
   @spec for_board(String.t(), String.t() | nil, integer() | nil, pos_integer()) :: map()
   def for_board(board_id, legacy_board_id, cursor, limit) do
+    canonical_namespaced_id = "%\\_" <> escape_like(board_id)
+
     legacy_namespaced_id =
       case legacy_board_id do
         value when is_binary(value) and value != "" -> "%\\_" <> escape_like(value)
@@ -252,15 +254,20 @@ defmodule AnsibleAppview.Timeline do
       end
 
     board_scope =
-      dynamic([f], f.board_id == ^board_id) |> maybe_legacy_board(legacy_board_id, legacy_namespaced_id)
+      dynamic(
+        [f],
+        f.board_id == ^board_id or like(f.board_id, ^canonical_namespaced_id)
+      )
+      |> maybe_legacy_board(legacy_board_id, legacy_namespaced_id)
 
     page(
       from(f in FeedItem,
-        # Current publications use the hosted board id verbatim. Earlier
-        # mobile clients persisted `<local-id>_<hosted-board-id>`, so retain
-        # that explicitly delimited legacy form. The escaped underscore is a
-        # literal separator, not SQL LIKE's one-character wildcard: otherwise
-        # reading `2026` also includes `fifa2026`.
+        # Current publications use the canonical hosted board id verbatim.
+        # Earlier mobile clients persisted `<local-id>_<board-id>`, where the
+        # suffix could be either the canonical numeric id or the legacy hosted
+        # slug. Retain both explicitly delimited forms. The escaped underscore
+        # is a literal separator, not SQL LIKE's one-character wildcard:
+        # otherwise reading `2026` also includes `fifa2026`.
         where: ^board_scope
       ),
       cursor,
