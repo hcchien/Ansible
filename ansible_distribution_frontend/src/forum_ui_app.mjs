@@ -69,6 +69,10 @@ export function createForumUiApp({
         dismissSwipeCoachmark();
       } else if (action === 'new-thread') {
         openThreadDraft(actionElement);
+      } else if (action === 'new-poll') {
+        openThreadDraft(actionElement, { type: 'poll' });
+      } else if (action === 'add-poll-option') {
+        addPollOption(actionElement);
       } else if (action === 'cancel-thread-draft') {
         cancelThreadDraft();
       } else if (action === 'submit-thread-draft') {
@@ -235,13 +239,24 @@ export function createForumUiApp({
     }
   }
 
-  function openThreadDraft(actionElement) {
+  function openThreadDraft(actionElement, { type = 'discussion' } = {}) {
     threadDraft = {
       boardId: currentBoardId(actionElement),
       title: '',
+      type,
     };
     uiError = null;
     render();
+  }
+
+  function addPollOption(actionElement) {
+    const form = findThreadDraftForm(actionElement, root);
+    const optionList = form?.querySelector?.('[data-poll-option-list]');
+    if (!optionList || optionList.querySelectorAll('[data-thread-draft-poll-option]').length >= 12) return;
+    const number = optionList.querySelectorAll('[data-thread-draft-poll-option]').length + 1;
+    optionList.insertAdjacentHTML('beforeend', `<label class="poll-draft-option"><input data-thread-draft-poll-option type="text" placeholder="選項 ${number}" autocomplete="off" /><span aria-hidden="true">×</span></label>`);
+    const count = form.querySelector?.('[data-poll-option-count]');
+    if (count) count.textContent = `${number} 個選項`;
   }
 
   function cancelThreadDraft() {
@@ -294,11 +309,13 @@ export function createForumUiApp({
 
   function readThreadDraftPoll(actionElement) {
     const form = findThreadDraftForm(actionElement, root);
-    if (!form?.querySelector?.('[data-thread-draft-poll-enabled]')?.checked) return null;
-    const lines = String(form.querySelector?.('[data-thread-draft-poll-options]')?.value ?? '')
-      .split('\n').map((value) => value.trim()).filter(Boolean).slice(0, 12);
+    if (threadDraft?.type !== 'poll') return null;
+    const lines = Array.from(form?.querySelectorAll?.('[data-thread-draft-poll-option]') ?? [])
+      .map((input) => String(input.value ?? '').trim()).filter(Boolean).slice(0, 12);
     if (lines.length < 2) return null;
-    return { options: lines.map((label, index) => ({ id: `option-${index + 1}`, label })) };
+    const durationDays = Number(form?.querySelector?.('[data-thread-draft-poll-duration]')?.value ?? 0);
+    const closesAt = durationDays > 0 ? new Date(Date.now() + durationDays * 86400000).toISOString() : null;
+    return { options: lines.map((label, index) => ({ id: `option-${index + 1}`, label })), ...(closesAt ? { closes_at: closesAt } : {}) };
   }
 
   async function castPollVote(actionElement) {

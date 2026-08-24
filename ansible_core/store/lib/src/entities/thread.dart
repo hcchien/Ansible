@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 class Thread {
   final String id;
   final String boardId;
   final String title;
   final String authorId;
+  final Map<String, Object?>? poll;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -12,6 +15,7 @@ class Thread {
     required this.boardId,
     required this.title,
     required this.authorId,
+    this.poll,
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
@@ -23,6 +27,7 @@ class Thread {
       'boardId': boardId,
       'title': title,
       'authorId': authorId,
+      if (poll != null) 'poll': poll,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isDeleted': isDeleted,
@@ -30,7 +35,8 @@ class Thread {
   }
 
   factory Thread.fromJson(Map<String, dynamic> json) {
-    final authorId = json['authorId'] as String? ?? json['authorDid'] as String?;
+    final authorId =
+        json['authorId'] as String? ?? json['authorDid'] as String?;
     if (authorId == null || authorId.isEmpty) {
       throw ArgumentError('Thread authorId is required');
     }
@@ -45,6 +51,7 @@ class Thread {
       boardId: boardId,
       title: json['title'] as String,
       authorId: authorId,
+      poll: _parsePoll(json['poll']),
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt'] ?? json['createdAt']),
       isDeleted: json['isDeleted'] as bool? ?? false,
@@ -62,5 +69,41 @@ class Thread {
       return DateTime.parse(value);
     }
     throw ArgumentError('Invalid date value "$value"');
+  }
+
+  static Map<String, Object?>? _parsePoll(Object? value) {
+    if (value is! Map) return null;
+    final options = value['options'];
+    if (options is! List || options.length < 2 || options.length > 12) {
+      return null;
+    }
+    final normalizedOptions = <Map<String, Object?>>[];
+    for (final option in options) {
+      if (option is! Map) return null;
+      final id = option['id']?.toString().trim();
+      final label = option['label']?.toString().trim();
+      if (id == null || id.isEmpty || label == null || label.isEmpty)
+        return null;
+      normalizedOptions.add({'id': id, 'label': label});
+    }
+    final closesAt = value['closes_at'] ?? value['closesAt'];
+    return {
+      'options': normalizedOptions,
+      if (closesAt is String && closesAt.isNotEmpty) 'closes_at': closesAt,
+    };
+  }
+
+  static String? encodePoll(Map<String, Object?>? poll) {
+    final normalized = _parsePoll(poll);
+    return normalized == null ? null : jsonEncode(normalized);
+  }
+
+  static Map<String, Object?>? decodePoll(String? encoded) {
+    if (encoded == null || encoded.isEmpty) return null;
+    try {
+      return _parsePoll(jsonDecode(encoded));
+    } on FormatException {
+      return null;
+    }
   }
 }

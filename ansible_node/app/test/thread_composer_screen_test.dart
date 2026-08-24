@@ -354,6 +354,8 @@ void main() {
 
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('board_create_discussion_action')));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('thread_composer_title_field')),
         '標題',
@@ -370,6 +372,94 @@ void main() {
       expect(service.primaryLocalBoardId, 'board-1');
       expect(service.crossPostTargetIds, ['sub-2']);
       expect(service.localDraftId, isNotEmpty);
+    });
+
+    testWidgets('poll uses a dedicated editor with editable options', (
+      tester,
+    ) async {
+      final primary = await seedBoard('board-1', 'General');
+      await seedProjection('board-1');
+      late Future<Map<String, Object?>?> result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () {
+                result = Navigator.of(context).push<Map<String, Object?>>(
+                  MaterialPageRoute(
+                    builder: (_) => ThreadComposerScreen(
+                      boards: [primary],
+                      initialBoardId: primary.id,
+                      authorDid: localDid,
+                      db: db,
+                      type: ThreadComposerType.poll,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('open poll'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open poll'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('thread_composer_poll_editor')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('thread_composer_poll_toggle')),
+        findsNothing,
+      );
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_title_field')),
+        '下季主題？',
+      );
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_body_field')),
+        '請選擇。',
+      );
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_poll_option_0')),
+        'AI',
+      );
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_poll_option_1')),
+        '氣候',
+      );
+      final addOption = find.byKey(
+        const Key('thread_composer_add_poll_option'),
+      );
+      await tester.ensureVisible(addOption);
+      await tester.tap(addOption);
+      await tester.pump();
+      expect(
+        find.byKey(const Key('thread_composer_poll_option_2')),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('thread_composer_poll_option_2')),
+        '生技',
+      );
+      await tester.tap(
+        find.byKey(const Key('thread_composer_remove_poll_option_2')),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const Key('thread_composer_poll_option_2')),
+        findsNothing,
+      );
+
+      await tester.tap(find.byKey(const Key('thread_composer_done_button')));
+      await tester.pumpAndSettle();
+      final poll = (await result)?['poll'] as Map<String, Object?>;
+      expect(poll['options'], [
+        {'id': 'option-1', 'label': 'AI'},
+        {'id': 'option-2', 'label': '氣候'},
+      ]);
+      expect(poll['closes_at'], isA<String>());
     });
   });
 }

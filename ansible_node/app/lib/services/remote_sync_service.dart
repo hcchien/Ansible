@@ -1343,23 +1343,40 @@ class RemoteSyncService {
       await _recordRemoteDelete(activity, sourceNodeId);
     } else {
       final now = DateTime.now();
+      final existing = await _threadRepo.getById(activity.entityId);
       final thread = Thread(
         id: activity.entityId,
         boardId: activity.boardId ?? '',
         title: payload['title'] as String? ?? 'Untitled',
         authorId: activity.authorId,
+        // Thread updates commonly carry only a title. Retain the locally
+        // materialized signed poll definition unless this activity explicitly
+        // supplies a replacement poll payload.
+        poll: payload.containsKey('poll')
+            ? _threadPollFromPayload(payload['poll'])
+            : existing?.poll,
         createdAt: activity.createdAt,
         updatedAt: now,
         isDeleted: payload['isDeleted'] as bool? ?? false,
       );
 
-      final existing = await _threadRepo.getById(activity.entityId);
       if (existing == null) {
         await _threadRepo.create(thread);
       } else {
         await _threadRepo.update(thread);
       }
     }
+  }
+
+  Map<String, Object?>? _threadPollFromPayload(Object? value) {
+    return Thread.fromJson({
+      'id': 'poll-validation',
+      'boardId': 'poll-validation',
+      'title': 'poll-validation',
+      'authorId': 'did:plc:poll-validation',
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'poll': value,
+    }).poll;
   }
 
   Future<void> _applyPostActivity(

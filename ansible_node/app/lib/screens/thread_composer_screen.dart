@@ -7,6 +7,10 @@ import '../l10n/app_l10n.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 
+/// A board item has a dedicated creation path.  A poll is intentionally not a
+/// discussion with an optional toggle: it has its own entry point and editor.
+enum ThreadComposerType { discussion, poll }
+
 /// Full-screen composer for a new forum discussion, styled to match the app's
 /// design system (mirrors [NoteEditorScreen]'s chrome). Replaces the old
 /// Material `AlertDialog`. Pops
@@ -20,6 +24,7 @@ class ThreadComposerScreen extends StatefulWidget {
     this.initialBoardId,
     this.authorDid,
     this.db,
+    this.type = ThreadComposerType.discussion,
   });
 
   final List<Board> boards;
@@ -33,6 +38,8 @@ class ThreadComposerScreen extends StatefulWidget {
   /// publication is deferred until a later explicit sync can satisfy policy.
   /// The relay stays the source of truth for enforcement.
   final AppDatabase? db;
+
+  final ThreadComposerType type;
 
   @override
   State<ThreadComposerScreen> createState() => _ThreadComposerScreenState();
@@ -59,7 +66,8 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   ];
   String? _selectedBoardId;
   String? _error;
-  bool _pollEnabled = false;
+  bool get _isPoll => widget.type == ThreadComposerType.poll;
+  int? _pollDurationDays = 3;
 
   /// True when the selected board requires a tier the local user lacks.
   /// UX pre-validation only — the relay re-checks at intent acceptance.
@@ -159,6 +167,18 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
     super.dispose();
   }
 
+  void _addPollOption() {
+    if (_pollOptionControllers.length >= 12) return;
+    setState(() => _pollOptionControllers.add(TextEditingController()));
+  }
+
+  void _removePollOption(int index) {
+    if (_pollOptionControllers.length <= 2) return;
+    final controller = _pollOptionControllers.removeAt(index);
+    controller.dispose();
+    setState(() {});
+  }
+
   Board? get _selectedBoard {
     for (final b in widget.boards) {
       if (b.id == _selectedBoardId) return b;
@@ -186,7 +206,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
         .map((controller) => controller.text.trim())
         .where((option) => option.isNotEmpty)
         .toList();
-    if (_pollEnabled && pollOptions.length < 2) {
+    if (_isPoll && pollOptions.length < 2) {
       setState(() => _error = '投票至少需要兩個選項。');
       return;
     }
@@ -196,12 +216,17 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
       'content': content,
       'crossPostTargetIds': _selectedCrossPostIds.toList(),
       'publicationDeferred': _publicationDeferred,
-      if (_pollEnabled)
+      if (_isPoll)
         'poll': {
           'options': [
             for (var index = 0; index < pollOptions.length; index++)
               {'id': 'option-${index + 1}', 'label': pollOptions[index]},
           ],
+          if (_pollDurationDays != null)
+            'closes_at': DateTime.now()
+                .toUtc()
+                .add(Duration(days: _pollDurationDays!))
+                .toIso8601String(),
         },
     });
   }
@@ -250,6 +275,7 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
             _TopBar(
               onCancel: () => Navigator.of(context).pop(),
               onDone: _submit,
+              isPoll: _isPoll,
             ),
             if (_error != null) _ErrorBanner(message: _error!),
             _BoardSelector(
@@ -337,33 +363,17 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    SwitchListTile.adaptive(
-                      key: const Key('thread_composer_poll_toggle'),
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('建立投票主題'),
-                      subtitle: const Text('開啟後可新增選項；只有本版具發言資格的憑證持有人能投票。'),
-                      value: _pollEnabled,
-                      onChanged: (value) =>
-                          setState(() => _pollEnabled = value),
-                    ),
-                    if (_pollEnabled)
-                      for (
-                        var index = 0;
-                        index < _pollOptionControllers.length;
-                        index++
-                      )
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: TextField(
-                            key: Key('thread_composer_poll_option_$index'),
-                            controller: _pollOptionControllers[index],
-                            decoration: InputDecoration(
-                              labelText: '投票選項 ${index + 1}',
-                              border: const OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
+                    if (_isPoll) ...[
+                      const SizedBox(height: 18),
+                      _PollOptionsEditor(
+                        controllers: _pollOptionControllers,
+                        onAdd: _addPollOption,
+                        onRemove: _removePollOption,
+                        durationDays: _pollDurationDays,
+                        onDurationChanged: (value) =>
+                            setState(() => _pollDurationDays = value),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     TextField(
                       key: const Key('thread_composer_body_field'),
@@ -408,12 +418,17 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onCancel, required this.onDone});
+  const _TopBar({
+    required this.onCancel,
+    required this.onDone,
+    required this.isPoll,
+  });
 
   final VoidCallback onCancel;
 
   /// Null disables the create button (e.g. posting gate not cleared).
   final VoidCallback? onDone;
+  final bool isPoll;
 
   @override
   Widget build(BuildContext context) {
@@ -437,7 +452,10 @@ class _TopBar extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            context.uiCopy(zh: '新討論 · NEW', en: 'NEW DISCUSSION'),
+            context.uiCopy(
+              zh: isPoll ? '新投票 · NEW POLL' : '新討論 · NEW DISCUSSION',
+              en: isPoll ? 'NEW POLL' : 'NEW DISCUSSION',
+            ),
             style: const TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 10,
@@ -460,6 +478,143 @@ class _TopBar extends StatelessWidget {
               l10n.create,
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PollOptionsEditor extends StatelessWidget {
+  const _PollOptionsEditor({
+    required this.controllers,
+    required this.onAdd,
+    required this.onRemove,
+    required this.durationDays,
+    required this.onDurationChanged,
+  });
+
+  final List<TextEditingController> controllers;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+  final int? durationDays;
+  final ValueChanged<int?> onDurationChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final atLimit = controllers.length >= 12;
+    return Container(
+      key: const Key('thread_composer_poll_editor'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paperElev,
+        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.poll_outlined,
+                size: 18,
+                color: AnsibleDesign.accent,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                context.uiCopy(zh: '投票選項', en: 'Poll options'),
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AnsibleDesign.ink,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${controllers.length}/12',
+                style: const TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 11,
+                  color: AnsibleDesign.inkMuted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            context.uiCopy(
+              zh: '討論標題就是投票題目；至少填寫兩個選項。僅具本版發言資格者可投票。',
+              en: 'The discussion title is the question. Add at least two options; only eligible board speakers can vote.',
+            ),
+            style: const TextStyle(
+              fontSize: 12,
+              height: 1.45,
+              color: AnsibleDesign.inkMuted,
+            ),
+          ),
+          for (var index = 0; index < controllers.length; index++)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: Key('thread_composer_poll_option_$index'),
+                      controller: controllers[index],
+                      cursorColor: AnsibleDesign.ink,
+                      style: const TextStyle(color: AnsibleDesign.ink),
+                      decoration: InputDecoration(
+                        labelText: context.uiCopy(
+                          zh: '選項 ${index + 1}',
+                          en: 'Option ${index + 1}',
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  if (controllers.length > 2)
+                    IconButton(
+                      key: Key('thread_composer_remove_poll_option_$index'),
+                      tooltip: context.uiCopy(zh: '移除此選項', en: 'Remove option'),
+                      onPressed: () => onRemove(index),
+                      icon: const Icon(Icons.remove_circle_outline),
+                      color: AnsibleDesign.inkMuted,
+                    ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            key: const Key('thread_composer_add_poll_option'),
+            onPressed: atLimit ? null : onAdd,
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(context.uiCopy(zh: '新增選項', en: 'Add option')),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<int?>(
+            key: const Key('thread_composer_poll_duration'),
+            initialValue: durationDays,
+            decoration: InputDecoration(
+              labelText: context.uiCopy(zh: '結束時間', en: 'Ends'),
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              DropdownMenuItem<int?>(
+                value: null,
+                child: Text(context.uiCopy(zh: '不設定', en: 'No end date')),
+              ),
+              for (final days in [1, 3, 7])
+                DropdownMenuItem<int?>(
+                  value: days,
+                  child: Text(
+                    context.uiCopy(zh: '$days 天後', en: 'In $days days'),
+                  ),
+                ),
+            ],
+            onChanged: onDurationChanged,
           ),
         ],
       ),

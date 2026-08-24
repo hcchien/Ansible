@@ -117,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 33;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -265,6 +265,9 @@ class AppDatabase extends _$AppDatabase {
           CREATE UNIQUE INDEX IF NOT EXISTS reactions_user_target_unique
           ON reactions (user_id, target_type, target_id)
         ''');
+      }
+      if (from < 33) {
+        await _addColumnIfMissing(m, threads, threads.pollJson);
       }
       if (from < 26) {
         // Compliance-review gap #2: persist the host-declared constitution

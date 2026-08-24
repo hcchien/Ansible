@@ -3654,6 +3654,17 @@ class $ThreadsTable extends Threads with TableInfo<$ThreadsTable, Thread> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _pollJsonMeta = const VerificationMeta(
+    'pollJson',
+  );
+  @override
+  late final GeneratedColumn<String> pollJson = GeneratedColumn<String>(
+    'poll_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3697,6 +3708,7 @@ class $ThreadsTable extends Threads with TableInfo<$ThreadsTable, Thread> {
     boardId,
     title,
     authorId,
+    pollJson,
     createdAt,
     updatedAt,
     isDeleted,
@@ -3745,6 +3757,12 @@ class $ThreadsTable extends Threads with TableInfo<$ThreadsTable, Thread> {
     } else if (isInserting) {
       context.missing(_authorIdMeta);
     }
+    if (data.containsKey('poll_json')) {
+      context.handle(
+        _pollJsonMeta,
+        pollJson.isAcceptableOrUnknown(data['poll_json']!, _pollJsonMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3792,6 +3810,10 @@ class $ThreadsTable extends Threads with TableInfo<$ThreadsTable, Thread> {
         DriftSqlType.string,
         data['${effectivePrefix}author_id'],
       )!,
+      pollJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}poll_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -3818,6 +3840,11 @@ class Thread extends DataClass implements Insertable<Thread> {
   final String boardId;
   final String title;
   final String authorId;
+
+  /// Public poll definition carried by the signed thread operation. This stores
+  /// options and optional close time only; voter identities and ballots never
+  /// belong in the device database.
+  final String? pollJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -3826,6 +3853,7 @@ class Thread extends DataClass implements Insertable<Thread> {
     required this.boardId,
     required this.title,
     required this.authorId,
+    this.pollJson,
     required this.createdAt,
     required this.updatedAt,
     required this.isDeleted,
@@ -3837,6 +3865,9 @@ class Thread extends DataClass implements Insertable<Thread> {
     map['board_id'] = Variable<String>(boardId);
     map['title'] = Variable<String>(title);
     map['author_id'] = Variable<String>(authorId);
+    if (!nullToAbsent || pollJson != null) {
+      map['poll_json'] = Variable<String>(pollJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
@@ -3849,6 +3880,9 @@ class Thread extends DataClass implements Insertable<Thread> {
       boardId: Value(boardId),
       title: Value(title),
       authorId: Value(authorId),
+      pollJson: pollJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pollJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
@@ -3865,6 +3899,7 @@ class Thread extends DataClass implements Insertable<Thread> {
       boardId: serializer.fromJson<String>(json['boardId']),
       title: serializer.fromJson<String>(json['title']),
       authorId: serializer.fromJson<String>(json['authorId']),
+      pollJson: serializer.fromJson<String?>(json['pollJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
@@ -3878,6 +3913,7 @@ class Thread extends DataClass implements Insertable<Thread> {
       'boardId': serializer.toJson<String>(boardId),
       'title': serializer.toJson<String>(title),
       'authorId': serializer.toJson<String>(authorId),
+      'pollJson': serializer.toJson<String?>(pollJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
@@ -3889,6 +3925,7 @@ class Thread extends DataClass implements Insertable<Thread> {
     String? boardId,
     String? title,
     String? authorId,
+    Value<String?> pollJson = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
@@ -3897,6 +3934,7 @@ class Thread extends DataClass implements Insertable<Thread> {
     boardId: boardId ?? this.boardId,
     title: title ?? this.title,
     authorId: authorId ?? this.authorId,
+    pollJson: pollJson.present ? pollJson.value : this.pollJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     isDeleted: isDeleted ?? this.isDeleted,
@@ -3907,6 +3945,7 @@ class Thread extends DataClass implements Insertable<Thread> {
       boardId: data.boardId.present ? data.boardId.value : this.boardId,
       title: data.title.present ? data.title.value : this.title,
       authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      pollJson: data.pollJson.present ? data.pollJson.value : this.pollJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
@@ -3920,6 +3959,7 @@ class Thread extends DataClass implements Insertable<Thread> {
           ..write('boardId: $boardId, ')
           ..write('title: $title, ')
           ..write('authorId: $authorId, ')
+          ..write('pollJson: $pollJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted')
@@ -3933,6 +3973,7 @@ class Thread extends DataClass implements Insertable<Thread> {
     boardId,
     title,
     authorId,
+    pollJson,
     createdAt,
     updatedAt,
     isDeleted,
@@ -3945,6 +3986,7 @@ class Thread extends DataClass implements Insertable<Thread> {
           other.boardId == this.boardId &&
           other.title == this.title &&
           other.authorId == this.authorId &&
+          other.pollJson == this.pollJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted);
@@ -3955,6 +3997,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
   final Value<String> boardId;
   final Value<String> title;
   final Value<String> authorId;
+  final Value<String?> pollJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> isDeleted;
@@ -3964,6 +4007,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
     this.boardId = const Value.absent(),
     this.title = const Value.absent(),
     this.authorId = const Value.absent(),
+    this.pollJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
@@ -3974,6 +4018,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
     required String boardId,
     required String title,
     required String authorId,
+    this.pollJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.isDeleted = const Value.absent(),
@@ -3989,6 +4034,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
     Expression<String>? boardId,
     Expression<String>? title,
     Expression<String>? authorId,
+    Expression<String>? pollJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? isDeleted,
@@ -3999,6 +4045,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
       if (boardId != null) 'board_id': boardId,
       if (title != null) 'title': title,
       if (authorId != null) 'author_id': authorId,
+      if (pollJson != null) 'poll_json': pollJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
@@ -4011,6 +4058,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
     Value<String>? boardId,
     Value<String>? title,
     Value<String>? authorId,
+    Value<String?>? pollJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? isDeleted,
@@ -4021,6 +4069,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
       boardId: boardId ?? this.boardId,
       title: title ?? this.title,
       authorId: authorId ?? this.authorId,
+      pollJson: pollJson ?? this.pollJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -4042,6 +4091,9 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
     }
     if (authorId.present) {
       map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (pollJson.present) {
+      map['poll_json'] = Variable<String>(pollJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -4065,6 +4117,7 @@ class ThreadsCompanion extends UpdateCompanion<Thread> {
           ..write('boardId: $boardId, ')
           ..write('title: $title, ')
           ..write('authorId: $authorId, ')
+          ..write('pollJson: $pollJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
@@ -32310,6 +32363,7 @@ typedef $$ThreadsTableCreateCompanionBuilder =
       required String boardId,
       required String title,
       required String authorId,
+      Value<String?> pollJson,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<bool> isDeleted,
@@ -32321,6 +32375,7 @@ typedef $$ThreadsTableUpdateCompanionBuilder =
       Value<String> boardId,
       Value<String> title,
       Value<String> authorId,
+      Value<String?> pollJson,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> isDeleted,
@@ -32442,6 +32497,11 @@ class $$ThreadsTableFilterComposer
 
   ColumnFilters<String> get authorId => $composableBuilder(
     column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pollJson => $composableBuilder(
+    column: $table.pollJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -32583,6 +32643,11 @@ class $$ThreadsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get pollJson => $composableBuilder(
+    column: $table.pollJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -32639,6 +32704,9 @@ class $$ThreadsTableAnnotationComposer
 
   GeneratedColumn<String> get authorId =>
       $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<String> get pollJson =>
+      $composableBuilder(column: $table.pollJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -32786,6 +32854,7 @@ class $$ThreadsTableTableManager
                 Value<String> boardId = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> authorId = const Value.absent(),
+                Value<String?> pollJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
@@ -32795,6 +32864,7 @@ class $$ThreadsTableTableManager
                 boardId: boardId,
                 title: title,
                 authorId: authorId,
+                pollJson: pollJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isDeleted: isDeleted,
@@ -32806,6 +32876,7 @@ class $$ThreadsTableTableManager
                 required String boardId,
                 required String title,
                 required String authorId,
+                Value<String?> pollJson = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<bool> isDeleted = const Value.absent(),
@@ -32815,6 +32886,7 @@ class $$ThreadsTableTableManager
                 boardId: boardId,
                 title: title,
                 authorId: authorId,
+                pollJson: pollJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 isDeleted: isDeleted,

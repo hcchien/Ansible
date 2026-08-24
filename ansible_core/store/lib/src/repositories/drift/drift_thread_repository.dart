@@ -10,12 +10,15 @@ class DriftThreadRepository implements ThreadRepository {
 
   @override
   Future<void> create(entity.Thread thread) async {
-    await _db.into(_db.threads).insert(
+    await _db
+        .into(_db.threads)
+        .insert(
           ThreadsCompanion.insert(
             threadId: thread.id,
             boardId: thread.boardId,
             title: thread.title,
             authorId: thread.authorId,
+            pollJson: Value(entity.Thread.encodePoll(thread.poll)),
             createdAt: thread.createdAt,
             updatedAt: thread.updatedAt,
             isDeleted: Value(thread.isDeleted),
@@ -26,8 +29,9 @@ class DriftThreadRepository implements ThreadRepository {
 
   @override
   Future<entity.Thread?> getById(String id) async {
-    final row = await (_db.select(_db.threads)..where((t) => t.threadId.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.threads,
+    )..where((t) => t.threadId.equals(id))).getSingleOrNull();
     if (row == null) return null;
     return _mapRowToEntity(row);
   }
@@ -44,11 +48,14 @@ class DriftThreadRepository implements ThreadRepository {
 
   @override
   Future<void> update(entity.Thread thread) async {
-    await (_db.update(_db.threads)..where((t) => t.threadId.equals(thread.id))).write(
+    await (_db.update(
+      _db.threads,
+    )..where((t) => t.threadId.equals(thread.id))).write(
       ThreadsCompanion(
         boardId: Value(thread.boardId),
         title: Value(thread.title),
         authorId: Value(thread.authorId),
+        pollJson: Value(entity.Thread.encodePoll(thread.poll)),
         updatedAt: Value(thread.updatedAt),
         isDeleted: Value(thread.isDeleted),
       ),
@@ -72,6 +79,7 @@ class DriftThreadRepository implements ThreadRepository {
       boardId: row.boardId,
       title: row.title,
       authorId: row.authorId,
+      poll: entity.Thread.decodePoll(row.pollJson),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       isDeleted: row.isDeleted,

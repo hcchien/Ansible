@@ -37,6 +37,32 @@ void main() {
       expect(retrieved.boardId, 'b1');
     });
 
+    test('persists public poll definitions without voter data', () async {
+      final thread = entity.Thread(
+        id: 'poll-1',
+        boardId: 'b1',
+        title: '下一次聚會？',
+        authorId: 'did:key:123',
+        poll: {
+          'options': [
+            {'id': 'option-1', 'label': '週六'},
+            {'id': 'option-2', 'label': '週日'},
+          ],
+          'closes_at': '2026-08-31T00:00:00.000Z',
+        },
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await repo.create(thread);
+
+      final retrieved = await repo.getById('poll-1');
+      expect(retrieved?.poll?['closes_at'], '2026-08-31T00:00:00.000Z');
+      expect(retrieved?.poll?['options'], [
+        {'id': 'option-1', 'label': '週六'},
+        {'id': 'option-2', 'label': '週日'},
+      ]);
+    });
+
     test('Update Thread', () async {
       final thread = entity.Thread(
         id: 't1',

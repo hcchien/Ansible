@@ -901,10 +901,90 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               ),
             ),
           ],
+          if (_thread.poll case final poll?) ...[
+            const SizedBox(height: 16),
+            _pollDetail(context, poll),
+          ],
           if (removal == null) ...[
             const SizedBox(height: 6),
             _opActions(context, post),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _pollDetail(BuildContext context, Map<String, Object?> poll) {
+    final options =
+        (poll['options'] as List?)
+            ?.whereType<Map>()
+            .map(
+              (option) => (
+                id: option['id']?.toString() ?? '',
+                label: option['label']?.toString() ?? '',
+              ),
+            )
+            .where((option) => option.id.isNotEmpty && option.label.isNotEmpty)
+            .toList() ??
+        const <({String id, String label})>[];
+    final closesAt = DateTime.tryParse(poll['closes_at']?.toString() ?? '');
+    final closed = closesAt != null && !closesAt.isAfter(DateTime.now());
+    return Container(
+      key: const Key('thread_poll_detail'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _bg,
+        border: Border.all(color: _rule, width: 0.5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.poll_outlined, size: 18, color: _accent),
+              const SizedBox(width: 8),
+              Text(
+                closed
+                    ? context.uiCopy(zh: '已結束', en: 'CLOSED')
+                    : context.uiCopy(zh: '投票中', en: 'LIVE POLL'),
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.mono,
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  color: closed ? _faint : _accent,
+                ),
+              ),
+              const Spacer(),
+              if (closesAt != null)
+                Text(
+                  _formatDate(context, closesAt),
+                  style: TextStyle(fontSize: 12, color: _faint),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.uiCopy(
+              zh: '僅具本版發言資格者可投票；每人一票。',
+              en: 'One vote per eligible board speaker.',
+            ),
+            style: TextStyle(fontSize: 12, color: _muted),
+          ),
+          const SizedBox(height: 10),
+          for (final option in options)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              decoration: BoxDecoration(
+                color: _deep,
+                border: Border.all(color: _rule, width: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(option.label, style: TextStyle(color: _fg)),
+            ),
         ],
       ),
     );

@@ -1723,7 +1723,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _createThread() async {
+  Future<void> _createThread({
+    ThreadComposerType type = ThreadComposerType.discussion,
+  }) async {
     final dialogResult = await Navigator.of(context).push<Map<String, Object?>>(
       MaterialPageRoute(
         builder: (_) => ThreadComposerScreen(
@@ -1731,6 +1733,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           initialBoardId: _selectedBoardId,
           authorDid: widget.did,
           db: widget.db,
+          type: type,
         ),
       ),
     );
@@ -1756,6 +1759,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       boardId: boardId,
       title: threadTitle,
       authorId: widget.did,
+      poll: poll,
       createdAt: now,
       updatedAt: now,
     );
@@ -1820,6 +1824,41 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       crossPostTargetIds: crossPostTargetIds,
     );
     await _loadData();
+  }
+
+  Future<void> _showCreateThreadMenu() async {
+    final type = await showModalBottomSheet<ThreadComposerType>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const Key('home_create_discussion_action'),
+              leading: const Icon(Icons.forum_outlined),
+              title: Text(context.uiCopy(zh: '新增討論', en: 'New discussion')),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(ThreadComposerType.discussion),
+            ),
+            ListTile(
+              key: const Key('home_create_poll_action'),
+              leading: const Icon(Icons.poll_outlined),
+              title: Text(context.uiCopy(zh: '新增投票', en: 'New poll')),
+              subtitle: Text(
+                context.uiCopy(
+                  zh: '設定投票題目與選項',
+                  en: 'Set a question and voting options',
+                ),
+              ),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(ThreadComposerType.poll),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (type != null && mounted) await _createThread(type: type);
   }
 
   /// Records hosted-board publication targets for a new thread (primary +
@@ -2604,7 +2643,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   _selectBoardSwipe(board);
                 },
                 onCompose: () => _selectedBoard == HomeBoard.forum
-                    ? _createThread()
+                    ? _showCreateThreadMenu()
                     : _openCompose(context),
                 onNotifications: () {
                   setState(() {
@@ -2657,7 +2696,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 timelineSort: _timelineSort,
                 onTimelineSortChanged: _setTimelineSort,
                 onRefresh: _loadData,
-                onCreateThread: _createThread,
+                onCreateThread: _showCreateThreadMenu,
                 onCreateBoard: _createBoard,
                 onManageBoards: _openManageBoards,
                 onDiscoverBoards: _openDiscover,
@@ -2752,7 +2791,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     return DesktopShortcutScope(
       onCompose: () {
         if (_selectedBoard == HomeBoard.forum) {
-          unawaited(_createThread());
+          unawaited(_showCreateThreadMenu());
         } else {
           _openCompose(context);
         }

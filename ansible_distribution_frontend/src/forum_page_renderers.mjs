@@ -409,10 +409,17 @@ function renderThreadActionRow({ hearts = 0, comments = 0, reposts = 0, report =
 function renderPollDetail(poll, { boardId = '', pollId = '', session = {} } = {}) {
   if (!poll?.options?.length) return '';
   const canVote = Boolean(session?.capabilities?.canPost);
-  return `<section class="card board-poll" aria-label="版內投票">
-    <h3>投票</h3>
-    <p>限具本版發言資格的憑證持有人投票，每人一票。</p>
-    ${poll.options.map((option) => `<div class="board-poll-option"><span>${escapeHtml(option.label)}</span><strong>${escapeHtml(String(option.votes ?? 0))} 票</strong><button class="secondary-action" type="button" data-action="cast-poll-vote" data-board-id="${escapeAttribute(boardId)}" data-poll-id="${escapeAttribute(pollId)}" data-option-id="${escapeAttribute(option.id)}" ${canVote ? '' : 'disabled'}>投這一票</button></div>`).join('')}
+  const totalVotes = poll.options.reduce((total, option) => total + (Number(option.votes) || 0), 0);
+  const status = poll.closesAt ? `投票中 · ${formatExpiry(poll.closesAt)}` : '投票中';
+  return `<section class="board-poll" aria-label="版內投票">
+    <div class="board-poll-top"><span class="board-poll-live">● ${escapeHtml(status)}</span><span>${escapeHtml(`${totalVotes} 人投票`)}</span></div>
+    <p class="board-poll-rule">限具本版發言資格的憑證持有人投票；每人一票。</p>
+    <div class="board-poll-options">${poll.options.map((option) => {
+      const votes = Number(option.votes) || 0;
+      const percent = totalVotes ? Math.round((votes / totalVotes) * 100) : 0;
+      return `<button class="board-poll-option" type="button" data-action="cast-poll-vote" data-board-id="${escapeAttribute(boardId)}" data-poll-id="${escapeAttribute(pollId)}" data-option-id="${escapeAttribute(option.id)}" ${canVote ? '' : 'disabled'}><span class="board-poll-fill" style="width:${percent}%" aria-hidden="true"></span><span class="board-poll-option-row"><span>${escapeHtml(option.label)}</span><strong>${percent}%</strong></span></button>`;
+    }).join('')}</div>
+    <p class="board-poll-vote-hint">${escapeHtml(canVote ? '選擇一個選項即可投票' : '需具本版發言資格才能投票')}</p>
   </section>`;
 }
 
@@ -611,7 +618,7 @@ function renderBoardPostAction(viewModel, gate) {
   const boardAttribute = boardId ? ` data-board-id="${escapeAttribute(boardId)}"` : '';
 
   return viewModel.actions?.canCreateThread
-    ? `<button class="primary-action" type="button" data-action="new-thread"${boardAttribute}>${escapeHtml(t('common.newThread'))}</button>`
+    ? `<div class="board-create-actions"><button class="secondary-action" type="button" data-action="new-thread"${boardAttribute}>${escapeHtml(t('common.newThread'))}</button><button class="primary-action board-new-poll" type="button" data-action="new-poll"${boardAttribute}>${escapeHtml('新增投票')}</button></div>`
     : `<a class="primary-action" href="#/login">${escapeHtml(t('board.signInToPost'))}</a>`;
 }
 
@@ -906,6 +913,7 @@ function renderThreadDraftForm(draft) {
   if (!draft) return '';
 
   const boardId = draft.boardId ?? '';
+  const isPoll = draft.type === 'poll';
   const review = draft.reviewing
     ? `
       <div class="thread-signing-review" role="note">
@@ -924,14 +932,13 @@ function renderThreadDraftForm(draft) {
         <span>${escapeHtml(t('compose.threadDraft.titleLabel'))}</span>
         <input type="text" data-thread-draft-title value="${escapeAttribute(draft.title ?? '')}" placeholder="${escapeAttribute(t('compose.threadDraft.titlePlaceholder'))}" autocomplete="off" />
       </label>
-      <label class="thread-draft-label"><input type="checkbox" data-thread-draft-poll-enabled /> 建立投票</label>
-      <label class="thread-draft-label"><span>選項（每行一個，至少兩項）</span><textarea data-thread-draft-poll-options rows="4" placeholder="選項一&#10;選項二"></textarea></label>
+      ${isPoll ? renderPollDraftFields() : ''}
     `;
 
   return `
     <section class="card thread-draft-form" data-thread-draft-form data-board-id="${escapeAttribute(boardId)}" aria-labelledby="thread-draft-title">
       <div class="head">
-        <h3 id="thread-draft-title">${escapeHtml(t('compose.threadDraft.title'))}</h3>
+        <h3 id="thread-draft-title">${escapeHtml(isPoll ? '新投票 · POLL' : t('compose.threadDraft.title'))}</h3>
         ${boardId ? `<span class="label-mono">#${escapeHtml(boardId)}</span>` : ''}
       </div>
       ${review}
@@ -941,6 +948,18 @@ function renderThreadDraftForm(draft) {
       </div>
     </section>
   `;
+}
+
+function renderPollDraftFields() {
+  return `<section class="poll-draft-fields" aria-label="投票選項">
+    <div class="poll-draft-heading"><div><strong>投票選項</strong><span>討論標題即為投票題目；至少兩項。</span></div><span data-poll-option-count>2 個選項</span></div>
+    <div data-poll-option-list>
+      <label class="poll-draft-option"><input data-thread-draft-poll-option type="text" placeholder="選項 1" autocomplete="off" /><span aria-hidden="true">×</span></label>
+      <label class="poll-draft-option"><input data-thread-draft-poll-option type="text" placeholder="選項 2" autocomplete="off" /><span aria-hidden="true">×</span></label>
+    </div>
+    <button class="poll-add-option" type="button" data-action="add-poll-option">＋ 新增選項</button>
+    <label class="poll-duration"><span>結束時間</span><select data-thread-draft-poll-duration><option value="">不設定</option><option value="1">1 天後</option><option value="3" selected>3 天後</option><option value="7">7 天後</option></select></label>
+  </section>`;
 }
 
 function renderError(error) {

@@ -309,7 +309,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     );
   }
 
-  Future<void> _createThread() async {
+  Future<void> _createThread({
+    ThreadComposerType type = ThreadComposerType.discussion,
+  }) async {
     final dialogResult = await Navigator.of(context).push<Map<String, Object?>>(
       MaterialPageRoute(
         builder: (_) => ThreadComposerScreen(
@@ -317,6 +319,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           initialBoardId: widget.board.id,
           authorDid: widget.localDid,
           db: widget.db,
+          type: type,
         ),
       ),
     );
@@ -346,6 +349,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       boardId: boardId,
       title: title,
       authorId: authorDid,
+      poll: poll,
       createdAt: now,
       updatedAt: now,
     );
@@ -411,6 +415,45 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       crossPostTargetIds: crossPostTargetIds,
     );
     await _loadThreads();
+  }
+
+  Future<void> _showCreateMenu() async {
+    final type = await showModalBottomSheet<ThreadComposerType>(
+      context: context,
+      backgroundColor: _bg,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const Key('board_create_discussion_action'),
+              leading: const Icon(Icons.forum_outlined),
+              title: Text(context.uiCopy(zh: '新增討論', en: 'New discussion')),
+              subtitle: Text(
+                context.uiCopy(zh: '發表一般討論串', en: 'Start a discussion thread'),
+              ),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(ThreadComposerType.discussion),
+            ),
+            ListTile(
+              key: const Key('board_create_poll_action'),
+              leading: const Icon(Icons.poll_outlined),
+              title: Text(context.uiCopy(zh: '新增投票', en: 'New poll')),
+              subtitle: Text(
+                context.uiCopy(
+                  zh: '設定投票題目與選項',
+                  en: 'Set a question and voting options',
+                ),
+              ),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(ThreadComposerType.poll),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (type != null && mounted) await _createThread(type: type);
   }
 
   /// Records hosted-board publication targets for the new thread (primary +
@@ -534,10 +577,10 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _postingBlocked ? null : _createThread,
+        onPressed: _postingBlocked ? null : _showCreateMenu,
         tooltip: _postingBlocked
             ? context.uiCopy(zh: '需通過真人驗證才能發文', en: 'Verified humans only')
-            : context.uiCopy(zh: '建立討論串', en: 'Create thread'),
+            : context.uiCopy(zh: '新增內容', en: 'Create content'),
         backgroundColor: _postingBlocked ? _deep : _fg,
         foregroundColor: _postingBlocked ? _faint : _bg,
         elevation: 0,
@@ -794,6 +837,10 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 ),
               ),
             ],
+            if (thread.poll case final poll?) ...[
+              const SizedBox(height: 10),
+              _pollPreview(context, poll),
+            ],
             if ((firstPost?.content.trim().isNotEmpty ?? false)) ...[
               const SizedBox(height: 8),
               Text(
@@ -913,6 +960,49 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _pollPreview(BuildContext context, Map<String, Object?> poll) {
+    final options =
+        (poll['options'] as List?)
+            ?.whereType<Map>()
+            .map((option) => option['label']?.toString())
+            .whereType<String>()
+            .toList() ??
+        const <String>[];
+    final closesAt = DateTime.tryParse(poll['closes_at']?.toString() ?? '');
+    final closed = closesAt != null && !closesAt.isAfter(DateTime.now());
+    return Container(
+      key: const Key('thread_poll_preview'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _deep,
+        border: Border.all(color: _rule, width: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            closed
+                ? context.uiCopy(zh: '已結束', en: 'CLOSED')
+                : context.uiCopy(zh: '● 投票中', en: '● LIVE POLL'),
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 10,
+              color: closed ? _faint : _accent,
+            ),
+          ),
+          const SizedBox(height: 7),
+          for (final option in options.take(3))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Text('· $option', style: TextStyle(color: _muted)),
+            ),
+        ],
       ),
     );
   }
