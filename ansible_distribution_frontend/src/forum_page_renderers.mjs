@@ -372,6 +372,7 @@ function renderThreadOriginalPost(thread, context = {}) {
           ${ownerActions}
         </div>
         <div class="thread-body-copy">${renderThreadParagraphs(body)}</div>
+        ${renderPollDetail(thread.poll, { ...context, pollId: threadId })}
         ${renderThreadActionRow({
           hearts: thread.likeCount ?? thread.likes ?? 0,
           comments: threadReplyCount(thread, thread.posts ?? []),
@@ -403,6 +404,16 @@ function renderThreadActionRow({ hearts = 0, comments = 0, reposts = 0, report =
       ${report}
     </div>
   `;
+}
+
+function renderPollDetail(poll, { boardId = '', pollId = '', session = {} } = {}) {
+  if (!poll?.options?.length) return '';
+  const canVote = Boolean(session?.capabilities?.canPost);
+  return `<section class="card board-poll" aria-label="版內投票">
+    <h3>投票</h3>
+    <p>限具本版發言資格的憑證持有人投票，每人一票。</p>
+    ${poll.options.map((option) => `<div class="board-poll-option"><span>${escapeHtml(option.label)}</span><strong>${escapeHtml(String(option.votes ?? 0))} 票</strong><button class="secondary-action" type="button" data-action="cast-poll-vote" data-board-id="${escapeAttribute(boardId)}" data-poll-id="${escapeAttribute(pollId)}" data-option-id="${escapeAttribute(option.id)}" ${canVote ? '' : 'disabled'}>投這一票</button></div>`).join('')}
+  </section>`;
 }
 
 function renderThreadIconButton(kind, label) {
@@ -913,6 +924,8 @@ function renderThreadDraftForm(draft) {
         <span>${escapeHtml(t('compose.threadDraft.titleLabel'))}</span>
         <input type="text" data-thread-draft-title value="${escapeAttribute(draft.title ?? '')}" placeholder="${escapeAttribute(t('compose.threadDraft.titlePlaceholder'))}" autocomplete="off" />
       </label>
+      <label class="thread-draft-label"><input type="checkbox" data-thread-draft-poll-enabled /> 建立投票</label>
+      <label class="thread-draft-label"><span>選項（每行一個，至少兩項）</span><textarea data-thread-draft-poll-options rows="4" placeholder="選項一&#10;選項二"></textarea></label>
     `;
 
   return `
@@ -1247,6 +1260,7 @@ function renderThreadItem(thread, context = {}) {
       ${boardTitle ? `<span class="board-thread-board"><span aria-hidden="true">#</span>${escapeHtml(boardTitle)}</span>` : ''}
       <span class="board-thread-status"><span class="d${replyCount === 0 ? ' new' : ''}" aria-hidden="true"></span>${escapeHtml(t('board.replyCount', { count: replyCount }))} · ${escapeHtml(status)}</span>
       <span class="board-thread-title">${titleContent}</span>
+      ${thread.poll ? '<span class="label-mono">投票</span>' : ''}
       <span class="board-thread-by">
         ${renderThreadIdentity(thread)}
         ${renderThreadTime(thread.updatedAt ?? thread.createdAt, 'board-thread-time')}

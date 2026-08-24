@@ -85,7 +85,11 @@ defmodule AnsibleRelay.Web.Controllers.WebPublicationController do
 
   defp authorize_board(conn, board, operation) do
     if operation["action"] in ["forum.publish", "forum.reply"] do
-      PostingGate.authorize_board_post(conn, board, conn.assigns.verified_did)
+      if operation["action"] == "forum.publish" and is_map(operation["payload"]["poll"]) do
+        PostingGate.authorize_poll_creation(conn, board, conn.assigns.verified_did)
+      else
+        PostingGate.authorize_board_post(conn, board, conn.assigns.verified_did)
+      end
     else
       :ok
     end

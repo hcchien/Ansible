@@ -11,7 +11,32 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
 
   alias AnsibleRelay.{DidAccountCache, Repo, ReputationTier}
   alias AnsibleRelay.Db.ForumHostBoard
-  alias AnsibleRelay.ForumHost.{BoardAccessPolicy, BoardCapabilityRequest, Store}
+  alias AnsibleRelay.ForumHost.{BoardAccessPolicy, BoardCapabilityRequest, Moderation, Store}
+
+  @poll_creation_roles ~w(posters moderators owners)
+
+  @doc "Authorizes creating a poll embedded in a new thread."
+  def authorize_poll_creation(conn, %ForumHostBoard{} = board, author_did) do
+    case poll_creation_role(board) do
+      "posters" ->
+        authorize_board_post(conn, board, author_did)
+
+      "moderators" ->
+        if Moderation.moderator?(author_did, board),
+          do: :ok,
+          else: {:error, :poll_creation_requires_moderator}
+
+      "owners" ->
+        if Moderation.owner?(author_did, board),
+          do: :ok,
+          else: {:error, :poll_creation_requires_owner}
+    end
+  end
+
+  def poll_creation_role(%ForumHostBoard{posting_policy: policy}) do
+    role = Map.get(policy || %{}, "poll_creation") || Map.get(policy || %{}, :poll_creation)
+    if role in @poll_creation_roles, do: role, else: "posters"
+  end
 
   @doc """
   Authorizes a thread/post write for `author_did`.

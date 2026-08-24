@@ -53,8 +53,10 @@ class _CrossPostTarget {
 class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _pollOptionControllers = [TextEditingController(), TextEditingController()];
   String? _selectedBoardId;
   String? _error;
+  bool _pollEnabled = false;
 
   /// True when the selected board requires a tier the local user lacks.
   /// UX pre-validation only — the relay re-checks at intent acceptance.
@@ -148,6 +150,9 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    for (final controller in _pollOptionControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -174,12 +179,27 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
       setState(() => _error = l10n.contentRequired);
       return;
     }
+    final pollOptions = _pollOptionControllers
+        .map((controller) => controller.text.trim())
+        .where((option) => option.isNotEmpty)
+        .toList();
+    if (_pollEnabled && pollOptions.length < 2) {
+      setState(() => _error = '投票至少需要兩個選項。');
+      return;
+    }
     Navigator.of(context).pop<Map<String, Object?>>({
       'boardId': _selectedBoardId,
       'title': title,
       'content': content,
       'crossPostTargetIds': _selectedCrossPostIds.toList(),
       'publicationDeferred': _publicationDeferred,
+      if (_pollEnabled)
+        'poll': {
+          'options': [
+            for (var index = 0; index < pollOptions.length; index++)
+              {'id': 'option-${index + 1}', 'label': pollOptions[index]},
+          ],
+        },
     });
   }
 
@@ -342,6 +362,28 @@ class _ThreadComposerScreenState extends State<ThreadComposerScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    SwitchListTile.adaptive(
+                      key: const Key('thread_composer_poll_toggle'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('建立投票'),
+                      subtitle: const Text('限具本版發言資格的憑證持有人，每人一票。'),
+                      value: _pollEnabled,
+                      onChanged: (value) => setState(() => _pollEnabled = value),
+                    ),
+                    if (_pollEnabled)
+                      for (var index = 0; index < _pollOptionControllers.length; index++)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: TextField(
+                            key: Key('thread_composer_poll_option_$index'),
+                            controller: _pollOptionControllers[index],
+                            decoration: InputDecoration(
+                              labelText: '投票選項 ${index + 1}',
+                              border: const OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
                   ],
                 ),
               ),

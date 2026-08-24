@@ -190,6 +190,7 @@ class CrdtOpBuilder {
     required String boardId,
     required String title,
     String? description,
+    Map<String, Object?>? poll,
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
@@ -198,6 +199,7 @@ class CrdtOpBuilder {
       'threadId': entityId,
       'title': title,
       'description': description,
+      if (poll != null) 'poll': poll,
       'createdAt': createdAt.toUtc().toIso8601String(),
     });
     return OpsQueueEntry(

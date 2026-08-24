@@ -75,6 +75,8 @@ export function createForumUiApp({
         reviewThreadDraft(actionElement);
       } else if (action === 'confirm-thread-draft') {
         await submitThreadDraft(actionElement);
+      } else if (action === 'cast-poll-vote') {
+        await castPollVote(actionElement);
       } else if (action === 'edit-own-content') {
         await editOwnContent(actionElement);
       } else if (action === 'delete-own-content') {
@@ -272,6 +274,7 @@ export function createForumUiApp({
       await forumDataAdapter.submitThreadDraft({
         title: trimmedTitle,
         boardId: currentBoardId(actionElement),
+        poll: readThreadDraftPoll(actionElement),
         sessionViewModel: currentSessionViewModel(),
       });
 
@@ -287,6 +290,28 @@ export function createForumUiApp({
     } catch (error) {
       renderUiError(error);
     }
+  }
+
+  function readThreadDraftPoll(actionElement) {
+    const form = findThreadDraftForm(actionElement, root);
+    if (!form?.querySelector?.('[data-thread-draft-poll-enabled]')?.checked) return null;
+    const lines = String(form.querySelector?.('[data-thread-draft-poll-options]')?.value ?? '')
+      .split('\n').map((value) => value.trim()).filter(Boolean).slice(0, 12);
+    if (lines.length < 2) return null;
+    return { options: lines.map((label, index) => ({ id: `option-${index + 1}`, label })) };
+  }
+
+  async function castPollVote(actionElement) {
+    if (!forumDataAdapter?.submitPollVote) return;
+    await forumDataAdapter.submitPollVote({
+      boardId: actionElement.dataset.boardId,
+      pollId: actionElement.dataset.pollId,
+      optionId: actionElement.dataset.optionId,
+      sessionViewModel: currentSessionViewModel(),
+    });
+    uiNotice = { tone: 'success', title: '已送出投票', message: '你的選擇已記入本版的投票結果。' };
+    state = await pageController.loadCurrentRoute();
+    render();
   }
 
   function readThreadDraftTitle(actionElement) {

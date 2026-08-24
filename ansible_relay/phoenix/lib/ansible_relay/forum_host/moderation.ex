@@ -128,6 +128,12 @@ defmodule AnsibleRelay.ForumHost.Moderation do
 
   def moderator?(_did, _board), do: false
 
+  @doc "Returns whether the DID owns this board or its first-party host."
+  def owner?(did, %ForumHostBoard{} = board) when is_binary(did),
+    do: host_owner?(did) or board_creator?(did, board.hosted_board_id)
+
+  def owner?(_did, _board), do: false
+
   # --- Projection effects (public read surface + posting chokepoints) ---
 
   @doc """

@@ -562,16 +562,25 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   # response never discloses a tier for an unauthenticated DID.
   defp check_posting_gate(conn, entity_type, "insert", payload, author_did)
        when entity_type in @gated_entity_types do
-    board_id =
+    decoded =
       case decode_payload(payload) do
-        {:ok, %{} = decoded} -> decoded["boardId"] || decoded["board_id"]
-        _ -> nil
+        {:ok, %{} = value} -> value
+        _ -> %{}
       end
+
+    board_id = decoded["boardId"] || decoded["board_id"]
 
     if is_binary(board_id) do
       case PostingGate.get_board(board_id) do
-        nil -> :ok
-        board -> PostingGate.authorize_board_post(conn, board, author_did)
+        nil ->
+          :ok
+
+        board ->
+          if entity_type == "thread" and is_map(decoded["poll"]) do
+            PostingGate.authorize_poll_creation(conn, board, author_did)
+          else
+            PostingGate.authorize_board_post(conn, board, author_did)
+          end
       end
     else
       :ok
@@ -639,7 +648,10 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     |> Map.put(:signing_algorithm, signing_algorithm)
     # Keep the signed author DID intact, while allowing read-model consumers to
     # collapse only a completed, dual-signed DID v1 migration for presentation.
-    |> Map.put(:canonical_author_did, AnsibleRelay.Identity.MigrationStore.canonical_did(author_did))
+    |> Map.put(
+      :canonical_author_did,
+      AnsibleRelay.Identity.MigrationStore.canonical_did(author_did)
+    )
     |> Map.put(:reputation_tier, AnsibleRelay.DidAccountCache.reputation_tier(author_did))
   end
 

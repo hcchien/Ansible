@@ -330,6 +330,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         const <String>[];
     final publicationDeferred =
         dialogResult['publicationDeferred'] as bool? ?? false;
+    final poll = dialogResult['poll'] as Map<String, Object?>?;
     final authorDid = widget.localDid;
     if (title == null ||
         title.isEmpty ||
@@ -364,6 +365,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               entityId: thread.id,
               boardId: boardId,
               title: thread.title,
+              poll: poll,
             ),
       deferPublication: publicationDeferred,
     );

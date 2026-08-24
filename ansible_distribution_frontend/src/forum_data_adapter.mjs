@@ -3,6 +3,7 @@ import {
   fetchBoardModerationState,
   fetchForumHostInfo,
   fetchHostedBoards,
+  submitBoardPollVote,
   fetchWebModerationActions,
   fetchWebModerationReports,
   submitWebModerationAction,
@@ -56,6 +57,7 @@ export function createForumDataAdapter({
     fetchWebModerationActions,
     submitWebModerationAction,
     fetchBoardModerationState,
+    submitBoardPollVote,
   },
   webPublicationClient = { createPasskeySignedThread, createPasskeySignedOperation },
   appViewClient = { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed },
@@ -362,7 +364,7 @@ export function createForumDataAdapter({
     }
   }
 
-  async function submitThreadDraft({ title, boardId, sessionViewModel }) {
+  async function submitThreadDraft({ title, boardId, poll = null, sessionViewModel }) {
     if (!sessionViewModel?.capabilities?.canPost) {
       throw scopeError('forum:post');
     }
@@ -408,9 +410,20 @@ export function createForumDataAdapter({
       boardId: String(board.board_id ?? board.hosted_board_id),
       boardPolicyVersion: board.access_policy_version ?? 1,
       title,
+      poll,
     });
 
     return normalizeThreadSubmission(response);
+  }
+
+  async function submitPollVote({ boardId, pollId, optionId, sessionViewModel }) {
+    if (!sessionViewModel?.capabilities?.canPost) throw scopeError('forum:post');
+    if (typeof forumHostClient.submitBoardPollVote !== 'function') {
+      throw notFoundError('poll_not_found', { boardId, pollId });
+    }
+    return forumHostClient.submitBoardPollVote({
+      relayBaseUrl, storage, fetchImpl, boardId, pollId, optionId,
+    });
   }
 
   async function submitContentMutation({
@@ -582,6 +595,7 @@ export function createForumDataAdapter({
     markNotificationRead,
     markAllNotificationsRead,
     submitThreadDraft,
+    submitPollVote,
     submitContentMutation,
     submitReport,
     loadModerationConsole,
@@ -774,6 +788,7 @@ export function buildThreadsFromFeed(items) {
       threadsById.set(item.entity_id, {
         id: item.entity_id,
         title: payload.title || '',
+        poll: normalizePoll(payload.poll),
         boardId: item.board_id || payload.boardId || payload.board_id || '',
         authorDid: item.author_did,
         authorDisplayName: normalizeAuthorDisplayName(item, payload),
@@ -873,6 +888,14 @@ export function buildThreadsFromFeed(items) {
   threads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
   return threads;
+}
+
+function normalizePoll(poll) {
+  if (!poll || !Array.isArray(poll.options) || poll.options.length < 2) return null;
+  const options = poll.options
+    .filter((option) => option && typeof option.id === 'string' && typeof option.label === 'string')
+    .map((option) => ({ id: option.id, label: option.label, votes: Number(option.votes ?? 0) || 0 }));
+  return options.length >= 2 ? { options, closesAt: poll.closes_at ?? null } : null;
 }
 
 function normalizeAuthorHandle(item, payload = {}) {

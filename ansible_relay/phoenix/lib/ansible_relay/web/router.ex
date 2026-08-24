@@ -352,6 +352,17 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.WebPublicationController.show(conn, operation_id)
   end
 
+  # Polls belong to a hosted board thread. Casting a vote deliberately shares
+  # the board's posting/VC gate, so a board cannot expose voting to identities
+  # that may not speak there.
+  get "/api/v1/forum-host/boards/:board_id/polls/:poll_id" do
+    AnsibleRelay.Web.Controllers.ForumHostPollController.show(conn, board_id, poll_id)
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/polls/:poll_id/votes" do
+    AnsibleRelay.Web.Controllers.ForumHostPollController.create(conn, board_id, poll_id, conn.body_params)
+  end
+
   # Forum Host — content reporting (signed-intent and web-session rails)
   post "/api/v1/forum-host/reports" do
     AnsibleRelay.Web.Controllers.ForumHostController.create_report(conn, conn.body_params)

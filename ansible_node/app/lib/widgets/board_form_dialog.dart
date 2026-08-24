@@ -63,6 +63,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
   late final BoardAudienceMode _initialAudienceMode;
   String? _manifestError;
   var _loadingManifest = false;
+  PollCreationRole _pollCreationRole = PollCreationRole.posters;
 
   @override
   void initState() {
@@ -86,6 +87,10 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
       accessPolicy: widget.initialAccessPolicy,
     );
     _initialAudienceMode = initialDraft.mode;
+    _pollCreationRole = PollCreationRole.values.firstWhere(
+      (role) => role.name == widget.initialPostingPolicy['poll_creation'],
+      orElse: () => PollCreationRole.posters,
+    );
     _initialCustomRequirement = initialDraft.customRequirement;
     final initialIssuers = _initialCustomRequirement?['trusted_issuers'];
     if (initialIssuers is List && initialIssuers.firstOrNull is String) {
@@ -298,6 +303,29 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
                       en: 'Eligibility applies only to this board and never changes global reputation.',
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<PollCreationRole>(
+                  key: const Key('board_poll_creation_role'),
+                  initialValue: _pollCreationRole,
+                  items: const [
+                    DropdownMenuItem(
+                      value: PollCreationRole.posters,
+                      child: Text('可發言者都能建立投票'),
+                    ),
+                    DropdownMenuItem(
+                      value: PollCreationRole.moderators,
+                      child: Text('僅版主能建立投票'),
+                    ),
+                    DropdownMenuItem(
+                      value: PollCreationRole.owners,
+                      child: Text('僅看板擁有者能建立投票'),
+                    ),
+                  ],
+                  onChanged: (value) => setState(
+                    () => _pollCreationRole = value ?? PollCreationRole.posters,
+                  ),
+                  decoration: const InputDecoration(labelText: '誰可以建立投票？'),
                 ),
                 if (_memberCredentialPreset == 'custom') ...[
                   const SizedBox(height: 12),
@@ -745,6 +773,7 @@ class _BoardFormDialogState extends State<BoardFormDialog> {
 
   BoardPolicyDraft _currentDraft() => BoardPolicyDraft(
     mode: _audienceMode,
+    pollCreationRole: _pollCreationRole,
     customRequirement:
         _audienceMode == _initialAudienceMode &&
             _issuerManifest == null &&

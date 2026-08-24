@@ -129,6 +129,22 @@ export async function fetchBoardModerationState({ relayBaseUrl, fetchImpl, board
   );
 }
 
+// Poll votes are board-scoped. The server applies the exact same VC/capability
+// gate as posting and never returns a voter identity.
+export async function submitBoardPollVote({ relayBaseUrl, storage, fetchImpl, boardId, pollId, optionId }) {
+  return relayClient({ relayBaseUrl, storage, fetchImpl }).postJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/polls/${encodeURIComponent(pollId)}/votes`,
+    { option_id: optionId },
+    { authenticated: true },
+  );
+}
+
+export async function fetchBoardPoll({ relayBaseUrl, fetchImpl, boardId, pollId }) {
+  return relayClient({ relayBaseUrl, fetchImpl }).getJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/polls/${encodeURIComponent(pollId)}`,
+  );
+}
+
 function relayClient(options) {
   return createRelayApiClient(options);
 }

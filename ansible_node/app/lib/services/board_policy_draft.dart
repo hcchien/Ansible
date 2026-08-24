@@ -11,16 +11,20 @@ enum BoardAudienceMode {
   customRead,
 }
 
+enum PollCreationRole { posters, moderators, owners }
+
 class BoardPolicyDraft {
   const BoardPolicyDraft({
     required this.mode,
     this.customRequirement,
     this.minPostTier,
+    this.pollCreationRole = PollCreationRole.posters,
   });
 
   final BoardAudienceMode mode;
   final Map<String, Object?>? customRequirement;
   final String? minPostTier;
+  final PollCreationRole pollCreationRole;
 
   bool get requiresCredential => switch (mode) {
     BoardAudienceMode.taiwanCitizenPost ||
@@ -52,6 +56,7 @@ class BoardPolicyDraft {
 
   Map<String, Object?> get postingPolicy => {
     if (effectiveMinPostTier != null) 'min_post_tier': effectiveMinPostTier,
+    'poll_creation': pollCreationRole.name,
   };
 
   Map<String, Object?> accessPolicy({required String systemIssuerDid}) {
