@@ -379,8 +379,9 @@ defmodule AnsibleAppview.Timeline do
       log_id: f.log_id,
       op_id: f.op_id,
       author_did: f.author_did,
-      author_handle: author_handle(f.author_did),
-      author_display_name: author_display_name(f.author_did),
+      canonical_author_did: canonical_author_did(f),
+      author_handle: author_handle(canonical_author_did(f)),
+      author_display_name: author_display_name(canonical_author_did(f)),
       entity_type: f.entity_type,
       entity_id: f.entity_id,
       op_type: f.op_type,
@@ -402,6 +403,12 @@ defmodule AnsibleAppview.Timeline do
   end
 
   defp author_handle(_did), do: nil
+
+  defp canonical_author_did(%FeedItem{canonical_author_did: did})
+       when is_binary(did) and did != "",
+       do: did
+
+  defp canonical_author_did(%FeedItem{author_did: did}), do: did
 
   defp author_display_name(did) when is_binary(did) do
     case Profiles.get(did) do

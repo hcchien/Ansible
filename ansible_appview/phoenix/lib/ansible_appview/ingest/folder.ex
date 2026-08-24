@@ -510,7 +510,10 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   # Public actor profiles only. A delete op removes the directory entry.
   defp fold_profile(op, payload) do
-    did = op["author_did"]
+    # Relay only supplies canonical_author_did for a completed dual-signed
+    # migration. Preserve the original DID on content rows, but keep one actor
+    # directory entry for the canonical identity.
+    did = op["canonical_author_did"] || op["author_did"]
 
     cond do
       not (is_binary(did) and did != "") ->
@@ -547,6 +550,7 @@ defmodule AnsibleAppview.Ingest.Folder do
       log_id: op["log_id"],
       op_id: op["op_id"],
       author_did: op["author_did"],
+      canonical_author_did: op["canonical_author_did"] || op["author_did"],
       entity_type: op["entity_type"],
       entity_id: op["entity_id"],
       op_type: op["op_type"],

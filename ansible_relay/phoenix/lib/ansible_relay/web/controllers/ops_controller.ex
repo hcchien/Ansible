@@ -637,6 +637,9 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     op
     |> Map.put(:public_key_hex, IdentityCache.public_key_hex(author_did))
     |> Map.put(:signing_algorithm, signing_algorithm)
+    # Keep the signed author DID intact, while allowing read-model consumers to
+    # collapse only a completed, dual-signed DID v1 migration for presentation.
+    |> Map.put(:canonical_author_did, AnsibleRelay.Identity.MigrationStore.canonical_did(author_did))
     |> Map.put(:reputation_tier, AnsibleRelay.DidAccountCache.reputation_tier(author_did))
   end
 

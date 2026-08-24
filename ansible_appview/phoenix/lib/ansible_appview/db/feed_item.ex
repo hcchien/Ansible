@@ -6,6 +6,9 @@ defmodule AnsibleAppview.Db.FeedItem do
   schema "feed_items" do
     field(:op_id, :string)
     field(:author_did, :string)
+    # The DID on the signed operation remains `author_did`. This field is only
+    # a Relay-attested, dual-signed migration alias for read-model presentation.
+    field(:canonical_author_did, :string)
     field(:entity_type, :string)
     field(:entity_id, :string)
     field(:op_type, :string)
@@ -33,7 +36,7 @@ defmodule AnsibleAppview.Db.FeedItem do
     timestamps(type: :utc_datetime_usec)
   end
 
-  @fields ~w(log_id op_id author_did entity_type entity_id op_type board_id thread_id
+  @fields ~w(log_id op_id author_did canonical_author_did entity_type entity_id op_type board_id thread_id
              visibility item_created_at payload public_key_hex author_tier deleted sig_verified
              source verified_at signature anchor_expires_at
              external_actor_uri external_instance compliance_level)a
