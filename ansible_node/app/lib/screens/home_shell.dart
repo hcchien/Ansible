@@ -1743,6 +1743,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         const <String>[];
     final publicationDeferred =
         dialogResult['publicationDeferred'] as bool? ?? false;
+    final poll = dialogResult['poll'] as Map<String, Object?>?;
     if (threadTitle == null ||
         threadTitle.isEmpty ||
         boardId == null ||
@@ -1776,6 +1777,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               entityId: thread.id,
               boardId: boardId,
               title: thread.title,
+              poll: poll,
             ),
       deferPublication: publicationDeferred,
     );
