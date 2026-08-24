@@ -62,7 +62,9 @@ class AuthorLabel extends StatelessWidget {
     }
     final normalizedHandle = candidateHandle?.trim();
     return normalizedHandle != null && normalizedHandle.isNotEmpty
-        ? normalizedHandle
+        ? (normalizedHandle.startsWith('@')
+              ? normalizedHandle
+              : '@$normalizedHandle')
         : null;
   }
 }

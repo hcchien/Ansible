@@ -88,7 +88,9 @@ class PublicAuthorProfile {
     if (name != null && name.isNotEmpty) return name;
     final resolvedHandle = handle?.trim();
     if (resolvedHandle != null && resolvedHandle.isNotEmpty) {
-      return resolvedHandle;
+      return resolvedHandle.startsWith('@')
+          ? resolvedHandle
+          : '@$resolvedHandle';
     }
     return null;
   }

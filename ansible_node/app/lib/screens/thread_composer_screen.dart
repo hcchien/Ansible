@@ -567,11 +567,19 @@ class _PollOptionsEditor extends StatelessWidget {
                       cursorColor: AnsibleDesign.ink,
                       style: const TextStyle(color: AnsibleDesign.ink),
                       decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AnsibleDesign.paper,
                         labelText: context.uiCopy(
                           zh: '選項 ${index + 1}',
                           en: 'Option ${index + 1}',
                         ),
-                        border: const OutlineInputBorder(),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        labelStyle: const TextStyle(
+                          color: AnsibleDesign.inkMuted,
+                        ),
+                        border: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AnsibleDesign.rule),
+                        ),
                       ),
                     ),
                   ),
@@ -592,15 +600,27 @@ class _PollOptionsEditor extends StatelessWidget {
             onPressed: atLimit ? null : onAdd,
             icon: const Icon(Icons.add, size: 18),
             label: Text(context.uiCopy(zh: '新增選項', en: 'Add option')),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AnsibleDesign.ink,
+              side: const BorderSide(color: AnsibleDesign.rule),
+            ),
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<int?>(
             key: const Key('thread_composer_poll_duration'),
             initialValue: durationDays,
             decoration: InputDecoration(
+              filled: true,
+              fillColor: AnsibleDesign.paper,
               labelText: context.uiCopy(zh: '結束時間', en: 'Ends'),
-              border: const OutlineInputBorder(),
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+              labelStyle: const TextStyle(color: AnsibleDesign.inkMuted),
+              border: const OutlineInputBorder(
+                borderSide: BorderSide(color: AnsibleDesign.rule),
+              ),
             ),
+            dropdownColor: AnsibleDesign.paper,
+            style: const TextStyle(color: AnsibleDesign.ink),
             items: [
               DropdownMenuItem<int?>(
                 value: null,

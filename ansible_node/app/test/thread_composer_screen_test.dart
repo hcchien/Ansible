@@ -413,6 +413,18 @@ void main() {
         find.byKey(const Key('thread_composer_poll_toggle')),
         findsNothing,
       );
+      final optionField = tester.widget<TextField>(
+        find.byKey(const Key('thread_composer_poll_option_0')),
+      );
+      expect(optionField.decoration?.filled, isTrue);
+      expect(optionField.decoration?.fillColor, AnsibleDesign.paper);
+      final duration = tester.widget<DropdownButtonFormField<int?>>(
+        find.byKey(const Key('thread_composer_poll_duration')),
+      );
+      expect(
+        duration.decoration?.floatingLabelBehavior,
+        FloatingLabelBehavior.always,
+      );
       await tester.enterText(
         find.byKey(const Key('thread_composer_title_field')),
         '下季主題？',

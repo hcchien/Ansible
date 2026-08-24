@@ -72,4 +72,11 @@ void main() {
       'Alice',
     );
   });
+
+  test('formats a handle distinctly when no display name is published', () {
+    expect(
+      const PublicAuthorProfile(handle: 'hcchien').preferredLabel,
+      '@hcchien',
+    );
+  });
 }
