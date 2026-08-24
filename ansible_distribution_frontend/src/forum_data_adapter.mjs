@@ -26,6 +26,7 @@ import {
   normalizeReport,
   validateReportDraft,
 } from './moderation_model.mjs';
+import { createRelayApiClient } from './relay_api_client.mjs';
 
 const PROHIBITED_CREDENTIAL_CLAIMS = new Set([
   'nationalid',
@@ -60,6 +61,7 @@ export function createForumDataAdapter({
   appViewClient = { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed },
 }) {
   const notificationReadStore = createWebNotificationReadStore({ storage });
+  const publicHandleCache = new Map();
 
   async function loadForumHome({ sessionViewModel, includePublicFeed = false } = {}) {
     const [host, boardsResponse] = await Promise.all([
@@ -102,6 +104,8 @@ export function createForumDataAdapter({
       )
       .sort(compareThreadsNewestFirst);
 
+    await fillMissingAuthorHandles(threads);
+
     return {
       ...home,
       publicFeed: {
@@ -138,6 +142,7 @@ export function createForumDataAdapter({
     ]);
 
     const rawThreads = buildThreadsFromFeed(feedResponse?.items ?? []);
+    await fillMissingAuthorHandles(rawThreads);
 
     return {
       ...home,
@@ -178,6 +183,7 @@ export function createForumDataAdapter({
       buildThreadsFromFeed(threadFeedResponse?.items ?? []),
       moderationState,
     );
+    await fillMissingAuthorHandles(threads);
     const thread = threads.find((candidate) => candidate.id === threadId) ?? null;
 
     return {
@@ -221,6 +227,39 @@ export function createForumDataAdapter({
     } catch {
       return { items: [] };
     }
+  }
+
+  // AppView profiles carry display names and handles when a public profile op
+  // exists. A Relay-registered handle is also public, stable DID anchor data,
+  // however, and older accounts may have one without a profile op. Resolve it
+  // only as a presentation fallback; it never changes the author DID or any
+  // authorization decision.
+  async function fillMissingAuthorHandles(threads) {
+    const authors = [];
+    for (const thread of threads) {
+      authors.push(thread, ...(thread.posts ?? []));
+    }
+
+    await Promise.all(
+      authors.map(async (author) => {
+        if (author?.authorHandle || !String(author?.authorDid ?? '').startsWith('did:')) return;
+        const handle = await resolveRelayHandle(author.authorDid);
+        if (handle) author.authorHandle = handle;
+      }),
+    );
+  }
+
+  async function resolveRelayHandle(did) {
+    const identity = String(did ?? '').trim();
+    if (!identity.startsWith('did:')) return null;
+    if (!publicHandleCache.has(identity)) {
+      const request = createRelayApiClient({ relayBaseUrl, fetchImpl })
+        .getJson(`/api/v1/identity/handle/${encodeURIComponent(identity)}`)
+        .then((response) => String(response?.handle ?? '').trim() || null)
+        .catch(() => null);
+      publicHandleCache.set(identity, request);
+    }
+    return publicHandleCache.get(identity);
   }
 
   async function loadNotifications({ sessionViewModel, boards = null } = {}) {

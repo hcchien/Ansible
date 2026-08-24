@@ -464,6 +464,49 @@ test('normalizes AppView post content into thread posts', () => {
   assert.equal(thread.posts[0].content, '文章不見了？！');
 });
 
+test('falls back to the Relay-registered handle when AppView has no profile op', async () => {
+  const adapter = createForumDataAdapter({
+    relayBaseUrl: 'https://relay.example',
+    fetchImpl: async (url) => {
+      assert.equal(
+        url,
+        'https://relay.example/api/v1/identity/handle/did%3Aelix%3Amashbean',
+      );
+      return new Response(JSON.stringify({ handle: 'mashbean.elix.cool' }), { status: 200 });
+    },
+    forumHostClient: {
+      async fetchForumHostInfo() {
+        return { forum_host_id: 'host', display_name: 'Host' };
+      },
+      async fetchHostedBoards() {
+        return { boards: [{ hosted_board_id: 'general', slug: 'general', title: 'General' }] };
+      },
+      async fetchBoardModerationState() {
+        return {};
+      },
+    },
+    appViewClient: {
+      async fetchThreadFeed() {
+        return {
+          items: [{
+            entity_type: 'thread',
+            op_type: 'insert',
+            entity_id: 'thread-1',
+            author_did: 'did:elix:mashbean',
+            board_id: 'general',
+            created_at: '2026-08-23T12:39:00Z',
+            payload: { title: 'Handle fallback' },
+          }],
+        };
+      },
+    },
+  });
+
+  const page = await adapter.loadThreadPage({ boardId: 'general', threadId: 'thread-1' });
+  assert.equal(page.thread.authorHandle, 'mashbean.elix.cool');
+  assert.equal(page.thread.authorDisplayName, null);
+});
+
 test('projects signed thread/post updates and deletes from the schema feed', () => {
   const threads = buildThreadsFromFeed([
     {
