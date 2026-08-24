@@ -297,10 +297,17 @@ defmodule AnsibleAppview.Timeline do
     # those on the thread itself and on its replies so web readers can show the
     # same public aggregate as the app without inferring it from local state.
     reply_ids =
-      from(f in FeedItem,
-        where: f.thread_id == ^thread_id and f.entity_type == "post",
-        select: f.entity_id
+      read_repo().all(
+        from(f in FeedItem,
+          where: f.thread_id == ^thread_id and f.entity_type == "post",
+          select: f.entity_id
+        )
       )
+
+    # Use a concrete list instead of an SQL subquery in the JSON-expression
+    # predicate. PostgreSQL accepts the latter, but the deployed Ecto query
+    # produced a 500 for thread reads once reply reactions were present.
+    reaction_target_ids = Enum.uniq([thread_id | reply_ids])
 
     base =
       from(f in FeedItem,
@@ -308,7 +315,7 @@ defmodule AnsibleAppview.Timeline do
           (f.thread_id == ^thread_id or
              (f.entity_type == "reaction" and
                 (fragment("?->>'targetId'", f.payload) == ^thread_id or
-                   fragment("?->>'targetId'", f.payload) in subquery(reply_ids)))) and
+                   fragment("?->>'targetId'", f.payload) in ^reaction_target_ids))) and
             f.deleted == false and
             f.sig_verified == true and
             (is_nil(f.visibility) or f.visibility in ^@relayable),
