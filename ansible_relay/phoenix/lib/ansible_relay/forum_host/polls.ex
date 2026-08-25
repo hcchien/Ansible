@@ -5,6 +5,7 @@ defmodule AnsibleRelay.ForumHost.Polls do
 
   alias AnsibleRelay.{OpStore, Repo}
   alias AnsibleRelay.Db.{ForumHostBoard, ForumHostPollVote}
+  alias AnsibleRelay.ForumHost.PostingGate
 
   def cast_vote(%ForumHostBoard{} = board, poll_id, option_id, author_did) do
     with {:ok, poll} <- poll_for(board, poll_id),
@@ -33,11 +34,7 @@ defmodule AnsibleRelay.ForumHost.Polls do
   defp poll_for(board, poll_id) when is_binary(poll_id) and poll_id != "" do
     with %{payload: payload} <- OpStore.create_op("thread", poll_id),
          {:ok, %{} = thread} <- decode_payload(payload),
-         true <-
-           (thread["boardId"] || thread["board_id"]) in [
-             Integer.to_string(board.board_id),
-             board.hosted_board_id
-           ],
+         true <- belongs_to_board?(thread["boardId"] || thread["board_id"], board),
          %{} = poll <- thread["poll"],
          true <- valid_poll?(poll) do
       {:ok, poll}
@@ -47,6 +44,20 @@ defmodule AnsibleRelay.ForumHost.Polls do
   end
 
   defp poll_for(_, _), do: {:error, :poll_not_found}
+
+  # Thread ops preserve the App's local composite board ID
+  # (`<forum-host-node-id>_<canonical-board-id>`). Resolve it through the same
+  # exact canonical path as the posting gate, rather than comparing only the
+  # legacy hosted key or raw numeric ID.
+  defp belongs_to_board?(thread_board_id, %ForumHostBoard{} = board)
+       when is_binary(thread_board_id) do
+    case PostingGate.get_board(thread_board_id) do
+      %ForumHostBoard{board_id: board_id} -> board_id == board.board_id
+      nil -> false
+    end
+  end
+
+  defp belongs_to_board?(_, _), do: false
 
   defp decode_payload(payload) do
     case Base.decode64(payload) do
