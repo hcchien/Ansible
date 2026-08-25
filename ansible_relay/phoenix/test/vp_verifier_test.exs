@@ -283,8 +283,6 @@ defmodule AnsibleRelay.VpVerifierTest do
 
     assert {:error, :invalid_vp_proof} = VpVerifier.verify(@holder_did, vp)
 
-    assert {:error, {:verification_stage, :vp_proof, :invalid_vp_proof}} =
-             VpVerifier.diagnose_with_credential(@holder_did, vp)
   end
 
   test "rejects VP whose VC subject does not match holder", %{issuer_priv: issuer_priv} do
@@ -339,8 +337,6 @@ defmodule AnsibleRelay.VpVerifierTest do
 
     assert {:error, :untrusted_issuer} = VpVerifier.verify(@holder_did, vp)
 
-    assert {:error, {:verification_stage, :credential_validation, :untrusted_issuer}} =
-             VpVerifier.diagnose_with_credential(@holder_did, vp)
   end
 
   test "rejects a credential type the issuer is not registered to issue", %{

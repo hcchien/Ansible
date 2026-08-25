@@ -74,24 +74,6 @@ defmodule AnsibleRelay.VpVerifier do
     end
   end
 
-  @doc false
-  # Returns the same result as `verify_with_credential/3`, annotating a
-  # failure with a fixed non-sensitive stage for server-side observability.
-  # Callers must never log the holder, VC, VP, key material, or proof.
-  def diagnose_with_credential(holder_did, vp, opts \\ [])
-      when is_binary(holder_did) and is_map(vp) do
-    with {:ok, pub_key_hex} <- diagnose(:holder_key, resolve_holder_key(holder_did)),
-         :ok <- diagnose(:vp_proof, verify_vp_proof(vp, pub_key_hex, holder_did, opts)),
-         {:ok, vcs} <- diagnose(:credential_payload, extract_vcs(vp)),
-         {:ok, vc} <- diagnose(:credential_validation, pick_accepted_vc(vcs, holder_did)) do
-      {:ok, vc_credential_type(vc), vc}
-    end
-  end
-
-  defp diagnose(_stage, {:ok, _value} = success), do: success
-  defp diagnose(_stage, :ok = success), do: success
-  defp diagnose(stage, {:error, reason}), do: {:error, {:verification_stage, stage, reason}}
-
   @doc """
   Verify a VP and a short-lived Nostr binding event.
 

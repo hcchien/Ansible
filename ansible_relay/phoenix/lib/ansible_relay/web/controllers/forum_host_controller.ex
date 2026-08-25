@@ -245,15 +245,6 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
       nil ->
         send_json(conn, 404, %{error: "board_not_found"})
 
-      {:error, {:verification_stage, stage, reason}} ->
-        # Log only fixed stage/reason identifiers. A presentation and its
-        # holder/credential/proof material are privacy-sensitive.
-        Logger.warning(
-          "board presentation rejected board_id=#{board_id} action=#{action} stage=#{stage} reason=#{error_string(reason)}"
-        )
-
-        send_json(conn, 403, %{error: error_string(reason)})
-
       {:error, reason} ->
         # Reason codes identify a rejected access rule without logging a
         # presentation, VC, holder DID, or any other identity material.
@@ -301,7 +292,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
     status_checker = Keyword.fetch!(opts, :status_checker)
 
     with {:ok, credential_type, vc} <-
-           VpVerifier.diagnose_with_credential(
+           VpVerifier.verify_with_credential(
              holder,
              vp,
              nonce: nonce,
