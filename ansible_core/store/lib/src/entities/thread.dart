@@ -6,6 +6,7 @@ class Thread {
   final String title;
   final String authorId;
   final Map<String, Object?>? poll;
+  final Map<String, Object?>? pollResults;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -16,6 +17,7 @@ class Thread {
     required this.title,
     required this.authorId,
     this.poll,
+    this.pollResults,
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
@@ -93,6 +95,31 @@ class Thread {
     };
   }
 
+  static Map<String, Object?>? parsePollResults(Object? value) {
+    if (value is! Map || value['options'] is! List) return null;
+    final options = <Map<String, Object?>>[];
+    for (final option in value['options'] as List) {
+      if (option is! Map) return null;
+      final id = option['id']?.toString().trim();
+      final label = option['label']?.toString().trim();
+      final votes = int.tryParse(option['votes']?.toString() ?? '');
+      if (id == null ||
+          id.isEmpty ||
+          label == null ||
+          label.isEmpty ||
+          votes == null ||
+          votes < 0)
+        return null;
+      options.add({'id': id, 'label': label, 'votes': votes});
+    }
+    if (options.length < 2 || options.length > 12) return null;
+    final closesAt = value['closes_at'] ?? value['closesAt'];
+    return {
+      'options': options,
+      if (closesAt is String && closesAt.isNotEmpty) 'closes_at': closesAt,
+    };
+  }
+
   static String? encodePoll(Map<String, Object?>? poll) {
     final normalized = _parsePoll(poll);
     return normalized == null ? null : jsonEncode(normalized);
@@ -102,6 +129,20 @@ class Thread {
     if (encoded == null || encoded.isEmpty) return null;
     try {
       return _parsePoll(jsonDecode(encoded));
+    } on FormatException {
+      return null;
+    }
+  }
+
+  static String? encodePollResults(Map<String, Object?>? results) {
+    final normalized = parsePollResults(results);
+    return normalized == null ? null : jsonEncode(normalized);
+  }
+
+  static Map<String, Object?>? decodePollResults(String? encoded) {
+    if (encoded == null || encoded.isEmpty) return null;
+    try {
+      return parsePollResults(jsonDecode(encoded));
     } on FormatException {
       return null;
     }

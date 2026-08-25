@@ -11,6 +11,7 @@ import '../l10n/moderation_copy.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/elix_content_link.dart';
 import '../services/forum_host_client.dart';
+import '../services/board_access_presentation_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../services/private_board_op_factory.dart';
@@ -231,6 +232,12 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       _remoteRemoval = remoteRemoval;
       _isLoading = false;
     });
+    // Tally data is a public Forum Host projection, separate from the signed
+    // poll definition. Refresh it whenever a poll detail is opened; the
+    // persisted snapshot keeps the detail useful offline meanwhile.
+    if (projection != null && _thread.poll != null) {
+      unawaited(_refreshPollResult(projection));
+    }
   }
 
   Future<bool> _checkPostingGate(HostedBoardProjection? projection) async {
@@ -910,7 +917,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               ),
             ),
           ],
-          if ((_pollResult ?? _thread.poll) case final poll?) ...[
+          if ((_pollResult ?? _thread.pollResults ?? _thread.poll)
+              case final poll?) ...[
             const SizedBox(height: 16),
             _pollDetail(context, poll),
           ],
@@ -1083,6 +1091,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         widget.reportClientFactory ??
         (baseUrl) => ForumHostClient(baseUrl: baseUrl))(host.url);
     try {
+      final proofHeaders = await _pollProofHeaders(
+        projection: projection,
+        hostUrl: host.url,
+      );
       final signature =
           await (widget.pollPayloadSigner ??
               widget.reportPayloadSigner ??
@@ -1102,20 +1114,20 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           expiresAt: createdAt.add(const Duration(minutes: 5)),
           signature: signature,
         ),
+        headers: proofHeaders,
       );
+      final result = _mergedPollResult(response['poll']);
+      if (result == null) throw const FormatException('Missing poll result');
+      await _persistPollResult(result);
       if (!mounted) return;
-      setState(() {
-        _pollResult = {
-          ...?_thread.poll,
-          ...Map<String, Object?>.from(response['poll'] as Map),
-        };
-        _pollVoteAccepted = true;
-      });
+      setState(() => _pollVoteAccepted = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.uiCopy(zh: '投票成功', en: 'Vote submitted')),
         ),
       );
+    } on BoardAccessException catch (error) {
+      if (mounted) _showPollError(error.code);
     } on ForumHostException catch (error) {
       if (mounted) _showPollError(error.error ?? 'invalid_poll_vote');
     } catch (_) {
@@ -1124,6 +1136,95 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       client.close();
       if (mounted) setState(() => _submittingPollOption = null);
     }
+  }
+
+  bool _requiresPollCapability(HostedBoardProjection projection) {
+    final post = projection.accessPolicy['post'];
+    final requirement = post is Map ? post['requirement'] : null;
+    return requirement is String &&
+        requirement != 'public' &&
+        requirement != 'posting_policy';
+  }
+
+  Future<Map<String, String>> _pollProofHeaders({
+    required HostedBoardProjection projection,
+    required String hostUrl,
+  }) async {
+    if (!_requiresPollCapability(projection)) return const {};
+    final endpoint = Uri.parse(hostUrl).resolve(
+      '/api/v1/forum-host/boards/${Uri.encodeComponent(projection.hostedBoardId)}/polls/${Uri.encodeComponent(_thread.id)}/votes',
+    );
+    final access = BoardAccessPresentationService(
+      walletRepository: DriftWalletRepository(widget.db),
+    );
+    final capability = await access.authorize(
+      forumHost: Uri.parse(hostUrl),
+      boardId: projection.hostedBoardId,
+      action: 'post',
+    );
+    return access.proofHeaders(
+      capability: capability,
+      method: 'POST',
+      requestUri: endpoint,
+      scope: 'post',
+    );
+  }
+
+  Map<String, Object?>? _mergedPollResult(Object? raw) {
+    if (raw is! Map) return null;
+    final result = Thread.parsePollResults(raw);
+    if (result == null) return null;
+    // Retain the signed closing time when the host response omits it.
+    return {...?_thread.poll, ...result};
+  }
+
+  Future<void> _refreshPollResult(HostedBoardProjection projection) async {
+    final host = await DriftRemoteNodeRepository(
+      widget.db,
+    ).getById(projection.forumHostId);
+    if (host == null) return;
+    final client =
+        (widget.pollClientFactory ??
+        widget.reportClientFactory ??
+        (baseUrl) => ForumHostClient(baseUrl: baseUrl))(host.url);
+    try {
+      final response = await client.fetchPoll(
+        projection.hostedBoardId,
+        _thread.id,
+      );
+      final result = _mergedPollResult(response['poll']);
+      if (result != null) await _persistPollResult(result);
+    } on ForumHostException {
+      // A cached public snapshot remains valid offline or when the poll has
+      // not reached this host yet; voting retains its own reason-coded errors.
+    } on FormatException {
+      // Ignore malformed public snapshots rather than replacing the signed
+      // local poll definition.
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<void> _persistPollResult(Map<String, Object?> result) async {
+    final updated = Thread(
+      id: _thread.id,
+      boardId: _thread.boardId,
+      title: _thread.title,
+      authorId: _thread.authorId,
+      poll: _thread.poll,
+      pollResults: result,
+      createdAt: _thread.createdAt,
+      // A tally refresh is not a signed content edit, so it must not change
+      // thread ordering or publication timestamps.
+      updatedAt: _thread.updatedAt,
+      isDeleted: _thread.isDeleted,
+    );
+    await _threadRepo.update(updated);
+    if (!mounted) return;
+    setState(() {
+      _thread = updated;
+      _pollResult = result;
+    });
   }
 
   void _showPollError(String code) {

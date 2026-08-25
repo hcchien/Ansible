@@ -601,11 +601,13 @@ class ForumHostClient {
   }
 
   Future<Map<String, dynamic>> castPollVote(
-    CastPollVoteIntent intent,
-  ) => _postJson(
+    CastPollVoteIntent intent, {
+    Map<String, String> headers = const {},
+  }) => _postJson(
     '/api/v1/forum-host/boards/${Uri.encodeComponent(intent.boardId)}/polls/${Uri.encodeComponent(intent.pollId)}/votes',
     intent.toJson(),
     expectedStatus: 201,
+    headers: headers,
   );
 
   Future<Map<String, dynamic>> fetchPoll(
@@ -709,13 +711,15 @@ class ForumHostClient {
     String path,
     Map<String, Object?> body, {
     required int expectedStatus,
+    Map<String, String> headers = const {},
   }) async {
     final response = await _client
         .post(
           _endpoint(path),
-          headers: const {
+          headers: {
             'content-type': 'application/json',
             ...AnsibleProtocol.headers,
+            ...headers,
           },
           body: jsonEncode(body),
         )

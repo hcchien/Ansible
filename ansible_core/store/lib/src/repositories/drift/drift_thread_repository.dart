@@ -19,6 +19,9 @@ class DriftThreadRepository implements ThreadRepository {
             title: thread.title,
             authorId: thread.authorId,
             pollJson: Value(entity.Thread.encodePoll(thread.poll)),
+            pollResultsJson: Value(
+              entity.Thread.encodePollResults(thread.pollResults),
+            ),
             createdAt: thread.createdAt,
             updatedAt: thread.updatedAt,
             isDeleted: Value(thread.isDeleted),
@@ -56,6 +59,9 @@ class DriftThreadRepository implements ThreadRepository {
         title: Value(thread.title),
         authorId: Value(thread.authorId),
         pollJson: Value(entity.Thread.encodePoll(thread.poll)),
+        pollResultsJson: Value(
+          entity.Thread.encodePollResults(thread.pollResults),
+        ),
         updatedAt: Value(thread.updatedAt),
         isDeleted: Value(thread.isDeleted),
       ),
@@ -80,6 +86,7 @@ class DriftThreadRepository implements ThreadRepository {
       title: row.title,
       authorId: row.authorId,
       poll: entity.Thread.decodePoll(row.pollJson),
+      pollResults: entity.Thread.decodePollResults(row.pollResultsJson),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       isDeleted: row.isDeleted,

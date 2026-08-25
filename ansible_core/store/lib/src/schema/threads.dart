@@ -11,6 +11,10 @@ class Threads extends Table {
   /// options and optional close time only; voter identities and ballots never
   /// belong in the device database.
   TextColumn get pollJson => text().nullable()();
+
+  /// Public, host-derived tally snapshot.  It deliberately contains neither a
+  /// voter DID nor the local user's selected option.
+  TextColumn get pollResultsJson => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();

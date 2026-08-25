@@ -117,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 33;
+  int get schemaVersion => 34;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -268,6 +268,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 33) {
         await _addColumnIfMissing(m, threads, threads.pollJson);
+      }
+      if (from < 34) {
+        await _addColumnIfMissing(m, threads, threads.pollResultsJson);
       }
       if (from < 26) {
         // Compliance-review gap #2: persist the host-declared constitution

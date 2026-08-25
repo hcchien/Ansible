@@ -46,6 +46,33 @@ void main() {
     expect((result['vote'] as Map)['accepted'], isTrue);
   });
 
+  test('fetchPoll reads the public tally without voter data', () async {
+    final client = ForumHostClient(
+      baseUrl: 'https://host.example',
+      client: MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(
+          request.url.path,
+          '/api/v1/forum-host/boards/board-1/polls/poll-1',
+        );
+        return http.Response(
+          jsonEncode({
+            'poll': {
+              'options': [
+                {'id': 'option-1', 'label': 'First', 'votes': 2},
+                {'id': 'option-2', 'label': 'Second', 'votes': 0},
+              ],
+            },
+          }),
+          200,
+        );
+      }),
+    );
+
+    final result = await client.fetchPoll('board-1', 'poll-1');
+    expect(((result['poll'] as Map)['options'] as List).length, 2);
+  });
+
   test('forumHostCanonicalJson recursively sorts policy keys', () {
     expect(
       forumHostCanonicalJson({

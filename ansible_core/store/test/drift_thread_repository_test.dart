@@ -63,6 +63,38 @@ void main() {
       ]);
     });
 
+    test(
+      'persists public poll tally without a voter identity or ballot',
+      () async {
+        final thread = entity.Thread(
+          id: 'poll-results-1',
+          boardId: 'b1',
+          title: '投票',
+          authorId: 'did:key:123',
+          poll: {
+            'options': [
+              {'id': 'a', 'label': 'A'},
+              {'id': 'b', 'label': 'B'},
+            ],
+          },
+          pollResults: {
+            'options': [
+              {'id': 'a', 'label': 'A', 'votes': 3},
+              {'id': 'b', 'label': 'B', 'votes': 1},
+            ],
+          },
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await repo.create(thread);
+        final retrieved = await repo.getById(thread.id);
+        expect(retrieved?.pollResults?['options'], [
+          {'id': 'a', 'label': 'A', 'votes': 3},
+          {'id': 'b', 'label': 'B', 'votes': 1},
+        ]);
+      },
+    );
+
     test('Update Thread', () async {
       final thread = entity.Thread(
         id: 't1',

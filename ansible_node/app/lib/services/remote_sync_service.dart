@@ -1355,6 +1355,10 @@ class RemoteSyncService {
         poll: payload.containsKey('poll')
             ? _threadPollFromPayload(payload['poll'])
             : existing?.poll,
+        // Host tally snapshots are public read models, not signed thread
+        // content. Retain the latest snapshot until it is refreshed directly
+        // from the Forum Host.
+        pollResults: existing?.pollResults,
         createdAt: activity.createdAt,
         updatedAt: now,
         isDeleted: payload['isDeleted'] as bool? ?? false,

@@ -837,9 +837,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 ),
               ),
             ],
-            if (thread.poll case final poll?) ...[
+            if (thread.poll != null) ...[
               const SizedBox(height: 10),
-              _pollPreview(context, poll),
+              _pollPreview(context, thread),
             ],
             if ((firstPost?.content.trim().isNotEmpty ?? false)) ...[
               const SizedBox(height: 8),
@@ -964,14 +964,24 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     );
   }
 
-  Widget _pollPreview(BuildContext context, Map<String, Object?> poll) {
+  Widget _pollPreview(BuildContext context, Thread thread) {
+    final poll = {...?thread.poll, ...?thread.pollResults};
     final options =
         (poll['options'] as List?)
             ?.whereType<Map>()
-            .map((option) => option['label']?.toString())
-            .whereType<String>()
+            .map(
+              (option) => (
+                label: option['label']?.toString(),
+                votes: int.tryParse(option['votes']?.toString() ?? '') ?? 0,
+              ),
+            )
+            .where((option) => option.label != null && option.label!.isNotEmpty)
             .toList() ??
-        const <String>[];
+        const <({String? label, int votes})>[];
+    final totalVotes = options.fold<int>(
+      0,
+      (sum, option) => sum + option.votes,
+    );
     final closesAt = DateTime.tryParse(poll['closes_at']?.toString() ?? '');
     final closed = closesAt != null && !closesAt.isAfter(DateTime.now());
     return Container(
@@ -1000,7 +1010,17 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           for (final option in options.take(3))
             Padding(
               padding: const EdgeInsets.only(bottom: 5),
-              child: Text('· $option', style: TextStyle(color: _muted)),
+              child: Text(
+                totalVotes > 0
+                    ? '· ${option.label}  ${((option.votes / totalVotes) * 100).round()}%'
+                    : '· ${option.label}',
+                style: TextStyle(color: _muted),
+              ),
+            ),
+          if (totalVotes > 0)
+            Text(
+              context.uiCopy(zh: '$totalVotes 人投票', en: '$totalVotes votes'),
+              style: TextStyle(fontSize: 12, color: _faint),
             ),
         ],
       ),
