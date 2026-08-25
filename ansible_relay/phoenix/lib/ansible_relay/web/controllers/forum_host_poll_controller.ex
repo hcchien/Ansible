@@ -3,11 +3,19 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostPollController do
 
   import Plug.Conn
 
-  alias AnsibleRelay.ForumHost.{Polls, PostingGate}
+  alias AnsibleRelay.ForumHost.{Polls, PostingGate, SignedIntent}
   alias AnsibleRelay.ForumHost.Store
   alias AnsibleRelay.Web.Plugs.VerifyWebSession
 
   def create(conn, board_id, poll_id, %{"option_id" => option_id}) do
+    if conn.body_params["signature"] do
+      create_signed(conn, board_id, poll_id, option_id)
+    else
+      create_web(conn, board_id, poll_id, option_id)
+    end
+  end
+
+  defp create_web(conn, board_id, poll_id, option_id) do
     conn = VerifyWebSession.call(conn, ["forum:post"], audience: Store.base_url())
 
     if conn.halted do
@@ -21,6 +29,24 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostPollController do
         nil -> send_json(conn, 404, %{error: "board_not_found"})
         {:error, reason} -> send_error(conn, reason)
       end
+    end
+  end
+
+  defp create_signed(conn, board_id, poll_id, option_id) do
+    with true <- conn.body_params["board_id"] == board_id,
+         true <- conn.body_params["poll_id"] == poll_id,
+         true <- conn.body_params["option_id"] == option_id,
+         {:ok, author_did} <- SignedIntent.verify_poll_vote(conn.body_params),
+         board when not is_nil(board) <- PostingGate.get_board(board_id),
+         :ok <- PostingGate.authorize_board_post(conn, board, author_did),
+         {:ok, result} <- Polls.cast_vote(board, poll_id, option_id, author_did) do
+      send_json(conn, 201, %{vote: %{accepted: true}, poll: result})
+    else
+      nil -> send_json(conn, 404, %{error: "board_not_found"})
+      false -> send_json(conn, 422, %{error: "invalid_poll_vote"})
+      {:error, reason} when reason in [:invalid_signature, :missing_signature, :unknown_did] ->
+        send_json(conn, 401, %{error: "invalid_signature"})
+      {:error, reason} -> send_error(conn, reason)
     end
   end
 

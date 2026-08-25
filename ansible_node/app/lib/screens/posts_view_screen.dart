@@ -67,6 +67,10 @@ class PostsViewScreen extends StatefulWidget {
   /// Defaults to [DidSignerImpl] (secure-storage key + Rust core).
   final Future<String> Function(List<int> payload)? reportPayloadSigner;
 
+  /// Test seams shared by the signed App rail for poll votes.
+  final ForumHostClient Function(String baseUrl)? pollClientFactory;
+  final Future<String> Function(List<int> payload)? pollPayloadSigner;
+
   const PostsViewScreen({
     super.key,
     required this.db,
@@ -79,6 +83,8 @@ class PostsViewScreen extends StatefulWidget {
     this.screenStyle = ElixScreenStyle.paper,
     this.reportClientFactory,
     this.reportPayloadSigner,
+    this.pollClientFactory,
+    this.pollPayloadSigner,
   });
 
   @override
@@ -91,6 +97,9 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   late Thread _thread;
   List<Post> _posts = [];
   bool _isLoading = true;
+  Map<String, Object?>? _pollResult;
+  String? _submittingPollOption;
+  bool _pollVoteAccepted = false;
 
   /// Local authored ops carry the only trustworthy answer to whether the
   /// Relay accepted a post. A local signature alone must never be presented as
@@ -901,7 +910,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               ),
             ),
           ],
-          if (_thread.poll case final poll?) ...[
+          if ((_pollResult ?? _thread.poll) case final poll?) ...[
             const SizedBox(height: 16),
             _pollDetail(context, poll),
           ],
@@ -922,13 +931,18 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               (option) => (
                 id: option['id']?.toString() ?? '',
                 label: option['label']?.toString() ?? '',
+                votes: int.tryParse(option['votes']?.toString() ?? '') ?? 0,
               ),
             )
             .where((option) => option.id.isNotEmpty && option.label.isNotEmpty)
             .toList() ??
-        const <({String id, String label})>[];
+        const <({String id, String label, int votes})>[];
     final closesAt = DateTime.tryParse(poll['closes_at']?.toString() ?? '');
     final closed = closesAt != null && !closesAt.isAfter(DateTime.now());
+    final totalVotes = options.fold<int>(
+      0,
+      (sum, option) => sum + option.votes,
+    );
     return Container(
       key: const Key('thread_poll_detail'),
       width: double.infinity,
@@ -974,20 +988,165 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           ),
           const SizedBox(height: 10),
           for (final option in options)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
                 color: _deep,
-                border: Border.all(color: _rule, width: 0.5),
                 borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  key: Key('poll_option_${option.id}'),
+                  borderRadius: BorderRadius.circular(10),
+                  onTap:
+                      closed ||
+                          _pollVoteAccepted ||
+                          _submittingPollOption != null
+                      ? null
+                      : () => _castPollVote(option.id),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: _rule, width: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            option.label,
+                            style: TextStyle(color: _fg),
+                          ),
+                        ),
+                        if (_submittingPollOption == option.id)
+                          const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else if (totalVotes > 0)
+                          Text(
+                            '${((option.votes / totalVotes) * 100).round()}%',
+                            style: TextStyle(color: _muted),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              child: Text(option.label, style: TextStyle(color: _fg)),
             ),
+          Text(
+            _pollVoteAccepted
+                ? context.uiCopy(zh: '已完成投票', en: 'Your vote was submitted')
+                : totalVotes > 0
+                ? context.uiCopy(zh: '$totalVotes 人投票', en: '$totalVotes votes')
+                : context.uiCopy(
+                    zh: '選擇一個選項即可投票',
+                    en: 'Choose one option to vote',
+                  ),
+            style: TextStyle(fontSize: 12, color: _faint),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _castPollVote(String optionId) async {
+    final projection = _hostedProjection;
+    if (projection == null) {
+      _showPollError('poll_not_hosted');
+      return;
+    }
+    final host = await DriftRemoteNodeRepository(
+      widget.db,
+    ).getById(projection.forumHostId);
+    if (host == null || !mounted) {
+      _showPollError('forum_host_unavailable');
+      return;
+    }
+    setState(() => _submittingPollOption = optionId);
+    final createdAt = DateTime.now().toUtc();
+    final intentId = const Uuid().v4();
+    final payload = CastPollVoteIntent.canonicalPayload(
+      intentId: intentId,
+      authorDid: _authorDid,
+      targetForumHost: host.url,
+      boardId: projection.hostedBoardId,
+      pollId: _thread.id,
+      optionId: optionId,
+      createdAt: createdAt,
+      expiresAt: createdAt.add(const Duration(minutes: 5)),
+    );
+    final client =
+        (widget.pollClientFactory ??
+        widget.reportClientFactory ??
+        (baseUrl) => ForumHostClient(baseUrl: baseUrl))(host.url);
+    try {
+      final signature =
+          await (widget.pollPayloadSigner ??
+              widget.reportPayloadSigner ??
+              (bytes) =>
+                  DidSignerImpl().sign(bytes).then((value) => value.hex))(
+            utf8.encode(forumHostCanonicalJson(payload)),
+          );
+      final response = await client.castPollVote(
+        CastPollVoteIntent(
+          intentId: intentId,
+          authorDid: _authorDid,
+          targetForumHost: host.url,
+          boardId: projection.hostedBoardId,
+          pollId: _thread.id,
+          optionId: optionId,
+          createdAt: createdAt,
+          expiresAt: createdAt.add(const Duration(minutes: 5)),
+          signature: signature,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _pollResult = {
+          ...?_thread.poll,
+          ...Map<String, Object?>.from(response['poll'] as Map),
+        };
+        _pollVoteAccepted = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.uiCopy(zh: '投票成功', en: 'Vote submitted')),
+        ),
+      );
+    } on ForumHostException catch (error) {
+      if (mounted) _showPollError(error.error ?? 'invalid_poll_vote');
+    } catch (_) {
+      if (mounted) _showPollError('forum_host_unavailable');
+    } finally {
+      client.close();
+      if (mounted) setState(() => _submittingPollOption = null);
+    }
+  }
+
+  void _showPollError(String code) {
+    final message = switch (code) {
+      'already_voted' => context.uiCopy(
+        zh: '你已經投過票了',
+        en: 'You have already voted',
+      ),
+      'poll_closed' => context.uiCopy(zh: '投票已結束', en: 'This poll is closed'),
+      'posting_requires_tier' ||
+      'board_capability_required' ||
+      'credential_not_authorized' => context.uiCopy(
+        zh: '你目前不具備本版投票資格',
+        en: 'You are not eligible to vote on this board',
+      ),
+      _ => context.uiCopy(
+        zh: '目前無法送出投票，請稍後再試',
+        en: 'Could not submit the vote. Try again later',
+      ),
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// "13 小時 · signed · 起頭" byline for the opening post.

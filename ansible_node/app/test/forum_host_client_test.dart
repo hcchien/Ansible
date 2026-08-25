@@ -6,6 +6,46 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('castPollVote sends a signed, board-scoped intent', () async {
+    final createdAt = DateTime.utc(2026, 8, 25, 1);
+    final intent = CastPollVoteIntent(
+      intentId: 'intent-1',
+      authorDid: 'did:example:alice',
+      targetForumHost: 'https://host.example',
+      boardId: 'board-1',
+      pollId: 'poll-1',
+      optionId: 'option-2',
+      createdAt: createdAt,
+      expiresAt: createdAt.add(const Duration(minutes: 5)),
+      signature: 'deadbeef',
+    );
+    final client = ForumHostClient(
+      baseUrl: 'https://host.example',
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(
+          request.url.path,
+          '/api/v1/forum-host/boards/board-1/polls/poll-1/votes',
+        );
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['action'], 'cast_poll_vote');
+        expect(body['author_did'], 'did:example:alice');
+        expect(body['option_id'], 'option-2');
+        expect(body['signature'], 'deadbeef');
+        return http.Response(
+          jsonEncode({
+            'vote': {'accepted': true},
+            'poll': {'poll_id': 'poll-1', 'options': []},
+          }),
+          201,
+        );
+      }),
+    );
+
+    final result = await client.castPollVote(intent);
+    expect((result['vote'] as Map)['accepted'], isTrue);
+  });
+
   test('forumHostCanonicalJson recursively sorts policy keys', () {
     expect(
       forumHostCanonicalJson({

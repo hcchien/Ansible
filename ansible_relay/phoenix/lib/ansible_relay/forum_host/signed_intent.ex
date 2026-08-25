@@ -18,6 +18,8 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @report_content_action "report_content"
   @report_content_version 1
   @report_required_fields ~w(target_kind target_ref board_id reason_code)
+  @poll_vote_type "io.trisaura.forum.castPollVote"
+  @poll_vote_action "cast_poll_vote"
   @default_clock_skew_seconds 0
   @default_max_age_seconds 600
 
@@ -166,6 +168,31 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   def verify_report_content(_params), do: {:error, :invalid_intent}
+
+  def verify_poll_vote(params) when is_map(params) do
+    with :ok <- require_string(params, "signature", :missing_signature),
+         :ok <- require_string(params, "author_did", :missing_author_did),
+         :ok <- require_string(params, "intent_id", :missing_intent_id),
+         :ok <- require_string(params, "board_id", :missing_board_id),
+         :ok <- require_string(params, "poll_id", :missing_poll_id),
+         :ok <- require_string(params, "option_id", :missing_option_id),
+         :ok <- require_string(params, "target_forum_host", :missing_target_forum_host),
+         :ok <- require_string(params, "created_at", :missing_created_at),
+         :ok <- require_type(params, @poll_vote_type),
+         :ok <- require_version(params, 1),
+         :ok <- require_action(params, @poll_vote_action),
+         :ok <- require_target_host(params["target_forum_host"]),
+         :ok <- require_timestamp_window(params),
+         :ok <- known_did(params["author_did"]),
+         true <- IdentityCache.verify_signature(params["author_did"], canonical_json(params), params["signature"]) do
+      {:ok, params["author_did"]}
+    else
+      false -> {:error, :invalid_signature}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def verify_poll_vote(_params), do: {:error, :invalid_intent}
 
   def canonical_json(value) when is_map(value) do
     value

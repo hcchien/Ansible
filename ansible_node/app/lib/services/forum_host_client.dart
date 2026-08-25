@@ -462,6 +462,70 @@ class ForumHostException implements Exception {
   }
 }
 
+class CastPollVoteIntent {
+  static const type = 'io.trisaura.forum.castPollVote';
+  static const version = 1;
+
+  const CastPollVoteIntent({
+    required this.intentId,
+    required this.authorDid,
+    required this.targetForumHost,
+    required this.boardId,
+    required this.pollId,
+    required this.optionId,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.signature,
+  });
+
+  final String intentId;
+  final String authorDid;
+  final String targetForumHost;
+  final String boardId;
+  final String pollId;
+  final String optionId;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final String signature;
+
+  static Map<String, Object?> canonicalPayload({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required String pollId,
+    required String optionId,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+  }) => {
+    'action': 'cast_poll_vote',
+    'author_did': authorDid,
+    'board_id': boardId,
+    'created_at': createdAt.toUtc().toIso8601String(),
+    'expires_at': expiresAt.toUtc().toIso8601String(),
+    'intent_id': intentId,
+    'option_id': optionId,
+    'poll_id': pollId,
+    'target_forum_host': targetForumHost,
+    'type': type,
+    'version': version,
+  };
+
+  Map<String, Object?> toJson() => {
+    ...canonicalPayload(
+      intentId: intentId,
+      authorDid: authorDid,
+      targetForumHost: targetForumHost,
+      boardId: boardId,
+      pollId: pollId,
+      optionId: optionId,
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+    ),
+    'signature': signature,
+  };
+}
+
 class ForumHostClient {
   final Uri baseUri;
   final http.Client _client;
@@ -535,6 +599,21 @@ class ForumHostClient {
       expectedStatus: 200,
     );
   }
+
+  Future<Map<String, dynamic>> castPollVote(
+    CastPollVoteIntent intent,
+  ) => _postJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(intent.boardId)}/polls/${Uri.encodeComponent(intent.pollId)}/votes',
+    intent.toJson(),
+    expectedStatus: 201,
+  );
+
+  Future<Map<String, dynamic>> fetchPoll(
+    String boardId,
+    String pollId,
+  ) => _getJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/polls/${Uri.encodeComponent(pollId)}',
+  );
 
   Future<List<Map<String, dynamic>>> getHostedBoardPolicyHistory(
     String boardId,
