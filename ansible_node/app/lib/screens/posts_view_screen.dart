@@ -15,6 +15,7 @@ import '../services/board_access_presentation_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../services/private_board_op_factory.dart';
+import '../services/user_presence_verifier.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../services/handle_resolver.dart';
@@ -1090,16 +1091,35 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         (widget.pollClientFactory ??
         widget.reportClientFactory ??
         (baseUrl) => ForumHostClient(baseUrl: baseUrl))(host.url);
+    HardwareAuthenticationSession? authenticationSession;
     try {
+      final authenticationReason = context.uiCopy(
+        zh: '請驗證裝置持有人，以送出這次投票。',
+        en: 'Authenticate to submit this vote.',
+      );
+      authenticationSession = await HardwareAuthenticationSession.begin(
+        localizedReason: authenticationReason,
+      );
+      if (authenticationSession == null) {
+        final authenticated = await LocalDeviceUserPresenceVerifier().verify(
+          reason: authenticationReason,
+        );
+        if (!authenticated) throw StateError('device_auth_cancelled');
+      }
+      final reuseAuthenticationContext = authenticationSession != null;
+      final didSigner = DidSignerImpl(
+        reuseAuthenticationContext: reuseAuthenticationContext,
+      );
       final proofHeaders = await _pollProofHeaders(
         projection: projection,
         hostUrl: host.url,
+        didSigner: didSigner,
+        reuseAuthenticationContext: reuseAuthenticationContext,
       );
       final signature =
           await (widget.pollPayloadSigner ??
               widget.reportPayloadSigner ??
-              (bytes) =>
-                  DidSignerImpl().sign(bytes).then((value) => value.hex))(
+              (bytes) => didSigner.sign(bytes).then((value) => value.hex))(
             utf8.encode(forumHostCanonicalJson(payload)),
           );
       final response = await client.castPollVote(
@@ -1130,9 +1150,12 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       if (mounted) _showPollError(error.code);
     } on ForumHostException catch (error) {
       if (mounted) _showPollError(error.error ?? 'invalid_poll_vote');
+    } on StateError catch (error) {
+      if (mounted) _showPollError(error.message.toString());
     } catch (_) {
       if (mounted) _showPollError('forum_host_unavailable');
     } finally {
+      await authenticationSession?.close();
       client.close();
       if (mounted) setState(() => _submittingPollOption = null);
     }
@@ -1149,6 +1172,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   Future<Map<String, String>> _pollProofHeaders({
     required HostedBoardProjection projection,
     required String hostUrl,
+    required DidSigner didSigner,
+    required bool reuseAuthenticationContext,
   }) async {
     if (!_requiresPollCapability(projection)) return const {};
     final endpoint = Uri.parse(hostUrl).resolve(
@@ -1156,17 +1181,20 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     );
     final access = BoardAccessPresentationService(
       walletRepository: DriftWalletRepository(widget.db),
+      didSigner: didSigner,
     );
     final capability = await access.authorize(
       forumHost: Uri.parse(hostUrl),
       boardId: projection.hostedBoardId,
       action: 'post',
+      reuseAuthenticationContext: reuseAuthenticationContext,
     );
     return access.proofHeaders(
       capability: capability,
       method: 'POST',
       requestUri: endpoint,
       scope: 'post',
+      reuseAuthenticationContext: reuseAuthenticationContext,
     );
   }
 
@@ -1239,6 +1267,10 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       'credential_not_authorized' => context.uiCopy(
         zh: '你目前不具備本版投票資格',
         en: 'You are not eligible to vote on this board',
+      ),
+      'device_auth_cancelled' => context.uiCopy(
+        zh: '未完成裝置驗證，投票未送出',
+        en: 'Device authentication was not completed; the vote was not sent',
       ),
       _ => context.uiCopy(
         zh: '目前無法送出投票，請稍後再試',
