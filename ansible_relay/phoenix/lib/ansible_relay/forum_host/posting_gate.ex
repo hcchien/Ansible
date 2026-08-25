@@ -124,14 +124,14 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
     end
   end
 
-  # App projections use `<forum-host-node-id>_<hosted-board-id>` locally.
-  # Signed ops preserve that local id, so resolve only the suffix after the
-  # first separator. This lookup is deliberately exact; fuzzy suffix queries
-  # could let a crafted id select the wrong board policy.
+  # App projections use `<forum-host-node-id>_<board-id>` locally. Signed ops
+  # preserve that local id, so resolve only the exact suffix after the first
+  # separator. The suffix is normally the canonical numeric board ID, while
+  # older records can still use the hosted-board primary key.
   defp get_composite_board(board_id) do
     case String.split(board_id, "_", parts: 2) do
-      [_prefix, hosted_board_id] when hosted_board_id != "" ->
-        Repo.get(ForumHostBoard, hosted_board_id)
+      [_prefix, board_suffix] when board_suffix != "" ->
+        canonical_board(board_suffix) || Repo.get(ForumHostBoard, board_suffix)
 
       _ ->
         nil
