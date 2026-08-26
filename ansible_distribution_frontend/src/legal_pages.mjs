@@ -3,8 +3,9 @@
 // App Store and Play Store reviewers open the privacy-policy and
 // account-deletion URLs directly, without running the SPA, so these pages are
 // real path-based documents rendered entirely on the server (server.mjs serves
-// them before the SPA fallback). Each page is bilingual on a single document:
-// Traditional Chinese first, English below under the `#en` anchor.
+// them before the SPA fallback). Privacy is available in all eight supported
+// Web locales; the other legal documents retain reviewed English and
+// Traditional Chinese editions.
 //
 // Content contract: everything stated here must stay accurate to the actual
 // data flows (device / relay / issuer / appview) and to the engineering
@@ -13,7 +14,12 @@
 // about collection we do not do — and do not soften the append-only-log
 // honesty in the deletion sections.
 
-import { DEFAULT_LOCALE, resolveLocale } from './web_i18n.mjs';
+import {
+  DEFAULT_LOCALE,
+  LOCALE_NATIVE_NAMES,
+  SUPPORTED_LOCALES,
+} from './web_i18n.mjs';
+import { createPrivacyLocalizations } from './privacy_localizations.mjs';
 
 export const LEGAL_EFFECTIVE_DATE = '2026-07-07';
 export const LEGAL_EFFECTIVE_DATE_ZH = '2026 年 7 月 7 日';
@@ -34,26 +40,74 @@ export const LEGAL_PAGE_PATHS = Object.freeze([
 // ---------------------------------------------------------------------------
 
 const NAV_ITEMS = Object.freeze([
-  { path: '/privacy', zh: '隱私權政策', en: 'Privacy' },
-  { path: '/terms', zh: '服務條款', en: 'Terms' },
-  { path: '/about', zh: '關於', en: 'About' },
-  { path: '/support', zh: '支援', en: 'Support' },
-  { path: '/account-deletion', zh: '刪除帳號', en: 'Delete account' },
-  { path: '/child-safety', zh: '兒少安全', en: 'Child safety' },
+  { path: '/privacy', key: 'privacy' },
+  { path: '/terms', key: 'terms' },
+  { path: '/about', key: 'about' },
+  { path: '/support', key: 'support' },
+  { path: '/account-deletion', key: 'deleteAccount' },
+  { path: '/child-safety', key: 'childSafety' },
 ]);
 
-function layout({ path, title, body, locale }) {
-  const labelKey = locale === 'en' ? 'en' : 'zh';
-  const alternateLocale = locale === 'en' ? 'zh-Hant' : 'en';
-  const alternateLabel = locale === 'en' ? '中文版本' : 'English version';
-  const footerDate =
-    locale === 'en'
-      ? `Effective date: ${LEGAL_EFFECTIVE_DATE}`
-      : `生效日期：${LEGAL_EFFECTIVE_DATE_ZH} (${LEGAL_EFFECTIVE_DATE})`;
-  const footerContact = locale === 'en' ? 'Contact' : '聯絡';
+const LEGAL_CHROME = Object.freeze({
+  en: {
+    navAria: 'Legal documents', languageAria: 'Privacy Policy languages',
+    privacy: 'Privacy', terms: 'Terms', about: 'About', support: 'Support',
+    deleteAccount: 'Delete account', childSafety: 'Child safety',
+    effectiveDate: `Effective date: ${LEGAL_EFFECTIVE_DATE}`, contact: 'Contact',
+  },
+  'zh-Hant': {
+    navAria: '法律文件', languageAria: '隱私權政策語言',
+    privacy: '隱私權政策', terms: '服務條款', about: '關於', support: '支援',
+    deleteAccount: '刪除帳號', childSafety: '兒少安全',
+    effectiveDate: `生效日期：${LEGAL_EFFECTIVE_DATE_ZH} (${LEGAL_EFFECTIVE_DATE})`, contact: '聯絡',
+  },
+  fr: {
+    navAria: 'Documents juridiques', languageAria: 'Langues de la politique de confidentialité',
+    privacy: 'Confidentialité', terms: 'Conditions', about: 'À propos', support: 'Assistance',
+    deleteAccount: 'Supprimer le compte', childSafety: 'Sécurité des enfants',
+    effectiveDate: `Date d’entrée en vigueur : 7 juillet 2026 (${LEGAL_EFFECTIVE_DATE})`, contact: 'Contact',
+  },
+  es: {
+    navAria: 'Documentos legales', languageAria: 'Idiomas de la Política de privacidad',
+    privacy: 'Privacidad', terms: 'Condiciones', about: 'Acerca de', support: 'Ayuda',
+    deleteAccount: 'Eliminar cuenta', childSafety: 'Seguridad infantil',
+    effectiveDate: `Fecha de entrada en vigor: 7 de julio de 2026 (${LEGAL_EFFECTIVE_DATE})`, contact: 'Contacto',
+  },
+  ja: {
+    navAria: '法的文書', languageAria: 'プライバシーポリシーの言語',
+    privacy: 'プライバシー', terms: '利用規約', about: 'Elixについて', support: 'サポート',
+    deleteAccount: 'アカウント削除', childSafety: '子どもの安全',
+    effectiveDate: `施行日：2026年7月7日 (${LEGAL_EFFECTIVE_DATE})`, contact: '連絡先',
+  },
+  ko: {
+    navAria: '법률 문서', languageAria: '개인정보 처리방침 언어',
+    privacy: '개인정보', terms: '이용약관', about: 'Elix 소개', support: '지원',
+    deleteAccount: '계정 삭제', childSafety: '아동 안전',
+    effectiveDate: `시행일: 2026년 7월 7일 (${LEGAL_EFFECTIVE_DATE})`, contact: '문의',
+  },
+  de: {
+    navAria: 'Rechtliche Dokumente', languageAria: 'Sprachen der Datenschutzerklärung',
+    privacy: 'Datenschutz', terms: 'Bedingungen', about: 'Über Elix', support: 'Hilfe',
+    deleteAccount: 'Konto löschen', childSafety: 'Kinderschutz',
+    effectiveDate: `Gültig ab: 7. Juli 2026 (${LEGAL_EFFECTIVE_DATE})`, contact: 'Kontakt',
+  },
+  it: {
+    navAria: 'Documenti legali', languageAria: 'Lingue dell’informativa sulla privacy',
+    privacy: 'Privacy', terms: 'Condizioni', about: 'Informazioni', support: 'Assistenza',
+    deleteAccount: 'Elimina account', childSafety: 'Sicurezza dei minori',
+    effectiveDate: `Data di entrata in vigore: 7 luglio 2026 (${LEGAL_EFFECTIVE_DATE})`, contact: 'Contatti',
+  },
+});
+
+function layout({ path, title, body, locale, availableLocales }) {
+  const chrome = LEGAL_CHROME[locale] ?? LEGAL_CHROME.en;
   const nav = NAV_ITEMS.map((item) => {
     const current = item.path === path ? ' aria-current="page"' : '';
-    return `<a href="${localizedHref(item.path, locale)}"${current}>${item[labelKey]}</a>`;
+    return `<a href="${localizedHref(item.path, locale)}"${current}>${chrome[item.key]}</a>`;
+  }).join('\n        ');
+  const languageLinks = availableLocales.map((targetLocale) => {
+    const current = targetLocale === locale ? ' aria-current="true"' : '';
+    return `<a href="${localizedHref(path, targetLocale)}" hreflang="${targetLocale}"${current}>${LOCALE_NATIVE_NAMES[targetLocale]}</a>`;
   }).join('\n        ');
 
   return `<!doctype html>
@@ -69,15 +123,17 @@ function layout({ path, title, body, locale }) {
     <main class="legal-page">
       <header class="legal-header">
         <a class="legal-home" href="/?lang=${locale}">Elix</a>
-        <nav aria-label="${locale === 'en' ? 'Legal documents' : '法律文件'}">
+        <nav aria-label="${chrome.navAria}">
         ${nav}
         </nav>
       </header>
-      <a class="legal-lang-jump" href="${localizedHref(path, alternateLocale)}">${alternateLabel}</a>
+      <nav class="legal-language-nav" aria-label="${chrome.languageAria}">
+        ${languageLinks}
+      </nav>
 ${body}
       <footer class="legal-footer">
-        <span>${footerDate}</span>
-        <span>${footerContact}: <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a></span>
+        <span>${chrome.effectiveDate}</span>
+        <span>${chrome.contact}: <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a></span>
       </footer>
     </main>
   </body>
@@ -96,7 +152,7 @@ function localizeLegalBodyLinks(body, locale) {
   );
 }
 
-export function resolveLegalLocale(value) {
+export function resolveLegalLocale(value, availableLocales = SUPPORTED_LOCALES) {
   const raw = String(value ?? '').trim();
   if (!raw) return DEFAULT_LOCALE;
 
@@ -118,12 +174,19 @@ export function resolveLegalLocale(value) {
 
   for (const { tag } of candidates) {
     const normalized = tag.replaceAll('_', '-').toLowerCase();
-    if (normalized === 'en' || normalized.startsWith('en-')) return 'en';
-    if (normalized === 'zh' || normalized.startsWith('zh-')) return 'zh-Hant';
+    if (
+      (normalized === 'zh' || normalized.startsWith('zh-'))
+      && availableLocales.includes('zh-Hant')
+    ) return 'zh-Hant';
+    for (const locale of SUPPORTED_LOCALES.filter((entry) => entry !== 'zh-Hant')) {
+      if (
+        (normalized === locale || normalized.startsWith(`${locale}-`))
+        && availableLocales.includes(locale)
+      ) return locale;
+    }
   }
 
-  // Legal documents currently have reviewed English and Traditional Chinese
-  // editions only. Never label a fallback document as another language.
+  // Never label an unsupported fallback document as another language.
   return DEFAULT_LOCALE;
 }
 
@@ -322,6 +385,10 @@ const PRIVACY_EN = `
         <h2>Contact</h2>
         <p>Privacy questions and requests: <a href="mailto:${PRIVACY_CONTACT_EMAIL}">${PRIVACY_CONTACT_EMAIL}</a></p>
 `;
+
+const PRIVACY_LOCALIZATIONS = createPrivacyLocalizations({
+  privacyEmail: PRIVACY_CONTACT_EMAIL,
+});
 
 // ---------------------------------------------------------------------------
 // 服務條款 / Terms of Service
@@ -660,8 +727,26 @@ const CHILD_SAFETY_EN = `
 
 const PAGES = Object.freeze({
   '/privacy': {
-    titles: { 'zh-Hant': '隱私權政策', en: 'Privacy Policy' },
-    bodies: { 'zh-Hant': PRIVACY_ZH, en: PRIVACY_EN },
+    titles: {
+      'zh-Hant': '隱私權政策',
+      en: 'Privacy Policy',
+      ...Object.fromEntries(
+        Object.entries(PRIVACY_LOCALIZATIONS).map(([locale, translation]) => [
+          locale,
+          translation.title,
+        ]),
+      ),
+    },
+    bodies: {
+      'zh-Hant': PRIVACY_ZH,
+      en: PRIVACY_EN,
+      ...Object.fromEntries(
+        Object.entries(PRIVACY_LOCALIZATIONS).map(([locale, translation]) => [
+          locale,
+          translation.body,
+        ]),
+      ),
+    },
   },
   '/terms': {
     titles: { 'zh-Hant': '服務條款', en: 'Terms of Service' },
@@ -694,8 +779,11 @@ export function renderLegalPage(pathname, { locale = DEFAULT_LOCALE } = {}) {
   const page = PAGES[normalized];
   if (!page) return null;
 
-  const resolvedLocale = resolveLegalLocale(locale);
+  const resolvedLocale = resolveLegalLocale(locale, Object.keys(page.bodies));
   const title = page.titles[resolvedLocale] ?? page.titles[DEFAULT_LOCALE];
+  const availableLocales = SUPPORTED_LOCALES.filter(
+    (availableLocale) => page.bodies[availableLocale],
+  );
 
   return {
     title: `${title} · Elix`,
@@ -707,6 +795,7 @@ export function renderLegalPage(pathname, { locale = DEFAULT_LOCALE } = {}) {
         resolvedLocale,
       ),
       locale: resolvedLocale,
+      availableLocales,
     }),
   };
 }

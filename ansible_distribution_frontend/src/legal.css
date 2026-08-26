@@ -42,12 +42,22 @@
   border-bottom: 2px solid var(--accent);
 }
 
-.legal-lang-jump {
-  display: block;
+.legal-language-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   margin: 14px 0 0;
   font-family: var(--sans);
   font-size: 13px;
+}
+
+.legal-language-nav a {
   color: var(--muted);
+}
+
+.legal-language-nav a[aria-current='true'] {
+  color: var(--text);
+  text-decoration-thickness: 2px;
 }
 
 .legal-page h1 {

@@ -31,9 +31,13 @@ try {
     '/child-safety',
   ]);
   assert.equal(resolveLegalLocale('en-US,en;q=0.9'), 'en');
-  assert.equal(resolveLegalLocale('fr-FR, en;q=0.8'), 'en');
+  assert.equal(resolveLegalLocale('fr-FR, en;q=0.8'), 'fr');
   assert.equal(resolveLegalLocale('zh-TW, en;q=0.5'), 'zh-Hant');
-  assert.equal(resolveLegalLocale('ja-JP'), 'zh-Hant');
+  assert.equal(resolveLegalLocale('ja-JP'), 'ja');
+  assert.match(
+    renderLegalPage('/terms', { locale: 'fr-FR, en;q=0.8' }).html,
+    /<html lang="en">/,
+  );
   assert.equal(renderLegalPage('/no-such-page'), null);
   assert.equal(renderLegalPage('/privacy/').html, renderLegalPage('/privacy').html);
   assert.match(renderLegalPage('/privacy').html, /保存期間/); // retention table
@@ -42,6 +46,30 @@ try {
   assert.match(renderLegalPage('/privacy', { locale: 'en' }).html, /Privacy Policy/);
   assert.doesNotMatch(renderLegalPage('/privacy', { locale: 'en' }).html, /隱私權政策/);
   assert.doesNotMatch(renderLegalPage('/privacy', { locale: 'en' }).html, /<section id="en"/);
+
+  const privacyExpectations = {
+    en: ['Privacy Policy', 'Applicable law'],
+    'zh-Hant': ['隱私權政策', '法規適用'],
+    fr: ['Politique de confidentialité', 'Droit applicable'],
+    es: ['Política de privacidad', 'Legislación aplicable'],
+    ja: ['プライバシーポリシー', '適用法令'],
+    ko: ['개인정보 처리방침', '적용 법률'],
+    de: ['Datenschutzerklärung', 'Anwendbares Recht'],
+    it: ['Informativa sulla privacy', 'Legge applicabile'],
+  };
+
+  for (const [locale, needles] of Object.entries(privacyExpectations)) {
+    const html = renderLegalPage('/privacy', { locale }).html;
+    assert.match(html, new RegExp(`<html lang="${locale}">`));
+    for (const needle of needles) assert.ok(html.includes(needle), `${locale} must contain ${needle}`);
+    assert.equal((html.match(/<h2>/g) ?? []).length, 9, `${locale} must contain every policy section`);
+    const retentionBody = html.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1] ?? '';
+    assert.equal((retentionBody.match(/<tr>/g) ?? []).length, 11, `${locale} must contain every retention row`);
+    assert.match(html, new RegExp(`href="/account-deletion\\?lang=${locale}"`));
+    for (const availableLocale of Object.keys(privacyExpectations)) {
+      assert.match(html, new RegExp(`href="/privacy\\?lang=${availableLocale}"`));
+    }
+  }
 
   // --- each legal route is a real server-rendered page (no JS required) ------
   const zhExpectations = {
@@ -113,6 +141,17 @@ try {
   assert.match(queryLocale.body, /<html lang="en">/);
   assert.match(queryLocale.body, /Privacy Policy/);
   assert.doesNotMatch(queryLocale.body, /隱私權政策/);
+
+  for (const [locale, needles] of Object.entries(privacyExpectations)) {
+    const localizedPage = await request(`${baseUrl}/privacy?lang=${locale}`, {
+      headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    });
+    assert.equal(localizedPage.status, 200, `${locale} privacy page must be served`);
+    assert.match(localizedPage.body, new RegExp(`<html lang="${locale}">`));
+    for (const needle of needles) {
+      assert.ok(localizedPage.body.includes(needle), `${locale} server page must contain ${needle}`);
+    }
+  }
 
   // Trailing slash tolerated (store consoles / reviewers paste both forms).
   const slashed = await request(`${baseUrl}/privacy/`);
