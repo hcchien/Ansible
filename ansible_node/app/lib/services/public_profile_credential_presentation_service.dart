@@ -5,6 +5,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:ansible_vc/ansible_vc.dart';
 
 import 'atproto_client.dart';
+import 'canonical_identity_store.dart';
 import 'oid4vp_presentation_service.dart';
 import 'public_profile_credential_preferences.dart';
 import 'vc_presentation_service.dart';
@@ -18,15 +19,19 @@ class PublicProfileCredentialPresentationService {
     required PublicProfileCredentialPreferenceStore preferenceStore,
     required DidSigner didSigner,
     PublicProfileCredentialClientFactory? clientFactory,
+    CanonicalIdentityStore? canonicalIdentityStore,
   }) : _wallet = walletRepository,
        _preferences = preferenceStore,
        _signer = didSigner,
+       _identityStore =
+           canonicalIdentityStore ?? const SecureCanonicalIdentityStore(),
        _clientFactory =
            clientFactory ?? ((baseUrl) => AtProtoClient(baseUrl: baseUrl));
 
   final WalletRepository _wallet;
   final PublicProfileCredentialPreferenceStore _preferences;
   final DidSigner _signer;
+  final CanonicalIdentityStore _identityStore;
   final PublicProfileCredentialClientFactory _clientFactory;
 
   Future<List<String>> presentSelected({
@@ -38,6 +43,10 @@ class PublicProfileCredentialPresentationService {
     if (selected.isEmpty) return const <String>[];
 
     final credentials = await _wallet.listCredentials();
+    final identity = await _identityStore.load();
+    final holderDidAliases = identity != null && identity.did == holderDid
+        ? identity.legacyDids.toSet()
+        : const <String>{};
     final presentedTypes = <String>[];
     final instant = (now ?? DateTime.now()).toUtc();
 
@@ -63,6 +72,7 @@ class PublicProfileCredentialPresentationService {
                 'profile-${instant.microsecondsSinceEpoch}-${credential.credentialType}',
             credentialType: credential.credentialType,
             credentialId: credential.credentialId,
+            holderDidAliases: holderDidAliases,
             now: instant,
           );
       if (envelope == null) {

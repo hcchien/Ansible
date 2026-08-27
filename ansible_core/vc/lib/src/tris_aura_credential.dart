@@ -96,8 +96,12 @@ class TrisAuraCredential {
       types: types,
       issuerDid: _requiredString(json, 'issuer'),
       holderDid: _requiredString(subject, 'id'),
-      validFrom: DateTime.parse(_requiredString(json, 'validFrom')).toUtc(),
-      validUntil: DateTime.parse(_requiredString(json, 'validUntil')).toUtc(),
+      validFrom: DateTime.parse(
+        _requiredTemporalString(json, 'validFrom', 'issuanceDate'),
+      ).toUtc(),
+      validUntil: DateTime.parse(
+        _requiredTemporalString(json, 'validUntil', 'expirationDate'),
+      ).toUtc(),
       claims: Map<String, Object?>.unmodifiable(subject),
       credentialStatus: _credentialStatusList(json),
       proof: _optionalMap(json, 'proof'),
@@ -113,6 +117,21 @@ class TrisAuraCredential {
     throw TrisAuraCredentialException(
       'invalid_credential',
       'Credential field "$key" must be a non-empty string.',
+    );
+  }
+
+  static String _requiredTemporalString(
+    Map<String, Object?> json,
+    String currentKey,
+    String legacyKey,
+  ) {
+    final current = json[currentKey];
+    if (current is String && current.isNotEmpty) return current;
+    final legacy = json[legacyKey];
+    if (legacy is String && legacy.isNotEmpty) return legacy;
+    throw TrisAuraCredentialException(
+      'invalid_credential',
+      'Credential field "$currentKey" or "$legacyKey" must be a non-empty string.',
     );
   }
 

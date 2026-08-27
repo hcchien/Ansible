@@ -103,6 +103,7 @@ class VcPresentationService {
     required DateTime now,
     bool recordPresentation = true,
     String? credentialId,
+    Set<String> holderDidAliases = const {},
   }) async {
     return _createPresentation(
       holderDid: holderDid,
@@ -115,6 +116,7 @@ class VcPresentationService {
       recordPresentation: recordPresentation,
       result: WalletPresentationResult.approved,
       credentialId: credentialId,
+      acceptedCredentialHolderDids: {holderDid, ...holderDidAliases},
     );
   }
 
@@ -149,13 +151,15 @@ class VcPresentationService {
     bool allowStoredIssuer = false,
     String? nostrPubkey,
     String? credentialId,
+    Set<String>? acceptedCredentialHolderDids,
   }) async {
+    final acceptedHolders = acceptedCredentialHolderDids ?? {holderDid};
     final credentials = await walletRepository.listCredentials();
 
     for (final metadata in credentials) {
       if (!_isCandidate(
         metadata,
-        holderDid,
+        acceptedHolders,
         credentialType,
         credentialId: credentialId,
       )) {
@@ -177,7 +181,7 @@ class VcPresentationService {
       } on Object {
         continue;
       }
-      if (credential.holderDid != holderDid) {
+      if (!acceptedHolders.contains(credential.holderDid)) {
         continue;
       }
       if (!_claimsMatch(credential.claims, requiredClaimValues)) {
@@ -207,6 +211,7 @@ class VcPresentationService {
         nonce: nonce,
         audience: audience,
         createdAt: now,
+        acceptedCredentialHolderDids: acceptedHolders,
       );
       final canonicalPayload = VpBuilder.canonicalPayload(unsignedVp);
       final proofValue = await proofSigner.signPresentation(
@@ -283,11 +288,11 @@ class VcPresentationService {
 
   bool _isCandidate(
     WalletCredential credential,
-    String holderDid,
+    Set<String> acceptedHolderDids,
     String credentialType, {
     String? credentialId,
   }) {
-    return credential.holderDid == holderDid &&
+    return acceptedHolderDids.contains(credential.holderDid) &&
         credential.status == WalletCredentialStatus.active &&
         credential.credentialType == credentialType &&
         (credentialId == null || credential.credentialId == credentialId);

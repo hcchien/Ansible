@@ -17,6 +17,21 @@ void main() {
       expect(credential.claims.containsKey('legalName'), isFalse);
     });
 
+    test('parses legacy W3C v1 temporal fields without rewriting the VC', () {
+      final json = Map<String, Object?>.from(humanityFixture)
+        ..remove('validFrom')
+        ..remove('validUntil')
+        ..['issuanceDate'] = '2026-05-04T00:00:00Z'
+        ..['expirationDate'] = '2026-08-02T00:00:00Z';
+
+      final credential = TrisAuraCredential.fromJson(json);
+
+      expect(credential.validFrom, DateTime.utc(2026, 5, 4));
+      expect(credential.validUntil, DateTime.utc(2026, 8, 2));
+      expect(credential.json.containsKey('validFrom'), isFalse);
+      expect(credential.json['issuanceDate'], '2026-05-04T00:00:00Z');
+    });
+
     test('rejects credentials with prohibited claims', () {
       final json = Map<String, Object?>.from(humanityFixture);
       json['credentialSubject'] = {

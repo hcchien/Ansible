@@ -2,6 +2,7 @@ defmodule AnsibleRelay.VpVerifierTest do
   use ExUnit.Case, async: false
 
   alias AnsibleRelay.{DidAccountCache, Repo, VpVerifier}
+  alias AnsibleRelay.Db.DidElixMigration
 
   @issuer_did "did:web:issuer.elix.cool"
   @holder_did "did:plc:abcdefghijklmnop"
@@ -282,7 +283,6 @@ defmodule AnsibleRelay.VpVerifierTest do
     vp = build_vp(@holder_did, other_priv, [vc])
 
     assert {:error, :invalid_vp_proof} = VpVerifier.verify(@holder_did, vp)
-
   end
 
   test "rejects VP whose VC subject does not match holder", %{issuer_priv: issuer_priv} do
@@ -293,6 +293,32 @@ defmodule AnsibleRelay.VpVerifierTest do
     vp = build_vp(@holder_did, priv, [vc])
 
     assert {:error, :vc_subject_mismatch} = VpVerifier.verify(@holder_did, vp)
+  end
+
+  test "accepts a VC subject bound to the holder by a completed DID migration", %{
+    issuer_priv: issuer_priv
+  } do
+    legacy_did = "did:plc:legacyholderalias"
+    {pub_hex, priv} = holder_keypair()
+    DidAccountCache.put(@holder_did, pub_hex, "alice.elix.cool")
+    now = DateTime.utc_now()
+
+    Repo.insert!(%DidElixMigration{
+      legacy_did: legacy_did,
+      v1_did: @holder_did,
+      handle: "alice.elix.cool",
+      state: "completed",
+      canonical_body: "test-migration",
+      legacy_sig: "legacy-signature",
+      v1_sig: "v1-signature",
+      created_at: now,
+      completed_at: now
+    })
+
+    vc = build_humanity_vc(legacy_did, issuer_priv)
+    vp = build_vp(@holder_did, priv, [vc])
+
+    assert {:ok, "TrisAuraHumanityCredential"} = VpVerifier.verify(@holder_did, vp)
   end
 
   test "rejects expired VC (validUntil in the past)", %{issuer_priv: issuer_priv} do
@@ -336,7 +362,6 @@ defmodule AnsibleRelay.VpVerifierTest do
     vp = build_vp(@holder_did, priv, [vc])
 
     assert {:error, :untrusted_issuer} = VpVerifier.verify(@holder_did, vp)
-
   end
 
   test "rejects a credential type the issuer is not registered to issue", %{

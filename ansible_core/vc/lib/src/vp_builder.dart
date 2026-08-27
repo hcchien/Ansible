@@ -28,8 +28,10 @@ class VpBuilder {
     required String nonce,
     required String audience,
     DateTime? createdAt,
+    Set<String>? acceptedCredentialHolderDids,
   }) {
-    if (credential.holderDid != holderDid) {
+    final acceptedHolders = acceptedCredentialHolderDids ?? {holderDid};
+    if (!acceptedHolders.contains(credential.holderDid)) {
       throw TrisAuraCredentialException(
         'holder_mismatch',
         'Presentation holder must match credential subject.',

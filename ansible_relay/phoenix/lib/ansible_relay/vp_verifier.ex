@@ -18,6 +18,7 @@ defmodule AnsibleRelay.VpVerifier do
   """
 
   alias AnsibleRelay.{DidAccountCache, SigVerifier}
+  alias AnsibleRelay.Identity.MigrationStore
 
   @recognised_credential_types ~w[
     TrisAuraHumanityCredential
@@ -169,7 +170,10 @@ defmodule AnsibleRelay.VpVerifier do
 
   defp check_vc_subject(vc, holder_did) do
     subject_id = vc |> Map.get("credentialSubject", %{}) |> Map.get("id")
-    if subject_id == holder_did, do: :ok, else: {:error, :vc_subject_mismatch}
+
+    if is_binary(subject_id) and MigrationStore.equivalent?(subject_id, holder_did),
+      do: :ok,
+      else: {:error, :vc_subject_mismatch}
   end
 
   defp check_vc_type(vc) do

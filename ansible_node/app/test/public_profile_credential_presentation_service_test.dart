@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_node/services/atproto_client.dart';
+import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/services/public_profile_credential_preferences.dart';
 import 'package:ansible_node/services/public_profile_credential_presentation_service.dart';
 import 'package:ansible_store/ansible_store.dart';
@@ -45,6 +46,13 @@ void main() {
             walletRepository: wallet,
             preferenceStore: preferences,
             didSigner: signer,
+            canonicalIdentityStore: InMemoryCanonicalIdentityStore(
+              const CanonicalIdentity(
+                did: holderDid,
+                handle: 'holder.elix.cool',
+                publicKeyHex: 'holder-public-key',
+              ),
+            ),
             clientFactory: (_) => client,
           ).presentSelected(
             holderDid: holderDid,
@@ -65,6 +73,125 @@ void main() {
       expect(
         client.presentations.every((vp) => vp['holder'] == holderDid),
         isTrue,
+      );
+    },
+  );
+
+  test(
+    'presents a VC bound to a verified legacy DID under the canonical holder',
+    () async {
+      const holderDid = 'did:elix:zcanonicalholder';
+      const legacyDid = 'did:elix:legacyholder';
+      final now = DateTime.utc(2026, 8, 27, 12);
+      final wallet = InMemoryWalletRepository();
+      final preferences = MemoryPublicProfileCredentialPreferenceStore();
+      final client = _RecordingAtProtoClient();
+
+      await _saveCredential(
+        wallet,
+        id: 'urn:uuid:legacy-humanity',
+        holderDid: legacyDid,
+        type: 'TrisAuraHumanityCredential',
+        claims: const {'humanVerified': true},
+      );
+      await preferences.setSelected(
+        holderDid: holderDid,
+        credentialId: 'urn:uuid:legacy-humanity',
+        selected: true,
+      );
+
+      final types =
+          await PublicProfileCredentialPresentationService(
+            walletRepository: wallet,
+            preferenceStore: preferences,
+            didSigner: _RecordingDidSigner(),
+            canonicalIdentityStore: InMemoryCanonicalIdentityStore(
+              const CanonicalIdentity(
+                did: holderDid,
+                handle: 'holder.elix.cool',
+                publicKeyHex: 'canonical-public-key',
+                legacyDids: [legacyDid],
+              ),
+            ),
+            clientFactory: (_) => client,
+          ).presentSelected(
+            holderDid: holderDid,
+            node: RemoteNode(
+              id: 'relay-prod',
+              name: 'Relay',
+              url: 'https://relay.example',
+              isActive: true,
+              createdAt: now,
+              updatedAt: now,
+            ),
+            now: now,
+          );
+
+      expect(types, ['TrisAuraHumanityCredential']);
+      final vp = client.presentations.single;
+      expect(vp['holder'], holderDid);
+      final vc = (vp['verifiableCredential'] as List).single as Map;
+      expect((vc['credentialSubject'] as Map)['id'], legacyDid);
+    },
+  );
+
+  test(
+    'rejects a VC bound to a DID outside the saved identity aliases',
+    () async {
+      const holderDid = 'did:elix:zcanonicalholder';
+      const foreignDid = 'did:elix:foreignholder';
+      final now = DateTime.utc(2026, 8, 27, 12);
+      final wallet = InMemoryWalletRepository();
+      final preferences = MemoryPublicProfileCredentialPreferenceStore();
+
+      await _saveCredential(
+        wallet,
+        id: 'urn:uuid:foreign-humanity',
+        holderDid: foreignDid,
+        type: 'TrisAuraHumanityCredential',
+        claims: const {'humanVerified': true},
+      );
+      await preferences.setSelected(
+        holderDid: holderDid,
+        credentialId: 'urn:uuid:foreign-humanity',
+        selected: true,
+      );
+
+      final service = PublicProfileCredentialPresentationService(
+        walletRepository: wallet,
+        preferenceStore: preferences,
+        didSigner: _RecordingDidSigner(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(
+          const CanonicalIdentity(
+            did: holderDid,
+            handle: 'holder.elix.cool',
+            publicKeyHex: 'canonical-public-key',
+            legacyDids: ['did:elix:verifiedlegacy'],
+          ),
+        ),
+        clientFactory: (_) => _RecordingAtProtoClient(),
+      );
+
+      await expectLater(
+        service.presentSelected(
+          holderDid: holderDid,
+          node: RemoteNode(
+            id: 'relay-prod',
+            name: 'Relay',
+            url: 'https://relay.example',
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+          ),
+          now: now,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'public_profile_credential_unavailable',
+          ),
+        ),
       );
     },
   );

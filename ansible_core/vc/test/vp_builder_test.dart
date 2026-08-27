@@ -51,5 +51,24 @@ void main() {
         ),
       );
     });
+
+    test('allows an explicitly accepted migrated credential holder', () {
+      final credential = TrisAuraCredential.fromJson(humanityFixture);
+
+      final unsigned = VpBuilder.buildUnsigned(
+        credential: credential,
+        holderDid: 'did:elix:zcanonicalholder',
+        nonce: 'nonce-123',
+        audience: 'https://relay.elix.cool',
+        createdAt: DateTime.utc(2026, 5, 4),
+        acceptedCredentialHolderDids: {
+          'did:elix:zcanonicalholder',
+          credential.holderDid,
+        },
+      );
+
+      expect(unsigned['holder'], 'did:elix:zcanonicalholder');
+      expect(unsigned['verifiableCredential'], [humanityFixture]);
+    });
   });
 }
