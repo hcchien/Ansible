@@ -530,7 +530,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }).toList();
 
     // Timeline board (時間軸): posts from people you follow. Best-effort — a
-    // discovery/AppView outage just yields an empty timeline, never an error.
+    // discovery/AppView outage falls back to locally synced followed content.
     List<PostCardData> followingCards = const [];
     try {
       final followingEntries = await _dynamicWallItems(limit: 100);
@@ -1126,10 +1126,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
   }
 
+  FollowFeedSource _localFollowFeedSource() => LocalDeltaFilterSource(
+    postProjector: FollowFeedProjector(
+      followRepository: _followRepo,
+      boardRepository: _boardRepo,
+      threadRepository: _threadRepo,
+      postRepository: _postRepo,
+    ),
+    contentProjector: ContentItemFeedProjector(
+      followRepository: _followRepo,
+      contentItemRepository: _contentItemRepo,
+    ),
+  );
+
   // Following-feed source: the scalable AppView timeline when enabled+configured,
-  // otherwise the local Design-1 filter over synced ops. (AppView mode currently
-  // serves federated follows; localOnly follows via the local path is a planned
-  // hybrid refinement.)
+  // otherwise the local Design-1 filter over synced ops.
   FollowFeedSource _followFeedSource() {
     if (AppEnvironment.useAppViewFeed &&
         AppEnvironment.appViewBaseUrl.isNotEmpty) {
@@ -1147,18 +1158,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       );
     }
 
-    return LocalDeltaFilterSource(
-      postProjector: FollowFeedProjector(
-        followRepository: _followRepo,
-        boardRepository: _boardRepo,
-        threadRepository: _threadRepo,
-        postRepository: _postRepo,
-      ),
-      contentProjector: ContentItemFeedProjector(
-        followRepository: _followRepo,
-        contentItemRepository: _contentItemRepo,
-      ),
-    );
+    return _localFollowFeedSource();
   }
 
   /// Builds the social home wall. When online, newest verified public content
@@ -1166,10 +1166,37 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// instead of static onboarding copy. The combined wall stays chronological.
   Future<List<FollowTimelineItem>> _dynamicWallItems({int limit = 100}) async {
     final source = _followFeedSource();
-    final followed = (await source.fetch(
-      followerDid: widget.did,
-      limit: limit,
-    )).items;
+    final followed = <FollowTimelineItem>[];
+
+    try {
+      followed.addAll(
+        (await source.fetch(followerDid: widget.did, limit: limit)).items,
+      );
+    } catch (_) {
+      // Continue with the locally synced projection below.
+    }
+
+    // AppView is an online acceleration/read model, not the sole source of
+    // truth. Merge locally synced followed content as an offline-safe lane.
+    if (AppEnvironment.useAppViewFeed &&
+        AppEnvironment.appViewBaseUrl.isNotEmpty) {
+      try {
+        final local = await _localFollowFeedSource().fetch(
+          followerDid: widget.did,
+          limit: limit,
+        );
+        final seen = followed.map(_timelineItemKey).toSet();
+        for (final item in local.items) {
+          if (seen.add(_timelineItemKey(item))) followed.add(item);
+        }
+        followed.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        if (followed.length > limit) {
+          followed.removeRange(limit, followed.length);
+        }
+      } catch (_) {
+        // A local projection failure must not prevent the verified AppView lane.
+      }
+    }
 
     if (!AppEnvironment.useAppViewFeed ||
         AppEnvironment.appViewBaseUrl.isEmpty ||

@@ -14,6 +14,12 @@ void main() {
     expect(config['ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK'], isFalse);
     expect(config['ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK'], isFalse);
     expect(config['ANSIBLE_RESET_LOCAL_IDENTITY_ON_START'], isFalse);
+    expect(config['ANSIBLE_USE_APPVIEW_FEED'], isTrue);
+    expect(
+      config['ANSIBLE_USE_APPVIEW_HOME_TIMELINE'],
+      isFalse,
+      reason: 'The app does not yet send the signed /api/v1/home headers.',
+    );
 
     for (final key in const [
       'ANSIBLE_RELAY_BASE_URL',
@@ -29,14 +35,20 @@ void main() {
   });
 
   test('TestFlight config is staging with remote HTTPS services', () {
-    final config = jsonDecode(
-      File('config/testflight.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    final config =
+        jsonDecode(File('config/testflight.json').readAsStringSync())
+            as Map<String, dynamic>;
 
     expect(config['ANSIBLE_APP_ENV'], 'staging');
     expect(config['ANSIBLE_USES_REAL_RUST_BRIDGE'], isTrue);
     expect(config['ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK'], isFalse);
     expect(config['ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK'], isFalse);
+    expect(config['ANSIBLE_USE_APPVIEW_FEED'], isTrue);
+    expect(
+      config['ANSIBLE_USE_APPVIEW_HOME_TIMELINE'],
+      isFalse,
+      reason: 'The app does not yet send the signed /api/v1/home headers.',
+    );
     for (final key in const [
       'ANSIBLE_RELAY_BASE_URL',
       'ANSIBLE_ISSUER_BASE_URL',
@@ -46,7 +58,11 @@ void main() {
     ]) {
       final uri = Uri.parse(config[key]! as String);
       expect(uri.scheme, 'https', reason: key);
-      expect(uri.host, anyOf('dev.elix.cool', endsWith('-dev.elix.cool')), reason: key);
+      expect(
+        uri.host,
+        anyOf('dev.elix.cool', endsWith('-dev.elix.cool')),
+        reason: key,
+      );
     }
   });
 

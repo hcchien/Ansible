@@ -6,7 +6,7 @@
   "ANSIBLE_ATPROTO_BASE_URL": "https://relay-dev.elix.cool",
   "ANSIBLE_APPVIEW_BASE_URL": "https://appview-dev.elix.cool",
   "ANSIBLE_USE_APPVIEW_FEED": true,
-  "ANSIBLE_USE_APPVIEW_HOME_TIMELINE": true,
+  "ANSIBLE_USE_APPVIEW_HOME_TIMELINE": false,
   "ANSIBLE_FORUM_WEB_BASE_URL": "https://dev.elix.cool",
   "ANSIBLE_ALLOW_INSECURE_SIGNING_FALLBACK": false,
   "ANSIBLE_ALLOW_INSECURE_IDENTITY_FALLBACK": false,

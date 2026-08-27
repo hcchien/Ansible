@@ -75,7 +75,8 @@ class AppViewTimelineSource implements FollowFeedSource {
   /// When provided, the reader's server-materialized home timeline is used
   /// (fan-out-on-write): the app sends only its own DID and the AppView returns
   /// the pre-assembled page. Falls back to the [fetcher] (fan-out-on-read over
-  /// the federated follow set) when null.
+  /// the accepted local follow set) when the home request is unavailable or
+  /// rejected, as well as when [homeFetcher] is null.
   final AppViewHomeFetcher? homeFetcher;
 
   const AppViewTimelineSource({
@@ -90,20 +91,11 @@ class AppViewTimelineSource implements FollowFeedSource {
     int? cursor,
     int limit = 50,
   }) async {
-    final AppViewTimelinePage page;
-    if (homeFetcher != null) {
-      page = await homeFetcher!(
-        readerDid: followerDid,
-        cursor: cursor,
-        limit: limit,
-      );
-    } else {
-      final dids = await _followDids(followerDid);
-      if (dids.isEmpty) {
-        return const FollowFeedPage(items: [], hasMore: false);
-      }
-      page = await fetcher(dids: dids, cursor: cursor, limit: limit);
-    }
+    final page = await _fetchPage(
+      followerDid: followerDid,
+      cursor: cursor,
+      limit: limit,
+    );
     final items = mapItems(page.items);
 
     return FollowFeedPage(
@@ -111,6 +103,45 @@ class AppViewTimelineSource implements FollowFeedSource {
       nextCursor: page.nextCursor,
       hasMore: page.hasMore,
     );
+  }
+
+  Future<AppViewTimelinePage> _fetchPage({
+    required String followerDid,
+    required int? cursor,
+    required int limit,
+  }) async {
+    final fetchHome = homeFetcher;
+    if (fetchHome == null) {
+      return _fetchForAcceptedFollows(
+        followerDid: followerDid,
+        cursor: cursor,
+        limit: limit,
+      );
+    }
+
+    try {
+      return await fetchHome(
+        readerDid: followerDid,
+        cursor: cursor,
+        limit: limit,
+      );
+    } catch (_) {
+      return _fetchForAcceptedFollows(
+        followerDid: followerDid,
+        cursor: cursor,
+        limit: limit,
+      );
+    }
+  }
+
+  Future<AppViewTimelinePage> _fetchForAcceptedFollows({
+    required String followerDid,
+    required int? cursor,
+    required int limit,
+  }) async {
+    final dids = await _followDids(followerDid);
+    if (dids.isEmpty) return const AppViewTimelinePage(items: []);
+    return fetcher(dids: dids, cursor: cursor, limit: limit);
   }
 
   /// Maps any verified AppView page (home, timeline, or explore) into the

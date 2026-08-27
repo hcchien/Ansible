@@ -177,58 +177,99 @@ void main() {
       expect(page.items.whereType<PostTimelineItem>().length, 1);
     });
 
-    test('uses homeFetcher (fan-out-on-write) with reader DID, skips follow set', () async {
-      var fetcherCalled = false;
-      String? requestedReader;
+    test(
+      'uses homeFetcher (fan-out-on-write) with reader DID, skips follow set',
+      () async {
+        var fetcherCalled = false;
+        String? requestedReader;
 
+        final source = AppViewTimelineSource(
+          followRepository: followRepo,
+          fetcher: ({required dids, cursor, limit = 50}) async {
+            fetcherCalled = true;
+            return const AppViewTimelinePage(items: []);
+          },
+          homeFetcher: ({required readerDid, cursor, limit = 50}) async {
+            requestedReader = readerDid;
+            return AppViewTimelinePage(
+              items: [
+                AppViewTimelineItem(
+                  entityType: 'murmur',
+                  entityId: 'm1',
+                  authorDid: 'did:key:alice',
+                  visibility: 'public',
+                  createdAt: now,
+                  payload: const {'body': 'fanned'},
+                ),
+              ],
+              nextCursor: 7,
+              hasMore: false,
+            );
+          },
+        );
+
+        // No federated follows configured: home path must still return items
+        // (the server materialized them), and the dids fetcher is never called.
+        final page = await source.fetch(followerDid: 'did:key:local');
+
+        expect(requestedReader, 'did:key:local');
+        expect(fetcherCalled, isFalse);
+        expect(page.items.whereType<ContentTimelineItem>().length, 1);
+        expect(page.nextCursor, 7);
+      },
+    );
+
+    test('falls back to accepted follow DIDs when homeFetcher fails', () async {
+      await followLocalOnly('did:elix:bob');
+
+      List<String>? requestedDids;
       final source = AppViewTimelineSource(
         followRepository: followRepo,
         fetcher: ({required dids, cursor, limit = 50}) async {
-          fetcherCalled = true;
-          return const AppViewTimelinePage(items: []);
-        },
-        homeFetcher: ({required readerDid, cursor, limit = 50}) async {
-          requestedReader = readerDid;
+          requestedDids = dids;
           return AppViewTimelinePage(
             items: [
               AppViewTimelineItem(
                 entityType: 'murmur',
-                entityId: 'm1',
-                authorDid: 'did:key:alice',
+                entityId: 'm-fallback',
+                authorDid: 'did:elix:bob',
                 visibility: 'public',
                 createdAt: now,
-                payload: const {'body': 'fanned'},
+                payload: const {'body': 'still visible'},
               ),
             ],
-            nextCursor: 7,
-            hasMore: false,
           );
         },
-      );
-
-      // No federated follows configured: home path must still return items
-      // (the server materialized them), and the dids fetcher is never called.
-      final page = await source.fetch(followerDid: 'did:key:local');
-
-      expect(requestedReader, 'did:key:local');
-      expect(fetcherCalled, isFalse);
-      expect(page.items.whereType<ContentTimelineItem>().length, 1);
-      expect(page.nextCursor, 7);
-    });
-
-    test('returns empty without calling fetcher when no federated follows', () async {
-      var called = false;
-      final source = AppViewTimelineSource(
-        followRepository: followRepo,
-        fetcher: ({required dids, cursor, limit = 50}) async {
-          called = true;
-          return const AppViewTimelinePage(items: []);
+        homeFetcher: ({required readerDid, cursor, limit = 50}) async {
+          throw StateError('AppView home failed: 401');
         },
       );
 
       final page = await source.fetch(followerDid: 'did:key:local');
-      expect(page.items, isEmpty);
-      expect(called, isFalse);
+
+      expect(requestedDids, ['did:elix:bob']);
+      expect(
+        page.items.whereType<ContentTimelineItem>().single.entry.item.id,
+        'm-fallback',
+      );
     });
+
+    test(
+      'returns empty without calling fetcher when no federated follows',
+      () async {
+        var called = false;
+        final source = AppViewTimelineSource(
+          followRepository: followRepo,
+          fetcher: ({required dids, cursor, limit = 50}) async {
+            called = true;
+            return const AppViewTimelinePage(items: []);
+          },
+        );
+
+        final page = await source.fetch(followerDid: 'did:key:local');
+        expect(page.items, isEmpty);
+        expect(called, isFalse);
+      },
+    );
   });
 }
