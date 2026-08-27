@@ -264,6 +264,60 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
     assert {:ok, %{public_key_hex: ^public_key_hex}} = IdentityCache.get(@valid_did)
   end
 
+  test "existing DID reuses its complete handle after the Relay domain changes" do
+    {public_key_hex, private_key} = ed25519_keypair()
+
+    first_register =
+      post_json("/api/v2/identity/register", %{
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "alice"
+      })
+
+    first_nonce = Jason.decode!(first_register.resp_body)["nonce"]
+
+    first_anchor =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle" => "alice.elix.cool",
+        "registration_sig" => sign_nonce(private_key, first_nonce),
+        "nonce" => first_nonce
+      })
+
+    assert first_anchor.status == 200
+
+    previous = Application.get_env(:ansible_relay, :identity_handle_domain)
+    Application.put_env(:ansible_relay, :identity_handle_domain, "relay.elix.cool")
+
+    on_exit(fn ->
+      Application.put_env(:ansible_relay, :identity_handle_domain, previous)
+    end)
+
+    retry_register =
+      post_json("/api/v2/identity/register", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "alice",
+        "signing_algorithm" => "ed25519"
+      })
+
+    assert retry_register.status == 200
+    retry_body = Jason.decode!(retry_register.resp_body)
+    assert retry_body["handle"] == "alice.elix.cool"
+
+    retry_anchor =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle" => retry_body["handle"],
+        "registration_sig" => sign_nonce(private_key, retry_body["nonce"]),
+        "nonce" => retry_body["nonce"]
+      })
+
+    assert retry_anchor.status == 200
+    assert Jason.decode!(retry_anchor.resp_body)["handle"] == "alice.elix.cool"
+  end
+
   test "anchor accepts development signatures only when enabled" do
     original = Application.get_env(:ansible_relay, :allow_dev_identity_signatures, false)
     Application.put_env(:ansible_relay, :allow_dev_identity_signatures, true)

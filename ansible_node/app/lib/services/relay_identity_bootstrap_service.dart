@@ -62,6 +62,7 @@ class RelayIdentityBootstrapService {
         challenge = await client.register(
           publicKeyHex: resolvedPublicKey,
           handleSuffix: suffix,
+          did: did,
           signingAlgorithm: canonical.signingAlgorithm,
         );
       } on AtProtoException catch (error) {

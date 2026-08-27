@@ -194,11 +194,13 @@ class AtProtoClient {
   Future<RegistrationChallenge> register({
     required String publicKeyHex,
     required String handleSuffix,
+    String? did,
     String signingAlgorithm = 'ed25519',
   }) async {
     final body = await _postJson('/api/v2/identity/register', {
       'public_key_hex': publicKeyHex,
       'handle_suffix': handleSuffix,
+      if (did != null) 'did': did,
       'signing_algorithm': signingAlgorithm,
     });
     return RegistrationChallenge.fromJson(body);

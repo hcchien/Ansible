@@ -161,6 +161,7 @@ void main() {
           final body = jsonDecode(request.body) as Map<String, dynamic>;
           if (requestCount == 3) {
             expect(request.url.path, '/api/v2/identity/register');
+            expect(body['did'], did);
             expect(body['handle_suffix'], 'original');
             return http.Response(
               jsonEncode({

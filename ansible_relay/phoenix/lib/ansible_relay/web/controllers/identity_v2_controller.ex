@@ -11,31 +11,13 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   def register(conn, params) do
     with {:ok, public_key_hex} <- require_field(params, "public_key_hex"),
          {:ok, handle_suffix} <- require_field(params, "handle_suffix"),
+         did = Map.get(params, "did"),
          signing_algorithm = Map.get(params, "signing_algorithm", "ed25519"),
          :ok <- IdentityWritePolicy.validate(signing_algorithm),
          :ok <- validate_public_key(signing_algorithm, public_key_hex),
-         :ok <- validate_handle_suffix(handle_suffix) do
-      handle = "#{handle_suffix}.#{handle_domain()}"
-
-      case DidAccountCache.get_by_handle(handle) do
-        {:ok, did} ->
-          # Re-registration is intentionally idempotent for the same
-          # hardware-held identity key.  A reinstall can retain the key while
-          # local app state is cleared; issuing a fresh nonce lets the client
-          # restore the verified-DID cache without claiming another handle.
-          case DidAccountCache.get(did) do
-            {:ok, entry}
-            when entry.public_key_hex == public_key_hex and
-                   entry.signing_algorithm == signing_algorithm ->
-              issue_registration_nonce(conn, public_key_hex, handle)
-
-            _ ->
-              send_json(conn, 409, %{error: "handle_taken"})
-          end
-
-        :not_found ->
-          issue_registration_nonce(conn, public_key_hex, handle)
-      end
+         :ok <- validate_handle_suffix(handle_suffix),
+         :ok <- validate_optional_did(did) do
+      register_identity(conn, did, public_key_hex, signing_algorithm, handle_suffix)
     else
       {:error, {:missing_field, field}} ->
         send_json(conn, 422, %{error: "missing_fields", field: field})
@@ -57,6 +39,9 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
           error: "missing_fields",
           detail: "handle_suffix must be alphanumeric"
         })
+
+      {:error, :invalid_did} ->
+        send_json(conn, 422, %{error: "invalid_did"})
     end
   end
 
@@ -71,7 +56,7 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
          :ok <- IdentityWritePolicy.validate(signing_algorithm),
          :ok <- validate_did(did),
          :ok <- validate_public_key(signing_algorithm, public_key_hex),
-         :ok <- validate_handle(handle),
+         :ok <- validate_handle(did, handle),
          :ok <- validate_registration_binding(did, public_key_hex, genesis_commitment),
          proof = registration_proof(nonce, did, genesis_commitment) do
       # Verify signature BEFORE consuming the nonce so an invalid sig does not
@@ -219,6 +204,59 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
   # --- Helpers ---
 
+  defp register_identity(conn, did, public_key_hex, signing_algorithm, handle_suffix)
+       when is_binary(did) do
+    case DidAccountCache.get(did) do
+      {:ok, entry}
+      when entry.public_key_hex == public_key_hex and
+             entry.signing_algorithm == signing_algorithm ->
+        # The Relay-local handle domain may have changed since this DID was
+        # first registered. Reuse the complete persisted handle instead of
+        # rebuilding one from today's domain and accidentally proposing a
+        # second handle for the same DID.
+        issue_registration_nonce(conn, public_key_hex, entry.handle)
+
+      {:ok, _entry} ->
+        send_json(conn, 409, %{error: "duplicate_did"})
+
+      :not_found ->
+        register_handle(conn, public_key_hex, signing_algorithm, handle_suffix)
+
+      {:error, :unavailable} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
+    end
+  end
+
+  defp register_identity(conn, nil, public_key_hex, signing_algorithm, handle_suffix),
+    do: register_handle(conn, public_key_hex, signing_algorithm, handle_suffix)
+
+  defp register_handle(conn, public_key_hex, signing_algorithm, handle_suffix) do
+    handle = "#{handle_suffix}.#{handle_domain()}"
+
+    case DidAccountCache.get_by_handle(handle) do
+      {:ok, did} ->
+        # Re-registration is intentionally idempotent for the same
+        # hardware-held identity key. A reinstall can retain the key while
+        # local app state is cleared; issuing a fresh nonce restores the
+        # verified-DID cache without claiming another handle.
+        case DidAccountCache.get(did) do
+          {:ok, entry}
+          when entry.public_key_hex == public_key_hex and
+                 entry.signing_algorithm == signing_algorithm ->
+            issue_registration_nonce(conn, public_key_hex, handle)
+
+          _ ->
+            send_json(conn, 409, %{error: "handle_taken"})
+        end
+
+      :not_found ->
+        issue_registration_nonce(conn, public_key_hex, handle)
+
+      {:error, :unavailable} ->
+        send_json(conn, 503, %{error: "verification_unavailable", retryable: true})
+    end
+  end
+
   defp anchor_verified_did(conn, did, public_key_hex, signing_algorithm, handle) do
     case {DidAccountCache.get(did), DidAccountCache.get_by_handle(handle)} do
       {{:ok, entry}, {:ok, ^did}} ->
@@ -333,6 +371,9 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
 
   defp validate_did(_), do: {:error, :invalid_did}
 
+  defp validate_optional_did(nil), do: :ok
+  defp validate_optional_did(did), do: validate_did(did)
+
   defp validate_registration_binding(did, _public_key_hex, nil) do
     if String.match?(did, ~r/\Adid:elix:z[a-z2-7]{52}\z/),
       do: {:error, :invalid_genesis_commitment},
@@ -361,7 +402,16 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
   defp registration_proof(nonce, did, commitment),
     do: DidElix.registration_payload(nonce, did, commitment)
 
-  defp validate_handle(handle) when is_binary(handle) do
+  defp validate_handle(did, handle) when is_binary(did) and is_binary(handle) do
+    case DidAccountCache.get(did) do
+      {:ok, %{handle: ^handle}} -> :ok
+      _ -> validate_current_handle(handle)
+    end
+  end
+
+  defp validate_handle(_, _), do: {:error, :invalid_handle}
+
+  defp validate_current_handle(handle) when is_binary(handle) do
     domain = handle_domain()
 
     if String.ends_with?(String.downcase(handle), ".#{domain}") and
@@ -373,8 +423,6 @@ defmodule AnsibleRelay.Web.Controllers.IdentityV2Controller do
       {:error, :invalid_handle}
     end
   end
-
-  defp validate_handle(_), do: {:error, :invalid_handle}
 
   defp handle_domain do
     Application.get_env(:ansible_relay, :identity_handle_domain, "elix.cool")
