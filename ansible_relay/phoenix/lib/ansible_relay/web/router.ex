@@ -534,6 +534,13 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ReputationController.present(conn, conn.body_params)
   end
 
+  post "/api/v2/profile/credentials/present" do
+    AnsibleRelay.Web.Controllers.ReputationController.present_public_profile_credential(
+      conn,
+      conn.body_params
+    )
+  end
+
   # XRPC — AT Protocol
   post "/xrpc/com.atproto.repo.createRecord" do
     AnsibleRelay.Web.Controllers.XrpcController.create_record(conn, conn.body_params)

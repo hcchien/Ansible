@@ -78,10 +78,24 @@ class HandleResolver {
 /// intentionally separate from a DID's verification key and must not be used
 /// for authorization, signing, or follow-target identity.
 class PublicAuthorProfile {
-  const PublicAuthorProfile({this.displayName, this.handle});
+  const PublicAuthorProfile({
+    this.displayName,
+    this.handle,
+    this.bio,
+    this.avatarUrl,
+    this.reputationTier,
+    this.publicCredentials = const <PublicProfileCredential>[],
+  });
 
   final String? displayName;
   final String? handle;
+  final String? bio;
+  final String? avatarUrl;
+
+  /// Public AppView presentation metadata only. This may be shown as context,
+  /// but must never be used as an authorization decision in the client.
+  final String? reputationTier;
+  final List<PublicProfileCredential> publicCredentials;
 
   String? get preferredLabel {
     final name = displayName?.trim();
@@ -93,6 +107,32 @@ class PublicAuthorProfile {
           : '@$resolvedHandle';
     }
     return null;
+  }
+}
+
+class PublicProfileCredential {
+  const PublicProfileCredential({
+    required this.credentialType,
+    required this.issuerDid,
+    required this.badge,
+    required this.value,
+    this.validUntil,
+  });
+
+  final String credentialType;
+  final String issuerDid;
+  final String badge;
+  final String value;
+  final DateTime? validUntil;
+
+  factory PublicProfileCredential.fromJson(Map<Object?, Object?> json) {
+    return PublicProfileCredential(
+      credentialType: json['credential_type'] as String? ?? '',
+      issuerDid: json['issuer_did'] as String? ?? '',
+      badge: json['badge'] as String? ?? '',
+      value: json['value'] as String? ?? '',
+      validUntil: DateTime.tryParse(json['valid_until'] as String? ?? ''),
+    );
   }
 }
 
@@ -145,6 +185,19 @@ class PublicProfileResolver {
                   body['display_name'] as String? ??
                   body['displayName'] as String?,
               handle: body['handle'] as String?,
+              bio: body['bio'] as String?,
+              avatarUrl:
+                  body['avatar_url'] as String? ?? body['avatarUrl'] as String?,
+              reputationTier:
+                  body['reputation_tier'] as String? ??
+                  body['reputationTier'] as String?,
+              publicCredentials: (body['public_credentials'] is List)
+                  ? (body['public_credentials'] as List)
+                        .whereType<Map>()
+                        .map(PublicProfileCredential.fromJson)
+                        .where((credential) => credential.badge.isNotEmpty)
+                        .toList(growable: false)
+                  : const <PublicProfileCredential>[],
             );
           }
         }
@@ -159,6 +212,12 @@ class PublicProfileResolver {
         : PublicAuthorProfile(
             displayName: publishedProfile?.displayName,
             handle: canonicalHandle ?? publishedProfile?.handle,
+            bio: publishedProfile?.bio,
+            avatarUrl: publishedProfile?.avatarUrl,
+            reputationTier: publishedProfile?.reputationTier,
+            publicCredentials:
+                publishedProfile?.publicCredentials ??
+                const <PublicProfileCredential>[],
           );
     _cache[identity] = profile;
     return profile;

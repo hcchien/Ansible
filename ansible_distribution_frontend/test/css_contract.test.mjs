@@ -231,6 +231,21 @@ assert.match(
   /@media\s*\(max-width:\s*900px\)/,
   'mobile breakpoint is required',
 );
+assert.match(
+  css,
+  /\.public-profile-head\s*\{[^}]*grid-template-columns:\s*72px minmax\(0,\s*1fr\);/s,
+  'desktop profile must preserve the avatar and public identity grid',
+);
+assert.match(
+  css,
+  /@media\s*\(max-width:\s*1023px\) and \(min-width:\s*768px\)[\s\S]*\.cols\.profile-layout\s*\{[^}]*grid-template-columns:\s*64px minmax\(0,\s*1fr\);/,
+  'tablet profile must collapse to the app-style rail and content layout',
+);
+assert.match(
+  css,
+  /\.profile-post-card\s*\{[^}]*border:\s*0\.5px solid var\(--border\);/s,
+  'profile posts must use the shared hairline card treatment',
+);
 assert.doesNotMatch(
   css,
   /border-radius:\s*(2[1-9]|[3-9][0-9])px/,

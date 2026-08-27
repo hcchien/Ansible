@@ -27,6 +27,8 @@ import '../services/user_presence_verifier.dart';
 import '../services/sync_capability_service.dart';
 import '../services/sync_authorization_controller.dart';
 import '../services/platform_capabilities.dart';
+import '../services/public_profile_credential_preferences.dart';
+import '../services/public_profile_credential_presentation_service.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/nostr_publication_retry_panel.dart';
@@ -763,6 +765,15 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
               didSigner: syncDidSigner,
             ).present(holderDid: widget.localDid, node: node);
           }
+          // One existing sync authorization and one signer are shared by the
+          // whole batch. A Wallet switch never starts authentication, and
+          // selected credentials must not trigger one Face ID prompt per VC.
+          await PublicProfileCredentialPresentationService(
+            walletRepository: DriftWalletRepository(widget.db),
+            preferenceStore:
+                const SecurePublicProfileCredentialPreferenceStore(),
+            didSigner: syncDidSigner,
+          ).presentSelected(holderDid: widget.localDid, node: node);
           opsSummary = await _relayPushService(
             syncDidSigner,
           ).pushLocalOpsTo(node, accessToken: syncCapability);
@@ -846,6 +857,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
     ),
     didSigner: signer,
     followerDid: widget.localDid,
+    contactRepository: DriftContactRepository(widget.db),
+    walletRepository: DriftWalletRepository(widget.db),
+    profileCredentialPreferences:
+        const SecurePublicProfileCredentialPreferenceStore(),
     allowIdentityWrites: _capabilities.webAuthn,
   );
 

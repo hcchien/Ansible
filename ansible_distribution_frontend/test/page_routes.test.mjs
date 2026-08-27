@@ -20,6 +20,10 @@ assert.deepEqual(parseRoute('#/boards/general/threads/thread-9'), {
   pageId: PAGE_IDS.thread,
   params: { boardId: 'general', threadId: 'thread-9' },
 });
+assert.deepEqual(parseRoute('#/profiles/did%3Aelix%3Amira'), {
+  pageId: PAGE_IDS.profile,
+  params: { did: 'did:elix:mira' },
+});
 assert.deepEqual(parseRoute('#/sessions'), {
   pageId: PAGE_IDS.sessions,
   params: {},
@@ -46,6 +50,10 @@ assert.equal(routeToHash({ pageId: PAGE_IDS.board, params: { boardId: 'general' 
 assert.equal(
   routeToHash({ pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-9' } }),
   '#/boards/general/threads/thread-9',
+);
+assert.equal(
+  routeToHash({ pageId: PAGE_IDS.profile, params: { did: 'did:elix:Mira' } }),
+  '#/profiles/did%3Aelix%3AMira',
 );
 assert.equal(routeToHash({ pageId: PAGE_IDS.sessions }), '#/sessions');
 assert.equal(routeToHash({ pageId: PAGE_IDS.notifications }), '#/notifications');
@@ -126,6 +134,30 @@ assert.equal(threadState.route.pageId, PAGE_IDS.thread);
 assert.equal(threadState.viewModel.page.title, 'Thread detail');
 assert.equal(threadState.viewModel.thread.id, 'thread-9');
 console.log('ok - loads thread detail route data');
+
+const profileCalls = [];
+const profileController = createPageController({
+  getCurrentHash: () => '#/profiles/did%3Aelix%3AMira',
+  sessionLifecycle: {
+    async restore() {
+      return { status: 'authenticated', viewModel: authenticatedSession };
+    },
+  },
+  forumDataAdapter: {
+    async loadProfilePage({ did, sessionViewModel }) {
+      profileCalls.push([did, sessionViewModel.trustTier]);
+      return {
+        profile: { did, displayName: 'Mira' },
+        profilePosts: [],
+      };
+    },
+  },
+});
+const profileState = await profileController.loadCurrentRoute();
+assert.deepEqual(profileCalls, [['did:elix:Mira', 'self_custody_did']]);
+assert.equal(profileState.route.pageId, PAGE_IDS.profile);
+assert.equal(profileState.viewModel.page.title, 'Mira');
+console.log('ok - loads the public profile route');
 
 const moderationCalls = [];
 const moderationController = createPageController({

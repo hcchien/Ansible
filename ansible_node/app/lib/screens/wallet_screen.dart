@@ -9,12 +9,14 @@ import '../services/oid4vp_presentation_service.dart';
 import '../services/oid4vci_wallet_client.dart';
 import '../services/vc_issuer_client.dart';
 import '../services/platform_capabilities.dart';
+import '../services/public_profile_credential_preferences.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/elix_focus_route.dart';
 import 'credential_issuance_wizard.dart';
 import 'credential_detail_screen.dart';
 import 'membership_credential_screen.dart';
+import 'sync_settings_screen.dart';
 import 'wallet_verifier_scanner_screen.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -30,6 +32,8 @@ class WalletScreen extends StatefulWidget {
     this.pollInterval = const Duration(seconds: 2),
     this.pollTimeout = const Duration(minutes: 2),
     this.platformCapabilities,
+    this.db,
+    this.profileCredentialPreferences,
   });
 
   final String holderDid;
@@ -42,6 +46,8 @@ class WalletScreen extends StatefulWidget {
   final Duration pollInterval;
   final Duration pollTimeout;
   final PlatformCapabilities? platformCapabilities;
+  final AppDatabase? db;
+  final PublicProfileCredentialPreferenceStore? profileCredentialPreferences;
 
   @override
   State<WalletScreen> createState() => _WalletScreenState();
@@ -49,6 +55,8 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   late Future<List<WalletCredential>> _credentials;
+  late final PublicProfileCredentialPreferenceStore _profilePreferences;
+  Set<String> _selectedProfileCredentials = const <String>{};
   var _showWizard = false;
 
   PlatformCapabilities get _capabilities =>
@@ -57,7 +65,19 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   void initState() {
     super.initState();
+    _profilePreferences =
+        widget.profileCredentialPreferences ??
+        const SecurePublicProfileCredentialPreferenceStore();
     _credentials = widget.repository.listCredentials();
+    _loadProfilePreferences();
+  }
+
+  Future<void> _loadProfilePreferences() async {
+    final selected = await _profilePreferences.selectedCredentialIds(
+      widget.holderDid,
+    );
+    if (!mounted) return;
+    setState(() => _selectedProfileCredentials = selected);
   }
 
   Future<void> _reload() async {
@@ -95,8 +115,84 @@ class _WalletScreenState extends State<WalletScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    await _profilePreferences.setSelected(
+      holderDid: widget.holderDid,
+      credentialId: credential.credentialId,
+      selected: false,
+    );
     await widget.repository.deleteCredential(credential.credentialId);
+    _selectedProfileCredentials = {..._selectedProfileCredentials}
+      ..remove(credential.credentialId);
     await _reload();
+  }
+
+  Future<void> _setProfileDisclosure(
+    WalletCredential credential,
+    bool selected,
+  ) async {
+    final badge = publicProfileCredentialLabel(credential.credentialType);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          selected
+              ? context.uiCopy(zh: '放到個人檔案？', en: 'Show on your profile?')
+              : context.uiCopy(zh: '從個人檔案撤下？', en: 'Remove from your profile?'),
+        ),
+        content: Text(
+          selected
+              ? context.uiCopy(
+                  zh: '公開後會顯示「$badge」。Relay 會驗證這張 VC，但完整憑證、憑證 ID、生日與證件資料不會發布。',
+                  en: 'Your profile will show “$badge”. The Relay verifies this VC, but the complete credential, credential ID, birth date, and document data are not published.',
+                )
+              : context.uiCopy(
+                  zh: '「$badge」會在下次簽署同步後從公開個人檔案撤下；這張 VC 仍會保留在本機皮夾。',
+                  en: '“$badge” will be removed from your public profile after the next signed sync. The VC remains in your local Wallet.',
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              selected
+                  ? context.uiCopy(zh: '繼續發布', en: 'Continue')
+                  : context.uiCopy(zh: '繼續撤下', en: 'Continue'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await _profilePreferences.setSelected(
+      holderDid: widget.holderDid,
+      credentialId: credential.credentialId,
+      selected: selected,
+    );
+    if (!mounted) return;
+    setState(() {
+      final next = {..._selectedProfileCredentials};
+      if (selected) {
+        next.add(credential.credentialId);
+      } else {
+        next.remove(credential.credentialId);
+      }
+      _selectedProfileCredentials = next;
+    });
+
+    final db = widget.db;
+    if (db != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              SyncSettingsScreen(db: db, localDid: widget.holderDid),
+        ),
+      );
+    }
   }
 
   Future<void> _copyHolderDid() async {
@@ -256,6 +352,19 @@ class _WalletScreenState extends State<WalletScreen> {
                 for (final credential in credentials) ...[
                   _CredentialTile(
                     credential: credential,
+                    selectedForProfile: _selectedProfileCredentials.contains(
+                      credential.credentialId,
+                    ),
+                    onProfileSelectionChanged:
+                        isPublicProfileCredentialType(
+                              credential.credentialType,
+                            ) &&
+                            credential.status ==
+                                WalletCredentialStatus.active &&
+                            credential.validUntil.isAfter(DateTime.now())
+                        ? (selected) =>
+                              _setProfileDisclosure(credential, selected)
+                        : null,
                     onOpen: () => Navigator.of(context).push(
                       elixFocusPageRoute<void>(
                         settings: RouteSettings(
@@ -646,11 +755,15 @@ class _CredentialTile extends StatelessWidget {
     required this.credential,
     required this.onOpen,
     required this.onDelete,
+    required this.selectedForProfile,
+    required this.onProfileSelectionChanged,
   });
 
   final WalletCredential credential;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
+  final bool selectedForProfile;
+  final ValueChanged<bool>? onProfileSelectionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -723,16 +836,44 @@ class _CredentialTile extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline),
-                color: AnsibleDesign.inkMuted,
-                tooltip: text.t('deleteLocalCredential'),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Switch.adaptive(
+                    key: ValueKey(
+                      'profile_credential_${credential.credentialId}',
+                    ),
+                    value: selectedForProfile,
+                    onChanged: onProfileSelectionChanged,
+                  ),
+                  Text(
+                    selectedForProfile
+                        ? context.uiCopy(zh: '已放到個人檔案', en: 'Shown on profile')
+                        : context.uiCopy(zh: '放到個人檔案', en: 'Show on profile'),
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: AnsibleDesign.inkMuted,
+                    ),
+                  ),
+                ],
               ),
-              const Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: AnsibleDesign.inkFaint,
+              PopupMenuButton<String>(
+                key: ValueKey('credential_actions_${credential.credentialId}'),
+                tooltip: context.uiCopy(zh: '憑證操作', en: 'Credential actions'),
+                onSelected: (value) {
+                  if (value == 'open') onOpen();
+                  if (value == 'delete') onDelete();
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'open',
+                    child: Text(context.uiCopy(zh: '查看詳情', en: 'Details')),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text(text.t('deleteLocalCredential')),
+                  ),
+                ],
               ),
             ],
           ),

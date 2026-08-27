@@ -562,6 +562,7 @@ class CrdtOpBuilder {
     String? displayName,
     String? bio,
     String? avatarUrl,
+    List<String> credentialTypes = const <String>[],
   }) {
     final opId = _uuid.v4();
     final createdAt = DateTime.now();
@@ -570,6 +571,7 @@ class CrdtOpBuilder {
       'displayName': displayName,
       'bio': bio,
       'avatarUrl': avatarUrl,
+      'credentialTypes': credentialTypes,
       'visibility': 'public',
       'updatedAt': createdAt.toUtc().toIso8601String(),
     });

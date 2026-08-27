@@ -3,6 +3,7 @@ import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/services/content_publication_service.dart';
 import 'package:ansible_node/services/nostr_relay_settings_store.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
+import 'package:ansible_node/services/public_profile_credential_preferences.dart';
 import 'package:ansible_did/ansible_did.dart';
 import 'package:ansible_nostr/ansible_nostr.dart';
 import 'package:ansible_store/ansible_store.dart';
@@ -452,6 +453,26 @@ void main() {
       final now = DateTime.utc(2026, 6, 4, 14);
       final opsQueue = InMemoryOpsQueueRepository();
       final contacts = DriftContactRepository(db);
+      final wallet = InMemoryWalletRepository.withCredentials([
+        WalletCredential(
+          credentialId: 'vc-age',
+          issuerDid: 'did:web:issuer.elix.cool',
+          holderDid: 'did:plc:reader',
+          credentialType: 'AgeOver18Credential',
+          status: WalletCredentialStatus.active,
+          validFrom: now,
+          validUntil: DateTime.utc(2027, 6, 4),
+          displayName: 'Age 18+',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ]);
+      final profilePreferences = MemoryPublicProfileCredentialPreferenceStore();
+      await profilePreferences.setSelected(
+        holderDid: 'did:plc:reader',
+        credentialId: 'vc-age',
+        selected: true,
+      );
       final canonicalIdentityStore = InMemoryCanonicalIdentityStore(
         const CanonicalIdentity(
           did: 'did:plc:reader',
@@ -482,6 +503,8 @@ void main() {
         relaySettings: const EmptyNostrRelaySettingsStore(),
         keyStore: const InMemoryNostrKeyStore(),
         contactRepository: contacts,
+        walletRepository: wallet,
+        profileCredentialPreferences: profilePreferences,
         followerDid: 'did:plc:reader',
         opsQueueRepo: opsQueue,
         opsDispatchService: OpsDispatchService(
@@ -503,6 +526,12 @@ void main() {
         CrdtOpBuilder.decodePayload(profileOps.single.payload)['handle'],
         'canonical.elix.cool',
       );
+      expect(
+        CrdtOpBuilder.decodePayload(
+          profileOps.single.payload,
+        )['credentialTypes'],
+        ['AgeOver18Credential'],
+      );
 
       // Unchanged profile -> no new op.
       await build().syncAll(pullRemote: false);
@@ -512,6 +541,24 @@ void main() {
             .length,
         1,
       );
+
+      // Removing a Wallet credential from the profile produces a new signed
+      // profile state without deleting the local credential.
+      await profilePreferences.setSelected(
+        holderDid: 'did:plc:reader',
+        credentialId: 'vc-age',
+        selected: false,
+      );
+      await build().syncAll(pullRemote: false);
+      profileOps = (await opsQueue.listAll())
+          .where((o) => o.entityType == 'profile')
+          .toList();
+      expect(profileOps.length, 2);
+      expect(
+        CrdtOpBuilder.decodePayload(profileOps.last.payload)['credentialTypes'],
+        isEmpty,
+      );
+      expect(await wallet.listCredentials(), hasLength(1));
 
       // Changed display name -> a new profile op is published.
       await contacts.upsertContact(
@@ -529,7 +576,7 @@ void main() {
         (await opsQueue.listAll())
             .where((o) => o.entityType == 'profile')
             .length,
-        2,
+        3,
       );
     },
   );

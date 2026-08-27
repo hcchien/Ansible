@@ -170,6 +170,7 @@ function legalHref(path) {
 /// dead links.
 function renderMobileTabBar(viewModel) {
   const authenticated = Boolean(viewModel.session?.authenticated);
+  const subjectDid = viewModel.session?.subjectDid || viewModel.session?.subject;
   const items = [
     { id: 'home', label: t('common.feed'), href: '#/', glyph: 'home' },
     { id: 'boards', label: t('common.boards'), href: '#/boards', glyph: 'search' },
@@ -181,9 +182,13 @@ function renderMobileTabBar(viewModel) {
       unreadCount: viewModel.notifications?.unreadCount ?? 0,
     },
     {
-      id: authenticated ? 'sessions' : 'login',
+      id: authenticated && subjectDid ? 'profile' : authenticated ? 'sessions' : 'login',
       label: authenticated ? t('common.you') : t('common.login'),
-      href: authenticated ? '#/sessions' : '#/login',
+      href: authenticated && subjectDid
+        ? `#/profiles/${encodeURIComponent(subjectDid)}`
+        : authenticated
+          ? '#/sessions'
+          : '#/login',
       glyph: 'eye',
     },
   ];

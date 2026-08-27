@@ -46,6 +46,40 @@ assert.match(faqHtml, /數位皮夾怎麼避免揭露太多資料？/);
 assert.match(faqHtml, /憑證只有年齡、國籍和真人驗證嗎？我或組織也能發嗎？/);
 assert.match(faqHtml, /Elix 愛好者/);
 
+const profileHtml = renderPageBody(buildAppViewModel({
+  route: { pageId: PAGE_IDS.profile, params: { did: 'did:elix:mira' } },
+  session: { authenticated: false, trustTier: 'anonymous', scopes: [] },
+  forum: {
+    profile: {
+      did: 'did:elix:mira',
+      displayName: 'Mira Lin',
+      handle: 'mira.elix.cool',
+      bio: '寫字，也聽別人說話。',
+      reputationTier: 'verified_human',
+      missing: false,
+    },
+    profilePosts: [
+      {
+        id: 'post-1',
+        type: 'discussion',
+        title: '一則公開討論',
+        body: '只顯示公開內容。',
+        boardId: 'general',
+        threadId: 'thread-1',
+        createdAt: '2026-08-27T04:00:00Z',
+      },
+    ],
+  },
+}));
+assert.match(profileHtml, /class="cols profile-layout"/);
+assert.match(profileHtml, /Mira Lin/);
+assert.match(profileHtml, /@mira\.elix\.cool/);
+assert.match(profileHtml, /寫字，也聽別人說話。/);
+assert.match(profileHtml, /已驗證真人/);
+assert.match(profileHtml, /只顯示對方主動發布/);
+assert.match(profileHtml, /#\/boards\/general\/threads\/thread-1/);
+assert.doesNotMatch(profileHtml, /國籍|18\+|passport|legal name/i);
+
 const homeHarness = createFrontendFlowHarness({ routeHash: '#/', sessionMode: 'anonymous' });
 const homeState = await runPublicHomeFlow(homeHarness);
 const homeHtml = renderPageBody(homeState.viewModel);
@@ -415,7 +449,7 @@ assert.match(moderatedBoardHtml, /class="board-thread-status"/);
 assert.match(moderatedBoardHtml, /class="board-thread-board"/);
 assert.match(moderatedBoardHtml, /#<\/span>General/);
 assert.match(moderatedBoardHtml, /class="board-thread-avatar"/);
-assert.match(moderatedBoardHtml, /class="did-handle"/);
+assert.match(moderatedBoardHtml, /class="did-handle profile-author-link"/);
 assert.match(moderatedBoardHtml, /class="pk-pill"/);
 assert.doesNotMatch(moderatedBoardHtml, /class="thread-posts"/);
 
@@ -488,7 +522,7 @@ assert.match(threadDetailHtml, /class="thread-detail-shell"/);
 assert.match(threadDetailHtml, /class="thread-hd"/);
 assert.match(threadDetailHtml, /THREAD · 討論串/);
 assert.match(threadDetailHtml, /Open thread/);
-assert.match(threadDetailHtml, /class="did-handle"/);
+assert.match(threadDetailHtml, /class="did-handle profile-author-link"/);
 assert.match(threadDetailHtml, /class="pk-pill"/);
 assert.match(threadDetailHtml, /class="thread-op"/);
 assert.match(threadDetailHtml, /起頭 · <span class="thread-source-strong">signed · PK<\/span>/);

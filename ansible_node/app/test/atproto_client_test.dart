@@ -166,4 +166,34 @@ void main() {
 
     expect(tier, 'verified_human');
   });
+
+  test(
+    'presents a selected VC only to the profile verification endpoint',
+    () async {
+      final client = AtProtoClient(
+        baseUrl: 'http://relay.local',
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/v2/profile/credentials/present');
+          expect(jsonDecode(request.body), {
+            'holder_did': 'did:plc:alice',
+            'vp': {'holder': 'did:plc:alice'},
+          });
+          return http.Response(
+            jsonEncode({
+              'credential': {'badge': 'age_over_18'},
+            }),
+            200,
+          );
+        }),
+      );
+
+      final result = await client.presentPublicProfileCredential(
+        holderDid: 'did:plc:alice',
+        vp: {'holder': 'did:plc:alice'},
+      );
+
+      expect(result['credential'], {'badge': 'age_over_18'});
+    },
+  );
 }

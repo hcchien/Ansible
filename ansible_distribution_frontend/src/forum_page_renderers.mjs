@@ -42,6 +42,9 @@ export function renderPageBody(viewModel, uiState = {}) {
     case PAGE_IDS.thread:
       bodyHtml = renderThreadDetail(viewModel, uiState);
       break;
+    case PAGE_IDS.profile:
+      bodyHtml = renderProfile(viewModel);
+      break;
     case PAGE_IDS.login:
       bodyHtml = renderLogin(viewModel, uiState.login ?? {});
       break;
@@ -62,6 +65,114 @@ export function renderPageBody(viewModel, uiState = {}) {
   }
 
   return `${renderThreadDraftForm(uiState.threadDraft)}${bodyHtml}`;
+}
+
+function renderProfile(viewModel) {
+  const profile = viewModel.profile ?? {};
+  const did = String(profile.did ?? viewModel.route?.params?.did ?? '').trim();
+  const handle = String(profile.handle ?? '').trim().replace(/^@/, '');
+  const displayName = String(profile.displayName ?? '').trim() || handle || shortIdentity(did);
+  const bio = String(profile.bio ?? '').trim();
+  const posts = viewModel.profilePosts ?? [];
+  const initial = threadInitial(displayName, did);
+  const tier = profile.reputationTier ?? 'basic';
+  const credentials = Array.isArray(profile.publicCredentials) ? profile.publicCredentials : [];
+  const privacyCopy = profile.missing
+    ? t('profile.missingPrivacyBody')
+    : t('profile.privacyBody');
+
+  return `
+    <section class="cols profile-layout" aria-labelledby="profile-title">
+      ${renderLeftRail(viewModel, 'you')}
+      <section class="feed profile-feed" aria-labelledby="profile-title">
+        <header class="public-profile-head">
+          <span class="public-profile-avatar" aria-hidden="true">${escapeHtml(initial)}</span>
+          <div class="public-profile-copy">
+            <p class="section-label">${escapeHtml(t('profile.publicLabel'))}</p>
+            <h1 id="profile-title">${escapeHtml(displayName)}</h1>
+            ${handle ? `<p class="public-profile-handle">@${escapeHtml(handle)}</p>` : ''}
+            <p class="public-profile-did" title="${escapeAttribute(did)}">${escapeHtml(shortIdentity(did))}</p>
+            ${bio ? `<p class="public-profile-bio">${escapeHtml(bio)}</p>` : ''}
+            <div class="public-profile-badges">
+              ${profile.missing ? '' : `<span class="profile-badge">${icon('eye', 14)}${escapeHtml(t('profile.publicLabel'))}</span>`}
+              <span class="profile-badge is-trust">${sealIcon(14)}${escapeHtml(trustTierLabel(tier))}</span>
+              ${credentials.map(renderPublicCredentialBadge).join('')}
+            </div>
+          </div>
+        </header>
+        ${profile.missing ? `<p class="profile-not-published">${escapeHtml(t('profile.notPublished'))}</p>` : ''}
+        <div class="profile-posts-head">
+          <h2>${escapeHtml(t('profile.publicPosts'))}</h2>
+          <span class="label-mono">${escapeHtml(String(posts.length))}</span>
+        </div>
+        <div class="profile-post-list">
+          ${viewModel.profilePostsUnavailable
+            ? `<p class="empty-state">${escapeHtml(t('profile.postsUnavailable'))}</p>`
+            : posts.length
+              ? posts.map(renderProfilePost).join('')
+              : `<p class="empty-state">${escapeHtml(t('profile.noPosts'))}</p>`}
+        </div>
+      </section>
+      <aside class="side profile-context">
+        <section class="card">
+          <h5>${escapeHtml(t('profile.privacyTitle'))}</h5>
+          <p>${escapeHtml(privacyCopy)}</p>
+        </section>
+        <section class="card profile-trust-card">
+          <h5>${escapeHtml(t('profile.trustTitle'))}</h5>
+          <span class="profile-trust-line">${sealIcon(16)}${escapeHtml(trustTierLabel(tier))}</span>
+        </section>
+        ${credentials.length ? `
+          <section class="card profile-credential-card">
+            <h5>${escapeHtml(t('profile.credentialsTitle'))}</h5>
+            <div class="profile-credential-list">
+              ${credentials.map((credential) => `
+                <div>
+                  <strong>${escapeHtml(publicCredentialLabel(credential))}</strong>
+                  <span>${escapeHtml(credential.issuerDid)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+        ` : ''}
+      </aside>
+    </section>
+  `;
+}
+
+function renderPublicCredentialBadge(credential) {
+  return `<span class="profile-badge is-credential">${sealIcon(14)}${escapeHtml(publicCredentialLabel(credential))}</span>`;
+}
+
+function publicCredentialLabel(credential) {
+  switch (credential?.badge) {
+    case 'age_over_18': return t('profile.credential.age18');
+    case 'nationality': return t('profile.credential.nationality', { value: credential.value });
+    case 'taiwan_citizenship': return t('profile.credential.taiwanCitizen');
+    case 'human_assurance': return trustTierLabel(credential.value);
+    default: return credential?.credentialType ?? '';
+  }
+}
+
+function renderProfilePost(post) {
+  const typeLabel = post.type === 'note'
+    ? t('common.note')
+    : post.type === 'murmur'
+      ? t('common.murmur')
+      : t('profile.discussion');
+  const href = post.type === 'discussion' && post.boardId && post.threadId
+    ? `#/boards/${encodeURIComponent(post.boardId)}/threads/${encodeURIComponent(post.threadId)}`
+    : null;
+  const title = post.title ? `<h3>${escapeHtml(post.title)}</h3>` : '';
+  const body = post.body ? `<p>${escapeHtml(post.body)}</p>` : '';
+  const inner = `
+    <span class="profile-post-source">${escapeHtml(typeLabel)}</span>
+    ${post.createdAt ? renderThreadTime(post.createdAt, 'profile-post-time') : ''}
+    ${title}${body}
+  `;
+  return href
+    ? `<a class="profile-post-card" href="${escapeAttribute(href)}">${inner}<span class="profile-post-arrow" aria-hidden="true">→</span></a>`
+    : `<article class="profile-post-card">${inner}</article>`;
 }
 
 function renderNotifications(viewModel) {
@@ -328,10 +439,21 @@ function renderThreadIdentity(entity) {
   const signed = Boolean(author);
   return `
     <span class="thread-identity">
-      <span class="did-handle"${author && label !== shortIdentity(author) ? ` title="${escapeAttribute(author)}"` : ''}>${escapeHtml(label)}</span>
+      ${renderProfileAuthorLink({ author, label, className: 'did-handle' })}
       ${signed ? renderPkPill() : ''}
     </span>
   `;
+}
+
+function renderProfileAuthorLink({ author, label, className }) {
+  const identity = String(author ?? '').trim();
+  const title = identity && label !== shortIdentity(identity)
+    ? ` title="${escapeAttribute(identity)}"`
+    : '';
+  if (!identity.startsWith('did:')) {
+    return `<span class="${escapeAttribute(className)}"${title}>${escapeHtml(label)}</span>`;
+  }
+  return `<a class="${escapeAttribute(className)} profile-author-link" href="#/profiles/${encodeURIComponent(identity)}"${title}>${escapeHtml(label)}</a>`;
 }
 
 function renderThreadTime(value, className = 'thread-time') {
@@ -366,7 +488,7 @@ function renderThreadOriginalPost(thread, context = {}) {
       </div>
       <div class="thread-post-content">
         <div class="thread-post-top">
-          <span class="thread-author"${author && authorLabel !== shortIdentity(author) ? ` title="${escapeAttribute(author)}"` : ''}>${escapeHtml(authorLabel)}</span>
+          ${renderProfileAuthorLink({ author, label: authorLabel, className: 'thread-author' })}
           <span class="thread-source">${escapeHtml(t('thread.originalMarker'))}${signed ? ` · <span class="thread-source-strong">${escapeHtml(t('thread.signedPk'))}</span>` : ''}</span>
           ${renderThreadTime(thread.createdAt ?? thread.updatedAt, 'thread-post-time')}
           ${ownerActions}
@@ -474,7 +596,9 @@ function renderThreadReplyItem(post, context = {}) {
         <div class="thread-reply-avatar${anonymous ? ' is-anonymous' : ''}">${escapeHtml(avatar)}</div>
         <div class="thread-reply-content">
           <div class="thread-reply-top">
-            <span class="thread-reply-name"${title}>${escapeHtml(authorLabel)}</span>
+            ${anonymous
+              ? `<span class="thread-reply-name"${title}>${escapeHtml(authorLabel)}</span>`
+              : renderProfileAuthorLink({ author, label: authorLabel, className: 'thread-reply-name' })}
             ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
           </div>
           ${renderRemovedTombstone(post.reasonCode)}
@@ -502,7 +626,9 @@ function renderThreadReplyItem(post, context = {}) {
       <div class="thread-reply-avatar${anonymous ? ' is-anonymous' : ''}">${escapeHtml(avatar)}</div>
       <div class="thread-reply-content">
         <div class="thread-reply-top">
-          <span class="thread-reply-name${anonymous ? ' is-anonymous' : ''}"${title}>${escapeHtml(authorLabel)}</span>
+          ${anonymous
+            ? `<span class="thread-reply-name is-anonymous"${title}>${escapeHtml(authorLabel)}</span>`
+            : renderProfileAuthorLink({ author, label: authorLabel, className: 'thread-reply-name' })}
           ${renderThreadTime(post.createdAt ?? post.updatedAt, 'thread-reply-time')}
           ${ownerActions}
         </div>

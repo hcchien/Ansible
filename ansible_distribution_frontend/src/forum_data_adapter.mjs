@@ -9,7 +9,13 @@ import {
   submitWebModerationAction,
   submitWebReport,
 } from './forum_host_client.mjs';
-import { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed } from './appview_client.mjs';
+import {
+  fetchAuthorTimeline,
+  fetchBoardExternalContent,
+  fetchBoardFeed,
+  fetchPublicProfile,
+  fetchThreadFeed,
+} from './appview_client.mjs';
 import {
   createWebNotificationReadStore,
   projectWebReplyNotifications,
@@ -60,7 +66,13 @@ export function createForumDataAdapter({
     submitBoardPollVote,
   },
   webPublicationClient = { createPasskeySignedThread, createPasskeySignedOperation },
-  appViewClient = { fetchBoardExternalContent, fetchBoardFeed, fetchThreadFeed },
+  appViewClient = {
+    fetchAuthorTimeline,
+    fetchBoardExternalContent,
+    fetchBoardFeed,
+    fetchPublicProfile,
+    fetchThreadFeed,
+  },
 }) {
   const notificationReadStore = createWebNotificationReadStore({ storage });
   const publicHandleCache = new Map();
@@ -114,6 +126,47 @@ export function createForumDataAdapter({
         threads,
         unavailable: feedResults.some((result) => result.unavailable),
       },
+    };
+  }
+
+  async function loadProfilePage({ did, sessionViewModel } = {}) {
+    const identity = String(did ?? '').trim();
+    const home = await loadForumHome({ sessionViewModel });
+    const [profileResult, timelineResult] = await Promise.allSettled([
+      appViewClient.fetchPublicProfile({
+        appViewBaseUrl,
+        fetchImpl,
+        did: identity,
+      }),
+      appViewClient.fetchAuthorTimeline({
+        appViewBaseUrl,
+        fetchImpl,
+        did: identity,
+        limit: 100,
+      }),
+    ]);
+
+    const profile = profileResult.status === 'fulfilled'
+      ? normalizePublicProfile(profileResult.value, identity)
+      : {
+          did: identity,
+          handle: null,
+          displayName: null,
+          bio: null,
+          reputationTier: 'basic',
+          missing: true,
+          unavailable: profileResult.reason?.status !== 404,
+        };
+    const profilePosts = timelineResult.status === 'fulfilled'
+      ? buildPublicProfileEntries(timelineResult.value?.items ?? [])
+      : [];
+
+    return {
+      ...home,
+      profile,
+      profilePosts,
+      profilePostsUnavailable: timelineResult.status === 'rejected',
+      error: null,
     };
   }
 
@@ -589,6 +642,7 @@ export function createForumDataAdapter({
 
   return {
     loadForumHome,
+    loadProfilePage,
     loadBoardPage,
     loadThreadPage,
     loadNotifications,
@@ -601,6 +655,136 @@ export function createForumDataAdapter({
     loadModerationConsole,
     submitModerationAction,
   };
+}
+
+function normalizePublicProfile(raw, fallbackDid) {
+  return {
+    did: String(raw?.did ?? fallbackDid ?? '').trim(),
+    handle: cleanPublicText(raw?.handle),
+    displayName: cleanPublicText(raw?.display_name ?? raw?.displayName),
+    bio: cleanPublicText(raw?.bio),
+    avatarUrl: cleanPublicText(raw?.avatar_url ?? raw?.avatarUrl),
+    reputationTier: cleanPublicText(
+      raw?.reputation_tier ?? raw?.reputationTier,
+    ) ?? 'basic',
+    publicCredentials: Array.isArray(raw?.public_credentials)
+      ? raw.public_credentials.map(normalizePublicCredential).filter(Boolean)
+      : [],
+    missing: false,
+    unavailable: false,
+  };
+}
+
+function normalizePublicCredential(raw) {
+  const credentialType = cleanPublicText(raw?.credential_type ?? raw?.credentialType);
+  const issuerDid = cleanPublicText(raw?.issuer_did ?? raw?.issuerDid);
+  const badge = cleanPublicText(raw?.badge);
+  const value = cleanPublicText(raw?.value);
+  const validUntil = cleanPublicText(raw?.valid_until ?? raw?.validUntil);
+  if (!credentialType || !issuerDid || !badge || !value) return null;
+  return { credentialType, issuerDid, badge, value, validUntil };
+}
+
+export function buildPublicProfileEntries(items = []) {
+  const publicItems = items.filter((item) => {
+    const visibility = String(item?.visibility ?? 'public').trim().toLowerCase();
+    return visibility === '' || visibility === 'public';
+  });
+  const threads = new Map(
+    publicItems
+      .filter((item) => item?.entity_type === 'thread' || item?.entityType === 'thread')
+      .map((item) => [String(item.entity_id ?? item.entityId ?? ''), item]),
+  );
+  const entries = new Map();
+
+  for (const item of publicItems) {
+    const type = item?.entity_type ?? item?.entityType;
+    const id = String(item?.entity_id ?? item?.entityId ?? '').trim();
+    if (!id) continue;
+    const payload = item?.payload && typeof item.payload === 'object' ? item.payload : {};
+
+    if (type === 'post') {
+      if (cleanPublicText(payload.parentPostId ?? payload.parent_post_id)) continue;
+      const threadId = cleanPublicText(
+        item.thread_id ?? item.threadId ?? payload.threadId ?? payload.thread_id,
+      );
+      const boardId = cleanPublicText(
+        item.board_id ?? item.boardId ?? payload.boardId ?? payload.board_id,
+      );
+      if (!threadId || !boardId) continue;
+      const thread = threads.get(threadId);
+      const threadPayload = thread?.payload ?? {};
+      entries.set(`thread:${threadId}`, profileEntry(item, {
+        id,
+        type: 'discussion',
+        title: cleanPublicText(
+          payload.title ?? payload.threadTitle ?? threadPayload.title,
+        ),
+        body: cleanPublicText(
+          payload.content ?? threadPayload.description,
+        ) ?? '',
+        boardId,
+        threadId,
+        createdAt: item.created_at ?? item.createdAt ?? thread?.created_at ?? thread?.createdAt,
+      }));
+      continue;
+    }
+
+    if (type === 'thread') {
+      const threadId = id;
+      if (!entries.has(`thread:${threadId}`)) {
+        entries.set(`thread:${threadId}`, profileEntry(item, {
+          id,
+          type: 'discussion',
+          title: cleanPublicText(payload.title),
+          body: cleanPublicText(payload.description) ?? '',
+          boardId: cleanPublicText(
+            item.board_id ?? item.boardId ?? payload.boardId ?? payload.board_id,
+          ),
+          threadId,
+          createdAt: item.created_at ?? item.createdAt,
+        }));
+      }
+      continue;
+    }
+
+    if (type === 'note' || type === 'murmur') {
+      entries.set(`${type}:${id}`, profileEntry(item, {
+        id,
+        type,
+        title: cleanPublicText(payload.title),
+        body: cleanPublicText(payload.body) ?? '',
+        boardId: null,
+        threadId: null,
+        createdAt: item.created_at ?? item.createdAt,
+      }));
+    }
+  }
+
+  return [...entries.values()].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt ?? '') || 0;
+    const bTime = Date.parse(b.createdAt ?? '') || 0;
+    return bTime - aTime;
+  });
+}
+
+function profileEntry(item, entry) {
+  return {
+    ...entry,
+    authorDid: cleanPublicText(item.author_did ?? item.authorDid),
+    authorHandle: cleanPublicText(item.author_handle ?? item.authorHandle),
+    authorDisplayName: cleanPublicText(
+      item.author_display_name ?? item.authorDisplayName,
+    ),
+    reputationTier: cleanPublicText(
+      item.reputation_tier ?? item.reputationTier,
+    ) ?? 'basic',
+  };
+}
+
+function cleanPublicText(value) {
+  const text = String(value ?? '').trim();
+  return text || null;
 }
 
 function signInRequiredError() {

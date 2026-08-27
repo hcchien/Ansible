@@ -2,7 +2,8 @@ defmodule AnsibleAppview.Profiles do
   @moduledoc """
   Actor profiles projected from public `profile` ops — the directory that makes
   people findable. Only public profile fields are ever stored (handle, display
-  name, bio, avatar); no private metadata leaves the firehose.
+  name, bio, avatar, and Relay-verified minimal credential summaries); no
+  private metadata or complete VC leaves the firehose.
   """
 
   import Ecto.Query
@@ -16,14 +17,31 @@ defmodule AnsibleAppview.Profiles do
   def upsert(did, attrs, log_id) do
     row =
       attrs
-      |> Map.take([:handle, :display_name, :bio, :avatar_url, :author_tier])
+      |> Map.take([
+        :handle,
+        :display_name,
+        :bio,
+        :avatar_url,
+        :author_tier,
+        :public_credentials
+      ])
       |> Map.put(:did, did)
       |> Map.put(:updated_log_id, log_id)
 
     Repo.insert(
       struct(Profile, row),
       on_conflict:
-        {:replace, [:handle, :display_name, :bio, :avatar_url, :author_tier, :updated_log_id, :updated_at]},
+        {:replace,
+         [
+           :handle,
+           :display_name,
+           :bio,
+           :avatar_url,
+           :author_tier,
+           :public_credentials,
+           :updated_log_id,
+           :updated_at
+         ]},
       conflict_target: :did
     )
   end
@@ -35,9 +53,10 @@ defmodule AnsibleAppview.Profiles do
     limit = limit |> min(100) |> max(1)
 
     read_repo().all(
-      from p in Profile,
+      from(p in Profile,
         order_by: [desc: p.updated_log_id],
         limit: ^limit
+      )
     )
     |> Enum.map(&to_map/1)
   end
@@ -57,7 +76,7 @@ defmodule AnsibleAppview.Profiles do
       contains = "%" <> escape_like(q) <> "%"
 
       read_repo().all(
-        from p in Profile,
+        from(p in Profile,
           where:
             like(fragment("lower(?)", p.handle), ^contains) or
               like(fragment("lower(?)", p.display_name), ^contains),
@@ -72,6 +91,7 @@ defmodule AnsibleAppview.Profiles do
               )
           ],
           limit: ^limit
+        )
       )
       |> Enum.map(&to_map/1)
     end
@@ -85,7 +105,8 @@ defmodule AnsibleAppview.Profiles do
       display_name: p.display_name,
       bio: p.bio,
       avatar_url: p.avatar_url,
-      reputation_tier: p.author_tier
+      reputation_tier: p.author_tier,
+      public_credentials: Map.get(p.public_credentials || %{}, "items", [])
     }
   end
 

@@ -24,6 +24,10 @@ export function parseRoute(hash) {
     };
   }
 
+  if (segments.length === 2 && segments[0] === 'profiles') {
+    return { pageId: PAGE_IDS.profile, params: { did: segments[1] } };
+  }
+
   if (segments.length === 1 && segments[0] === 'sessions') {
     return { pageId: PAGE_IDS.sessions, params: {} };
   }
@@ -60,6 +64,9 @@ export function routeToHash(route) {
 
     case PAGE_IDS.thread:
       return `#/boards/${encodeURIComponent(route.params.boardId)}/threads/${encodeURIComponent(route.params.threadId)}`;
+
+    case PAGE_IDS.profile:
+      return `#/profiles/${encodeURIComponent(route.params.did)}`;
 
     case PAGE_IDS.sessions:
       return '#/sessions';
@@ -124,6 +131,14 @@ export function createPageController({
       const forum = await forumDataAdapter.loadThreadPage({
         boardId: route.params.boardId,
         threadId: route.params.threadId,
+        sessionViewModel: session,
+      });
+      return setStateWithNotifications(route, session, forum);
+    }
+
+    if (route.pageId === PAGE_IDS.profile) {
+      const forum = await forumDataAdapter.loadProfilePage({
+        did: route.params.did,
         sessionViewModel: session,
       });
       return setStateWithNotifications(route, session, forum);

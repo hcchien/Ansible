@@ -231,6 +231,19 @@ class AtProtoClient {
     return body['reputation_tier'] as String? ?? 'basic';
   }
 
+  /// Presents one explicitly selected Wallet VC for a minimal public-profile
+  /// badge. The Relay verifies the complete VP but returns only its sanitized
+  /// public summary.
+  Future<Map<String, dynamic>> presentPublicProfileCredential({
+    required String holderDid,
+    required Map<String, dynamic> vp,
+  }) {
+    return _postJson('/api/v2/profile/credentials/present', {
+      'holder_did': holderDid,
+      'vp': vp,
+    });
+  }
+
   /// GET /xrpc/com.atproto.identity.resolveHandle?handle=...
   /// Returns the resolved DID string.
   Future<String> resolveHandle(String handle) async {

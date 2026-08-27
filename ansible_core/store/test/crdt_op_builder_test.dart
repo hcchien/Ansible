@@ -242,6 +242,7 @@ void main() {
         handle: 'alice.example',
         displayName: 'Alice',
         bio: 'hello',
+        credentialTypes: const ['AgeOver18Credential', 'NationalityCredential'],
       );
 
       expect(op.entityType, 'profile');
@@ -254,6 +255,10 @@ void main() {
       expect(payload['displayName'], 'Alice');
       expect(payload['bio'], 'hello');
       expect(payload['visibility'], 'public');
+      expect(payload['credentialTypes'], [
+        'AgeOver18Credential',
+        'NationalityCredential',
+      ]);
     });
   });
 }

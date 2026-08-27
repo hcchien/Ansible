@@ -14,6 +14,7 @@ import 'notification_projector.dart';
 import 'nostr_publication_service.dart';
 import 'nostr_relay_settings_store.dart';
 import 'ops_dispatch_service.dart';
+import 'public_profile_credential_preferences.dart';
 import 'relay_identity_client.dart';
 import 'relay_ops_client.dart';
 import 'remote_sync_service.dart';
@@ -111,6 +112,8 @@ class AppSyncService {
     FollowRepository? followRepository,
     ContactRepository? contactRepository,
     DidReputationRepository? didReputationRepo,
+    WalletRepository? walletRepository,
+    PublicProfileCredentialPreferenceStore? profileCredentialPreferences,
     String? followerDid,
     NotificationProjector? notificationProjector,
     HostModerationSyncService? hostModerationSync,
@@ -137,6 +140,8 @@ class AppSyncService {
        _followRepository = followRepository,
        _contactRepository = contactRepository,
        _didReputationRepo = didReputationRepo,
+       _walletRepository = walletRepository,
+       _profileCredentialPreferences = profileCredentialPreferences,
        _followerDid = followerDid,
        _notificationProjector = notificationProjector,
        _hostModerationSync = hostModerationSync,
@@ -171,6 +176,8 @@ class AppSyncService {
   final FollowRepository? _followRepository;
   final ContactRepository? _contactRepository;
   final DidReputationRepository? _didReputationRepo;
+  final WalletRepository? _walletRepository;
+  final PublicProfileCredentialPreferenceStore? _profileCredentialPreferences;
   final String? _followerDid;
   final NotificationProjector? _notificationProjector;
   final HostModerationSyncService? _hostModerationSync;
@@ -346,11 +353,10 @@ class AppSyncService {
     final did = _followerDid;
     if (contacts == null || did == null || did.isEmpty) return false;
     final self = await contacts.contactForDid(did);
-    if (self == null) return false;
-    final handle = _blank(self.handle);
-    final displayName = _blank(self.displayName);
-    final avatarUrl = _blank(self.avatarUrl);
-    if (handle == null && displayName == null) return false;
+    final handle = _blank(self?.handle);
+    final displayName = _blank(self?.displayName);
+    final avatarUrl = _blank(self?.avatarUrl);
+    final credentialTypes = await _selectedPublicCredentialTypes();
 
     OpsQueueEntry? latest;
     for (final op in existingOps.where(
@@ -360,11 +366,16 @@ class AppSyncService {
         latest = op;
       }
     }
-    if (latest == null) return true;
+    if (latest == null) {
+      return handle != null ||
+          displayName != null ||
+          credentialTypes.isNotEmpty;
+    }
     final previous = CrdtOpBuilder.decodePayload(latest.payload);
     return _blank(previous['handle'] as String?) != handle ||
         _blank(previous['displayName'] as String?) != displayName ||
-        _blank(previous['avatarUrl'] as String?) != avatarUrl;
+        _blank(previous['avatarUrl'] as String?) != avatarUrl ||
+        !_sameStringList(previous['credentialTypes'], credentialTypes);
   }
 
   Future<AppSyncResult> syncAll({
@@ -659,17 +670,15 @@ class AppSyncService {
 
     try {
       final self = await contacts.contactForDid(did);
-      if (self == null) return 0;
 
       final canonical = await _canonicalIdentityStore.load();
       final canonicalHandle = canonical?.did == did
           ? _blank(canonical!.handle)
           : null;
-      final handle = canonicalHandle ?? _blank(self.handle);
-      final displayName = _blank(self.displayName);
-      final avatarUrl = _blank(self.avatarUrl);
-      // Nothing public to announce yet.
-      if (handle == null && displayName == null) return 0;
+      final handle = canonicalHandle ?? _blank(self?.handle);
+      final displayName = _blank(self?.displayName);
+      final avatarUrl = _blank(self?.avatarUrl);
+      final credentialTypes = await _selectedPublicCredentialTypes();
 
       // Skip if the last published profile already matches the public subset.
       OpsQueueEntry? latest;
@@ -679,11 +688,19 @@ class AppSyncService {
           latest = op;
         }
       }
+      // Nothing public to announce yet and no earlier profile to retract.
+      if (latest == null &&
+          handle == null &&
+          displayName == null &&
+          credentialTypes.isEmpty) {
+        return 0;
+      }
       if (latest != null) {
         final prev = CrdtOpBuilder.decodePayload(latest.payload);
         if (_blank(prev['handle'] as String?) == handle &&
             _blank(prev['displayName'] as String?) == displayName &&
-            _blank(prev['avatarUrl'] as String?) == avatarUrl) {
+            _blank(prev['avatarUrl'] as String?) == avatarUrl &&
+            _sameStringList(prev['credentialTypes'], credentialTypes)) {
           return 0;
         }
       }
@@ -694,6 +711,7 @@ class AppSyncService {
           handle: handle,
           displayName: displayName,
           avatarUrl: avatarUrl,
+          credentialTypes: credentialTypes,
         ),
       );
       return 1;
@@ -707,6 +725,40 @@ class AppSyncService {
     final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) return null;
     return trimmed;
+  }
+
+  Future<List<String>> _selectedPublicCredentialTypes() async {
+    final wallet = _walletRepository;
+    final preferences = _profileCredentialPreferences;
+    final did = _followerDid;
+    if (wallet == null || preferences == null || did == null || did.isEmpty) {
+      return const <String>[];
+    }
+    final selected = await preferences.selectedCredentialIds(did);
+    if (selected.isEmpty) return const <String>[];
+    final now = DateTime.now();
+    final types =
+        (await wallet.listCredentials())
+            .where(
+              (credential) =>
+                  selected.contains(credential.credentialId) &&
+                  credential.status == WalletCredentialStatus.active &&
+                  credential.validUntil.isAfter(now) &&
+                  isPublicProfileCredentialType(credential.credentialType),
+            )
+            .map((credential) => credential.credentialType)
+            .toSet()
+            .toList()
+          ..sort();
+    return types;
+  }
+
+  static bool _sameStringList(Object? raw, List<String> expected) {
+    final actual = raw is List
+        ? (raw.whereType<String>().toSet().toList()..sort())
+        : <String>[];
+    return actual.length == expected.length &&
+        actual.indexed.every((entry) => entry.$2 == expected[entry.$1]);
   }
 
   /// Read-only refreshes must not mint a new protected-board proof. Callers

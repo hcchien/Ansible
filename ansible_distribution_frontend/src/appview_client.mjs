@@ -79,3 +79,33 @@ export async function fetchThreadFeed({
     `/api/v1/thread/${encodeURIComponent(threadId)}${suffix}`,
   );
 }
+
+// Public profile projection: only fields deliberately published in a signed
+// profile op are returned by AppView. The DID remains the stable identifier;
+// these presentation fields never participate in browser authorization.
+export async function fetchPublicProfile({
+  appViewBaseUrl,
+  fetchImpl = globalThis.fetch,
+  did,
+}) {
+  return createRelayApiClient({ relayBaseUrl: appViewBaseUrl, fetchImpl }).getJson(
+    `/api/v1/profiles/${encodeURIComponent(did)}`,
+  );
+}
+
+export async function fetchAuthorTimeline({
+  appViewBaseUrl,
+  fetchImpl = globalThis.fetch,
+  did,
+  cursor = null,
+  limit = 100,
+}) {
+  return createRelayApiClient({ relayBaseUrl: appViewBaseUrl, fetchImpl }).postJson(
+    '/api/v1/timeline',
+    {
+      dids: [did],
+      ...(cursor == null || cursor === '' ? {} : { cursor }),
+      limit,
+    },
+  );
+}

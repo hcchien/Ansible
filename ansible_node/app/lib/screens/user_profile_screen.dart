@@ -14,6 +14,7 @@ import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/follow_button.dart';
 import 'posts_view_screen.dart';
+import 'wallet_screen.dart';
 
 typedef PublicProfilePostsLoader =
     Future<List<AppViewTimelineItem>> Function(String did);
@@ -34,6 +35,7 @@ class UserProfileScreen extends StatefulWidget {
     required this.did,
     this.displayName,
     this.resolver,
+    this.profileResolver,
     this.publicPostsLoader,
   });
 
@@ -44,6 +46,10 @@ class UserProfileScreen extends StatefulWidget {
 
   /// Overridable for tests; defaults to the shared process-wide resolver.
   final HandleResolver? resolver;
+
+  /// Public, presentation-only profile resolver. The returned fields are
+  /// never used for signing, authorization, or follow-target identity.
+  final PublicProfileResolver? profileResolver;
 
   /// Public, signature-verified author timeline. Tests inject a deterministic
   /// loader; production uses the configured first-party AppView.
@@ -58,10 +64,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   late final DidReputationRepository _reputationRepo;
   late final FollowService _followService;
   late final HandleResolver _resolver;
+  late final PublicProfileResolver _profileResolver;
   FollowButtonStatus _status = FollowButtonStatus.notFollowing;
   String? _targetId;
   String _tier = 'basic';
   String? _handle;
+  String? _publishedDisplayName;
+  String? _bio;
+  String? _publishedTier;
+  List<PublicProfileCredential> _publicCredentials = const [];
+  bool _hasPublishedProfile = false;
   List<_PublicProfileEntry> _publicPosts = const [];
   String? _publicPostsError;
   bool _loadingPublicPosts = true;
@@ -73,7 +85,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _followRepo = DriftFollowRepository(widget.db);
     _reputationRepo = DriftDidReputationRepository(widget.db);
     _resolver = widget.resolver ?? HandleResolver.shared;
+    _profileResolver = widget.profileResolver ?? PublicProfileResolver.shared;
     _handle = _resolver.cached(widget.did);
+    final cachedProfile = _profileResolver.cached(widget.did);
+    _publishedDisplayName = cachedProfile?.displayName;
+    _bio = cachedProfile?.bio;
+    _hasPublishedProfile = cachedProfile != null;
+    if ((cachedProfile?.handle ?? '').isNotEmpty) {
+      _handle = cachedProfile!.handle;
+    }
+    _publishedTier = cachedProfile?.reputationTier;
+    _publicCredentials = cachedProfile?.publicCredentials ?? const [];
     _followService = FollowService(
       followRepository: _followRepo,
       outboxRepository: DriftFollowActivityOutboxRepository(widget.db),
@@ -83,7 +105,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
     _loadStatus();
     _loadHandle();
+    _loadProfile();
     _loadPublicPosts();
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await _profileResolver.profileFor(widget.did);
+    if (!mounted || profile == null) return;
+    setState(() {
+      _publishedDisplayName = profile.displayName;
+      _bio = profile.bio;
+      _hasPublishedProfile = true;
+      if ((profile.handle ?? '').isNotEmpty) _handle = profile.handle;
+      _publishedTier = profile.reputationTier;
+      _publicCredentials = profile.publicCredentials;
+    });
   }
 
   Future<void> _loadPublicPosts() async {
@@ -189,16 +225,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final passedName = widget.displayName?.trim();
+    final publishedName = _publishedDisplayName?.trim();
     final hasHandle = _handle != null && _handle!.isNotEmpty;
     // Prefer an explicit display name, else the resolved handle, else a short
     // DID — never show the bare DID as the primary identity.
     final displayName = (passedName != null && passedName.isNotEmpty)
         ? passedName
+        : (publishedName != null && publishedName.isNotEmpty)
+        ? publishedName
         : (hasHandle ? _handle! : shortenDid(widget.did));
     final handleLine = hasHandle ? '@${_handle!}' : null;
-    final verified = PostingGate.isVerifiedHuman(_tier);
-    final humanAssured = PostingGate.isHumanAssured(_tier);
-    final assuranceLabel = switch (_tier) {
+    final effectiveTier = (_publishedTier ?? '').isNotEmpty
+        ? _publishedTier!
+        : _tier;
+    final verified = PostingGate.isVerifiedHuman(effectiveTier);
+    final humanAssured = PostingGate.isHumanAssured(effectiveTier);
+    final assuranceLabel = switch (effectiveTier) {
       PostingGate.uniqueHumanTier => context.uiCopy(
         zh: '強唯一性真人',
         en: 'Unique Human',
@@ -217,160 +259,270 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return AnsibleScreenScaffold(
       title: context.uiCopy(zh: '個人檔案', en: 'PROFILE'),
       leadingLabel: context.uiCopy(zh: '← 返回', en: '← Back'),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            displayName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: AnsibleDesign.ink,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final desktop = constraints.maxWidth >= 900;
+          final profile = _buildProfileColumn(
+            context,
+            displayName: displayName,
+            handleLine: handleLine,
+            verified: verified,
+            humanAssured: humanAssured,
+            assuranceLabel: assuranceLabel,
+          );
+          return SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              desktop ? 32 : 18,
+              8,
+              desktop ? 32 : 18,
+              40,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: desktop
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: profile),
+                          const SizedBox(width: 28),
+                          SizedBox(
+                            width: 300,
+                            child: _ProfileContextRail(
+                              hasPublishedProfile: _hasPublishedProfile,
+                              assuranceLabel: humanAssured
+                                  ? assuranceLabel
+                                  : null,
                             ),
                           ),
-                        ),
-                        if (verified) ...[
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.verified,
-                            size: 18,
-                            color: AnsibleDesign.accent,
-                          ),
                         ],
-                      ],
-                    ),
-                    if (handleLine != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        handleLine,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AnsibleDesign.inkMuted,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              _Avatar(seed: displayName),
-            ],
-          ),
-          if (humanAssured) ...[
-            const SizedBox(height: 12),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  verified ? Icons.verified : Icons.face_retouching_natural,
-                  size: 15,
-                  color: AnsibleDesign.accent,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  assuranceLabel,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AnsibleDesign.inkMuted,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (widget.did != widget.followerDid) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FollowButton(
-                status: _status,
-                onPressed: _busy ? null : _onPressed,
+                      )
+                    : profile,
               ),
             ),
-          ],
-          const SizedBox(height: 24),
-          // Raw DID kept as a small, copyable secondary identifier.
-          Text(
-            'DID',
-            style: TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 9,
-              letterSpacing: 1.4,
-              color: AnsibleDesign.inkFaint,
-            ),
-          ),
-          const SizedBox(height: 4),
-          SelectableText(
-            widget.did,
-            style: const TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 12,
-              color: AnsibleDesign.inkFaint,
-            ),
-          ),
-          const SizedBox(height: 28),
-          const Divider(height: 1, color: AnsibleDesign.ruleSoft),
-          const SizedBox(height: 18),
-          Text(
-            context.uiCopy(zh: '公開貼文', en: 'PUBLIC POSTS'),
-            style: const TextStyle(
-              fontFamily: AnsibleDesign.mono,
-              fontSize: 10,
-              letterSpacing: 1.3,
-              color: AnsibleDesign.inkFaint,
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (_loadingPublicPosts)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 28),
-              child: Center(
-                child: SizedBox.square(
-                  dimension: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
-          else if (_publicPostsError != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Text(
-                _publicPostsError!,
-                style: const TextStyle(color: AnsibleDesign.inkMuted),
-              ),
-            )
-          else if (_publicPosts.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Text(
-                context.uiCopy(zh: '目前沒有公開貼文', en: 'No public posts yet'),
-                style: const TextStyle(color: AnsibleDesign.inkMuted),
-              ),
-            )
-          else
-            for (final post in _publicPosts) ...[
-              _PublicProfilePostCard(
-                entry: post,
-                onTap: post.isDiscussion ? () => _openDiscussion(post) : null,
-              ),
-              const SizedBox(height: 10),
-            ],
-        ],
+          );
+        },
       ),
     );
+  }
+
+  Widget _buildProfileColumn(
+    BuildContext context, {
+    required String displayName,
+    required String? handleLine,
+    required bool verified,
+    required bool humanAssured,
+    required String assuranceLabel,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Avatar(seed: displayName),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          displayName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: AnsibleDesign.serif,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AnsibleDesign.ink,
+                          ),
+                        ),
+                      ),
+                      if (verified) ...[
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.verified,
+                          size: 18,
+                          color: AnsibleDesign.accent,
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (handleLine != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      handleLine,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AnsibleDesign.inkMuted,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  SelectableText(
+                    widget.did,
+                    style: const TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 10.5,
+                      color: AnsibleDesign.inkFaint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if ((_bio ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Text(
+            _bio!.trim(),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 14.5,
+              height: 1.65,
+              color: AnsibleDesign.ink,
+            ),
+          ),
+        ],
+        if (_hasPublishedProfile ||
+            humanAssured ||
+            _publicCredentials.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (_hasPublishedProfile)
+                _ProfileBadge(
+                  icon: Icons.public,
+                  label: context.uiCopy(zh: '公開 Profile', en: 'Public profile'),
+                ),
+              if (humanAssured)
+                _ProfileBadge(
+                  icon: verified
+                      ? Icons.verified
+                      : Icons.face_retouching_natural,
+                  label: assuranceLabel,
+                ),
+              for (final credential in _publicCredentials)
+                _ProfileBadge(
+                  icon: Icons.verified_user_outlined,
+                  label: _publicCredentialLabel(context, credential),
+                ),
+            ],
+          ),
+        ],
+        if (widget.did == widget.followerDid) ...[
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => WalletScreen(
+                  holderDid: widget.followerDid,
+                  repository: DriftWalletRepository(widget.db),
+                  db: widget.db,
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+            label: Text(
+              context.uiCopy(
+                zh: '管理個人檔案上的證明',
+                en: 'Manage profile credentials',
+              ),
+            ),
+          ),
+        ],
+        if (widget.did != widget.followerDid) ...[
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FollowButton(
+              status: _status,
+              onPressed: _busy ? null : _onPressed,
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+        const Divider(height: 1, color: AnsibleDesign.ruleSoft),
+        const SizedBox(height: 18),
+        Text(
+          context.uiCopy(zh: '公開貼文', en: 'PUBLIC POSTS'),
+          style: const TextStyle(
+            fontFamily: AnsibleDesign.mono,
+            fontSize: 10,
+            letterSpacing: 1.3,
+            color: AnsibleDesign.inkFaint,
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (_loadingPublicPosts)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 28),
+            child: Center(
+              child: SizedBox.square(
+                dimension: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else if (_publicPostsError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Text(
+              _publicPostsError!,
+              style: const TextStyle(color: AnsibleDesign.inkMuted),
+            ),
+          )
+        else if (_publicPosts.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Text(
+              context.uiCopy(zh: '目前沒有公開貼文', en: 'No public posts yet'),
+              style: const TextStyle(color: AnsibleDesign.inkMuted),
+            ),
+          )
+        else
+          for (final post in _publicPosts) ...[
+            _PublicProfilePostCard(
+              entry: post,
+              onTap: post.isDiscussion ? () => _openDiscussion(post) : null,
+            ),
+            const SizedBox(height: 10),
+          ],
+      ],
+    );
+  }
+
+  String _publicCredentialLabel(
+    BuildContext context,
+    PublicProfileCredential credential,
+  ) {
+    return switch (credential.badge) {
+      'age_over_18' => context.uiCopy(zh: '已滿 18 歲', en: 'Age 18+'),
+      'nationality' => context.uiCopy(
+        zh: '國籍 · ${credential.value}',
+        en: 'Nationality · ${credential.value}',
+      ),
+      'taiwan_citizenship' => context.uiCopy(zh: '台灣公民', en: 'Taiwan citizen'),
+      'human_assurance' => switch (credential.value) {
+        PostingGate.uniqueHumanTier => context.uiCopy(
+          zh: '強唯一性真人',
+          en: 'Unique Human',
+        ),
+        PostingGate.humanityLimitedTier => context.uiCopy(
+          zh: '有限真人保證',
+          en: 'Limited Human Assurance',
+        ),
+        _ => context.uiCopy(zh: '已驗證真人', en: 'Verified Human'),
+      },
+      _ => credential.credentialType,
+    };
   }
 
   Future<void> _openDiscussion(_PublicProfileEntry entry) async {
@@ -404,6 +556,140 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             en: 'Follow this board to open the full discussion in the app',
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileBadge extends StatelessWidget {
+  const _ProfileBadge({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paperElev,
+        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AnsibleDesign.accent),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: AnsibleDesign.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileContextRail extends StatelessWidget {
+  const _ProfileContextRail({
+    required this.hasPublishedProfile,
+    required this.assuranceLabel,
+  });
+
+  final bool hasPublishedProfile;
+  final String? assuranceLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProfileRailCard(
+          title: context.uiCopy(zh: '公開身分', en: 'PUBLIC IDENTITY'),
+          child: Text(
+            hasPublishedProfile
+                ? context.uiCopy(
+                    zh: '這裡只顯示對方主動發布的名稱、handle、簡介與公開貼文。私鑰與原始憑證不會進入這個頁面。',
+                    en: 'This page shows only the name, handle, bio, and posts the person chose to publish. Private keys and raw credentials never enter this surface.',
+                  )
+                : context.uiCopy(
+                    zh: '這個身分尚未發布公開 profile；仍可閱讀它已公開簽署的貼文。',
+                    en: 'This identity has not published a public profile. Its signed public posts can still be read.',
+                  ),
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              fontSize: 13,
+              height: 1.65,
+              color: AnsibleDesign.inkMuted,
+            ),
+          ),
+        ),
+        if (assuranceLabel != null) ...[
+          const SizedBox(height: 14),
+          _ProfileRailCard(
+            title: context.uiCopy(zh: '信任層級', en: 'TRUST TIER'),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.verified_user_outlined,
+                  size: 17,
+                  color: AnsibleDesign.accent,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    assuranceLabel!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AnsibleDesign.ink,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProfileRailCard extends StatelessWidget {
+  const _ProfileRailCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AnsibleDesign.paperElev,
+        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9.5,
+              letterSpacing: 1.3,
+              color: AnsibleDesign.inkFaint,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
       ),
     );
   }

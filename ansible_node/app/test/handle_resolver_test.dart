@@ -61,15 +61,21 @@ void main() {
           'did:elix:alice',
         ]);
         return http.Response(
-          '{"did":"did:elix:alice","display_name":"Alice","handle":"alice.elix.cool"}',
+          '{"did":"did:elix:alice","display_name":"Alice","handle":"alice.elix.cool","bio":"Public bio","avatar_url":"https://images.example/alice.png","reputation_tier":"verified_human","public_credentials":[{"credential_type":"AgeOver18Credential","issuer_did":"did:web:issuer.elix.cool","badge":"age_over_18","value":"true","valid_until":"2027-08-27T00:00:00Z"}]}',
           200,
         );
       }),
     );
 
+    final profile = await resolver.profileFor('did:elix:alice');
+    expect(profile?.preferredLabel, 'Alice');
+    expect(profile?.bio, 'Public bio');
+    expect(profile?.avatarUrl, 'https://images.example/alice.png');
+    expect(profile?.reputationTier, 'verified_human');
+    expect(profile?.publicCredentials.single.badge, 'age_over_18');
     expect(
-      (await resolver.profileFor('did:elix:alice'))?.preferredLabel,
-      'Alice',
+      profile?.publicCredentials.single.issuerDid,
+      'did:web:issuer.elix.cool',
     );
   });
 

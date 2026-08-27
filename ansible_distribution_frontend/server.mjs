@@ -30,7 +30,7 @@ const PROXY_UPSTREAM_TIMEOUT_MS = Number(process.env.PROXY_UPSTREAM_TIMEOUT_MS ?
 const DEFAULT_APPVIEW_BASE_URL = process.env.APPVIEW_URL ?? DEFAULT_RELAY_BASE_URL;
 // Requests on these paths are read-only timeline/feed content and route to the AppView
 // rather than the relay.
-const APPVIEW_PROXY_PATH = /^\/api\/v1\/(boards\/[^/]+\/external|board-feed|thread\/[^/]+|timeline|home|suggest\/follows|explore|search|search\/actors)$/;
+const APPVIEW_PROXY_PATH = /^\/api\/v1\/(boards\/[^/]+\/external|board-feed|thread\/[^/]+|profiles\/[^/]+|timeline|home|suggest\/follows|explore|search|search\/actors)$/;
 const SERVER_ROOT = dirname(fileURLToPath(import.meta.url));
 
 // Observability baseline (service architecture plan, Phase 0 — closes G17).

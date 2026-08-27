@@ -103,6 +103,15 @@ defmodule AnsibleAppview.DiscoveryTest do
         op_id: "prof-alice",
         author_did: "did:key:alice",
         entity_type: "profile",
+        public_profile_credentials: [
+          %{
+            "credential_type" => "AgeOver18Credential",
+            "issuer_did" => "did:web:issuer.elix.cool",
+            "badge" => "age_over_18",
+            "value" => "true",
+            "valid_until" => "2027-06-06T00:00:00Z"
+          }
+        ],
         payload: %{
           "handle" => "alice.example",
           "displayName" => "Alice Wonder",
@@ -123,6 +132,16 @@ defmodule AnsibleAppview.DiscoveryTest do
     by_handle = AnsibleAppview.Profiles.search("alice", 10)
     assert Enum.map(by_handle, & &1.did) == ["did:key:alice"]
     assert hd(by_handle).display_name == "Alice Wonder"
+
+    assert hd(by_handle).public_credentials == [
+             %{
+               "credential_type" => "AgeOver18Credential",
+               "issuer_did" => "did:web:issuer.elix.cool",
+               "badge" => "age_over_18",
+               "value" => "true",
+               "valid_until" => "2027-06-06T00:00:00Z"
+             }
+           ]
 
     # Substring of the display name also matches.
     assert AnsibleAppview.Profiles.search("wonder", 10) |> Enum.map(& &1.did) == ["did:key:alice"]
@@ -157,7 +176,11 @@ defmodule AnsibleAppview.DiscoveryTest do
         op_id: "s-en",
         author_did: "did:key:writer",
         entity_type: "murmur",
-        payload: %{"mode" => "murmur", "body" => "learning elixir today", "visibility" => "public"}
+        payload: %{
+          "mode" => "murmur",
+          "body" => "learning elixir today",
+          "visibility" => "public"
+        }
       ),
       signed_op(pub, priv,
         log_id: 7002,
@@ -178,7 +201,11 @@ defmodule AnsibleAppview.DiscoveryTest do
         op_id: "s-prof",
         author_did: "did:key:elixirfan",
         entity_type: "profile",
-        payload: %{"handle" => "elixirfan.example", "displayName" => "Elixir Fan", "visibility" => "public"}
+        payload: %{
+          "handle" => "elixirfan.example",
+          "displayName" => "Elixir Fan",
+          "visibility" => "public"
+        }
       )
     ])
 
@@ -198,18 +225,25 @@ defmodule AnsibleAppview.DiscoveryTest do
   end
 
   defp signed_op(pub, priv, opts) do
-    op = %{
-      "log_id" => Keyword.fetch!(opts, :log_id),
-      "op_id" => Keyword.fetch!(opts, :op_id),
-      "author_did" => Keyword.fetch!(opts, :author_did),
-      "entity_type" => Keyword.fetch!(opts, :entity_type),
-      "entity_id" => "e-#{Keyword.fetch!(opts, :log_id)}",
-      "op_type" => "insert",
-      "payload" => Base.encode64(Jason.encode!(Keyword.get(opts, :payload, %{}))),
-      "public_key_hex" => pub,
-      "reputation_tier" => "basic",
-      "received_at" => "2026-06-06T00:00:00Z"
-    }
+    op =
+      %{
+        "log_id" => Keyword.fetch!(opts, :log_id),
+        "op_id" => Keyword.fetch!(opts, :op_id),
+        "author_did" => Keyword.fetch!(opts, :author_did),
+        "entity_type" => Keyword.fetch!(opts, :entity_type),
+        "entity_id" => "e-#{Keyword.fetch!(opts, :log_id)}",
+        "op_type" => "insert",
+        "payload" => Base.encode64(Jason.encode!(Keyword.get(opts, :payload, %{}))),
+        "public_key_hex" => pub,
+        "reputation_tier" => "basic",
+        "received_at" => "2026-06-06T00:00:00Z"
+      }
+      |> then(fn op ->
+        case Keyword.get(opts, :public_profile_credentials) do
+          nil -> op
+          credentials -> Map.put(op, "public_profile_credentials", credentials)
+        end
+      end)
 
     signature =
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])

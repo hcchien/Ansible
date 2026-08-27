@@ -314,6 +314,7 @@ class SettingsHomeScreen extends StatelessWidget {
                           builder: (_) => WalletScreen(
                             holderDid: did,
                             repository: DriftWalletRepository(db),
+                            db: db,
                           ),
                         ),
                       );

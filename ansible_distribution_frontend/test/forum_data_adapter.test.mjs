@@ -6,6 +6,7 @@ import {
 } from '../src/contract_fixtures.mjs';
 import {
   buildForumHomeViewModel,
+  buildPublicProfileEntries,
   buildThreadsFromFeed,
   createForumDataAdapter,
   normalizeHostedBoard,
@@ -272,6 +273,104 @@ test('loads and merges anonymous-readable board threads for the public home feed
   assert.equal(home.publicFeed.threads[0].boardId, '1');
   assert.equal(home.publicFeed.threads[0].boardSlug, 'public');
   assert.equal(home.publicFeed.threads[0].title, 'Anonymous readers can see this');
+});
+
+test('loads only explicit public profile fields and public author posts', async () => {
+  const calls = [];
+  const adapter = createForumDataAdapter({
+    relayBaseUrl: 'http://localhost:4001',
+    appViewBaseUrl: 'http://localhost:5174',
+    forumHostClient: {
+      async fetchForumHostInfo() {
+        return { forum_host_id: 'host', display_name: 'Host' };
+      },
+      async fetchHostedBoards() {
+        return { boards: [] };
+      },
+    },
+    appViewClient: {
+      async fetchPublicProfile({ did }) {
+        calls.push(['profile', did]);
+        return {
+          did,
+          handle: 'mira.elix.cool',
+          display_name: 'Mira',
+          bio: 'Writing slowly.',
+          reputation_tier: 'verified_human',
+        };
+      },
+      async fetchAuthorTimeline({ did, limit }) {
+        calls.push(['timeline', did, limit]);
+        return {
+          items: [
+            {
+              entity_type: 'note',
+              entity_id: 'note-1',
+              author_did: did,
+              visibility: 'public',
+              created_at: '2026-08-27T04:00:00Z',
+              payload: { title: 'Public note', body: 'Visible body' },
+            },
+            {
+              entity_type: 'note',
+              entity_id: 'note-hidden',
+              author_did: did,
+              visibility: 'unlisted',
+              payload: { body: 'Must stay hidden' },
+            },
+          ],
+        };
+      },
+    },
+  });
+
+  const page = await adapter.loadProfilePage({
+    did: 'did:elix:mira',
+    sessionViewModel: { authenticated: false },
+  });
+
+  assert.deepEqual(calls, [
+    ['profile', 'did:elix:mira'],
+    ['timeline', 'did:elix:mira', 100],
+  ]);
+  assert.equal(page.profile.displayName, 'Mira');
+  assert.equal(page.profile.bio, 'Writing slowly.');
+  assert.equal(page.profile.reputationTier, 'verified_human');
+  assert.equal(page.profilePosts.length, 1);
+  assert.equal(page.profilePosts[0].title, 'Public note');
+});
+
+test('deduplicates a public discussion thread and excludes replies', () => {
+  const entries = buildPublicProfileEntries([
+    {
+      entity_type: 'thread',
+      entity_id: 'thread-1',
+      board_id: 'general',
+      visibility: 'public',
+      payload: { title: 'Thread title', description: 'Thread description' },
+    },
+    {
+      entity_type: 'post',
+      entity_id: 'post-1',
+      thread_id: 'thread-1',
+      board_id: 'general',
+      visibility: 'public',
+      payload: { content: 'Opening post' },
+    },
+    {
+      entity_type: 'post',
+      entity_id: 'reply-1',
+      thread_id: 'thread-1',
+      board_id: 'general',
+      visibility: 'public',
+      payload: { parentPostId: 'post-1', content: 'Reply' },
+    },
+  ]);
+
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].id, 'post-1');
+  assert.equal(entries[0].title, 'Thread title');
+  assert.equal(entries[0].body, 'Opening post');
 });
 
 test('reports a degraded public home feed instead of confusing failure with no posts', async () => {

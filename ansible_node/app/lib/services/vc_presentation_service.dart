@@ -102,6 +102,7 @@ class VcPresentationService {
     Map<String, Object?> requiredClaimValues = const {},
     required DateTime now,
     bool recordPresentation = true,
+    String? credentialId,
   }) async {
     return _createPresentation(
       holderDid: holderDid,
@@ -113,6 +114,7 @@ class VcPresentationService {
       allowStoredIssuer: true,
       recordPresentation: recordPresentation,
       result: WalletPresentationResult.approved,
+      credentialId: credentialId,
     );
   }
 
@@ -146,11 +148,17 @@ class VcPresentationService {
     Map<String, Object?> requiredClaimValues = const {},
     bool allowStoredIssuer = false,
     String? nostrPubkey,
+    String? credentialId,
   }) async {
     final credentials = await walletRepository.listCredentials();
 
     for (final metadata in credentials) {
-      if (!_isCandidate(metadata, holderDid, credentialType)) {
+      if (!_isCandidate(
+        metadata,
+        holderDid,
+        credentialType,
+        credentialId: credentialId,
+      )) {
         continue;
       }
 
@@ -276,11 +284,13 @@ class VcPresentationService {
   bool _isCandidate(
     WalletCredential credential,
     String holderDid,
-    String credentialType,
-  ) {
+    String credentialType, {
+    String? credentialId,
+  }) {
     return credential.holderDid == holderDid &&
         credential.status == WalletCredentialStatus.active &&
-        credential.credentialType == credentialType;
+        credential.credentialType == credentialType &&
+        (credentialId == null || credential.credentialId == credentialId);
   }
 
   String _nonceHash(String nonce) {

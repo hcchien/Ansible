@@ -25,7 +25,9 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
     ReputationTier,
     VpVerifier
   }
+
   alias AnsibleRelay.Identity.AttestationStore
+  alias AnsibleRelay.Identity.PublicProfileCredentialStore
 
   def present(conn, params) do
     with :ok <- check_rate_limit(conn),
@@ -85,6 +87,52 @@ defmodule AnsibleRelay.Web.Controllers.ReputationController do
 
       {:error, :invalid_did} ->
         send_json(conn, 422, %{error: "invalid_did"})
+    end
+  end
+
+  def present_public_profile_credential(conn, params) do
+    with :ok <- check_rate_limit(conn),
+         {:ok, holder_did} <- require_field(params, "holder_did"),
+         {:ok, vp} <- require_map(params, "vp"),
+         :ok <- validate_did(holder_did),
+         {:ok, credential_type, vc} <- VpVerifier.verify_with_credential(holder_did, vp),
+         {:ok, disclosure} <-
+           PublicProfileCredentialStore.put_verified(holder_did, credential_type, vc) do
+      send_json(conn, 200, %{did: holder_did, credential: disclosure})
+    else
+      {:error, :rate_limited, detail} ->
+        send_json(conn, 429, %{error: "rate_limited", detail: detail})
+
+      {:error, {:missing_field, field}} ->
+        send_json(conn, 422, %{error: "missing_field", field: field})
+
+      {:error, :not_a_map, field} ->
+        send_json(conn, 422, %{error: "invalid_field", field: field})
+
+      {:error, reason}
+      when reason in [
+             :invalid_did,
+             :no_credentials,
+             :vc_subject_mismatch,
+             :vc_expired,
+             :unknown_credential_type,
+             :unsupported_credential_type,
+             :invalid_public_profile_claim
+           ] ->
+        send_json(conn, 422, %{error: Atom.to_string(reason)})
+
+      {:error, reason}
+      when reason in [:invalid_vp_proof, :invalid_vc_proof] ->
+        send_json(conn, 401, %{error: Atom.to_string(reason)})
+
+      {:error, :untrusted_issuer} ->
+        send_json(conn, 403, %{error: "untrusted_issuer"})
+
+      {:error, :holder_not_found} ->
+        send_json(conn, 404, %{error: "holder_not_found"})
+
+      {:error, _changeset} ->
+        send_json(conn, 422, %{error: "invalid_public_profile_claim"})
     end
   end
 

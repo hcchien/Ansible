@@ -533,7 +533,10 @@ defmodule AnsibleAppview.Ingest.Folder do
             display_name: payload["displayName"],
             bio: payload["bio"],
             avatar_url: payload["avatarUrl"],
-            author_tier: op["reputation_tier"] || "basic"
+            author_tier: op["reputation_tier"] || "basic",
+            public_credentials: %{
+              "items" => List.wrap(op["public_profile_credentials"])
+            }
           },
           op["log_id"]
         )

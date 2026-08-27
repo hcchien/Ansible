@@ -1,10 +1,13 @@
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_node/screens/user_profile_screen.dart';
+import 'package:ansible_node/services/handle_resolver.dart';
 import 'package:ansible_node/widgets/follow_button.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
   testWidgets('follow then unfollow a user from the profile', (tester) async {
@@ -142,5 +145,96 @@ void main() {
 
     expect(find.byType(FollowButton), findsNothing);
     expect(find.text('目前沒有公開貼文'), findsOneWidget);
+  });
+
+  testWidgets('desktop profile adds a public-data context rail', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final handleResolver = HandleResolver(
+      baseUrl: 'https://relay.example',
+      client: MockClient((_) async => http.Response('', 404)),
+    );
+    final profileResolver = PublicProfileResolver(
+      baseUrl: 'https://appview.example',
+      handleResolver: handleResolver,
+      client: MockClient(
+        (_) async => http.Response(
+          '{"did":"did:key:alice","display_name":"Alice","handle":"alice.elix.cool","bio":"Public words only","reputation_tier":"verified_human","public_credentials":[{"credential_type":"AgeOver18Credential","issuer_did":"did:web:issuer.elix.cool","badge":"age_over_18","value":"true","valid_until":"2027-08-27T00:00:00Z"}]}',
+          200,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfileScreen(
+          db: db,
+          followerDid: 'did:key:local',
+          did: 'did:key:alice',
+          resolver: handleResolver,
+          profileResolver: profileResolver,
+          publicPostsLoader: (_) async => const [],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alice'), findsOneWidget);
+    expect(find.text('@alice.elix.cool'), findsOneWidget);
+    expect(find.text('Public words only'), findsOneWidget);
+    expect(find.text('已滿 18 歲'), findsOneWidget);
+    expect(find.textContaining('私鑰與原始憑證不會進入'), findsOneWidget);
+  });
+
+  testWidgets('mobile profile stays single-column at 375 points', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final handleResolver = HandleResolver(
+      baseUrl: 'https://relay.example',
+      client: MockClient((_) async => http.Response('', 404)),
+    );
+    final profileResolver = PublicProfileResolver(
+      baseUrl: 'https://appview.example',
+      handleResolver: handleResolver,
+      client: MockClient(
+        (_) async => http.Response(
+          '{"did":"did:key:alice","display_name":"Alice","handle":"alice.elix.cool","bio":"Public words only"}',
+          200,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfileScreen(
+          db: db,
+          followerDid: 'did:key:local',
+          did: 'did:key:alice',
+          resolver: handleResolver,
+          profileResolver: profileResolver,
+          publicPostsLoader: (_) async => const [],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alice'), findsOneWidget);
+    expect(find.text('@alice.elix.cool'), findsOneWidget);
+    expect(find.textContaining('私鑰與原始憑證不會進入'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

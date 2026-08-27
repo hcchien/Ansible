@@ -653,7 +653,29 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       AnsibleRelay.Identity.MigrationStore.canonical_did(author_did)
     )
     |> Map.put(:reputation_tier, AnsibleRelay.DidAccountCache.reputation_tier(author_did))
+    |> attach_public_profile_credentials()
   end
+
+  defp attach_public_profile_credentials(%{entity_type: "profile"} = op) do
+    selected =
+      with {:ok, decoded} <- Base.decode64(op.payload),
+           {:ok, %{} = payload} <- Jason.decode(decoded),
+           types when is_list(types) <- payload["credentialTypes"] do
+        Enum.filter(types, &is_binary/1)
+      else
+        _ -> []
+      end
+
+    credentials =
+      AnsibleRelay.Identity.PublicProfileCredentialStore.list_public(
+        op.author_did,
+        selected
+      )
+
+    Map.put(op, :public_profile_credentials, credentials)
+  end
+
+  defp attach_public_profile_credentials(op), do: op
 
   defp signing_payload(params) do
     %{

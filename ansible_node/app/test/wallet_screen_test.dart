@@ -2,6 +2,7 @@ import 'package:ansible_node/screens/credential_issuance_wizard.dart';
 import 'package:ansible_node/screens/wallet_screen.dart';
 import 'package:ansible_node/services/external_url_launcher.dart';
 import 'package:ansible_node/services/vc_issuer_client.dart';
+import 'package:ansible_node/services/public_profile_credential_preferences.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
@@ -69,7 +70,61 @@ void main() {
     expect(find.text('到期 2026-08-02'), findsOneWidget);
   });
 
-  testWidgets('wallet lets the user copy the complete holder DID', (tester) async {
+  testWidgets(
+    'each eligible VC can be selected for the public profile without authentication',
+    (tester) async {
+      final now = DateTime.utc(2026, 8, 27);
+      final credential = WalletCredential(
+        credentialId: 'urn:uuid:age-profile',
+        issuerDid: 'did:web:issuer.elix.cool',
+        holderDid: 'did:elix:profile-holder',
+        credentialType: 'AgeOver18Credential',
+        status: WalletCredentialStatus.active,
+        validFrom: now,
+        validUntil: DateTime.utc(2027, 8, 27),
+        displayName: 'Age 18+',
+        createdAt: now,
+        updatedAt: now,
+      );
+      final preferences = MemoryPublicProfileCredentialPreferenceStore();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WalletScreen(
+            holderDid: credential.holderDid,
+            repository: InMemoryWalletRepository.withCredentials([credential]),
+            profileCredentialPreferences: preferences,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('profile_credential_urn:uuid:age-profile')),
+        260,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('profile_credential_urn:uuid:age-profile')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('放到個人檔案？'), findsOneWidget);
+      expect(find.textContaining('完整憑證'), findsOneWidget);
+      await tester.tap(find.text('繼續發布'));
+      await tester.pumpAndSettle();
+
+      expect(await preferences.selectedCredentialIds(credential.holderDid), {
+        'urn:uuid:age-profile',
+      });
+      expect(find.text('已放到個人檔案'), findsOneWidget);
+      // Authentication belongs to the single shared Sync ceremony; toggling a
+      // Wallet preference never opens an authentication route or prompt.
+      expect(find.textContaining('Face ID'), findsNothing);
+    },
+  );
+
+  testWidgets('wallet lets the user copy the complete holder DID', (
+    tester,
+  ) async {
     const holderDid = 'did:elix:5smknabcdefghijklmnopqrstuhf';
     await tester.pumpWidget(
       MaterialApp(
@@ -103,16 +158,17 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: WalletScreen(
-          holderDid: credential.holderDid,
-          repository: repo,
-        ),
+        home: WalletScreen(holderDid: credential.holderDid, repository: repo),
       ),
     );
     await tester.pumpAndSettle();
     await _scrollWallet(tester);
 
-    await tester.tap(find.byTooltip('刪除本機憑證'));
+    await tester.tap(
+      find.byKey(const ValueKey('credential_actions_urn:uuid:test-delete')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('刪除本機憑證'));
     await tester.pumpAndSettle();
     expect(find.text('要刪除本機憑證嗎？'), findsOneWidget);
     expect(await repo.listCredentials(), hasLength(1));
@@ -121,7 +177,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(await repo.listCredentials(), hasLength(1));
 
-    await tester.tap(find.byTooltip('刪除本機憑證'));
+    await tester.tap(
+      find.byKey(const ValueKey('credential_actions_urn:uuid:test-delete')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('刪除本機憑證'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('刪除憑證'));
     await tester.pumpAndSettle();
