@@ -134,8 +134,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               db: widget.db,
               followerDid: widget.did,
               did: notification.actorDid,
-              displayName: _actorContacts[notification.actorDid]?.displayName
-                  ?.trim(),
             ),
           ),
         );
@@ -325,7 +323,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   icon: _typeIcon(notification.type),
                   actorDid: notification.actorDid,
                   fixedActorLabel: _fixedActorLabel(context, notification),
-                  actorDisplayName: actorContact?.displayName,
                   actorHandle: actorContact?.handle,
                   profileResolver: widget.profileResolver,
                   handleResolver: widget.handleResolver,
@@ -346,7 +343,6 @@ class _NotificationRow extends StatelessWidget {
     required this.icon,
     required this.actorDid,
     required this.fixedActorLabel,
-    required this.actorDisplayName,
     required this.actorHandle,
     required this.profileResolver,
     required this.handleResolver,
@@ -361,7 +357,10 @@ class _NotificationRow extends StatelessWidget {
 
   /// Only synthetic actors, such as board moderators, bypass DID resolution.
   final String? fixedActorLabel;
-  final String? actorDisplayName;
+
+  /// A device-local contact handle is paint-time fallback only. Contact
+  /// display names are deliberately excluded: the published AppView display
+  /// name must remain authoritative for public identity presentation.
   final String? actorHandle;
   final PublicProfileResolver? profileResolver;
   final HandleResolver? handleResolver;
@@ -410,7 +409,6 @@ class _NotificationRow extends StatelessWidget {
                         )
                       : AuthorLabel(
                           did: actorDid,
-                          displayName: actorDisplayName,
                           handle: actorHandle,
                           profileResolver: profileResolver,
                           resolver: handleResolver,

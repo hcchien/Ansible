@@ -73,6 +73,36 @@ void main() {
     );
   });
 
+  test(
+    'uses the Relay canonical handle instead of a stale profile handle',
+    () async {
+      final canonical = HandleResolver(
+        baseUrl: 'https://relay.example',
+        client: MockClient(
+          (_) async => http.Response(
+            '{"did":"did:elix:alice","handle":"alice.elix.cool"}',
+            200,
+          ),
+        ),
+      );
+      final resolver = PublicProfileResolver(
+        baseUrl: 'https://appview.example',
+        handleResolver: canonical,
+        client: MockClient(
+          (_) async => http.Response(
+            '{"did":"did:elix:alice","display_name":null,"handle":"old-alice"}',
+            200,
+          ),
+        ),
+      );
+
+      final profile = await resolver.profileFor('did:elix:alice');
+
+      expect(profile?.handle, 'alice.elix.cool');
+      expect(profile?.preferredLabel, '@alice.elix.cool');
+    },
+  );
+
   test('formats a handle distinctly when no display name is published', () {
     expect(
       const PublicAuthorProfile(handle: 'hcchien').preferredLabel,

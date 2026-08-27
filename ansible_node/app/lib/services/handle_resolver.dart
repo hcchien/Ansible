@@ -96,9 +96,9 @@ class PublicAuthorProfile {
   }
 }
 
-/// Resolves the explicitly published public profile from AppView, with the
-/// relay handle lookup retained as a compatibility fallback while an AppView is
-/// unavailable or an older account has not yet published a profile op.
+/// Resolves the explicitly published display name from AppView and combines it
+/// with the Relay's canonical DID handle. A handle carried in a profile op is
+/// only a compatibility fallback because it can become stale after a rename.
 class PublicProfileResolver {
   PublicProfileResolver({
     String? baseUrl,
@@ -127,6 +127,10 @@ class PublicProfileResolver {
     }
     if (_cache.containsKey(identity)) return _cache[identity];
 
+    // Resolve both public presentation sources concurrently so a slow Relay
+    // cannot add another full timeout after the AppView lookup (or vice versa).
+    final canonicalHandleFuture = _handleResolver.handleFor(identity);
+    PublicAuthorProfile? publishedProfile;
     final base = _baseUri;
     if (base != null && base.hasScheme && base.host.isNotEmpty) {
       try {
@@ -136,24 +140,26 @@ class PublicProfileResolver {
         if (response.statusCode == 200) {
           final body = jsonDecode(response.body);
           if (body is Map) {
-            final profile = PublicAuthorProfile(
+            publishedProfile = PublicAuthorProfile(
               displayName:
                   body['display_name'] as String? ??
                   body['displayName'] as String?,
               handle: body['handle'] as String?,
             );
-            _cache[identity] = profile;
-            return profile;
           }
         }
-        if (response.statusCode == 404) _cache[identity] = null;
       } catch (_) {
-        // Transient AppView failure: preserve the older relay fallback below.
+        // Preserve the Relay fallback below when AppView is transiently down.
       }
     }
 
-    final handle = await _handleResolver.handleFor(identity);
-    final profile = handle == null ? null : PublicAuthorProfile(handle: handle);
+    final canonicalHandle = await canonicalHandleFuture;
+    final profile = publishedProfile == null && canonicalHandle == null
+        ? null
+        : PublicAuthorProfile(
+            displayName: publishedProfile?.displayName,
+            handle: canonicalHandle ?? publishedProfile?.handle,
+          );
     _cache[identity] = profile;
     return profile;
   }

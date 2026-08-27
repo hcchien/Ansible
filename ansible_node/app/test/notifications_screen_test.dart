@@ -87,7 +87,8 @@ void main() {
       await DriftContactRepository(db).upsertContact(
         ContactRecord(
           subjectDid: actorDid,
-          handle: 'alice.elix.cool',
+          handle: 'stale-alice.elix.cool',
+          displayName: '舊的本機名稱',
           localAlias: '本機別名',
           createdAt: DateTime.utc(2026, 6, 13),
           updatedAt: DateTime.utc(2026, 6, 13),
@@ -99,7 +100,12 @@ void main() {
       );
       final handleResolver = HandleResolver(
         baseUrl: 'https://relay.example',
-        client: MockClient((_) async => http.Response('', 404)),
+        client: MockClient(
+          (_) async => http.Response(
+            '{"did":"$actorDid","handle":"alice.elix.cool"}',
+            200,
+          ),
+        ),
       );
       final profileResolver = PublicProfileResolver(
         baseUrl: 'https://appview.example',
@@ -123,6 +129,8 @@ void main() {
 
       expect(find.text('Alice'), findsOneWidget);
       expect(find.text('@alice.elix.cool'), findsNothing);
+      expect(find.text('舊的本機名稱'), findsNothing);
+      expect(find.text('@stale-alice.elix.cool'), findsNothing);
       expect(find.text('本機別名'), findsNothing);
       expect(find.text(actorDid), findsNothing);
     },
