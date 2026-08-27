@@ -42,14 +42,21 @@ class RelayIdentityBootstrapService {
     }
 
     final handleStore = const SecureRelayHandleStore();
-    final storedHandle = await handleStore.load(baseUrl);
-    final suffix = _normalizeSuffix(
-      preferredHandleSuffix ??
-          _suffixFromHandle(storedHandle) ??
-          _suffixFromHandle(canonical.handle),
-    );
     final client = atProtoClient ?? AtProtoClient(baseUrl: baseUrl);
     try {
+      final registered = await client.registeredIdentity(did);
+      final storedHandle = await handleStore.load(baseUrl);
+      final suffix = registered == null
+          ? _normalizeSuffix(
+              preferredHandleSuffix ??
+                  _suffixFromHandle(storedHandle) ??
+                  _suffixFromHandle(canonical.handle),
+            )
+          : _verifiedRegisteredSuffix(
+              registered: registered,
+              expectedPublicKeyHex: resolvedPublicKey,
+              expectedSigningAlgorithm: canonical.signingAlgorithm,
+            );
       late final RegistrationChallenge challenge;
       try {
         challenge = await client.register(
@@ -122,5 +129,18 @@ class RelayIdentityBootstrapService {
       throw StateError('invalid_identity_handle');
     }
     return normalized;
+  }
+
+  static String _verifiedRegisteredSuffix({
+    required RegisteredRelayIdentity registered,
+    required String expectedPublicKeyHex,
+    required String expectedSigningAlgorithm,
+  }) {
+    if (registered.publicKeyHex.toLowerCase() !=
+            expectedPublicKeyHex.toLowerCase() ||
+        registered.signingAlgorithm != expectedSigningAlgorithm) {
+      throw StateError('relay_identity_key_mismatch');
+    }
+    return _normalizeSuffix(_suffixFromHandle(registered.handle));
   }
 }

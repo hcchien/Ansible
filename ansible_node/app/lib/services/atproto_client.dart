@@ -143,6 +143,20 @@ class CreateRecordResult {
   }
 }
 
+class RegisteredRelayIdentity {
+  final String did;
+  final String publicKeyHex;
+  final String signingAlgorithm;
+  final String handle;
+
+  const RegisteredRelayIdentity({
+    required this.did,
+    required this.publicKeyHex,
+    required this.signingAlgorithm,
+    required this.handle,
+  });
+}
+
 class AtProtoException implements Exception {
   final int statusCode;
   final String error;
@@ -195,6 +209,55 @@ class AtProtoClient {
   Future<AnchoredDid> anchor(AnchorRequest req) async {
     final body = await _postJson('/api/v2/identity/anchor', req.toJson());
     return AnchoredDid.fromJson(body);
+  }
+
+  /// Reads the Relay's authoritative binding for an already registered DID.
+  ///
+  /// Returning both the verification key and Relay-local handle lets callers
+  /// distinguish an idempotent registration retry from an identity collision.
+  Future<RegisteredRelayIdentity?> registeredIdentity(String did) async {
+    final encodedDid = Uri.encodeComponent(did);
+    final keyResponse = await _client
+        .get(
+          _endpoint('/api/v1/identity/public-key/$encodedDid'),
+          headers: AnsibleProtocol.headers,
+        )
+        .timeout(timeout);
+    final keyBody = _decodeObject(keyResponse.body);
+    if (keyResponse.statusCode == 404) return null;
+    if (keyResponse.statusCode < 200 || keyResponse.statusCode >= 300) {
+      throw _toAtProtoException(keyResponse.statusCode, keyBody);
+    }
+
+    final handleResponse = await _client
+        .get(
+          _endpoint('/api/v1/identity/handle/$encodedDid'),
+          headers: AnsibleProtocol.headers,
+        )
+        .timeout(timeout);
+    final handleBody = _decodeObject(handleResponse.body);
+    if (handleResponse.statusCode < 200 || handleResponse.statusCode >= 300) {
+      throw _toAtProtoException(handleResponse.statusCode, handleBody);
+    }
+
+    final resolvedDid = keyBody['did'] as String?;
+    final handleDid = handleBody['did'] as String?;
+    final publicKeyHex = keyBody['public_key_hex'] as String?;
+    final signingAlgorithm = keyBody['signing_algorithm'] as String?;
+    final handle = handleBody['handle'] as String?;
+    if (resolvedDid != did ||
+        handleDid != did ||
+        publicKeyHex == null ||
+        signingAlgorithm == null ||
+        handle == null) {
+      throw const FormatException('Invalid registered identity response');
+    }
+    return RegisteredRelayIdentity(
+      did: did,
+      publicKeyHex: publicKeyHex,
+      signingAlgorithm: signingAlgorithm,
+      handle: handle,
+    );
   }
 
   Future<KeyRotationResult> rotateIdentityKey(
