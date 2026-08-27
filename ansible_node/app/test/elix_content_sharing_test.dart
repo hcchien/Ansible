@@ -13,35 +13,36 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const localDid = 'did:plc:share-test-user';
   const canonicalBoardUri = 'https://relay.example/boards/hosted-1';
+  const frontendBaseUrl = 'https://web.example/app';
 
   // --- Pure URL construction ------------------------------------------------
 
   group('ElixContentLink URL construction', () {
-    test('board URL is built from the host canonical board origin', () {
+    test('board URL is built from the public frontend origin', () {
       expect(
         ElixContentLink.boardUrl(
-          canonicalBoardUri: canonicalBoardUri,
+          frontendBaseUrl: frontendBaseUrl,
           boardId: 'hosted-1',
         ),
-        'https://relay.example/boards/hosted-1',
+        'https://web.example/boards/hosted-1',
       );
     });
 
     test('thread URL appends the thread segment under the board', () {
       expect(
         ElixContentLink.threadUrl(
-          canonicalBoardUri: canonicalBoardUri,
+          frontendBaseUrl: frontendBaseUrl,
           boardId: 'hosted-1',
           threadId: 'thread-9',
         ),
-        'https://relay.example/boards/hosted-1/threads/thread-9',
+        'https://web.example/boards/hosted-1/threads/thread-9',
       );
     });
 
-    test('returns null when the canonical board URI has no usable origin', () {
+    test('returns null when the frontend URL has no usable origin', () {
       expect(
         ElixContentLink.boardUrl(
-          canonicalBoardUri: 'not a url',
+          frontendBaseUrl: 'not a url',
           boardId: 'hosted-1',
         ),
         isNull,
@@ -166,7 +167,7 @@ void main() {
 
       expect(
         sharedText,
-        'https://relay.example/boards/hosted-1/threads/thread-9',
+        'https://forum.elix.cool/boards/hosted-1/threads/thread-9',
       );
       expect(sharedSubject, '分享測試討論串');
 
@@ -175,7 +176,7 @@ void main() {
       await tester.pump();
       expect(
         sharedText,
-        'https://relay.example/boards/hosted-1/threads/thread-9',
+        'https://forum.elix.cool/boards/hosted-1/threads/thread-9',
       );
     });
 
@@ -209,7 +210,7 @@ void main() {
       await tester.tap(shareButton);
       await tester.pump();
 
-      expect(sharedText, 'https://relay.example/boards/hosted-1');
+      expect(sharedText, 'https://forum.elix.cool/boards/hosted-1');
     });
 
     testWidgets('local-only thread shows no share affordance', (tester) async {

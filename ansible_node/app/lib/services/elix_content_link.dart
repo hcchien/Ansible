@@ -7,11 +7,8 @@
 ///   /boards/:boardId
 ///   /boards/:boardId/threads/:threadId
 ///
-/// The base origin is NOT a new config knob: it is derived from the forum
-/// host's own public board URL (`HostedBoardProjection.canonicalBoardUri`,
-/// e.g. `https://relay.example/boards/hosted-1`) — the same origin the relay
-/// already advertises for public board views. Sharing therefore points at
-/// exactly the origin the host publishes, with no invented environment value.
+/// The base origin is the public distribution frontend, never a Relay or Forum
+/// Host API origin. The app supplies its environment-specific frontend URL.
 library;
 
 /// Identifies a piece of public Elix content addressed by a link.
@@ -55,37 +52,34 @@ class ElixContentLink {
 
   const ElixContentLink._();
 
-  /// Returns the origin (`scheme://host[:port]`) of a forum host's public
-  /// board URL, or null if it cannot be parsed.
-  static String? originFromCanonicalBoardUri(String canonicalBoardUri) {
-    final uri = Uri.tryParse(canonicalBoardUri);
+  /// Returns the origin (`scheme://host[:port]`) of the public Web frontend,
+  /// or null if it cannot be parsed.
+  static String? originFromFrontendBaseUrl(String frontendBaseUrl) {
+    final uri = Uri.tryParse(frontendBaseUrl);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
     final port = uri.hasPort ? ':${uri.port}' : '';
     return '${uri.scheme.toLowerCase()}://${uri.host.toLowerCase()}$port';
   }
 
-  /// Public web URL for a board, derived from the host's canonical board URL.
+  /// Public web URL for a board on the distribution frontend.
   /// Returns null when no usable origin can be derived (caller then hides the
   /// share affordance rather than sharing a broken link).
   static String? boardUrl({
-    required String canonicalBoardUri,
+    required String frontendBaseUrl,
     required String boardId,
   }) {
-    final origin = originFromCanonicalBoardUri(canonicalBoardUri);
+    final origin = originFromFrontendBaseUrl(frontendBaseUrl);
     if (origin == null || boardId.isEmpty) return null;
     return '$origin/boards/${Uri.encodeComponent(boardId)}';
   }
 
   /// Public web URL for a thread within a board.
   static String? threadUrl({
-    required String canonicalBoardUri,
+    required String frontendBaseUrl,
     required String boardId,
     required String threadId,
   }) {
-    final base = boardUrl(
-      canonicalBoardUri: canonicalBoardUri,
-      boardId: boardId,
-    );
+    final base = boardUrl(frontendBaseUrl: frontendBaseUrl, boardId: boardId);
     if (base == null || threadId.isEmpty) return null;
     return '$base/threads/${Uri.encodeComponent(threadId)}';
   }

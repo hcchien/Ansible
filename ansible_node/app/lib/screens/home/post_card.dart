@@ -7,7 +7,9 @@ import 'package:uuid/uuid.dart';
 
 import 'package:share_plus/share_plus.dart';
 
+import '../../config/app_environment.dart';
 import '../../l10n/app_l10n.dart';
+import '../../services/elix_content_link.dart';
 import '../../services/handle_resolver.dart';
 import '../../services/ops_dispatch_service.dart';
 import '../../services/posting_gate.dart';
@@ -156,6 +158,7 @@ class PostCard extends StatefulWidget {
     required this.opsDispatchService,
     required this.onFlushPendingOps,
     this.onOpenAuthor,
+    this.onOpenBoard,
     this.onOpenContent,
     this.shareSheet = _defaultPostShareSheet,
   });
@@ -166,6 +169,7 @@ class PostCard extends StatefulWidget {
   final OpsDispatchService opsDispatchService;
   final Future<void> Function() onFlushPendingOps;
   final void Function(String authorDid)? onOpenAuthor;
+  final void Function(String boardId)? onOpenBoard;
 
   /// Opens the content-detail/comments view for a standalone murmur/note
   /// (an item with [PostCardData.openableThread] == false). When null, such a
@@ -336,14 +340,27 @@ class _PostCardState extends State<PostCard> {
 
   /// "↗ pass on" — share the post's text via the platform share sheet.
   Future<void> _share() async {
-    final text = widget.data.content.isNotEmpty
-        ? widget.data.content
-        : widget.data.title;
-    if (text.isEmpty) return;
     final box = context.findRenderObject();
     final origin = box is RenderBox && box.hasSize
         ? box.localToGlobal(Offset.zero) & box.size
         : null;
+    var text = widget.data.content.isNotEmpty
+        ? widget.data.content
+        : widget.data.title;
+    if (widget.data.openableThread) {
+      final projection = await DriftHostedBoardRepository(
+        widget.db,
+      ).getProjectionByLocalBoardId(widget.data.thread.boardId);
+      final publicUrl = projection == null
+          ? null
+          : ElixContentLink.threadUrl(
+              frontendBaseUrl: AppEnvironment.forumWebBaseUrl,
+              boardId: projection.hostedBoardId,
+              threadId: widget.data.thread.id,
+            );
+      if (publicUrl != null) text = publicUrl;
+    }
+    if (text.isEmpty) return;
     try {
       await widget.shareSheet(text, sharePositionOrigin: origin);
     } catch (_) {
@@ -458,6 +475,7 @@ class _PostCardState extends State<PostCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InkWell(
+              key: Key('post_card_author_${thread.id}'),
               borderRadius: BorderRadius.circular(10),
               onTap: widget.onOpenAuthor == null
                   ? null
@@ -500,15 +518,29 @@ class _PostCardState extends State<PostCard> {
                                 ),
                               ),
                               Flexible(
-                                child: Text(
-                                  data.board,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: AnsibleDesign.sans,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: style.muted,
+                                child: InkWell(
+                                  key: Key('post_card_board_${thread.id}'),
+                                  borderRadius: BorderRadius.circular(6),
+                                  onTap: widget.onOpenBoard == null
+                                      ? null
+                                      : () => widget.onOpenBoard!(
+                                          data.thread.boardId,
+                                        ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 3,
+                                    ),
+                                    child: Text(
+                                      data.board,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontFamily: AnsibleDesign.sans,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: style.muted,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),

@@ -155,4 +155,129 @@ void main() {
     expect(openedContent, isFalse);
     expect(find.text('👍'), findsOneWidget);
   });
+
+  testWidgets('discussion author and board are separate navigation targets', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final now = DateTime.utc(2026, 7, 17);
+    final thread = Thread(
+      id: 'thread-nav',
+      boardId: 'board-nav',
+      title: 'Navigation',
+      authorId: 'did:elix:alice',
+      createdAt: now,
+      updatedAt: now,
+    );
+    String? openedAuthor;
+    String? openedBoard;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PostCard(
+            db: db,
+            authorDid: 'did:elix:local',
+            opsDispatchService: OpsDispatchService(
+              repository: InMemoryOpsQueueRepository(),
+            ),
+            onFlushPendingOps: () async {},
+            onOpenAuthor: (did) => openedAuthor = did,
+            onOpenBoard: (boardId) => openedBoard = boardId,
+            data: PostCardData(
+              thread: thread,
+              category: 'General',
+              title: thread.title,
+              content: 'Body',
+              author: thread.authorId,
+              authorDisplayName: 'Alice',
+              board: 'General',
+              timeAgo: 'now',
+              reactions: const {'👍': 0},
+              comments: 0,
+              reacted: false,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('post_card_author_thread-nav')));
+    expect(openedAuthor, 'did:elix:alice');
+    expect(openedBoard, isNull);
+
+    openedAuthor = null;
+    await tester.tap(find.byKey(const Key('post_card_board_thread-nav')));
+    expect(openedBoard, 'board-nav');
+    expect(openedAuthor, isNull);
+  });
+
+  testWidgets('hosted discussion share uses the Web frontend URL', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final now = DateTime.utc(2026, 7, 17);
+    await DriftHostedBoardRepository(db).upsertProjection(
+      HostedBoardProjection(
+        localBoardId: 'board-1',
+        forumHostId: 'host-1',
+        hostedBoardId: 'hosted-1',
+        canonicalBoardUri: 'https://relay.example/boards/hosted-1',
+        remoteSlug: 'general',
+        localSlug: 'general',
+        title: 'General',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final thread = Thread(
+      id: 'thread-1',
+      boardId: 'board-1',
+      title: 'Title',
+      authorId: 'did:elix:alice',
+      createdAt: now,
+      updatedAt: now,
+    );
+    String? sharedText;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PostCard(
+            db: db,
+            authorDid: 'did:elix:local',
+            opsDispatchService: OpsDispatchService(
+              repository: InMemoryOpsQueueRepository(),
+            ),
+            onFlushPendingOps: () async {},
+            shareSheet: (text, {sharePositionOrigin}) async {
+              sharedText = text;
+            },
+            data: PostCardData(
+              thread: thread,
+              category: 'General',
+              title: thread.title,
+              content: 'Original post body',
+              author: thread.authorId,
+              board: 'General',
+              timeAgo: 'now',
+              reactions: const {'👍': 0},
+              comments: 0,
+              reacted: false,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.pump();
+
+    expect(
+      sharedText,
+      'https://forum.elix.cool/boards/hosted-1/threads/thread-1',
+    );
+  });
 }

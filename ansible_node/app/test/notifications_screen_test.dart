@@ -1,10 +1,13 @@
 import 'package:ansible_node/screens/notification_settings_screen.dart';
 import 'package:ansible_node/screens/notifications_screen.dart';
+import 'package:ansible_node/services/handle_resolver.dart';
 import 'package:ansible_node/services/notification_preferences_controller.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 // Widget tests assert zh-Hant copy (test locale falls back to zh-Hant).
 void main() {
@@ -36,6 +39,8 @@ void main() {
     AppDatabase db,
     NotificationRepository repository, {
     VoidCallback? onUnreadChanged,
+    PublicProfileResolver? profileResolver,
+    HandleResolver? handleResolver,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -44,6 +49,8 @@ void main() {
           did: localDid,
           repository: repository,
           onUnreadChanged: onUnreadChanged,
+          profileResolver: profileResolver,
+          handleResolver: handleResolver,
         ),
       ),
     );
@@ -70,6 +77,117 @@ void main() {
     expect(find.text('回覆了你的討論串'), findsOneWidget);
     expect(find.text('開始追蹤你'), findsOneWidget);
     expect(find.text('傳來一則私訊'), findsOneWidget);
+  });
+
+  testWidgets(
+    'notification actor uses display name before handle, alias, and DID',
+    (tester) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      await DriftContactRepository(db).upsertContact(
+        ContactRecord(
+          subjectDid: actorDid,
+          handle: 'alice.elix.cool',
+          localAlias: '本機別名',
+          createdAt: DateTime.utc(2026, 6, 13),
+          updatedAt: DateTime.utc(2026, 6, 13),
+        ),
+      );
+      final repo = InMemoryNotificationRepository();
+      await repo.upsertByDedupKey(
+        notification(id: 'n1', type: NotificationType.newFollower),
+      );
+      final handleResolver = HandleResolver(
+        baseUrl: 'https://relay.example',
+        client: MockClient((_) async => http.Response('', 404)),
+      );
+      final profileResolver = PublicProfileResolver(
+        baseUrl: 'https://appview.example',
+        handleResolver: handleResolver,
+        client: MockClient(
+          (_) async => http.Response(
+            '{"display_name":"Alice","handle":"alice.elix.cool"}',
+            200,
+          ),
+        ),
+      );
+
+      await pumpScreen(
+        tester,
+        db,
+        repo,
+        profileResolver: profileResolver,
+        handleResolver: handleResolver,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Alice'), findsOneWidget);
+      expect(find.text('@alice.elix.cool'), findsNothing);
+      expect(find.text('本機別名'), findsNothing);
+      expect(find.text(actorDid), findsNothing);
+    },
+  );
+
+  testWidgets('notification actor falls back from handle to DID', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final contacts = DriftContactRepository(db);
+    final repo = InMemoryNotificationRepository();
+    await repo.upsertByDedupKey(
+      notification(id: 'n1', type: NotificationType.newFollower),
+    );
+
+    await contacts.upsertContact(
+      ContactRecord(
+        subjectDid: actorDid,
+        handle: 'alice.elix.cool',
+        createdAt: DateTime.utc(2026, 6, 13),
+        updatedAt: DateTime.utc(2026, 6, 13),
+      ),
+    );
+    final offlineHandleResolver = HandleResolver(
+      baseUrl: 'https://relay.example',
+      client: MockClient((_) async => http.Response('', 404)),
+    );
+    final offlineProfileResolver = PublicProfileResolver(
+      baseUrl: 'https://appview.example',
+      handleResolver: offlineHandleResolver,
+      client: MockClient((_) async => http.Response('', 404)),
+    );
+    await pumpScreen(
+      tester,
+      db,
+      repo,
+      profileResolver: offlineProfileResolver,
+      handleResolver: offlineHandleResolver,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('@alice.elix.cool'), findsOneWidget);
+    expect(find.text(actorDid), findsNothing);
+
+    const missingDid = 'did:plc:missing';
+    await repo.upsertByDedupKey(
+      AppNotification(
+        id: 'n2',
+        type: NotificationType.newFollower,
+        actorDid: missingDid,
+        targetRef: missingDid,
+        createdAt: DateTime.utc(2026, 6, 13),
+        dedupKey: 'n2',
+      ),
+    );
+    await tester.pumpWidget(const SizedBox());
+    await pumpScreen(
+      tester,
+      db,
+      repo,
+      profileResolver: offlineProfileResolver,
+      handleResolver: offlineHandleResolver,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(missingDid), findsOneWidget);
   });
 
   testWidgets('shows the empty state when there are no notifications', (

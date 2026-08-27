@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
+import '../services/handle_resolver.dart';
 import '../services/messenger_sync_service.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
@@ -23,6 +24,8 @@ class NotificationsScreen extends StatefulWidget {
     this.repository,
     this.messengerService,
     this.onUnreadChanged,
+    this.profileResolver,
+    this.handleResolver,
     this.embedded = false,
   });
 
@@ -45,6 +48,11 @@ class NotificationsScreen extends StatefulWidget {
   /// Refreshes device-local navigation chrome after read state changes.
   /// This callback never sends a read receipt or performs a server mutation.
   final VoidCallback? onUnreadChanged;
+
+  /// Overrides for deterministic tests. Production uses the shared public
+  /// profile and handle resolvers used by feed author labels.
+  final PublicProfileResolver? profileResolver;
+  final HandleResolver? handleResolver;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -126,7 +134,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               db: widget.db,
               followerDid: widget.did,
               did: notification.actorDid,
-              displayName: _actorContacts[notification.actorDid]?.label,
+              displayName: _actorContacts[notification.actorDid]?.displayName
+                  ?.trim(),
             ),
           ),
         );
@@ -191,14 +200,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  /// Contact label when we know the actor; null lets the row resolve the
-  /// actor's handle from the DID (matching feed bylines).
-  String? _actorLabel(BuildContext context, AppNotification notification) {
+  /// Moderation notifications intentionally have no actor DID. Other actor
+  /// labels use the shared public-profile resolver in the row.
+  String? _fixedActorLabel(BuildContext context, AppNotification notification) {
     if (notification.type == NotificationType.moderationOutcome) {
       // Public moderation state carries no moderator DID by design.
       return context.uiCopy(zh: '板務', en: 'Board moderators');
     }
-    return _actorContacts[notification.actorDid]?.label;
+    return null;
   }
 
   String _typeLabel(BuildContext context, AppNotification notification) {
@@ -310,11 +319,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               itemBuilder: (context, index) {
                 final notification = _notifications[index];
+                final actorContact = _actorContacts[notification.actorDid];
                 return _NotificationRow(
                   key: Key('notification_row_${notification.id}'),
                   icon: _typeIcon(notification.type),
                   actorDid: notification.actorDid,
-                  actorLabel: _actorLabel(context, notification),
+                  fixedActorLabel: _fixedActorLabel(context, notification),
+                  actorDisplayName: actorContact?.displayName,
+                  actorHandle: actorContact?.handle,
+                  profileResolver: widget.profileResolver,
+                  handleResolver: widget.handleResolver,
                   typeLabel: _typeLabel(context, notification),
                   timeLabel: _relativeTime(context, notification.createdAt),
                   unread: !notification.isRead,
@@ -331,7 +345,11 @@ class _NotificationRow extends StatelessWidget {
     super.key,
     required this.icon,
     required this.actorDid,
-    required this.actorLabel,
+    required this.fixedActorLabel,
+    required this.actorDisplayName,
+    required this.actorHandle,
+    required this.profileResolver,
+    required this.handleResolver,
     required this.typeLabel,
     required this.timeLabel,
     required this.unread,
@@ -341,8 +359,12 @@ class _NotificationRow extends StatelessWidget {
   final IconData icon;
   final String actorDid;
 
-  /// Contact label; when null the row resolves the handle from [actorDid].
-  final String? actorLabel;
+  /// Only synthetic actors, such as board moderators, bypass DID resolution.
+  final String? fixedActorLabel;
+  final String? actorDisplayName;
+  final String? actorHandle;
+  final PublicProfileResolver? profileResolver;
+  final HandleResolver? handleResolver;
   final String typeLabel;
   final String timeLabel;
   final bool unread;
@@ -379,14 +401,22 @@ class _NotificationRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  actorLabel != null
+                  fixedActorLabel != null
                       ? Text(
-                          actorLabel!,
+                          fixedActorLabel!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: _whoStyle,
                         )
-                      : AuthorLabel(did: actorDid, style: _whoStyle),
+                      : AuthorLabel(
+                          did: actorDid,
+                          displayName: actorDisplayName,
+                          handle: actorHandle,
+                          profileResolver: profileResolver,
+                          resolver: handleResolver,
+                          resolveProfileBeforeHandle: true,
+                          style: _whoStyle,
+                        ),
                   const SizedBox(height: 2),
                   Text(
                     typeLabel,

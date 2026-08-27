@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import '../config/app_environment.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/moderation_copy.dart';
 import '../l10n/user_facing_error.dart';
@@ -256,7 +257,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     final projection = _hostedProjection;
     if (projection == null) return null;
     return ElixContentLink.threadUrl(
-      canonicalBoardUri: projection.canonicalBoardUri,
+      frontendBaseUrl: AppEnvironment.forumWebBaseUrl,
       boardId: projection.hostedBoardId,
       threadId: widget.thread.id,
     );

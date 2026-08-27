@@ -289,7 +289,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final projection = _hostedProjection;
     if (projection == null) return null;
     return ElixContentLink.boardUrl(
-      canonicalBoardUri: projection.canonicalBoardUri,
+      frontendBaseUrl: AppEnvironment.forumWebBaseUrl,
       boardId: projection.hostedBoardId,
     );
   }

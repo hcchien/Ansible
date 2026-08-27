@@ -23,6 +23,7 @@ class TimelineBoardView extends StatelessWidget {
     required this.followingPosts,
     required this.opsDispatchService,
     required this.onFlushPendingOps,
+    required this.onOpenBoard,
     this.onCompose,
     this.sort = TimelineSort.newest,
     this.onSortChanged,
@@ -34,6 +35,7 @@ class TimelineBoardView extends StatelessWidget {
   final List<PostCardData> followingPosts;
   final OpsDispatchService opsDispatchService;
   final Future<void> Function() onFlushPendingOps;
+  final ValueChanged<String> onOpenBoard;
 
   /// Opens the compose sheet (guided first session step 3); when null the
   /// step still renders but points at the bottom-bar ＋.
@@ -71,7 +73,7 @@ class TimelineBoardView extends StatelessWidget {
                       opsDispatchService: opsDispatchService,
                       onFlushPendingOps: onFlushPendingOps,
                       onOpenAuthor: (authorDid) {
-                        if (authorDid.isEmpty || authorDid == did) return;
+                        if (authorDid.isEmpty) return;
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => UserProfileScreen(
@@ -82,6 +84,7 @@ class TimelineBoardView extends StatelessWidget {
                           ),
                         );
                       },
+                      onOpenBoard: onOpenBoard,
                       onOpenContent: (data) {
                         Navigator.of(context).push(
                           MaterialPageRoute(

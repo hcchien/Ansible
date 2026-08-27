@@ -16,6 +16,7 @@ class AuthorLabel extends StatelessWidget {
     this.profileResolver,
     this.displayName,
     this.handle,
+    this.resolveProfileBeforeHandle = false,
   });
 
   final String did;
@@ -31,12 +32,19 @@ class AuthorLabel extends StatelessWidget {
   final String? displayName;
   final String? handle;
 
+  /// When true, a known handle is treated as an immediate fallback while the
+  /// public profile is still resolved for a preferred display name.
+  final bool resolveProfileBeforeHandle;
+
   /// Overridable for tests; resolves published display name then handle.
   final PublicProfileResolver? profileResolver;
 
   @override
   Widget build(BuildContext context) {
-    final direct = _preferredLabel(displayName, handle);
+    final direct = _preferredLabel(
+      displayName,
+      resolveProfileBeforeHandle ? null : handle,
+    );
     if (direct != null) {
       return Text(direct, style: style, maxLines: maxLines, overflow: overflow);
     }
@@ -48,7 +56,7 @@ class AuthorLabel extends StatelessWidget {
       builder: (context, snapshot) {
         final text =
             snapshot.data?.preferredLabel ??
-            fallback.cached(did) ??
+            _preferredLabel(null, handle ?? fallback.cached(did)) ??
             shortenDid(did);
         return Text(text, style: style, maxLines: maxLines, overflow: overflow);
       },

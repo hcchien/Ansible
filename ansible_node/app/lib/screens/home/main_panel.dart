@@ -260,6 +260,7 @@ class MainPanel extends StatelessWidget {
                     onSortChanged: onTimelineSortChanged,
                     opsDispatchService: opsDispatchService,
                     onFlushPendingOps: onFlushPendingOps,
+                    onOpenBoard: onOpenBoard,
                     onCompose: onComposeTap,
                   ),
                 ),

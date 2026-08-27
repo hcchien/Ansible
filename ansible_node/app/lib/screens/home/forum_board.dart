@@ -180,7 +180,7 @@ class ForumBoardView extends StatelessWidget {
                     opsDispatchService: opsDispatchService,
                     onFlushPendingOps: onFlushPendingOps,
                     onOpenAuthor: (authorDid) {
-                      if (authorDid.isEmpty || authorDid == did) return;
+                      if (authorDid.isEmpty) return;
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => UserProfileScreen(
@@ -191,6 +191,7 @@ class ForumBoardView extends StatelessWidget {
                         ),
                       );
                     },
+                    onOpenBoard: onOpenBoard,
                   ),
                 ),
         ),
