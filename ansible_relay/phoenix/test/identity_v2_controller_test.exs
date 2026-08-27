@@ -3,6 +3,7 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
   use Plug.Test
 
   alias AnsibleRelay.{DidAccountCache, IdentityCache, Repo}
+  alias AnsibleRelay.Db.{DidAccount, DidElixMigration, IdentityAnchor}
   alias AnsibleRelay.Web.Router
 
   @router_opts Router.init([])
@@ -316,6 +317,83 @@ defmodule AnsibleRelay.Web.IdentityV2ControllerTest do
 
     assert retry_anchor.status == 200
     assert Jason.decode!(retry_anchor.resp_body)["handle"] == "alice.elix.cool"
+  end
+
+  test "canonical DID re-anchor survives a legacy alias cache refresh" do
+    {legacy_public_key, _legacy_private_key} = ed25519_keypair()
+    {public_key_hex, private_key} = ed25519_keypair()
+    legacy_did = "did:plc:legacyaliasaccount"
+    handle = "migrated.elix.cool"
+    now = DateTime.utc_now()
+
+    Repo.insert!(%DidAccount{
+      did: legacy_did,
+      public_key_hex: legacy_public_key,
+      signing_algorithm: "ed25519",
+      key_version: 1,
+      handle: handle,
+      pds_endpoint: "https://elix.cool",
+      reputation_tier: "basic",
+      registered_at: now,
+      expires_at: DateTime.add(now, 90, :day)
+    })
+
+    Repo.insert!(%IdentityAnchor{
+      did: @valid_did,
+      anchor_cid: "bafyreicanonicalidentity",
+      reason: "initial",
+      identity_key: public_key_hex,
+      identity_key_algorithm: "ed25519",
+      handle: handle,
+      sig: "test-signature",
+      canonical_body: "{}",
+      state: "active",
+      created_at: now
+    })
+
+    Repo.insert!(%DidElixMigration{
+      legacy_did: legacy_did,
+      v1_did: @valid_did,
+      handle: handle,
+      state: "completed",
+      canonical_body: "{}",
+      legacy_sig: "legacy-signature",
+      v1_sig: "v1-signature",
+      created_at: now,
+      completed_at: now
+    })
+
+    # Reproduce the production ordering: the canonical account is projected
+    # first, then an older client reads the retained legacy account. Both
+    # aliases must continue routing the shared handle to the canonical DID.
+    DidAccountCache.reset()
+    assert {:ok, %{public_key_hex: ^public_key_hex}} = DidAccountCache.get(@valid_did)
+    assert {:ok, %{public_key_hex: ^legacy_public_key}} = DidAccountCache.get(legacy_did)
+    assert {:ok, @valid_did} = DidAccountCache.get_by_handle(handle)
+
+    retry_register =
+      post_json("/api/v2/identity/register", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle_suffix" => "migrated",
+        "signing_algorithm" => "ed25519"
+      })
+
+    assert retry_register.status == 200
+    retry_body = Jason.decode!(retry_register.resp_body)
+
+    retry_anchor =
+      post_json("/api/v2/identity/anchor", %{
+        "did" => @valid_did,
+        "public_key_hex" => public_key_hex,
+        "handle" => retry_body["handle"],
+        "registration_sig" => sign_nonce(private_key, retry_body["nonce"]),
+        "nonce" => retry_body["nonce"],
+        "signing_algorithm" => "ed25519"
+      })
+
+    assert retry_anchor.status == 200
+    assert Jason.decode!(retry_anchor.resp_body)["did"] == @valid_did
   end
 
   test "anchor accepts development signatures only when enabled" do

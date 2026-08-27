@@ -44,6 +44,7 @@ defmodule AnsibleRelay.DidAccountCache do
     reputation_tier = Keyword.get(opts, :reputation_tier, "basic")
     signing_algorithm = Keyword.get(opts, :signing_algorithm, "ed25519")
     key_version = Keyword.get(opts, :key_version, 1)
+    persist_accounts? = Application.get_env(:ansible_relay, :persist_did_accounts, true)
 
     entry = %{
       public_key_hex: public_key_hex,
@@ -57,9 +58,15 @@ defmodule AnsibleRelay.DidAccountCache do
     }
 
     :ets.insert(@table, {did, entry})
-    :ets.insert(@handle_table, {handle, did})
 
-    if Application.get_env(:ansible_relay, :persist_did_accounts, true) do
+    # A completed did:elix migration makes the v1 DID authoritative for
+    # routing. Older clients can still refresh the retained legacy account;
+    # never let that refresh move the shared handle index back to the legacy
+    # alias or a later v1 re-anchor will be misclassified as duplicate_did.
+    handle_did = if persist_accounts?, do: canonical_did_for_account(did), else: did
+    :ets.insert(@handle_table, {handle, handle_did})
+
+    if persist_accounts? do
       Repo.insert(
         %DidAccount{
           did: did,
@@ -130,7 +137,10 @@ defmodule AnsibleRelay.DidAccountCache do
         :ets.insert(@table, {did, entry})
 
         if is_binary(account.handle) do
-          :ets.insert(@handle_table, {account.handle, did})
+          :ets.insert(
+            @handle_table,
+            {account.handle, canonical_did_for_account(did)}
+          )
         end
 
         {:ok, entry}
