@@ -8,6 +8,9 @@ substitutions:
   _IMAGE_NAME: ansible-appview
   _SERVICE_NAME: ansible-appview-dev
   _ELIXIR_IMAGE: hexpm/elixir:1.19.0-erlang-27.2-debian-bookworm-20260202-slim
+  _VPC_CONNECTOR: ansible-conn
+  _MIGRATE_JOB_NAME: __AUTO__
+  _DATABASE_URL_SECRET: __AUTO__
 
 steps:
   - id: verify-identity-contract
@@ -87,6 +90,63 @@ steps:
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
     waitFor: ["build-image"]
 
+  - id: migrate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        set -eu
+        image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA"
+        service="${_SERVICE_NAME}"
+        job="${_MIGRATE_JOB_NAME}"
+        database_secret="${_DATABASE_URL_SECRET}"
+
+        if [ "$$job" = "__AUTO__" ]; then
+          job="$${service}-migrate"
+        fi
+
+        if [ "$$database_secret" = "__AUTO__" ]; then
+          case "$$service" in
+            *-prod) database_secret="appview-prod-database-url:latest" ;;
+            *-dev) database_secret="appview-database-url:latest" ;;
+            *) echo "refusing to infer database secret for service $$service" >&2; exit 1 ;;
+          esac
+        fi
+
+        case "$$service" in
+          *-prod)
+            case "$$job:$$database_secret" in
+              *-prod-migrate:appview-prod-database-url:*) ;;
+              *)
+                echo "refusing production deploy with non-production migration target: $$job / $$database_secret" >&2
+                exit 1
+                ;;
+            esac
+            ;;
+        esac
+
+        if gcloud run jobs describe "$$job" --region="${_REGION}" --project="$PROJECT_ID" >/dev/null 2>&1; then
+          gcloud run jobs update "$$job" \
+            --image="$$image" \
+            --region="${_REGION}" \
+            --project="$PROJECT_ID" \
+            --quiet
+        else
+          gcloud run jobs create "$$job" \
+            --image="$$image" \
+            --region="${_REGION}" \
+            --project="$PROJECT_ID" \
+            --vpc-connector="${_VPC_CONNECTOR}" \
+            --vpc-egress=private-ranges-only \
+            --set-secrets=DATABASE_URL=$$database_secret \
+            --command=/app/bin/ansible_appview \
+            --args='eval,AnsibleAppview.Release.migrate()' \
+            --quiet
+        fi
+        gcloud run jobs execute "$$job" --region="${_REGION}" --project="$PROJECT_ID" --wait
+    waitFor: ["push-image"]
+
   - id: deploy-dev
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
@@ -100,7 +160,7 @@ steps:
       - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID
       - --region=${_REGION}
       - --quiet
-    waitFor: ["push-image"]
+    waitFor: ["migrate"]
 
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
