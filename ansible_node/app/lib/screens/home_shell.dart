@@ -1262,6 +1262,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   ) async {
     final cards = <PostCardData>[];
     final l10n = context.l10n;
+    final postItemsByThread = <String, List<PostTimelineItem>>{};
+    for (final item in items.whereType<PostTimelineItem>()) {
+      postItemsByThread
+          .putIfAbsent(item.entry.thread.id, () => <PostTimelineItem>[])
+          .add(item);
+    }
+    final emittedThreadIds = <String>{};
+
     for (final item in items) {
       if (item is ContentTimelineItem) {
         cards.add(
@@ -1275,11 +1283,83 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         continue;
       }
       if (item is! PostTimelineItem) continue;
-      final entry = item.entry;
-      final posts = await _postRepo.list(threadId: entry.thread.id);
+      final threadId = item.entry.thread.id;
+      if (!emittedThreadIds.add(threadId)) continue;
+
+      final threadItems = postItemsByThread[threadId] ?? [item];
+      final storedThread = await _threadRepo.getById(threadId);
+      final thread = storedThread ?? item.entry.thread;
+      final storedPosts = await _postRepo.list(threadId: threadId);
+      final activeStoredPosts =
+          storedPosts.where((post) => !post.isDeleted).toList()
+            ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      final timelinePostsById = <String, Post>{
+        for (final timelineItem in threadItems)
+          if (!timelineItem.entry.post.isDeleted)
+            timelineItem.entry.post.id: timelineItem.entry.post,
+      };
+      final availablePosts = activeStoredPosts.isNotEmpty
+          ? activeStoredPosts
+          : (timelinePostsById.values.toList()
+              ..sort((a, b) => a.createdAt.compareTo(b.createdAt)));
+      if (availablePosts.isEmpty) continue;
+
+      // The first post is the thread's opening context. A followed user's
+      // reply may be the newest timeline activity, but it must never replace
+      // the OP as the card body.
+      final openingPost = availablePosts.first;
+      PostTimelineItem? openingTimelineItem;
+      for (final timelineItem in threadItems) {
+        if (timelineItem.entry.post.id == openingPost.id) {
+          openingTimelineItem = timelineItem;
+          break;
+        }
+      }
+
+      var latestActivity = openingPost.lastEditAt;
+      for (final timelineItem in threadItems) {
+        if (timelineItem.timestamp.isAfter(latestActivity)) {
+          latestActivity = timelineItem.timestamp;
+        }
+      }
+      for (final post in availablePosts) {
+        if (post.lastEditAt.isAfter(latestActivity)) {
+          latestActivity = post.lastEditAt;
+        }
+      }
+
+      final relevantReplyIds = threadItems
+          .map((timelineItem) => timelineItem.entry.post.id)
+          .where((id) => id != openingPost.id)
+          .toSet();
+      final replyPosts =
+          availablePosts
+              .where((post) => relevantReplyIds.contains(post.id))
+              .toList()
+            ..sort((a, b) => b.lastEditAt.compareTo(a.lastEditAt));
+      final metadataByPostId = {
+        for (final timelineItem in threadItems)
+          timelineItem.entry.post.id: timelineItem,
+      };
+      final replyPreviews = replyPosts
+          .take(3)
+          .map((post) {
+            final metadata = metadataByPostId[post.id];
+            return ThreadReplyPreview(
+              id: post.id,
+              author: post.authorId,
+              content: post.content,
+              timeAgo: _formatTimeAgo(post.lastEditAt),
+              authorDisplayName: metadata?.authorDisplayName,
+              authorHandle: metadata?.authorHandle,
+              signatureVerified: post.signatureVerified,
+            );
+          })
+          .toList(growable: false);
+
       final reactions = await _reactionRepo.listByTarget(
         store.TargetType.thread.name,
-        entry.thread.id,
+        threadId,
       );
       final usersByReactionType = <String, Set<String>>{};
       var reacted = false;
@@ -1296,23 +1376,28 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         for (final entry in usersByReactionType.entries)
           entry.key: entry.value.length,
       };
-      final board = entry.board ?? boardMap[entry.post.boardId];
+      final board =
+          openingTimelineItem?.entry.board ??
+          item.entry.board ??
+          boardMap[thread.boardId];
       cards.add(
         PostCardData(
-          thread: entry.thread,
+          thread: thread,
           category: board?.title ?? l10n.uncategorized,
-          title: entry.thread.title,
-          author: entry.post.authorId,
-          board: board?.title ?? entry.post.boardId,
-          timeAgo: _formatTimeAgo(entry.post.createdAt),
-          content: entry.post.content,
+          title: thread.title,
+          author: openingPost.authorId,
+          board: board?.title ?? thread.boardId,
+          timeAgo: _formatTimeAgo(openingPost.createdAt),
+          sortTimestamp: latestActivity,
+          content: openingPost.content,
           reactions: {'👍': countMap[store.ReactionType.thumbsUp.name] ?? 0},
-          comments: replyCountForPosts(posts),
+          comments: replyCountForPosts(availablePosts),
           reacted: reacted,
-          openingPost: entry.post,
-          signatureVerified: entry.post.signatureVerified,
-          authorDisplayName: item.authorDisplayName,
-          authorHandle: item.authorHandle,
+          openingPost: openingPost,
+          signatureVerified: openingPost.signatureVerified,
+          authorDisplayName: openingTimelineItem?.authorDisplayName,
+          authorHandle: openingTimelineItem?.authorHandle,
+          replyPreviews: replyPreviews,
         ),
       );
     }

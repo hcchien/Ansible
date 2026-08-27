@@ -48,6 +48,7 @@ class PostCardData {
     this.authorHandle,
     this.signatureVerified = false,
     this.openableThread = true,
+    this.replyPreviews = const [],
   }) : sortTimestamp = sortTimestamp ?? thread.createdAt;
 
   final Thread thread;
@@ -76,6 +77,12 @@ class PostCardData {
   /// author. Also hides the per-thread comment chip.
   final bool openableThread;
 
+  /// Replies that caused this thread to surface in the timeline. They stay
+  /// visually attached to the opening post so a reply is never presented as a
+  /// context-free top-level card. The timeline caps this list; the comment
+  /// count and thread detail retain the complete conversation.
+  final List<ThreadReplyPreview> replyPreviews;
+
   PostCardData copyWith({String? authorTier}) => PostCardData(
     thread: thread,
     category: category,
@@ -94,7 +101,28 @@ class PostCardData {
     authorHandle: authorHandle,
     signatureVerified: signatureVerified,
     openableThread: openableThread,
+    replyPreviews: replyPreviews,
   );
+}
+
+class ThreadReplyPreview {
+  const ThreadReplyPreview({
+    required this.id,
+    required this.author,
+    required this.content,
+    required this.timeAgo,
+    this.authorDisplayName,
+    this.authorHandle,
+    this.signatureVerified = false,
+  });
+
+  final String id;
+  final String author;
+  final String content;
+  final String timeAgo;
+  final String? authorDisplayName;
+  final String? authorHandle;
+  final bool signatureVerified;
 }
 
 /// A board's chosen reading style owns its card surface. The system theme is
@@ -545,6 +573,40 @@ class _PostCardState extends State<PostCard> {
                       ),
                     ),
                   ],
+                  if (data.replyPreviews.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.only(left: 12),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(color: style.rule, width: 2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (
+                            var i = 0;
+                            i < data.replyPreviews.length;
+                            i++
+                          ) ...[
+                            if (i > 0) ...[
+                              const SizedBox(height: 9),
+                              Divider(height: 1, color: style.rule),
+                              const SizedBox(height: 9),
+                            ],
+                            _ThreadReplyPreviewRow(
+                              key: Key(
+                                'thread_reply_preview_${data.replyPreviews[i].id}',
+                              ),
+                              reply: data.replyPreviews[i],
+                              style: style,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -588,6 +650,79 @@ class _PostCardState extends State<PostCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ThreadReplyPreviewRow extends StatelessWidget {
+  const _ThreadReplyPreviewRow({
+    super.key,
+    required this.reply,
+    required this.style,
+  });
+
+  final ThreadReplyPreview reply;
+  final ElixScreenStyleData style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              '↳',
+              style: TextStyle(
+                fontFamily: AnsibleDesign.sans,
+                color: style.faint,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: AuthorLabel(
+                did: reply.author,
+                displayName: reply.authorDisplayName,
+                handle: reply.authorHandle,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.sans,
+                  color: style.muted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              reply.timeAgo,
+              style: TextStyle(
+                fontFamily: AnsibleDesign.sans,
+                color: style.faint,
+                fontSize: 11.5,
+              ),
+            ),
+            if (reply.signatureVerified) ...[
+              const SizedBox(width: 5),
+              Icon(Icons.verified_user_outlined, size: 12, color: style.faint),
+            ],
+          ],
+        ),
+        if (reply.content.trim().isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            reply.content,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.serif,
+              color: style.foreground,
+              height: 1.55,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

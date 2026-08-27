@@ -484,6 +484,152 @@ void main() {
     expect(contact.handle, 'bob.elix.app');
   });
 
+  testWidgets(
+    'timeline groups many replies under one opening post with context',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'elix-genesis-subscribed': true,
+        'elix-swipe-coachmark-seen': true,
+      });
+      tester.view.physicalSize = const Size(390, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final now = DateTime.utc(2026, 8, 27, 8);
+      final boardRepo = DriftBoardRepository(db);
+      final threadRepo = DriftThreadRepository(db);
+      final postRepo = DriftPostRepository(db);
+      final followRepo = DriftFollowRepository(db);
+
+      await boardRepo.create(
+        Board(
+          id: 'board-context',
+          slug: 'context',
+          title: 'Context board',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await threadRepo.create(
+        Thread(
+          id: 'thread-context',
+          boardId: 'board-context',
+          title: 'Original thread title',
+          authorId: 'did:plc:op',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await postRepo.create(
+        Post(
+          id: 'opening-post',
+          threadId: 'thread-context',
+          boardId: 'board-context',
+          authorId: 'did:plc:op',
+          content: 'Original context that every reply needs',
+          createdAt: now,
+          updatedAt: now,
+          lastEditAt: now,
+          signatureVerified: true,
+        ),
+      );
+      for (var i = 1; i <= 4; i += 1) {
+        final timestamp = now.add(Duration(minutes: i));
+        await postRepo.create(
+          Post(
+            id: 'reply-$i',
+            threadId: 'thread-context',
+            boardId: 'board-context',
+            authorId: 'did:plc:bob',
+            content: 'Reply number $i',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            lastEditAt: timestamp,
+            signatureVerified: true,
+          ),
+        );
+      }
+      await followRepo.upsertTarget(
+        FollowTarget(
+          targetId: 'target-bob-context',
+          targetType: FollowTargetType.user,
+          canonicalUri: 'did:plc:bob',
+          displayName: 'Bob',
+          did: 'did:plc:bob',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await followRepo.upsertEdge(
+        FollowEdge(
+          followId: 'follow-bob-context',
+          followerDid: 'did:plc:alice',
+          targetId: 'target-bob-context',
+          targetType: FollowTargetType.user,
+          direction: FollowDirection.outbound,
+          status: FollowStatus.accepted,
+          visibility: FollowVisibility.localOnly,
+          createdAt: now,
+          updatedAt: now,
+          acceptedAt: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeShell(
+            db: db,
+            did: 'did:plc:alice',
+            networkStatusMonitor: _FakeNetworkStatusMonitor(
+              NetworkStatus.online,
+            ),
+            relayDiscoveryLoader: () async => _emptyDiscovery(),
+            autoSeedDefaultRelay: false,
+            initialBoard: HomeBoard.timeline,
+          ),
+        ),
+      );
+      for (var i = 0; i < 20; i += 1) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      final timeline = find.byKey(
+        const Key('board_swipe_page_transform_timeline'),
+      );
+      expect(
+        find.descendant(of: timeline, matching: find.byType(PostCard)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: timeline,
+          matching: find.text('Original context that every reply needs'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: timeline,
+          matching: find.byKey(const Key('thread_reply_preview_reply-4')),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: timeline,
+          matching: find.byKey(const Key('thread_reply_preview_reply-1')),
+        ),
+        findsNothing,
+        reason: 'A single thread card caps its inline reply previews at three.',
+      );
+
+      await _disposeWidgetTree(tester);
+    },
+  );
+
   testWidgets('foreground resume pull refresh runs when online', (
     tester,
   ) async {
