@@ -109,6 +109,43 @@ void main() {
     },
   );
 
+  test('refresh bypasses a stale public profile cache', () async {
+    var requests = 0;
+    final resolver = PublicProfileResolver(
+      baseUrl: 'https://appview.example',
+      handleResolver: HandleResolver(
+        baseUrl: 'https://relay.example',
+        client: MockClient((_) async => http.Response('', 404)),
+      ),
+      client: MockClient((_) async {
+        requests += 1;
+        return http.Response(
+          requests == 1
+              ? '{"did":"did:elix:alice","display_name":"Alice","public_credentials":[]}'
+              : '{"did":"did:elix:alice","display_name":"Alice","public_credentials":[{"credential_type":"AgeOver18Credential","issuer_did":"did:web:issuer.elix.cool","badge":"age_over_18","value":"true"}]}',
+          200,
+        );
+      }),
+    );
+
+    expect(
+      (await resolver.profileFor('did:elix:alice'))?.publicCredentials,
+      isEmpty,
+    );
+    expect(
+      (await resolver.profileFor('did:elix:alice'))?.publicCredentials,
+      isEmpty,
+    );
+    expect(requests, 1);
+
+    final refreshed = await resolver.profileFor(
+      'did:elix:alice',
+      refresh: true,
+    );
+    expect(refreshed?.publicCredentials.single.badge, 'age_over_18');
+    expect(requests, 2);
+  });
+
   test('formats a handle distinctly when no display name is published', () {
     expect(
       const PublicAuthorProfile(handle: 'hcchien').preferredLabel,

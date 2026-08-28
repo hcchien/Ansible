@@ -41,6 +41,7 @@ import '../services/messenger_sync_service.dart';
 import '../services/network_status_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/platform_capabilities.dart';
+import '../services/public_profile_credential_preferences.dart';
 import '../services/content_publication_service.dart';
 import '../services/forum_host_client.dart';
 import '../services/forum_publication_service.dart';
@@ -2150,6 +2151,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       followRepository: _followRepo,
       contactRepository: _contactRepo,
       didReputationRepo: _didReputationRepo,
+      walletRepository: DriftWalletRepository(widget.db),
+      profileCredentialPreferences:
+          const SecurePublicProfileCredentialPreferenceStore(),
       followerDid: widget.did,
       notificationProjector: _notificationProjector,
       hostModerationSync: HostModerationSyncService(

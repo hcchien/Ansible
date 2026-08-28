@@ -369,13 +369,14 @@ class AppSyncService {
     if (latest == null) {
       return handle != null ||
           displayName != null ||
-          credentialTypes.isNotEmpty;
+          (credentialTypes?.isNotEmpty ?? false);
     }
     final previous = CrdtOpBuilder.decodePayload(latest.payload);
     return _blank(previous['handle'] as String?) != handle ||
         _blank(previous['displayName'] as String?) != displayName ||
         _blank(previous['avatarUrl'] as String?) != avatarUrl ||
-        !_sameStringList(previous['credentialTypes'], credentialTypes);
+        (credentialTypes != null &&
+            !_sameStringList(previous['credentialTypes'], credentialTypes));
   }
 
   Future<AppSyncResult> syncAll({
@@ -678,7 +679,7 @@ class AppSyncService {
       final handle = canonicalHandle ?? _blank(self?.handle);
       final displayName = _blank(self?.displayName);
       final avatarUrl = _blank(self?.avatarUrl);
-      final credentialTypes = await _selectedPublicCredentialTypes();
+      final selectedCredentialTypes = await _selectedPublicCredentialTypes();
 
       // Skip if the last published profile already matches the public subset.
       OpsQueueEntry? latest;
@@ -688,6 +689,15 @@ class AppSyncService {
           latest = op;
         }
       }
+      final previous = latest == null
+          ? null
+          : CrdtOpBuilder.decodePayload(latest.payload);
+      // A sync surface without Wallet/preferences access must preserve the
+      // last explicit disclosure state. Only an available preference source
+      // returning an empty list means the user deliberately removed badges.
+      final credentialTypes =
+          selectedCredentialTypes ??
+          _normalizedStringList(previous?['credentialTypes']);
       // Nothing public to announce yet and no earlier profile to retract.
       if (latest == null &&
           handle == null &&
@@ -696,11 +706,10 @@ class AppSyncService {
         return 0;
       }
       if (latest != null) {
-        final prev = CrdtOpBuilder.decodePayload(latest.payload);
-        if (_blank(prev['handle'] as String?) == handle &&
-            _blank(prev['displayName'] as String?) == displayName &&
-            _blank(prev['avatarUrl'] as String?) == avatarUrl &&
-            _sameStringList(prev['credentialTypes'], credentialTypes)) {
+        if (_blank(previous?['handle'] as String?) == handle &&
+            _blank(previous?['displayName'] as String?) == displayName &&
+            _blank(previous?['avatarUrl'] as String?) == avatarUrl &&
+            _sameStringList(previous?['credentialTypes'], credentialTypes)) {
           return 0;
         }
       }
@@ -727,12 +736,12 @@ class AppSyncService {
     return trimmed;
   }
 
-  Future<List<String>> _selectedPublicCredentialTypes() async {
+  Future<List<String>?> _selectedPublicCredentialTypes() async {
     final wallet = _walletRepository;
     final preferences = _profileCredentialPreferences;
     final did = _followerDid;
     if (wallet == null || preferences == null || did == null || did.isEmpty) {
-      return const <String>[];
+      return null;
     }
     final selected = await preferences.selectedCredentialIds(did);
     if (selected.isEmpty) return const <String>[];
@@ -754,11 +763,15 @@ class AppSyncService {
   }
 
   static bool _sameStringList(Object? raw, List<String> expected) {
-    final actual = raw is List
-        ? (raw.whereType<String>().toSet().toList()..sort())
-        : <String>[];
+    final actual = _normalizedStringList(raw);
     return actual.length == expected.length &&
         actual.indexed.every((entry) => entry.$2 == expected[entry.$1]);
+  }
+
+  static List<String> _normalizedStringList(Object? raw) {
+    return raw is List
+        ? (raw.whereType<String>().toSet().toList()..sort())
+        : <String>[];
   }
 
   /// Read-only refreshes must not mint a new protected-board proof. Callers

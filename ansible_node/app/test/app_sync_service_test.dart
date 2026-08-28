@@ -582,6 +582,97 @@ void main() {
   );
 
   test(
+    'profile sync without a Wallet source preserves explicit VC disclosures',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      final now = DateTime.utc(2026, 8, 28);
+      final opsQueue = InMemoryOpsQueueRepository();
+      final contacts = DriftContactRepository(db);
+      await contacts.upsertContact(
+        ContactRecord(
+          subjectDid: 'did:elix:alice',
+          handle: 'alice.elix.cool',
+          displayName: 'Alice',
+          source: 'self',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await opsQueue.enqueue(
+        CrdtOpBuilder.createProfile(
+          authorDid: 'did:elix:alice',
+          handle: 'alice.elix.cool',
+          displayName: 'Alice',
+          credentialTypes: const [
+            'AgeOver18Credential',
+            'NationalityCredential',
+          ],
+        ),
+      );
+
+      AppSyncService build() => AppSyncService(
+        remoteNodeRepo: DriftRemoteNodeRepository(db),
+        boardSyncConfigRepo: DriftBoardSyncConfigRepository(db),
+        boardRepo: DriftBoardRepository(db),
+        threadRepo: DriftThreadRepository(db),
+        postRepo: DriftPostRepository(db),
+        contentItemRepo: DriftContentItemRepository(db),
+        publicationRepo: DriftPublicationRepository(db),
+        relaySettings: const EmptyNostrRelaySettingsStore(),
+        keyStore: const InMemoryNostrKeyStore(),
+        contactRepository: contacts,
+        followerDid: 'did:elix:alice',
+        opsQueueRepo: opsQueue,
+        opsDispatchService: OpsDispatchService(
+          repository: opsQueue,
+          signer: _FakeDidSigner(),
+        ),
+        didSigner: _FakeDidSigner(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(
+          const CanonicalIdentity(
+            did: 'did:elix:alice',
+            handle: 'alice.elix.cool',
+            publicKeyHex: 'test-key',
+          ),
+        ),
+      );
+
+      // Missing Wallet/preferences is unknown disclosure state, not an
+      // instruction to publish credentialTypes: [].
+      await build().syncAll(pullRemote: false);
+      expect(
+        (await opsQueue.listAll())
+            .where((op) => op.entityType == 'profile')
+            .length,
+        1,
+      );
+
+      // A later profile-field change may still publish, but it carries forward
+      // the last explicit VC selection instead of silently revoking it.
+      await contacts.upsertContact(
+        ContactRecord(
+          subjectDid: 'did:elix:alice',
+          handle: 'alice.elix.cool',
+          displayName: 'Alice Updated',
+          source: 'self',
+          createdAt: now,
+          updatedAt: now.add(const Duration(minutes: 1)),
+        ),
+      );
+      await build().syncAll(pullRemote: false);
+      final profiles = (await opsQueue.listAll())
+          .where((op) => op.entityType == 'profile')
+          .toList();
+      expect(profiles, hasLength(2));
+      expect(
+        CrdtOpBuilder.decodePayload(profiles.last.payload)['credentialTypes'],
+        ['AgeOver18Credential', 'NationalityCredential'],
+      );
+    },
+  );
+
+  test(
     'syncAll preserves a legacy profile handle when canonical handle is empty',
     () async {
       final db = AppDatabase(NativeDatabase.memory());

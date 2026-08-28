@@ -105,12 +105,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
     _loadStatus();
     _loadHandle();
-    _loadProfile();
+    _loadProfile(refresh: true);
     _loadPublicPosts();
   }
 
-  Future<void> _loadProfile() async {
-    final profile = await _profileResolver.profileFor(widget.did);
+  Future<void> _loadProfile({bool refresh = false}) async {
+    final profile = await _profileResolver.profileFor(
+      widget.did,
+      refresh: refresh,
+    );
     if (!mounted || profile == null) return;
     setState(() {
       _publishedDisplayName = profile.displayName;
@@ -420,15 +423,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         if (widget.did == widget.followerDid) ...[
           const SizedBox(height: 14),
           OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => WalletScreen(
-                  holderDid: widget.followerDid,
-                  repository: DriftWalletRepository(widget.db),
-                  db: widget.db,
-                ),
-              ),
-            ),
+            onPressed: _openCredentialManager,
             icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
             label: Text(
               context.uiCopy(
@@ -523,6 +518,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       },
       _ => credential.credentialType,
     };
+  }
+
+  Future<void> _openCredentialManager() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WalletScreen(
+          holderDid: widget.followerDid,
+          repository: DriftWalletRepository(widget.db),
+          db: widget.db,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadProfile(refresh: true);
   }
 
   Future<void> _openDiscussion(_PublicProfileEntry entry) async {

@@ -159,13 +159,16 @@ class PublicProfileResolver {
 
   PublicAuthorProfile? cached(String did) => _cache[did];
 
-  Future<PublicAuthorProfile?> profileFor(String did) async {
+  Future<PublicAuthorProfile?> profileFor(
+    String did, {
+    bool refresh = false,
+  }) async {
     final identity = did.trim();
     if (identity.isEmpty) return null;
     if (!identity.startsWith('did:')) {
       return PublicAuthorProfile(handle: identity.replaceFirst('@', ''));
     }
-    if (_cache.containsKey(identity)) return _cache[identity];
+    if (!refresh && _cache.containsKey(identity)) return _cache[identity];
 
     // Resolve both public presentation sources concurrently so a slow Relay
     // cannot add another full timeout after the AppView lookup (or vice versa).
