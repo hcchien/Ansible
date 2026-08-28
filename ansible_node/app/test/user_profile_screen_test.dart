@@ -147,6 +147,56 @@ void main() {
     expect(find.text('目前沒有公開貼文'), findsOneWidget);
   });
 
+  testWidgets('own profile refreshes once across the AppView projection window', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    var requests = 0;
+    final handleResolver = HandleResolver(
+      baseUrl: 'https://relay.example',
+      client: MockClient((_) async => http.Response('', 404)),
+    );
+    final profileResolver = PublicProfileResolver(
+      baseUrl: 'https://appview.example',
+      handleResolver: handleResolver,
+      client: MockClient((_) async {
+        requests += 1;
+        return http.Response(
+          requests == 1
+              ? '{"did":"did:key:alice","display_name":"Alice","public_credentials":[]}'
+              : '{"did":"did:key:alice","display_name":"Alice","public_credentials":[{"credential_type":"AgeOver18Credential","issuer_did":"did:web:issuer.elix.cool","badge":"age_over_18","value":"true"}]}',
+          200,
+        );
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfileScreen(
+          db: db,
+          followerDid: 'did:key:alice',
+          did: 'did:key:alice',
+          resolver: handleResolver,
+          profileResolver: profileResolver,
+          publicPostsLoader: (_) async => const [],
+          profileProjectionRefreshDelay: const Duration(seconds: 1),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('已滿 18 歲'), findsNothing);
+    expect(requests, 1);
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('已滿 18 歲'), findsOneWidget);
+    expect(requests, 2);
+  });
+
   testWidgets('desktop profile adds a public-data context rail', (
     tester,
   ) async {

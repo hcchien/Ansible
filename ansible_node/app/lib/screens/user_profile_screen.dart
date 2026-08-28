@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +39,7 @@ class UserProfileScreen extends StatefulWidget {
     this.resolver,
     this.profileResolver,
     this.publicPostsLoader,
+    this.profileProjectionRefreshDelay = const Duration(seconds: 6),
   });
 
   final AppDatabase db;
@@ -54,6 +57,11 @@ class UserProfileScreen extends StatefulWidget {
   /// Public, signature-verified author timeline. Tests inject a deterministic
   /// loader; production uses the configured first-party AppView.
   final PublicProfilePostsLoader? publicPostsLoader;
+
+  /// AppView folds Relay profile ops on a short interval. Own-profile reads
+  /// retry once across that projection window so a just-synced disclosure
+  /// appears without requiring the user to close and reopen the screen.
+  final Duration profileProjectionRefreshDelay;
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -78,6 +86,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String? _publicPostsError;
   bool _loadingPublicPosts = true;
   bool _busy = false;
+  Timer? _profileProjectionRefreshTimer;
 
   @override
   void initState() {
@@ -105,11 +114,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
     _loadStatus();
     _loadHandle();
-    _loadProfile(refresh: true);
+    unawaited(_loadProfile(refresh: true, retryAfterProjection: true));
     _loadPublicPosts();
   }
 
-  Future<void> _loadProfile({bool refresh = false}) async {
+  @override
+  void dispose() {
+    _profileProjectionRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadProfile({
+    bool refresh = false,
+    bool retryAfterProjection = false,
+  }) async {
     final profile = await _profileResolver.profileFor(
       widget.did,
       refresh: refresh,
@@ -123,6 +141,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _publishedTier = profile.reputationTier;
       _publicCredentials = profile.publicCredentials;
     });
+    if (retryAfterProjection &&
+        widget.did == widget.followerDid &&
+        profile.publicCredentials.isEmpty) {
+      _profileProjectionRefreshTimer?.cancel();
+      _profileProjectionRefreshTimer = Timer(
+        widget.profileProjectionRefreshDelay,
+        () {
+          if (mounted) unawaited(_loadProfile(refresh: true));
+        },
+      );
+    }
   }
 
   Future<void> _loadPublicPosts() async {
@@ -531,7 +560,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ),
     );
     if (!mounted) return;
-    await _loadProfile(refresh: true);
+    await _loadProfile(refresh: true, retryAfterProjection: true);
   }
 
   Future<void> _openDiscussion(_PublicProfileEntry entry) async {
