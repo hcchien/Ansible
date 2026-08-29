@@ -87,7 +87,7 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
     private_key
   end
 
-  defp ingest_op(did, private_key, entity_type, entity_id, payload_map) do
+  defp ingest_op(did, private_key, entity_type, entity_id, payload_map, expected_status \\ 202) do
     op = %{
       "op_id" => "op-#{System.unique_integer([:positive])}",
       "author_did" => did,
@@ -100,7 +100,7 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
     response =
       post_json("/api/v1/ops", Map.put(op, "signature", sign(private_key, signing_payload(op))))
 
-    assert response.status == 202
+    assert response.status == expected_status
     response
   end
 
@@ -203,13 +203,23 @@ defmodule AnsibleRelay.Push.WakeSchedulerTest do
     assert token == "tok_#{target}"
   end
 
-  test "a self-follow does not wake" do
+  test "a self-follow is rejected and does not wake" do
     did = "did:plc:wake_selffollow_#{System.unique_integer([:positive])}"
     key = seed_did(did)
 
     register_device(did, ["follow"])
-    ingest_op(did, key, "follow", did, %{"targetDid" => did, "visibility" => "federated"})
 
+    response =
+      ingest_op(
+        did,
+        key,
+        "follow",
+        did,
+        %{"targetDid" => did, "visibility" => "federated"},
+        422
+      )
+
+    assert Jason.decode!(response.resp_body)["error"] == "invalid_follow_request"
     await_flush()
     assert TestSender.calls() == []
   end

@@ -81,12 +81,12 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
 
   # Build a murmur/note op whose payload is base64(JSON), matching the app's
   # CrdtOpBuilder encoding convention.
-  defp content_op(did, private_key, entity_type, payload_map) do
+  defp content_op(did, private_key, entity_type, payload_map, entity_id \\ nil) do
     op = %{
       "op_id" => "op-#{System.unique_integer()}",
       "author_did" => did,
       "entity_type" => entity_type,
-      "entity_id" => "entity-#{System.unique_integer()}",
+      "entity_id" => entity_id || "entity-#{System.unique_integer()}",
       "op_type" => "insert",
       "payload" => Base.encode64(Jason.encode!(payload_map))
     }
@@ -366,14 +366,21 @@ defmodule AnsibleRelay.Web.OpsControllerTest do
 
   test "verified DID can ingest a follow op and gets 202" do
     did = "did:key:z6MkFollow#{System.unique_integer()}"
+    target_did = "did:key:z6MkAlice"
     {public_key, private_key} = ed25519_keypair()
     seed_did(did, public_key)
 
     op =
-      content_op(did, private_key, "follow", %{
-        "targetDid" => "did:key:z6MkAlice",
-        "visibility" => "federated"
-      })
+      content_op(
+        did,
+        private_key,
+        "follow",
+        %{
+          "targetDid" => target_did,
+          "visibility" => "federated"
+        },
+        target_did
+      )
 
     response = post_json("/api/v1/ops", op)
     assert response.status == 202
