@@ -648,11 +648,15 @@ class _RecoverAccountRow extends StatelessWidget {
 class _BlockedListSettingsRow extends StatefulWidget {
   const _BlockedListSettingsRow({
     required this.db,
+    required this.did,
+    required this.blockedAuthorStore,
     required this.text,
     this.last = false,
   });
 
   final AppDatabase db;
+  final String did;
+  final BlockedAuthorStore blockedAuthorStore;
   final _SettingsText text;
   final bool last;
 
@@ -672,21 +676,27 @@ class _BlockedListSettingsRowState extends State<_BlockedListSettingsRow> {
 
   Future<int> _loadBlockedCount() async {
     final contacts = await DriftContactRepository(widget.db).listContacts();
-    return contacts
+    final blockedDids = contacts
         .where(
           (contact) =>
               contact.relationship == ContactRelationship.blocked ||
               contact.trustState == ContactTrustState.blocked ||
               contact.messengerAvailability == MessengerAvailability.blocked,
         )
-        .length;
+        .map((contact) => contact.subjectDid)
+        .toSet();
+    blockedDids.addAll(await widget.blockedAuthorStore.load(widget.did));
+    return blockedDids.length;
   }
 
   Future<void> _openBlockedList() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            BlockedListScreen(repository: DriftContactRepository(widget.db)),
+        builder: (_) => BlockedListScreen(
+          repository: DriftContactRepository(widget.db),
+          ownerDid: widget.did,
+          blockedAuthorStore: widget.blockedAuthorStore,
+        ),
       ),
     );
     if (!mounted) return;

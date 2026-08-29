@@ -3,6 +3,7 @@ import 'package:ansible_node/services/canonical_identity_store.dart';
 import 'package:ansible_node/main.dart';
 import 'package:ansible_node/screens/settings_home_screen.dart';
 import 'package:ansible_node/services/app_locale_controller.dart';
+import 'package:ansible_node/services/blocked_author_store.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +49,7 @@ void main() {
   testWidgets('settings blocked list shows local blocks and can unblock', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());
     final now = DateTime.utc(2026, 5, 31, 8);
@@ -90,6 +92,46 @@ void main() {
     expect(contact.trustState, ContactTrustState.unverified);
     expect(contact.messengerAvailability, MessengerAvailability.unresolved);
   });
+
+  testWidgets(
+    'settings blocked list includes and reverses device-local content blocks',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      const ownerDid = 'did:elix:owner';
+      const blockedDid = 'did:elix:blocked-author';
+      const blockedStore = BlockedAuthorStore();
+      await blockedStore.block(ownerDid, blockedDid);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsHomeScreen(
+            db: db,
+            did: ownerDid,
+            blockedAuthorStore: blockedStore,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.dragUntilVisible(
+        find.text('封鎖名單'),
+        find.byType(ListView),
+        const Offset(0, -280),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('封鎖名單'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(blockedDid), findsWidgets);
+      await tester.tap(find.text('解除封鎖'));
+      await tester.pumpAndSettle();
+
+      expect(await blockedStore.isBlocked(ownerDid, blockedDid), isFalse);
+      expect(find.text('目前沒有封鎖的聯絡人'), findsOneWidget);
+    },
+  );
 
   testWidgets('settings language picker changes app locale preference', (
     tester,

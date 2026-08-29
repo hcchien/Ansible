@@ -2,20 +2,28 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/subpage_l10n.dart';
+import '../services/blocked_author_store.dart';
 import '../theme/ansible_design.dart';
 import '../widgets/ansible_screen_chrome.dart';
 
 class BlockedListScreen extends StatefulWidget {
-  const BlockedListScreen({super.key, required this.repository});
+  const BlockedListScreen({
+    super.key,
+    required this.repository,
+    required this.ownerDid,
+    this.blockedAuthorStore = const BlockedAuthorStore(),
+  });
 
   final ContactRepository repository;
+  final String ownerDid;
+  final BlockedAuthorStore blockedAuthorStore;
 
   @override
   State<BlockedListScreen> createState() => _BlockedListScreenState();
 }
 
 class _BlockedListScreenState extends State<BlockedListScreen> {
-  late Future<List<ContactRecord>> _blockedContacts;
+  late Future<List<_BlockedEntry>> _blockedContacts;
 
   @override
   void initState() {
@@ -23,35 +31,55 @@ class _BlockedListScreenState extends State<BlockedListScreen> {
     _blockedContacts = _loadBlockedContacts();
   }
 
-  Future<List<ContactRecord>> _loadBlockedContacts() async {
+  Future<List<_BlockedEntry>> _loadBlockedContacts() async {
     final contacts = await widget.repository.listContacts();
-    return contacts
+    final contactsByDid = {
+      for (final contact in contacts) contact.subjectDid: contact,
+    };
+    final blockedDids = contacts
         .where(
           (contact) =>
               contact.relationship == ContactRelationship.blocked ||
               contact.trustState == ContactTrustState.blocked ||
               contact.messengerAvailability == MessengerAvailability.blocked,
         )
-        .toList(growable: false);
+        .map((contact) => contact.subjectDid)
+        .toSet();
+    blockedDids.addAll(await widget.blockedAuthorStore.load(widget.ownerDid));
+
+    final entries = blockedDids.map((did) {
+      final contact = contactsByDid[did];
+      return _BlockedEntry(
+        subjectDid: did,
+        label: contact?.label ?? did,
+        contact: contact,
+      );
+    }).toList();
+    entries.sort((a, b) => a.label.compareTo(b.label));
+    return entries;
   }
 
-  Future<void> _unblock(ContactRecord contact) async {
-    final now = DateTime.now().toUtc();
-    await widget.repository.upsertContact(
-      contact.copyWith(
-        relationship: contact.relationship == ContactRelationship.blocked
-            ? ContactRelationship.unknown
-            : contact.relationship,
-        trustState: contact.trustState == ContactTrustState.blocked
-            ? ContactTrustState.unverified
-            : contact.trustState,
-        messengerAvailability:
-            contact.messengerAvailability == MessengerAvailability.blocked
-            ? MessengerAvailability.unresolved
-            : contact.messengerAvailability,
-        updatedAt: now,
-      ),
-    );
+  Future<void> _unblock(_BlockedEntry entry) async {
+    await widget.blockedAuthorStore.unblock(widget.ownerDid, entry.subjectDid);
+    final contact = entry.contact;
+    if (contact != null) {
+      final now = DateTime.now().toUtc();
+      await widget.repository.upsertContact(
+        contact.copyWith(
+          relationship: contact.relationship == ContactRelationship.blocked
+              ? ContactRelationship.unknown
+              : contact.relationship,
+          trustState: contact.trustState == ContactTrustState.blocked
+              ? ContactTrustState.unverified
+              : contact.trustState,
+          messengerAvailability:
+              contact.messengerAvailability == MessengerAvailability.blocked
+              ? MessengerAvailability.unresolved
+              : contact.messengerAvailability,
+          updatedAt: now,
+        ),
+      );
+    }
     if (!mounted) return;
     setState(() {
       _blockedContacts = _loadBlockedContacts();
@@ -64,7 +92,7 @@ class _BlockedListScreenState extends State<BlockedListScreen> {
     return AnsibleScreenScaffold(
       title: text.t('blockedListTitleCaps'),
       leadingLabel: text.t('backSettings'),
-      child: FutureBuilder<List<ContactRecord>>(
+      child: FutureBuilder<List<_BlockedEntry>>(
         future: _blockedContacts,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -76,7 +104,7 @@ class _BlockedListScreenState extends State<BlockedListScreen> {
               ),
             );
           }
-          final contacts = snapshot.data ?? const <ContactRecord>[];
+          final contacts = snapshot.data ?? const <_BlockedEntry>[];
           if (contacts.isEmpty) return const _EmptyBlockedList();
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
@@ -95,7 +123,7 @@ class _BlockedListScreenState extends State<BlockedListScreen> {
               }
               final contact = contacts[index - 1];
               return _BlockedContactRow(
-                contact: contact,
+                entry: contact,
                 onUnblock: () => _unblock(contact),
               );
             },
@@ -107,9 +135,9 @@ class _BlockedListScreenState extends State<BlockedListScreen> {
 }
 
 class _BlockedContactRow extends StatelessWidget {
-  const _BlockedContactRow({required this.contact, required this.onUnblock});
+  const _BlockedContactRow({required this.entry, required this.onUnblock});
 
-  final ContactRecord contact;
+  final _BlockedEntry entry;
   final VoidCallback onUnblock;
 
   @override
@@ -126,7 +154,7 @@ class _BlockedContactRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  contact.label,
+                  entry.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -137,7 +165,7 @@ class _BlockedContactRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  contact.subjectDid,
+                  entry.subjectDid,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -158,6 +186,18 @@ class _BlockedContactRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BlockedEntry {
+  const _BlockedEntry({
+    required this.subjectDid,
+    required this.label,
+    required this.contact,
+  });
+
+  final String subjectDid;
+  final String label;
+  final ContactRecord? contact;
 }
 
 class _EmptyBlockedList extends StatelessWidget {

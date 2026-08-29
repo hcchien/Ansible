@@ -7,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../l10n/app_l10n.dart';
 import '../l10n/user_facing_error.dart';
 import '../services/app_locale_controller.dart';
+import '../services/blocked_author_store.dart';
 import '../services/external_content_preferences_controller.dart';
 import '../services/fediverse_preferences_controller.dart';
 import '../services/identity_anchor_service.dart';
@@ -70,6 +71,7 @@ class SettingsHomeScreen extends StatelessWidget {
     this.onBoardMotionChanged,
     this.recoveryReadinessStore =
         const SharedPreferencesRecoveryReadinessStore(),
+    this.blockedAuthorStore = const BlockedAuthorStore(),
     this.identityPrivateKeyProvider = _defaultIdentityPrivateKey,
     this.onOpenRecoveryWizard,
     this.onOpenPersonalBoard,
@@ -116,6 +118,11 @@ class SettingsHomeScreen extends StatelessWidget {
 
   /// Source of recovery-readiness state for the RECOVERY settings row.
   final RecoveryReadinessStore recoveryReadinessStore;
+
+  /// Device-local author blocks used by content rendering. The settings count
+  /// and blocked-list screen must read this same store so a block never hides
+  /// content without also being visible and reversible in Settings.
+  final BlockedAuthorStore blockedAuthorStore;
 
   /// Provides the identity private key (hex) for the backup screen. Injectable
   /// for tests; defaults to reading platform secure storage.
@@ -480,7 +487,13 @@ class SettingsHomeScreen extends StatelessWidget {
                 recoveryReadinessStore: recoveryReadinessStore,
                 onOpenRecoveryWizard: onOpenRecoveryWizard,
               ),
-              _BlockedListSettingsRow(db: db, text: text, last: false),
+              _BlockedListSettingsRow(
+                db: db,
+                did: did,
+                blockedAuthorStore: blockedAuthorStore,
+                text: text,
+                last: false,
+              ),
               _FediversePublishingSettingsRow(
                 db: db,
                 did: did,
