@@ -147,6 +147,41 @@ assert.match(boardHtml, /BOARD ACTIVITY/);
 assert.doesNotMatch(boardHtml, /New thread|Sign in to post|Self-custody DID/);
 assert.doesNotMatch(boardHtml, /class="gate-badge"|真人驗證版/);
 
+const deliberationHtml = renderPageBody(buildAppViewModel({
+  route: {
+    pageId: PAGE_IDS.deliberation,
+    params: { boardId: 'general', deliberationId: 'd-1' },
+  },
+  session: {
+    authenticated: true,
+    trustTier: 'self_custody_did',
+    capabilities: { canPost: true, canReply: true },
+  },
+  forum: {
+    board: { id: 'general', title: 'General' },
+    deliberation: {
+      id: 'd-1',
+      title: '每週發布？',
+      prompt: '速度與穩定性要如何平衡？',
+      exportMode: 'aggregates_only',
+      viewerResponses: { 's-1': { stance: 'agree', last_intent_id: 'v-1' } },
+      statements: [{ id: 's-1', text: '每週發布一個小版本。' }],
+      report: {
+        participant_count: 5,
+        response_count: 5,
+        cluster_status: 'aggregate_only',
+        consensus: [{ text: '每週發布一個小版本。', agree_ratio: 0.8 }],
+      },
+    },
+    capabilities: { canCreateThread: true, canReply: true },
+  },
+}));
+assert.match(deliberationHtml, /每週發布？/);
+assert.match(deliberationHtml, /共識與歧異/);
+assert.match(deliberationHtml, /btn small is-selected/);
+assert.match(deliberationHtml, /只會匯出整體統計/);
+assert.doesNotMatch(deliberationHtml, /did:/);
+
 const gatedBoard = normalizeHostedBoard(CONTRACT_FIXTURES.forum.gatedBoard);
 const gatedForum = {
   host: normalizeForumHost(CONTRACT_FIXTURES.forum.host),
@@ -177,6 +212,31 @@ assert.match(belowTierHtml, /<button class="primary-action" type="button" disabl
 assert.match(belowTierHtml, /你目前的層級是「自持有 DID」/);
 assert.match(belowTierHtml, /請在 Elix app 完成真人驗證/);
 assert.doesNotMatch(belowTierHtml, /data-action="new-thread"/);
+assert.doesNotMatch(belowTierHtml, /data-action="new-deliberation"/);
+
+const gatedDeliberationHtml = renderPageBody(buildAppViewModel({
+  route: {
+    pageId: PAGE_IDS.deliberation,
+    params: { boardId: 'verified-humans', deliberationId: 'd-gated' },
+  },
+  session: belowTierVm.session,
+  forum: {
+    ...gatedForum,
+    deliberation: {
+      id: 'd-gated',
+      title: '需驗證的審議',
+      prompt: '只有符合本板發言條件者可以參與。',
+      exportMode: 'aggregates_only',
+      statements: [{ id: 's-gated', text: '這是一句測試陳述。' }],
+      report: { cluster_status: 'aggregate_only' },
+    },
+  },
+}));
+assert.match(gatedDeliberationHtml, /只有符合本板發言條件者可以參與/);
+assert.match(gatedDeliberationHtml, /<button class="btn" type="button" disabled>/);
+assert.match(gatedDeliberationHtml, /請在 Elix app 完成真人驗證/);
+assert.doesNotMatch(gatedDeliberationHtml, /data-action="add-deliberation-statement"/);
+assert.doesNotMatch(gatedDeliberationHtml, /data-action="cast-deliberation-vote"/);
 
 const verifiedHumanVm = buildAppViewModel({
   route: gatedRoute,

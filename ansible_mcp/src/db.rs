@@ -14,7 +14,7 @@ pub const DB_FILE: &str = "ansible.db";
 /// Highest drift `schemaVersion` (stored in `PRAGMA user_version`) this
 /// binary's queries were reviewed against. Bumping it requires re-checking
 /// every statement in `queries.rs` against the corresponding migration.
-pub const MAX_SUPPORTED_SCHEMA: i64 = 26;
+pub const MAX_SUPPORTED_SCHEMA: i64 = 35;
 
 /// Tables this binary is allowed to touch, ever (AC-2). `queries.rs` holds the
 /// statements; this list is what the open-time guard verifies and what the
@@ -34,6 +34,7 @@ pub const ALLOWLISTED_TABLES: &[&str] = &[
     "remote_nodes",
     "board_subscriptions",
     "board_sync_configs",
+    "deliberation_exports",
 ];
 
 #[derive(Debug)]

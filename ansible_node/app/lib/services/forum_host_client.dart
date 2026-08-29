@@ -526,6 +526,170 @@ class CastPollVoteIntent {
   };
 }
 
+abstract final class DeliberationIntentPayload {
+  static const version = 1;
+
+  static Map<String, Object?> create({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required Map<String, Object?> deliberation,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+  }) => _base(
+    action: 'create_deliberation',
+    type: 'io.trisaura.forum.createDeliberation',
+    intentId: intentId,
+    authorDid: authorDid,
+    targetForumHost: targetForumHost,
+    boardId: boardId,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    extra: {'deliberation': deliberation},
+  );
+
+  static Map<String, Object?> statement({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required String deliberationId,
+    required String text,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+  }) => _base(
+    action: 'submit_deliberation_statement',
+    type: 'io.trisaura.forum.submitDeliberationStatement',
+    intentId: intentId,
+    authorDid: authorDid,
+    targetForumHost: targetForumHost,
+    boardId: boardId,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    extra: {'deliberation_id': deliberationId, 'text': text},
+  );
+
+  static Map<String, Object?> vote({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required String deliberationId,
+    required String statementId,
+    required String stance,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+    String? supersedesIntentId,
+  }) => _base(
+    action: 'cast_deliberation_vote',
+    type: 'io.trisaura.forum.castDeliberationVote',
+    intentId: intentId,
+    authorDid: authorDid,
+    targetForumHost: targetForumHost,
+    boardId: boardId,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    extra: {
+      'deliberation_id': deliberationId,
+      'statement_id': statementId,
+      'stance': stance,
+      if (supersedesIntentId != null)
+        'supersedes_intent_id': supersedesIntentId,
+    },
+  );
+
+  static Map<String, Object?> withdrawVote({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required String deliberationId,
+    required String statementId,
+    required String supersedesIntentId,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+  }) => _base(
+    action: 'withdraw_deliberation_vote',
+    type: 'io.trisaura.forum.withdrawDeliberationVote',
+    intentId: intentId,
+    authorDid: authorDid,
+    targetForumHost: targetForumHost,
+    boardId: boardId,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    extra: {
+      'deliberation_id': deliberationId,
+      'statement_id': statementId,
+      'supersedes_intent_id': supersedesIntentId,
+    },
+  );
+
+  static Map<String, Object?> readResponses({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required String deliberationId,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+  }) => _base(
+    action: 'read_deliberation_responses',
+    type: 'io.trisaura.forum.readDeliberationResponses',
+    intentId: intentId,
+    authorDid: authorDid,
+    targetForumHost: targetForumHost,
+    boardId: boardId,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    extra: {'deliberation_id': deliberationId},
+  );
+
+  static Map<String, Object?> export({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required String deliberationId,
+    required String view,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+  }) => _base(
+    action: 'export_deliberation',
+    type: 'io.trisaura.forum.exportDeliberation',
+    intentId: intentId,
+    authorDid: authorDid,
+    targetForumHost: targetForumHost,
+    boardId: boardId,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    extra: {'deliberation_id': deliberationId, 'view': view},
+  );
+
+  static Map<String, Object?> _base({
+    required String action,
+    required String type,
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String boardId,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+    required Map<String, Object?> extra,
+  }) => {
+    'action': action,
+    'author_did': authorDid,
+    'board_id': boardId,
+    'created_at': createdAt.toUtc().toIso8601String(),
+    'expires_at': expiresAt.toUtc().toIso8601String(),
+    'intent_id': intentId,
+    'target_forum_host': targetForumHost,
+    'type': type,
+    'version': version,
+    ...extra,
+  };
+}
+
 class ForumHostClient {
   final Uri baseUri;
   final http.Client _client;
@@ -617,6 +781,116 @@ class ForumHostClient {
     '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/polls/${Uri.encodeComponent(pollId)}',
   );
 
+  Future<List<Map<String, dynamic>>> listDeliberations(
+    String boardId, {
+    Map<String, String> headers = const {},
+  }) async {
+    final body = await _getJson(
+      '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations',
+      headers: headers,
+    );
+    final values = body['deliberations'];
+    if (values is! List) {
+      throw const FormatException('Expected deliberations list');
+    }
+    return values
+        .whereType<Map>()
+        .map((value) => Map<String, dynamic>.from(value))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> fetchDeliberation(
+    String boardId,
+    String deliberationId, {
+    Map<String, String> headers = const {},
+  }) => _getJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations/${Uri.encodeComponent(deliberationId)}',
+    headers: headers,
+  );
+
+  Future<Map<String, dynamic>> createDeliberation(
+    String boardId,
+    Map<String, Object?> signedIntent, {
+    Map<String, String> headers = const {},
+  }) => _postJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations',
+    signedIntent,
+    expectedStatus: 201,
+    headers: headers,
+  );
+
+  Future<Map<String, dynamic>> submitDeliberationStatement(
+    String boardId,
+    String deliberationId,
+    Map<String, Object?> signedIntent, {
+    Map<String, String> headers = const {},
+  }) => _postJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations/${Uri.encodeComponent(deliberationId)}/statements',
+    signedIntent,
+    expectedStatus: 201,
+    headers: headers,
+  );
+
+  Future<Map<String, dynamic>> castDeliberationVote(
+    String boardId,
+    String deliberationId,
+    String statementId,
+    Map<String, Object?> signedIntent, {
+    Map<String, String> headers = const {},
+  }) => _putJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations/${Uri.encodeComponent(deliberationId)}/statements/${Uri.encodeComponent(statementId)}/vote',
+    signedIntent,
+    headers: headers,
+  );
+
+  Future<Map<String, dynamic>> withdrawDeliberationVote(
+    String boardId,
+    String deliberationId,
+    String statementId,
+    Map<String, Object?> signedIntent, {
+    Map<String, String> headers = const {},
+  }) => _deleteJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations/${Uri.encodeComponent(deliberationId)}/statements/${Uri.encodeComponent(statementId)}/vote',
+    signedIntent,
+    headers: headers,
+  );
+
+  Future<Map<String, dynamic>> fetchOwnDeliberationResponses(
+    String boardId,
+    String deliberationId,
+    Map<String, Object?> signedIntent, {
+    Map<String, String> headers = const {},
+  }) => _postJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations/${Uri.encodeComponent(deliberationId)}/responses/mine',
+    signedIntent,
+    expectedStatus: 200,
+    headers: headers,
+  );
+
+  Future<Map<String, dynamic>> exportDeliberation(
+    String boardId,
+    String deliberationId,
+    String view, {
+    Map<String, String> headers = const {},
+  }) => _postJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations/${Uri.encodeComponent(deliberationId)}/exports',
+    {'view': view},
+    expectedStatus: 201,
+    headers: headers,
+  );
+
+  Future<Map<String, dynamic>> exportSignedDeliberation(
+    String boardId,
+    String deliberationId,
+    Map<String, Object?> signedIntent, {
+    Map<String, String> headers = const {},
+  }) => _postJson(
+    '/api/v1/forum-host/boards/${Uri.encodeComponent(boardId)}/deliberations/${Uri.encodeComponent(deliberationId)}/exports',
+    signedIntent,
+    expectedStatus: 201,
+    headers: headers,
+  );
+
   Future<List<Map<String, dynamic>>> getHostedBoardPolicyHistory(
     String boardId,
   ) async {
@@ -693,9 +967,12 @@ class ForumHostClient {
     return entries;
   }
 
-  Future<Map<String, dynamic>> _getJson(String path) async {
+  Future<Map<String, dynamic>> _getJson(
+    String path, {
+    Map<String, String> headers = const {},
+  }) async {
     final response = await _client
-        .get(_endpoint(path), headers: AnsibleProtocol.headers)
+        .get(_endpoint(path), headers: {...AnsibleProtocol.headers, ...headers})
         .timeout(timeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _toException(
@@ -705,6 +982,54 @@ class ForumHostClient {
     }
     final body = _decodeObject(response.body);
     return body;
+  }
+
+  Future<Map<String, dynamic>> _putJson(
+    String path,
+    Map<String, Object?> body, {
+    Map<String, String> headers = const {},
+  }) async {
+    final response = await _client
+        .put(
+          _endpoint(path),
+          headers: {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+            ...headers,
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _toException(
+        response.statusCode,
+        _decodeObjectOrEmpty(response.body),
+      );
+    }
+    return _decodeObject(response.body);
+  }
+
+  Future<Map<String, dynamic>> _deleteJson(
+    String path,
+    Map<String, Object?> body, {
+    Map<String, String> headers = const {},
+  }) async {
+    final request = http.Request('DELETE', _endpoint(path))
+      ..headers.addAll({
+        'content-type': 'application/json',
+        ...AnsibleProtocol.headers,
+        ...headers,
+      })
+      ..body = jsonEncode(body);
+    final streamed = await _client.send(request).timeout(timeout);
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _toException(
+        response.statusCode,
+        _decodeObjectOrEmpty(response.body),
+      );
+    }
+    return _decodeObject(response.body);
   }
 
   Future<Map<String, dynamic>> _postJson(

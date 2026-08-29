@@ -6,6 +6,7 @@ export const PAGE_IDS = Object.freeze({
   boards: 'boards',
   board: 'board',
   thread: 'thread',
+  deliberation: 'deliberation',
   profile: 'profile',
   notifications: 'notifications',
   sessions: 'sessions',
@@ -45,6 +46,8 @@ export function buildAppViewModel({
     boards: forum?.boards ?? [],
     board: forum?.board ?? null,
     thread: forum?.thread ?? null,
+    deliberation: forum?.deliberation ?? null,
+    deliberations: forum?.deliberations ?? [],
     threads: forum?.threads ?? [],
     profile: forum?.profile ?? null,
     profilePosts: forum?.profilePosts ?? [],
@@ -113,6 +116,15 @@ function pageDescriptor(route, forum) {
       return {
         id: PAGE_IDS.thread,
         title: forum?.thread?.title || route.params?.threadId || t('common.threadFallback'),
+      };
+
+    case PAGE_IDS.deliberation:
+      return {
+        id: PAGE_IDS.deliberation,
+        title:
+          forum?.deliberation?.title ||
+          route.params?.deliberationId ||
+          t('deliberation.title'),
       };
 
     case PAGE_IDS.profile:

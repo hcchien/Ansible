@@ -14,6 +14,7 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
   alias AnsibleRelay.ForumHost.{BoardAccessPolicy, BoardCapabilityRequest, Moderation, Store}
 
   @poll_creation_roles ~w(posters moderators owners)
+  @deliberation_creation_roles ~w(posters moderators owners)
 
   @doc "Authorizes creating a poll embedded in a new thread."
   def authorize_poll_creation(conn, %ForumHostBoard{} = board, author_did) do
@@ -36,6 +37,32 @@ defmodule AnsibleRelay.ForumHost.PostingGate do
   def poll_creation_role(%ForumHostBoard{posting_policy: policy}) do
     role = Map.get(policy || %{}, "poll_creation") || Map.get(policy || %{}, :poll_creation)
     if role in @poll_creation_roles, do: role, else: "posters"
+  end
+
+  @doc "Authorizes creating a Board-owned deliberation."
+  def authorize_deliberation_creation(conn, %ForumHostBoard{} = board, author_did) do
+    case deliberation_creation_role(board) do
+      "posters" ->
+        authorize_board_post(conn, board, author_did)
+
+      "moderators" ->
+        if Moderation.moderator?(author_did, board),
+          do: :ok,
+          else: {:error, :deliberation_creation_requires_moderator}
+
+      "owners" ->
+        if Moderation.owner?(author_did, board),
+          do: :ok,
+          else: {:error, :deliberation_creation_requires_owner}
+    end
+  end
+
+  def deliberation_creation_role(%ForumHostBoard{posting_policy: policy}) do
+    role =
+      Map.get(policy || %{}, "deliberation_creation") ||
+        Map.get(policy || %{}, :deliberation_creation)
+
+    if role in @deliberation_creation_roles, do: role, else: "posters"
   end
 
   @doc """

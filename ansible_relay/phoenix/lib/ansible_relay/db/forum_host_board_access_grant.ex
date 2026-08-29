@@ -41,6 +41,6 @@ defmodule AnsibleRelay.Db.ForumHostBoardAccessGrant do
       :expires_at
     ])
     |> validate_number(:policy_version, greater_than: 0)
-    |> validate_subset(:scopes, ~w(discover read post moderate key:read))
+    |> validate_subset(:scopes, ~w(discover read post moderate analyze key:read))
   end
 end

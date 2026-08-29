@@ -42,6 +42,9 @@ export function renderPageBody(viewModel, uiState = {}) {
     case PAGE_IDS.thread:
       bodyHtml = renderThreadDetail(viewModel, uiState);
       break;
+    case PAGE_IDS.deliberation:
+      bodyHtml = renderDeliberationDetail(viewModel, uiState);
+      break;
     case PAGE_IDS.profile:
       bodyHtml = renderProfile(viewModel);
       break;
@@ -271,6 +274,7 @@ function renderBoard(viewModel, uiState = {}) {
 
   const boardTitle = board.title || viewModel.page?.title || t('common.board');
   const threads = viewModel.threads ?? [];
+  const deliberations = viewModel.deliberations ?? [];
   const gate = boardPostingGate(board, viewModel.session);
   const postAction = renderBoardPostAction(viewModel, gate);
   const threadContext = {
@@ -303,6 +307,15 @@ function renderBoard(viewModel, uiState = {}) {
           </div>
           ${postAction}
         </section>
+        <section class="card deliberation-list" aria-labelledby="deliberation-list-title">
+          <div class="head">
+            <h3 id="deliberation-list-title">${escapeHtml(t('deliberation.boardTitle', { count: deliberations.length }))}</h3>
+            ${viewModel.session?.authenticated && viewModel.actions?.canCreateThread && !gate.blocked
+              ? `<button class="btn small" type="button" data-action="new-deliberation" data-board-id="${escapeAttribute(board.id ?? '')}">${escapeHtml(t('deliberation.new'))}</button>`
+              : ''}
+          </div>
+          ${renderDeliberationList(deliberations, board)}
+        </section>
         <section class="card thread-list" aria-labelledby="thread-list-title">
           <div class="head">
             <h3 id="thread-list-title">${escapeHtml(t('board.threadListTitle', { count: threads.length }))}</h3>
@@ -315,6 +328,129 @@ function renderBoard(viewModel, uiState = {}) {
       ${renderRightRail(viewModel, viewModel.boards ?? [])}
     </section>
   `;
+}
+
+function renderDeliberationList(deliberations, board) {
+  if (!deliberations.length) {
+    return `<p class="empty-state">${escapeHtml(t('deliberation.empty'))}</p>`;
+  }
+  return `<div class="deliberation-cards">${deliberations.map((item) => {
+    const href = `#/boards/${encodeURIComponent(board.id ?? board.slug ?? '')}/deliberations/${encodeURIComponent(item.id)}`;
+    return `<a class="thread-row deliberation-row" href="${escapeAttribute(href)}">
+      <span class="thread-row-main">
+        <strong>${escapeHtml(item.title ?? '')}</strong>
+        <span>${escapeHtml(item.prompt ?? '')}</span>
+      </span>
+      <span class="thread-row-meta">${escapeHtml(t('deliberation.counts', {
+        statements: item.statementCount ?? item.statement_count ?? 0,
+        participants: item.participantCount ?? item.participant_count ?? 0,
+      }))}</span>
+    </a>`;
+  }).join('')}</div>`;
+}
+
+function renderDeliberationDetail(viewModel, uiState = {}) {
+  const board = viewModel.board ?? {};
+  const deliberation = viewModel.deliberation;
+  const boardId = board.id || viewModel.route?.params?.boardId || '';
+  const boardHref = `#/boards/${encodeURIComponent(boardId)}`;
+  if (!deliberation) {
+    return `${renderError(viewModel.error)}<section class="cols"><section class="feed">
+      <a class="back-link" href="${escapeAttribute(boardHref)}">${escapeHtml(t('common.backToBoard'))}</a>
+      <section class="card"><h2>${escapeHtml(t('deliberation.notFound'))}</h2></section>
+    </section></section>`;
+  }
+
+  const statements = deliberation.statements ?? [];
+  const report = deliberation.report ?? {};
+  const gate = boardPostingGate(board, viewModel.session);
+  const canParticipate = Boolean(
+    viewModel.session?.authenticated &&
+    viewModel.session?.capabilities?.canPost &&
+    !gate.blocked,
+  );
+  const responses = {
+    ...(deliberation.viewerResponses ?? {}),
+    ...(uiState.deliberationResponses ?? {}),
+  };
+  const disclosure = deliberation.exportMode === 'pseudonymous_matrix'
+    ? t('deliberation.export.matrix')
+    : deliberation.exportMode === 'no_external_analysis'
+      ? t('deliberation.export.none')
+      : t('deliberation.export.aggregates');
+
+  return `
+    ${renderNotice(uiState.notice)}
+    ${renderError(viewModel.error)}
+    <section class="cols deliberation-detail" aria-labelledby="deliberation-title">
+      ${renderLeftRail(viewModel, 'boards')}
+      <section class="feed">
+        <a class="back-link" href="${escapeAttribute(boardHref)}">${escapeHtml(t('common.backToBoard'))}</a>
+        <header class="board-head">
+          <div class="heading">
+            <p class="section-label">${escapeHtml(t('deliberation.kicker'))}</p>
+            <h1 id="deliberation-title">${escapeHtml(deliberation.title ?? '')}</h1>
+            <p>${escapeHtml(deliberation.prompt ?? '')}</p>
+            <p class="gate-requirement">${escapeHtml(disclosure)}</p>
+          </div>
+          ${canParticipate
+            ? `<button class="btn" data-action="add-deliberation-statement" data-board-id="${escapeAttribute(boardId)}" data-deliberation-id="${escapeAttribute(deliberation.id)}">${escapeHtml(t('deliberation.addStatement'))}</button>`
+            : viewModel.session?.authenticated
+              ? `<div class="gate-blocked" role="note"><button class="btn" type="button" disabled>${escapeHtml(t('deliberation.addStatement'))}</button><p>${escapeHtml(gate.kind === 'credential'
+                ? t('board.credentialBlockedMessage')
+                : t('board.gateBlockedMessage', { tier: trustTierLabel(viewModel.session?.trustTier ?? TRUST_TIERS.anonymous) }))}</p></div>`
+              : `<a class="btn" href="#/login">${escapeHtml(t('deliberation.signIn'))}</a>`}
+        </header>
+        <section class="deliberation-statements" aria-label="${escapeAttribute(t('deliberation.statements'))}">
+          ${statements.length ? statements.map((statement) => {
+            const selected = responses[statement.id]?.stance;
+            return `<article class="card deliberation-statement">
+              <p>${escapeHtml(statement.text)}</p>
+              ${canParticipate ? `<div class="thread-action-row" role="group" aria-label="${escapeAttribute(t('deliberation.respond'))}">
+                ${['agree', 'disagree', 'pass'].map((stance) => `<button
+                  type="button"
+                  class="btn small${selected === stance ? ' is-selected' : ''}"
+                  data-action="cast-deliberation-vote"
+                  data-board-id="${escapeAttribute(boardId)}"
+                  data-deliberation-id="${escapeAttribute(deliberation.id)}"
+                  data-statement-id="${escapeAttribute(statement.id)}"
+                  data-stance="${stance}"
+                >${escapeHtml(t(`deliberation.${stance}`))}</button>`).join('')}
+                ${selected ? `<button
+                  type="button"
+                  class="btn small"
+                  data-action="withdraw-deliberation-vote"
+                  data-board-id="${escapeAttribute(boardId)}"
+                  data-deliberation-id="${escapeAttribute(deliberation.id)}"
+                  data-statement-id="${escapeAttribute(statement.id)}"
+                >${escapeHtml(t('deliberation.withdraw'))}</button>` : ''}
+              </div>` : ''}
+            </article>`;
+          }).join('') : `<p class="empty-state">${escapeHtml(t('deliberation.noStatements'))}</p>`}
+        </section>
+      </section>
+      <aside class="side deliberation-results">
+        <section class="card">
+          <h3>${escapeHtml(t('deliberation.results'))}</h3>
+          <p>${escapeHtml(t('deliberation.participation', {
+            participants: report.participant_count ?? 0,
+            responses: report.response_count ?? 0,
+          }))}</p>
+          <ol>${(report.consensus ?? []).slice(0, 5).map((item) => `<li>
+            ${escapeHtml(item.text ?? '')}
+            ${Number.isFinite(Number(item.agree_ratio)) ? `<small>${Math.round(Number(item.agree_ratio) * 100)}% ${escapeHtml(t('deliberation.agree'))}</small>` : ''}
+          </li>`).join('')}</ol>
+          <p class="gate-requirement">${escapeHtml(
+            report.cluster_status === 'aggregate_only'
+              ? t('deliberation.aggregateOnly')
+              : t('deliberation.insufficientParticipants'),
+          )}</p>
+          ${viewModel.session?.authenticated && deliberation.exportMode !== 'no_external_analysis'
+            ? `<button class="btn small" data-action="export-deliberation" data-board-id="${escapeAttribute(boardId)}" data-deliberation-id="${escapeAttribute(deliberation.id)}">${escapeHtml(t('deliberation.exportAction'))}</button>`
+            : ''}
+        </section>
+      </aside>
+    </section>`;
 }
 
 function renderThreadDetail(viewModel, uiState = {}) {

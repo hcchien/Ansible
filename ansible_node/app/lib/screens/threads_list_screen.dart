@@ -22,6 +22,7 @@ import '../widgets/author_label.dart';
 import '../widgets/external_content_section.dart';
 import '../widgets/posting_gate_notice.dart';
 import 'thread_composer_screen.dart';
+import 'deliberations_screen.dart';
 import 'posts_view_screen.dart';
 import 'user_profile_screen.dart';
 
@@ -534,6 +535,22 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         actions: [
+          if (_hostedProjection != null &&
+              (widget.localDid?.isNotEmpty ?? false))
+            IconButton(
+              key: const Key('open_deliberations_button'),
+              icon: const Icon(Icons.hub_outlined, size: 21),
+              tooltip: context.uiCopy(zh: '共識討論', en: 'Deliberations'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DeliberationsScreen(
+                    db: widget.db,
+                    board: widget.board,
+                    localDid: widget.localDid!,
+                  ),
+                ),
+              ),
+            ),
           if (_boardShareUrl != null)
             IconButton(
               key: const Key('share_board_button'),

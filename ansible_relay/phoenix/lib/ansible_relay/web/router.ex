@@ -384,6 +384,81 @@ defmodule AnsibleRelay.Web.Router do
     )
   end
 
+  get "/api/v1/forum-host/boards/:board_id/deliberations" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.index(conn, board_id)
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/deliberations" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.create(
+      conn,
+      board_id,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/forum-host/boards/:board_id/deliberations/:deliberation_id" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.show(
+      conn,
+      board_id,
+      deliberation_id
+    )
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/deliberations/:deliberation_id/statements" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.create_statement(
+      conn,
+      board_id,
+      deliberation_id,
+      conn.body_params
+    )
+  end
+
+  put "/api/v1/forum-host/boards/:board_id/deliberations/:deliberation_id/statements/:statement_id/vote" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.vote(
+      conn,
+      board_id,
+      deliberation_id,
+      statement_id,
+      conn.body_params
+    )
+  end
+
+  delete "/api/v1/forum-host/boards/:board_id/deliberations/:deliberation_id/statements/:statement_id/vote" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.withdraw_vote(
+      conn,
+      board_id,
+      deliberation_id,
+      statement_id,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/forum-host/boards/:board_id/deliberations/:deliberation_id/report" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.report(
+      conn,
+      board_id,
+      deliberation_id
+    )
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/deliberations/:deliberation_id/responses/mine" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.viewer_responses(
+      conn,
+      board_id,
+      deliberation_id,
+      conn.body_params
+    )
+  end
+
+  post "/api/v1/forum-host/boards/:board_id/deliberations/:deliberation_id/exports" do
+    AnsibleRelay.Web.Controllers.ForumHostDeliberationController.export(
+      conn,
+      board_id,
+      deliberation_id,
+      conn.body_params
+    )
+  end
+
   # Forum Host — content reporting (signed-intent and web-session rails)
   post "/api/v1/forum-host/reports" do
     AnsibleRelay.Web.Controllers.ForumHostController.create_report(conn, conn.body_params)

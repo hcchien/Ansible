@@ -30137,6 +30137,691 @@ class RemoteTombstonesCompanion extends UpdateCompanion<RemoteTombstoneRow> {
   }
 }
 
+class $DeliberationExportsTable extends DeliberationExports
+    with TableInfo<$DeliberationExportsTable, DeliberationExportRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeliberationExportsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _exportIdMeta = const VerificationMeta(
+    'exportId',
+  );
+  @override
+  late final GeneratedColumn<String> exportId = GeneratedColumn<String>(
+    'export_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boardIdMeta = const VerificationMeta(
+    'boardId',
+  );
+  @override
+  late final GeneratedColumn<String> boardId = GeneratedColumn<String>(
+    'board_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deliberationIdMeta = const VerificationMeta(
+    'deliberationId',
+  );
+  @override
+  late final GeneratedColumn<String> deliberationId = GeneratedColumn<String>(
+    'deliberation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _viewMeta = const VerificationMeta('view');
+  @override
+  late final GeneratedColumn<String> view = GeneratedColumn<String>(
+    'view',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _manifestJsonMeta = const VerificationMeta(
+    'manifestJson',
+  );
+  @override
+  late final GeneratedColumn<String> manifestJson = GeneratedColumn<String>(
+    'manifest_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reportJsonMeta = const VerificationMeta(
+    'reportJson',
+  );
+  @override
+  late final GeneratedColumn<String> reportJson = GeneratedColumn<String>(
+    'report_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statementsJsonMeta = const VerificationMeta(
+    'statementsJson',
+  );
+  @override
+  late final GeneratedColumn<String> statementsJson = GeneratedColumn<String>(
+    'statements_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _responsesJsonMeta = const VerificationMeta(
+    'responsesJson',
+  );
+  @override
+  late final GeneratedColumn<String> responsesJson = GeneratedColumn<String>(
+    'responses_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> expiresAt = GeneratedColumn<DateTime>(
+    'expires_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    exportId,
+    boardId,
+    deliberationId,
+    title,
+    view,
+    manifestJson,
+    reportJson,
+    statementsJson,
+    responsesJson,
+    expiresAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deliberation_exports';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeliberationExportRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('export_id')) {
+      context.handle(
+        _exportIdMeta,
+        exportId.isAcceptableOrUnknown(data['export_id']!, _exportIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_exportIdMeta);
+    }
+    if (data.containsKey('board_id')) {
+      context.handle(
+        _boardIdMeta,
+        boardId.isAcceptableOrUnknown(data['board_id']!, _boardIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_boardIdMeta);
+    }
+    if (data.containsKey('deliberation_id')) {
+      context.handle(
+        _deliberationIdMeta,
+        deliberationId.isAcceptableOrUnknown(
+          data['deliberation_id']!,
+          _deliberationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_deliberationIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('view')) {
+      context.handle(
+        _viewMeta,
+        view.isAcceptableOrUnknown(data['view']!, _viewMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_viewMeta);
+    }
+    if (data.containsKey('manifest_json')) {
+      context.handle(
+        _manifestJsonMeta,
+        manifestJson.isAcceptableOrUnknown(
+          data['manifest_json']!,
+          _manifestJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_manifestJsonMeta);
+    }
+    if (data.containsKey('report_json')) {
+      context.handle(
+        _reportJsonMeta,
+        reportJson.isAcceptableOrUnknown(data['report_json']!, _reportJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reportJsonMeta);
+    }
+    if (data.containsKey('statements_json')) {
+      context.handle(
+        _statementsJsonMeta,
+        statementsJson.isAcceptableOrUnknown(
+          data['statements_json']!,
+          _statementsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('responses_json')) {
+      context.handle(
+        _responsesJsonMeta,
+        responsesJson.isAcceptableOrUnknown(
+          data['responses_json']!,
+          _responsesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expires_at')) {
+      context.handle(
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_expiresAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {exportId};
+  @override
+  DeliberationExportRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeliberationExportRow(
+      exportId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}export_id'],
+      )!,
+      boardId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}board_id'],
+      )!,
+      deliberationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deliberation_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      view: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}view'],
+      )!,
+      manifestJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}manifest_json'],
+      )!,
+      reportJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}report_json'],
+      )!,
+      statementsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}statements_json'],
+      ),
+      responsesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}responses_json'],
+      ),
+      expiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}expires_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeliberationExportsTable createAlias(String alias) {
+    return $DeliberationExportsTable(attachedDatabase, alias);
+  }
+}
+
+class DeliberationExportRow extends DataClass
+    implements Insertable<DeliberationExportRow> {
+  final String exportId;
+  final String boardId;
+  final String deliberationId;
+  final String title;
+  final String view;
+  final String manifestJson;
+  final String reportJson;
+  final String? statementsJson;
+  final String? responsesJson;
+  final DateTime expiresAt;
+  final DateTime createdAt;
+  const DeliberationExportRow({
+    required this.exportId,
+    required this.boardId,
+    required this.deliberationId,
+    required this.title,
+    required this.view,
+    required this.manifestJson,
+    required this.reportJson,
+    this.statementsJson,
+    this.responsesJson,
+    required this.expiresAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['export_id'] = Variable<String>(exportId);
+    map['board_id'] = Variable<String>(boardId);
+    map['deliberation_id'] = Variable<String>(deliberationId);
+    map['title'] = Variable<String>(title);
+    map['view'] = Variable<String>(view);
+    map['manifest_json'] = Variable<String>(manifestJson);
+    map['report_json'] = Variable<String>(reportJson);
+    if (!nullToAbsent || statementsJson != null) {
+      map['statements_json'] = Variable<String>(statementsJson);
+    }
+    if (!nullToAbsent || responsesJson != null) {
+      map['responses_json'] = Variable<String>(responsesJson);
+    }
+    map['expires_at'] = Variable<DateTime>(expiresAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DeliberationExportsCompanion toCompanion(bool nullToAbsent) {
+    return DeliberationExportsCompanion(
+      exportId: Value(exportId),
+      boardId: Value(boardId),
+      deliberationId: Value(deliberationId),
+      title: Value(title),
+      view: Value(view),
+      manifestJson: Value(manifestJson),
+      reportJson: Value(reportJson),
+      statementsJson: statementsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statementsJson),
+      responsesJson: responsesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(responsesJson),
+      expiresAt: Value(expiresAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DeliberationExportRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeliberationExportRow(
+      exportId: serializer.fromJson<String>(json['exportId']),
+      boardId: serializer.fromJson<String>(json['boardId']),
+      deliberationId: serializer.fromJson<String>(json['deliberationId']),
+      title: serializer.fromJson<String>(json['title']),
+      view: serializer.fromJson<String>(json['view']),
+      manifestJson: serializer.fromJson<String>(json['manifestJson']),
+      reportJson: serializer.fromJson<String>(json['reportJson']),
+      statementsJson: serializer.fromJson<String?>(json['statementsJson']),
+      responsesJson: serializer.fromJson<String?>(json['responsesJson']),
+      expiresAt: serializer.fromJson<DateTime>(json['expiresAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'exportId': serializer.toJson<String>(exportId),
+      'boardId': serializer.toJson<String>(boardId),
+      'deliberationId': serializer.toJson<String>(deliberationId),
+      'title': serializer.toJson<String>(title),
+      'view': serializer.toJson<String>(view),
+      'manifestJson': serializer.toJson<String>(manifestJson),
+      'reportJson': serializer.toJson<String>(reportJson),
+      'statementsJson': serializer.toJson<String?>(statementsJson),
+      'responsesJson': serializer.toJson<String?>(responsesJson),
+      'expiresAt': serializer.toJson<DateTime>(expiresAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DeliberationExportRow copyWith({
+    String? exportId,
+    String? boardId,
+    String? deliberationId,
+    String? title,
+    String? view,
+    String? manifestJson,
+    String? reportJson,
+    Value<String?> statementsJson = const Value.absent(),
+    Value<String?> responsesJson = const Value.absent(),
+    DateTime? expiresAt,
+    DateTime? createdAt,
+  }) => DeliberationExportRow(
+    exportId: exportId ?? this.exportId,
+    boardId: boardId ?? this.boardId,
+    deliberationId: deliberationId ?? this.deliberationId,
+    title: title ?? this.title,
+    view: view ?? this.view,
+    manifestJson: manifestJson ?? this.manifestJson,
+    reportJson: reportJson ?? this.reportJson,
+    statementsJson: statementsJson.present
+        ? statementsJson.value
+        : this.statementsJson,
+    responsesJson: responsesJson.present
+        ? responsesJson.value
+        : this.responsesJson,
+    expiresAt: expiresAt ?? this.expiresAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DeliberationExportRow copyWithCompanion(DeliberationExportsCompanion data) {
+    return DeliberationExportRow(
+      exportId: data.exportId.present ? data.exportId.value : this.exportId,
+      boardId: data.boardId.present ? data.boardId.value : this.boardId,
+      deliberationId: data.deliberationId.present
+          ? data.deliberationId.value
+          : this.deliberationId,
+      title: data.title.present ? data.title.value : this.title,
+      view: data.view.present ? data.view.value : this.view,
+      manifestJson: data.manifestJson.present
+          ? data.manifestJson.value
+          : this.manifestJson,
+      reportJson: data.reportJson.present
+          ? data.reportJson.value
+          : this.reportJson,
+      statementsJson: data.statementsJson.present
+          ? data.statementsJson.value
+          : this.statementsJson,
+      responsesJson: data.responsesJson.present
+          ? data.responsesJson.value
+          : this.responsesJson,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeliberationExportRow(')
+          ..write('exportId: $exportId, ')
+          ..write('boardId: $boardId, ')
+          ..write('deliberationId: $deliberationId, ')
+          ..write('title: $title, ')
+          ..write('view: $view, ')
+          ..write('manifestJson: $manifestJson, ')
+          ..write('reportJson: $reportJson, ')
+          ..write('statementsJson: $statementsJson, ')
+          ..write('responsesJson: $responsesJson, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    exportId,
+    boardId,
+    deliberationId,
+    title,
+    view,
+    manifestJson,
+    reportJson,
+    statementsJson,
+    responsesJson,
+    expiresAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeliberationExportRow &&
+          other.exportId == this.exportId &&
+          other.boardId == this.boardId &&
+          other.deliberationId == this.deliberationId &&
+          other.title == this.title &&
+          other.view == this.view &&
+          other.manifestJson == this.manifestJson &&
+          other.reportJson == this.reportJson &&
+          other.statementsJson == this.statementsJson &&
+          other.responsesJson == this.responsesJson &&
+          other.expiresAt == this.expiresAt &&
+          other.createdAt == this.createdAt);
+}
+
+class DeliberationExportsCompanion
+    extends UpdateCompanion<DeliberationExportRow> {
+  final Value<String> exportId;
+  final Value<String> boardId;
+  final Value<String> deliberationId;
+  final Value<String> title;
+  final Value<String> view;
+  final Value<String> manifestJson;
+  final Value<String> reportJson;
+  final Value<String?> statementsJson;
+  final Value<String?> responsesJson;
+  final Value<DateTime> expiresAt;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const DeliberationExportsCompanion({
+    this.exportId = const Value.absent(),
+    this.boardId = const Value.absent(),
+    this.deliberationId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.view = const Value.absent(),
+    this.manifestJson = const Value.absent(),
+    this.reportJson = const Value.absent(),
+    this.statementsJson = const Value.absent(),
+    this.responsesJson = const Value.absent(),
+    this.expiresAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeliberationExportsCompanion.insert({
+    required String exportId,
+    required String boardId,
+    required String deliberationId,
+    required String title,
+    required String view,
+    required String manifestJson,
+    required String reportJson,
+    this.statementsJson = const Value.absent(),
+    this.responsesJson = const Value.absent(),
+    required DateTime expiresAt,
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : exportId = Value(exportId),
+       boardId = Value(boardId),
+       deliberationId = Value(deliberationId),
+       title = Value(title),
+       view = Value(view),
+       manifestJson = Value(manifestJson),
+       reportJson = Value(reportJson),
+       expiresAt = Value(expiresAt);
+  static Insertable<DeliberationExportRow> custom({
+    Expression<String>? exportId,
+    Expression<String>? boardId,
+    Expression<String>? deliberationId,
+    Expression<String>? title,
+    Expression<String>? view,
+    Expression<String>? manifestJson,
+    Expression<String>? reportJson,
+    Expression<String>? statementsJson,
+    Expression<String>? responsesJson,
+    Expression<DateTime>? expiresAt,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (exportId != null) 'export_id': exportId,
+      if (boardId != null) 'board_id': boardId,
+      if (deliberationId != null) 'deliberation_id': deliberationId,
+      if (title != null) 'title': title,
+      if (view != null) 'view': view,
+      if (manifestJson != null) 'manifest_json': manifestJson,
+      if (reportJson != null) 'report_json': reportJson,
+      if (statementsJson != null) 'statements_json': statementsJson,
+      if (responsesJson != null) 'responses_json': responsesJson,
+      if (expiresAt != null) 'expires_at': expiresAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeliberationExportsCompanion copyWith({
+    Value<String>? exportId,
+    Value<String>? boardId,
+    Value<String>? deliberationId,
+    Value<String>? title,
+    Value<String>? view,
+    Value<String>? manifestJson,
+    Value<String>? reportJson,
+    Value<String?>? statementsJson,
+    Value<String?>? responsesJson,
+    Value<DateTime>? expiresAt,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return DeliberationExportsCompanion(
+      exportId: exportId ?? this.exportId,
+      boardId: boardId ?? this.boardId,
+      deliberationId: deliberationId ?? this.deliberationId,
+      title: title ?? this.title,
+      view: view ?? this.view,
+      manifestJson: manifestJson ?? this.manifestJson,
+      reportJson: reportJson ?? this.reportJson,
+      statementsJson: statementsJson ?? this.statementsJson,
+      responsesJson: responsesJson ?? this.responsesJson,
+      expiresAt: expiresAt ?? this.expiresAt,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (exportId.present) {
+      map['export_id'] = Variable<String>(exportId.value);
+    }
+    if (boardId.present) {
+      map['board_id'] = Variable<String>(boardId.value);
+    }
+    if (deliberationId.present) {
+      map['deliberation_id'] = Variable<String>(deliberationId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (view.present) {
+      map['view'] = Variable<String>(view.value);
+    }
+    if (manifestJson.present) {
+      map['manifest_json'] = Variable<String>(manifestJson.value);
+    }
+    if (reportJson.present) {
+      map['report_json'] = Variable<String>(reportJson.value);
+    }
+    if (statementsJson.present) {
+      map['statements_json'] = Variable<String>(statementsJson.value);
+    }
+    if (responsesJson.present) {
+      map['responses_json'] = Variable<String>(responsesJson.value);
+    }
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<DateTime>(expiresAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeliberationExportsCompanion(')
+          ..write('exportId: $exportId, ')
+          ..write('boardId: $boardId, ')
+          ..write('deliberationId: $deliberationId, ')
+          ..write('title: $title, ')
+          ..write('view: $view, ')
+          ..write('manifestJson: $manifestJson, ')
+          ..write('reportJson: $reportJson, ')
+          ..write('statementsJson: $statementsJson, ')
+          ..write('responsesJson: $responsesJson, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -30234,6 +30919,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RemoteTombstonesTable remoteTombstones = $RemoteTombstonesTable(
     this,
   );
+  late final $DeliberationExportsTable deliberationExports =
+      $DeliberationExportsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -30292,6 +30979,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     hostModerationStates,
     identityAnchors,
     remoteTombstones,
+    deliberationExports,
   ];
 }
 
@@ -51139,6 +51827,346 @@ typedef $$RemoteTombstonesTableProcessedTableManager =
       RemoteTombstoneRow,
       PrefetchHooks Function()
     >;
+typedef $$DeliberationExportsTableCreateCompanionBuilder =
+    DeliberationExportsCompanion Function({
+      required String exportId,
+      required String boardId,
+      required String deliberationId,
+      required String title,
+      required String view,
+      required String manifestJson,
+      required String reportJson,
+      Value<String?> statementsJson,
+      Value<String?> responsesJson,
+      required DateTime expiresAt,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$DeliberationExportsTableUpdateCompanionBuilder =
+    DeliberationExportsCompanion Function({
+      Value<String> exportId,
+      Value<String> boardId,
+      Value<String> deliberationId,
+      Value<String> title,
+      Value<String> view,
+      Value<String> manifestJson,
+      Value<String> reportJson,
+      Value<String?> statementsJson,
+      Value<String?> responsesJson,
+      Value<DateTime> expiresAt,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$DeliberationExportsTableFilterComposer
+    extends Composer<_$AppDatabase, $DeliberationExportsTable> {
+  $$DeliberationExportsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get exportId => $composableBuilder(
+    column: $table.exportId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deliberationId => $composableBuilder(
+    column: $table.deliberationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get view => $composableBuilder(
+    column: $table.view,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get manifestJson => $composableBuilder(
+    column: $table.manifestJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reportJson => $composableBuilder(
+    column: $table.reportJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get statementsJson => $composableBuilder(
+    column: $table.statementsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get responsesJson => $composableBuilder(
+    column: $table.responsesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeliberationExportsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeliberationExportsTable> {
+  $$DeliberationExportsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get exportId => $composableBuilder(
+    column: $table.exportId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get boardId => $composableBuilder(
+    column: $table.boardId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deliberationId => $composableBuilder(
+    column: $table.deliberationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get view => $composableBuilder(
+    column: $table.view,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get manifestJson => $composableBuilder(
+    column: $table.manifestJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reportJson => $composableBuilder(
+    column: $table.reportJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get statementsJson => $composableBuilder(
+    column: $table.statementsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get responsesJson => $composableBuilder(
+    column: $table.responsesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeliberationExportsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeliberationExportsTable> {
+  $$DeliberationExportsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get exportId =>
+      $composableBuilder(column: $table.exportId, builder: (column) => column);
+
+  GeneratedColumn<String> get boardId =>
+      $composableBuilder(column: $table.boardId, builder: (column) => column);
+
+  GeneratedColumn<String> get deliberationId => $composableBuilder(
+    column: $table.deliberationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get view =>
+      $composableBuilder(column: $table.view, builder: (column) => column);
+
+  GeneratedColumn<String> get manifestJson => $composableBuilder(
+    column: $table.manifestJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reportJson => $composableBuilder(
+    column: $table.reportJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get statementsJson => $composableBuilder(
+    column: $table.statementsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get responsesJson => $composableBuilder(
+    column: $table.responsesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DeliberationExportsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeliberationExportsTable,
+          DeliberationExportRow,
+          $$DeliberationExportsTableFilterComposer,
+          $$DeliberationExportsTableOrderingComposer,
+          $$DeliberationExportsTableAnnotationComposer,
+          $$DeliberationExportsTableCreateCompanionBuilder,
+          $$DeliberationExportsTableUpdateCompanionBuilder,
+          (
+            DeliberationExportRow,
+            BaseReferences<
+              _$AppDatabase,
+              $DeliberationExportsTable,
+              DeliberationExportRow
+            >,
+          ),
+          DeliberationExportRow,
+          PrefetchHooks Function()
+        > {
+  $$DeliberationExportsTableTableManager(
+    _$AppDatabase db,
+    $DeliberationExportsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeliberationExportsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeliberationExportsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DeliberationExportsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> exportId = const Value.absent(),
+                Value<String> boardId = const Value.absent(),
+                Value<String> deliberationId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> view = const Value.absent(),
+                Value<String> manifestJson = const Value.absent(),
+                Value<String> reportJson = const Value.absent(),
+                Value<String?> statementsJson = const Value.absent(),
+                Value<String?> responsesJson = const Value.absent(),
+                Value<DateTime> expiresAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeliberationExportsCompanion(
+                exportId: exportId,
+                boardId: boardId,
+                deliberationId: deliberationId,
+                title: title,
+                view: view,
+                manifestJson: manifestJson,
+                reportJson: reportJson,
+                statementsJson: statementsJson,
+                responsesJson: responsesJson,
+                expiresAt: expiresAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String exportId,
+                required String boardId,
+                required String deliberationId,
+                required String title,
+                required String view,
+                required String manifestJson,
+                required String reportJson,
+                Value<String?> statementsJson = const Value.absent(),
+                Value<String?> responsesJson = const Value.absent(),
+                required DateTime expiresAt,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeliberationExportsCompanion.insert(
+                exportId: exportId,
+                boardId: boardId,
+                deliberationId: deliberationId,
+                title: title,
+                view: view,
+                manifestJson: manifestJson,
+                reportJson: reportJson,
+                statementsJson: statementsJson,
+                responsesJson: responsesJson,
+                expiresAt: expiresAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeliberationExportsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeliberationExportsTable,
+      DeliberationExportRow,
+      $$DeliberationExportsTableFilterComposer,
+      $$DeliberationExportsTableOrderingComposer,
+      $$DeliberationExportsTableAnnotationComposer,
+      $$DeliberationExportsTableCreateCompanionBuilder,
+      $$DeliberationExportsTableUpdateCompanionBuilder,
+      (
+        DeliberationExportRow,
+        BaseReferences<
+          _$AppDatabase,
+          $DeliberationExportsTable,
+          DeliberationExportRow
+        >,
+      ),
+      DeliberationExportRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -51270,4 +52298,6 @@ class $AppDatabaseManager {
       $$IdentityAnchorsTableTableManager(_db, _db.identityAnchors);
   $$RemoteTombstonesTableTableManager get remoteTombstones =>
       $$RemoteTombstonesTableTableManager(_db, _db.remoteTombstones);
+  $$DeliberationExportsTableTableManager get deliberationExports =>
+      $$DeliberationExportsTableTableManager(_db, _db.deliberationExports);
 }

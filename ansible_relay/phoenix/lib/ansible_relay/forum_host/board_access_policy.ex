@@ -1,6 +1,6 @@
 defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
   @moduledoc """
-  Strict parser and evaluator for Board Access Policy v1.
+  Strict parser and evaluator for Board Access Policy v1 and v2.
 
   Policies are deliberately a small allowlisted language. Unknown fields,
   operators, credential types, and requirements fail closed. Membership
@@ -19,7 +19,9 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
     "federation" => "enabled"
   }
 
-  @top_keys Map.keys(@default) |> MapSet.new()
+  @v2_extra %{"analyze" => %{"requirement" => "board_moderator"}}
+  @v1_top_keys Map.keys(@default) |> MapSet.new()
+  @v2_top_keys Map.keys(Map.merge(@default, @v2_extra)) |> MapSet.new()
   @action_keys MapSet.new(["requirement"])
   @requirement_keys MapSet.new([
                       "credential_configuration_id",
@@ -39,9 +41,14 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
 
   def default, do: @default
 
+  def default(2), do: @default |> Map.put("version", 2) |> Map.merge(@v2_extra)
+  def default(1), do: @default
+
   def validate(policy) when is_map(policy) do
-    with :ok <- exact_keys(policy, @top_keys, :unknown_access_policy_field),
-         :ok <- require(policy, "version", &(&1 == 1), :unsupported_access_policy_version),
+    version = value(policy, "version")
+
+    with :ok <- validate_version(version),
+         :ok <- exact_keys(policy, top_keys(version), :unknown_access_policy_field),
          :ok <-
            require(
              policy,
@@ -52,6 +59,7 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
          :ok <- validate_action(value(policy, "read")),
          :ok <- validate_action(value(policy, "post")),
          :ok <- validate_action(value(policy, "moderate", %{"requirement" => "board_moderator"})),
+         :ok <- validate_analyze_action(policy, version),
          :ok <- validate_requirements(value(policy, "requirements")),
          :ok <- validate_references(policy),
          :ok <- require(policy, "capability_ttl_seconds", &valid_ttl?/1, :invalid_capability_ttl),
@@ -70,7 +78,8 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
 
   def validate(_policy), do: {:error, :invalid_access_policy}
 
-  def evaluate(policy, action, evidence) when action in [:discovery, :read, :post, :moderate] do
+  def evaluate(policy, action, evidence)
+      when action in [:discovery, :read, :post, :moderate, :analyze] do
     with :ok <- validate(policy),
          requirement <- action_requirement(policy, action),
          :ok <- evaluate_requirement(requirement, value(policy, "requirements"), evidence) do
@@ -86,7 +95,8 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
     end
   end
 
-  def requirement_for(policy, action) when action in [:discovery, :read, :post, :moderate] do
+  def requirement_for(policy, action)
+      when action in [:discovery, :read, :post, :moderate, :analyze] do
     with :ok <- validate(policy), do: {:ok, action_requirement(policy, action)}
   end
 
@@ -100,6 +110,9 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
   end
 
   defp validate_action(_), do: {:error, :invalid_access_requirement}
+
+  defp validate_analyze_action(_policy, 1), do: :ok
+  defp validate_analyze_action(policy, 2), do: validate_action(value(policy, "analyze"))
 
   defp validate_requirements(requirements) when is_map(requirements) do
     Enum.reduce_while(requirements, :ok, fn
@@ -145,7 +158,8 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
       action_requirement(policy, :discovery),
       action_requirement(policy, :read),
       action_requirement(policy, :post),
-      action_requirement(policy, :moderate)
+      action_requirement(policy, :moderate),
+      action_requirement(policy, :analyze)
     ]
 
     if Enum.all?(references, &(&1 in @built_in_requirements or &1 in names)),
@@ -187,6 +201,12 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
 
   defp action_requirement(policy, :moderate),
     do: value(value(policy, "moderate", %{"requirement" => "board_moderator"}), "requirement")
+
+  # v1 predates user-directed response-matrix analysis. It fails closed to a
+  # moderator-only requirement instead of treating `read` or `post` as an
+  # implicit export permission.
+  defp action_requirement(policy, :analyze),
+    do: value(value(policy, "analyze", %{"requirement" => "board_moderator"}), "requirement")
 
   defp action_requirement(policy, action),
     do: value(value(policy, Atom.to_string(action)), "requirement")
@@ -296,6 +316,12 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicy do
   defp valid_status?(_), do: false
   defp valid_ttl?(ttl), do: is_integer(ttl) and ttl >= 60 and ttl <= 900
   defp nonempty_string?(value), do: is_binary(value) and String.trim(value) != ""
+
+  defp validate_version(version) when version in [1, 2], do: :ok
+  defp validate_version(_), do: {:error, :unsupported_access_policy_version}
+
+  defp top_keys(1), do: @v1_top_keys
+  defp top_keys(2), do: @v2_top_keys
 
   defp exact_keys(map, allowed, error) do
     keys = map |> Map.keys() |> Enum.map(&to_string/1) |> MapSet.new()

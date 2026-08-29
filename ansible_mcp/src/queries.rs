@@ -32,6 +32,7 @@ pub enum QueryError {
     NotFound(String),
     BadArgument(String),
     ScopeDisabled(&'static str),
+    InvalidData(String),
     Sqlite(rusqlite::Error),
 }
 
@@ -50,6 +51,9 @@ impl QueryError {
                 "The \"{scope}\" scope is not enabled in the local AI access grant. \
                  It can be enabled in the Ansible node app (Settings → Local AI Access)."
             ),
+            QueryError::InvalidData(message) => {
+                format!("The locally exported deliberation data is invalid: {message}")
+            }
             QueryError::Sqlite(err) => format!("Database query failed: {err}"),
         }
     }
@@ -235,6 +239,7 @@ pub fn get_access_scope(
             "boards": boards,
             "include_murmurs": grant.scopes.include_murmurs,
             "include_follow_feed": grant.scopes.include_follow_feed,
+            "deliberation_exports": "explicit_unexpired_snapshots_within_board_scope",
         },
         "schema_version": schema_version,
         "last_sync_at": last_sync,
@@ -857,10 +862,224 @@ pub fn get_follow_feed(
     Ok(json!({ "items": items, "next_cursor": next_cursor }))
 }
 
+#[derive(Debug)]
+struct DeliberationExport {
+    export_id: String,
+    board_id: String,
+    deliberation_id: String,
+    title: String,
+    view: String,
+    manifest: Value,
+    report: Value,
+    statements: Option<Value>,
+    responses: Option<Value>,
+    expires_at: i64,
+    created_at: i64,
+}
+
+fn parse_export_json(raw: String, field: &str) -> Result<Value, QueryError> {
+    serde_json::from_str(&raw).map_err(|err| QueryError::InvalidData(format!("{field}: {err}")))
+}
+
+fn optional_export_json(raw: Option<String>, field: &str) -> Result<Option<Value>, QueryError> {
+    raw.map(|value| parse_export_json(value, field)).transpose()
+}
+
+fn active_deliberation_export(
+    conn: &Connection,
+    grant: &Grant,
+    deliberation_id: &str,
+) -> Result<DeliberationExport, QueryError> {
+    let now = OffsetDateTime::now_utc().unix_timestamp();
+    let raw = conn
+        .query_row(
+            "SELECT export_id, board_id, deliberation_id, title, view,
+                    manifest_json, report_json, statements_json, responses_json,
+                    expires_at, created_at
+               FROM deliberation_exports
+              WHERE deliberation_id = ?1 AND expires_at > ?2
+              ORDER BY created_at DESC LIMIT 1",
+            rusqlite::params![deliberation_id, now],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, Option<String>>(7)?,
+                    row.get::<_, Option<String>>(8)?,
+                    row.get::<_, i64>(9)?,
+                    row.get::<_, i64>(10)?,
+                ))
+            },
+        )
+        .map(Some)
+        .or_else(|err| match err {
+            rusqlite::Error::QueryReturnedNoRows => Ok(None),
+            other => Err(other),
+        })?;
+    let Some((
+        export_id,
+        board_id,
+        deliberation_id,
+        title,
+        view,
+        manifest_json,
+        report_json,
+        statements_json,
+        responses_json,
+        expires_at,
+        created_at,
+    )) = raw
+    else {
+        return Err(QueryError::NotFound(format!(
+            "Deliberation \"{deliberation_id}\""
+        )));
+    };
+    if !grant.scopes.boards.allows(&board_id) {
+        return Err(QueryError::NotFound(format!(
+            "Deliberation \"{deliberation_id}\""
+        )));
+    }
+    Ok(DeliberationExport {
+        export_id,
+        board_id,
+        deliberation_id,
+        title,
+        view,
+        manifest: parse_export_json(manifest_json, "manifest_json")?,
+        report: parse_export_json(report_json, "report_json")?,
+        statements: optional_export_json(statements_json, "statements_json")?,
+        responses: optional_export_json(responses_json, "responses_json")?,
+        expires_at,
+        created_at,
+    })
+}
+
+pub fn list_deliberations(conn: &Connection, grant: &Grant) -> Result<Value, QueryError> {
+    let now = OffsetDateTime::now_utc().unix_timestamp();
+    let (filter, params) = board_scope_filter("e.board_id", &grant.scopes.boards);
+    let sql = format!(
+        "SELECT e.deliberation_id, e.board_id, e.title, e.view, e.expires_at, e.created_at
+           FROM deliberation_exports e
+          WHERE e.expires_at > {now}{filter}
+            AND e.created_at = (
+              SELECT MAX(newer.created_at)
+                FROM deliberation_exports newer
+               WHERE newer.deliberation_id = e.deliberation_id
+                 AND newer.expires_at > {now}
+            )
+          ORDER BY e.created_at DESC"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params_from_iter(params.iter()), |row| {
+        Ok(json!({
+            "deliberation_id": row.get::<_, String>(0)?,
+            "board_id": row.get::<_, String>(1)?,
+            "title": row.get::<_, String>(2)?,
+            "view": row.get::<_, String>(3)?,
+            "expires_at": epoch_to_rfc3339(row.get::<_, i64>(4)?),
+            "exported_at": epoch_to_rfc3339(row.get::<_, i64>(5)?),
+        }))
+    })?;
+    let mut values = Vec::new();
+    for row in rows {
+        values.push(row?);
+    }
+    Ok(json!({ "deliberations": values }))
+}
+
+pub fn get_deliberation(
+    conn: &Connection,
+    grant: &Grant,
+    deliberation_id: &str,
+) -> Result<Value, QueryError> {
+    let export = active_deliberation_export(conn, grant, deliberation_id)?;
+    Ok(json!({
+        "deliberation_id": export.deliberation_id,
+        "board_id": export.board_id,
+        "title": export.title,
+        "view": export.view,
+        "export_id": export.export_id,
+        "exported_at": epoch_to_rfc3339(export.created_at),
+        "expires_at": epoch_to_rfc3339(export.expires_at),
+    }))
+}
+
+pub fn get_deliberation_report(
+    conn: &Connection,
+    grant: &Grant,
+    deliberation_id: &str,
+) -> Result<Value, QueryError> {
+    let export = active_deliberation_export(conn, grant, deliberation_id)?;
+    Ok(json!({
+        "deliberation_id": export.deliberation_id,
+        "report": export.report,
+    }))
+}
+
+pub fn get_deliberation_dataset_manifest(
+    conn: &Connection,
+    grant: &Grant,
+    deliberation_id: &str,
+) -> Result<Value, QueryError> {
+    let export = active_deliberation_export(conn, grant, deliberation_id)?;
+    Ok(json!({
+        "deliberation_id": export.deliberation_id,
+        "view": export.view,
+        "manifest": export.manifest,
+        "expires_at": epoch_to_rfc3339(export.expires_at),
+    }))
+}
+
+pub fn list_deliberation_statements(
+    conn: &Connection,
+    grant: &Grant,
+    deliberation_id: &str,
+) -> Result<Value, QueryError> {
+    let export = active_deliberation_export(conn, grant, deliberation_id)?;
+    let statements = export.statements.unwrap_or_else(|| json!([]));
+    Ok(json!({
+        "deliberation_id": export.deliberation_id,
+        "statements": statements,
+    }))
+}
+
+pub fn list_deliberation_responses(
+    conn: &Connection,
+    grant: &Grant,
+    deliberation_id: &str,
+) -> Result<Value, QueryError> {
+    let export = active_deliberation_export(conn, grant, deliberation_id)?;
+    if export.view != "pseudonymous_matrix" {
+        return Err(QueryError::ScopeDisabled(
+            "pseudonymous deliberation response export",
+        ));
+    }
+    let responses = export.responses.unwrap_or_else(|| json!([]));
+    Ok(json!({
+        "deliberation_id": export.deliberation_id,
+        "responses": responses,
+        "participant_identity": "export_scoped_pseudonym",
+    }))
+}
+
 /// Row-count estimate for the audit log: number of top-level entries a tool
 /// response carries, without inspecting content.
 pub fn result_row_count(value: &Value) -> usize {
-    for key in ["boards", "threads", "posts", "results", "items"] {
+    for key in [
+        "boards",
+        "threads",
+        "posts",
+        "results",
+        "items",
+        "deliberations",
+        "statements",
+        "responses",
+    ] {
         if let Some(arr) = value.get(key).and_then(Value::as_array) {
             return arr.len();
         }
@@ -872,7 +1091,14 @@ pub fn result_row_count(value: &Value) -> usize {
 /// the audit log (defense in depth; args are ids/cursors only today).
 pub fn audit_args(args: &Map<String, Value>) -> Value {
     let mut out = Map::new();
-    for key in ["board_id", "thread_id", "did", "cursor", "limit"] {
+    for key in [
+        "board_id",
+        "thread_id",
+        "deliberation_id",
+        "did",
+        "cursor",
+        "limit",
+    ] {
         if let Some(v) = args.get(key) {
             out.insert(key.to_string(), v.clone());
         }

@@ -12,7 +12,7 @@ defmodule AnsibleRelay.ForumHost.BoardCapability do
   alias AnsibleRelay.Repo
 
   @prefix "elix_board_v1_"
-  @allowed_scopes ~w(discover read post moderate key:read)
+  @allowed_scopes ~w(discover read post moderate analyze key:read)
 
   def issue(
         %ForumHostBoard{} = board,

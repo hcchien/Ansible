@@ -135,7 +135,57 @@ pub fn tool_definitions() -> Vec<Tool> {
             ),
             cursor_page,
         ),
+        read_only_tool(
+            "list_deliberations",
+            format!(
+                "List unexpired deliberation snapshots the user explicitly made available to Local AI. {UNTRUSTED_NOTE}"
+            ),
+            serde_json::json!({ "type": "object", "properties": {} }),
+        ),
+        read_only_tool(
+            "get_deliberation",
+            format!(
+                "Describe one explicitly exported deliberation snapshot, including view and expiry. {UNTRUSTED_NOTE}"
+            ),
+            deliberation_id_schema(),
+        ),
+        read_only_tool(
+            "get_deliberation_report",
+            format!(
+                "Read the reproducible aggregate report from an explicitly exported deliberation. {UNTRUSTED_NOTE}"
+            ),
+            deliberation_id_schema(),
+        ),
+        read_only_tool(
+            "get_deliberation_dataset_manifest",
+            format!(
+                "Read dataset digest, algorithm version, missing-value semantics, privacy policy version, and pseudonym rules. {UNTRUSTED_NOTE}"
+            ),
+            deliberation_id_schema(),
+        ),
+        read_only_tool(
+            "list_deliberation_statements",
+            format!(
+                "List statement text only when it was included in the user-authorized export. {UNTRUSTED_NOTE}"
+            ),
+            deliberation_id_schema(),
+        ),
+        read_only_tool(
+            "list_deliberation_responses",
+            format!(
+                "List response rows only for an unexpired pseudonymous-matrix export; participant ids are unique to that export and are never DIDs. {UNTRUSTED_NOTE}"
+            ),
+            deliberation_id_schema(),
+        ),
     ]
+}
+
+fn deliberation_id_schema() -> Value {
+    serde_json::json!({
+        "type": "object",
+        "required": ["deliberation_id"],
+        "properties": { "deliberation_id": { "type": "string" } }
+    })
 }
 
 enum ToolFailure {
@@ -197,6 +247,37 @@ impl AnsibleMcpServer {
             "get_murmurs" => {
                 queries::get_murmurs(&conn, &grant, str_arg("cursor"), int_arg("limit"))
             }
+            "list_deliberations" => queries::list_deliberations(&conn, &grant),
+            "get_deliberation" => match str_arg("deliberation_id") {
+                Some(id) => queries::get_deliberation(&conn, &grant, id),
+                None => Err(queries::QueryError::BadArgument(
+                    "deliberation_id is required".into(),
+                )),
+            },
+            "get_deliberation_report" => match str_arg("deliberation_id") {
+                Some(id) => queries::get_deliberation_report(&conn, &grant, id),
+                None => Err(queries::QueryError::BadArgument(
+                    "deliberation_id is required".into(),
+                )),
+            },
+            "get_deliberation_dataset_manifest" => match str_arg("deliberation_id") {
+                Some(id) => queries::get_deliberation_dataset_manifest(&conn, &grant, id),
+                None => Err(queries::QueryError::BadArgument(
+                    "deliberation_id is required".into(),
+                )),
+            },
+            "list_deliberation_statements" => match str_arg("deliberation_id") {
+                Some(id) => queries::list_deliberation_statements(&conn, &grant, id),
+                None => Err(queries::QueryError::BadArgument(
+                    "deliberation_id is required".into(),
+                )),
+            },
+            "list_deliberation_responses" => match str_arg("deliberation_id") {
+                Some(id) => queries::list_deliberation_responses(&conn, &grant, id),
+                None => Err(queries::QueryError::BadArgument(
+                    "deliberation_id is required".into(),
+                )),
+            },
             _ => return Err(ToolFailure::UnknownTool),
         };
         let value = result.map_err(|err| ToolFailure::Denied(err.message()))?;

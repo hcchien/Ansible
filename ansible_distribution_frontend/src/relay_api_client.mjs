@@ -29,6 +29,14 @@ export function createRelayApiClient({
     return requestJson('POST', path, body, options);
   }
 
+  async function putJson(path, body = {}, options = {}) {
+    return requestJson('PUT', path, body, options);
+  }
+
+  async function deleteJson(path, body = {}, options = {}) {
+    return requestJson('DELETE', path, body, options);
+  }
+
   async function requestJson(method, path, body, options) {
     const headers = { accept: 'application/json' };
 
@@ -67,7 +75,7 @@ export function createRelayApiClient({
     return responseBody;
   }
 
-  return { getJson, postJson };
+  return { getJson, postJson, putJson, deleteJson };
 }
 
 export function trimTrailingSlash(value) {

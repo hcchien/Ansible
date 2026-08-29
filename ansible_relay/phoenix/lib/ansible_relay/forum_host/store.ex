@@ -39,6 +39,7 @@ defmodule AnsibleRelay.ForumHost.Store do
       capabilities: %{
         create_boards: true,
         create_threads: true,
+        deliberations: true,
         cross_post: true,
         announcements: true
       }

@@ -20,6 +20,20 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @report_required_fields ~w(target_kind target_ref board_id reason_code)
   @poll_vote_type "io.trisaura.forum.castPollVote"
   @poll_vote_action "cast_poll_vote"
+  @deliberation_intents %{
+    "create_deliberation" => {"io.trisaura.forum.createDeliberation", ~w(board_id deliberation)},
+    "submit_deliberation_statement" =>
+      {"io.trisaura.forum.submitDeliberationStatement", ~w(board_id deliberation_id text)},
+    "cast_deliberation_vote" =>
+      {"io.trisaura.forum.castDeliberationVote", ~w(board_id deliberation_id statement_id stance)},
+    "withdraw_deliberation_vote" =>
+      {"io.trisaura.forum.withdrawDeliberationVote",
+       ~w(board_id deliberation_id statement_id supersedes_intent_id)},
+    "read_deliberation_responses" =>
+      {"io.trisaura.forum.readDeliberationResponses", ~w(board_id deliberation_id)},
+    "export_deliberation" =>
+      {"io.trisaura.forum.exportDeliberation", ~w(board_id deliberation_id view)}
+  }
   @default_clock_skew_seconds 0
   @default_max_age_seconds 600
 
@@ -184,7 +198,12 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
          :ok <- require_target_host(params["target_forum_host"]),
          :ok <- require_timestamp_window(params),
          :ok <- known_did(params["author_did"]),
-         true <- IdentityCache.verify_signature(params["author_did"], canonical_json(params), params["signature"]) do
+         true <-
+           IdentityCache.verify_signature(
+             params["author_did"],
+             canonical_json(params),
+             params["signature"]
+           ) do
       {:ok, params["author_did"]}
     else
       false -> {:error, :invalid_signature}
@@ -193,6 +212,38 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   def verify_poll_vote(_params), do: {:error, :invalid_intent}
+
+  def verify_deliberation_intent(params, expected_action) when is_map(params) do
+    with {expected_type, required_fields} when is_binary(expected_type) <-
+           Map.get(@deliberation_intents, expected_action),
+         :ok <- require_string(params, "signature", :missing_signature),
+         :ok <- require_string(params, "author_did", :missing_author_did),
+         :ok <- require_string(params, "intent_id", :missing_intent_id),
+         :ok <- require_string(params, "target_forum_host", :missing_target_forum_host),
+         :ok <- require_string(params, "created_at", :missing_created_at),
+         :ok <- require_fields(params, required_fields),
+         :ok <- require_type(params, expected_type),
+         :ok <- require_version(params, 1),
+         :ok <- require_action(params, expected_action),
+         :ok <- require_target_host(params["target_forum_host"]),
+         :ok <- require_timestamp_window(params),
+         :ok <- known_did(params["author_did"]),
+         true <-
+           IdentityCache.verify_signature(
+             params["author_did"],
+             canonical_json(params),
+             params["signature"]
+           ) do
+      {:ok, params["author_did"]}
+    else
+      nil -> {:error, :invalid_action}
+      false -> {:error, :invalid_signature}
+      {:error, error} -> {:error, error}
+      _ -> {:error, :invalid_intent}
+    end
+  end
+
+  def verify_deliberation_intent(_params, _expected_action), do: {:error, :invalid_intent}
 
   def canonical_json(value) when is_map(value) do
     value
@@ -366,6 +417,16 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
       _value ->
         {:error, error}
     end
+  end
+
+  defp require_fields(params, fields) do
+    Enum.reduce_while(fields, :ok, fn key, :ok ->
+      case Map.get(params, key) do
+        value when is_binary(value) and value != "" -> {:cont, :ok}
+        value when is_map(value) and map_size(value) > 0 -> {:cont, :ok}
+        _ -> {:halt, {:error, String.to_atom("missing_#{key}")}}
+      end
+    end)
   end
 
   defp require_board_title(%{"board" => %{"title" => title}}) when is_binary(title) do

@@ -17,6 +17,7 @@ import '../schema/content_metadata.dart';
 import '../schema/content_relations.dart';
 import '../schema/context_packs.dart';
 import '../schema/did_reputations.dart';
+import '../schema/deliberation_exports.dart';
 import '../schema/discussion_nodes.dart';
 import '../schema/follow_activity_events.dart';
 import '../schema/follow_edges.dart';
@@ -111,13 +112,14 @@ part 'app_database.g.dart';
     HostModerationStates,
     IdentityAnchors,
     RemoteTombstones,
+    DeliberationExports,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
   @override
-  int get schemaVersion => 34;
+  int get schemaVersion => 35;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -271,6 +273,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 34) {
         await _addColumnIfMissing(m, threads, threads.pollResultsJson);
+      }
+      if (from < 35) {
+        await _createTableIfMissing(m, deliberationExports);
       }
       if (from < 26) {
         // Compliance-review gap #2: persist the host-declared constitution

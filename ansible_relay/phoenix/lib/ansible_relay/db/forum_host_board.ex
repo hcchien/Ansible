@@ -114,8 +114,13 @@ defmodule AnsibleRelay.Db.ForumHostBoard do
       tier = Map.get(policy, "min_post_tier") || Map.get(policy, :min_post_tier)
       pollCreation = Map.get(policy, "poll_creation") || Map.get(policy, :poll_creation)
 
+      deliberationCreation =
+        Map.get(policy, "deliberation_creation") || Map.get(policy, :deliberation_creation)
+
       if (is_nil(tier) or AnsibleRelay.ReputationTier.valid_min_post_tier?(tier)) and
-           (is_nil(pollCreation) or pollCreation in ["posters", "moderators", "owners"]) do
+           (is_nil(pollCreation) or pollCreation in ["posters", "moderators", "owners"]) and
+           (is_nil(deliberationCreation) or
+              deliberationCreation in ["posters", "moderators", "owners"]) do
         []
       else
         allowed = Enum.join(AnsibleRelay.ReputationTier.allowed_min_post_tiers(), ", ")

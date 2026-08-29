@@ -145,6 +145,119 @@ export async function fetchBoardPoll({ relayBaseUrl, fetchImpl, boardId, pollId 
   );
 }
 
+export async function fetchBoardDeliberations({ relayBaseUrl, fetchImpl, boardId }) {
+  return relayClient({ relayBaseUrl, fetchImpl }).getJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations`,
+  );
+}
+
+export async function fetchBoardDeliberation({
+  relayBaseUrl,
+  fetchImpl,
+  boardId,
+  deliberationId,
+}) {
+  return relayClient({ relayBaseUrl, fetchImpl }).getJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations/${encodeURIComponent(deliberationId)}`,
+  );
+}
+
+export async function createWebDeliberation({
+  relayBaseUrl,
+  storage,
+  fetchImpl,
+  boardId,
+  title,
+  prompt,
+  exportMode = 'aggregates_only',
+}) {
+  return relayClient({ relayBaseUrl, storage, fetchImpl }).postJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations`,
+    { deliberation: { title, prompt, export_mode: exportMode } },
+    { authenticated: true },
+  );
+}
+
+export async function submitWebDeliberationStatement({
+  relayBaseUrl,
+  storage,
+  fetchImpl,
+  boardId,
+  deliberationId,
+  text,
+}) {
+  return relayClient({ relayBaseUrl, storage, fetchImpl }).postJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations/${encodeURIComponent(deliberationId)}/statements`,
+    { text },
+    { authenticated: true },
+  );
+}
+
+export async function submitWebDeliberationVote({
+  relayBaseUrl,
+  storage,
+  fetchImpl,
+  boardId,
+  deliberationId,
+  statementId,
+  stance,
+  supersedesIntentId = null,
+}) {
+  return relayClient({ relayBaseUrl, storage, fetchImpl }).putJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations/${encodeURIComponent(deliberationId)}/statements/${encodeURIComponent(statementId)}/vote`,
+    {
+      stance,
+      ...(supersedesIntentId ? { supersedes_intent_id: supersedesIntentId } : {}),
+    },
+    { authenticated: true },
+  );
+}
+
+export async function fetchWebDeliberationResponses({
+  relayBaseUrl,
+  storage,
+  fetchImpl,
+  boardId,
+  deliberationId,
+}) {
+  return relayClient({ relayBaseUrl, storage, fetchImpl }).postJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations/${encodeURIComponent(deliberationId)}/responses/mine`,
+    {},
+    { authenticated: true },
+  );
+}
+
+export async function withdrawWebDeliberationVote({
+  relayBaseUrl,
+  storage,
+  fetchImpl,
+  boardId,
+  deliberationId,
+  statementId,
+  supersedesIntentId,
+}) {
+  return relayClient({ relayBaseUrl, storage, fetchImpl }).deleteJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations/${encodeURIComponent(deliberationId)}/statements/${encodeURIComponent(statementId)}/vote`,
+    { supersedes_intent_id: supersedesIntentId },
+    { authenticated: true },
+  );
+}
+
+export async function requestWebDeliberationExport({
+  relayBaseUrl,
+  storage,
+  fetchImpl,
+  boardId,
+  deliberationId,
+  view = 'aggregates',
+}) {
+  return relayClient({ relayBaseUrl, storage, fetchImpl }).postJson(
+    `/api/v1/forum-host/boards/${encodeURIComponent(boardId)}/deliberations/${encodeURIComponent(deliberationId)}/exports`,
+    { view },
+    { authenticated: true },
+  );
+}
+
 function relayClient(options) {
   return createRelayApiClient(options);
 }

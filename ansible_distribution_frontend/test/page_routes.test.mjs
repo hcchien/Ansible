@@ -20,6 +20,10 @@ assert.deepEqual(parseRoute('#/boards/general/threads/thread-9'), {
   pageId: PAGE_IDS.thread,
   params: { boardId: 'general', threadId: 'thread-9' },
 });
+assert.deepEqual(parseRoute('#/boards/general/deliberations/deliberation-9'), {
+  pageId: PAGE_IDS.deliberation,
+  params: { boardId: 'general', deliberationId: 'deliberation-9' },
+});
 assert.deepEqual(parseRoute('#/profiles/did%3Aelix%3Amira'), {
   pageId: PAGE_IDS.profile,
   params: { did: 'did:elix:mira' },
@@ -50,6 +54,10 @@ assert.equal(routeToHash({ pageId: PAGE_IDS.board, params: { boardId: 'general' 
 assert.equal(
   routeToHash({ pageId: PAGE_IDS.thread, params: { boardId: 'general', threadId: 'thread-9' } }),
   '#/boards/general/threads/thread-9',
+);
+assert.equal(
+  routeToHash({ pageId: PAGE_IDS.deliberation, params: { boardId: 'general', deliberationId: 'deliberation-9' } }),
+  '#/boards/general/deliberations/deliberation-9',
 );
 assert.equal(
   routeToHash({ pageId: PAGE_IDS.profile, params: { did: 'did:elix:Mira' } }),

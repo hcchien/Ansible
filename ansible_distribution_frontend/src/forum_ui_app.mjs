@@ -35,6 +35,7 @@ export function createForumUiApp({
   let uiError = null;
   let uiNotice = null;
   let threadDraft = null;
+  let deliberationResponses = {};
   let uiPreferences = readUiPreferences(storage);
   let pollTimer = null;
   let bound = false;
@@ -81,6 +82,16 @@ export function createForumUiApp({
         await submitThreadDraft(actionElement);
       } else if (action === 'cast-poll-vote') {
         await castPollVote(actionElement);
+      } else if (action === 'new-deliberation') {
+        await createDeliberation(actionElement);
+      } else if (action === 'add-deliberation-statement') {
+        await addDeliberationStatement(actionElement);
+      } else if (action === 'cast-deliberation-vote') {
+        await castDeliberationVote(actionElement);
+      } else if (action === 'withdraw-deliberation-vote') {
+        await withdrawDeliberationVote(actionElement);
+      } else if (action === 'export-deliberation') {
+        await exportDeliberation(actionElement);
       } else if (action === 'edit-own-content') {
         await editOwnContent(actionElement);
       } else if (action === 'delete-own-content') {
@@ -331,6 +342,129 @@ export function createForumUiApp({
     render();
   }
 
+  async function createDeliberation(actionElement) {
+    if (!forumDataAdapter?.submitDeliberationDraft) return;
+    const title = windowLike.prompt?.(t('deliberation.createTitlePrompt'));
+    if (title == null || !String(title).trim()) return;
+    const prompt = windowLike.prompt?.(t('deliberation.createPromptPrompt'));
+    if (prompt == null || !String(prompt).trim()) return;
+
+    const result = await forumDataAdapter.submitDeliberationDraft({
+      boardId: currentBoardId(actionElement),
+      title: String(title).trim(),
+      prompt: String(prompt).trim(),
+      exportMode: 'aggregates_only',
+      sessionViewModel: currentSessionViewModel(),
+    });
+    uiNotice = {
+      tone: 'success',
+      title: t('deliberation.createdTitle'),
+      message: t('deliberation.createdMessage'),
+    };
+    const deliberationId = result?.deliberation?.id;
+    if (deliberationId) {
+      return navigate(
+        `#/boards/${encodeURIComponent(currentBoardId(actionElement))}/deliberations/${encodeURIComponent(deliberationId)}`,
+      );
+    }
+    state = await pageController.loadCurrentRoute();
+    render();
+  }
+
+  async function addDeliberationStatement(actionElement) {
+    if (!forumDataAdapter?.submitDeliberationStatement) return;
+    const text = windowLike.prompt?.(t('deliberation.statementPrompt'));
+    if (text == null || !String(text).trim()) return;
+    await forumDataAdapter.submitDeliberationStatement({
+      boardId: actionElement.dataset.boardId,
+      deliberationId: actionElement.dataset.deliberationId,
+      text: String(text).trim(),
+      sessionViewModel: currentSessionViewModel(),
+    });
+    uiNotice = {
+      tone: 'success',
+      title: t('deliberation.statementAddedTitle'),
+      message: t('deliberation.statementAddedMessage'),
+    };
+    state = await pageController.loadCurrentRoute();
+    render();
+  }
+
+  async function castDeliberationVote(actionElement) {
+    if (!forumDataAdapter?.submitDeliberationVote) return;
+    const statementId = actionElement.dataset.statementId;
+    const current = deliberationResponses[statementId] ?? null;
+    const result = await forumDataAdapter.submitDeliberationVote({
+      boardId: actionElement.dataset.boardId,
+      deliberationId: actionElement.dataset.deliberationId,
+      statementId,
+      stance: actionElement.dataset.stance,
+      supersedesIntentId: current?.lastIntentId ?? current?.last_intent_id ?? null,
+      sessionViewModel: currentSessionViewModel(),
+    });
+    const response = result?.response ?? {};
+    deliberationResponses = {
+      ...deliberationResponses,
+      [statementId]: {
+        stance: response.stance ?? actionElement.dataset.stance,
+        lastIntentId: response.last_intent_id ?? current?.lastIntentId ?? null,
+      },
+    };
+    uiNotice = {
+      tone: 'success',
+      title: t('deliberation.voteRecordedTitle'),
+      message: t('deliberation.voteRecordedMessage'),
+    };
+    state = await pageController.loadCurrentRoute();
+    render();
+  }
+
+  async function exportDeliberation(actionElement) {
+    if (!forumDataAdapter?.exportDeliberation) return;
+    const result = await forumDataAdapter.exportDeliberation({
+      boardId: actionElement.dataset.boardId,
+      deliberationId: actionElement.dataset.deliberationId,
+      view: 'aggregates',
+      sessionViewModel: currentSessionViewModel(),
+    });
+    downloadJson(windowLike, result?.export ?? result, `elix-deliberation-${actionElement.dataset.deliberationId}.json`);
+    uiNotice = {
+      tone: 'success',
+      title: t('deliberation.exportReadyTitle'),
+      message: t('deliberation.exportReadyMessage'),
+    };
+    render();
+  }
+
+  async function withdrawDeliberationVote(actionElement) {
+    if (!forumDataAdapter?.withdrawDeliberationVote) return;
+    const statementId = actionElement.dataset.statementId;
+    const current = deliberationResponses[statementId]
+      ?? state?.viewModel?.deliberation?.viewerResponses?.[statementId]
+      ?? null;
+    const supersedesIntentId = current?.lastIntentId ?? current?.last_intent_id;
+    if (!supersedesIntentId) return;
+    await forumDataAdapter.withdrawDeliberationVote({
+      boardId: actionElement.dataset.boardId,
+      deliberationId: actionElement.dataset.deliberationId,
+      statementId,
+      supersedesIntentId,
+      sessionViewModel: currentSessionViewModel(),
+    });
+    deliberationResponses = { ...deliberationResponses };
+    delete deliberationResponses[statementId];
+    if (state?.viewModel?.deliberation?.viewerResponses) {
+      delete state.viewModel.deliberation.viewerResponses[statementId];
+    }
+    uiNotice = {
+      tone: 'success',
+      title: t('deliberation.voteWithdrawnTitle'),
+      message: t('deliberation.voteWithdrawnMessage'),
+    };
+    state = await pageController.loadCurrentRoute();
+    render();
+  }
+
   function readThreadDraftTitle(actionElement) {
     const form = findThreadDraftForm(actionElement, root);
     return (
@@ -493,6 +627,7 @@ export function createForumUiApp({
       preferences: uiPreferences,
       notice: uiNotice,
       threadDraft,
+      deliberationResponses,
     });
     root.innerHTML = renderAppShell({ viewModel, bodyHtml, uiPreferences });
     uiNotice = null;
@@ -603,6 +738,19 @@ export function createForumUiApp({
     render,
     stop,
   };
+}
+
+function downloadJson(windowLike, value, filename) {
+  const BlobCtor = windowLike?.Blob ?? globalThis.Blob;
+  const documentLike = windowLike?.document;
+  if (!BlobCtor || !documentLike?.createElement || !windowLike?.URL?.createObjectURL) return;
+  const blob = new BlobCtor([JSON.stringify(value, null, 2)], { type: 'application/json' });
+  const url = windowLike.URL.createObjectURL(blob);
+  const link = documentLike.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click?.();
+  windowLike.URL.revokeObjectURL?.(url);
 }
 
 function readUiPreferences(storage) {

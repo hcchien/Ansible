@@ -635,6 +635,43 @@ void main() {
       '{"action":"create_board","author_did":"did:key:z6MkUser","board":{"description":"Open discussion","title":"General"},"created_at":"2026-06-02T10:00:00.000Z","expires_at":"2026-06-02T10:05:00.000Z","intent_id":"intent-1","target_forum_host":"http://relay.local","type":"io.trisaura.forum.createBoard","version":1}',
     );
   });
+
+  test(
+    'deliberation vote and export payloads bind board, statement and view',
+    () {
+      final createdAt = DateTime.utc(2026, 8, 29, 10);
+      final expiresAt = createdAt.add(const Duration(minutes: 5));
+      final vote = DeliberationIntentPayload.vote(
+        intentId: 'vote-2',
+        authorDid: 'did:example:alice',
+        targetForumHost: 'https://relay.example',
+        boardId: 'board-1',
+        deliberationId: 'd-1',
+        statementId: 's-1',
+        stance: 'disagree',
+        supersedesIntentId: 'vote-1',
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+      );
+      final export = DeliberationIntentPayload.export(
+        intentId: 'export-1',
+        authorDid: 'did:example:alice',
+        targetForumHost: 'https://relay.example',
+        boardId: 'board-1',
+        deliberationId: 'd-1',
+        view: 'pseudonymous_matrix',
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+      );
+
+      expect(vote['supersedes_intent_id'], 'vote-1');
+      expect(vote['type'], 'io.trisaura.forum.castDeliberationVote');
+      expect(export['action'], 'export_deliberation');
+      expect(export['view'], 'pseudonymous_matrix');
+      expect(export['type'], 'io.trisaura.forum.exportDeliberation');
+      expect(forumHostCanonicalJson(export), contains('"board_id":"board-1"'));
+    },
+  );
 }
 
 CreateHostedBoardIntent _testCreateBoardIntent() {

@@ -1,9 +1,17 @@
 import {
   createHostedWebThread,
+  createWebDeliberation,
+  fetchBoardDeliberation,
+  fetchBoardDeliberations,
   fetchBoardModerationState,
   fetchForumHostInfo,
   fetchHostedBoards,
   submitBoardPollVote,
+  submitWebDeliberationStatement,
+  submitWebDeliberationVote,
+  fetchWebDeliberationResponses,
+  withdrawWebDeliberationVote,
+  requestWebDeliberationExport,
   fetchWebModerationActions,
   fetchWebModerationReports,
   submitWebModerationAction,
@@ -64,6 +72,14 @@ export function createForumDataAdapter({
     submitWebModerationAction,
     fetchBoardModerationState,
     submitBoardPollVote,
+    fetchBoardDeliberations,
+    fetchBoardDeliberation,
+    createWebDeliberation,
+    submitWebDeliberationStatement,
+    submitWebDeliberationVote,
+    fetchWebDeliberationResponses,
+    withdrawWebDeliberationVote,
+    requestWebDeliberationExport,
   },
   webPublicationClient = { createPasskeySignedThread, createPasskeySignedOperation },
   appViewClient = {
@@ -190,10 +206,11 @@ export function createForumDataAdapter({
       };
     }
 
-    const [moderationState, externalContent, feedResponse] = await Promise.all([
+    const [moderationState, externalContent, feedResponse, deliberationsResponse] = await Promise.all([
       loadPublicModerationState(board.id),
       loadBoardExternalContent(board),
       loadBoardFeed(board.id),
+      loadBoardDeliberations(board.id),
     ]);
 
     const rawThreads = buildThreadsFromFeed(feedResponse?.items ?? []);
@@ -203,10 +220,69 @@ export function createForumDataAdapter({
       ...home,
       board,
       threads: applyModerationStateToThreads(rawThreads, moderationState),
+      deliberations: (deliberationsResponse?.deliberations ?? []).map(normalizeDeliberation),
       moderationState,
       externalContent,
       error: null,
     };
+  }
+
+  async function loadDeliberationPage({ boardId, deliberationId, sessionViewModel } = {}) {
+    const boardPage = await loadBoardPage({ boardId, sessionViewModel });
+    if (boardPage.board?.missing) {
+      return { ...boardPage, deliberation: null };
+    }
+    try {
+      const response = await forumHostClient.fetchBoardDeliberation({
+        relayBaseUrl,
+        fetchImpl,
+        boardId: boardPage.board.id,
+        deliberationId,
+      });
+      let viewerResponses = {};
+      if (
+        sessionViewModel?.authenticated &&
+        typeof forumHostClient.fetchWebDeliberationResponses === 'function'
+      ) {
+        const own = await forumHostClient.fetchWebDeliberationResponses({
+          relayBaseUrl,
+          storage,
+          fetchImpl,
+          boardId: boardPage.board.id,
+          deliberationId,
+        });
+        viewerResponses = own?.responses ?? {};
+      }
+      return {
+        ...boardPage,
+        deliberation: {
+          ...normalizeDeliberation(response?.deliberation),
+          viewerResponses,
+        },
+        error: null,
+      };
+    } catch (error) {
+      return {
+        ...boardPage,
+        deliberation: null,
+        error: normalizeFrontendError(error),
+      };
+    }
+  }
+
+  async function loadBoardDeliberations(boardId) {
+    if (typeof forumHostClient.fetchBoardDeliberations !== 'function') {
+      return { deliberations: [] };
+    }
+    try {
+      return await forumHostClient.fetchBoardDeliberations({
+        relayBaseUrl,
+        fetchImpl,
+        boardId,
+      });
+    } catch {
+      return { deliberations: [], unavailable: true };
+    }
   }
 
   async function loadThreadPage({ boardId, threadId, sessionViewModel } = {}) {
@@ -479,6 +555,100 @@ export function createForumDataAdapter({
     });
   }
 
+  async function submitDeliberationDraft({
+    boardId,
+    title,
+    prompt,
+    exportMode,
+    sessionViewModel,
+  }) {
+    if (!sessionViewModel?.capabilities?.canPost) throw scopeError('forum:post');
+    return forumHostClient.createWebDeliberation({
+      relayBaseUrl,
+      storage,
+      fetchImpl,
+      boardId,
+      title,
+      prompt,
+      exportMode,
+    });
+  }
+
+  async function submitDeliberationStatement({
+    boardId,
+    deliberationId,
+    text,
+    sessionViewModel,
+  }) {
+    if (!sessionViewModel?.capabilities?.canPost) throw scopeError('forum:post');
+    return forumHostClient.submitWebDeliberationStatement({
+      relayBaseUrl,
+      storage,
+      fetchImpl,
+      boardId,
+      deliberationId,
+      text,
+    });
+  }
+
+  async function submitDeliberationVote({
+    boardId,
+    deliberationId,
+    statementId,
+    stance,
+    supersedesIntentId = null,
+    sessionViewModel,
+  }) {
+    if (!sessionViewModel?.capabilities?.canPost) throw scopeError('forum:post');
+    return forumHostClient.submitWebDeliberationVote({
+      relayBaseUrl,
+      storage,
+      fetchImpl,
+      boardId,
+      deliberationId,
+      statementId,
+      stance,
+      supersedesIntentId,
+    });
+  }
+
+  async function exportDeliberation({
+    boardId,
+    deliberationId,
+    view = 'aggregates',
+    sessionViewModel,
+  }) {
+    if (!sessionViewModel?.authenticated) throw scopeError('forum:read');
+    return forumHostClient.requestWebDeliberationExport({
+      relayBaseUrl,
+      storage,
+      fetchImpl,
+      boardId,
+      deliberationId,
+      view,
+    });
+  }
+
+  async function withdrawDeliberationVote({
+    boardId,
+    deliberationId,
+    statementId,
+    supersedesIntentId,
+    sessionViewModel,
+  }) {
+    if (!sessionViewModel?.capabilities?.canPost) throw scopeError('forum:post');
+    if (!supersedesIntentId) throw notFoundError('deliberation_response_not_found');
+    return forumHostClient.withdrawWebDeliberationVote({
+      relayBaseUrl,
+      storage,
+      fetchImpl,
+      boardId,
+      deliberationId,
+      statementId,
+      supersedesIntentId,
+    });
+  }
+
   async function submitContentMutation({
     action,
     entityType,
@@ -644,16 +814,42 @@ export function createForumDataAdapter({
     loadForumHome,
     loadProfilePage,
     loadBoardPage,
+    loadDeliberationPage,
     loadThreadPage,
     loadNotifications,
     markNotificationRead,
     markAllNotificationsRead,
     submitThreadDraft,
     submitPollVote,
+    submitDeliberationDraft,
+    submitDeliberationStatement,
+    submitDeliberationVote,
+    withdrawDeliberationVote,
+    exportDeliberation,
     submitContentMutation,
     submitReport,
     loadModerationConsole,
     submitModerationAction,
+  };
+}
+
+function normalizeDeliberation(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    ...raw,
+    id: String(raw.id ?? ''),
+    boardId: String(raw.board_id ?? raw.boardId ?? ''),
+    exportMode: raw.export_mode ?? raw.exportMode ?? 'aggregates_only',
+    statementCount: Number(raw.statement_count ?? raw.statementCount ?? 0),
+    participantCount: Number(raw.participant_count ?? raw.participantCount ?? 0),
+    statements: Array.isArray(raw.statements)
+      ? raw.statements.map((statement) => ({
+          ...statement,
+          id: String(statement.id ?? ''),
+          text: String(statement.text ?? ''),
+        }))
+      : [],
+    report: raw.report && typeof raw.report === 'object' ? raw.report : null,
   };
 }
 

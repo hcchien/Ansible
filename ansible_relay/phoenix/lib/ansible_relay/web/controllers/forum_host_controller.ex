@@ -611,6 +611,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   defp parse_access_action("read"), do: :read
   defp parse_access_action("post"), do: :post
   defp parse_access_action("moderate"), do: :moderate
+  defp parse_access_action("analyze"), do: :analyze
   defp parse_access_action(_), do: :invalid
 
   defp scope_for(:discovery), do: "discover"

@@ -12,6 +12,21 @@ defmodule AnsibleRelay.ForumHost.BoardAccessPolicyTest do
     assert policy["content_visibility"] == "public"
   end
 
+  test "v2 adds an explicit moderator-only analyze action" do
+    policy = BoardAccessPolicy.default(2)
+
+    assert :ok = BoardAccessPolicy.validate(policy)
+    assert {:ok, "board_moderator"} = BoardAccessPolicy.requirement_for(policy, :analyze)
+  end
+
+  test "v1 analyze fails closed without changing the stored v1 shape" do
+    policy = BoardAccessPolicy.default()
+
+    refute Map.has_key?(policy, "analyze")
+    assert :ok = BoardAccessPolicy.validate(policy)
+    assert {:ok, "board_moderator"} = BoardAccessPolicy.requirement_for(policy, :analyze)
+  end
+
   test "credential policy is strict and produces board-scoped decisions" do
     policy = membership_policy()
 

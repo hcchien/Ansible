@@ -34,6 +34,28 @@ fn list_boards_full_scope_includes_provenance() {
 }
 
 #[test]
+fn deliberation_exports_are_explicit_expiring_and_board_scoped() {
+    let fixture = common::seeded_fixture("queries_deliberation_exports");
+    fixture.write_narrow_grant();
+    let conn = rusqlite::Connection::open(fixture.db_path()).unwrap();
+    let grant = ansible_mcp::grant::load(fixture.data_dir()).unwrap();
+
+    let listed = queries::list_deliberations(&conn, &grant).unwrap();
+    assert_eq!(listed["deliberations"].as_array().unwrap().len(), 1);
+    assert_eq!(listed["deliberations"][0]["deliberation_id"], "d-dev");
+
+    let report = queries::get_deliberation_report(&conn, &grant, "d-dev").unwrap();
+    assert_eq!(report["report"]["participant_count"], 3);
+
+    let rows = queries::list_deliberation_responses(&conn, &grant, "d-dev").unwrap();
+    let serialized = rows.to_string();
+    assert!(serialized.contains("export-person-1"));
+    assert!(!serialized.contains("did:"));
+
+    assert!(queries::get_deliberation_report(&conn, &grant, "d-private").is_err());
+}
+
+#[test]
 fn narrow_scope_hides_other_boards_everywhere() {
     let (_fixture, conn, grant) = setup("boards_narrow", true);
 

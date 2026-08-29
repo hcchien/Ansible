@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import {
   createHostedWebThread,
   fetchBoardModerationState,
+  fetchBoardDeliberations,
+  fetchWebDeliberationResponses,
   fetchForumHostInfo,
   fetchHostedBoards,
   fetchWebModerationActions,
   fetchWebModerationReports,
   submitWebModerationAction,
   submitWebReport,
+  submitWebDeliberationVote,
 } from '../src/forum_host_client.mjs';
 import { WEB_SESSION_TOKEN_KEY } from '../src/web_session_client.mjs';
 
@@ -233,6 +236,51 @@ test('reads the public board moderation state without credentials', async () => 
   );
   assert.equal(requests[0].init.credentials, 'omit');
   assert.deepEqual(state, { removed_posts: [], locked_threads: [] });
+});
+
+test('reads deliberations publicly and keeps own responses on the web-session rail', async () => {
+  const requests = [];
+  const fetchImpl = async (url, init) => {
+    requests.push({ url, init });
+    return url.endsWith('/responses/mine')
+      ? jsonResponse(200, { responses: { 's-1': { stance: 'agree', last_intent_id: 'v-1' } } })
+      : jsonResponse(200, { deliberations: [] });
+  };
+  await fetchBoardDeliberations({
+    relayBaseUrl: 'http://localhost:4001',
+    boardId: 'general',
+    fetchImpl,
+  });
+  const own = await fetchWebDeliberationResponses({
+    relayBaseUrl: 'http://localhost:4001',
+    boardId: 'general',
+    deliberationId: 'd-1',
+    fetchImpl,
+  });
+  assert.deepEqual(own.responses['s-1'], { stance: 'agree', last_intent_id: 'v-1' });
+  assert.equal(requests[0].init.credentials, 'omit');
+  assert.equal(requests[1].init.credentials, 'same-origin');
+});
+
+test('updates a deliberation response with the prior intent id', async () => {
+  const requests = [];
+  await submitWebDeliberationVote({
+    relayBaseUrl: 'http://localhost:4001',
+    boardId: 'general',
+    deliberationId: 'd-1',
+    statementId: 's-1',
+    stance: 'disagree',
+    supersedesIntentId: 'v-1',
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(200, { response: { stance: 'disagree', last_intent_id: 'v-2' } });
+    },
+  });
+  assert.equal(requests[0].init.method, 'PUT');
+  assert.deepEqual(JSON.parse(requests[0].init.body), {
+    stance: 'disagree',
+    supersedes_intent_id: 'v-1',
+  });
 });
 
 function jsonResponse(status, body) {

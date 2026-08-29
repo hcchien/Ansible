@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 
-pub const SCHEMA_VERSION: i64 = 26;
+pub const SCHEMA_VERSION: i64 = 35;
 
 pub struct Fixture {
     pub dir: PathBuf,
@@ -237,6 +237,19 @@ pub fn create_schema(conn: &Connection, user_version: i64) {
             board_id TEXT NOT NULL,
             retention_days INTEGER
         );
+        CREATE TABLE deliberation_exports (
+            export_id TEXT PRIMARY KEY,
+            board_id TEXT NOT NULL,
+            deliberation_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            view TEXT NOT NULL,
+            manifest_json TEXT NOT NULL,
+            report_json TEXT NOT NULL,
+            statements_json TEXT,
+            responses_json TEXT,
+            expires_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
+        );
         "#
     ))
     .unwrap();
@@ -318,6 +331,18 @@ fn seed(conn: &Connection) {
 
         INSERT INTO board_sync_configs VALUES
             ('cfg-1', 'rn-1', 'b-priv', NULL);
+
+        INSERT INTO deliberation_exports VALUES
+            ('export-dev', 'b-dev', 'd-dev', 'How should we ship?', 'pseudonymous_matrix',
+             '{"dataset_digest":"abc","algorithm":"elix-deliberation-aggregates","algorithm_version":"1.0.0","participant_identifiers":"export_scoped_pseudonyms"}',
+             '{"participant_count":3,"response_count":3,"consensus":[]}',
+             '[{"id":"s-1","text":"Ship weekly"}]',
+             '[{"export_participant_id":"export-person-1","statement_id":"s-1","stance":"agree"}]',
+             32472144000, 1751800000),
+            ('export-private', 'b-priv', 'd-private', 'Secret deliberation', 'aggregates',
+             '{"dataset_digest":"private"}',
+             '{"participant_count":9,"response_count":18}',
+             NULL, NULL, 32472144000, 1751800000);
         "#,
     )
     .unwrap();

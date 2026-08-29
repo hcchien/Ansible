@@ -124,9 +124,11 @@ fn lists_tools_and_denies_all_calls_without_grant() {
         .iter()
         .map(|t| t["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names.len(), 8);
+    assert_eq!(names.len(), 14);
     assert!(names.contains(&"get_access_scope"));
     assert!(names.contains(&"search_content"));
+    assert!(names.contains(&"list_deliberations"));
+    assert!(names.contains(&"list_deliberation_responses"));
     // ...and every tool annotation is read-only.
     for tool in tools["result"]["tools"].as_array().unwrap() {
         assert_eq!(
@@ -173,6 +175,17 @@ fn narrow_grant_scope_holds_through_every_tool() {
     let text = result_text(&search);
     assert!(!text.contains("Secret zebra cabal"));
     assert!(!text.contains("b-priv"));
+
+    let deliberations = session.call_tool("list_deliberations", json!({}));
+    let text = result_text(&deliberations);
+    assert!(text.contains("d-dev"));
+    assert!(!text.contains("d-private"));
+
+    let private_deliberation = session.call_tool(
+        "get_deliberation_report",
+        json!({ "deliberation_id": "d-private" }),
+    );
+    assert_eq!(private_deliberation["isError"], true);
 }
 
 #[test]
