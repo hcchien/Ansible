@@ -30,6 +30,7 @@ import '../services/app_locale_controller.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/app_sync_service.dart';
 import '../services/board_access_presentation_service.dart';
+import '../services/blocked_author_store.dart';
 import '../services/contact_resolver.dart';
 import '../services/canonical_identity_store.dart';
 import '../services/discovery_client.dart';
@@ -565,11 +566,23 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ...forumCards.map((card) => card.author),
       ...followingCards.map((card) => card.author),
     });
-    PostCardData withTier(PostCardData card) =>
-        card.copyWith(authorTier: authorTiers[card.author] ?? 'basic');
-    final forumTiered = forumCards.map(withTier).toList();
-    final followingTiered = followingCards.map(withTier).toList()
-      ..sort(_compareTimelineCards);
+    final blockedAuthors = await const BlockedAuthorStore().load(widget.did);
+    PostCardData withTier(PostCardData card) => card.copyWith(
+      authorTier: authorTiers[card.author] ?? 'basic',
+      replyPreviews: card.replyPreviews
+          .where((reply) => !blockedAuthors.contains(reply.author))
+          .toList(growable: false),
+    );
+    final forumTiered = forumCards
+        .where((card) => !blockedAuthors.contains(card.author))
+        .map(withTier)
+        .toList();
+    final followingTiered =
+        followingCards
+            .where((card) => !blockedAuthors.contains(card.author))
+            .map(withTier)
+            .toList()
+          ..sort(_compareTimelineCards);
 
     setState(() {
       _boards = boards;

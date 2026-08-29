@@ -1,11 +1,14 @@
 import 'package:ansible_node/screens/home/post_card.dart';
+import 'package:ansible_node/services/blocked_author_store.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
+import 'package:ansible_node/services/safety_actions.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_node/theme/elix_screen_style.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('Paper feed cards stay light when the system is dark', () {
@@ -325,4 +328,83 @@ void main() {
       'https://forum.elix.cool/boards/hosted-1/threads/thread-1',
     );
   });
+
+  testWidgets(
+    'block action immediately hides the author and notifies operator',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final transport = _RecordingSafetyTransport();
+      final actions = SafetyActions(
+        transport: transport,
+        signer: (_) async => 'signed-proof',
+        relayBaseUrl: 'https://relay.elix.cool',
+      );
+      final now = DateTime.utc(2026, 8, 29);
+      final thread = Thread(
+        id: 'unsafe-thread',
+        boardId: 'board-1',
+        title: 'Unsafe post',
+        authorId: 'did:elix:abusive',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PostCard(
+              db: db,
+              authorDid: 'did:elix:local',
+              opsDispatchService: OpsDispatchService(
+                repository: InMemoryOpsQueueRepository(),
+              ),
+              onFlushPendingOps: () async {},
+              safetyActions: actions,
+              data: PostCardData(
+                thread: thread,
+                category: 'General',
+                title: thread.title,
+                content: 'Content that should disappear',
+                author: thread.authorId,
+                board: 'General',
+                timeAgo: 'now',
+                reactions: const {'👍': 0},
+                comments: 0,
+                reacted: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('post_safety_menu_unsafe-thread')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('封鎖並檢舉使用者'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('block_and_report_submit_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Content that should disappear'), findsNothing);
+      expect(
+        await const BlockedAuthorStore().isBlocked(
+          'did:elix:local',
+          'did:elix:abusive',
+        ),
+        isTrue,
+      );
+      expect(transport.body?['action'], 'block_user');
+      expect(transport.body?['signature'], 'signed-proof');
+    },
+  );
+}
+
+class _RecordingSafetyTransport implements SafetyReportTransport {
+  Map<String, Object?>? body;
+
+  @override
+  Future<void> send(Map<String, Object?> body) async {
+    this.body = body;
+  }
 }

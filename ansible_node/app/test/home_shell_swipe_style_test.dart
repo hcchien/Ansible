@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/accepted_terms_store.dart';
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -310,6 +312,7 @@ Future<void> _pumpHomeShell(
 
   await tester.pumpWidget(
     MyApp(
+      termsAcceptanceStore: const AcceptedTermsStore(),
       db: db,
       didManager: _EmptyDidManager(),
       didPlcManager: _ExistingDidPlcManager(),

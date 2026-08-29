@@ -12,10 +12,12 @@ import '../services/elix_content_router.dart';
 import '../services/handle_resolver.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
+import '../services/safety_actions.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/follow_button.dart';
+import '../widgets/report_dialog.dart';
 import 'posts_view_screen.dart';
 import 'wallet_screen.dart';
 
@@ -41,6 +43,7 @@ class UserProfileScreen extends StatefulWidget {
     this.profileResolver,
     this.publicPostsLoader,
     this.profileProjectionRefreshDelay = const Duration(seconds: 6),
+    this.safetyActions,
   });
 
   final AppDatabase db;
@@ -63,6 +66,7 @@ class UserProfileScreen extends StatefulWidget {
   /// retry once across that projection window so a just-synced disclosure
   /// appears without requiring the user to close and reopen the screen.
   final Duration profileProjectionRefreshDelay;
+  final SafetyActions? safetyActions;
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -88,7 +92,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String? _publicPostsError;
   bool _loadingPublicPosts = true;
   bool _busy = false;
+  bool _blocked = false;
+  int _statusLoadEpoch = 0;
   Timer? _profileProjectionRefreshTimer;
+  SafetyActions get _safetyActions => widget.safetyActions ?? SafetyActions();
 
   @override
   void initState() {
@@ -194,6 +201,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _loadStatus() async {
+    final loadEpoch = ++_statusLoadEpoch;
     final target = await _followRepo.getTargetByCanonicalUri(widget.did);
     FollowButtonStatus status = FollowButtonStatus.notFollowing;
     String? targetId = target?.targetId;
@@ -206,6 +214,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       status = _mapStatus(edge?.status);
     }
     final tier = await _reputationRepo.tierFor(widget.did);
+    final blocked = (await _safetyActions.blockedAuthors(
+      widget.followerDid,
+    )).contains(widget.did);
     FollowEdge? incomingEdge;
     final localTarget = await _followRepo.getTargetByCanonicalUri(
       widget.followerDid,
@@ -221,13 +232,71 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         }
       }
     }
-    if (!mounted) return;
+    if (!mounted || loadEpoch != _statusLoadEpoch) return;
     setState(() {
       _status = status;
       _targetId = targetId;
       _incomingEdge = incomingEdge;
       _tier = tier;
+      _blocked = blocked;
     });
+  }
+
+  Future<void> _blockAndReport() async {
+    if (_busy || widget.did == widget.followerDid) return;
+    final draft = await showReportDialog(context, blockUser: true);
+    if (draft == null || !mounted) return;
+    setState(() => _busy = true);
+    var notified = true;
+    try {
+      await _safetyActions.blockAndReport(
+        reporterDid: widget.followerDid,
+        subjectDid: widget.did,
+        targetKind: 'profile',
+        targetRef: widget.did,
+        reasonCode: draft.reasonCode,
+        note: draft.note,
+      );
+    } catch (_) {
+      notified = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _blocked = true;
+      _publicPosts = const [];
+      _busy = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          notified
+              ? context.uiCopy(
+                  zh: '已封鎖；內容已移除並通知管理者',
+                  en: 'User blocked; content removed and operator notified',
+                )
+              : context.uiCopy(
+                  zh: '已封鎖並移除內容；管理者通知暫時送出失敗',
+                  en: 'User blocked and content removed; operator notification failed',
+                ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _unblock() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    await _safetyActions.unblock(
+      reporterDid: widget.followerDid,
+      subjectDid: widget.did,
+    );
+    if (!mounted) return;
+    setState(() {
+      _blocked = false;
+      _busy = false;
+      _loadingPublicPosts = true;
+    });
+    await _loadPublicPosts();
   }
 
   Future<void> _decideIncomingRequest(bool accepted) async {
@@ -575,6 +644,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 onPressed: _busy ? null : _onPressed,
               ),
             ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('profile_block_button'),
+              onPressed: _busy ? null : (_blocked ? _unblock : _blockAndReport),
+              icon: Icon(_blocked ? Icons.lock_open : Icons.block),
+              label: Text(
+                _blocked
+                    ? context.uiCopy(zh: '解除封鎖', en: 'Unblock user')
+                    : context.uiCopy(
+                        zh: '封鎖並檢舉使用者',
+                        en: 'Block and report user',
+                      ),
+              ),
+            ),
+          ),
         ],
         const SizedBox(height: 24),
         const Divider(height: 1, color: AnsibleDesign.ruleSoft),

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Records the submitted intent instead of hitting the network; throws
 /// [error] first when set (failure-path tests).
@@ -31,6 +32,10 @@ class _RecordingForumHostClient extends ForumHostClient {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('ReportContentIntent canonical payload', () {
     test('keys are sorted to match the relay canonical JSON', () {
       final payload = ReportContentIntent.canonicalPayload(
@@ -309,8 +314,9 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
     }
 
     testWidgets('post report submits a signed reason-coded intent', (

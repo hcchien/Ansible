@@ -74,7 +74,7 @@ try {
   // --- each legal route is a real server-rendered page (no JS required) ------
   const zhExpectations = {
     '/privacy': ['隱私權政策', '個人資料保護法', 'GDPR'],
-    '/terms': ['服務條款', '中華民國（台灣）'],
+    '/terms': ['服務條款', '中華民國（台灣）', '零容忍政策', '立即從你的動態'],
     '/about': ['關於 Elix'],
     '/support': ['Elix 支援中心', SUPPORT_CONTACT_EMAIL, '回報問題'],
     '/account-deletion': [
@@ -85,7 +85,7 @@ try {
   };
   const enExpectations = {
     '/privacy': ['Privacy Policy', 'Personal Data Protection Act', 'GDPR'],
-    '/terms': ['Terms of Service', 'Republic of China (Taiwan)'],
+    '/terms': ['Terms of Service', 'Republic of China (Taiwan)', 'Zero tolerance', 'immediately removes'],
     '/about': ['About Elix', 'self-sovereign identity'],
     '/support': ['Elix Support', SUPPORT_CONTACT_EMAIL, 'reporting a problem'],
     '/account-deletion': ['Account &amp; Data Deletion', 'Clear local identity'],

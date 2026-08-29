@@ -421,6 +421,14 @@ const TERMS_ZH = `
         <li>製作、發布、索取、散布或協助兒少性虐待及剝削（CSAE）或兒少性虐待素材（CSAM）；詳見<a href="/child-safety">兒少安全標準</a>。</li>
       </ul>
 
+      <h2>零容忍政策與安全工具</h2>
+      <p>Elix 對不當內容與濫用使用者採取零容忍政策。使用者不得發布令人反感、騷擾、威脅、仇恨、剝削或其他傷害性內容，也不得以任何方式濫用、恐嚇或攻擊其他使用者。</p>
+      <ul>
+        <li>你可以在 App 內檢舉貼文、討論串、留言或使用者；檢舉會以理由代碼送交管理者審查。</li>
+        <li>你可以封鎖濫用使用者；封鎖後，該使用者的內容會立即從你的動態與討論畫面移除。</li>
+        <li>封鎖動作也會將相關內容與理由通知第一方服務的管理者，以便調查與採取適當的主機範圍處置。</li>
+      </ul>
+
       <h2>你的內容</h2>
       <ul>
         <li><strong>所有權歸你</strong>：你保有你所創作內容的一切權利。</li>
@@ -475,6 +483,14 @@ const TERMS_EN = `
           <li>send bulk spam, manipulate engagement, or engage in coordinated inauthentic behavior;</li>
           <li>attempt to break, circumvent, or abuse the Service's security mechanisms (including identity verification and duplicate-signup prevention).</li>
         <li>create, publish, request, distribute, or facilitate child sexual abuse and exploitation (CSAE) or child sexual abuse material (CSAM); see the <a href="/child-safety">Child Safety Standards</a>.</li>
+        </ul>
+
+        <h2>Zero tolerance and safety tools</h2>
+        <p>Elix has zero tolerance for objectionable content or abusive users. Users must not publish objectionable, harassing, threatening, hateful, exploitative, or otherwise harmful content, or abuse, intimidate, or attack other users.</p>
+        <ul>
+          <li>You can report posts, threads, comments, or users in the app. Reports are sent with a reason code to the operator for review.</li>
+          <li>You can block abusive users. Blocking immediately removes that user’s content from your feed and conversation views.</li>
+          <li>Blocking also notifies the first-party service operator of the related content and reason so it can be investigated and addressed within the appropriate host scope.</li>
         </ul>
 
         <h2>Your content</h2>

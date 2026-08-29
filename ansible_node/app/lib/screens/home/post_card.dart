@@ -13,10 +13,12 @@ import '../../services/elix_content_link.dart';
 import '../../services/handle_resolver.dart';
 import '../../services/ops_dispatch_service.dart';
 import '../../services/posting_gate.dart';
+import '../../services/safety_actions.dart';
 import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
 import '../../widgets/reaction_picker.dart';
+import '../../widgets/report_dialog.dart';
 import '../posts_view_screen.dart';
 
 typedef PostShareSheet =
@@ -93,7 +95,10 @@ class PostCardData {
   String get reactionTargetId =>
       reactionTargetType == store.TargetType.post ? openingPost!.id : thread.id;
 
-  PostCardData copyWith({String? authorTier}) => PostCardData(
+  PostCardData copyWith({
+    String? authorTier,
+    List<ThreadReplyPreview>? replyPreviews,
+  }) => PostCardData(
     thread: thread,
     category: category,
     title: title,
@@ -111,7 +116,7 @@ class PostCardData {
     authorHandle: authorHandle,
     signatureVerified: signatureVerified,
     openableThread: openableThread,
-    replyPreviews: replyPreviews,
+    replyPreviews: replyPreviews ?? this.replyPreviews,
   );
 }
 
@@ -169,6 +174,7 @@ class PostCard extends StatefulWidget {
     this.onOpenBoard,
     this.onOpenContent,
     this.shareSheet = _defaultPostShareSheet,
+    this.safetyActions,
   });
 
   final AppDatabase db;
@@ -184,6 +190,7 @@ class PostCard extends StatefulWidget {
   /// tap falls back to the author profile.
   final void Function(PostCardData data)? onOpenContent;
   final PostShareSheet shareSheet;
+  final SafetyActions? safetyActions;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -196,6 +203,9 @@ class _PostCardState extends State<PostCard> {
   bool _reacted = false;
   store.ReactionType? _selectedReaction;
   int _likeCount = 0;
+  bool _hidden = false;
+
+  SafetyActions get _safetyActions => widget.safetyActions ?? SafetyActions();
 
   @override
   void initState() {
@@ -353,11 +363,98 @@ class _PostCardState extends State<PostCard> {
           value: 'share',
           child: Text(context.uiCopy(zh: '分享', en: 'Share')),
         ),
+        if (widget.data.author != widget.authorDid)
+          PopupMenuItem(
+            value: 'report',
+            child: Text(context.uiCopy(zh: '檢舉', en: 'Report')),
+          ),
+        if (widget.data.author != widget.authorDid)
+          PopupMenuItem(
+            value: 'block',
+            child: Text(
+              context.uiCopy(zh: '封鎖並檢舉使用者', en: 'Block and report user'),
+            ),
+          ),
       ],
     );
     if (!mounted) return;
     if (action == 'open') _openDetail();
     if (action == 'share') await _share();
+    if (action == 'report') await _reportContent();
+    if (action == 'block') await _blockAndReport();
+  }
+
+  String get _safetyTargetKind =>
+      widget.data.openableThread ? 'thread' : 'content';
+
+  Future<void> _reportContent() async {
+    final draft = await showReportDialog(context);
+    if (draft == null || !mounted) return;
+    try {
+      await _safetyActions.reportContent(
+        reporterDid: widget.authorDid,
+        subjectDid: widget.data.author,
+        targetKind: _safetyTargetKind,
+        targetRef: widget.data.thread.id,
+        reasonCode: draft.reasonCode,
+        note: draft.note,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(zh: '已將檢舉送交管理者', en: 'Report sent to the operator'),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '目前無法送出檢舉，請稍後再試',
+              en: 'Could not send the report. Please try again.',
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _blockAndReport() async {
+    final draft = await showReportDialog(context, blockUser: true);
+    if (draft == null || !mounted) return;
+    var notified = true;
+    try {
+      await _safetyActions.blockAndReport(
+        reporterDid: widget.authorDid,
+        subjectDid: widget.data.author,
+        targetKind: _safetyTargetKind,
+        targetRef: widget.data.thread.id,
+        reasonCode: draft.reasonCode,
+        note: draft.note,
+      );
+    } catch (_) {
+      notified = false;
+    }
+    if (!mounted) return;
+    setState(() => _hidden = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          notified
+              ? context.uiCopy(
+                  zh: '已封鎖；內容已移除並通知管理者',
+                  en: 'User blocked; content removed and operator notified',
+                )
+              : context.uiCopy(
+                  zh: '已封鎖並移除內容；管理者通知暫時送出失敗',
+                  en: 'User blocked and content removed; operator notification failed',
+                ),
+        ),
+      ),
+    );
   }
 
   /// "↗ pass on" — share the post's text via the platform share sheet.
@@ -474,6 +571,7 @@ class _PostCardState extends State<PostCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (_hidden) return const SizedBox.shrink();
     final data = widget.data;
     final thread = data.thread;
     // The board's reading style owns the whole card palette. In particular,
@@ -589,6 +687,31 @@ class _PostCardState extends State<PostCard> {
                     Icon(Icons.verified, size: 14, color: AnsibleDesign.spore),
                     const SizedBox(width: 8),
                   ],
+                  if (data.author != widget.authorDid)
+                    PopupMenuButton<String>(
+                      key: Key('post_safety_menu_${thread.id}'),
+                      tooltip: context.uiCopy(zh: '安全選項', en: 'Safety options'),
+                      icon: Icon(Icons.more_horiz, color: style.muted),
+                      onSelected: (value) {
+                        if (value == 'report') _reportContent();
+                        if (value == 'block') _blockAndReport();
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'report',
+                          child: Text(context.uiCopy(zh: '檢舉', en: 'Report')),
+                        ),
+                        PopupMenuItem(
+                          value: 'block',
+                          child: Text(
+                            context.uiCopy(
+                              zh: '封鎖並檢舉使用者',
+                              en: 'Block and report user',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),

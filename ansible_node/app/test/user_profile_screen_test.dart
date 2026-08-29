@@ -8,8 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('follow then unfollow a user from the profile', (tester) async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(() => db.close());

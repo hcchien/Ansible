@@ -12,7 +12,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/accepted_terms_store.dart';
+
 void main() {
+  testWidgets('terms gate appears before registration and existing login', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    var db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _EmptyDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('accept_terms_checkbox')), findsOneWidget);
+    expect(
+      find.text('Create identity first,\nthen join the community.'),
+      findsNothing,
+    );
+
+    await db.close();
+    db = AppDatabase(NativeDatabase.memory());
+    await tester.pumpWidget(
+      MyApp(
+        db: db,
+        didManager: _EmptyDidManager(),
+        didPlcManager: _ExistingDidPlcManager(),
+        canonicalIdentityStore: InMemoryCanonicalIdentityStore(),
+      ),
+    );
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(find.byKey(const Key('accept_terms_checkbox')), findsOneWidget);
+    expect(find.byType(HomeShell), findsNothing);
+  });
+
   testWidgets('renders identity anchor screen when no DID is persisted', (
     tester,
   ) async {
@@ -21,6 +66,7 @@ void main() {
 
     await tester.pumpWidget(
       MyApp(
+        termsAcceptanceStore: const AcceptedTermsStore(),
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _EmptyDidPlcManager(),
@@ -56,6 +102,7 @@ void main() {
 
     await tester.pumpWidget(
       MyApp(
+        termsAcceptanceStore: const AcceptedTermsStore(),
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _EmptyDidPlcManager(),
@@ -86,6 +133,7 @@ void main() {
 
     await tester.pumpWidget(
       MyApp(
+        termsAcceptanceStore: const AcceptedTermsStore(),
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
@@ -148,6 +196,7 @@ void main() {
 
       await tester.pumpWidget(
         MyApp(
+          termsAcceptanceStore: const AcceptedTermsStore(),
           db: db,
           didManager: _EmptyDidManager(),
           didPlcManager: _ExistingDidPlcManager(),
@@ -178,6 +227,7 @@ void main() {
 
     await tester.pumpWidget(
       MyApp(
+        termsAcceptanceStore: const AcceptedTermsStore(),
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),
@@ -205,6 +255,7 @@ void main() {
 
     await tester.pumpWidget(
       MyApp(
+        termsAcceptanceStore: const AcceptedTermsStore(),
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),

@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/accepted_terms_store.dart';
+
 void main() {
   testWidgets('phone navigation opens composers and enforces murmur limit', (
     tester,
@@ -23,6 +25,7 @@ void main() {
 
     await tester.pumpWidget(
       MyApp(
+        termsAcceptanceStore: const AcceptedTermsStore(),
         db: db,
         didManager: _EmptyDidManager(),
         didPlcManager: _ExistingDidPlcManager(),

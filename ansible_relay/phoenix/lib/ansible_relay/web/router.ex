@@ -468,6 +468,12 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ForumHostController.create_web_report(conn, conn.body_params)
   end
 
+  # First-party safety intake. A block/report creates an operator-visible,
+  # reason-coded record but never applies a global identity restriction.
+  post "/api/v1/safety/reports" do
+    AnsibleRelay.Web.Controllers.SafetyReportController.create(conn, conn.body_params)
+  end
+
   # Forum Host — moderation console (board moderators only)
   get "/api/v1/forum-host/web/moderation/reports" do
     AnsibleRelay.Web.Controllers.ForumHostController.list_web_moderation_reports(

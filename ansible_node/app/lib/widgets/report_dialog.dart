@@ -13,15 +13,20 @@ class ReportDraft {
 
 /// Reason picker for reporting a post or thread to its Forum Host.
 /// Returns null when cancelled.
-Future<ReportDraft?> showReportDialog(BuildContext context) {
+Future<ReportDraft?> showReportDialog(
+  BuildContext context, {
+  bool blockUser = false,
+}) {
   return showDialog<ReportDraft>(
     context: context,
-    builder: (context) => const _ReportDialog(),
+    builder: (context) => _ReportDialog(blockUser: blockUser),
   );
 }
 
 class _ReportDialog extends StatefulWidget {
-  const _ReportDialog();
+  const _ReportDialog({required this.blockUser});
+
+  final bool blockUser;
 
   @override
   State<_ReportDialog> createState() => _ReportDialogState();
@@ -64,19 +69,26 @@ class _ReportDialogState extends State<_ReportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(context.uiCopy(zh: '檢舉內容', en: 'Report content')),
+      title: Text(
+        widget.blockUser
+            ? context.uiCopy(zh: '封鎖並檢舉使用者', en: 'Block and report user')
+            : context.uiCopy(zh: '檢舉內容', en: 'Report content'),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.uiCopy(
-                zh: '檢舉會以你的身分簽章送交看板的管理者，由板務依板規處理。',
-                en:
-                    'Reports are signed with your identity and handled by '
-                    'the board moderators under the board rules.',
-              ),
+              widget.blockUser
+                  ? context.uiCopy(
+                      zh: '封鎖後，這位使用者的內容會立即從你的畫面移除；事件與理由會以你的身分簽章通知管理者。',
+                      en: 'The user’s content will disappear immediately. The event and reason are signed with your identity and sent to the operator.',
+                    )
+                  : context.uiCopy(
+                      zh: '檢舉會以你的身分簽章送交管理者處理。',
+                      en: 'The report is signed with your identity and sent to the operator for review.',
+                    ),
               style: const TextStyle(fontSize: 12.5, height: 1.5),
             ),
             const SizedBox(height: 8),
@@ -127,9 +139,17 @@ class _ReportDialogState extends State<_ReportDialog> {
           child: Text(context.uiCopy(zh: '取消', en: 'Cancel')),
         ),
         FilledButton(
-          key: const Key('report_submit_button'),
+          key: Key(
+            widget.blockUser
+                ? 'block_and_report_submit_button'
+                : 'report_submit_button',
+          ),
           onPressed: _submit,
-          child: Text(context.uiCopy(zh: '送出檢舉', en: 'Submit report')),
+          child: Text(
+            widget.blockUser
+                ? context.uiCopy(zh: '封鎖並送出', en: 'Block and submit')
+                : context.uiCopy(zh: '送出檢舉', en: 'Submit report'),
+          ),
         ),
       ],
     );

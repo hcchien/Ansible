@@ -16,6 +16,7 @@ import '../services/board_access_presentation_service.dart';
 import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../services/private_board_op_factory.dart';
+import '../services/safety_actions.dart';
 import '../services/user_presence_verifier.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
@@ -73,6 +74,7 @@ class PostsViewScreen extends StatefulWidget {
   /// Test seams shared by the signed App rail for poll votes.
   final ForumHostClient Function(String baseUrl)? pollClientFactory;
   final Future<String> Function(List<int> payload)? pollPayloadSigner;
+  final SafetyActions? safetyActions;
 
   const PostsViewScreen({
     super.key,
@@ -88,6 +90,7 @@ class PostsViewScreen extends StatefulWidget {
     this.reportPayloadSigner,
     this.pollClientFactory,
     this.pollPayloadSigner,
+    this.safetyActions,
   });
 
   @override
@@ -151,6 +154,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
   RemoteTombstone? _remoteRemoval;
 
   String get _authorDid => widget.authorDid ?? widget.thread.authorId;
+  SafetyActions get _safetyActions => widget.safetyActions ?? SafetyActions();
 
   @override
   void initState() {
@@ -196,6 +200,11 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
         ),
       );
     }
+    final blockedAuthors = await _safetyActions.blockedAuthors(_authorDid);
+    posts.removeWhere(
+      (post) =>
+          post.authorId != _authorDid && blockedAuthors.contains(post.authorId),
+    );
     final board = await DriftBoardRepository(
       widget.db,
     ).getById(widget.thread.boardId);
@@ -377,6 +386,50 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
     final signer = widget.reportPayloadSigner;
     if (signer != null) return signer(payload);
     return DidSignerImpl().sign(payload).then((signature) => signature.hex);
+  }
+
+  Future<void> _blockAndReportAuthor({Post? post}) async {
+    final subjectDid = post?.authorId ?? widget.thread.authorId;
+    if (subjectDid.isEmpty || subjectDid == _authorDid) return;
+    final draft = await showReportDialog(context, blockUser: true);
+    if (draft == null || !mounted) return;
+
+    var notified = true;
+    try {
+      await _safetyActions.blockAndReport(
+        reporterDid: _authorDid,
+        subjectDid: subjectDid,
+        targetKind: post == null ? 'thread' : 'post',
+        targetRef: post?.id ?? widget.thread.id,
+        reasonCode: draft.reasonCode,
+        note: draft.note,
+      );
+    } catch (_) {
+      notified = false;
+    }
+    if (!mounted) return;
+    if (post == null || widget.thread.authorId == subjectDid) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {
+      _posts = _posts.where((item) => item.authorId != subjectDid).toList();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          notified
+              ? context.uiCopy(
+                  zh: '已封鎖；內容已移除並通知管理者',
+                  en: 'User blocked; content removed and operator notified',
+                )
+              : context.uiCopy(
+                  zh: '已封鎖並移除內容；管理者通知暫時送出失敗',
+                  en: 'User blocked and content removed; operator notification failed',
+                ),
+        ),
+      ),
+    );
   }
 
   Future<void> _createPost() async {
@@ -699,6 +752,16 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               icon: Icon(Icons.outlined_flag, size: 21),
               tooltip: context.uiCopy(zh: '檢舉討論串', en: 'Report thread'),
               onPressed: () => _reportContent(),
+            ),
+          if (widget.thread.authorId != _authorDid)
+            IconButton(
+              key: const Key('block_thread_author_button'),
+              icon: const Icon(Icons.block, size: 21),
+              tooltip: context.uiCopy(
+                zh: '封鎖並檢舉作者',
+                en: 'Block and report author',
+              ),
+              onPressed: _blockAndReportAuthor,
             ),
         ],
       ),
@@ -1587,6 +1650,13 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               value: 'report',
               child: Text(context.uiCopy(zh: '檢舉', en: 'Report')),
             ),
+          if (post.authorId != _authorDid)
+            PopupMenuItem(
+              value: 'block',
+              child: Text(
+                context.uiCopy(zh: '封鎖並檢舉使用者', en: 'Block and report user'),
+              ),
+            ),
         ],
         onSelected: (value) {
           if (value == 'edit') {
@@ -1603,6 +1673,8 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
             }
           } else if (value == 'report') {
             _reportContent(post: post);
+          } else if (value == 'block') {
+            _blockAndReportAuthor(post: post);
           }
         },
       ),

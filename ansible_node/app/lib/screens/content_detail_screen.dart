@@ -10,11 +10,13 @@ import '../l10n/app_l10n.dart';
 import '../services/app_view_timeline_client.dart';
 import '../services/handle_resolver.dart';
 import '../services/ops_dispatch_service.dart';
+import '../services/safety_actions.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 import '../widgets/reaction_picker.dart';
+import '../widgets/report_dialog.dart';
 
 /// Detail view for a standalone content item (murmur/note): the full content as
 /// the head, plus a comment thread. Comments are `post` ops keyed by the
@@ -35,6 +37,7 @@ class ContentDetailScreen extends StatefulWidget {
     this.timeAgo,
     this.appViewBaseUrl,
     this.screenStyle = ElixScreenStyle.paper,
+    this.safetyActions,
   });
 
   final AppDatabase db;
@@ -52,6 +55,7 @@ class ContentDetailScreen extends StatefulWidget {
 
   /// Follows the originating board/feed's Paper/Ink choice.
   final ElixScreenStyle screenStyle;
+  final SafetyActions? safetyActions;
 
   @override
   State<ContentDetailScreen> createState() => _ContentDetailScreenState();
@@ -98,6 +102,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   String get _appViewBaseUrl =>
       widget.appViewBaseUrl ?? AppEnvironment.appViewBaseUrl;
+  SafetyActions get _safetyActions => widget.safetyActions ?? SafetyActions();
 
   @override
   void initState() {
@@ -230,7 +235,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     // regardless of the relay/AppView. The AppView is a best-effort merge for
     // remote comments not yet synced locally.
     final byId = <String, _Comment>{};
+    final blockedAuthors = await _safetyActions.blockedAuthors(widget.localDid);
     for (final p in await _postRepo.list(threadId: widget.contentId)) {
+      if (blockedAuthors.contains(p.authorId)) continue;
       byId[p.id] = _Comment(
         id: p.id,
         authorDid: p.authorId,
@@ -251,6 +258,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         baseUrl: _appViewBaseUrl,
       ).fetchThread(threadId: widget.contentId);
       for (final i in page.items.where((i) => i.entityType == 'comment')) {
+        if (blockedAuthors.contains(i.authorDid)) continue;
         byId.putIfAbsent(
           i.entityId,
           () => _Comment(
@@ -415,6 +423,88 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     }
   }
 
+  Future<void> _reportSafety({_Comment? comment}) async {
+    final subjectDid = comment?.authorDid ?? widget.authorDid;
+    if (subjectDid == widget.localDid) return;
+    final draft = await showReportDialog(context);
+    if (draft == null || !mounted) return;
+    try {
+      await _safetyActions.reportContent(
+        reporterDid: widget.localDid,
+        subjectDid: subjectDid,
+        targetKind: comment == null ? 'content' : 'comment',
+        targetRef: comment?.id ?? widget.contentId,
+        reasonCode: draft.reasonCode,
+        note: draft.note,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(zh: '已將檢舉送交管理者', en: 'Report sent to the operator'),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.uiCopy(
+              zh: '目前無法送出檢舉，請稍後再試',
+              en: 'Could not send the report. Please try again.',
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _blockAndReport({_Comment? comment}) async {
+    final subjectDid = comment?.authorDid ?? widget.authorDid;
+    if (subjectDid == widget.localDid) return;
+    final draft = await showReportDialog(context, blockUser: true);
+    if (draft == null || !mounted) return;
+    var notified = true;
+    try {
+      await _safetyActions.blockAndReport(
+        reporterDid: widget.localDid,
+        subjectDid: subjectDid,
+        targetKind: comment == null ? 'content' : 'comment',
+        targetRef: comment?.id ?? widget.contentId,
+        reasonCode: draft.reasonCode,
+        note: draft.note,
+      );
+    } catch (_) {
+      notified = false;
+    }
+    if (!mounted) return;
+    if (comment == null || subjectDid == widget.authorDid) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {
+      _comments = _comments
+          .where((item) => item.authorDid != subjectDid)
+          .toList();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          notified
+              ? context.uiCopy(
+                  zh: '已封鎖；內容已移除並通知管理者',
+                  en: 'User blocked; content removed and operator notified',
+                )
+              : context.uiCopy(
+                  zh: '已封鎖並移除內容；管理者通知暫時送出失敗',
+                  en: 'User blocked and content removed; operator notification failed',
+                ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ElixScreenStyleScope(
@@ -508,6 +598,31 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   ],
                 ),
               ),
+              if (widget.authorDid != widget.localDid)
+                PopupMenuButton<String>(
+                  key: const Key('content_safety_menu'),
+                  tooltip: context.uiCopy(zh: '安全選項', en: 'Safety options'),
+                  icon: Icon(Icons.more_horiz, color: _muted),
+                  onSelected: (value) {
+                    if (value == 'report') _reportSafety();
+                    if (value == 'block') _blockAndReport();
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'report',
+                      child: Text(context.uiCopy(zh: '檢舉', en: 'Report')),
+                    ),
+                    PopupMenuItem(
+                      value: 'block',
+                      child: Text(
+                        context.uiCopy(
+                          zh: '封鎖並檢舉使用者',
+                          en: 'Block and report user',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
           if (title.isNotEmpty) ...[
@@ -642,8 +757,9 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                   ),
                 ),
               ),
-              // Author can edit/delete their own comment.
-              if (c.authorDid == widget.localDid)
+              // Authors can edit/delete their own comment; other users expose
+              // the same report/block safety menu as top-level content.
+              if (c.authorDid.isNotEmpty)
                 SizedBox(
                   height: 22,
                   child: PopupMenuButton<String>(
@@ -652,20 +768,40 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                     onSelected: (v) {
                       if (v == 'edit') _editComment(c);
                       if (v == 'delete') _deleteComment(c);
+                      if (v == 'report') _reportSafety(comment: c);
+                      if (v == 'block') _blockAndReport(comment: c);
                     },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Text(context.uiCopy(zh: '編輯', en: 'Edit')),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(
-                          context.uiCopy(zh: '刪除', en: 'Delete'),
-                          style: TextStyle(color: _danger),
-                        ),
-                      ),
-                    ],
+                    itemBuilder: (context) => c.authorDid == widget.localDid
+                        ? [
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Text(context.uiCopy(zh: '編輯', en: 'Edit')),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text(
+                                context.uiCopy(zh: '刪除', en: 'Delete'),
+                                style: TextStyle(color: _danger),
+                              ),
+                            ),
+                          ]
+                        : [
+                            PopupMenuItem(
+                              value: 'report',
+                              child: Text(
+                                context.uiCopy(zh: '檢舉', en: 'Report'),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'block',
+                              child: Text(
+                                context.uiCopy(
+                                  zh: '封鎖並檢舉使用者',
+                                  en: 'Block and report user',
+                                ),
+                              ),
+                            ),
+                          ],
                   ),
                 ),
             ],

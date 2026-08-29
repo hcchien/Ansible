@@ -24,6 +24,7 @@ import 'screens/google_play_review_screen.dart';
 import 'screens/posts_view_screen.dart';
 import 'screens/recovery_wizard_screen.dart'; // Restore-from-backup recovery
 import 'screens/threads_list_screen.dart';
+import 'screens/terms_acceptance_screen.dart';
 import 'screens/web_session_approval_screen.dart';
 import 'services/identity_anchor_service.dart';
 import 'services/recovery_readiness_store.dart';
@@ -39,6 +40,7 @@ import 'services/elix_content_router.dart';
 import 'services/error_reporter.dart';
 import 'services/reading_preferences_controller.dart';
 import 'services/relay_identity_client.dart';
+import 'services/terms_acceptance_store.dart';
 import 'theme/elix_screen_style.dart';
 import 'services/web_session_approval_client.dart';
 import 'services/web_session_grant_service.dart';
@@ -310,6 +312,7 @@ class MyApp extends StatefulWidget {
   final DidSigner? didSigner;
   final AppLocaleController? localeController;
   final ReadingPreferencesController? readingPreferencesController;
+  final TermsAcceptanceStore? termsAcceptanceStore;
   final Stream<Uri>? webSessionLinks;
   // ignore: unused_field — kept for V1 test-injection compatibility; V2.0 uses AtProtoClient
   final RelayIdentityClient? relayIdentityClient;
@@ -330,6 +333,7 @@ class MyApp extends StatefulWidget {
     this.didSigner,
     this.localeController,
     this.readingPreferencesController,
+    this.termsAcceptanceStore,
     this.webSessionLinks,
     this.relayIdentityClient,
     this.initialBoard = HomeBoard.timeline,
@@ -346,6 +350,8 @@ class _MyAppState extends State<MyApp> {
   String? _anchoredPublicKeyHex;
   List<String> _identityAliases = const [];
   bool _loadingIdentity = true;
+  bool _loadingTerms = true;
+  bool _termsAccepted = false;
   // First-run: show the onboarding intro (Welcome/Promise) before the passkey
   // ("first key") screen.
   bool _introDone = false;
@@ -355,6 +361,7 @@ class _MyAppState extends State<MyApp> {
   late final AppLocaleController _localeController;
   late final bool _ownsLocaleController;
   late final ReadingPreferencesController _readingPreferencesController;
+  late final TermsAcceptanceStore _termsAcceptanceStore;
   late final bool _ownsReadingPreferencesController;
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -375,14 +382,30 @@ class _MyAppState extends State<MyApp> {
     _ownsLocaleController = widget.localeController == null;
     _readingPreferencesController =
         widget.readingPreferencesController ?? ReadingPreferencesController();
+    _termsAcceptanceStore =
+        widget.termsAcceptanceStore ?? const TermsAcceptanceStore();
     _ownsReadingPreferencesController =
         widget.readingPreferencesController == null;
     _localeController.load();
     _readingPreferencesController.load();
     _loadPersistedIdentity();
+    _loadTermsAcceptance();
     _webSessionLinkSubscription = widget.webSessionLinks?.listen(
       _handleWebSessionLink,
     );
+  }
+
+  Future<void> _loadTermsAcceptance() async {
+    final accepted = await _termsAcceptanceStore.hasAcceptedCurrent();
+    if (!mounted) return;
+    setState(() {
+      _termsAccepted = accepted;
+      _loadingTerms = false;
+    });
+  }
+
+  void _acceptTerms() {
+    setState(() => _termsAccepted = true);
   }
 
   @override
@@ -683,26 +706,38 @@ class _MyAppState extends State<MyApp> {
               child: child ?? const SizedBox.shrink(),
             );
           },
-          home: _loadingIdentity
+          home: _loadingIdentity || _loadingTerms
               ? const Scaffold(body: Center(child: CircularProgressIndicator()))
               : _anchoredDid != null
-              ? HomeShell(
-                  key: ValueKey(_anchoredDid),
-                  db: widget.db,
-                  did: _anchoredDid!,
-                  publicKeyHex: _anchoredPublicKeyHex,
-                  identityAliases: _identityAliases,
-                  onIdentityMigrated: (identity) {
-                    setState(() {
-                      _anchoredDid = identity.did;
-                      _anchoredPublicKeyHex = identity.publicKeyHex;
-                      _identityAliases = identity.legacyDids;
-                    });
-                  },
-                  localeController: _localeController,
-                  readingPreferencesController: _readingPreferencesController,
-                  onClearIdentity: () => setState(() => _anchoredDid = null),
-                  initialBoard: widget.initialBoard,
+              ? !_termsAccepted
+                    ? TermsAcceptanceScreen(
+                        store: _termsAcceptanceStore,
+                        onAccepted: _acceptTerms,
+                      )
+                    : HomeShell(
+                        key: ValueKey(_anchoredDid),
+                        db: widget.db,
+                        did: _anchoredDid!,
+                        publicKeyHex: _anchoredPublicKeyHex,
+                        identityAliases: _identityAliases,
+                        onIdentityMigrated: (identity) {
+                          setState(() {
+                            _anchoredDid = identity.did;
+                            _anchoredPublicKeyHex = identity.publicKeyHex;
+                            _identityAliases = identity.legacyDids;
+                          });
+                        },
+                        localeController: _localeController,
+                        readingPreferencesController:
+                            _readingPreferencesController,
+                        onClearIdentity: () =>
+                            setState(() => _anchoredDid = null),
+                        initialBoard: widget.initialBoard,
+                      )
+              : _introDone && !_termsAccepted
+              ? TermsAcceptanceScreen(
+                  store: _termsAcceptanceStore,
+                  onAccepted: _acceptTerms,
                 )
               : _introDone
               ? PasskeysRegistrationScreen(
