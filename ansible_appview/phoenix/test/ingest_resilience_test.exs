@@ -31,8 +31,28 @@ defmodule AnsibleAppview.IngestResilienceTest do
       "received_at" => "2026-06-05T00:00:00Z"
     }
 
-    sig = :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519]) |> Base.encode16(case: :lower)
+    sig =
+      :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
+      |> Base.encode16(case: :lower)
+
     Map.put(op, "signature", sig)
+  end
+
+  defp approved_follow_grant(request_op_id, follower, author) do
+    %{
+      "requestOpId" => request_op_id,
+      "followerDid" => follower,
+      "targetDid" => author,
+      "credential" => %{
+        "type" => ["VerifiableCredential", "FollowGrantCredential"],
+        "issuer" => author,
+        "credentialSubject" => %{
+          "id" => follower,
+          "targetDid" => author,
+          "relationship" => "approved_follower"
+        }
+      }
+    }
   end
 
   test "a poison op is skipped (dead-lettered) and does NOT halt the rest of the page" do
@@ -135,7 +155,8 @@ defmodule AnsibleAppview.IngestResilienceTest do
     # from some other author so it is NOT on the cold-read path.
     AnsibleAppview.HomeTimeline.add(reader, 1, "seed-op")
 
-    # Now the reader follows the author.
+    # The request does not create a feed edge; the author's signed grant does
+    # and must backfill posts that predate the approval.
     Folder.apply_ops([
       signed_op(
         log_id: 7002,
@@ -145,6 +166,15 @@ defmodule AnsibleAppview.IngestResilienceTest do
         pub: pub,
         priv: priv,
         payload: %{"targetDid" => author, "visibility" => "federated"}
+      ),
+      signed_op(
+        log_id: 7003,
+        op_id: "grant-7003",
+        author_did: author,
+        entity_type: "follow_grant",
+        pub: pub,
+        priv: priv,
+        payload: approved_follow_grant("follow-7002", reader, author)
       )
     ])
 

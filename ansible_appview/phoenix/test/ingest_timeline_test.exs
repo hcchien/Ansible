@@ -45,6 +45,23 @@ defmodule AnsibleAppview.IngestTimelineTest do
     end)
   end
 
+  defp approved_follow_grant(request_op_id, follower, author) do
+    %{
+      "requestOpId" => request_op_id,
+      "followerDid" => follower,
+      "targetDid" => author,
+      "credential" => %{
+        "type" => ["VerifiableCredential", "FollowGrantCredential"],
+        "issuer" => author,
+        "credentialSubject" => %{
+          "id" => follower,
+          "targetDid" => author,
+          "relationship" => "approved_follower"
+        }
+      }
+    }
+  end
+
   test "folds valid public ops, skips invalid sig and private, serves timeline" do
     {pub, priv} = keypair()
     {_otherpub, otherpriv} = keypair()
@@ -331,7 +348,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert discussion.comment_count == 1
   end
 
-  test "folds federated follow ops into the graph; localOnly ignored; delete removes" do
+  test "folds only approved federated follows into the graph; localOnly ignored; delete removes" do
     {pub, priv} = keypair()
 
     follow = fn log_id, op_type, target, visibility ->
@@ -352,6 +369,27 @@ defmodule AnsibleAppview.IngestTimelineTest do
       follow.(2, "insert", "did:key:secret", "localOnly")
     ])
 
+    # A federated follow op is a request, not an active feed edge.
+    assert AnsibleAppview.FollowGraph.requested?(
+             "follow-1",
+             "did:key:reader",
+             "did:key:alice"
+           )
+
+    assert AnsibleAppview.FollowGraph.followers("did:key:alice") == []
+
+    AnsibleAppview.Ingest.Folder.apply_ops([
+      signed_op(
+        log_id: 3,
+        op_id: "grant-3",
+        author_did: "did:key:alice",
+        entity_type: "follow_grant",
+        pub: pub,
+        priv: priv,
+        payload: approved_follow_grant("follow-1", "did:key:reader", "did:key:alice")
+      )
+    ])
+
     assert AnsibleAppview.FollowGraph.followers("did:key:alice") == ["did:key:reader"]
     # localOnly follow is never indexed.
     assert AnsibleAppview.FollowGraph.followers("did:key:secret") == []
@@ -359,7 +397,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     assert AnsibleAppview.FollowGraph.follower_count("did:key:alice") == 1
 
     # Unfollow (delete) removes the edge.
-    AnsibleAppview.Ingest.Folder.apply_ops([follow.(3, "delete", "did:key:alice", "federated")])
+    AnsibleAppview.Ingest.Folder.apply_ops([follow.(4, "delete", "did:key:alice", "federated")])
     assert AnsibleAppview.FollowGraph.followers("did:key:alice") == []
   end
 
@@ -368,7 +406,8 @@ defmodule AnsibleAppview.IngestTimelineTest do
     reader = "did:key:fanreader"
     author = "did:key:fanauthor"
 
-    # reader follows author (federated), then author posts a public murmur.
+    # The request alone does not subscribe the reader. The author's signed
+    # grant creates the edge, then the public murmur fans out.
     Folder.apply_ops([
       signed_op(
         log_id: 9001,
@@ -378,13 +417,22 @@ defmodule AnsibleAppview.IngestTimelineTest do
         pub: pub,
         priv: priv,
         payload: %{"targetDid" => author, "visibility" => "federated"}
+      ),
+      signed_op(
+        log_id: 9002,
+        op_id: "grant-9002",
+        author_did: author,
+        entity_type: "follow_grant",
+        pub: pub,
+        priv: priv,
+        payload: approved_follow_grant("follow-9001", reader, author)
       )
     ])
 
     Folder.apply_ops([
       signed_op(
-        log_id: 9002,
-        op_id: "murmur-9002",
+        log_id: 9003,
+        op_id: "murmur-9003",
         author_did: author,
         entity_type: "murmur",
         pub: pub,
@@ -394,7 +442,7 @@ defmodule AnsibleAppview.IngestTimelineTest do
     ])
 
     home = Timeline.home(reader, nil, 50)
-    assert Enum.map(home.items, & &1.op_id) == ["murmur-9002"]
+    assert Enum.map(home.items, & &1.op_id) == ["murmur-9003"]
     assert hd(home.items).author_did == author
 
     # A reader who follows nobody and was never fanned out gets an empty home.
