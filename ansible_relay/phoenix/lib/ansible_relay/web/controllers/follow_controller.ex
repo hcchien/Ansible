@@ -37,13 +37,12 @@ defmodule AnsibleRelay.Web.Controllers.FollowController do
          true <- FollowAccess.active_grant?(reader_did, author_did) do
       cursor = parse_int(params["cursor"], 0)
       limit = min(max(parse_int(params["limit"], 100), 1), 500)
-      {ops, next_cursor, has_more} = scan(author_did, cursor, limit + 1, [])
-      visible = Enum.take(ops, limit)
+      {visible, next_cursor, has_more} = scan(author_did, cursor, limit, [])
 
       send_json(conn, 200, %{
         ops: Enum.map(visible, &attach_verification/1),
         next_cursor: next_cursor,
-        has_more: has_more or length(ops) > limit,
+        has_more: has_more,
         visibility: "host_visible",
         host_can_read: true
       })
