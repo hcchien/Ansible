@@ -31,6 +31,8 @@ void main() {
                   'entity_id': 'm1',
                   'visibility': 'public',
                   'created_at': '2026-06-05T00:00:00.000000Z',
+                  'reaction_count': 3,
+                  'comment_count': 2,
                   'payload': {'body': 'hi'},
                   'public_key_hex': 'b',
                   'reputation_tier': 'verified_human',
@@ -70,6 +72,8 @@ void main() {
       expect(page.items.first.authorDisplayName, 'Alice');
       expect(page.items.first.authorHandle, 'alice.elix.cool');
       expect(page.items.first.payload['body'], 'hi');
+      expect(page.items.first.reactionCount, 3);
+      expect(page.items.first.commentCount, 2);
       expect(page.items.first.createdAt, isNotNull);
       expect(page.items[1].boardId, 'board-1');
       expect(page.items[1].threadId, 'thread-1');

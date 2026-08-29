@@ -476,34 +476,34 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // preload posts per thread for content preview and counts
     final firstPosts = <String, Post?>{};
     final postCounts = <String, int>{};
-    final reactionCounts = <String, Map<String, int>>{};
+    final reactionCounts = <String, int>{};
     final userReacted = <String, bool>{};
     for (final t in threads) {
       if (!firstPosts.containsKey(t.id)) {
-        final posts = await _postRepo.list(threadId: t.id);
+        final posts = (await _postRepo.list(
+          threadId: t.id,
+        )).where((post) => !post.isDeleted).toList();
         firstPosts[t.id] = posts.isNotEmpty ? posts.first : null;
         // The first row is the opening post; the comment badge counts replies
         // only, matching the thread detail header.
         postCounts[t.id] = replyCountForPosts(posts);
 
-        final reactions = await _reactionRepo.listByTarget(
-          store.TargetType.thread.name,
-          t.id,
-        );
-        final usersByReactionType = <String, Set<String>>{};
-        for (final r in reactions) {
-          usersByReactionType
-              .putIfAbsent(r.reactionType.name, () => <String>{})
-              .add(r.userId);
-          if (_localDids.contains(r.userId) &&
-              r.reactionType == store.ReactionType.thumbsUp) {
+        final openingPost = firstPosts[t.id];
+        if (openingPost != null) {
+          final reactions = await _reactionRepo.listByTarget(
+            store.TargetType.post.name,
+            openingPost.id,
+          );
+          reactionCounts[t.id] = reactions
+              .map((reaction) => reaction.userId)
+              .toSet()
+              .length;
+          if (reactions.any(
+            (reaction) => _localDids.contains(reaction.userId),
+          )) {
             userReacted[t.id] = true;
           }
         }
-        reactionCounts[t.id] = {
-          for (final entry in usersByReactionType.entries)
-            entry.key: entry.value.length,
-        };
       }
     }
 
@@ -513,7 +513,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final board = boardMap[t.boardId];
       final content = firstPosts[t.id]?.content ?? '';
       final comments = postCounts[t.id] ?? 0;
-      final counts = reactionCounts[t.id] ?? const {};
+      final reactions = reactionCounts[t.id] ?? 0;
       return PostCardData(
         thread: t,
         category: board?.title ?? l10n.uncategorized,
@@ -522,7 +522,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         board: board?.title ?? t.boardId,
         timeAgo: _formatTimeAgo(t.createdAt),
         content: content,
-        reactions: {'👍': counts[store.ReactionType.thumbsUp.name] ?? 0},
+        reactions: {'👍': reactions},
         comments: comments,
         reacted: userReacted[t.id] ?? false,
         openingPost: firstPosts[t.id],
@@ -546,9 +546,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // Local-first home: locally stored public content remains readable without
     // a network, while online AppView results enrich the same wall. De-duplicate
     // by content/thread id because a synced local item may also be in AppView.
-    final localWallCards = <PostCardData>[
-      ...forumCards,
-      ...contentItems
+    final localContentCards = await Future.wait(
+      contentItems
           .where(
             (item) =>
                 item.status == ContentStatus.active &&
@@ -556,8 +555,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 (item.visibility == ContentVisibility.public ||
                     item.visibility == ContentVisibility.unlisted),
           )
-          .map(_contentFollowCard),
-    ];
+          .map((item) => _contentFollowCard(item)),
+    );
+    final localWallCards = <PostCardData>[...forumCards, ...localContentCards];
     followingCards = _mergeDynamicWallCards(followingCards, localWallCards);
 
     // Annotate both lists with their author's reputation tier (verified badge).
@@ -1274,11 +1274,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     for (final item in items) {
       if (item is ContentTimelineItem) {
         cards.add(
-          _contentFollowCard(
+          await _contentFollowCard(
             item.entry.item,
             signatureVerified: item.signatureVerified,
             authorDisplayName: item.authorDisplayName,
             authorHandle: item.authorHandle,
+            appViewReactionCount: item.reactionCount,
+            appViewCommentCount: item.commentCount,
           ),
         );
         continue;
@@ -1359,24 +1361,31 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           .toList(growable: false);
 
       final reactions = await _reactionRepo.listByTarget(
-        store.TargetType.thread.name,
-        threadId,
+        store.TargetType.post.name,
+        openingPost.id,
       );
-      final usersByReactionType = <String, Set<String>>{};
-      var reacted = false;
-      for (final reaction in reactions) {
-        usersByReactionType
-            .putIfAbsent(reaction.reactionType.name, () => <String>{})
-            .add(reaction.userId);
-        if (_localDids.contains(reaction.userId) &&
-            reaction.reactionType == store.ReactionType.thumbsUp) {
-          reacted = true;
-        }
-      }
-      final countMap = {
-        for (final entry in usersByReactionType.entries)
-          entry.key: entry.value.length,
-      };
+      final localReactionUsers = reactions
+          .map((reaction) => reaction.userId)
+          .toSet();
+      final appViewReactionCount = threadItems.fold<int>(
+        0,
+        (count, timelineItem) => timelineItem.reactionCount > count
+            ? timelineItem.reactionCount
+            : count,
+      );
+      final appViewCommentCount = threadItems.fold<int>(
+        0,
+        (count, timelineItem) => timelineItem.commentCount > count
+            ? timelineItem.commentCount
+            : count,
+      );
+      final reactionCount = appViewReactionCount > localReactionUsers.length
+          ? appViewReactionCount
+          : localReactionUsers.length;
+      final localCommentCount = replyCountForPosts(availablePosts);
+      final commentCount = appViewCommentCount > localCommentCount
+          ? appViewCommentCount
+          : localCommentCount;
       final board =
           openingTimelineItem?.entry.board ??
           item.entry.board ??
@@ -1391,9 +1400,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           timeAgo: _formatTimeAgo(openingPost.createdAt),
           sortTimestamp: latestActivity,
           content: openingPost.content,
-          reactions: {'👍': countMap[store.ReactionType.thumbsUp.name] ?? 0},
-          comments: replyCountForPosts(availablePosts),
-          reacted: reacted,
+          reactions: {'👍': reactionCount},
+          comments: commentCount,
+          reacted: localReactionUsers.any(_localDids.contains),
           openingPost: openingPost,
           signatureVerified: openingPost.signatureVerified,
           authorDisplayName: openingTimelineItem?.authorDisplayName,
@@ -1407,12 +1416,30 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   /// Render a followed user's standalone murmur/note as a feed card. These have
   /// no board/thread, so a lightweight synthetic thread carries the card.
-  PostCardData _contentFollowCard(
+  Future<PostCardData> _contentFollowCard(
     ContentItem item, {
     bool? signatureVerified,
     String? authorDisplayName,
     String? authorHandle,
-  }) {
+    int appViewReactionCount = 0,
+    int appViewCommentCount = 0,
+  }) async {
+    final localReactions = await _reactionRepo.listByTarget(
+      store.TargetType.thread.name,
+      item.id,
+    );
+    final localReactionUsers = localReactions
+        .map((reaction) => reaction.userId)
+        .toSet();
+    final localComments = (await _postRepo.list(
+      threadId: item.id,
+    )).where((post) => !post.isDeleted).length;
+    final reactionCount = appViewReactionCount > localReactionUsers.length
+        ? appViewReactionCount
+        : localReactionUsers.length;
+    final commentCount = appViewCommentCount > localComments
+        ? appViewCommentCount
+        : localComments;
     final isNote = item.mode == ContentMode.note;
     final label = isNote ? 'NOTE' : 'MURMUR';
     final title = (item.title != null && item.title!.trim().isNotEmpty)
@@ -1434,9 +1461,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       timeAgo: _formatTimeAgo(item.publishedAt ?? item.createdAt),
       sortTimestamp: item.publishedAt ?? item.createdAt,
       content: item.body,
-      reactions: const {'👍': 0},
-      comments: 0,
-      reacted: false,
+      reactions: {'👍': reactionCount},
+      comments: commentCount,
+      reacted: localReactionUsers.any(_localDids.contains),
       signatureVerified: signatureVerified ?? item.signatureVerified,
       authorDisplayName: authorDisplayName,
       authorHandle: authorHandle,

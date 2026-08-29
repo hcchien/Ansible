@@ -200,7 +200,9 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final reactionCountByThread = <String, int>{};
     final lastActivityByThread = <String, DateTime>{};
     for (final t in threads) {
-      final posts = await _postRepo.list(threadId: t.id);
+      final posts = (await _postRepo.list(
+        threadId: t.id,
+      )).where((post) => !post.isDeleted).toList();
       firstPostByThread[t.id] = posts.isNotEmpty ? posts.first : null;
       // Replies = posts after the opening post.
       replyCountByThread[t.id] = posts.isEmpty ? 0 : posts.length - 1;
@@ -209,7 +211,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
           : (await _reactionRepo.listByTarget(
               TargetType.post.name,
               posts.first.id,
-            )).length;
+            )).map((reaction) => reaction.userId).toSet().length;
       // Last activity = most recent post, else the thread's own timestamp.
       lastActivityByThread[t.id] = posts.isEmpty
           ? t.createdAt
@@ -780,6 +782,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       },
       borderRadius: BorderRadius.circular(10),
       child: Container(
+        key: Key('thread_card_${thread.id}'),
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
         decoration: BoxDecoration(
           color: _bg,

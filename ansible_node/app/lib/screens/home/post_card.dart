@@ -85,6 +85,14 @@ class PostCardData {
   /// count and thread detail retain the complete conversation.
   final List<ThreadReplyPreview> replyPreviews;
 
+  store.TargetType get reactionTargetType =>
+      openableThread && openingPost != null
+      ? store.TargetType.post
+      : store.TargetType.thread;
+
+  String get reactionTargetId =>
+      reactionTargetType == store.TargetType.post ? openingPost!.id : thread.id;
+
   PostCardData copyWith({String? authorTier}) => PostCardData(
     thread: thread,
     category: category,
@@ -198,16 +206,30 @@ class _PostCardState extends State<PostCard> {
     _reactionRepo = store.DriftReactionRepository(widget.db);
   }
 
-  Future<void> _toggleThumbsUp(String targetId) async {
+  @override
+  void didUpdateWidget(covariant PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data.thread.id != widget.data.thread.id ||
+        oldWidget.data.reactions['👍'] != widget.data.reactions['👍'] ||
+        oldWidget.data.reacted != widget.data.reacted) {
+      _reacted = widget.data.reacted;
+      _selectedReaction = _reacted ? store.ReactionType.thumbsUp : null;
+      _likeCount = widget.data.reactions['👍'] ?? 0;
+    }
+  }
+
+  Future<void> _toggleThumbsUp() async {
     final choice = await showReactionPicker(
       context,
       selected: _selectedReaction,
     );
     if (choice == null) return;
     final localDid = widget.authorDid;
+    final targetType = widget.data.reactionTargetType;
+    final targetId = widget.data.reactionTargetId;
     final existing = await _reactionRepo.getByUserAndTarget(
       localDid,
-      store.TargetType.thread.name,
+      targetType.name,
       targetId,
     );
     if (choice.remove) {
@@ -217,7 +239,7 @@ class _PostCardState extends State<PostCard> {
           CrdtOpBuilder.deleteReaction(
             authorDid: localDid,
             entityId: existing.id,
-            targetType: store.TargetType.thread.name,
+            targetType: targetType.name,
             targetId: targetId,
             boardId: widget.data.thread.boardId,
           ),
@@ -258,7 +280,7 @@ class _PostCardState extends State<PostCard> {
       final reaction = store.Reaction(
         id: const Uuid().v4(),
         userId: localDid,
-        targetType: store.TargetType.thread,
+        targetType: targetType,
         targetId: targetId,
         reactionType: nextType,
         createdAt: DateTime.now(),
@@ -462,6 +484,7 @@ class _PostCardState extends State<PostCard> {
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: Container(
+        key: Key('post_card_${thread.id}'),
         decoration: BoxDecoration(
           color: postCardBackgroundColor(
             screenStyle: screenStyle,
@@ -655,7 +678,7 @@ class _PostCardState extends State<PostCard> {
                       : () async {
                           setState(() => _isReacting = true);
                           try {
-                            await _toggleThumbsUp(thread.id);
+                            await _toggleThumbsUp();
                           } finally {
                             setState(() => _isReacting = false);
                           }

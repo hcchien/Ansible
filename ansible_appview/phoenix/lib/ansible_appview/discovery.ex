@@ -142,7 +142,10 @@ defmodule AnsibleAppview.Discovery do
       end
 
     %{
-      items: Enum.map(visible, &Timeline.to_map/1),
+      items:
+        visible
+        |> Enum.map(&Timeline.to_map/1)
+        |> Timeline.attach_engagement_counts(),
       next_cursor: next_cursor,
       has_more: has_more
     }
@@ -180,6 +183,7 @@ defmodule AnsibleAppview.Discovery do
       )
     )
     |> Enum.map(&Timeline.to_map/1)
+    |> Timeline.attach_engagement_counts()
   end
 
   # Escape LIKE wildcards so literal % / _ in the query can't widen the match.

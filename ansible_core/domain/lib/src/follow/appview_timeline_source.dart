@@ -17,6 +17,8 @@ class AppViewTimelineItem {
   final String? visibility;
   final DateTime? createdAt;
   final Map<String, dynamic> payload;
+  final int reactionCount;
+  final int commentCount;
 
   const AppViewTimelineItem({
     required this.entityType,
@@ -29,6 +31,8 @@ class AppViewTimelineItem {
     this.threadId,
     this.visibility,
     this.createdAt,
+    this.reactionCount = 0,
+    this.commentCount = 0,
   });
 }
 
@@ -220,6 +224,8 @@ class AppViewTimelineSource implements FollowFeedSource {
           ),
           authorDisplayName: raw.authorDisplayName,
           authorHandle: raw.authorHandle,
+          reactionCount: raw.reactionCount,
+          commentCount: raw.commentCount,
         );
       case 'murmur':
       case 'note':
@@ -247,6 +253,8 @@ class AppViewTimelineSource implements FollowFeedSource {
           authorDisplayName: raw.authorDisplayName,
           authorHandle: raw.authorHandle,
           signatureVerified: true,
+          reactionCount: raw.reactionCount,
+          commentCount: raw.commentCount,
         );
       default:
         return null;

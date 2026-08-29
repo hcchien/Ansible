@@ -630,6 +630,185 @@ void main() {
     },
   );
 
+  testWidgets('timeline card shows standalone content engagement counts', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'elix-genesis-subscribed': true,
+      'elix-swipe-coachmark-seen': true,
+    });
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final now = DateTime.utc(2026, 8, 29, 1);
+    await DriftContentItemRepository(db).create(
+      ContentItem(
+        id: 'content-engagement',
+        authorDid: 'did:plc:alice',
+        mode: ContentMode.note,
+        body: 'Home card engagement regression',
+        status: ContentStatus.active,
+        visibility: ContentVisibility.public,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: now,
+        localOnly: false,
+      ),
+    );
+    await DriftPostRepository(db).create(
+      Post(
+        id: 'comment-engagement',
+        threadId: 'content-engagement',
+        boardId: '',
+        authorId: 'did:plc:bob',
+        content: 'One comment',
+        createdAt: now,
+        updatedAt: now,
+        lastEditAt: now,
+      ),
+    );
+    await DriftReactionRepository(db).create(
+      Reaction(
+        id: 'reaction-engagement',
+        userId: 'did:plc:bob',
+        targetType: TargetType.thread,
+        targetId: 'content-engagement',
+        reactionType: ReactionType.thumbsUp,
+        createdAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(
+            NetworkStatus.offline,
+          ),
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
+          autoSeedDefaultRelay: false,
+          initialBoard: HomeBoard.timeline,
+        ),
+      ),
+    );
+    for (var i = 0; i < 20; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final card = find.byKey(const Key('post_card_content-engagement'));
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.text('1')),
+      findsNWidgets(2),
+      reason: 'Reaction and comment actions must both show their counts.',
+    );
+
+    await _disposeWidgetTree(tester);
+  });
+
+  testWidgets('forum post card matches opening-post engagement counts', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'elix-genesis-subscribed': true,
+      'elix-swipe-coachmark-seen': true,
+    });
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final now = DateTime.utc(2026, 8, 29, 2);
+    await DriftBoardRepository(db).create(
+      Board(
+        id: 'board-engagement',
+        slug: 'engagement',
+        title: 'Engagement board',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await DriftThreadRepository(db).create(
+      Thread(
+        id: 'thread-engagement',
+        boardId: 'board-engagement',
+        title: 'Forum engagement',
+        authorId: 'did:plc:alice',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await DriftPostRepository(db).create(
+      Post(
+        id: 'opening-forum-engagement',
+        threadId: 'thread-engagement',
+        boardId: 'board-engagement',
+        authorId: 'did:plc:alice',
+        content: 'Opening post',
+        createdAt: now,
+        updatedAt: now,
+        lastEditAt: now,
+      ),
+    );
+    await DriftPostRepository(db).create(
+      Post(
+        id: 'reply-forum-engagement',
+        threadId: 'thread-engagement',
+        boardId: 'board-engagement',
+        authorId: 'did:plc:bob',
+        content: 'One reply',
+        createdAt: now.add(const Duration(minutes: 1)),
+        updatedAt: now.add(const Duration(minutes: 1)),
+        lastEditAt: now.add(const Duration(minutes: 1)),
+      ),
+    );
+    await DriftReactionRepository(db).create(
+      Reaction(
+        id: 'reaction-forum-engagement',
+        userId: 'did:plc:bob',
+        targetType: TargetType.post,
+        targetId: 'opening-forum-engagement',
+        reactionType: ReactionType.happy,
+        createdAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          db: db,
+          did: 'did:plc:alice',
+          networkStatusMonitor: _FakeNetworkStatusMonitor(
+            NetworkStatus.offline,
+          ),
+          relayDiscoveryLoader: () async => _emptyDiscovery(),
+          autoSeedDefaultRelay: false,
+          initialBoard: HomeBoard.forum,
+        ),
+      ),
+    );
+    for (var i = 0; i < 20; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final card = find.byKey(const Key('post_card_thread-engagement'));
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.text('1')),
+      findsNWidgets(2),
+      reason: 'Opening-post reactions and replies must both show on the card.',
+    );
+
+    await _disposeWidgetTree(tester);
+  });
+
   testWidgets('foreground resume pull refresh runs when online', (
     tester,
   ) async {

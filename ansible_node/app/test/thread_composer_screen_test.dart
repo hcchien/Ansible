@@ -90,6 +90,81 @@ void main() {
     );
   }
 
+  testWidgets('board thread card shows real deduplicated engagement counts', (
+    tester,
+  ) async {
+    final primary = await seedBoard('board-engagement', 'Engagement');
+    await DriftThreadRepository(db).create(
+      Thread(
+        id: 'thread-engagement',
+        boardId: primary.id,
+        title: 'Engagement thread',
+        authorId: 'did:plc:author',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await DriftPostRepository(db).create(
+      Post(
+        id: 'opening-engagement',
+        threadId: 'thread-engagement',
+        boardId: primary.id,
+        authorId: 'did:plc:author',
+        content: 'Opening',
+        createdAt: now,
+        updatedAt: now,
+        lastEditAt: now,
+      ),
+    );
+    await DriftPostRepository(db).create(
+      Post(
+        id: 'reply-engagement',
+        threadId: 'thread-engagement',
+        boardId: primary.id,
+        authorId: 'did:plc:reply',
+        content: 'Reply',
+        createdAt: now.add(const Duration(minutes: 1)),
+        updatedAt: now.add(const Duration(minutes: 1)),
+        lastEditAt: now.add(const Duration(minutes: 1)),
+      ),
+    );
+    for (final (id, user, type) in [
+      ('reaction-1', 'did:plc:reactor-1', ReactionType.happy),
+      ('reaction-2', 'did:plc:reactor-2', ReactionType.thumbsUp),
+    ]) {
+      await DriftReactionRepository(db).create(
+        Reaction(
+          id: id,
+          userId: user,
+          targetType: TargetType.post,
+          targetId: 'opening-engagement',
+          reactionType: type,
+          createdAt: now,
+        ),
+      );
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ThreadsListScreen(db: db, board: primary, localDid: localDid),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final card = find.byKey(const Key('thread_card_thread-engagement'));
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.text('2')),
+      findsOneWidget,
+      reason: 'All reaction types count once per reacting user.',
+    );
+    expect(
+      find.descendant(of: card, matching: find.textContaining('1 回應')),
+      findsOneWidget,
+    );
+  });
+
   /// Pushes the composer from a harness button so the popped result can be
   /// captured (the composer's contract is the map it pops).
   Future<Future<Map<String, Object?>?>> openComposer(

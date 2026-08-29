@@ -104,6 +104,8 @@ void main() {
                 visibility: 'public',
                 createdAt: now,
                 payload: const {'body': 'hi'},
+                reactionCount: 3,
+                commentCount: 2,
               ),
               AppViewTimelineItem(
                 entityType: 'post',
@@ -113,6 +115,8 @@ void main() {
                 threadId: 't1',
                 createdAt: now,
                 payload: const {'content': 'a post'},
+                reactionCount: 5,
+                commentCount: 4,
               ),
             ],
             nextCursor: 42,
@@ -125,7 +129,17 @@ void main() {
 
       expect(requestedDids, ['did:key:alice']);
       expect(page.items.whereType<ContentTimelineItem>().length, 1);
+      expect(
+        page.items.whereType<ContentTimelineItem>().single.reactionCount,
+        3,
+      );
+      expect(
+        page.items.whereType<ContentTimelineItem>().single.commentCount,
+        2,
+      );
       expect(page.items.whereType<PostTimelineItem>().length, 1);
+      expect(page.items.whereType<PostTimelineItem>().single.reactionCount, 5);
+      expect(page.items.whereType<PostTimelineItem>().single.commentCount, 4);
       expect(
         page.items.whereType<ContentTimelineItem>().single.signatureVerified,
         isTrue,

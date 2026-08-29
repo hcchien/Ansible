@@ -190,7 +190,122 @@ defmodule AnsibleAppview.IngestTimelineTest do
              "e-election-legacy",
              "e-election-current"
            ]
+
     assert Enum.map(fifa.items, & &1.entity_id) == ["e-fifa-legacy"]
+  end
+
+  test "top-level content includes public reaction and comment aggregates" do
+    {pub, priv} = keypair()
+
+    ops = [
+      signed_op(
+        log_id: 101,
+        entity_id: "content-engagement",
+        author_did: "did:key:engagement-author",
+        entity_type: "murmur",
+        pub: pub,
+        priv: priv,
+        payload: %{"body" => "hello", "visibility" => "public"}
+      ),
+      signed_op(
+        log_id: 102,
+        entity_id: "comment-engagement",
+        author_did: "did:key:commenter",
+        entity_type: "comment",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "targetId" => "content-engagement",
+          "threadId" => "content-engagement",
+          "content" => "one comment"
+        }
+      ),
+      signed_op(
+        log_id: 103,
+        entity_id: "reaction-engagement-1",
+        author_did: "did:key:reactor-1",
+        entity_type: "reaction",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "targetId" => "content-engagement",
+          "targetType" => "thread",
+          "reactionType" => "thumbsUp"
+        }
+      ),
+      signed_op(
+        log_id: 104,
+        entity_id: "reaction-engagement-2",
+        author_did: "did:key:reactor-2",
+        entity_type: "reaction",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "targetId" => "content-engagement",
+          "targetType" => "thread",
+          "reactionType" => "happy"
+        }
+      ),
+      signed_op(
+        log_id: 105,
+        entity_id: "opening-discussion",
+        author_did: "did:key:discussion-author",
+        entity_type: "post",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "boardId" => "board-engagement",
+          "threadId" => "thread-engagement",
+          "content" => "opening"
+        }
+      ),
+      signed_op(
+        log_id: 106,
+        entity_id: "reply-discussion",
+        author_did: "did:key:discussion-replier",
+        entity_type: "post",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "boardId" => "board-engagement",
+          "threadId" => "thread-engagement",
+          "content" => "reply"
+        }
+      ),
+      signed_op(
+        log_id: 107,
+        entity_id: "reaction-discussion",
+        author_did: "did:key:discussion-reactor",
+        entity_type: "reaction",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "targetId" => "opening-discussion",
+          "targetType" => "post",
+          "reactionType" => "thumbsUp"
+        }
+      )
+    ]
+
+    {7, 107} = Folder.apply_ops(ops)
+
+    item =
+      Timeline.for_authors(["did:key:engagement-author"], nil, 50)
+      |> Map.fetch!(:items)
+      |> List.first()
+
+    assert item.entity_id == "content-engagement"
+    assert item.reaction_count == 2
+    assert item.comment_count == 1
+
+    discussion =
+      Timeline.for_authors(["did:key:discussion-author"], nil, 50)
+      |> Map.fetch!(:items)
+      |> List.first()
+
+    assert discussion.entity_id == "opening-discussion"
+    assert discussion.reaction_count == 1
+    assert discussion.comment_count == 1
   end
 
   test "folds federated follow ops into the graph; localOnly ignored; delete removes" do

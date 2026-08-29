@@ -52,6 +52,51 @@ void main() {
     expect(replyCountForPosts([post('op'), post('reply')]), 1);
   });
 
+  test('discussion and standalone cards use their detail reaction targets', () {
+    final now = DateTime.utc(2026, 8, 29);
+    final thread = Thread(
+      id: 'thread-1',
+      boardId: 'board-1',
+      title: 'Discussion',
+      authorId: 'did:elix:alice',
+      createdAt: now,
+      updatedAt: now,
+    );
+    final openingPost = Post(
+      id: 'opening-post',
+      threadId: thread.id,
+      boardId: thread.boardId,
+      authorId: thread.authorId,
+      content: 'Opening',
+      createdAt: now,
+      updatedAt: now,
+      lastEditAt: now,
+    );
+    PostCardData card({required bool openableThread, Post? opening}) =>
+        PostCardData(
+          thread: thread,
+          category: 'General',
+          title: thread.title,
+          content: opening?.content ?? 'Standalone',
+          author: thread.authorId,
+          board: 'General',
+          timeAgo: 'now',
+          reactions: const {'👍': 0},
+          comments: 0,
+          reacted: false,
+          openingPost: opening,
+          openableThread: openableThread,
+        );
+
+    final discussion = card(openableThread: true, opening: openingPost);
+    expect(discussion.reactionTargetType, TargetType.post);
+    expect(discussion.reactionTargetId, openingPost.id);
+
+    final standalone = card(openableThread: false);
+    expect(standalone.reactionTargetType, TargetType.thread);
+    expect(standalone.reactionTargetId, thread.id);
+  });
+
   testWidgets('share icon opens the injected share sheet with post content', (
     tester,
   ) async {

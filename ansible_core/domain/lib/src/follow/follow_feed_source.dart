@@ -13,8 +13,16 @@ class PostTimelineItem extends FollowTimelineItem {
   final FollowFeedEntry entry;
   final String? authorDisplayName;
   final String? authorHandle;
+  final int reactionCount;
+  final int commentCount;
 
-  PostTimelineItem(this.entry, {this.authorDisplayName, this.authorHandle});
+  PostTimelineItem(
+    this.entry, {
+    this.authorDisplayName,
+    this.authorHandle,
+    this.reactionCount = 0,
+    this.commentCount = 0,
+  });
 
   @override
   DateTime get timestamp => entry.post.lastEditAt;
@@ -30,12 +38,16 @@ class ContentTimelineItem extends FollowTimelineItem {
   final String? authorHandle;
   @override
   final bool signatureVerified;
+  final int reactionCount;
+  final int commentCount;
 
   ContentTimelineItem(
     this.entry, {
     this.signatureVerified = false,
     this.authorDisplayName,
     this.authorHandle,
+    this.reactionCount = 0,
+    this.commentCount = 0,
   });
 
   @override

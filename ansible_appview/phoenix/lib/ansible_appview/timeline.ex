@@ -60,7 +60,11 @@ defmodule AnsibleAppview.Timeline do
           list -> List.last(list).log_id
         end
 
-      %{items: merged, next_cursor: next_cursor, has_more: length(merged) >= limit}
+      %{
+        items: attach_engagement_counts(merged),
+        next_cursor: next_cursor,
+        has_more: length(merged) >= limit
+      }
     end
   end
 
@@ -132,7 +136,11 @@ defmodule AnsibleAppview.Timeline do
         list -> List.last(list).log_id
       end
 
-    %{items: visible, next_cursor: next_cursor, has_more: has_more}
+    %{
+      items: attach_engagement_counts(visible),
+      next_cursor: next_cursor,
+      has_more: has_more
+    }
   end
 
   # Batched cold-read: resolve the per-author recent list for many DIDs with a
@@ -277,7 +285,10 @@ defmodule AnsibleAppview.Timeline do
 
   defp maybe_legacy_board(scope, legacy_board_id, legacy_namespaced_id)
        when is_binary(legacy_board_id) and is_binary(legacy_namespaced_id) do
-    dynamic([f], ^scope or f.board_id == ^legacy_board_id or like(f.board_id, ^legacy_namespaced_id))
+    dynamic(
+      [f],
+      ^scope or f.board_id == ^legacy_board_id or like(f.board_id, ^legacy_namespaced_id)
+    )
   end
 
   defp maybe_legacy_board(scope, _legacy_board_id, _legacy_namespaced_id), do: scope
@@ -374,10 +385,148 @@ defmodule AnsibleAppview.Timeline do
       end
 
     %{
-      items: Enum.map(visible, &to_map/1),
+      items: visible |> Enum.map(&to_map/1) |> attach_engagement_counts(),
       next_cursor: next_cursor,
       has_more: has_more
     }
+  end
+
+  @doc "Adds public reaction/comment aggregates to native content cards."
+  @spec attach_engagement_counts([map()]) :: [map()]
+  def attach_engagement_counts(items) when is_list(items) do
+    standalone_ids =
+      items
+      |> Enum.filter(&(&1.entity_type in ["murmur", "note"]))
+      |> Enum.map(& &1.entity_id)
+      |> Enum.filter(&(is_binary(&1) and &1 != ""))
+      |> Enum.uniq()
+
+    thread_ids =
+      items
+      |> Enum.filter(&(&1.entity_type == "post"))
+      |> Enum.map(& &1.thread_id)
+      |> Enum.filter(&(is_binary(&1) and &1 != ""))
+      |> Enum.uniq()
+
+    if standalone_ids == [] and thread_ids == [] do
+      items
+    else
+      opening_post_by_thread =
+        case thread_ids do
+          [] ->
+            %{}
+
+          ids ->
+            read_repo().all(
+              from(f in FeedItem,
+                where:
+                  f.entity_type == "post" and f.deleted == false and
+                    f.sig_verified == true and
+                    (is_nil(f.visibility) or f.visibility in ^@relayable) and
+                    f.thread_id in ^ids,
+                distinct: f.thread_id,
+                order_by: [asc: f.thread_id, asc: f.log_id],
+                select: {f.thread_id, f.entity_id}
+              )
+            )
+            |> Map.new()
+        end
+
+      opening_post_ids = opening_post_by_thread |> Map.values() |> Enum.uniq()
+
+      standalone_reaction_counts =
+        read_repo().all(
+          from(f in FeedItem,
+            where:
+              f.entity_type == "reaction" and f.deleted == false and
+                f.sig_verified == true and
+                (is_nil(f.visibility) or f.visibility in ^@relayable) and
+                fragment("?->>'targetType'", f.payload) == "thread" and
+                fragment("?->>'targetId'", f.payload) in ^standalone_ids,
+            group_by: fragment("?->>'targetId'", f.payload),
+            select: {
+              fragment("?->>'targetId'", f.payload),
+              count(f.author_did, :distinct)
+            }
+          )
+        )
+        |> Map.new()
+
+      post_reaction_counts =
+        read_repo().all(
+          from(f in FeedItem,
+            where:
+              f.entity_type == "reaction" and f.deleted == false and
+                f.sig_verified == true and
+                (is_nil(f.visibility) or f.visibility in ^@relayable) and
+                fragment("?->>'targetType'", f.payload) == "post" and
+                fragment("?->>'targetId'", f.payload) in ^opening_post_ids,
+            group_by: fragment("?->>'targetId'", f.payload),
+            select: {
+              fragment("?->>'targetId'", f.payload),
+              count(f.author_did, :distinct)
+            }
+          )
+        )
+        |> Map.new()
+
+      standalone_comment_counts =
+        read_repo().all(
+          from(f in FeedItem,
+            where:
+              f.entity_type == "comment" and f.deleted == false and
+                f.sig_verified == true and
+                (is_nil(f.visibility) or f.visibility in ^@relayable) and
+                f.thread_id in ^standalone_ids,
+            group_by: f.thread_id,
+            select: {f.thread_id, count(f.entity_id, :distinct)}
+          )
+        )
+        |> Map.new()
+
+      post_counts_by_thread =
+        read_repo().all(
+          from(f in FeedItem,
+            where:
+              f.entity_type == "post" and f.deleted == false and
+                f.sig_verified == true and
+                (is_nil(f.visibility) or f.visibility in ^@relayable) and
+                f.thread_id in ^thread_ids,
+            group_by: f.thread_id,
+            select: {f.thread_id, count(f.entity_id, :distinct)}
+          )
+        )
+        |> Map.new()
+
+      Enum.map(items, fn item ->
+        case item.entity_type do
+          type when type in ["murmur", "note"] ->
+            item
+            |> Map.put(
+              :reaction_count,
+              Map.get(standalone_reaction_counts, item.entity_id, 0)
+            )
+            |> Map.put(
+              :comment_count,
+              Map.get(standalone_comment_counts, item.entity_id, 0)
+            )
+
+          "post" ->
+            opening_post_id = Map.get(opening_post_by_thread, item.thread_id)
+            post_count = Map.get(post_counts_by_thread, item.thread_id, 0)
+
+            item
+            |> Map.put(
+              :reaction_count,
+              Map.get(post_reaction_counts, opening_post_id, 0)
+            )
+            |> Map.put(:comment_count, max(post_count - 1, 0))
+
+          _ ->
+            item
+        end
+      end)
+    end
   end
 
   @doc "Presents a FeedItem row as the public timeline/discovery item map."

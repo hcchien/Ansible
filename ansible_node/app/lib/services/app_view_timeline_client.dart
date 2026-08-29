@@ -186,6 +186,8 @@ class AppViewTimelineClient {
             createdAt: m['created_at'] is String
                 ? DateTime.tryParse(m['created_at'] as String)
                 : null,
+            reactionCount: (m['reaction_count'] as num?)?.toInt() ?? 0,
+            commentCount: (m['comment_count'] as num?)?.toInt() ?? 0,
             payload: Map<String, dynamic>.from(
               (m['payload'] as Map?) ?? const {},
             ),
