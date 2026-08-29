@@ -384,6 +384,36 @@ defmodule AnsibleRelay.OpStore do
     end
   end
 
+  @doc "The latest accepted operation for one entity, or nil."
+  def latest_entity_op(entity_type, entity_id) do
+    from(o in Op,
+      where: o.entity_type == ^entity_type and o.entity_id == ^entity_id,
+      order_by: [desc: o.id],
+      limit: 1
+    )
+    |> Repo.one()
+    |> case do
+      nil -> nil
+      row -> to_op_map(row)
+    end
+  end
+
+  @doc "Context-note entity ids whose pinned target entity id matches the supplied ref."
+  def context_note_ids_for_target(target_ref) when is_binary(target_ref) do
+    from(o in Op,
+      where: o.entity_type == "context_note" and o.op_type in ["insert", "update"],
+      order_by: [asc: o.id],
+      select: {o.entity_id, o.payload}
+    )
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn {note_id, payload}, acc ->
+      Map.put(acc, note_id, decode_payload(payload))
+    end)
+    |> Enum.filter(fn {_note_id, payload} -> payload["targetEntityId"] == target_ref end)
+    |> Enum.map(fn {note_id, _payload} -> note_id end)
+    |> Enum.sort()
+  end
+
   @doc """
   Reply stats for a thread: `{count, first_reply_op_map | nil}` over post
   insert ops whose payload `threadId` is the given thread. The payload column

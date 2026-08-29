@@ -196,4 +196,49 @@ void main() {
       expect(page.hasMore, isTrue);
     },
   );
+
+  test(
+    'fetchCommunityNotes parses the pinned target and public notes',
+    () async {
+      final client = AppViewTimelineClient(
+        baseUrl: 'https://appview.example',
+        client: MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(request.url.path, '/api/v1/context-notes');
+          expect(request.url.queryParameters['target_ref'], 'murmur-1');
+          return http.Response(
+            jsonEncode({
+              'target': {
+                'entity_type': 'murmur',
+                'entity_id': 'murmur-1',
+                'op_id': 'op-1',
+                'content_hash': 'sha256:abc',
+              },
+              'notes': [
+                {
+                  'note_id': 'cn-1',
+                  'author_did': 'did:key:bob',
+                  'target_entity_type': 'murmur',
+                  'target_entity_id': 'murmur-1',
+                  'target_op_id': 'op-1',
+                  'target_content_hash': 'sha256:abc',
+                  'body': 'More context',
+                  'sources': [
+                    {'url': 'https://example.test/source', 'title': 'Source'},
+                  ],
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }),
+      );
+
+      final bundle = await client.fetchCommunityNotes(targetRef: 'murmur-1');
+      expect(bundle.target!.opId, 'op-1');
+      expect(bundle.notes.single.noteId, 'cn-1');
+      expect(bundle.notes.single.sources.single.title, 'Source');
+    },
+  );
 }

@@ -464,6 +464,25 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.ForumHostController.create_report(conn, conn.body_params)
   end
 
+  post "/api/v1/forum-host/community-notes/:note_id/ratings" do
+    AnsibleRelay.Web.Controllers.ForumHostController.rate_context_note(
+      conn,
+      note_id,
+      conn.body_params
+    )
+  end
+
+  get "/api/v1/forum-host/community-notes/statuses" do
+    AnsibleRelay.Web.Controllers.ForumHostController.context_note_statuses(
+      conn,
+      conn.query_params
+    )
+  end
+
+  get "/api/v1/forum-host/community-notes/:note_id/status" do
+    AnsibleRelay.Web.Controllers.ForumHostController.context_note_status(conn, note_id)
+  end
+
   post "/api/v1/forum-host/web/reports" do
     AnsibleRelay.Web.Controllers.ForumHostController.create_web_report(conn, conn.body_params)
   end

@@ -80,6 +80,21 @@ export async function fetchThreadFeed({
   );
 }
 
+export async function fetchCommunityNotes({
+  appViewBaseUrl,
+  fetchImpl = globalThis.fetch,
+  targetRef,
+  limit = 20,
+}) {
+  const query = new URLSearchParams({
+    target_ref: String(targetRef),
+    limit: String(limit),
+  });
+  return createRelayApiClient({ relayBaseUrl: appViewBaseUrl, fetchImpl }).getJson(
+    `/api/v1/context-notes?${query.toString()}`,
+  );
+}
+
 // Public profile projection: only fields deliberately published in a signed
 // profile op are returned by AppView. The DID remains the stable identifier;
 // these presentation fields never participate in browser authorization.

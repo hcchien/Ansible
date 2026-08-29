@@ -22,6 +22,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../services/handle_resolver.dart';
 import '../widgets/author_label.dart';
+import '../widgets/community_notes_panel.dart';
 import '../widgets/reaction_picker.dart';
 import 'post_composer_screen.dart';
 import '../widgets/posting_gate_notice.dart';
@@ -808,6 +809,21 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
       return items;
     }
     items.add(_opPost(context, _posts.first));
+    final dispatchService = widget.opsDispatchService;
+    if (dispatchService != null) {
+      items.add(
+        CommunityNotesPanel(
+          targetRef: _posts.first.id,
+          localDid: _authorDid,
+          opsDispatchService: dispatchService,
+          onFlushPendingOps:
+              widget.onFlushPendingOps ??
+              () async {
+                await dispatchService.flushPending();
+              },
+        ),
+      );
+    }
     final replies = _posts.skip(1).toList();
     items.add(_replyHead(context, replies.length));
     for (final r in replies) {

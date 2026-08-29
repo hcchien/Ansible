@@ -42,6 +42,10 @@ defmodule AnsibleAppview.Web.Router do
     AnsibleAppview.Web.Controllers.TimelineController.board_feed(conn, conn.query_params)
   end
 
+  get "/api/v1/context-notes" do
+    AnsibleAppview.Web.Controllers.ContextNotesController.index(conn, conn.query_params)
+  end
+
   # Per-board external lane (inbound federation, Task 4b-1). The ONLY path that
   # returns external (source=activitypub) content. Caller must gate on
   # board.external_inclusion (relay policy) AND user opt-in — see the controller

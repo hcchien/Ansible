@@ -393,6 +393,7 @@ class _FakeAtProtoClient extends AtProtoClient {
   Future<RegistrationChallenge> register({
     required String publicKeyHex,
     required String handleSuffix,
+    String? did,
     String signingAlgorithm = 'ed25519',
   }) async {
     final error = registerError;
@@ -425,6 +426,7 @@ class _OfflineAtProtoClient extends AtProtoClient {
   Future<RegistrationChallenge> register({
     required String publicKeyHex,
     required String handleSuffix,
+    String? did,
     String signingAlgorithm = 'ed25519',
   }) async {
     registerCalled = true;

@@ -111,6 +111,22 @@ if config_env() == :prod do
   end
 
   config :ansible_relay, :sync_capability_secret, sync_capability_secret
+
+  community_notes_rater_hmac_secret =
+    System.get_env("COMMUNITY_NOTES_RATER_HMAC_SECRET") ||
+      raise """
+      environment variable COMMUNITY_NOTES_RATER_HMAC_SECRET is missing.
+      Set it to a high-entropy secret used only for host-scoped Community Notes rater keys.
+      """
+
+  if byte_size(community_notes_rater_hmac_secret) < 32 do
+    raise "COMMUNITY_NOTES_RATER_HMAC_SECRET must contain at least 32 bytes"
+  end
+
+  config :ansible_relay,
+         :community_notes_rater_hmac_secret,
+         community_notes_rater_hmac_secret
+
   config :ansible_relay, :webauthn_rp_id, System.get_env("WEBAUTHN_RP_ID") || "elix.cool"
 
   config :ansible_relay,

@@ -29,6 +29,7 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   alias AnsibleAppview.{
     Cache,
+    ContextNotes,
     FollowGraph,
     HomeTimeline,
     Profiles,
@@ -39,7 +40,7 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   alias AnsibleAppview.Db.FeedItem
 
-  @content_types ~w(murmur note)
+  @content_types ~w(murmur note context_note)
   @relayable ~w(public unlisted)
 
   @doc "Folds a list of relay op maps. Returns {indexed_count, max_log_id}."
@@ -85,13 +86,23 @@ defmodule AnsibleAppview.Ingest.Folder do
     # signatures with reason-coded metrics" — is measurable.
     record_rejections(prepared)
 
+    target_revisions =
+      for {op, payload, {:ok, _expires}} <- prepared,
+          op["entity_type"] in ["murmur", "note", "thread", "post"],
+          op["op_type"] != "delete",
+          visibility_ok?(op["entity_type"], payload),
+          into: %{} do
+        {op["op_id"], {op, payload}}
+      end
+
     # Follow ops update the follow graph; profile ops update the actor directory.
     # Neither belongs in feed_items. Only verified ops fold.
-    for {op, payload, {:ok, _expires}} <- prepared do
+    for {op, payload, {:ok, expires}} <- prepared do
       case op["entity_type"] do
         "follow" -> fold_follow(op, payload)
         "follow_grant" -> fold_follow_grant(op, payload)
         "profile" -> fold_profile(op, payload)
+        "context_note" -> ContextNotes.fold(op, payload, expires, target_revisions)
         _ -> :noop
       end
     end
@@ -108,7 +119,7 @@ defmodule AnsibleAppview.Ingest.Folder do
       prepared
       |> Enum.filter(fn {op, payload, verification} ->
         match?({:ok, _}, verification) and
-          op["entity_type"] not in ["follow", "follow_grant", "profile"] and
+          op["entity_type"] not in ["follow", "follow_grant", "profile", "context_note"] and
           op["op_type"] != "delete" and
           visibility_ok?(op["entity_type"], payload)
       end)
@@ -445,6 +456,7 @@ defmodule AnsibleAppview.Ingest.Folder do
 
   defp visibility_ok?(entity_type, payload) when entity_type in @content_types do
     case payload do
+      %{"visibility" => "public"} when entity_type == "context_note" -> true
       %{"visibility" => v} when is_binary(v) -> v in @relayable
       # murmur has no visibility field; note requires one.
       _ -> entity_type == "murmur"

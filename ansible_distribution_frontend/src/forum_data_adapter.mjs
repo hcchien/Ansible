@@ -4,6 +4,7 @@ import {
   fetchBoardDeliberation,
   fetchBoardDeliberations,
   fetchBoardModerationState,
+  fetchContextNoteStatuses,
   fetchForumHostInfo,
   fetchHostedBoards,
   submitBoardPollVote,
@@ -23,6 +24,7 @@ import {
   fetchBoardFeed,
   fetchPublicProfile,
   fetchThreadFeed,
+  fetchCommunityNotes,
 } from './appview_client.mjs';
 import {
   createWebNotificationReadStore,
@@ -54,6 +56,14 @@ const PROHIBITED_CREDENTIAL_CLAIMS = new Set([
   'rawproviderassertion',
 ]);
 
+export function mergeCommunityNotes(notes = [], statuses = []) {
+  const byId = new Map(statuses.map((status) => [status?.note_id, status]));
+  return notes.map((note) => ({
+    ...note,
+    aggregate: byId.get(note?.note_id) ?? null,
+  }));
+}
+
 export function createForumDataAdapter({
   relayBaseUrl,
   // The AppView is a separate read service; external/federated content is
@@ -71,6 +81,7 @@ export function createForumDataAdapter({
     fetchWebModerationActions,
     submitWebModerationAction,
     fetchBoardModerationState,
+    fetchContextNoteStatuses,
     submitBoardPollVote,
     fetchBoardDeliberations,
     fetchBoardDeliberation,
@@ -88,6 +99,7 @@ export function createForumDataAdapter({
     fetchBoardFeed,
     fetchPublicProfile,
     fetchThreadFeed,
+    fetchCommunityNotes,
   },
 }) {
   const notificationReadStore = createWebNotificationReadStore({ storage });
@@ -306,9 +318,11 @@ export function createForumDataAdapter({
       };
     }
 
-    const [moderationState, threadFeedResponse] = await Promise.all([
+    const [moderationState, threadFeedResponse, notesResponse, statusesResponse] = await Promise.all([
       loadPublicModerationState(board.id),
       loadThreadFeed(threadId),
+      loadCommunityNotes(threadId),
+      loadContextNoteStatuses(threadId),
     ]);
     const threads = applyModerationStateToThreads(
       buildThreadsFromFeed(threadFeedResponse?.items ?? []),
@@ -323,6 +337,10 @@ export function createForumDataAdapter({
       thread,
       threads,
       moderationState,
+      communityNotes: mergeCommunityNotes(
+        notesResponse?.notes ?? [],
+        statusesResponse?.statuses ?? [],
+      ),
       externalContent: null,
       error: thread ? null : notFoundError('thread_not_found', { boardId, threadId }),
     };
@@ -357,6 +375,24 @@ export function createForumDataAdapter({
       });
     } catch {
       return { items: [] };
+    }
+  }
+
+  async function loadCommunityNotes(targetRef) {
+    if (typeof appViewClient.fetchCommunityNotes !== 'function') return { notes: [] };
+    try {
+      return await appViewClient.fetchCommunityNotes({ appViewBaseUrl, fetchImpl, targetRef });
+    } catch {
+      return { notes: [], unavailable: true };
+    }
+  }
+
+  async function loadContextNoteStatuses(targetRef) {
+    if (typeof forumHostClient.fetchContextNoteStatuses !== 'function') return { statuses: [] };
+    try {
+      return await forumHostClient.fetchContextNoteStatuses({ relayBaseUrl, fetchImpl, targetRef });
+    } catch {
+      return { statuses: [], unavailable: true };
     }
   }
 

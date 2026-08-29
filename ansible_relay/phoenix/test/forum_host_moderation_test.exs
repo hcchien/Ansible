@@ -528,8 +528,40 @@ defmodule AnsibleRelay.Web.ForumHostModerationTest do
              ],
              "locked_threads" => [
                %{"thread_id" => "thread-frozen", "reason_code" => "off_topic"}
-             ]
+             ],
+             "hidden_context_notes" => []
            }
+  end
+
+  test "context-note reports and host-scoped hiding are public and reason-coded" do
+    {board_id, _owner_did, owner_token} = moderator_context()
+    reporter = approved_session_token(["forum:read", "forum:post"])
+
+    report =
+      web_report(reporter, board_id, %{
+        "target_kind" => "context_note",
+        "target_ref" => "context-note-harmful"
+      })
+
+    assert report.status == 201
+    assert Jason.decode!(report.resp_body)["report"]["target_kind"] == "context_note"
+
+    action =
+      moderation_action(
+        owner_token,
+        board_id,
+        "hide_context_note",
+        "context-note-harmful",
+        %{"reason_code" => "harassment"}
+      )
+
+    assert action.status == 201
+
+    state = get_json("/api/v1/forum-host/boards/#{board_id}/moderation-state")
+
+    assert Jason.decode!(state.resp_body)["hidden_context_notes"] == [
+             %{"note_id" => "context-note-harmful", "reason_code" => "harassment"}
+           ]
   end
 
   test "GET /api/v1/forum-host/boards/:board_id/moderation-state rejects an unknown board" do

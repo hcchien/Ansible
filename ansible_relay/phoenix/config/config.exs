@@ -1,5 +1,9 @@
 import Config
 
+config :ansible_relay,
+       :community_notes_rater_hmac_secret,
+       "dev-only-community-notes-rater-hmac-secret-change-in-production"
+
 config :ansible_relay, ecto_repos: [AnsibleRelay.Repo]
 
 # Erlang clustering topologies. Empty = single node (default). runtime.exs builds

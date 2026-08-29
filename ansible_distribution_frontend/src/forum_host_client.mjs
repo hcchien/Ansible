@@ -129,6 +129,26 @@ export async function fetchBoardModerationState({ relayBaseUrl, fetchImpl, board
   );
 }
 
+export async function fetchContextNoteStatuses({ relayBaseUrl, fetchImpl, targetRef }) {
+  return relayClient({ relayBaseUrl, fetchImpl }).getJson(
+    `/api/v1/forum-host/community-notes/statuses?target_ref=${encodeURIComponent(targetRef)}`,
+  );
+}
+
+// The caller must produce the DID signature locally. A web session token never
+// substitutes for the rater's signature or grants the host signing authority.
+export async function submitSignedContextNoteRating({
+  relayBaseUrl,
+  fetchImpl,
+  noteId,
+  signedIntent,
+}) {
+  return relayClient({ relayBaseUrl, fetchImpl }).postJson(
+    `/api/v1/forum-host/community-notes/${encodeURIComponent(noteId)}/ratings`,
+    signedIntent,
+  );
+}
+
 // Poll votes are board-scoped. The server applies the exact same VC/capability
 // gate as posting and never returns a voter identity.
 export async function submitBoardPollVote({ relayBaseUrl, storage, fetchImpl, boardId, pollId, optionId }) {

@@ -19,6 +19,7 @@ defmodule AnsibleRelay.Application do
           AnsibleRelay.MessengerStore,
           AnsibleRelay.AbuseDetector,
           AnsibleRelay.ForumHost.ReportRateLimiter,
+          AnsibleRelay.CommunityNotes.RateLimiter,
           AnsibleRelay.OpStore,
           # Supervises the wake-push send tasks so a slow push endpoint can't
           # back up the WakeScheduler mailbox.

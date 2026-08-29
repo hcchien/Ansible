@@ -120,6 +120,61 @@ void main() {
     });
   });
 
+  group('CrdtOpBuilder Community Notes', () {
+    test('createContextNote pins an exact target and public sources', () {
+      final op = CrdtOpBuilder.createContextNote(
+        authorDid: 'did:key:alice',
+        entityId: 'context-note-1',
+        targetEntityType: 'murmur',
+        targetEntityId: 'murmur-1',
+        targetOpId: 'op-target-1',
+        targetContentHash: 'sha256:${List.filled(64, 'a').join()}',
+        body: 'Additional context',
+        sources: const [
+          {'url': 'https://example.test/source', 'title': 'Source'},
+        ],
+      );
+
+      expect(op.entityType, 'context_note');
+      expect(op.opType, 'insert');
+      final payload = CrdtOpBuilder.decodePayload(op.payload);
+      expect(payload['targetEntityId'], 'murmur-1');
+      expect(payload['targetOpId'], 'op-target-1');
+      expect(payload['visibility'], 'public');
+      expect((payload['sources'] as List), hasLength(1));
+    });
+
+    test('update keeps the target tuple and delete emits a tombstone', () {
+      final update = CrdtOpBuilder.updateContextNote(
+        authorDid: 'did:key:alice',
+        entityId: 'context-note-1',
+        targetEntityType: 'murmur',
+        targetEntityId: 'murmur-1',
+        targetOpId: 'op-target-1',
+        targetContentHash: 'sha256:${List.filled(64, 'b').join()}',
+        body: 'Revised context',
+        sources: const [
+          {'url': 'https://example.test/revised'},
+        ],
+      );
+      expect(update.opType, 'update');
+      expect(
+        CrdtOpBuilder.decodePayload(update.payload)['targetContentHash'],
+        'sha256:${List.filled(64, 'b').join()}',
+      );
+
+      final deletion = CrdtOpBuilder.deleteContextNote(
+        authorDid: 'did:key:alice',
+        entityId: 'context-note-1',
+      );
+      expect(deletion.opType, 'delete');
+      expect(
+        CrdtOpBuilder.decodePayload(deletion.payload).containsKey('deletedAt'),
+        isTrue,
+      );
+    });
+  });
+
   group('CrdtOpBuilder follow', () {
     test('createFollow builds a federated follow op keyed by target DID', () {
       final op = CrdtOpBuilder.createFollow(

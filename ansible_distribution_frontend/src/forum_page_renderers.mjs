@@ -582,6 +582,7 @@ function renderThreadDetail(viewModel, uiState = {}) {
           </header>
           <section class="thread-conversation" aria-labelledby="thread-replies-title">
             ${renderThreadOriginalPost(thread, context)}
+            ${renderCommunityNotes(viewModel.communityNotes ?? [], context)}
             ${renderThreadReplyComposer({ locked, context })}
             ${renderThreadReplies(posts, context)}
           </section>
@@ -590,6 +591,57 @@ function renderThreadDetail(viewModel, uiState = {}) {
       ${renderThreadContextRail(viewModel, board)}
     </section>
   `;
+}
+
+export function renderCommunityNotes(notes = [], context = {}) {
+  if (!Array.isArray(notes) || notes.length === 0) return '';
+  const cards = notes.map((note) => {
+    const status = String(note?.aggregate?.status ?? 'needs_more_ratings');
+    const statusLabel = {
+      helpful: '社群評價為有幫助',
+      not_helpful: '社群評價為沒有幫助',
+      disputed: '評價有分歧',
+      target_changed: '原內容已變更',
+      removed_by_host: '已由此 Forum Host 隱藏',
+      withdrawn: '作者已撤回',
+      needs_more_ratings: '尚待更多評分',
+    }[status] ?? '尚待更多評分';
+    const sources = Array.isArray(note?.sources) ? note.sources : [];
+    const sourceLinks = sources
+      .filter((source) => safeHttpUrl(source?.url))
+      .map((source) => `<a class="community-note-source" href="${escapeAttribute(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title || source.url)}</a>`)
+      .join('');
+    const ratingCount = Number(note?.aggregate?.rating_count ?? 0);
+    const scorer = note?.aggregate?.scorer_id
+      ? `${note.aggregate.scorer_id} v${note.aggregate.scorer_version ?? 1}`
+      : '';
+    const topReasons = Array.isArray(note?.aggregate?.top_tags)
+      ? note.aggregate.top_tags.map((entry) => entry?.tag).filter(Boolean).slice(0, 2).join(' · ')
+      : '';
+    const rateControl = context.authenticated && note?.author_did !== context.session?.subject
+      ? '<span class="community-note-rate-handoff">請使用持有 DID 的 Elix app 簽署評分</span>'
+      : '';
+    return `<article class="community-note-card" data-note-status="${escapeAttribute(status)}">
+      <header><strong>${escapeHtml(statusLabel)}</strong><span>${escapeHtml(String(ratingCount))} 次評分</span></header>
+      <p>${escapeHtml(note?.body ?? '')}</p>
+      <div class="community-note-sources">${sourceLinks}</div>
+      <footer>${scorer || topReasons ? `<span>${escapeHtml([scorer, topReasons].filter(Boolean).join(' · '))}</span>` : ''}${rateControl}</footer>
+    </article>`;
+  }).join('');
+  return `<section class="community-notes" aria-label="社群脈絡">
+    <div class="community-notes-heading"><h3>社群脈絡 · Community Notes</h3><p>由使用者簽署並附上來源；狀態是此 Forum Host 的聚合結果，不代表全域真相。</p></div>
+    ${cards}
+    <p class="community-note-privacy">簽章評分會私密送至此 Forum Host；公眾只會看到聚合數量、原因與狀態。</p>
+  </section>`;
+}
+
+function safeHttpUrl(value) {
+  try {
+    const parsed = new URL(String(value));
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function threadAuthor(thread) {

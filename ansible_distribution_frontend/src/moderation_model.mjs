@@ -17,9 +17,10 @@ export const MODERATION_ACTIONS = Object.freeze([
   'remove_post_from_board',
   'lock_thread',
   'unlock_thread',
+  'hide_context_note',
 ]);
 
-export const REPORT_TARGET_KINDS = Object.freeze(['thread', 'post']);
+export const REPORT_TARGET_KINDS = Object.freeze(['thread', 'post', 'context_note']);
 
 export function isValidReasonCode(code) {
   return REPORT_REASON_CODES.includes(code);
@@ -90,6 +91,10 @@ export function normalizeModerationState(state) {
       threadId: entry?.thread_id ?? '',
       reasonCode: entry?.reason_code ?? null,
     })),
+    hiddenContextNotes: (state?.hidden_context_notes ?? []).map((entry) => ({
+      noteId: entry?.note_id ?? '',
+      reasonCode: entry?.reason_code ?? null,
+    })),
   };
 }
 
@@ -114,6 +119,10 @@ export function groupReportsByBoard(reports = []) {
 export function actionsForTargetKind(targetKind) {
   if (targetKind === 'post') {
     return ['dismiss_report', 'remove_post_from_board'];
+  }
+
+  if (targetKind === 'context_note') {
+    return ['dismiss_report', 'hide_context_note'];
   }
 
   return ['dismiss_report', 'lock_thread', 'unlock_thread'];

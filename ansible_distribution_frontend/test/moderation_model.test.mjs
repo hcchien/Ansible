@@ -37,8 +37,9 @@ test('mirrors the relay reason-code and action enums', () => {
     'remove_post_from_board',
     'lock_thread',
     'unlock_thread',
+    'hide_context_note',
   ]);
-  assert.deepEqual(REPORT_TARGET_KINDS, ['thread', 'post']);
+  assert.deepEqual(REPORT_TARGET_KINDS, ['thread', 'post', 'context_note']);
   assert.equal(isValidReasonCode('spam'), true);
   assert.equal(isValidReasonCode('not_a_reason'), false);
 });
@@ -97,6 +98,7 @@ test('normalizes relay reports, actions, and moderation state', () => {
     {
       removedPosts: [{ targetRef: 'post-101', reasonCode: 'spam' }],
       lockedThreads: [{ threadId: 'thread-9', reasonCode: 'harassment' }],
+      hiddenContextNotes: [],
     },
   );
 });
@@ -124,6 +126,10 @@ test('offers post actions for posts and lock actions for threads', () => {
     'dismiss_report',
     'lock_thread',
     'unlock_thread',
+  ]);
+  assert.deepEqual(actionsForTargetKind('context_note'), [
+    'dismiss_report',
+    'hide_context_note',
   ]);
 });
 

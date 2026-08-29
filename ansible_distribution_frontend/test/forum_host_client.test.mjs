@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   createHostedWebThread,
+  fetchContextNoteStatuses,
   fetchBoardModerationState,
   fetchBoardDeliberations,
   fetchWebDeliberationResponses,
@@ -12,6 +13,7 @@ import {
   submitWebModerationAction,
   submitWebReport,
   submitWebDeliberationVote,
+  submitSignedContextNoteRating,
 } from '../src/forum_host_client.mjs';
 import { WEB_SESSION_TOKEN_KEY } from '../src/web_session_client.mjs';
 
@@ -236,6 +238,61 @@ test('reads the public board moderation state without credentials', async () => 
   );
   assert.equal(requests[0].init.credentials, 'omit');
   assert.deepEqual(state, { removed_posts: [], locked_threads: [] });
+});
+
+test('reads aggregate note statuses publicly without a rater identity', async () => {
+  const requests = [];
+  const response = await fetchContextNoteStatuses({
+    relayBaseUrl: 'http://localhost:4001',
+    targetRef: 'murmur:target 1',
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(200, {
+        statuses: [{ note_id: 'note-1', status: 'helpful', rating_count: 5 }],
+      });
+    },
+  });
+
+  assert.equal(
+    requests[0].url,
+    'http://localhost:4001/api/v1/forum-host/community-notes/statuses?target_ref=murmur%3Atarget%201',
+  );
+  assert.equal(requests[0].init.credentials, 'omit');
+  assert.deepEqual(response.statuses[0], {
+    note_id: 'note-1',
+    status: 'helpful',
+    rating_count: 5,
+  });
+});
+
+test('submits only a caller-produced DID-signed note rating intent', async () => {
+  const requests = [];
+  const signedIntent = {
+    type: 'io.trisaura.forum.rateContextNote',
+    version: 1,
+    intent_id: 'intent-1',
+    author_did: 'did:elix:alice',
+    note_id: 'note-1',
+    level: 'helpful',
+    tags: ['good_sources'],
+    signature: 'signed-by-local-did',
+  };
+  await submitSignedContextNoteRating({
+    relayBaseUrl: 'http://localhost:4001',
+    noteId: 'note-1',
+    signedIntent,
+    fetchImpl: async (url, init) => {
+      requests.push({ url, init });
+      return jsonResponse(201, { accepted: true });
+    },
+  });
+
+  assert.equal(
+    requests[0].url,
+    'http://localhost:4001/api/v1/forum-host/community-notes/note-1/ratings',
+  );
+  assert.equal(requests[0].init.credentials, 'omit');
+  assert.deepEqual(JSON.parse(requests[0].init.body), signedIntent);
 });
 
 test('reads deliberations publicly and keeps own responses on the web-session rail', async () => {

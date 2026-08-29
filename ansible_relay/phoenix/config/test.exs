@@ -20,6 +20,7 @@ config :ansible_relay, :allow_dev_zkp_proofs, true
 # Most controller fixtures exercise historical Ed25519 verification. Dedicated
 # policy tests override this to the production P-256-only setting.
 config :ansible_relay, :identity_write_algorithms, ["ed25519", "p256-sha256"]
+config :ansible_relay, :community_notes_rater_hmac_secret, "community-notes-test-secret"
 
 # The OpStore firehose settle guard keys off transaction xids, but the Ecto SQL
 # sandbox wraps each statement in a savepoint (subtransaction), so an inserted

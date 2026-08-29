@@ -414,6 +414,72 @@ class ReportSubmission {
   const ReportSubmission({required this.duplicate, required this.report});
 }
 
+/// Private-to-Host signed usefulness rating. The host keeps the rater DID and
+/// individual choice private; only aggregate status is read publicly.
+class RateContextNoteIntent {
+  static const type = 'io.trisaura.forum.rateContextNote';
+  static const version = 1;
+
+  final String intentId;
+  final String authorDid;
+  final String targetForumHost;
+  final String noteId;
+  final String level;
+  final List<String> tags;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final String signature;
+
+  const RateContextNoteIntent({
+    required this.intentId,
+    required this.authorDid,
+    required this.targetForumHost,
+    required this.noteId,
+    required this.level,
+    required this.tags,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.signature,
+  });
+
+  static Map<String, Object?> canonicalPayload({
+    required String intentId,
+    required String authorDid,
+    required String targetForumHost,
+    required String noteId,
+    required String level,
+    required List<String> tags,
+    required DateTime createdAt,
+    required DateTime expiresAt,
+  }) => {
+    'action': 'rate_context_note',
+    'author_did': authorDid,
+    'created_at': createdAt.toUtc().toIso8601String(),
+    'expires_at': expiresAt.toUtc().toIso8601String(),
+    'intent_id': intentId,
+    'level': level,
+    'note_id': noteId,
+    'tags': tags,
+    'target_forum_host': targetForumHost,
+    'type': type,
+    'version': version,
+  };
+
+  Map<String, Object?> toJson() => {
+    ...canonicalPayload(
+      intentId: intentId,
+      authorDid: authorDid,
+      targetForumHost: targetForumHost,
+      noteId: noteId,
+      level: level,
+      tags: tags,
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+    ),
+    'signature': signature,
+  };
+}
+
 /// One reason-coded moderation effect from a board's public moderation
 /// state: a removed post or a locked thread.
 class ModerationStateEntry {
@@ -434,10 +500,12 @@ class ModerationStateEntry {
 class BoardModerationState {
   final List<ModerationStateEntry> removedPosts;
   final List<ModerationStateEntry> lockedThreads;
+  final List<ModerationStateEntry> hiddenContextNotes;
 
   const BoardModerationState({
     required this.removedPosts,
     required this.lockedThreads,
+    this.hiddenContextNotes = const [],
   });
 }
 
@@ -933,6 +1001,59 @@ class ForumHostClient {
     );
   }
 
+  Future<Map<String, dynamic>> rateContextNote(
+    RateContextNoteIntent intent,
+  ) async {
+    final response = await _client
+        .post(
+          _endpoint(
+            '/api/v1/forum-host/community-notes/${Uri.encodeComponent(intent.noteId)}/ratings',
+          ),
+          headers: const {
+            'content-type': 'application/json',
+            ...AnsibleProtocol.headers,
+          },
+          body: jsonEncode(intent.toJson()),
+        )
+        .timeout(timeout);
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw _toException(
+        response.statusCode,
+        _decodeObjectOrEmpty(response.body),
+      );
+    }
+    return _decodeObject(response.body);
+  }
+
+  Future<Map<String, dynamic>> fetchContextNoteStatus(String noteId) async {
+    final body = await _getJson(
+      '/api/v1/forum-host/community-notes/${Uri.encodeComponent(noteId)}/status',
+    );
+    return Map<String, dynamic>.from(body['status'] as Map? ?? const {});
+  }
+
+  Future<List<Map<String, dynamic>>> fetchContextNoteStatuses(
+    String targetRef,
+  ) async {
+    final uri = _endpoint(
+      '/api/v1/forum-host/community-notes/statuses',
+    ).replace(queryParameters: {'target_ref': targetRef});
+    final response = await _client
+        .get(uri, headers: AnsibleProtocol.headers)
+        .timeout(timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _toException(
+        response.statusCode,
+        _decodeObjectOrEmpty(response.body),
+      );
+    }
+    final body = _decodeObject(response.body);
+    return (body['statuses'] as List? ?? const [])
+        .whereType<Map>()
+        .map((value) => Map<String, dynamic>.from(value))
+        .toList(growable: false);
+  }
+
   /// Fetches the public, reason-coded moderation state for a hosted board:
   /// removed-post tombstone refs and locked threads. Public by design — the
   /// affected author must be able to see the action and its reason
@@ -946,6 +1067,10 @@ class ForumHostClient {
     return BoardModerationState(
       removedPosts: _moderationEntries(body['removed_posts'], 'target_ref'),
       lockedThreads: _moderationEntries(body['locked_threads'], 'thread_id'),
+      hiddenContextNotes: _moderationEntries(
+        body['hidden_context_notes'],
+        'note_id',
+      ),
     );
   }
 

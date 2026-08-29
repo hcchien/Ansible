@@ -59,6 +59,8 @@ defmodule AnsibleRelay.Metrics do
       {:counter, "Abuse-limiter rejections by subject type (did/peer)."},
     "relay_wake_sends_total" => {:counter, "Push wake-scheduler sends by category."},
     "relay_reports_total" => {:counter, "Forum-host report intakes by rail."},
+    "community_notes_rating_rate_limited_total" =>
+      {:counter, "Community Note rating rate-limit rejections by reputation tier."},
     "relay_snapshot_generated_total" => {:counter, "Signed op-snapshots generated (Phase 2.3)."},
     "relay_snapshot_cursor" => {:gauge, "Cursor (log_id) of the latest published op-snapshot."},
     "identity_reanchor_total" => {:counter, "Identity re-anchors accepted, by reason."},

@@ -34,6 +34,7 @@ defmodule AnsibleRelay.ForumHost.Moderation do
 
   @lock_actions ~w(lock_thread unlock_thread)
   @remove_action "remove_post_from_board"
+  @hide_context_note_action "hide_context_note"
 
   # --- Reports ---
 
@@ -153,9 +154,24 @@ defmodule AnsibleRelay.ForumHost.Moderation do
         board_id
         |> lock_map()
         |> Enum.sort()
-        |> Enum.map(fn {thread_id, reason} -> %{thread_id: thread_id, reason_code: reason} end)
+        |> Enum.map(fn {thread_id, reason} -> %{thread_id: thread_id, reason_code: reason} end),
+      hidden_context_notes:
+        board_id
+        |> hidden_context_note_map()
+        |> Enum.sort()
+        |> Enum.map(fn {note_id, reason} -> %{note_id: note_id, reason_code: reason} end)
     }
   end
+
+  @doc "Host-scoped reason when a context note is hidden from one board."
+  def context_note_hidden_reason(_note_id, nil), do: nil
+
+  def context_note_hidden_reason(note_id, board_id)
+      when is_binary(note_id) and is_binary(board_id) do
+    hidden_context_note_map(board_id, [note_id])[note_id]
+  end
+
+  def context_note_hidden_reason(_note_id, _board_id), do: nil
 
   @doc """
   Rejects new posts into a locked thread. Called from the same chokepoints as
@@ -321,7 +337,7 @@ defmodule AnsibleRelay.ForumHost.Moderation do
   end
 
   defp transition_reports(%{action: action_name} = action, report)
-       when action_name in ["remove_post_from_board", "lock_thread"] do
+       when action_name in ["remove_post_from_board", "lock_thread", "hide_context_note"] do
     if report, do: set_report_status(report, "actioned")
 
     Repo.update_all(
@@ -444,6 +460,16 @@ defmodule AnsibleRelay.ForumHost.Moderation do
         "unlock_thread" -> Map.delete(acc, action.target_ref)
       end
     end)
+  end
+
+  defp hidden_context_note_map(board_id, target_refs \\ nil) do
+    ForumHostModerationAction
+    |> where([a], a.action == @hide_context_note_action)
+    |> maybe_board(board_id)
+    |> maybe_targets(target_refs)
+    |> order_by([a], asc: a.id)
+    |> Repo.all()
+    |> Map.new(fn action -> {action.target_ref, action.reason_code} end)
   end
 
   defp maybe_board(query, nil), do: query

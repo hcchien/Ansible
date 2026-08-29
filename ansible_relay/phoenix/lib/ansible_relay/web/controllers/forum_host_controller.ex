@@ -10,6 +10,7 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
   import Plug.Conn
   require Logger
   alias AnsibleRelay.{AbuseDetector, VpVerifier}
+  alias AnsibleRelay.CommunityNotes.Store, as: CommunityNotesStore
 
   alias AnsibleRelay.ForumHost.{
     BoardAccessPolicy,
@@ -500,6 +501,62 @@ defmodule AnsibleRelay.Web.Controllers.ForumHostController do
 
       {:error, error} ->
         send_json(conn, 422, %{error: error_string(error)})
+    end
+  end
+
+  # --- Community Notes (private signed ratings; public aggregate status) ---
+
+  def rate_context_note(conn, note_id, params) do
+    params = Map.put(params, "note_id", note_id)
+
+    case SignedIntent.verify_rate_context_note(params) do
+      {:ok, attrs} ->
+        case CommunityNotesStore.rate(attrs) do
+          {:ok, :stored, rating} ->
+            send_json(conn, 201, %{rating: rating})
+
+          {:ok, :duplicate, rating} ->
+            send_json(conn, 200, %{rating: rating, duplicate: true})
+
+          {:error, :rate_limited, detail} ->
+            send_json(conn, 429, %{error: "rate_limited", detail: detail})
+
+          {:error, error} ->
+            send_json(conn, 422, %{error: error_string(error)})
+        end
+
+      {:error, :audience_mismatch} ->
+        send_json(conn, 403, %{error: "audience_mismatch"})
+
+      {:error, error} when error in [:invalid_signature, :missing_signature, :unknown_did] ->
+        send_json(conn, 401, %{error: "invalid_signature"})
+
+      {:error, error} ->
+        send_json(conn, 422, %{error: error_string(error)})
+    end
+  end
+
+  def context_note_status(conn, note_id) do
+    case CommunityNotesStore.status(note_id) do
+      {:ok, status} ->
+        send_json(conn, 200, %{status: status})
+
+      {:error, :context_note_not_found} ->
+        send_json(conn, 404, %{error: "context_note_not_found"})
+
+      {:error, error} ->
+        send_json(conn, 422, %{error: error_string(error)})
+    end
+  end
+
+  def context_note_statuses(conn, params) do
+    case params["target_ref"] do
+      target_ref when is_binary(target_ref) and target_ref != "" ->
+        {:ok, statuses} = CommunityNotesStore.statuses_for_target(target_ref)
+        send_json(conn, 200, %{statuses: statuses})
+
+      _ ->
+        send_json(conn, 422, %{error: "missing_target_ref"})
     end
   end
 

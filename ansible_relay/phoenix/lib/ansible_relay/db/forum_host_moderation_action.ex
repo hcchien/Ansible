@@ -2,7 +2,7 @@ defmodule AnsibleRelay.Db.ForumHostModerationAction do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @actions ~w(dismiss_report remove_post_from_board lock_thread unlock_thread)
+  @actions ~w(dismiss_report remove_post_from_board lock_thread unlock_thread hide_context_note)
 
   @derive {Jason.Encoder,
            only: [

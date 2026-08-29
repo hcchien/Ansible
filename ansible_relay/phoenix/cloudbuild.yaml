@@ -122,6 +122,12 @@ steps:
         fi
 
         case "$$service" in
+          *-prod) rater_secret="relay-prod-community-notes-rater-hmac:latest" ;;
+          *-dev) rater_secret="relay-dev-community-notes-rater-hmac:latest" ;;
+          *) echo "refusing to infer Community Notes secret for service $$service" >&2; exit 1 ;;
+        esac
+
+        case "$$service" in
           *-prod)
             case "$$job:$$database_secret" in
               *-prod-migrate:relay-prod-database-url:*) ;;
@@ -134,7 +140,12 @@ steps:
         esac
 
         if gcloud run jobs describe "$$job" --region="${_REGION}" --project="$PROJECT_ID" >/dev/null 2>&1; then
-          gcloud run jobs update "$$job" --image="$$image" --region="${_REGION}" --project="$PROJECT_ID" --quiet
+          gcloud run jobs update "$$job" \
+            --image="$$image" \
+            --region="${_REGION}" \
+            --project="$PROJECT_ID" \
+            --update-secrets=COMMUNITY_NOTES_RATER_HMAC_SECRET=$$rater_secret \
+            --quiet
         else
           gcloud run jobs create "$$job" \
             --image="$$image" \
@@ -142,7 +153,7 @@ steps:
             --project="$PROJECT_ID" \
             --vpc-connector="${_VPC_CONNECTOR}" \
             --vpc-egress=private-ranges-only \
-            --set-secrets=DATABASE_URL=$$database_secret \
+            --set-secrets=DATABASE_URL=$$database_secret,COMMUNITY_NOTES_RATER_HMAC_SECRET=$$rater_secret \
             --command=/app/bin/ansible_relay \
             --args='eval,AnsibleRelay.Release.migrate()' \
             --quiet
@@ -152,18 +163,24 @@ steps:
 
   - id: deploy-dev
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
+    entrypoint: sh
     args:
-      - run
-      - deploy
-      - ${_SERVICE_NAME}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
-      - --region=${_REGION}
-      - --platform=managed
-      - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID
-      - --update-env-vars=ACTIVITY_PUB_DELIVERY_ENABLED=${_ACTIVITY_PUB_DELIVERY_ENABLED}
-      - --update-secrets=ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key-dev:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key-dev:latest
-      - --quiet
+      - -c
+      - |
+        set -eu
+        case "${_SERVICE_NAME}" in
+          *-prod) rater_secret="relay-prod-community-notes-rater-hmac:latest" ;;
+          *-dev) rater_secret="relay-dev-community-notes-rater-hmac:latest" ;;
+          *) echo "refusing to infer Community Notes secret for service ${_SERVICE_NAME}" >&2; exit 1 ;;
+        esac
+        gcloud run deploy "${_SERVICE_NAME}" \
+          --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA" \
+          --region="${_REGION}" \
+          --platform=managed \
+          --labels="managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID" \
+          --update-env-vars="ACTIVITY_PUB_DELIVERY_ENABLED=${_ACTIVITY_PUB_DELIVERY_ENABLED}" \
+          --update-secrets="ACTIVITY_PUB_PUBLIC_KEY_PEM=relay-activitypub-public-key-dev:latest,ACTIVITY_PUB_PRIVATE_KEY_PEM=relay-activitypub-private-key-dev:latest,COMMUNITY_NOTES_RATER_HMAC_SECRET=$$rater_secret" \
+          --quiet
     waitFor: ["migrate-dev"]
 
 images:

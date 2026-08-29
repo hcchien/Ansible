@@ -5,7 +5,7 @@ import {
   normalizeForumHost,
   normalizeHostedBoard,
 } from '../src/forum_data_adapter.mjs';
-import { renderPageBody } from '../src/forum_page_renderers.mjs';
+import { renderCommunityNotes, renderPageBody } from '../src/forum_page_renderers.mjs';
 import {
   createFrontendFlowHarness,
   runBoardRouteFlow,
@@ -25,6 +25,33 @@ const faqHtml = renderPageBody(buildAppViewModel({
   route: { pageId: PAGE_IDS.faq, params: {} },
   session: { authenticated: false, trustTier: 'anonymous', scopes: [] },
 }));
+
+const communityNotesHtml = renderCommunityNotes([
+  {
+    note_id: 'cn-1',
+    author_did: 'did:key:bob',
+    body: '<script>not executable</script> Additional context',
+    sources: [
+      { url: 'https://example.test/source?q=<unsafe>', title: 'Trusted <source>' },
+      { url: 'javascript:alert(1)', title: 'Unsafe source' },
+    ],
+    aggregate: {
+      status: 'helpful',
+      rating_count: 5,
+      scorer_id: 'elix_host_consensus',
+      scorer_version: 1,
+      top_tags: [{ tag: 'good_sources', count: 4 }],
+    },
+  },
+], { authenticated: true, session: { subject: 'did:key:alice' } });
+assert.match(communityNotesHtml, /社群評價為有幫助/);
+assert.match(communityNotesHtml, /elix_host_consensus v1/);
+assert.match(communityNotesHtml, /good_sources/);
+assert.match(communityNotesHtml, /請使用持有 DID 的 Elix app 簽署評分/);
+assert.doesNotMatch(communityNotesHtml, /data-action="rate-context-note"/);
+assert.match(communityNotesHtml, /rel="noopener noreferrer"/);
+assert.match(communityNotesHtml, /&lt;script&gt;not executable&lt;\/script&gt;/);
+assert.doesNotMatch(communityNotesHtml, /javascript:alert|Unsafe source|rater_did/);
 assert.match(faqHtml, /Elix 是什麼？/);
 assert.match(faqHtml, /我一定要做真人驗證嗎？/);
 assert.match(faqHtml, /為什麼需要同步？/);

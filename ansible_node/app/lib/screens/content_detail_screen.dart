@@ -16,6 +16,7 @@ import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
+import '../widgets/community_notes_panel.dart';
 import '../widgets/reaction_picker.dart';
 import '../widgets/report_dialog.dart';
 
@@ -556,6 +557,13 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 children: [
                   _head(context),
+                  CommunityNotesPanel(
+                    targetRef: widget.contentId,
+                    localDid: widget.localDid,
+                    opsDispatchService: widget.opsDispatchService,
+                    onFlushPendingOps: widget.onFlushPendingOps,
+                    appViewBaseUrl: _appViewBaseUrl,
+                  ),
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 28),

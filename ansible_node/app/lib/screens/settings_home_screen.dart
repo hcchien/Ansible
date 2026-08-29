@@ -13,6 +13,7 @@ import '../services/fediverse_preferences_controller.dart';
 import '../services/identity_anchor_service.dart';
 import '../services/hardware_key_upgrade_service.dart';
 import '../services/canonical_identity_store.dart';
+import '../services/community_notes_preferences.dart';
 import '../services/reading_preferences_controller.dart';
 import '../services/recovery_readiness_store.dart';
 import '../services/relay_anchor_client.dart';

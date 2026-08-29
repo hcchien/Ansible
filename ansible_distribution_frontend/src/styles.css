@@ -963,6 +963,25 @@ p {
   background: color-mix(in oklab, var(--surface) 88%, var(--accent) 12%);
 }
 
+.community-notes {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--rule, #d8d1c4);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper, #faf7f0) 92%, var(--accent, #a56d32));
+}
+
+.community-notes-heading h3,
+.community-notes-heading p { margin: 0 0 6px; }
+.community-notes-heading p,
+.community-note-privacy { font-size: .82rem; opacity: .74; }
+.community-note-card { padding: 12px 0; border-top: 1px solid var(--rule, #d8d1c4); }
+.community-note-card header,
+.community-note-card footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.community-note-card p { white-space: pre-wrap; }
+.community-note-sources { display: flex; flex-wrap: wrap; gap: 8px; }
+.community-note-source { overflow-wrap: anywhere; }
+
 .thread-signing-review p {
   margin: 6px 0 12px;
 }

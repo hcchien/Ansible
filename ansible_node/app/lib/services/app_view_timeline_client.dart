@@ -161,6 +161,32 @@ class AppViewTimelineClient {
     return _parse('thread', response);
   }
 
+  Future<CommunityNotesBundle> fetchCommunityNotes({
+    required String targetRef,
+    int limit = 20,
+  }) async {
+    final base = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse(
+      '$base/api/v1/context-notes',
+    ).replace(queryParameters: {'target_ref': targetRef, 'limit': '$limit'});
+    final response = await _client.get(uri, headers: AnsibleProtocol.headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('AppView context notes failed: ${response.statusCode}');
+    }
+
+    final body =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final targetRaw = body['target'];
+    final target = targetRaw is Map
+        ? CommunityNoteTarget.fromJson(Map<String, dynamic>.from(targetRaw))
+        : null;
+    final notes = (body['notes'] as List? ?? const [])
+        .whereType<Map>()
+        .map((raw) => CommunityNote.fromJson(Map<String, dynamic>.from(raw)))
+        .toList(growable: false);
+    return CommunityNotesBundle(target: target, notes: notes);
+  }
+
   AppViewTimelinePage _parse(String label, http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('AppView $label failed: ${response.statusCode}');
@@ -202,6 +228,80 @@ class AppViewTimelineClient {
       hasMore: body['has_more'] as bool? ?? false,
     );
   }
+}
+
+class CommunityNotesBundle {
+  const CommunityNotesBundle({required this.target, required this.notes});
+  final CommunityNoteTarget? target;
+  final List<CommunityNote> notes;
+}
+
+class CommunityNoteTarget {
+  const CommunityNoteTarget({
+    required this.entityType,
+    required this.entityId,
+    required this.opId,
+    required this.contentHash,
+  });
+
+  final String entityType;
+  final String entityId;
+  final String opId;
+  final String contentHash;
+
+  factory CommunityNoteTarget.fromJson(Map<String, dynamic> json) =>
+      CommunityNoteTarget(
+        entityType: json['entity_type'] as String? ?? '',
+        entityId: json['entity_id'] as String? ?? '',
+        opId: json['op_id'] as String? ?? '',
+        contentHash: json['content_hash'] as String? ?? '',
+      );
+}
+
+class CommunityNote {
+  const CommunityNote({
+    required this.noteId,
+    required this.authorDid,
+    required this.body,
+    required this.sources,
+    required this.target,
+  });
+
+  final String noteId;
+  final String authorDid;
+  final String body;
+  final List<CommunityNoteSource> sources;
+  final CommunityNoteTarget target;
+
+  factory CommunityNote.fromJson(Map<String, dynamic> json) => CommunityNote(
+    noteId: json['note_id'] as String? ?? '',
+    authorDid: json['author_did'] as String? ?? '',
+    body: json['body'] as String? ?? '',
+    sources: (json['sources'] as List? ?? const [])
+        .whereType<Map>()
+        .map(
+          (raw) => CommunityNoteSource.fromJson(Map<String, dynamic>.from(raw)),
+        )
+        .toList(growable: false),
+    target: CommunityNoteTarget(
+      entityType: json['target_entity_type'] as String? ?? '',
+      entityId: json['target_entity_id'] as String? ?? '',
+      opId: json['target_op_id'] as String? ?? '',
+      contentHash: json['target_content_hash'] as String? ?? '',
+    ),
+  );
+}
+
+class CommunityNoteSource {
+  const CommunityNoteSource({required this.url, this.title});
+  final String url;
+  final String? title;
+
+  factory CommunityNoteSource.fromJson(Map<String, dynamic> json) =>
+      CommunityNoteSource(
+        url: json['url'] as String? ?? '',
+        title: json['title'] as String?,
+      );
 }
 
 /// A single curated external (fediverse) item surfaced into a board. It is

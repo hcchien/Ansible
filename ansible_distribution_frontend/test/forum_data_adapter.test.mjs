@@ -1001,6 +1001,7 @@ test('loads the public board moderation state alongside the board page', async (
   assert.deepEqual(page.moderationState, {
     removedPosts: [{ targetRef: 'post-101', reasonCode: 'spam' }],
     lockedThreads: [{ threadId: 'thread-9', reasonCode: 'harassment' }],
+    hiddenContextNotes: [],
   });
 });
 

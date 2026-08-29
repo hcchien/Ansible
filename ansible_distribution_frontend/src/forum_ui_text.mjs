@@ -33,11 +33,13 @@ const MODERATION_ACTION_LABELS = Object.freeze({
   remove_post_from_board: 'moderation.action.removePostFromBoard',
   lock_thread: 'moderation.action.lockThread',
   unlock_thread: 'moderation.action.unlockThread',
+  hide_context_note: 'moderation.action.hideContextNote',
 });
 
 const TARGET_KIND_LABELS = Object.freeze({
   post: 'moderation.target.post',
   thread: 'moderation.target.thread',
+  context_note: 'moderation.target.contextNote',
 });
 
 export function shortIdentity(value) {

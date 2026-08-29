@@ -25,9 +25,12 @@ class _InterfaceSettingsPanel extends StatefulWidget {
 }
 
 class _InterfaceSettingsPanelState extends State<_InterfaceSettingsPanel> {
+  static const _communityNotesStore =
+      SharedPreferencesCommunityNotesPreferencesStore();
   late ElixScreenStyle _personalStyle;
   late ElixScreenStyle _forumStyle;
   late ElixBoardMotion _motion;
+  bool _showCommunityNotes = true;
 
   @override
   void initState() {
@@ -35,6 +38,12 @@ class _InterfaceSettingsPanelState extends State<_InterfaceSettingsPanel> {
     _personalStyle = widget.personalStyle;
     _forumStyle = widget.forumStyle;
     _motion = widget.motion;
+    _loadCommunityNotesPreference();
+  }
+
+  Future<void> _loadCommunityNotesPreference() async {
+    final value = await _communityNotesStore.showCommunityNotes();
+    if (mounted) setState(() => _showCommunityNotes = value);
   }
 
   @override
@@ -128,6 +137,36 @@ class _InterfaceSettingsPanelState extends State<_InterfaceSettingsPanel> {
                   },
                 ),
             ],
+          ),
+          const SizedBox(height: 18),
+          SwitchListTile.adaptive(
+            key: const Key('settings_show_community_notes_switch'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              context.uiCopy(zh: '顯示社群脈絡', en: 'Show Community Notes'),
+              style: const TextStyle(
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 16,
+                color: AnsibleDesign.ink,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(
+              context.uiCopy(
+                zh: '只影響這台裝置，預設開啟。',
+                en: 'Applies only to this device and is on by default.',
+              ),
+              style: const TextStyle(
+                fontFamily: AnsibleDesign.serif,
+                fontSize: 13,
+                color: AnsibleDesign.inkMuted,
+              ),
+            ),
+            value: _showCommunityNotes,
+            onChanged: (value) async {
+              setState(() => _showCommunityNotes = value);
+              await _communityNotesStore.setShowCommunityNotes(value);
+            },
           ),
         ],
       ),

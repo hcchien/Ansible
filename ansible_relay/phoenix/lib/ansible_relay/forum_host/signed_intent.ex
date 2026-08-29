@@ -18,6 +18,9 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   @report_content_action "report_content"
   @report_content_version 1
   @report_required_fields ~w(target_kind target_ref board_id reason_code)
+  @rate_context_note_type "io.trisaura.forum.rateContextNote"
+  @rate_context_note_action "rate_context_note"
+  @rate_context_note_version 1
   @poll_vote_type "io.trisaura.forum.castPollVote"
   @poll_vote_action "cast_poll_vote"
   @deliberation_intents %{
@@ -182,6 +185,45 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   def verify_report_content(_params), do: {:error, :invalid_intent}
+
+  @doc "Verify a private-to-Host Community Note usefulness rating intent."
+  def verify_rate_context_note(params) when is_map(params) do
+    with :ok <- require_string(params, "signature", :missing_signature),
+         :ok <- require_string(params, "author_did", :missing_author_did),
+         :ok <- require_string(params, "intent_id", :missing_intent_id),
+         :ok <- require_string(params, "target_forum_host", :missing_target_forum_host),
+         :ok <- require_string(params, "created_at", :missing_created_at),
+         :ok <- require_string(params, "expires_at", :missing_expiry),
+         :ok <- require_string(params, "note_id", :missing_note_id),
+         :ok <- require_type(params, @rate_context_note_type),
+         :ok <- require_version(params, @rate_context_note_version),
+         :ok <- require_action(params, @rate_context_note_action),
+         :ok <- require_target_host(params["target_forum_host"]),
+         :ok <- require_timestamp_window(params),
+         :ok <- require_rating_payload(params),
+         :ok <- known_did(params["author_did"]),
+         true <-
+           IdentityCache.verify_signature(
+             params["author_did"],
+             canonical_json(params),
+             params["signature"]
+           ) do
+      {:ok,
+       %{
+         intent_id: params["intent_id"],
+         rater_did: params["author_did"],
+         note_id: params["note_id"],
+         level: params["level"],
+         tags: Enum.uniq(params["tags"]),
+         signed_intent: params
+       }}
+    else
+      false -> {:error, :invalid_signature}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def verify_rate_context_note(_params), do: {:error, :invalid_intent}
 
   def verify_poll_vote(params) when is_map(params) do
     with :ok <- require_string(params, "signature", :missing_signature),
@@ -392,6 +434,19 @@ defmodule AnsibleRelay.ForumHost.SignedIntent do
   end
 
   defp require_report_payload(_params), do: {:error, :invalid_report}
+
+  defp require_rating_payload(%{"level" => level, "tags" => tags})
+       when level in ["helpful", "somewhat_helpful", "not_helpful"] and is_list(tags) do
+    allowed = AnsibleRelay.CommunityNotes.Store.allowed_tags()
+
+    if tags != [] and Enum.all?(tags, &(is_binary(&1) and &1 in allowed)) do
+      :ok
+    else
+      {:error, :invalid_rating}
+    end
+  end
+
+  defp require_rating_payload(_params), do: {:error, :invalid_rating}
 
   defp encode_canonical(value) when is_map(value) do
     value

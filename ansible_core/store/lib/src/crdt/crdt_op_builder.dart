@@ -361,6 +361,121 @@ class CrdtOpBuilder {
     );
   }
 
+  /// Publishes a source-backed Community Note pinned to one exact public
+  /// content revision. Ratings are not ops; they use the private Forum Host
+  /// signed-intent rail.
+  static OpsQueueEntry createContextNote({
+    required String authorDid,
+    required String entityId,
+    required String targetEntityType,
+    required String targetEntityId,
+    required String targetOpId,
+    required String targetContentHash,
+    required String body,
+    required List<Map<String, String>> sources,
+    String? boardId,
+  }) {
+    return _contextNoteOp(
+      authorDid: authorDid,
+      entityId: entityId,
+      opType: 'insert',
+      targetEntityType: targetEntityType,
+      targetEntityId: targetEntityId,
+      targetOpId: targetOpId,
+      targetContentHash: targetContentHash,
+      body: body,
+      sources: sources,
+      boardId: boardId,
+    );
+  }
+
+  /// Updates only the explanation/sources. The immutable target tuple must be
+  /// supplied unchanged so Relay and AppView can reject retargeting.
+  static OpsQueueEntry updateContextNote({
+    required String authorDid,
+    required String entityId,
+    required String targetEntityType,
+    required String targetEntityId,
+    required String targetOpId,
+    required String targetContentHash,
+    required String body,
+    required List<Map<String, String>> sources,
+    String? boardId,
+  }) {
+    return _contextNoteOp(
+      authorDid: authorDid,
+      entityId: entityId,
+      opType: 'update',
+      targetEntityType: targetEntityType,
+      targetEntityId: targetEntityId,
+      targetOpId: targetOpId,
+      targetContentHash: targetContentHash,
+      body: body,
+      sources: sources,
+      boardId: boardId,
+    );
+  }
+
+  static OpsQueueEntry deleteContextNote({
+    required String authorDid,
+    required String entityId,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'deletedAt': createdAt.toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'context_note',
+      entityId: entityId,
+      opType: 'delete',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: createdAt,
+    );
+  }
+
+  static OpsQueueEntry _contextNoteOp({
+    required String authorDid,
+    required String entityId,
+    required String opType,
+    required String targetEntityType,
+    required String targetEntityId,
+    required String targetOpId,
+    required String targetContentHash,
+    required String body,
+    required List<Map<String, String>> sources,
+    String? boardId,
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now();
+    final payload = _encodeJsonPayload({
+      'targetEntityType': targetEntityType,
+      'targetEntityId': targetEntityId,
+      'targetOpId': targetOpId,
+      'targetContentHash': targetContentHash,
+      if (boardId != null && boardId.isNotEmpty) 'boardId': boardId,
+      'body': body,
+      'sources': sources,
+      'visibility': 'public',
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: authorDid,
+      entityType: 'context_note',
+      entityId: entityId,
+      opType: opType,
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: createdAt,
+    );
+  }
+
   /// Build an Op for editing a post (CRDT update delta).
   static OpsQueueEntry updatePost({
     required String authorDid,

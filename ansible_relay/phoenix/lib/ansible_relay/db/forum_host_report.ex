@@ -2,7 +2,7 @@ defmodule AnsibleRelay.Db.ForumHostReport do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @target_kinds ~w(post thread)
+  @target_kinds ~w(post thread context_note)
   @statuses ~w(open actioned dismissed)
 
   # `note` is included because reports are only ever serialized back to the

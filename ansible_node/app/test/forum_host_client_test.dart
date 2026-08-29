@@ -672,6 +672,70 @@ void main() {
       expect(forumHostCanonicalJson(export), contains('"board_id":"board-1"'));
     },
   );
+
+  test(
+    'rateContextNote sends a private signed intent and accepts replay',
+    () async {
+      final createdAt = DateTime.utc(2026, 8, 30, 1);
+      final intent = RateContextNoteIntent(
+        intentId: 'rating-1',
+        authorDid: 'did:key:alice',
+        targetForumHost: 'https://host.example',
+        noteId: 'context-note-1',
+        level: 'helpful',
+        tags: const ['good_sources'],
+        createdAt: createdAt,
+        expiresAt: createdAt.add(const Duration(minutes: 5)),
+        signature: 'signed-rating',
+      );
+      final client = ForumHostClient(
+        baseUrl: 'https://host.example',
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(
+            request.url.path,
+            '/api/v1/forum-host/community-notes/context-note-1/ratings',
+          );
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['action'], 'rate_context_note');
+          expect(body['tags'], ['good_sources']);
+          expect(body['signature'], 'signed-rating');
+          return http.Response(
+            jsonEncode({'duplicate': true, 'rating': {}}),
+            200,
+          );
+        }),
+      );
+
+      final result = await client.rateContextNote(intent);
+      expect(result['duplicate'], isTrue);
+    },
+  );
+
+  test('fetchContextNoteStatuses exposes aggregate data only', () async {
+    final client = ForumHostClient(
+      baseUrl: 'https://host.example',
+      client: MockClient((request) async {
+        expect(request.url.queryParameters['target_ref'], 'murmur-1');
+        return http.Response(
+          jsonEncode({
+            'statuses': [
+              {
+                'note_id': 'context-note-1',
+                'status': 'helpful',
+                'rating_count': 5,
+              },
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+
+    final statuses = await client.fetchContextNoteStatuses('murmur-1');
+    expect(statuses.single['status'], 'helpful');
+    expect(statuses.single.containsKey('rater_did'), isFalse);
+  });
 }
 
 CreateHostedBoardIntent _testCreateBoardIntent() {

@@ -5,6 +5,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   alias AnsibleRelay.{
     AbuseDetector,
+    CommunityNotes.ContextNote,
     FollowAccess,
     IdentityCache,
     IdentityWritePolicy,
@@ -21,14 +22,14 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   }
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
-  @valid_entity_types ~w(board thread post reaction murmur note follow follow_grant profile comment)
+  @valid_entity_types ~w(board thread post reaction murmur note follow follow_grant profile comment context_note)
   @valid_op_types ~w(insert update delete crdt_merge)
   # Entity kinds whose creation is gated by a hosted board's
   # posting_policy["min_post_tier"] (threads and replies alike).
   @gated_entity_types ~w(thread post)
   # Standalone content kinds (no board/thread) whose public/unlisted visibility is
   # checked as defense-in-depth before relaying. Primary enforcement is app-side.
-  @content_entity_types ~w(murmur note)
+  @content_entity_types ~w(murmur note context_note)
   @relayable_visibilities ~w(public unlisted followers)
 
   # POST /api/v1/ops
@@ -37,7 +38,13 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          :ok <- validate_enum(params["entity_type"], @valid_entity_types, "entity_type"),
          :ok <- validate_enum(params["op_type"], @valid_op_types, "op_type"),
          :ok <- validate_schema_version(params["schema_version"]),
-         :ok <- check_content_visibility(params["entity_type"], params["payload"]),
+         :ok <-
+           check_content_visibility(
+             params["entity_type"],
+             params["op_type"],
+             params["payload"]
+           ),
+         :ok <- ContextNote.validate_op(params),
          {:ok, reaction_target} <-
            reaction_target(params["entity_type"], params["op_type"], params["payload"]),
          author_did = params["author_did"],
@@ -137,6 +144,16 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
       {:error, :private_content} ->
         send_json(conn, 422, %{error: "private_content_not_relayable"})
 
+      {:error, reason}
+      when reason in [
+             :invalid_context_note_payload,
+             :context_note_target_not_found,
+             :context_note_target_mismatch,
+             :context_note_target_not_public,
+             :context_note_retarget_forbidden
+           ] ->
+        send_json(conn, 422, %{error: Atom.to_string(reason)})
+
       {:error, reason} when reason in [:invalid_follow_request, :invalid_follow_grant] ->
         send_json(conn, 422, %{error: Atom.to_string(reason)})
 
@@ -220,7 +237,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   defp check_original_author(entity_type, entity_id, op_type, author_did)
        when op_type in ["update", "delete"] and
-              entity_type in ["thread", "post", "comment", "reaction"] do
+              entity_type in ["thread", "post", "comment", "reaction", "context_note"] do
     case OpStore.create_op_author(entity_type, entity_id) do
       ^author_did ->
         :ok
@@ -440,11 +457,14 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   defp validate_schema_version(version), do: {:error, :invalid_schema_version, version}
 
-  # Defense-in-depth: standalone content (murmur/note) may only be relayed when
+  # Defense-in-depth: standalone content (murmur/note/context_note) may only be relayed when
   # public/unlisted. Notes must carry an explicit relayable visibility; murmurs
   # have no visibility field and are accepted unless an explicit private marker is
   # present. Primary enforcement is at the author's app publish boundary.
-  defp check_content_visibility(entity_type, payload) when entity_type in @content_entity_types do
+  defp check_content_visibility("context_note", "delete", _payload), do: :ok
+
+  defp check_content_visibility(entity_type, _op_type, payload)
+       when entity_type in @content_entity_types do
     case decode_payload(payload) do
       {:ok, %{} = map} ->
         case Map.get(map, "visibility") do
@@ -452,15 +472,19 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
             if vis in @relayable_visibilities, do: :ok, else: {:error, :private_content}
 
           nil ->
-            if entity_type == "note", do: {:error, :private_content}, else: :ok
+            if entity_type in ["note", "context_note"],
+              do: {:error, :private_content},
+              else: :ok
         end
 
       _ ->
-        if entity_type == "note", do: {:error, :private_content}, else: :ok
+        if entity_type in ["note", "context_note"],
+          do: {:error, :private_content},
+          else: :ok
     end
   end
 
-  defp check_content_visibility(_entity_type, _payload), do: :ok
+  defp check_content_visibility(_entity_type, _op_type, _payload), do: :ok
 
   defp decode_payload(payload) when is_map(payload), do: {:ok, payload}
 
@@ -535,7 +559,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   end
 
   defp append_op(%{entity_type: entity_type, op_type: op_type} = op)
-       when entity_type in ["thread", "post", "comment", "reaction"] and
+       when entity_type in ["thread", "post", "comment", "reaction", "context_note"] and
               op_type in ["update", "delete"],
        do: OpStore.append_author_mutation(op)
 
