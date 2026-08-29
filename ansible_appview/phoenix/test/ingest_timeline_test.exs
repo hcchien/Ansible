@@ -35,7 +35,14 @@ defmodule AnsibleAppview.IngestTimelineTest do
       :crypto.sign(:eddsa, :none, SigningPayload.build(op), [priv, :ed25519])
       |> Base.encode16(case: :lower)
 
-    Map.put(op, "signature", signature)
+    op
+    |> Map.put("signature", signature)
+    |> then(fn signed ->
+      case Keyword.get(opts, :canonical_author_did) do
+        nil -> signed
+        canonical -> Map.put(signed, "canonical_author_did", canonical)
+      end
+    end)
   end
 
   test "folds valid public ops, skips invalid sig and private, serves timeline" do
@@ -284,10 +291,26 @@ defmodule AnsibleAppview.IngestTimelineTest do
           "targetType" => "post",
           "reactionType" => "thumbsUp"
         }
+      ),
+      # A second device still signing with a migrated legacy DID must not add
+      # another count for the same canonical person.
+      signed_op(
+        log_id: 108,
+        entity_id: "reaction-engagement-migrated-duplicate",
+        author_did: "did:key:reactor-1-legacy",
+        canonical_author_did: "did:key:reactor-1",
+        entity_type: "reaction",
+        pub: pub,
+        priv: priv,
+        payload: %{
+          "targetId" => "content-engagement",
+          "targetType" => "thread",
+          "reactionType" => "thumbsUp"
+        }
       )
     ]
 
-    {7, 107} = Folder.apply_ops(ops)
+    {8, 108} = Folder.apply_ops(ops)
 
     item =
       Timeline.for_authors(["did:key:engagement-author"], nil, 50)

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ansible_domain/ansible_domain.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
@@ -17,6 +18,9 @@ import '../widgets/ansible_screen_chrome.dart';
 import '../widgets/author_label.dart';
 import '../widgets/reaction_picker.dart';
 import '../widgets/report_dialog.dart';
+
+typedef ContentThreadFetcher =
+    Future<AppViewTimelinePage> Function({required String threadId});
 
 /// Detail view for a standalone content item (murmur/note): the full content as
 /// the head, plus a comment thread. Comments are `post` ops keyed by the
@@ -36,6 +40,7 @@ class ContentDetailScreen extends StatefulWidget {
     this.title,
     this.timeAgo,
     this.appViewBaseUrl,
+    this.threadFetcher,
     this.screenStyle = ElixScreenStyle.paper,
     this.safetyActions,
   });
@@ -52,6 +57,7 @@ class ContentDetailScreen extends StatefulWidget {
 
   /// Defaults to the build's configured AppView; injectable for tests.
   final String? appViewBaseUrl;
+  final ContentThreadFetcher? threadFetcher;
 
   /// Follows the originating board/feed's Paper/Ink choice.
   final ElixScreenStyle screenStyle;
@@ -73,6 +79,8 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
   ReactionType? _selectedReaction;
   bool _isReacting = false;
   int _likeCount = 0;
+  final Set<String> _reactionUsers = {};
+  final Map<String, String> _reactionAliases = {};
 
   bool get _dark {
     switch (widget.screenStyle) {
@@ -109,8 +117,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     super.initState();
     _postRepo = DriftPostRepository(widget.db);
     _reactionRepo = DriftReactionRepository(widget.db);
-    _load();
-    unawaited(_loadReactions());
+    unawaited(_load());
   }
 
   @override
@@ -120,15 +127,16 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _loadReactions() async {
+  Future<void> _loadLocalReactions() async {
     final reactions = await _reactionRepo.listByTarget(
       TargetType.thread.name,
       widget.contentId,
     );
     var reacted = false;
-    final reactingUsers = <String>{};
+    _reactionUsers.clear();
+    _reactionAliases.clear();
     for (final r in reactions) {
-      reactingUsers.add(r.userId);
+      _reactionUsers.add(r.userId);
       if (r.userId == widget.localDid) {
         reacted = true;
         _selectedReaction = r.reactionType;
@@ -136,7 +144,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     }
     if (mounted) {
       setState(() {
-        _likeCount = reactingUsers.length;
+        _likeCount = _reactionUsers.length;
         _reacted = reacted;
       });
     }
@@ -169,9 +177,11 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           );
           unawaited(widget.onFlushPendingOps());
           setState(() {
+            _reactionUsers.remove(widget.localDid);
+            _reactionUsers.remove(_reactionAliases[widget.localDid]);
             _reacted = false;
             _selectedReaction = null;
-            _likeCount = (_likeCount - 1).clamp(0, 1 << 30);
+            _likeCount = _reactionUsers.length;
           });
         }
       } else if (existing != null) {
@@ -219,9 +229,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
         );
         unawaited(widget.onFlushPendingOps());
         setState(() {
+          _reactionUsers.add(
+            _reactionAliases[widget.localDid] ?? widget.localDid,
+          );
           _reacted = true;
           _selectedReaction = next;
-          _likeCount += 1;
+          _likeCount = _reactionUsers.length;
         });
       }
     } finally {
@@ -236,6 +249,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
     // remote comments not yet synced locally.
     final byId = <String, _Comment>{};
     final blockedAuthors = await _safetyActions.blockedAuthors(widget.localDid);
+    await _loadLocalReactions();
     for (final p in await _postRepo.list(threadId: widget.contentId)) {
       if (blockedAuthors.contains(p.authorId)) continue;
       byId[p.id] = _Comment(
@@ -252,12 +266,30 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
       });
     }
 
-    if (_appViewBaseUrl.isEmpty) return;
+    if (_appViewBaseUrl.isEmpty && widget.threadFetcher == null) return;
     try {
-      final page = await AppViewTimelineClient(
-        baseUrl: _appViewBaseUrl,
-      ).fetchThread(threadId: widget.contentId);
-      for (final i in page.items.where((i) => i.entityType == 'comment')) {
+      final page = widget.threadFetcher != null
+          ? await widget.threadFetcher!(threadId: widget.contentId)
+          : await AppViewTimelineClient(
+              baseUrl: _appViewBaseUrl,
+            ).fetchThread(threadId: widget.contentId);
+      for (final i in page.items) {
+        if (i.entityType == 'reaction') {
+          final targetId = i.payload['targetId']?.toString();
+          final targetType = i.payload['targetType']?.toString();
+          if (targetId == widget.contentId && targetType == 'thread') {
+            final canonicalDid = i.canonicalAuthorDid?.trim();
+            final identity = canonicalDid == null || canonicalDid.isEmpty
+                ? i.authorDid
+                : canonicalDid;
+            _reactionAliases[i.authorDid] = identity;
+            _reactionUsers
+              ..remove(i.authorDid)
+              ..add(identity);
+          }
+          continue;
+        }
+        if (i.entityType != 'comment') continue;
         if (blockedAuthors.contains(i.authorDid)) continue;
         byId.putIfAbsent(
           i.entityId,
@@ -269,7 +301,12 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
           ),
         );
       }
-      if (mounted) setState(() => _comments = _sorted(byId.values));
+      if (mounted) {
+        setState(() {
+          _comments = _sorted(byId.values);
+          _likeCount = _reactionUsers.length;
+        });
+      }
     } catch (_) {
       // AppView unavailable (e.g. endpoint not deployed) — local list stands.
     }
@@ -654,6 +691,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
             children: [
               _detailAction(
                 _reacted ? Icons.favorite : Icons.favorite_border,
+                key: const Key('content_detail_reactions'),
                 count: _likeCount,
                 active: _reacted,
                 onTap: _toggleReaction,
@@ -661,6 +699,7 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
               const SizedBox(width: 26),
               _detailAction(
                 Icons.mode_comment_outlined,
+                key: const Key('content_detail_comments'),
                 count: _comments.length,
                 onTap: () => _composerFocus.requestFocus(),
               ),
@@ -708,12 +747,14 @@ class _ContentDetailScreenState extends State<ContentDetailScreen> {
 
   Widget _detailAction(
     IconData icon, {
+    Key? key,
     int? count,
     bool active = false,
     VoidCallback? onTap,
   }) {
     final tint = active ? _accent : _muted;
     return GestureDetector(
+      key: key,
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Row(

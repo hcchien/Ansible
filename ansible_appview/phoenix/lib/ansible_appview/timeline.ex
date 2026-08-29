@@ -446,7 +446,10 @@ defmodule AnsibleAppview.Timeline do
             group_by: fragment("?->>'targetId'", f.payload),
             select: {
               fragment("?->>'targetId'", f.payload),
-              count(f.author_did, :distinct)
+              count(
+                fragment("COALESCE(?, ?)", f.canonical_author_did, f.author_did),
+                :distinct
+              )
             }
           )
         )
@@ -464,7 +467,10 @@ defmodule AnsibleAppview.Timeline do
             group_by: fragment("?->>'targetId'", f.payload),
             select: {
               fragment("?->>'targetId'", f.payload),
-              count(f.author_did, :distinct)
+              count(
+                fragment("COALESCE(?, ?)", f.canonical_author_did, f.author_did),
+                :distinct
+              )
             }
           )
         )

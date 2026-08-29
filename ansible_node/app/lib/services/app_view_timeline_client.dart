@@ -175,6 +175,7 @@ class AppViewTimelineClient {
             entityType: m['entity_type'] as String? ?? '',
             entityId: m['entity_id'] as String? ?? '',
             authorDid: m['author_did'] as String? ?? '',
+            canonicalAuthorDid: m['canonical_author_did'] as String?,
             authorDisplayName:
                 m['author_display_name'] as String? ??
                 m['authorDisplayName'] as String?,

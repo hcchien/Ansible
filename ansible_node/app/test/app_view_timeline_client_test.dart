@@ -24,7 +24,8 @@ void main() {
                 {
                   'log_id': 9,
                   'op_id': 'op-1',
-                  'author_did': 'did:key:alice',
+                  'author_did': 'did:key:alice-legacy',
+                  'canonical_author_did': 'did:key:alice',
                   'author_display_name': 'Alice',
                   'author_handle': 'alice.elix.cool',
                   'entity_type': 'murmur',
@@ -69,6 +70,8 @@ void main() {
       expect(sentBody?['limit'], 50);
       expect(page.items, hasLength(2));
       expect(page.items.first.entityType, 'murmur');
+      expect(page.items.first.authorDid, 'did:key:alice-legacy');
+      expect(page.items.first.canonicalAuthorDid, 'did:key:alice');
       expect(page.items.first.authorDisplayName, 'Alice');
       expect(page.items.first.authorHandle, 'alice.elix.cool');
       expect(page.items.first.payload['body'], 'hi');

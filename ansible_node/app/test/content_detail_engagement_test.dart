@@ -1,0 +1,105 @@
+import 'package:ansible_domain/ansible_domain.dart';
+import 'package:ansible_node/screens/content_detail_screen.dart';
+import 'package:ansible_node/services/ops_dispatch_service.dart';
+import 'package:ansible_store/ansible_store.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  testWidgets(
+    'detail merges AppView engagement with local rows using canonical DIDs',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      const contentId = 'content-1';
+      const localDid = 'did:elix:local-legacy';
+      await DriftReactionRepository(db).create(
+        Reaction(
+          id: 'local-reaction',
+          userId: localDid,
+          targetType: TargetType.thread,
+          targetId: contentId,
+          reactionType: ReactionType.thumbsUp,
+          createdAt: DateTime.utc(2026, 8, 29),
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ContentDetailScreen(
+            db: db,
+            localDid: localDid,
+            contentId: contentId,
+            authorDid: 'did:elix:author',
+            body: 'Body',
+            opsDispatchService: OpsDispatchService(
+              repository: DriftOpsQueueRepository(db),
+            ),
+            onFlushPendingOps: () async {},
+            appViewBaseUrl: '',
+            threadFetcher: ({required threadId}) async {
+              expect(threadId, contentId);
+              return const AppViewTimelinePage(
+                items: [
+                  AppViewTimelineItem(
+                    entityType: 'reaction',
+                    entityId: 'remote-copy-of-local-reaction',
+                    authorDid: localDid,
+                    canonicalAuthorDid: 'did:elix:local-current',
+                    payload: {'targetId': contentId, 'targetType': 'thread'},
+                  ),
+                  AppViewTimelineItem(
+                    entityType: 'reaction',
+                    entityId: 'remote-reaction',
+                    authorDid: 'did:elix:remote',
+                    canonicalAuthorDid: 'did:elix:remote',
+                    payload: {'targetId': contentId, 'targetType': 'thread'},
+                  ),
+                  AppViewTimelineItem(
+                    entityType: 'comment',
+                    entityId: 'comment-1',
+                    authorDid: 'did:elix:commenter-1',
+                    payload: {'content': 'First'},
+                  ),
+                  AppViewTimelineItem(
+                    entityType: 'comment',
+                    entityId: 'comment-2',
+                    authorDid: 'did:elix:commenter-2',
+                    payload: {'content': 'Second'},
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+
+      final reactions = find.byKey(const Key('content_detail_reactions'));
+      final comments = find.byKey(const Key('content_detail_comments'));
+      expect(reactions, findsOneWidget);
+      expect(comments, findsOneWidget);
+      final reactionLabels = tester
+          .widgetList<Text>(
+            find.descendant(of: reactions, matching: find.byType(Text)),
+          )
+          .map((text) => text.data)
+          .toList();
+      final commentLabels = tester
+          .widgetList<Text>(
+            find.descendant(of: comments, matching: find.byType(Text)),
+          )
+          .map((text) => text.data)
+          .toList();
+      expect(reactionLabels, contains('2'));
+      expect(commentLabels, contains('2'));
+      expect(find.text('First'), findsOneWidget);
+      expect(find.text('Second'), findsOneWidget);
+    },
+  );
+}

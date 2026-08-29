@@ -401,6 +401,75 @@ void main() {
   });
 
   group('threads list composer wiring', () {
+    testWidgets('board listing includes deliberation titles', (tester) async {
+      final primary = await seedBoard('board-1', 'General');
+      await seedProjection('board-1');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ThreadsListScreen(
+            db: db,
+            board: primary,
+            localDid: localDid,
+            deliberationsLoader: (projection) async {
+              expect(projection.hostedBoardId, 'hosted-board-1');
+              return [
+                {
+                  'id': 'deliberation-1',
+                  'title': '怎麼產生第二個有本土意識的政黨',
+                  'prompt': '一起比較可能的路徑',
+                  'statement_count': 2,
+                  'participant_count': 3,
+                },
+              ];
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final card = find.byKey(const Key('board_deliberation_deliberation-1'));
+      expect(card, findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.text('怎麼產生第二個有本土意識的政黨')),
+        findsOneWidget,
+      );
+      expect(find.text('1 個共識討論'), findsOneWidget);
+    });
+
+    testWidgets('board create sheet offers deliberation as a third option', (
+      tester,
+    ) async {
+      final primary = await seedBoard('board-1', 'General');
+      await seedProjection('board-1');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ThreadsListScreen(
+            db: db,
+            board: primary,
+            localDid: localDid,
+            deliberationsLoader: (_) async => const [],
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('board_create_discussion_action')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('board_create_poll_action')), findsOneWidget);
+      expect(
+        find.byKey(const Key('board_create_deliberation_action')),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('selected cross-post ids flow to the publication service', (
       tester,
     ) async {
@@ -497,7 +566,7 @@ void main() {
         find.byKey(const Key('thread_composer_poll_duration')),
       );
       expect(
-        duration.decoration?.floatingLabelBehavior,
+        duration.decoration.floatingLabelBehavior,
         FloatingLabelBehavior.always,
       );
       await tester.enterText(

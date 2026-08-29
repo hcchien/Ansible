@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ansible_did/ansible_did.dart';
 import 'package:flutter/material.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:share_plus/share_plus.dart';
@@ -11,10 +12,12 @@ import '../l10n/moderation_copy.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
 import '../services/app_view_timeline_client.dart';
+import '../services/board_access_presentation_service.dart';
 import '../services/board_policy_draft.dart';
 import '../services/elix_content_link.dart';
 import '../services/external_content_preferences_controller.dart';
 import '../services/forum_publication_service.dart';
+import '../services/forum_host_client.dart';
 import '../services/posting_gate.dart';
 import '../services/private_board_op_factory.dart';
 import '../services/handle_resolver.dart';
@@ -30,6 +33,13 @@ import 'user_profile_screen.dart';
 /// signature so tests can inject a fake without a real HTTP client.
 typedef BoardExternalFetcher =
     Future<AppViewExternalPage> Function(String boardId);
+
+typedef BoardDeliberationsLoader =
+    Future<List<Map<String, dynamic>>> Function(
+      HostedBoardProjection projection,
+    );
+
+enum _BoardCreateAction { discussion, poll, deliberation }
 
 Future<void> _defaultBoardShareSheet(
   String text, {
@@ -76,6 +86,10 @@ class ThreadsListScreen extends StatefulWidget {
   /// new threads. Injectable for tests; defaults to a drift-backed service.
   final ForumPublicationService? forumPublicationService;
 
+  /// Test/override seam for the board-scoped deliberation listing. The default
+  /// path presents the same read capability used by the dedicated screen.
+  final BoardDeliberationsLoader? deliberationsLoader;
+
   const ThreadsListScreen({
     super.key,
     required this.db,
@@ -88,6 +102,7 @@ class ThreadsListScreen extends StatefulWidget {
     this.onFlushPendingOps,
     this.screenStyle = ElixScreenStyle.paper,
     this.forumPublicationService,
+    this.deliberationsLoader,
   });
 
   @override
@@ -99,6 +114,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   late final DriftPostRepository _postRepo;
   late final DriftReactionRepository _reactionRepo;
   List<Thread> _threads = [];
+  List<Map<String, dynamic>> _deliberations = const [];
   bool _isLoading = true;
 
   /// Per-thread preview: opening post (content + signature) and reply count,
@@ -180,6 +196,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     final projection = await DriftHostedBoardRepository(
       widget.db,
     ).getProjectionByLocalBoardId(widget.board.id);
+    final deliberations = await _loadDeliberations(projection);
     final postingBlocked = await _checkPostingGate(projection);
     final remoteRemoval = projection == null
         ? null
@@ -222,6 +239,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
     }
     setState(() {
       _threads = threads;
+      _deliberations = deliberations;
       _hostedProjection = projection;
       _remoteRemoval = remoteRemoval;
       _postingBlocked = postingBlocked;
@@ -242,6 +260,65 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
         ..addAll(lastActivityByThread);
       _isLoading = false;
     });
+  }
+
+  Future<List<Map<String, dynamic>>> _loadDeliberations(
+    HostedBoardProjection? projection,
+  ) async {
+    if (projection == null) return const [];
+    final injected = widget.deliberationsLoader;
+    if (injected != null) return injected(projection);
+    try {
+      final host = await DriftRemoteNodeRepository(
+        widget.db,
+      ).getById(projection.forumHostId);
+      if (host == null) return const [];
+      final path =
+          '/api/v1/forum-host/boards/${Uri.encodeComponent(projection.hostedBoardId)}/deliberations';
+      final headers = await _deliberationReadHeaders(
+        projection: projection,
+        hostUrl: host.url,
+        path: path,
+      );
+      final client = ForumHostClient(baseUrl: host.url);
+      try {
+        return await client.listDeliberations(
+          projection.hostedBoardId,
+          headers: headers,
+        );
+      } finally {
+        client.close();
+      }
+    } catch (_) {
+      // The board and its local threads remain readable when its Forum Host is
+      // temporarily unavailable; the dedicated screen exposes retry/error UI.
+      return const [];
+    }
+  }
+
+  Future<Map<String, String>> _deliberationReadHeaders({
+    required HostedBoardProjection projection,
+    required String hostUrl,
+    required String path,
+  }) async {
+    final readPolicy = projection.accessPolicy['read'];
+    final requirement = readPolicy is Map ? readPolicy['requirement'] : null;
+    if (requirement == null || requirement == 'public') return const {};
+    final access = BoardAccessPresentationService(
+      walletRepository: DriftWalletRepository(widget.db),
+      didSigner: DidSignerImpl(),
+    );
+    final capability = await access.authorize(
+      forumHost: Uri.parse(hostUrl),
+      boardId: projection.hostedBoardId,
+      action: 'read',
+    );
+    return access.proofHeaders(
+      capability: capability,
+      method: 'GET',
+      requestUri: Uri.parse(hostUrl).resolve(path),
+      scope: 'read',
+    );
   }
 
   /// Fetches the board's curated external items ONLY when BOTH gates pass:
@@ -421,7 +498,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
   }
 
   Future<void> _showCreateMenu() async {
-    final type = await showModalBottomSheet<ThreadComposerType>(
+    final action = await showModalBottomSheet<_BoardCreateAction>(
       context: context,
       backgroundColor: _bg,
       showDragHandle: true,
@@ -437,7 +514,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 context.uiCopy(zh: '發表一般討論串', en: 'Start a discussion thread'),
               ),
               onTap: () =>
-                  Navigator.of(sheetContext).pop(ThreadComposerType.discussion),
+                  Navigator.of(sheetContext).pop(_BoardCreateAction.discussion),
             ),
             ListTile(
               key: const Key('board_create_poll_action'),
@@ -450,13 +527,75 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                 ),
               ),
               onTap: () =>
-                  Navigator.of(sheetContext).pop(ThreadComposerType.poll),
+                  Navigator.of(sheetContext).pop(_BoardCreateAction.poll),
+            ),
+            ListTile(
+              key: const Key('board_create_deliberation_action'),
+              leading: const Icon(Icons.hub_outlined),
+              title: Text(context.uiCopy(zh: '新增共識討論', en: 'New deliberation')),
+              subtitle: Text(
+                context.uiCopy(
+                  zh: '用多則陳述整理共識與歧異',
+                  en: 'Compare multiple statements and find shared ground',
+                ),
+              ),
+              onTap: () => Navigator.of(
+                sheetContext,
+              ).pop(_BoardCreateAction.deliberation),
             ),
           ],
         ),
       ),
     );
-    if (type != null && mounted) await _createThread(type: type);
+    if (action == null || !mounted) return;
+    switch (action) {
+      case _BoardCreateAction.discussion:
+        await _createThread(type: ThreadComposerType.discussion);
+      case _BoardCreateAction.poll:
+        await _createThread(type: ThreadComposerType.poll);
+      case _BoardCreateAction.deliberation:
+        await _openDeliberations(openCreate: true);
+    }
+  }
+
+  Future<void> _openDeliberations({bool openCreate = false}) async {
+    final localDid = widget.localDid;
+    if (localDid == null || localDid.isEmpty) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DeliberationsScreen(
+          db: widget.db,
+          board: widget.board,
+          localDid: localDid,
+          screenStyle: widget.screenStyle,
+          openCreateOnLoad: openCreate,
+        ),
+      ),
+    );
+    if (mounted) await _loadThreads();
+  }
+
+  Future<void> _openDeliberation(Map<String, dynamic> item) async {
+    final projection = _hostedProjection;
+    final localDid = widget.localDid;
+    if (projection == null || localDid == null || localDid.isEmpty) return;
+    final host = await DriftRemoteNodeRepository(
+      widget.db,
+    ).getById(projection.forumHostId);
+    if (host == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DeliberationDetailScreen(
+          db: widget.db,
+          projection: projection,
+          host: host,
+          localDid: localDid,
+          deliberationId: item['id'].toString(),
+          screenStyle: widget.screenStyle,
+        ),
+      ),
+    );
+    if (mounted) await _loadThreads();
   }
 
   /// Records hosted-board publication targets for the new thread (primary +
@@ -541,15 +680,7 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
               key: const Key('open_deliberations_button'),
               icon: const Icon(Icons.hub_outlined, size: 21),
               tooltip: context.uiCopy(zh: '共識討論', en: 'Deliberations'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DeliberationsScreen(
-                    db: widget.db,
-                    board: widget.board,
-                    localDid: widget.localDid!,
-                  ),
-                ),
-              ),
+              onPressed: _openDeliberations,
             ),
           if (_boardShareUrl != null)
             IconButton(
@@ -616,13 +747,18 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
       children: [
         _boardHeaderCard(context),
         const SizedBox(height: 12),
-        if (_threads.isEmpty)
+        if (_threads.isEmpty && _deliberations.isEmpty)
           _emptyHint(context)
-        else
+        else ...[
+          for (final deliberation in _deliberations) ...[
+            _deliberationCard(context, deliberation),
+            const SizedBox(height: 10),
+          ],
           for (final thread in _threads) ...[
             _threadCard(context, thread),
             const SizedBox(height: 10),
           ],
+        ],
         if (_externalItems.isNotEmpty)
           ExternalContentSection(items: _externalItems),
       ],
@@ -690,6 +826,20 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
                     color: _muted,
                   ),
                 ),
+                if (_deliberations.isNotEmpty)
+                  Text(
+                    context.uiCopy(
+                      zh: '${_deliberations.length} 個共識討論',
+                      en: '${_deliberations.length} ${_deliberations.length == 1 ? 'deliberation' : 'deliberations'}',
+                    ),
+                    style: TextStyle(
+                      fontFamily: AnsibleDesign.mono,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.35,
+                      color: _muted,
+                    ),
+                  ),
                 Text(
                   _postingPolicyLabel(context),
                   style: TextStyle(
@@ -765,6 +915,97 @@ class _ThreadsListScreenState extends State<ThreadsListScreen> {
             style: TextStyle(fontSize: 13, color: _faint),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _deliberationCard(
+    BuildContext context,
+    Map<String, dynamic> deliberation,
+  ) {
+    final title = deliberation['title']?.toString().trim() ?? '';
+    final prompt = deliberation['prompt']?.toString().trim() ?? '';
+    final statements =
+        int.tryParse(deliberation['statement_count']?.toString() ?? '') ?? 0;
+    final participants =
+        int.tryParse(deliberation['participant_count']?.toString() ?? '') ?? 0;
+    return InkWell(
+      onTap: () => _openDeliberation(deliberation),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        key: Key('board_deliberation_${deliberation['id']}'),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
+        decoration: BoxDecoration(
+          color: _deep,
+          border: Border.all(color: _rule, width: 0.5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.hub_outlined, size: 17, color: _accent),
+                const SizedBox(width: 7),
+                Text(
+                  context.uiCopy(
+                    zh: '共識討論 · $statements 則陳述',
+                    en: 'DELIBERATION · $statements ${statements == 1 ? 'STATEMENT' : 'STATEMENTS'}',
+                  ),
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 9,
+                    letterSpacing: 0.7,
+                    color: _faint,
+                  ),
+                ),
+                const Spacer(),
+                Icon(Icons.chevron_right, size: 19, color: _muted),
+              ],
+            ),
+            if (title.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 17,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                  color: _fg,
+                ),
+              ),
+            ],
+            if (prompt.isNotEmpty) ...[
+              const SizedBox(height: 7),
+              Text(
+                prompt,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AnsibleDesign.serif,
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: _muted,
+                ),
+              ),
+            ],
+            const SizedBox(height: 9),
+            Text(
+              context.uiCopy(
+                zh: '$participants 位參與者',
+                en: '$participants ${participants == 1 ? 'participant' : 'participants'}',
+              ),
+              style: TextStyle(
+                fontFamily: AnsibleDesign.mono,
+                fontSize: 10,
+                color: _faint,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

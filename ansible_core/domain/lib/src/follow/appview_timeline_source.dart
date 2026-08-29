@@ -10,6 +10,7 @@ class AppViewTimelineItem {
   final String entityType;
   final String entityId;
   final String authorDid;
+  final String? canonicalAuthorDid;
   final String? authorDisplayName;
   final String? authorHandle;
   final String? boardId;
@@ -25,6 +26,7 @@ class AppViewTimelineItem {
     required this.entityId,
     required this.authorDid,
     required this.payload,
+    this.canonicalAuthorDid,
     this.authorDisplayName,
     this.authorHandle,
     this.boardId,

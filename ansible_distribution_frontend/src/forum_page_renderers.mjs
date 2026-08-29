@@ -373,6 +373,9 @@ function renderDeliberationDetail(viewModel, uiState = {}) {
     ...(deliberation.viewerResponses ?? {}),
     ...(uiState.deliberationResponses ?? {}),
   };
+  const answeredCount = statements.filter((statement) => responses[statement.id]?.stance).length;
+  const activeStatement = statements.find((statement) => !responses[statement.id]?.stance) ?? statements[0] ?? null;
+  const activeIndex = activeStatement ? statements.findIndex((statement) => statement.id === activeStatement.id) : -1;
   const disclosure = deliberation.exportMode === 'pseudonymous_matrix'
     ? t('deliberation.export.matrix')
     : deliberation.exportMode === 'no_external_analysis'
@@ -384,11 +387,11 @@ function renderDeliberationDetail(viewModel, uiState = {}) {
     ${renderError(viewModel.error)}
     <section class="cols deliberation-detail" aria-labelledby="deliberation-title">
       ${renderLeftRail(viewModel, 'boards')}
-      <section class="feed">
+      <section class="feed opinion-map-feed">
         <a class="back-link" href="${escapeAttribute(boardHref)}">${escapeHtml(t('common.backToBoard'))}</a>
-        <header class="board-head">
+        <header class="board-head opinion-map-heading">
           <div class="heading">
-            <p class="section-label">${escapeHtml(t('deliberation.kicker'))}</p>
+            <p class="opinion-map-tag">${escapeHtml(t('deliberation.opinionMap'))}</p>
             <h1 id="deliberation-title">${escapeHtml(deliberation.title ?? '')}</h1>
             <p>${escapeHtml(deliberation.prompt ?? '')}</p>
             <p class="gate-requirement">${escapeHtml(disclosure)}</p>
@@ -401,56 +404,121 @@ function renderDeliberationDetail(viewModel, uiState = {}) {
                 : t('board.gateBlockedMessage', { tier: trustTierLabel(viewModel.session?.trustTier ?? TRUST_TIERS.anonymous) }))}</p></div>`
               : `<a class="btn" href="#/login">${escapeHtml(t('deliberation.signIn'))}</a>`}
         </header>
-        <section class="deliberation-statements" aria-label="${escapeAttribute(t('deliberation.statements'))}">
-          ${statements.length ? statements.map((statement) => {
-            const selected = responses[statement.id]?.stance;
-            return `<article class="card deliberation-statement">
-              <p>${escapeHtml(statement.text)}</p>
-              ${canParticipate ? `<div class="thread-action-row" role="group" aria-label="${escapeAttribute(t('deliberation.respond'))}">
-                ${['agree', 'disagree', 'pass'].map((stance) => `<button
-                  type="button"
-                  class="btn small${selected === stance ? ' is-selected' : ''}"
-                  data-action="cast-deliberation-vote"
-                  data-board-id="${escapeAttribute(boardId)}"
-                  data-deliberation-id="${escapeAttribute(deliberation.id)}"
-                  data-statement-id="${escapeAttribute(statement.id)}"
-                  data-stance="${stance}"
-                >${escapeHtml(t(`deliberation.${stance}`))}</button>`).join('')}
-                ${selected ? `<button
-                  type="button"
-                  class="btn small"
-                  data-action="withdraw-deliberation-vote"
-                  data-board-id="${escapeAttribute(boardId)}"
-                  data-deliberation-id="${escapeAttribute(deliberation.id)}"
-                  data-statement-id="${escapeAttribute(statement.id)}"
-                >${escapeHtml(t('deliberation.withdraw'))}</button>` : ''}
-              </div>` : ''}
-            </article>`;
-          }).join('') : `<p class="empty-state">${escapeHtml(t('deliberation.noStatements'))}</p>`}
+        <section class="opinion-voting-stage" aria-label="${escapeAttribute(t('deliberation.statements'))}">
+          ${statements.length ? `<div class="opinion-progress" aria-label="${escapeAttribute(t('deliberation.progress', { answered: answeredCount, total: statements.length }))}">
+            <span class="opinion-progress-bars">${statements.map((statement) => `<i class="${responses[statement.id]?.stance ? 'done' : ''}"></i>`).join('')}</span>
+            <span>${escapeHtml(t('deliberation.progressCount', { answered: answeredCount, total: statements.length }))}</span>
+          </div>` : ''}
+          ${activeStatement ? renderOpinionStatement({
+            statement: activeStatement,
+            statementIndex: activeIndex,
+            statementCount: statements.length,
+            deliberation,
+            selected: responses[activeStatement.id]?.stance,
+            canParticipate,
+            boardId,
+          }) : `<p class="empty-state">${escapeHtml(t('deliberation.noStatements'))}</p>`}
+          <p class="opinion-export-foot">${escapeHtml(disclosure)}</p>
+          ${answeredCount ? `<details class="opinion-response-history">
+            <summary>${escapeHtml(t('deliberation.reviewResponses', { count: answeredCount }))}</summary>
+            <div>${statements.filter((statement) => responses[statement.id]?.stance).map((statement) => `<article>
+              <span>${escapeHtml(statement.text ?? '')}</span>
+              <strong>${escapeHtml(t(`deliberation.${responses[statement.id].stance}`))}</strong>
+              ${canParticipate ? `<button
+                type="button"
+                class="btn small"
+                data-action="withdraw-deliberation-vote"
+                data-board-id="${escapeAttribute(boardId)}"
+                data-deliberation-id="${escapeAttribute(deliberation.id)}"
+                data-statement-id="${escapeAttribute(statement.id)}"
+              >${escapeHtml(t('deliberation.withdraw'))}</button>` : ''}
+            </article>`).join('')}</div>
+          </details>` : ''}
         </section>
       </section>
       <aside class="side deliberation-results">
-        <section class="card">
+        <section class="card opinion-results-card">
+          <p class="section-label">${escapeHtml(t('deliberation.resultsKicker', { count: report.statement_count ?? statements.length }))}</p>
           <h3>${escapeHtml(t('deliberation.results'))}</h3>
-          <p>${escapeHtml(t('deliberation.participation', {
+          <div class="opinion-result-stats">${escapeHtml(t('deliberation.participation', {
             participants: report.participant_count ?? 0,
             responses: report.response_count ?? 0,
-          }))}</p>
-          <ol>${(report.consensus ?? []).slice(0, 5).map((item) => `<li>
-            ${escapeHtml(item.text ?? '')}
-            ${Number.isFinite(Number(item.agree_ratio)) ? `<small>${Math.round(Number(item.agree_ratio) * 100)}% ${escapeHtml(t('deliberation.agree'))}</small>` : ''}
-          </li>`).join('')}</ol>
-          <p class="gate-requirement">${escapeHtml(
+          }))}</div>
+          <div class="opinion-map-placeholder" role="note">
+            <span aria-hidden="true">◌ ◉ ◌</span>
+            <p>${escapeHtml(
             report.cluster_status === 'aggregate_only'
               ? t('deliberation.aggregateOnly')
               : t('deliberation.insufficientParticipants'),
-          )}</p>
+            )}</p>
+          </div>
+          ${(report.consensus ?? []).length ? `<section class="opinion-consensus">
+            <span>${escapeHtml(t('deliberation.consensusLabel'))}</span>
+            <p>${escapeHtml(report.consensus[0]?.text ?? '')}</p>
+          </section>` : ''}
+          ${(report.disagreement ?? []).length ? `<section class="opinion-disagreement">
+            <h4>${escapeHtml(t('deliberation.mostDivisive'))}</h4>
+            ${(report.disagreement ?? []).slice(0, 3).map((item) => renderOpinionAggregate(item)).join('')}
+          </section>` : ''}
           ${viewModel.session?.authenticated && deliberation.exportMode !== 'no_external_analysis'
             ? `<button class="btn small" data-action="export-deliberation" data-board-id="${escapeAttribute(boardId)}" data-deliberation-id="${escapeAttribute(deliberation.id)}">${escapeHtml(t('deliberation.exportAction'))}</button>`
             : ''}
         </section>
       </aside>
     </section>`;
+}
+
+function renderOpinionStatement({
+  statement,
+  statementIndex,
+  statementCount,
+  deliberation,
+  selected,
+  canParticipate,
+  boardId,
+}) {
+  const orderedStances = ['disagree', 'pass', 'agree'];
+  return `<div class="opinion-card-stack${statementCount > 1 ? ' has-more' : ''}">
+    <article class="opinion-statement-card">
+      <span class="opinion-card-context">${escapeHtml(deliberation.title ?? '')}</span>
+      <p>${escapeHtml(statement.text ?? '')}</p>
+      <small>${escapeHtml(t('deliberation.statementMeta', { index: statementIndex + 1 }))}</small>
+    </article>
+    ${canParticipate ? `<div class="opinion-vote-row" role="group" aria-label="${escapeAttribute(t('deliberation.respond'))}">
+      ${orderedStances.map((stance) => `<button
+        type="button"
+        class="btn small${selected === stance ? ' is-selected' : ''} opinion-vote ${stance}"
+        data-action="cast-deliberation-vote"
+        data-board-id="${escapeAttribute(boardId)}"
+        data-deliberation-id="${escapeAttribute(deliberation.id)}"
+        data-statement-id="${escapeAttribute(statement.id)}"
+        data-stance="${stance}"
+      ><span aria-hidden="true">${stance === 'agree' ? '✓' : stance === 'disagree' ? '✕' : '▷'}</span>${escapeHtml(t(`deliberation.${stance}`))}</button>`).join('')}
+    </div>` : ''}
+    ${selected && canParticipate ? `<button
+      type="button"
+      class="btn small opinion-withdraw"
+      data-action="withdraw-deliberation-vote"
+      data-board-id="${escapeAttribute(boardId)}"
+      data-deliberation-id="${escapeAttribute(deliberation.id)}"
+      data-statement-id="${escapeAttribute(statement.id)}"
+    >${escapeHtml(t('deliberation.withdraw'))}</button>` : ''}
+  </div>`;
+}
+
+function renderOpinionAggregate(item = {}) {
+  const agree = Number(item.agree ?? 0);
+  const pass = Number(item.pass ?? 0);
+  const disagree = Number(item.disagree ?? 0);
+  const total = agree + pass + disagree;
+  const agreePct = total ? Math.round((agree / total) * 100) : 0;
+  const passPct = total ? Math.round((pass / total) * 100) : 0;
+  const disagreePct = Math.max(0, 100 - agreePct - passPct);
+  return `<article class="opinion-aggregate">
+    <p>${escapeHtml(item.text ?? '')}</p>
+    <span class="opinion-bars" aria-hidden="true"><i class="agree" style="width:${agreePct}%"></i><i class="pass" style="width:${passPct}%"></i><i class="disagree" style="width:${disagreePct}%"></i></span>
+    <small><span>${agreePct}% ${escapeHtml(t('deliberation.agree'))}</span><span>${passPct}% ${escapeHtml(t('deliberation.pass'))}</span><span>${disagreePct}% ${escapeHtml(t('deliberation.disagree'))}</span></small>
+  </article>`;
 }
 
 function renderThreadDetail(viewModel, uiState = {}) {

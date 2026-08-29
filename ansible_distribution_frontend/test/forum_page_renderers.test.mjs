@@ -179,6 +179,10 @@ const deliberationHtml = renderPageBody(buildAppViewModel({
 assert.match(deliberationHtml, /每週發布？/);
 assert.match(deliberationHtml, /共識與歧異/);
 assert.match(deliberationHtml, /btn small is-selected/);
+assert.match(deliberationHtml, /class="opinion-voting-stage"/);
+assert.match(deliberationHtml, /class="opinion-statement-card"/);
+assert.match(deliberationHtml, /class="opinion-map-placeholder"/);
+assert.match(deliberationHtml, /意見地圖/);
 assert.match(deliberationHtml, /只會匯出整體統計/);
 assert.doesNotMatch(deliberationHtml, /did:/);
 
