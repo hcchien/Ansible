@@ -136,6 +136,31 @@ void main() {
       final payload = CrdtOpBuilder.decodePayload(op.payload);
       expect(payload['targetDid'], 'did:key:author');
       expect(payload['visibility'], 'federated');
+      expect(payload['state'], 'requested');
+    });
+
+    test('createFollowGrant builds a target-authored relationship VC', () {
+      final op = CrdtOpBuilder.createFollowGrant(
+        targetDid: 'did:key:author',
+        followerDid: 'did:key:reader',
+        requestOpId: 'request-1',
+        accepted: true,
+      );
+      final payload = CrdtOpBuilder.decodePayload(op.payload);
+      final credential = payload['credential'] as Map<String, dynamic>;
+      final subject = credential['credentialSubject'] as Map<String, dynamic>;
+
+      expect(op.entityType, 'follow_grant');
+      expect(op.authorDid, 'did:key:author');
+      expect(op.entityId, 'did:key:reader');
+      expect(payload['requestOpId'], 'request-1');
+      expect(credential['issuer'], 'did:key:author');
+      expect(credential['type'], [
+        'VerifiableCredential',
+        'FollowGrantCredential',
+      ]);
+      expect(subject['id'], 'did:key:reader');
+      expect(subject['relationship'], 'approved_follower');
     });
 
     test('deleteFollow retracts the same edge', () {

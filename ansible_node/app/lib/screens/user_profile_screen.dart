@@ -10,6 +10,7 @@ import '../services/app_view_timeline_client.dart';
 import '../services/elix_content_link.dart';
 import '../services/elix_content_router.dart';
 import '../services/handle_resolver.dart';
+import '../services/ops_dispatch_service.dart';
 import '../services/posting_gate.dart';
 import '../theme/ansible_design.dart';
 import '../theme/elix_screen_style.dart';
@@ -75,6 +76,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   late final PublicProfileResolver _profileResolver;
   FollowButtonStatus _status = FollowButtonStatus.notFollowing;
   String? _targetId;
+  FollowEdge? _incomingEdge;
   String _tier = 'basic';
   String? _handle;
   String? _publishedDisplayName;
@@ -204,12 +206,81 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       status = _mapStatus(edge?.status);
     }
     final tier = await _reputationRepo.tierFor(widget.did);
+    FollowEdge? incomingEdge;
+    final localTarget = await _followRepo.getTargetByCanonicalUri(
+      widget.followerDid,
+    );
+    if (localTarget != null) {
+      final inbound = await _followRepo.listInbound(localTarget.targetId);
+      for (final edge in inbound) {
+        if (edge.followerDid == widget.did &&
+            (edge.status == FollowStatus.pending ||
+                edge.status == FollowStatus.accepted)) {
+          incomingEdge = edge;
+          break;
+        }
+      }
+    }
     if (!mounted) return;
     setState(() {
       _status = status;
       _targetId = targetId;
+      _incomingEdge = incomingEdge;
       _tier = tier;
     });
+  }
+
+  Future<void> _decideIncomingRequest(bool accepted) async {
+    final request = _incomingEdge;
+    final requestOpId = request?.remoteActivityId;
+    if (_busy || request == null || requestOpId == null) return;
+    setState(() => _busy = true);
+    try {
+      final dispatch = OpsDispatchService(
+        repository: DriftOpsQueueRepository(widget.db),
+      );
+      await dispatch.signAndEnqueue(
+        CrdtOpBuilder.createFollowGrant(
+          targetDid: widget.followerDid,
+          followerDid: request.followerDid,
+          requestOpId: requestOpId,
+          accepted: accepted,
+          denialReason: request.status == FollowStatus.accepted
+              ? 'revoked'
+              : 'rejected',
+        ),
+      );
+      await _followRepo.updateEdgeStatus(
+        request.followId,
+        accepted ? FollowStatus.accepted : FollowStatus.rejected,
+        DateTime.now().toUtc(),
+      );
+      await _loadStatus();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              accepted
+                  ? context.uiCopy(
+                      zh: '已核准；FollowGrant VC 會在下次同步送出',
+                      en: 'Approved; the FollowGrant VC will be sent on the next sync',
+                    )
+                  : request.status == FollowStatus.accepted
+                  ? context.uiCopy(
+                      zh: '已移除；撤銷結果會在下次同步送出',
+                      en: 'Removed; the revocation will be sent on the next sync',
+                    )
+                  : context.uiCopy(
+                      zh: '已拒絕；結果會在下次同步送出',
+                      en: 'Rejected; the decision will be sent on the next sync',
+                    ),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   FollowButtonStatus _mapStatus(FollowStatus? status) {
@@ -464,13 +535,46 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ],
         if (widget.did != widget.followerDid) ...[
           const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FollowButton(
-              status: _status,
-              onPressed: _busy ? null : _onPressed,
+          if (_incomingEdge?.status == FollowStatus.pending)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _decideIncomingRequest(false),
+                    child: Text(context.uiCopy(zh: '拒絕', en: 'Reject')),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _decideIncomingRequest(true),
+                    child: Text(context.uiCopy(zh: '核准追蹤', en: 'Approve')),
+                  ),
+                ),
+              ],
+            )
+          else if (_incomingEdge?.status == FollowStatus.accepted)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _busy ? null : () => _decideIncomingRequest(false),
+                child: Text(
+                  context.uiCopy(zh: '移除這位追蹤者', en: 'Remove follower'),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: FollowButton(
+                status: _status,
+                onPressed: _busy ? null : _onPressed,
+              ),
             ),
-          ),
         ],
         const SizedBox(height: 24),
         const Divider(height: 1, color: AnsibleDesign.ruleSoft),

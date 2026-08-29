@@ -223,6 +223,22 @@ defmodule AnsibleRelay.Web.Router do
     AnsibleRelay.Web.Controllers.OpsController.delta(conn, conn.query_params)
   end
 
+  get "/api/v1/follows/requests/:target_did" do
+    AnsibleRelay.Web.Controllers.FollowController.requests(conn, %{"target_did" => target_did})
+  end
+
+  get "/api/v1/follows/relationship" do
+    AnsibleRelay.Web.Controllers.FollowController.relationship(conn, conn.query_params)
+  end
+
+  get "/api/v1/followers/:author_did/ops/delta" do
+    AnsibleRelay.Web.Controllers.FollowController.protected_delta(
+      conn,
+      author_did,
+      conn.query_params
+    )
+  end
+
   get "/api/v1/forum-host/boards/:board_id/ops/delta" do
     AnsibleRelay.Web.Controllers.OpsController.board_delta(conn, board_id, conn.query_params)
   end
@@ -360,7 +376,12 @@ defmodule AnsibleRelay.Web.Router do
   end
 
   post "/api/v1/forum-host/boards/:board_id/polls/:poll_id/votes" do
-    AnsibleRelay.Web.Controllers.ForumHostPollController.create(conn, board_id, poll_id, conn.body_params)
+    AnsibleRelay.Web.Controllers.ForumHostPollController.create(
+      conn,
+      board_id,
+      poll_id,
+      conn.body_params
+    )
   end
 
   # Forum Host — content reporting (signed-intent and web-session rails)

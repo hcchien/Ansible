@@ -90,6 +90,7 @@ defmodule AnsibleAppview.Ingest.Folder do
     for {op, payload, {:ok, _expires}} <- prepared do
       case op["entity_type"] do
         "follow" -> fold_follow(op, payload)
+        "follow_grant" -> fold_follow_grant(op, payload)
         "profile" -> fold_profile(op, payload)
         _ -> :noop
       end
@@ -106,7 +107,8 @@ defmodule AnsibleAppview.Ingest.Folder do
     rows =
       prepared
       |> Enum.filter(fn {op, payload, verification} ->
-        match?({:ok, _}, verification) and op["entity_type"] not in ["follow", "profile"] and
+        match?({:ok, _}, verification) and
+          op["entity_type"] not in ["follow", "follow_grant", "profile"] and
           op["op_type"] != "delete" and
           visibility_ok?(op["entity_type"], payload)
       end)
@@ -403,7 +405,9 @@ defmodule AnsibleAppview.Ingest.Folder do
   end
 
   defp deletion?({op, _payload, {:ok, _}}),
-    do: op["entity_type"] not in ["follow", "profile"] and op["op_type"] == "delete"
+    do:
+      op["entity_type"] not in ["follow", "follow_grant", "profile"] and
+        op["op_type"] == "delete"
 
   defp deletion?({_op, _payload, {:error, :moderation_removed}}), do: true
   defp deletion?(_), do: false
@@ -450,7 +454,8 @@ defmodule AnsibleAppview.Ingest.Folder do
   defp visibility_ok?(_entity_type, _payload), do: true
 
   defp fold_follow(op, payload) do
-    # Only federated follows are indexed.
+    # A follow op is a request. It does not create a feed edge until the target
+    # signs a matching FollowGrantCredential.
     if payload["visibility"] == "federated" do
       follower = op["author_did"]
       author = payload["targetDid"]
@@ -458,12 +463,37 @@ defmodule AnsibleAppview.Ingest.Folder do
       if is_binary(follower) and is_binary(author) and author != "" do
         case op["op_type"] do
           "delete" ->
-            AnsibleAppview.FollowGraph.remove(follower, author)
+            FollowGraph.remove_request(follower, author)
+            FollowGraph.remove(follower, author)
 
           _ ->
-            AnsibleAppview.FollowGraph.upsert(follower, author, op["log_id"])
-            backfill_home_timeline(follower, author)
+            FollowGraph.request(op["op_id"], follower, author, op["log_id"])
         end
+      end
+    end
+  end
+
+  defp fold_follow_grant(op, payload) do
+    credential = payload["credential"] || %{}
+    subject = credential["credentialSubject"] || %{}
+    follower = payload["followerDid"]
+    author = payload["targetDid"]
+    request_op_id = payload["requestOpId"]
+
+    valid_credential =
+      op["op_type"] == "delete" or
+        (credential["type"] == ["VerifiableCredential", "FollowGrantCredential"] and
+           credential["issuer"] == author and subject["id"] == follower and
+           subject["targetDid"] == author and
+           subject["relationship"] == "approved_follower")
+
+    if valid_credential and author == op["author_did"] and is_binary(follower) and
+         is_binary(request_op_id) and FollowGraph.requested?(request_op_id, follower, author) do
+      if subject["relationship"] == "approved_follower" and op["op_type"] != "delete" do
+        FollowGraph.upsert(follower, author, op["log_id"])
+        backfill_home_timeline(follower, author)
+      else
+        FollowGraph.remove(follower, author)
       end
     end
   end

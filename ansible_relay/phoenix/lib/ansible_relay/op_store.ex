@@ -197,6 +197,68 @@ defmodule AnsibleRelay.OpStore do
     Repo.exists?(from(o in Op, where: o.op_id == ^op_id))
   end
 
+  @doc "Returns one accepted op by its globally unique op id."
+  def get_by_op_id(op_id) when is_binary(op_id) do
+    from(o in Op, where: o.op_id == ^op_id, limit: 1)
+    |> Repo.one()
+    |> case do
+      nil -> nil
+      row -> to_op_map(row)
+    end
+  end
+
+  @doc "Lists an author's ops after a cursor without exposing other authors."
+  def list_by_author(author_did, after_log_id: cursor, limit: limit)
+      when is_binary(author_did) do
+    from(o in Op,
+      where: o.author_did == ^author_did and o.id > ^cursor,
+      order_by: [asc: o.id],
+      limit: ^limit
+    )
+    |> Repo.all()
+    |> Enum.map(&to_op_map/1)
+  end
+
+  @doc "Lists relationship ops for one follower/target pair newest first."
+  def follow_ops(follower_did, target_did) do
+    from(o in Op,
+      where:
+        (o.entity_type == "follow" and o.author_did == ^follower_did and
+           o.entity_id == ^target_did) or
+          (o.entity_type == "follow_grant" and o.author_did == ^target_did and
+             o.entity_id == ^follower_did),
+      order_by: [desc: o.id]
+    )
+    |> Repo.all()
+    |> Enum.map(&to_op_map/1)
+  end
+
+  @doc "Lists recent follow requests targeting one DID."
+  def follow_requests_for(target_did, limit \\ 200) when is_binary(target_did) do
+    from(o in Op,
+      where: o.entity_type == "follow" and o.entity_id == ^target_did,
+      order_by: [desc: o.id],
+      limit: ^limit
+    )
+    |> Repo.all()
+    |> Enum.map(&to_op_map/1)
+  end
+
+  @doc "True when the op log contains host-visible approved-follower content."
+  def followers_content_exists? do
+    from(o in Op,
+      where: o.entity_type in ["murmur", "note"],
+      select: o.payload
+    )
+    |> Repo.all()
+    |> Enum.any?(fn payload ->
+      case decode_payload(payload) do
+        %{"visibility" => "followers"} -> true
+        _ -> false
+      end
+    end)
+  end
+
   @doc """
   Author DID of the create (`insert`) op for an entity, or nil.
 
@@ -356,7 +418,7 @@ defmodule AnsibleRelay.OpStore do
 
   # --- Helpers ---
 
-  defp to_op_map(%Op{} = o) do
+  def to_op_map(%Op{} = o) do
     %{
       log_id: o.id,
       op_id: o.op_id,
@@ -385,4 +447,25 @@ defmodule AnsibleRelay.OpStore do
       _ -> DateTime.utc_now()
     end
   end
+
+  defp decode_payload(payload) when is_binary(payload) do
+    case Jason.decode(payload) do
+      {:ok, %{} = value} ->
+        value
+
+      _ ->
+        case Base.decode64(payload) do
+          {:ok, decoded} ->
+            case Jason.decode(decoded) do
+              {:ok, %{} = value} -> value
+              _ -> %{}
+            end
+
+          :error ->
+            %{}
+        end
+    end
+  end
+
+  defp decode_payload(_), do: %{}
 end

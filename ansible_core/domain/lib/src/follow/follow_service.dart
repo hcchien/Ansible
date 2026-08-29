@@ -361,7 +361,10 @@ class FollowService {
       return FollowResult.duplicate(existingEdge.followId);
     }
 
-    final federated = target.inboxUri != null && target.inboxUri!.isNotEmpty;
+    // Native DID follows are approval requests even without ActivityPub.
+    final federated =
+        (target.did != null && target.did!.isNotEmpty) ||
+        (target.inboxUri != null && target.inboxUri!.isNotEmpty);
     final followId = existingEdge?.followId ?? idFactory.next('follow');
     final activityId = federated ? 'local://activities/follow/$followId' : null;
     await followRepository.upsertEdge(
@@ -382,7 +385,7 @@ class FollowService {
       ),
     );
 
-    if (federated) {
+    if (target.inboxUri != null && target.inboxUri!.isNotEmpty) {
       await _enqueueFollow(
         activityId: activityId!,
         followerDid: followerDid,

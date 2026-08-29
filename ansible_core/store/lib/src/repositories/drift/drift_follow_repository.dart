@@ -110,6 +110,24 @@ class DriftFollowRepository implements FollowRepository {
   }
 
   @override
+  Future<List<entity.FollowEdge>> listOutbound(
+    String followerDid, {
+    entity.FollowTargetType? targetType,
+  }) async {
+    final query = _db.select(_db.followEdges)
+      ..where(
+        (t) =>
+            t.followerDid.equals(followerDid) &
+            t.direction.equals(entity.FollowDirection.outbound.name),
+      )
+      ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]);
+    if (targetType != null) {
+      query.where((t) => t.targetType.equals(targetType.name));
+    }
+    return (await query.get()).map(_mapEdgeRow).toList();
+  }
+
+  @override
   Future<List<entity.FollowEdge>> listFollowers(String targetId) async {
     final rows =
         await (_db.select(_db.followEdges)
@@ -118,6 +136,20 @@ class DriftFollowRepository implements FollowRepository {
                     t.targetId.equals(targetId) &
                     t.direction.equals(entity.FollowDirection.inbound.name) &
                     t.status.equals(entity.FollowStatus.accepted.name),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+            .get();
+    return rows.map(_mapEdgeRow).toList();
+  }
+
+  @override
+  Future<List<entity.FollowEdge>> listInbound(String targetId) async {
+    final rows =
+        await (_db.select(_db.followEdges)
+              ..where(
+                (t) =>
+                    t.targetId.equals(targetId) &
+                    t.direction.equals(entity.FollowDirection.inbound.name),
               )
               ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
             .get();

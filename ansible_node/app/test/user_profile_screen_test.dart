@@ -35,14 +35,14 @@ void main() {
     // Follow.
     await tester.tap(find.byType(FollowButton));
     await tester.pumpAndSettle();
-    expect(button().status, FollowButtonStatus.following);
+    expect(button().status, FollowButtonStatus.requested);
 
     final followRepo = DriftFollowRepository(db);
-    final following = await followRepo.listFollowing(
+    final following = await followRepo.listOutbound(
       'did:key:local',
       targetType: FollowTargetType.user,
     );
-    expect(following.single.status, FollowStatus.accepted);
+    expect(following.single.status, FollowStatus.pending);
 
     // Unfollow.
     await tester.tap(find.byType(FollowButton));

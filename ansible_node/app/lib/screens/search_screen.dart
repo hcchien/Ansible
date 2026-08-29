@@ -573,6 +573,7 @@ class _ResultData {
     };
     final visibility = switch (result.visibility) {
       'private' => ContentVisibility.private,
+      'followers' => ContentVisibility.followers,
       'unlisted' || 'circle' => ContentVisibility.unlisted,
       _ => ContentVisibility.public,
     };
@@ -595,6 +596,7 @@ class _ResultData {
 Color _visibilityColor(ContentVisibility visibility) {
   return switch (visibility) {
     ContentVisibility.private => AnsibleDesign.inkMuted,
+    ContentVisibility.followers => AnsibleDesign.lavender,
     ContentVisibility.unlisted => AnsibleDesign.accent,
     ContentVisibility.public => AnsibleDesign.spore,
   };

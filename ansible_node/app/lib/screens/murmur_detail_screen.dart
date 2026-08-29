@@ -171,6 +171,7 @@ class MurmurDetailScreen extends StatelessWidget {
   static String _visibilityLabel(ContentVisibility visibility) {
     return switch (visibility) {
       ContentVisibility.private => 'private',
+      ContentVisibility.followers => 'followers',
       ContentVisibility.unlisted => 'unlisted',
       ContentVisibility.public => 'public',
     };
@@ -179,6 +180,7 @@ class MurmurDetailScreen extends StatelessWidget {
   static Color _visibilityColor(ContentVisibility visibility) {
     return switch (visibility) {
       ContentVisibility.private => AnsibleDesign.inkMuted,
+      ContentVisibility.followers => AnsibleDesign.lavender,
       ContentVisibility.unlisted => AnsibleDesign.accent,
       ContentVisibility.public => AnsibleDesign.spore,
     };

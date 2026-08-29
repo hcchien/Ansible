@@ -219,6 +219,10 @@ class _MurmurScreenState extends State<MurmurScreen> {
                       switch (_visibility) {
                         ContentVisibility.private =>
                           l10n.murmurPrivateVisibilityHint,
+                        ContentVisibility.followers => context.uiCopy(
+                          zh: '只有已核准的追蹤者能讀；託管 Host 可讀取內容。',
+                          en: 'Approved followers can read; the hosting service can read the content.',
+                        ),
                         ContentVisibility.unlisted =>
                           l10n.murmurUnlistedVisibilityHint,
                         ContentVisibility.public =>

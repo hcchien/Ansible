@@ -85,6 +85,10 @@ class NoteDetailScreen extends StatelessWidget {
   ) {
     return switch (visibility) {
       ContentVisibility.private => context.uiCopy(zh: '私人', en: 'private'),
+      ContentVisibility.followers => context.uiCopy(
+        zh: '僅限已核准的追蹤者',
+        en: 'approved followers',
+      ),
       ContentVisibility.unlisted => context.uiCopy(zh: '未列出', en: 'unlisted'),
       ContentVisibility.public => context.uiCopy(zh: '公開', en: 'public'),
     };
@@ -93,6 +97,7 @@ class NoteDetailScreen extends StatelessWidget {
   static Color _visibilityColor(ContentVisibility visibility) {
     return switch (visibility) {
       ContentVisibility.private => AnsibleDesign.inkMuted,
+      ContentVisibility.followers => AnsibleDesign.lavender,
       ContentVisibility.unlisted => AnsibleDesign.spore,
       ContentVisibility.public => AnsibleDesign.accent,
     };

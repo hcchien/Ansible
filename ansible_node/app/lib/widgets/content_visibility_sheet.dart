@@ -45,7 +45,8 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
   );
 
   void normalizeDistribution() {
-    if (picked == ContentVisibility.private) {
+    if (picked == ContentVisibility.private ||
+        picked == ContentVisibility.followers) {
       distributionPreference = DistributionPreference.localOnly;
     }
   }
@@ -67,7 +68,9 @@ Future<ContentDistributionChoice?> showContentDistributionSheet({
               distributionPreference == DistributionPreference.activityPub ||
               distributionPreference ==
                   DistributionPreference.nostrAndActivityPub;
-          final federationEnabled = picked != ContentVisibility.private;
+          final federationEnabled =
+              picked == ContentVisibility.public ||
+              picked == ContentVisibility.unlisted;
 
           void setDistribution({bool? nostr, bool? activityPub}) {
             if (!federationEnabled) return;
@@ -275,6 +278,10 @@ DistributionPreference _withoutUnavailableActivityPub(
     ContentVisibility.private => (
       label: context.uiCopy(zh: '私人', en: 'private'),
       dot: AnsibleDesign.inkMuted,
+    ),
+    ContentVisibility.followers => (
+      label: context.uiCopy(zh: '僅限已核准的追蹤者', en: 'approved followers'),
+      dot: AnsibleDesign.lavender,
     ),
     ContentVisibility.unlisted => (
       label: context.uiCopy(zh: '未列出', en: 'unlisted'),
@@ -654,6 +661,16 @@ const _visibilityOptions = [
     description: '只有你看得見。連同步到別台也只有你的裝置。',
     descriptionEn: 'Only you can see it. Even sync stays on your devices.',
     dot: AnsibleDesign.inkMuted,
+  ),
+  _VisibilityOption(
+    visibility: ContentVisibility.followers,
+    zh: '已核准的追蹤者',
+    en: 'followers',
+    enLabel: 'Approved followers',
+    description: '只有你核准的追蹤者能讀；託管 Host 可讀取內容，取消追蹤不會刪除已下載副本。',
+    descriptionEn:
+        'Approved followers can read it. The hosting service can read it, and downloaded copies cannot be revoked.',
+    dot: AnsibleDesign.lavender,
   ),
   _VisibilityOption(
     visibility: ContentVisibility.unlisted,

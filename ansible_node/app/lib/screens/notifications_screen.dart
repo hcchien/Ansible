@@ -219,8 +219,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         en: 'replied to your post',
       ),
       NotificationType.newFollower => context.uiCopy(
-        zh: '開始追蹤你',
-        en: 'started following you',
+        zh: '要求追蹤你',
+        en: 'requested to follow you',
       ),
       NotificationType.messengerMessage => context.uiCopy(
         zh: '傳來一則私訊',

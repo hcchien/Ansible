@@ -5,6 +5,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
   alias AnsibleRelay.{
     AbuseDetector,
+    FollowAccess,
     IdentityCache,
     IdentityWritePolicy,
     OpStore,
@@ -20,7 +21,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   }
 
   @required_fields ~w(op_id author_did entity_type entity_id op_type payload signature)
-  @valid_entity_types ~w(board thread post reaction murmur note follow profile comment)
+  @valid_entity_types ~w(board thread post reaction murmur note follow follow_grant profile comment)
   @valid_op_types ~w(insert update delete crdt_merge)
   # Entity kinds whose creation is gated by a hosted board's
   # posting_policy["min_post_tier"] (threads and replies alike).
@@ -28,7 +29,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   # Standalone content kinds (no board/thread) whose public/unlisted visibility is
   # checked as defense-in-depth before relaying. Primary enforcement is app-side.
   @content_entity_types ~w(murmur note)
-  @relayable_visibilities ~w(public unlisted)
+  @relayable_visibilities ~w(public unlisted followers)
 
   # POST /api/v1/ops
   def ingest(conn, params) do
@@ -47,6 +48,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
          :ok <- check_op_not_duplicate(params["op_id"]),
          message = signing_payload(params),
          :ok <- check_signature(author_did, message, params["signature"]),
+         :ok <- FollowAccess.validate_op(params),
          :ok <-
            check_original_author(
              params["entity_type"],
@@ -134,6 +136,9 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
 
       {:error, :private_content} ->
         send_json(conn, 422, %{error: "private_content_not_relayable"})
+
+      {:error, reason} when reason in [:invalid_follow_request, :invalid_follow_grant] ->
+        send_json(conn, 422, %{error: Atom.to_string(reason)})
 
       {:error, :unverified_did} ->
         send_json(conn, 401, %{
@@ -338,7 +343,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   defp public_op?(op) do
     case op_board_id(op) do
       nil ->
-        true
+        standalone_public_op?(op)
 
       board_id ->
         case PostingGate.get_board(board_id) do
@@ -357,6 +362,16 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
     end
   end
 
+  defp standalone_public_op?(%{entity_type: type, payload: payload})
+       when type in @content_entity_types do
+    case decode_payload(payload) do
+      {:ok, %{} = decoded} -> decoded["visibility"] in [nil, "public", "unlisted"]
+      _ -> type == "murmur"
+    end
+  end
+
+  defp standalone_public_op?(_op), do: true
+
   defp op_board_id(op) do
     case decode_payload(op.payload) do
       {:ok, %{} = decoded} -> decoded["boardId"] || decoded["board_id"]
@@ -373,7 +388,7 @@ defmodule AnsibleRelay.Web.Controllers.OpsController do
   # recompute the digest from the ops + recompute the CID + check the Ed25519
   # signature against `signing_public_key_hex`.
   def snapshot(conn, params) do
-    if Store.protected_boards_exist?() do
+    if Store.protected_boards_exist?() or OpStore.followers_content_exists?() do
       send_json(conn, 409, %{error: "public_snapshot_unavailable_with_protected_boards"})
     else
       do_snapshot(conn, params)

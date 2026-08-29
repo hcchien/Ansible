@@ -75,6 +75,24 @@ class InMemoryFollowRepository implements FollowRepository {
   }
 
   @override
+  Future<List<FollowEdge>> listOutbound(
+    String followerDid, {
+    FollowTargetType? targetType,
+  }) async {
+    final edges =
+        _edges.values
+            .where(
+              (edge) =>
+                  edge.followerDid == followerDid &&
+                  edge.direction == FollowDirection.outbound &&
+                  (targetType == null || edge.targetType == targetType),
+            )
+            .toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return edges;
+  }
+
+  @override
   Future<List<FollowEdge>> listFollowers(String targetId) async {
     final edges =
         _edges.values
@@ -83,6 +101,20 @@ class InMemoryFollowRepository implements FollowRepository {
                   edge.targetId == targetId &&
                   edge.direction == FollowDirection.inbound &&
                   edge.status == FollowStatus.accepted,
+            )
+            .toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return edges;
+  }
+
+  @override
+  Future<List<FollowEdge>> listInbound(String targetId) async {
+    final edges =
+        _edges.values
+            .where(
+              (edge) =>
+                  edge.targetId == targetId &&
+                  edge.direction == FollowDirection.inbound,
             )
             .toList()
           ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));

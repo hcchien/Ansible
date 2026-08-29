@@ -511,6 +511,7 @@ class CrdtOpBuilder {
     final payload = _encodeJsonPayload({
       'targetDid': targetDid,
       'visibility': 'federated',
+      'state': 'requested',
       'createdAt': createdAt.toUtc().toIso8601String(),
     });
     return OpsQueueEntry(
@@ -545,6 +546,49 @@ class CrdtOpBuilder {
       entityType: 'follow',
       entityId: targetDid,
       opType: 'delete',
+      payload: payload,
+      signature: _stubSignature(opId, payload),
+      schemaVersion: opSchemaVersion,
+      createdAt: createdAt,
+    );
+  }
+
+  /// Target-authored relationship VC accepting or rejecting a follow request.
+  /// It intentionally contains no Wallet or identity-credential claims.
+  static OpsQueueEntry createFollowGrant({
+    required String targetDid,
+    required String followerDid,
+    required String requestOpId,
+    required bool accepted,
+    String denialReason = 'rejected',
+  }) {
+    final opId = _uuid.v4();
+    final createdAt = DateTime.now().toUtc();
+    final payload = _encodeJsonPayload({
+      'requestOpId': requestOpId,
+      'followerDid': followerDid,
+      'targetDid': targetDid,
+      if (!accepted) 'reason': denialReason,
+      if (accepted)
+        'credential': {
+          '@context': ['https://www.w3.org/ns/credentials/v2'],
+          'type': ['VerifiableCredential', 'FollowGrantCredential'],
+          'issuer': targetDid,
+          'issuanceDate': createdAt.toIso8601String(),
+          'credentialSubject': {
+            'id': followerDid,
+            'targetDid': targetDid,
+            'relationship': 'approved_follower',
+          },
+        },
+      'createdAt': createdAt.toIso8601String(),
+    });
+    return OpsQueueEntry(
+      opId: opId,
+      authorDid: targetDid,
+      entityType: 'follow_grant',
+      entityId: followerDid,
+      opType: accepted ? 'insert' : 'delete',
       payload: payload,
       signature: _stubSignature(opId, payload),
       schemaVersion: opSchemaVersion,

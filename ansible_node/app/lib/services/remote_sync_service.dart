@@ -53,6 +53,8 @@ class RelayApiClient {
     _accessToken = token;
   }
 
+  bool get hasAccessToken => _accessToken != null && _accessToken!.isNotEmpty;
+
   Future<Map<String, dynamic>> login(String username, String password) async {
     final response = await _client.post(
       Uri.parse('$baseUrl/api/v1/auth/login'),
@@ -112,6 +114,31 @@ class RelayApiClient {
     }
     return _normalizeDelta(
       _decodeResponseObject(response, operation: 'Board delta'),
+    );
+  }
+
+  Future<Map<String, dynamic>> getFollowerDelta({
+    required String authorDid,
+    required String readerDid,
+    int? cursor,
+    int limit = 100,
+  }) async {
+    final uri =
+        Uri.parse(
+          '$baseUrl/api/v1/followers/${Uri.encodeComponent(authorDid)}/ops/delta',
+        ).replace(
+          queryParameters: {
+            'reader': readerDid,
+            if (cursor != null) 'cursor': cursor.toString(),
+            'limit': limit.toString(),
+          },
+        );
+    final response = await _client.get(uri, headers: authHeaders);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Follower delta failed: ${response.statusCode}');
+    }
+    return _normalizeDelta(
+      _decodeResponseObject(response, operation: 'Follower delta'),
     );
   }
 
@@ -456,6 +483,7 @@ class RemoteSyncService {
   final ContentItemRepository? _contentItemRepo;
   final DidReputationRepository? _didReputationRepo;
   final String? _followerDid;
+  final bool _allowFollowerReads;
   // Optional local notification projection (Phase A): folds trusted incoming
   // ops into the local notifications table. Pure local projection — adds no
   // server request and runs before board filtering so follow ops (which have
@@ -484,6 +512,7 @@ class RemoteSyncService {
     ContentItemRepository? contentItemRepo,
     DidReputationRepository? didReputationRepo,
     String? followerDid,
+    bool allowFollowerReads = false,
     NotificationProjector? notificationProjector,
     RemoteTombstoneRepository? remoteTombstoneRepository,
     IssuerAttestationService? issuerAttestationService,
@@ -505,6 +534,7 @@ class RemoteSyncService {
        _contentItemRepo = contentItemRepo,
        _didReputationRepo = didReputationRepo,
        _followerDid = followerDid,
+       _allowFollowerReads = allowFollowerReads,
        _notificationProjector = notificationProjector,
        _remoteTombstones = remoteTombstoneRepository,
        _issuerAttestations = issuerAttestationService,
@@ -617,6 +647,7 @@ class RemoteSyncService {
         });
 
         for (final entry in delta.activities) {
+          await _applyFollowActivity(entry.activity);
           // Local notification projection first: replies to the local user's
           // threads/posts and follows targeting the local DID must notify even
           // when the op is filtered out below (e.g. follow ops have no board).
@@ -669,6 +700,45 @@ class RemoteSyncService {
 
         currentCursor = delta.nextCursor;
         hasMore = delta.hasMore;
+      }
+
+      // Followers-only posts are host-visible but absent from the public
+      // delta. Fetch them only with the reader's short-lived sync capability
+      // and only for relationships that are locally accepted after this pull.
+      final readerDid = _followerDid;
+      if (_allowFollowerReads &&
+          readerDid != null &&
+          remoteClient.hasAccessToken) {
+        final protectedAuthors = await _resolveFollowedAuthorDids();
+        for (final authorDid in protectedAuthors) {
+          var followerCursor = 0;
+          var followerHasMore = true;
+          while (followerHasMore) {
+            final followerJson = await remoteClient.getFollowerDelta(
+              authorDid: authorDid,
+              readerDid: readerDid,
+              cursor: followerCursor > 0 ? followerCursor : null,
+              limit: 100,
+            );
+            final trusted = await _trustedActivities(followerJson);
+            final followerDelta = DeltaResponse.fromJson({
+              ...followerJson,
+              'activities': trusted,
+            });
+            for (final entry in followerDelta.activities) {
+              final activity = entry.activity;
+              if (activity.authorId != authorDid ||
+                  (activity.entityType != 'murmur' &&
+                      activity.entityType != 'note')) {
+                continue;
+              }
+              await _applyContentItemActivity(activity, remoteNode.id);
+              totalProcessed++;
+            }
+            followerCursor = followerDelta.nextCursor;
+            followerHasMore = followerDelta.hasMore;
+          }
+        }
       }
 
       await _remoteNodeRepo.updateSyncCursor(
@@ -1153,15 +1223,107 @@ class RemoteSyncService {
     );
     final dids = <String>{};
     for (final edge in edges.where(
-      (edge) => edge.status == FollowStatus.accepted,
+      (edge) =>
+          edge.status == FollowStatus.accepted &&
+          edge.visibility == FollowVisibility.federated,
     )) {
       final target = await followRepo.getTarget(edge.targetId);
       final did = target?.did ?? target?.canonicalUri;
-      if (did != null && did.isNotEmpty) {
+      if (did != null && did.startsWith('did:')) {
         dids.add(did);
       }
     }
     return dids;
+  }
+
+  Future<void> _applyFollowActivity(Activity activity) async {
+    final repo = _followRepo;
+    final localDid = _followerDid;
+    if (repo == null || localDid == null || localDid.isEmpty) return;
+
+    final kind = activity.entityType.toLowerCase();
+    final now = _now().toUtc();
+    if (kind == 'follow' && activity.payload['targetDid'] == localDid) {
+      var localTarget = await repo.getTargetByCanonicalUri(localDid);
+      localTarget ??= FollowTarget(
+        targetId: 'native-follow-target:$localDid',
+        targetType: FollowTargetType.user,
+        canonicalUri: localDid,
+        displayName: localDid,
+        did: localDid,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repo.upsertTarget(localTarget);
+      final existing = await repo.getEdge(
+        activity.authorId,
+        localTarget.targetId,
+        FollowDirection.inbound,
+      );
+      if (activity.type.toLowerCase() == 'delete') {
+        if (existing != null) {
+          await repo.updateEdgeStatus(
+            existing.followId,
+            FollowStatus.cancelled,
+            now,
+          );
+        }
+      } else {
+        await repo.upsertEdge(
+          FollowEdge(
+            followId: existing?.followId ?? activity.activityId,
+            followerDid: activity.authorId,
+            targetId: localTarget.targetId,
+            targetType: FollowTargetType.user,
+            direction: FollowDirection.inbound,
+            status: FollowStatus.pending,
+            visibility: FollowVisibility.federated,
+            remoteActivityId: activity.activityId,
+            createdAt: existing?.createdAt ?? activity.createdAt,
+            updatedAt: now,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (kind != 'follow_grant') return;
+    final follower = activity.payload['followerDid']?.toString();
+    final targetDid = activity.payload['targetDid']?.toString();
+    final reason = activity.payload['reason']?.toString();
+    final accepted = activity.type.toLowerCase() != 'delete';
+    final status = accepted
+        ? FollowStatus.accepted
+        : reason == 'rejected'
+        ? FollowStatus.rejected
+        : FollowStatus.cancelled;
+
+    if (follower == localDid && targetDid != null) {
+      final target = await repo.getTargetByCanonicalUri(targetDid);
+      if (target != null) {
+        final edge = await repo.getEdge(
+          localDid,
+          target.targetId,
+          FollowDirection.outbound,
+        );
+        if (edge != null) {
+          await repo.updateEdgeStatus(edge.followId, status, now);
+        }
+      }
+    }
+    if (targetDid == localDid && follower != null) {
+      final target = await repo.getTargetByCanonicalUri(localDid);
+      if (target != null) {
+        final edge = await repo.getEdge(
+          follower,
+          target.targetId,
+          FollowDirection.inbound,
+        );
+        if (edge != null) {
+          await repo.updateEdgeStatus(edge.followId, status, now);
+        }
+      }
+    }
   }
 
   Future<void> _ensureFollowedContext(Activity activity) async {

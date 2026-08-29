@@ -29,6 +29,7 @@ enum ContentStatus {
 
 enum ContentVisibility {
   private,
+  followers,
   unlisted,
   public;
 

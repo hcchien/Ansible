@@ -254,6 +254,19 @@ class AppSyncService {
   }
 
   Future<bool> _hasProtectedBoardReads({String? remoteNodeId}) async {
+    final follows = _followRepository;
+    final followerDid = _followerDid;
+    if (follows != null && followerDid != null) {
+      final accepted = await follows.listFollowing(
+        followerDid,
+        targetType: FollowTargetType.user,
+      );
+      for (final edge in accepted) {
+        if (edge.visibility != FollowVisibility.federated) continue;
+        final target = await follows.getTarget(edge.targetId);
+        if ((target?.did ?? '').startsWith('did:')) return true;
+      }
+    }
     final hostedBoards = _hostedBoardRepo;
     if (hostedBoards == null) return false;
     final subscriptions = await hostedBoards.listSubscriptions(
@@ -322,13 +335,14 @@ class AppSyncService {
       return false;
     }
     final desired = <String>{};
-    final edges = await follows.listFollowing(
+    final edges = await follows.listOutbound(
       followerDid,
       targetType: FollowTargetType.user,
     );
     for (final edge in edges.where(
       (item) =>
-          item.status == FollowStatus.accepted &&
+          (item.status == FollowStatus.pending ||
+              item.status == FollowStatus.accepted) &&
           item.visibility == FollowVisibility.federated,
     )) {
       final target = await follows.getTarget(edge.targetId);
@@ -384,14 +398,32 @@ class AppSyncService {
     bool pushLocal = true,
     bool allowBoardProofs = true,
   }) async {
-    final pullSummary = pullRemote
-        ? await pullLatestFromRelays(allowBoardProofs: allowBoardProofs)
-        : const RelayPullSummary(pulledActivities: 0);
-
     final reputationErrors = <String>[];
     final capabilities = <String, String>{};
     var opsSummary = const OpsDispatchSummary();
     final effectivePushLocal = pushLocal && _allowIdentityWrites;
+    if (allowBoardProofs || effectivePushLocal) {
+      final nodes = await _remoteNodeRepo.list();
+      for (final node in nodes.where((item) => item.isActive)) {
+        try {
+          final capabilityService = _syncCapabilityService;
+          if (capabilityService != null) {
+            capabilities[node.id] = (await capabilityService(
+              node,
+            ).authorize()).token;
+          }
+        } on Object catch (error) {
+          reputationErrors.add('${node.name}: $error');
+        }
+      }
+    }
+    final pullSummary = pullRemote
+        ? await pullLatestFromRelays(
+            allowBoardProofs: allowBoardProofs,
+            syncCapabilities: capabilities,
+          )
+        : const RelayPullSummary(pulledActivities: 0);
+
     if (effectivePushLocal) {
       final presenter = _reputationPresentationService;
       final holderDid = _followerDid;
@@ -399,12 +431,6 @@ class AppSyncService {
         final nodes = await _remoteNodeRepo.list();
         for (final node in nodes.where((item) => item.isActive)) {
           try {
-            final capabilityService = _syncCapabilityService;
-            if (capabilityService != null) {
-              capabilities[node.id] = (await capabilityService(
-                node,
-              ).authorize()).token;
-            }
             await presenter.present(holderDid: holderDid, node: node);
           } on Object catch (error) {
             reputationErrors.add('${node.name}: $error');
@@ -594,16 +620,18 @@ class AppSyncService {
     }
 
     try {
-      final edges = await follows.listFollowing(
+      final edges = await follows.listOutbound(
         followerDid,
         targetType: FollowTargetType.user,
       );
 
-      // Desired federated follow targets (DIDs), accepted only.
+      // Pending native edges are signed follow requests. Acceptance arrives
+      // separately as a target-authored FollowGrantCredential.
       final desired = <String>{};
       for (final edge in edges.where(
         (e) =>
-            e.status == FollowStatus.accepted &&
+            (e.status == FollowStatus.pending ||
+                e.status == FollowStatus.accepted) &&
             e.visibility == FollowVisibility.federated,
       )) {
         final target = await follows.getTarget(edge.targetId);
@@ -778,14 +806,16 @@ class AppSyncService {
   /// enable [allowBoardProofs] only after explicit user-presence consent.
   Future<RelayPullSummary> pullLatestFromRelays({
     bool allowBoardProofs = true,
+    Map<String, String> syncCapabilities = const {},
   }) async {
     final nodes = await _remoteNodeRepo.list();
     var pulledActivities = 0;
     final pullErrors = <String>[];
     for (final node in nodes.where((node) => node.isActive)) {
       final client = RelayApiClient(baseUrl: node.url);
-      if (node.accessToken != null) {
-        client.setAccessToken(node.accessToken);
+      final capability = syncCapabilities[node.id] ?? node.accessToken;
+      if (capability != null) {
+        client.setAccessToken(capability);
       }
       final result = await RemoteSyncService(
         remoteNodeRepo: _remoteNodeRepo,
@@ -799,6 +829,7 @@ class AppSyncService {
         contentItemRepo: _contentItemRepo,
         didReputationRepo: _didReputationRepo,
         followerDid: _followerDid,
+        allowFollowerReads: syncCapabilities.containsKey(node.id),
         notificationProjector: _notificationProjector,
         remoteTombstoneRepository: _remoteTombstoneRepository,
         issuerAttestationService: _attestationServiceFor(node.url),

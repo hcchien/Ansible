@@ -16,7 +16,12 @@ abstract class FollowRepository {
     String followerDid, {
     FollowTargetType? targetType,
   });
+  Future<List<FollowEdge>> listOutbound(
+    String followerDid, {
+    FollowTargetType? targetType,
+  });
   Future<List<FollowEdge>> listFollowers(String targetId);
+  Future<List<FollowEdge>> listInbound(String targetId);
   Future<void> upsertEdge(FollowEdge edge);
   Future<void> updateEdgeStatus(
     String followId,

@@ -8,6 +8,40 @@ defmodule AnsibleAppview.FollowGraph do
   import Ecto.Query
   alias AnsibleAppview.Repo
   alias AnsibleAppview.Db.Follow
+  alias AnsibleAppview.Db.FollowRequest
+
+  def request(request_op_id, follower_did, author_did, created_log_id) do
+    Repo.insert(
+      %FollowRequest{
+        request_op_id: request_op_id,
+        follower_did: follower_did,
+        author_did: author_did,
+        created_log_id: created_log_id
+      },
+      on_conflict: {:replace, [:request_op_id, :created_log_id]},
+      conflict_target: [:follower_did, :author_did]
+    )
+  end
+
+  def requested?(request_op_id, follower_did, author_did) do
+    Repo.exists?(
+      from(r in FollowRequest,
+        where:
+          r.request_op_id == ^request_op_id and r.follower_did == ^follower_did and
+            r.author_did == ^author_did
+      )
+    )
+  end
+
+  def remove_request(follower_did, author_did) do
+    Repo.delete_all(
+      from(r in FollowRequest,
+        where: r.follower_did == ^follower_did and r.author_did == ^author_did
+      )
+    )
+
+    :ok
+  end
 
   def upsert(follower_did, author_did, created_log_id) do
     Repo.insert(
@@ -33,12 +67,12 @@ defmodule AnsibleAppview.FollowGraph do
 
   @doc "DIDs that follow `author_did` (fan-out targets)."
   def followers(author_did) do
-    Repo.all(from f in Follow, where: f.author_did == ^author_did, select: f.follower_did)
+    Repo.all(from(f in Follow, where: f.author_did == ^author_did, select: f.follower_did))
   end
 
   @doc "DIDs that `reader_did` follows (read fallback / rebuild)."
   def following(reader_did) do
-    Repo.all(from f in Follow, where: f.follower_did == ^reader_did, select: f.author_did)
+    Repo.all(from(f in Follow, where: f.follower_did == ^reader_did, select: f.author_did))
   end
 
   def follower_count(author_did) do
@@ -53,10 +87,11 @@ defmodule AnsibleAppview.FollowGraph do
 
       _ ->
         Repo.all(
-          from f in Follow,
+          from(f in Follow,
             where: f.author_did in ^author_dids,
             group_by: f.author_did,
             select: {f.author_did, count(f.follower_did)}
+          )
         )
         |> Map.new()
     end
@@ -70,11 +105,12 @@ defmodule AnsibleAppview.FollowGraph do
 
       _ ->
         Repo.all(
-          from f in Follow,
+          from(f in Follow,
             where: f.author_did in ^author_dids,
             group_by: f.author_did,
             having: count(f.follower_did) >= ^threshold,
             select: f.author_did
+          )
         )
     end
   end

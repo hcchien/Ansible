@@ -72,6 +72,36 @@ void main() {
     expect(choice!.distributionPreference, DistributionPreference.nostr);
   });
 
+  testWidgets('approved followers is host-visible and never federated', (
+    tester,
+  ) async {
+    ContentDistributionChoice? choice;
+    await _pumpDistributionSheet(
+      tester,
+      current: ContentDistributionChoice.forVisibility(
+        ContentVisibility.followers,
+      ),
+      onResult: (value) => choice = value,
+    );
+
+    expect(find.textContaining('託管 Host 可讀取內容'), findsOneWidget);
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.descendant(
+              of: find.byKey(const Key('distribution_nostr_toggle')),
+              matching: find.byType(SwitchListTile),
+            ),
+          )
+          .onChanged,
+      isNull,
+    );
+    await tester.tap(find.text('確認'));
+    await tester.pumpAndSettle();
+    expect(choice!.visibility, ContentVisibility.followers);
+    expect(choice!.distributionPreference, DistributionPreference.localOnly);
+  });
+
   testWidgets('unverified user cannot select ActivityPub distribution', (
     tester,
   ) async {
