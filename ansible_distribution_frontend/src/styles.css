@@ -993,6 +993,24 @@ p {
   background: color-mix(in srgb, var(--paper, #faf7f0) 92%, var(--accent, #a56d32));
 }
 
+.community-notes-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  list-style-position: inside;
+}
+
+.community-notes-summary small {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 500;
+}
+
+.community-notes-content { margin-top: 10px; }
+
 .community-notes-heading h3,
 .community-notes-heading p { margin: 0 0 6px; }
 .community-notes-heading p,

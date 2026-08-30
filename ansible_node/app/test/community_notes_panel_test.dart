@@ -113,6 +113,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('社群脈絡'), findsOneWidget);
+    expect(find.text('1 則獲評有幫助'), findsOneWidget);
+    expect(find.text('這裡有可查證的補充脈絡。'), findsNothing);
+    expect(find.text('另一則仍有分歧的脈絡。'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('community_notes_toggle')));
+    await tester.pumpAndSettle();
+
     expect(find.text('這裡有可查證的補充脈絡。'), findsOneWidget);
     expect(find.text('公開來源'), findsOneWidget);
     expect(find.text('社群認為有幫助'), findsOneWidget);

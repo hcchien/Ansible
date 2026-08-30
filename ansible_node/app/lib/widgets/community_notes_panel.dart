@@ -48,7 +48,7 @@ class _CommunityNotesPanelState extends State<CommunityNotesPanel> {
   bool _loading = true;
   bool _visible = true;
   bool _preferenceLoaded = false;
-  bool _collapsed = false;
+  bool _collapsed = true;
   bool _submitting = false;
 
   String get _appViewBaseUrl =>
@@ -248,6 +248,9 @@ class _CommunityNotesPanelState extends State<CommunityNotesPanel> {
   Widget build(BuildContext context) {
     if (!_preferenceLoaded || !_visible) return const SizedBox.shrink();
     final notes = [...?_bundle?.notes]..sort(_compareNotes);
+    final helpfulCount = notes
+        .where((note) => _statuses[note.noteId]?['status'] == 'helpful')
+        .length;
     if (!_loading && notes.isEmpty && _bundle?.target == null) {
       return const SizedBox.shrink();
     }
@@ -268,15 +271,35 @@ class _CommunityNotesPanelState extends State<CommunityNotesPanel> {
               const Icon(Icons.help_outline, size: 19),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  context.uiCopy(zh: '社群脈絡', en: 'Community Notes'),
-                  style: const TextStyle(
-                    fontFamily: AnsibleDesign.sans,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.uiCopy(zh: '社群脈絡', en: 'Community Notes'),
+                      style: const TextStyle(
+                        fontFamily: AnsibleDesign.sans,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (!_loading && notes.isNotEmpty)
+                      Text(
+                        helpfulCount > 0
+                            ? context.uiCopy(
+                                zh: '$helpfulCount 則獲評有幫助',
+                                en: '$helpfulCount rated helpful',
+                              )
+                            : context.uiCopy(
+                                zh: '${notes.length} 則，可展開查看',
+                                en: '${notes.length} available',
+                              ),
+                        key: const Key('community_notes_summary'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
                 ),
               ),
               IconButton(
+                key: const Key('community_notes_toggle'),
                 tooltip: context.uiCopy(
                   zh: _collapsed ? '顯示' : '隱藏',
                   en: _collapsed ? 'Show' : 'Hide',

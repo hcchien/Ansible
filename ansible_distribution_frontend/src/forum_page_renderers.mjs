@@ -595,6 +595,10 @@ function renderThreadDetail(viewModel, uiState = {}) {
 
 export function renderCommunityNotes(notes = [], context = {}) {
   if (!Array.isArray(notes) || notes.length === 0) return '';
+  const helpfulCount = notes.filter((note) => note?.aggregate?.status === 'helpful').length;
+  const summaryLabel = helpfulCount > 0
+    ? `${helpfulCount} 則獲評有幫助`
+    : `${notes.length} 則，可展開查看`;
   const cards = notes.map((note) => {
     const status = String(note?.aggregate?.status ?? 'needs_more_ratings');
     const statusLabel = {
@@ -628,11 +632,14 @@ export function renderCommunityNotes(notes = [], context = {}) {
       <footer>${scorer || topReasons ? `<span>${escapeHtml([scorer, topReasons].filter(Boolean).join(' · '))}</span>` : ''}${rateControl}</footer>
     </article>`;
   }).join('');
-  return `<section class="community-notes" aria-label="社群脈絡">
-    <div class="community-notes-heading"><h3>社群脈絡 · Community Notes</h3><p>由使用者簽署並附上來源；狀態是此 Forum Host 的聚合結果，不代表全域真相。</p></div>
-    ${cards}
-    <p class="community-note-privacy">簽章評分會私密送至此 Forum Host；公眾只會看到聚合數量、原因與狀態。</p>
-  </section>`;
+  return `<details class="community-notes" aria-label="社群脈絡">
+    <summary class="community-notes-summary"><span>社群脈絡 · Community Notes</span><small>${escapeHtml(summaryLabel)}</small></summary>
+    <div class="community-notes-content">
+      <div class="community-notes-heading"><p>由使用者簽署並附上來源；狀態是此 Forum Host 的聚合結果，不代表全域真相。</p></div>
+      ${cards}
+      <p class="community-note-privacy">簽章評分會私密送至此 Forum Host；公眾只會看到聚合數量、原因與狀態。</p>
+    </div>
+  </details>`;
 }
 
 function safeHttpUrl(value) {

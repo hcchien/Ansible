@@ -44,6 +44,10 @@ const communityNotesHtml = renderCommunityNotes([
     },
   },
 ], { authenticated: true, session: { subject: 'did:key:alice' } });
+assert.match(communityNotesHtml, /<details class="community-notes"/);
+assert.doesNotMatch(communityNotesHtml, /<details class="community-notes"[^>]*\sopen(?:\s|>)/);
+assert.match(communityNotesHtml, /<summary class="community-notes-summary">/);
+assert.match(communityNotesHtml, /1 則獲評有幫助/);
 assert.match(communityNotesHtml, /社群評價為有幫助/);
 assert.match(communityNotesHtml, /elix_host_consensus v1/);
 assert.match(communityNotesHtml, /good_sources/);
