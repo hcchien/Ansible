@@ -3,30 +3,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test(
-    'light and dark themes share the Lavender Signal component contract',
-    () {
-      final light = AnsibleDesign.theme();
-      final dark = AnsibleDesign.darkTheme();
+  test('light and dark themes share the Threads Signal component contract', () {
+    final light = AnsibleDesign.theme();
+    final dark = AnsibleDesign.darkTheme();
 
-      expect(light.scaffoldBackgroundColor, AnsibleDesign.paper);
-      expect(dark.scaffoldBackgroundColor, AnsibleDesign.darkPaper);
-      expect(light.colorScheme.secondary, AnsibleDesign.accent);
-      expect(dark.colorScheme.secondary, AnsibleDesign.darkOchre);
-      expect(light.colorScheme.onSecondary, AnsibleDesign.ink);
-      expect(dark.colorScheme.onSecondary, AnsibleDesign.darkPaper);
-      expect(light.textTheme.bodyMedium?.fontFamily, AnsibleDesign.serif);
-      expect(dark.textTheme.bodyMedium?.fontFamily, AnsibleDesign.serif);
-      expect(light.textTheme.labelLarge?.fontFamily, AnsibleDesign.sans);
-      expect(dark.textTheme.labelLarge?.fontFamily, AnsibleDesign.sans);
-      expect(light.cardTheme.elevation, 0);
-      expect(dark.cardTheme.elevation, 0);
-    },
-  );
+    expect(AnsibleDesign.paper, const Color(0xFFFFFFFF));
+    expect(AnsibleDesign.ink, const Color(0xFF222222));
+    expect(AnsibleDesign.accent, const Color(0xFF78900D));
+    expect(AnsibleDesign.highlight, const Color(0xFFD94EE8));
+    expect(AnsibleDesign.darkPaper, const Color(0xFF222222));
+    expect(AnsibleDesign.darkOchre, const Color(0xFF9AC02E));
+    expect(light.scaffoldBackgroundColor, AnsibleDesign.paper);
+    expect(dark.scaffoldBackgroundColor, AnsibleDesign.darkPaper);
+    expect(light.colorScheme.secondary, AnsibleDesign.accent);
+    expect(dark.colorScheme.secondary, AnsibleDesign.darkOchre);
+    expect(light.colorScheme.onSecondary, AnsibleDesign.paperWhite);
+    expect(dark.colorScheme.onSecondary, AnsibleDesign.darkPaper);
+    expect(light.textTheme.bodyMedium?.fontFamily, AnsibleDesign.serif);
+    expect(dark.textTheme.bodyMedium?.fontFamily, AnsibleDesign.serif);
+    expect(light.textTheme.labelLarge?.fontFamily, AnsibleDesign.sans);
+    expect(dark.textTheme.labelLarge?.fontFamily, AnsibleDesign.sans);
+    expect(light.cardTheme.elevation, 0);
+    expect(dark.cardTheme.elevation, 0);
+    expect(
+      (light.cardTheme.shape! as RoundedRectangleBorder).borderRadius,
+      BorderRadius.circular(18),
+    );
+  });
 
-  testWidgets('custom Elix wordmark remains accessible in both themes', (
-    tester,
-  ) async {
+  testWidgets('Elix wordmark remains visible and accessible', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AnsibleDesign.theme(),
@@ -35,7 +40,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(CustomPaint), findsWidgets);
+    expect(find.text('Elix'), findsOneWidget);
     expect(find.bySemanticsLabel('Elix'), findsOneWidget);
   });
 }

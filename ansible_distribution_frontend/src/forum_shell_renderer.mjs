@@ -107,15 +107,7 @@ export function renderElixMark() {
 }
 
 export function renderElixWordmark() {
-  return `
-    <svg class="brand-word" viewBox="-7 -7 306 114" role="img" aria-label="Elix">
-      <path d="M0 0H64V14H14V43H50V57H14V86H64V100H0Z" />
-      <path d="M88 0H102V86H152V100H88Z" />
-      <path d="M176 23.8H190V100H176Z" />
-      <circle class="brand-word__accent" cx="183" cy="8.68" r="8.68" />
-      <path class="brand-word__x" d="M214 0L246.7 43M290 0L257.3 43M214 100L246.7 57M290 100L257.3 57" />
-    </svg>
-  `;
+  return '<span class="brand-word" aria-label="Elix">Elix</span>';
 }
 
 export function renderSessionChip(session) {

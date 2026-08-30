@@ -1,43 +1,41 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Lavender Signal
-   Mist paper, warm ink, lavender identity and sky-blue context.
-   Editorial serif carries discussion; sans carries chrome; mono carries
-   handles, policy and provenance labels. These aliases intentionally cover
-   both the current app vocabulary and older component names so every page
-   resolves through one palette.
+   ELIX WEB — Threads Signal
+   Canonical 2026-08-30 handoff: near-white ground, true ink, quiet lichen
+   trust signals and magenta reactions. Sans carries both content and chrome;
+   mono is reserved for handles, policy and provenance labels.
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
+  --background: #FFFFFF;
+  --background-soft: #F3F5F1;
   --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #B9B29D;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #C9AEEB;
-  --highlight: #EBE21C;
-  --warning: #9A4A24;
-  --danger: #9A4A24;
-  --success: #2846A8;
-  --sky: #6FB2E8;
-  --navy: #2846A8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #2A2A0A;
+  --surface-raised: #F3F5F1;
+  --surface-deep: #D0D9CD;
+  --border: #D0D9CD;
+  --border-soft: #E5EAE2;
+  --border-strong: #ADB3A9;
+  --muted-fill: #D0D9CD;
+  --accent: #78900D;
+  --lavender: #222222;
+  --highlight: #D94EE8;
+  --warning: #C0475C;
+  --danger: #C0475C;
+  --success: #78900D;
+  --sky: #ADB3A9;
+  --navy: #5D645E;
+  --text: #222222;
+  --muted: #5D645E;
+  --faint: #93998F;
+  --on-accent: #FFFFFF;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 22%, transparent);
   --paper: var(--background);
   --rule: var(--border);
   --rule-soft: var(--border-soft);
   --ochre: var(--accent);
   --ink-muted: var(--muted);
-  --serif: "Noto Serif TC", "Newsreader", serif;
-  --serif-en: "Newsreader", "Noto Serif TC", serif;
-  --display: "Noto Serif TC", "Newsreader", serif;
+  --serif: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --serif-en: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --display: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
   --sans: "Noto Sans TC", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
@@ -48,54 +46,54 @@
 /* Paper theme — explicit selection (wins inside a dark system) */
 .forum-shell[data-theme="light"] {
   color-scheme: light;
-  --background: #F4F3EC;
-  --background-soft: #ECEAE0;
+  --background: #FFFFFF;
+  --background-soft: #F3F5F1;
   --surface: #FFFFFF;
-  --surface-raised: #ECEAE0;
-  --surface-deep: #E2DFD2;
-  --border: #D8D3C4;
-  --border-soft: #E6E2D6;
-  --border-strong: #B9B29D;
-  --muted-fill: #E2DFD2;
-  --accent: #C9AEEB;
-  --lavender: #C9AEEB;
-  --highlight: #EBE21C;
-  --warning: #9A4A24;
-  --danger: #9A4A24;
-  --success: #2846A8;
-  --sky: #6FB2E8;
-  --navy: #2846A8;
-  --text: #2A2A0A;
-  --muted: #625F3C;
-  --faint: #9C9974;
-  --on-accent: #2A2A0A;
+  --surface-raised: #F3F5F1;
+  --surface-deep: #D0D9CD;
+  --border: #D0D9CD;
+  --border-soft: #E5EAE2;
+  --border-strong: #ADB3A9;
+  --muted-fill: #D0D9CD;
+  --accent: #78900D;
+  --lavender: #222222;
+  --highlight: #D94EE8;
+  --warning: #C0475C;
+  --danger: #C0475C;
+  --success: #78900D;
+  --sky: #ADB3A9;
+  --navy: #5D645E;
+  --text: #222222;
+  --muted: #5D645E;
+  --faint: #93998F;
+  --on-accent: #FFFFFF;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 /* Ink theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #17130A;
-  --background-soft: #1F1A0E;
-  --surface: #14131A;
-  --surface-raised: #1F1A0E;
-  --surface-deep: #2A2413;
-  --border: #362E17;
-  --border-soft: #221D10;
-  --border-strong: #514525;
-  --muted-fill: #2A2413;
-  --accent: #D9C6F2;
-  --lavender: #D9C6F2;
-  --highlight: #F5EE3A;
-  --warning: #C97B52;
-  --danger: #C97B52;
-  --success: #5C82E0;
-  --sky: #8FC4F5;
-  --navy: #5C82E0;
-  --text: #F4EEDA;
-  --muted: #B7AD8E;
-  --faint: #726B4F;
-  --on-accent: #17130A;
+  --background: #222222;
+  --background-soft: #2A2A28;
+  --surface: #2A2A28;
+  --surface-raised: #2A2A28;
+  --surface-deep: #34362F;
+  --border: #3D3F39;
+  --border-soft: #2E302B;
+  --border-strong: #7A8076;
+  --muted-fill: #34362F;
+  --accent: #9AC02E;
+  --lavender: #F3F5F1;
+  --highlight: #E876F0;
+  --warning: #E876F0;
+  --danger: #E876F0;
+  --success: #9AC02E;
+  --sky: #ADB3A9;
+  --navy: #ADB3A9;
+  --text: #F3F5F1;
+  --muted: #ADB3A9;
+  --faint: #7A8076;
+  --on-accent: #222222;
   --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
@@ -104,27 +102,27 @@
   :root,
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #17130A;
-    --background-soft: #1F1A0E;
-    --surface: #14131A;
-    --surface-raised: #1F1A0E;
-    --surface-deep: #2A2413;
-    --border: #362E17;
-    --border-soft: #221D10;
-    --border-strong: #514525;
-    --muted-fill: #2A2413;
-    --accent: #D9C6F2;
-    --lavender: #D9C6F2;
-    --highlight: #F5EE3A;
-    --warning: #C97B52;
-    --danger: #C97B52;
-    --success: #5C82E0;
-    --sky: #8FC4F5;
-    --navy: #5C82E0;
-    --text: #F4EEDA;
-    --muted: #B7AD8E;
-    --faint: #726B4F;
-    --on-accent: #17130A;
+    --background: #222222;
+    --background-soft: #2A2A28;
+    --surface: #2A2A28;
+    --surface-raised: #2A2A28;
+    --surface-deep: #34362F;
+    --border: #3D3F39;
+    --border-soft: #2E302B;
+    --border-strong: #7A8076;
+    --muted-fill: #34362F;
+    --accent: #9AC02E;
+    --lavender: #F3F5F1;
+    --highlight: #E876F0;
+    --warning: #E876F0;
+    --danger: #E876F0;
+    --success: #9AC02E;
+    --sky: #ADB3A9;
+    --navy: #ADB3A9;
+    --text: #F3F5F1;
+    --muted: #ADB3A9;
+    --faint: #7A8076;
+    --on-accent: #222222;
     --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
   }
 }
@@ -312,13 +310,17 @@ p {
 }
 
 .brand-word {
-  display: block;
-  width: 54px;
-  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  height: 24px;
   flex: 0 0 auto;
-  overflow: visible;
-  fill: currentColor;
   color: var(--text);
+  font-family: var(--sans);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .brand-word__accent {
@@ -4437,9 +4439,9 @@ h2 {
   height: 23px;
 }
 
-/* ── Lavender Signal fidelity pass ───────────────────────────────────── */
-/* The handoff is intentionally quiet: mist surfaces are separated by ink
-   hairlines, while lavender is reserved for identity and primary action. */
+/* ── Threads Signal fidelity pass ───────────────────────────────────── */
+/* The handoff is intentionally quiet: white surfaces, soft sage hairlines,
+   lichen trust/primary actions and magenta reactions. */
 .command-header {
   border-bottom: 0.5px solid var(--border);
   padding: 14px 28px;
@@ -4484,7 +4486,7 @@ h2 {
 .settings-preference-block,
 .thread-draft-form {
   border: 0.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: none;
 }
 
@@ -4520,8 +4522,7 @@ h2 {
 h1,
 h2,
 h3,
-h4,
-.brand-word {
+h4 {
   font-family: var(--serif);
   font-weight: 500;
   letter-spacing: 0;
@@ -4536,17 +4537,17 @@ h4,
 
 .primary-action,
 .btn-signin {
-  background: var(--text);
+  background: var(--accent);
   border: none;
-  color: var(--background);
+  color: var(--on-accent);
   font-family: var(--serif);
   font-weight: 500;
 }
 
 .primary-action:hover,
 .btn-signin:hover {
-  background: var(--text);
-  color: var(--background);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .pk-pill,
@@ -4602,8 +4603,7 @@ h4,
     background: var(--background);
   }
 
-  .mobile-tab,
-  .mobile-tab.center {
+  .mobile-tab {
     flex: 1 1 0;
     width: auto;
     height: auto;
@@ -4617,6 +4617,19 @@ h4,
     font-family: var(--mono);
     font-size: 8.5px;
     letter-spacing: 0.14em;
+  }
+
+  .mobile-tab.center {
+    flex: 0 0 52px;
+    width: 52px;
+    height: 40px;
+    min-height: 40px;
+    margin: 0 7px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--accent);
+    box-shadow: none;
+    color: var(--on-accent);
   }
 
   .mobile-tab[aria-current="page"] {
@@ -4634,15 +4647,15 @@ h4,
     width: 50px;
     height: 50px;
     border: 0;
-    border-radius: 50%;
-    background: var(--text);
-    color: var(--background);
-    box-shadow: 0 6px 20px color-mix(in oklab, var(--text) 18%, transparent);
+    border-radius: 14px;
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: none;
     z-index: 8;
   }
 
   .mobile-compose-fab:hover {
-    color: var(--background);
+    color: var(--on-accent);
   }
 }
 

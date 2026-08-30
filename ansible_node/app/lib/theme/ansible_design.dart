@@ -4,65 +4,63 @@ import '../l10n/app_l10n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Elix Design System — "Lavender Signal".
-// The forum surfaces use neutral paper, lavender identity signals and sky-blue
-// secondary context. Content is editorial serif; product chrome is sans;
-// handles, policies and timestamps are mono.
+// Elix Design System — "Threads Signal".
+// Canonical source: Elix Screens.html in the 2026-08-30 handoff. The system is
+// near-white / true-ink with lichen green trust signals, magenta reactions,
+// rounded 18px content cards and intentionally quiet chrome.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AnsibleDesign {
   static const brandName = 'Elix';
 
   // ── Light (Paper — canonical) ─────────────────────────────────────────────
-  static const paper = Color(0xFFF4F3EC);
-  static const paperElev = Color(0xFFECEAE0);
-  static const paperDeep = Color(0xFFE2DFD2);
+  static const paper = Color(0xFFFFFFFF);
+  static const paperElev = Color(0xFFF3F5F1);
+  static const paperDeep = Color(0xFFD0D9CD);
   static const paperWhite = Color(0xFFFFFFFF);
-  static const ink = Color(0xFF2A2A0A);
-  static const inkMuted = Color(0xFF625F3C);
-  static const inkFaint = Color(0xFF9C9974);
-  static const rule = Color(0xFFD8D3C4);
-  static const ruleSoft = Color(0xFFE6E2D6);
-  static const accent = Color(0xFFC9AEEB);
-  static const accentSoft = Color(0xFFE6DAF6);
-  static const signalSoft = Color(0xFF6FB2E8);
-  static const tintSky = Color(0xFFE3F0FB);
-  static const tintLavender = Color(0xFFF0E9FA);
-  static const tintCitron = Color(0xFFFAF7C9);
-  static const spore = Color(0xFF6FB2E8);
-  static const moss = Color(0xFF6FB2E8);
-  static const lavender = Color(0xFF2846A8);
-  static const highlight = Color(0xFFEBE21C);
-  // Destructive/warning text must stay readable on bone paper, so it keeps a
-  // warm rust; the design's citron "ember" slot is decorative only.
-  static const danger = Color(0xFF9A4A24);
+  static const ink = Color(0xFF222222);
+  static const inkMuted = Color(0xFF5D645E);
+  static const inkFaint = Color(0xFF93998F);
+  static const rule = Color(0xFFD0D9CD);
+  static const ruleSoft = Color(0xFFE5EAE2);
+  static const accent = Color(0xFF78900D);
+  static const accentSoft = Color(0xFFE8EED0);
+  static const signalSoft = Color(0xFFADB3A9);
+  static const tintSky = Color(0xFFF3F5F1);
+  static const tintLavender = accentSoft;
+  static const tintCitron = Color(0xFFF2F5E7);
+  static const spore = Color(0xFF78900D);
+  static const moss = Color(0xFF5D645E);
+  static const lavender = Color(0xFF222222);
+  static const highlight = Color(0xFFD94EE8);
+  static const danger = Color(0xFFC0475C);
   static const ember = danger;
   static const ochre = accent;
 
   // ── Dark (Ink — warm black counterpart) ───────────────────────────────────
-  static const darkPaper = Color(0xFF17130A);
-  static const darkPaperElev = Color(0xFF1F1A0E);
-  static const darkPaperDeep = Color(0xFF2A2413);
-  static const darkPaperWhite = Color(0xFF14131A);
-  static const darkInk = Color(0xFFF4EEDA);
-  static const darkInkMuted = Color(0xFFB7AD8E);
-  static const darkInkFaint = Color(0xFF726B4F);
-  static const darkRule = Color(0xFF362E17);
-  static const darkRuleSoft = Color(0xFF221D10);
-  static const darkSignalSoft = Color(0xFF8FC4F5);
-  static const darkTintSky = Color(0xFF17252F);
-  static const darkTintLavender = Color(0xFF241E33);
-  static const darkTintCitron = Color(0xFF2B2A10);
-  static const darkOchre = Color(0xFFD9C6F2);
-  static const darkMoss = Color(0xFF8FC4F5);
-  static const darkLavender = Color(0xFF5C82E0);
-  static const darkHighlight = Color(0xFFF5EE3A);
-  static const darkEmber = Color(0xFFC97B52); // warning text (dark)
+  static const darkPaper = Color(0xFF222222);
+  static const darkPaperElev = Color(0xFF2A2A28);
+  static const darkPaperDeep = Color(0xFF34362F);
+  static const darkPaperWhite = Color(0xFF2A2A28);
+  static const darkInk = Color(0xFFF3F5F1);
+  static const darkInkMuted = Color(0xFFADB3A9);
+  static const darkInkFaint = Color(0xFF7A8076);
+  static const darkRule = Color(0xFF3D3F39);
+  static const darkRuleSoft = Color(0xFF2E302B);
+  static const darkSignalSoft = Color(0xFFADB3A9);
+  static const darkTintSky = Color(0xFF2A2A28);
+  static const darkTintLavender = Color(0xFF303328);
+  static const darkTintCitron = Color(0xFF303328);
+  static const darkOchre = Color(0xFF9AC02E);
+  static const darkMoss = Color(0xFFADB3A9);
+  static const darkLavender = Color(0xFFF3F5F1);
+  static const darkHighlight = Color(0xFFE876F0);
+  static const darkEmber = Color(0xFFE876F0);
 
   // ── Typography ────────────────────────────────────────────────────────────
-  static const display = 'Noto Serif TC';
-  static const serif = 'Noto Serif TC';
-  static const serifEn = 'Newsreader';
+  static const display = 'Noto Sans TC';
+  static const serif = 'Noto Sans TC';
+  static const serifEn = 'Noto Sans TC';
   static const sans = 'Noto Sans TC';
   static const mono = 'JetBrains Mono';
   static const appTextScale = 1.06;
@@ -70,9 +68,9 @@ class AnsibleDesign {
   static const readingTextSize = 16.0;
   static const previewTextSize = 15.5;
   static const fallback = [
+    'Noto Sans TC',
     'Noto Serif TC',
     'Newsreader',
-    'Noto Sans TC',
     'PingFang TC',
     'Songti TC',
     'PMingLiU',
@@ -183,7 +181,7 @@ class AnsibleDesign {
       primary: ink,
       onPrimary: paper,
       secondary: accent,
-      onSecondary: ink,
+      onSecondary: paperWhite,
       surface: paper,
       onSurface: ink,
       surfaceContainerHighest: paperElev,
@@ -216,15 +214,15 @@ class AnsibleDesign {
         filled: true,
         fillColor: paperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: accent, width: 1.2),
         ),
         labelStyle: const TextStyle(color: inkMuted),
@@ -236,7 +234,7 @@ class AnsibleDesign {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: ink,
+          foregroundColor: paperWhite,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
@@ -263,7 +261,7 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: ruleSoft, width: 0.5),
         ),
       ),
@@ -277,7 +275,7 @@ class AnsibleDesign {
         backgroundColor: paperWhite,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: rule, width: 0.5),
         ),
         titleTextStyle: const TextStyle(
@@ -370,15 +368,15 @@ class AnsibleDesign {
         filled: true,
         fillColor: darkPaperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: darkOchre, width: 1.2),
         ),
         labelStyle: const TextStyle(color: darkInkMuted),
@@ -417,7 +415,7 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: darkRuleSoft, width: 0.5),
         ),
       ),
@@ -431,7 +429,7 @@ class AnsibleDesign {
         backgroundColor: darkPaperWhite,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: darkRule, width: 0.5),
         ),
         titleTextStyle: const TextStyle(
@@ -564,96 +562,23 @@ class ElixWordmark extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final ink = color ?? (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink);
-    final accent = dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
     return Semantics(
       label: AnsibleDesign.brandName,
-      image: true,
       child: ExcludeSemantics(
-        child: CustomPaint(
-          size: Size(fontSize * (306 / 114), fontSize),
-          painter: _ElixWordmarkPainter(color: ink, accent: accent),
+        child: Text(
+          AnsibleDesign.brandName,
+          style: TextStyle(
+            fontFamily: AnsibleDesign.sans,
+            fontFamilyFallback: AnsibleDesign.fallback,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            height: 1,
+            letterSpacing: -0.3,
+            color: ink,
+          ),
         ),
       ),
     );
-  }
-}
-
-class _ElixWordmarkPainter extends CustomPainter {
-  const _ElixWordmarkPainter({required this.color, required this.accent});
-
-  final Color color;
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const sourceWidth = 306.0;
-    const sourceHeight = 114.0;
-    final scale = (size.width / sourceWidth).clamp(
-      0.0,
-      size.height / sourceHeight,
-    );
-    canvas.save();
-    canvas.translate(
-      (size.width - sourceWidth * scale) / 2 + 7 * scale,
-      (size.height - sourceHeight * scale) / 2 + 7 * scale,
-    );
-    canvas.scale(scale);
-
-    final fill = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    final stroke = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 14
-      ..strokeCap = StrokeCap.butt;
-
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, 0)
-        ..lineTo(64, 0)
-        ..lineTo(64, 14)
-        ..lineTo(14, 14)
-        ..lineTo(14, 43)
-        ..lineTo(50, 43)
-        ..lineTo(50, 57)
-        ..lineTo(14, 57)
-        ..lineTo(14, 86)
-        ..lineTo(64, 86)
-        ..lineTo(64, 100)
-        ..lineTo(0, 100)
-        ..close(),
-      fill,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(88, 0)
-        ..lineTo(102, 0)
-        ..lineTo(102, 86)
-        ..lineTo(152, 86)
-        ..lineTo(152, 100)
-        ..lineTo(88, 100)
-        ..close(),
-      fill,
-    );
-    canvas.drawRect(const Rect.fromLTRB(176, 23.8, 190, 100), fill);
-    canvas.drawCircle(
-      const Offset(183, 8.68),
-      8.68,
-      Paint()
-        ..color = accent
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawLine(const Offset(214, 0), const Offset(246.7, 43), stroke);
-    canvas.drawLine(const Offset(290, 0), const Offset(257.3, 43), stroke);
-    canvas.drawLine(const Offset(214, 100), const Offset(246.7, 57), stroke);
-    canvas.drawLine(const Offset(290, 100), const Offset(257.3, 57), stroke);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _ElixWordmarkPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.accent != accent;
   }
 }
 

@@ -1,15 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Elix app icon">
-  <rect width="1024" height="1024" fill="#FAF6EC"/>
+  <rect width="1024" height="1024" fill="#FFFFFF"/>
   <g transform="translate(598 485) rotate(30) scale(4.3125)" stroke-linecap="round" stroke-linejoin="round">
     <path
       d="M -60 40 L 60 40 M -60 40 L 0 -60 M 60 40 L 0 -60"
       fill="none"
-      stroke="#1A1815"
-      stroke-opacity="0.74"
+      stroke="#5D645E"
       stroke-width="3.2"/>
-    <circle cx="-60" cy="40" r="14" fill="#1A1815"/>
-    <circle cx="60" cy="40" r="14" fill="#1A1815"/>
-    <circle cx="0" cy="-60" r="14" fill="#1A1815"/>
-    <circle cx="0" cy="6" r="8" fill="#B97A3C"/>
+    <circle cx="-60" cy="40" r="14" fill="#222222"/>
+    <circle cx="60" cy="40" r="14" fill="#222222"/>
+    <circle cx="0" cy="-60" r="14" fill="#222222"/>
+    <circle cx="0" cy="6" r="8" fill="#78900D"/>
   </g>
 </svg>
