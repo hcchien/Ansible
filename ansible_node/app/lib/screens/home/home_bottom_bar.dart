@@ -211,7 +211,7 @@ class HomeBottomBar extends StatelessWidget {
                 width: 7,
                 height: 7,
                 decoration: BoxDecoration(
-                  color: AnsibleDesign.accent,
+                  color: dark ? AnsibleDesign.darkNavy : AnsibleDesign.navy,
                   shape: BoxShape.circle,
                   border: Border.all(color: background, width: 1.5),
                 ),
@@ -222,7 +222,8 @@ class HomeBottomBar extends StatelessWidget {
     );
   }
 
-  /// Center ＋ — a flat lavender rounded-rect with an Ink glyph.
+  /// Center ＋ — the editorial ink action, matching the handoff's persistent
+  /// mobile compose control. Lavender stays reserved for identity and trust.
   Widget _compose(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 7),
@@ -237,7 +238,9 @@ class HomeBottomBar extends StatelessWidget {
             width: 52,
             height: 40,
             decoration: BoxDecoration(
-              color: AnsibleDesign.ochre,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AnsibleDesign.darkInk
+                  : AnsibleDesign.ink,
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(
@@ -245,7 +248,7 @@ class HomeBottomBar extends StatelessWidget {
               size: 23,
               color: Theme.of(context).brightness == Brightness.dark
                   ? AnsibleDesign.darkPaper
-                  : AnsibleDesign.ink,
+                  : AnsibleDesign.paper,
             ),
           ),
         ),

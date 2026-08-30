@@ -1298,15 +1298,8 @@ class _DeliberationDetailScreenState extends State<DeliberationDetailScreen> {
               padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
               decoration: BoxDecoration(
                 color: surface,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: rule),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: dark ? 0.34 : 0.12),
-                    blurRadius: 28,
-                    offset: const Offset(0, 13),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(AnsibleDesign.cardRadius),
+                border: Border.all(color: rule, width: AnsibleDesign.hairline),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

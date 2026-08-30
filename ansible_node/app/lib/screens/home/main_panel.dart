@@ -372,6 +372,100 @@ class MainPanel extends StatelessWidget {
     );
   }
 
+  /// The handoff gives every mobile destination a clear editorial masthead.
+  /// Keep it inside the board shell so swiping still changes only local view
+  /// state and does not alter navigation or data behavior.
+  Widget _compactBoardMasthead(BuildContext context) {
+    final s = (screenStyles[selectedTab] ?? ElixScreenStyle.paper).dataFor(
+      Theme.of(context).brightness,
+    );
+    final title = switch (selectedBoard) {
+      HomeBoard.personal => context.uiCopy(zh: '個人版', en: 'Personal'),
+      HomeBoard.timeline => context.uiCopy(zh: '時間軸', en: 'Timeline'),
+      HomeBoard.forum => context.uiCopy(zh: '討論區', en: 'Forum'),
+    };
+    final eyebrow = switch (selectedBoard) {
+      HomeBoard.personal => 'YOUR NOTES · MURMURS',
+      HomeBoard.timeline => 'FOLLOWING · SIGNED SOURCES',
+      HomeBoard.forum => 'BOARDS · PUBLIC DISCUSSION',
+    };
+    final meta = switch (selectedBoard) {
+      HomeBoard.personal =>
+        '${contentItems.length.toString().padLeft(2, '0')} LOCAL',
+      HomeBoard.timeline =>
+        '${followingPosts.length.toString().padLeft(2, '0')} POSTS',
+      HomeBoard.forum => '${posts.length.toString().padLeft(2, '0')} THREADS',
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        AnsibleDesign.pageGutter,
+        14,
+        AnsibleDesign.pageGutter,
+        15,
+      ),
+      decoration: BoxDecoration(
+        color: s.surface.withValues(alpha: 0.62),
+        border: Border(
+          top: BorderSide(color: s.rule, width: AnsibleDesign.hairline),
+          bottom: BorderSide(color: s.rule, width: AnsibleDesign.hairline),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            width: 4,
+            height: 35,
+            decoration: BoxDecoration(
+              color: s.accent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  eyebrow,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.mono,
+                    fontSize: 8.5,
+                    letterSpacing: 1.55,
+                    color: s.faint,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.serif,
+                    fontFamilyFallback: AnsibleDesign.fallback,
+                    fontSize: 27,
+                    height: 1,
+                    fontWeight: FontWeight.w500,
+                    color: s.foreground,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            meta,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 8.5,
+              letterSpacing: 1.2,
+              color: s.faint,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _sessionChip(ElixScreenStyleData s) {
     return FutureBuilder<String?>(
       initialData: HandleResolver.shared.cached(did),
@@ -437,6 +531,7 @@ class MainPanel extends StatelessWidget {
             // search + identity chip) sits above the boards; navigation lives in
             // the bottom bar.
             if (compact) _compactBrandHeader(context),
+            if (compact && bottomNav) _compactBoardMasthead(context),
             // The bottom nav (compact/phone) replaces the top header entirely;
             // gate on bottomNav too so the 640–720 band doesn't show both.
             if (!compact && !bottomNav)

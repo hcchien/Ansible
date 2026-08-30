@@ -399,7 +399,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
     return SizedBox(
       width: double.infinity,
       child: Material(
-        color: _accent,
+        color: _fg,
         borderRadius: BorderRadius.circular(999),
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
@@ -415,7 +415,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     fontFamily: AnsibleDesign.sans,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: _dark ? AnsibleDesign.darkPaper : AnsibleDesign.ink,
+                    color: _bg,
                   ),
                 ),
                 if (trailing != null) ...[
@@ -425,9 +425,7 @@ class _OnboardingIntroScreenState extends State<OnboardingIntroScreen> {
                     style: TextStyle(
                       fontFamily: AnsibleDesign.sans,
                       fontSize: 14,
-                      color:
-                          (_dark ? AnsibleDesign.darkPaper : AnsibleDesign.ink)
-                              .withValues(alpha: 0.82),
+                      color: _bg.withValues(alpha: 0.82),
                     ),
                   ),
                 ],

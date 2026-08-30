@@ -80,7 +80,7 @@ void main() {
       find.byKey(const Key('home_bottom_compose_button')),
     );
     final decoration = container.decoration! as BoxDecoration;
-    expect(decoration.color, AnsibleDesign.ochre);
+    expect(decoration.color, AnsibleDesign.ink);
     expect(decoration.boxShadow, isNull);
 
     final icon = tester.widget<Icon>(
@@ -89,7 +89,7 @@ void main() {
         matching: find.byIcon(Icons.add),
       ),
     );
-    expect(icon.color, Colors.white);
+    expect(icon.color, AnsibleDesign.paper);
   });
 
   testWidgets('vertical content scroll hides and restores compact navigation', (

@@ -1,4 +1,5 @@
 import 'package:ansible_node/screens/credential_issuance_wizard.dart';
+import 'package:ansible_node/screens/credential_detail_screen.dart';
 import 'package:ansible_node/screens/wallet_screen.dart';
 import 'package:ansible_node/services/external_url_launcher.dart';
 import 'package:ansible_node/services/vc_issuer_client.dart';
@@ -295,7 +296,12 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('僅檢查 Wallet 摘要與有效期限'),
         240,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find
+            .descendant(
+              of: find.byType(CredentialDetailScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       expect(find.text('僅檢查 Wallet 摘要與有效期限'), findsOneWidget);
     },

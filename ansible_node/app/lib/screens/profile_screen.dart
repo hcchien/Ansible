@@ -38,7 +38,8 @@ class ProfileScreen extends StatelessWidget {
         context.uiCopy(zh: '尚未設定公開簡介。', en: 'Public bio is not set.');
 
     return AnsibleScreenScaffold(
-      title: '',
+      title: context.uiCopy(zh: '公開檔案', en: 'Public Profile'),
+      eyebrow: 'IDENTITY · PUBLIC DISCLOSURE',
       leadingLabel: context.uiCopy(zh: '← 討論串', en: '← Discussion'),
       trailing: IconButton(
         onPressed: () {},
@@ -48,123 +49,122 @@ class ProfileScreen extends StatelessWidget {
       child: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AnsibleMonoLabel(
-                  context.uiCopy(
-                    zh: '公開身分 · PUBLIC HANDLE',
-                    en: 'PUBLIC HANDLE',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AnsibleDesign.paperDeep,
-                        border: Border.all(
-                          color: AnsibleDesign.rule,
-                          width: 0.5,
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+            child: AnsibleSectionCard(
+              label: context.uiCopy(
+                zh: '公開身分 · PUBLIC HANDLE',
+                en: 'PUBLIC HANDLE',
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AnsibleDesign.paperDeep,
+                          border: Border.all(
+                            color: AnsibleDesign.rule,
+                            width: 0.5,
+                          ),
                         ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        name.characters.first,
-                        style: const TextStyle(
-                          fontSize: 26,
-                          color: AnsibleDesign.inkMuted,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w500,
-                              color: AnsibleDesign.ink,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            handleLabel,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AnsibleDesign.inkMuted,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            keyLabel,
-                            style: TextStyle(
-                              fontFamily: AnsibleDesign.mono,
-                              fontSize: 9,
-                              letterSpacing: 1.1,
-                              color: AnsibleDesign.inkFaint,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  bioText,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    height: 1.7,
-                    color: AnsibleDesign.ink,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    _ProfileMeta(
-                      context.uiCopy(
-                        zh: '公開身分尚未發布',
-                        en: 'Public identity not published',
-                      ),
-                    ),
-                    _ProfileMeta(
-                      context.uiCopy(zh: '0 個共同的圈', en: '0 mutual circles'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: null,
+                        alignment: Alignment.center,
                         child: Text(
-                          context.uiCopy(
-                            zh: '追蹤公開發布',
-                            en: 'Follow Public Posts',
+                          name.characters.first,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            color: AnsibleDesign.inkMuted,
                           ),
                         ),
                       ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w500,
+                                color: AnsibleDesign.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              handleLabel,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AnsibleDesign.inkMuted,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              keyLabel,
+                              style: TextStyle(
+                                fontFamily: AnsibleDesign.mono,
+                                fontSize: 9,
+                                letterSpacing: 1.1,
+                                color: AnsibleDesign.inkFaint,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    bioText,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.7,
+                      color: AnsibleDesign.ink,
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: null,
-                      child: Text(context.uiCopy(zh: '邀請進圈', en: 'Invite')),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      _ProfileMeta(
+                        context.uiCopy(
+                          zh: '公開身分尚未發布',
+                          en: 'Public identity not published',
+                        ),
+                      ),
+                      _ProfileMeta(
+                        context.uiCopy(zh: '0 個共同的圈', en: '0 mutual circles'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: null,
+                          child: Text(
+                            context.uiCopy(
+                              zh: '追蹤公開發布',
+                              en: 'Follow Public Posts',
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: null,
+                        child: Text(context.uiCopy(zh: '邀請進圈', en: 'Invite')),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           Padding(

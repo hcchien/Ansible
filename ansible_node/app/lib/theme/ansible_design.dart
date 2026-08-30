@@ -13,6 +13,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AnsibleDesign {
   static const brandName = 'Elix';
 
+  // ── Shape & rhythm ───────────────────────────────────────────────────────
+  // Keep these values centralized. The handoff relies on a restrained set of
+  // radii and hairlines; one-off Material defaults make the screens drift back
+  // toward a generic app even when the palette is correct.
+  static const hairline = 0.5;
+  static const cardRadius = 12.0;
+  static const compactRadius = 8.0;
+  static const pageGutter = 22.0;
+  static const sectionGap = 18.0;
+
   // ── Light (Mist — canonical) ──────────────────────────────────────────────
   static const paper = Color(0xFFF4F3EC);
   static const paperElev = Color(0xFFECEAE0);
@@ -33,6 +43,7 @@ class AnsibleDesign {
   static const moss = Color(0xFF6FB2E8);
   static const lavender = accent;
   static const highlight = Color(0xFFEBE21C);
+  static const navy = Color(0xFF2846A8);
   static const danger = Color(0xFFC0475C);
   static const ember = highlight;
   static const ochre = accent;
@@ -55,6 +66,7 @@ class AnsibleDesign {
   static const darkMoss = Color(0xFF8FC4F5);
   static const darkLavender = darkOchre;
   static const darkHighlight = Color(0xFFF5EE3A);
+  static const darkNavy = Color(0xFF5C82E0);
   static const darkEmber = darkHighlight;
 
   // ── Typography ────────────────────────────────────────────────────────────
@@ -208,21 +220,33 @@ class AnsibleDesign {
         foregroundColor: ink,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          fontFamily: mono,
+          fontFamilyFallback: fallback,
+          color: inkMuted,
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 1.8,
+        ),
+        shape: Border(
+          bottom: BorderSide(color: ruleSoft, width: hairline),
+        ),
       ),
       dividerTheme: const DividerThemeData(color: ruleSoft, thickness: 0.5),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: paperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compactRadius),
           borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compactRadius),
           borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compactRadius),
           borderSide: const BorderSide(color: accent, width: 1.2),
         ),
         labelStyle: const TextStyle(color: inkMuted),
@@ -233,8 +257,8 @@ class AnsibleDesign {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: accent,
-          foregroundColor: ink,
+          backgroundColor: ink,
+          foregroundColor: paper,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
@@ -255,6 +279,15 @@ class AnsibleDesign {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: inkMuted),
       ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: ink,
+        foregroundColor: paper,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        shape: CircleBorder(),
+      ),
       iconTheme: const IconThemeData(color: inkMuted),
       cardTheme: CardThemeData(
         color: paperWhite,
@@ -269,7 +302,67 @@ class AnsibleDesign {
         backgroundColor: paperElev,
         selectedColor: accentSoft,
         side: const BorderSide(color: rule, width: 0.5),
-        labelStyle: const TextStyle(color: inkMuted, fontFamily: mono),
+        shape: const StadiumBorder(),
+        labelStyle: const TextStyle(
+          color: inkMuted,
+          fontFamily: serif,
+          fontSize: 12,
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: inkMuted,
+        textColor: ink,
+        titleTextStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          color: ink,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+        subtitleTextStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          color: inkMuted,
+          fontSize: 12.5,
+          height: 1.55,
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        dividerColor: ruleSoft,
+        indicatorColor: ink,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelColor: ink,
+        unselectedLabelColor: inkFaint,
+        labelStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          fontSize: 13,
+        ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: ink,
+        linearTrackColor: paperDeep,
+        circularTrackColor: paperDeep,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+        side: const BorderSide(color: rule, width: hairline),
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? ink : paper,
+        ),
+        checkColor: const WidgetStatePropertyAll(paper),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? ink : inkFaint,
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: paperWhite,
@@ -362,21 +455,33 @@ class AnsibleDesign {
         foregroundColor: darkInk,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          fontFamily: mono,
+          fontFamilyFallback: fallback,
+          color: darkInkMuted,
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 1.8,
+        ),
+        shape: Border(
+          bottom: BorderSide(color: darkRuleSoft, width: hairline),
+        ),
       ),
       dividerTheme: const DividerThemeData(color: darkRuleSoft, thickness: 0.5),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: darkPaperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compactRadius),
           borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compactRadius),
           borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compactRadius),
           borderSide: const BorderSide(color: darkOchre, width: 1.2),
         ),
         labelStyle: const TextStyle(color: darkInkMuted),
@@ -387,7 +492,7 @@ class AnsibleDesign {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: darkOchre,
+          backgroundColor: darkInk,
           foregroundColor: darkPaper,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -409,6 +514,15 @@ class AnsibleDesign {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: darkInkMuted),
       ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: darkInk,
+        foregroundColor: darkPaper,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        shape: CircleBorder(),
+      ),
       iconTheme: const IconThemeData(color: darkInkMuted),
       cardTheme: CardThemeData(
         color: darkPaperWhite,
@@ -423,7 +537,69 @@ class AnsibleDesign {
         backgroundColor: darkPaperElev,
         selectedColor: darkTintLavender,
         side: const BorderSide(color: darkRule, width: 0.5),
-        labelStyle: const TextStyle(color: darkInkMuted, fontFamily: mono),
+        shape: const StadiumBorder(),
+        labelStyle: const TextStyle(
+          color: darkInkMuted,
+          fontFamily: serif,
+          fontSize: 12,
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: darkInkMuted,
+        textColor: darkInk,
+        titleTextStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          color: darkInk,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+        subtitleTextStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          color: darkInkMuted,
+          fontSize: 12.5,
+          height: 1.55,
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        dividerColor: darkRuleSoft,
+        indicatorColor: darkInk,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelColor: darkInk,
+        unselectedLabelColor: darkInkFaint,
+        labelStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          fontSize: 13,
+        ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: darkInk,
+        linearTrackColor: darkPaperDeep,
+        circularTrackColor: darkPaperDeep,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+        side: const BorderSide(color: darkRule, width: hairline),
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? darkInk : darkPaper,
+        ),
+        checkColor: const WidgetStatePropertyAll(darkPaper),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? darkInk : darkInkFaint,
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: darkPaperWhite,

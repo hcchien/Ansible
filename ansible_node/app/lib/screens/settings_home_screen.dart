@@ -143,6 +143,13 @@ class SettingsHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = _SettingsText.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final accent = dark ? AnsibleDesign.darkLavender : AnsibleDesign.lavender;
+    final tint = dark
+        ? AnsibleDesign.darkTintLavender
+        : AnsibleDesign.tintLavender;
     return AnsibleScreenScaffold(
       title: text.settingsTitle,
       leadingLabel: '',
@@ -163,90 +170,94 @@ class SettingsHomeScreen extends StatelessWidget {
       child: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 18),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AnsibleDesign.accent,
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+            child: AnsibleSectionCard(
+              label: 'LOCAL CUSTODY · PASSKEY SIGNED',
+              accent: accent,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: tint,
+                      border: Border.all(
+                        color: accent,
+                        width: AnsibleDesign.hairline,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.person_outline, size: 30, color: accent),
                   ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.person_outline,
-                    size: 30,
-                    color: AnsibleDesign.paper,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              text.localIdentity,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontFamily: AnsibleDesign.serif,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: AnsibleDesign.ink,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                text.localIdentity,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: AnsibleDesign.serif,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w500,
+                                  color: foreground,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            const ElixSignedPill(kind: 'PK'),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'SIGNED · PASSKEY',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.mono,
+                            fontSize: 11,
+                            letterSpacing: 1.3,
+                            color: accent,
                           ),
-                          const SizedBox(width: 8),
-                          const ElixSignedPill(kind: 'PK'),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'SIGNED · PASSKEY',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 11,
-                          letterSpacing: 1.3,
-                          color: AnsibleDesign.ochre,
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${text.localDid} · ${_shortDid(did)}',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: AnsibleDesign.mono,
-                          fontSize: 12.5,
-                          color: AnsibleDesign.inkMuted,
+                        const SizedBox(height: 3),
+                        Text(
+                          '${text.localDid} · ${_shortDid(did)}',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AnsibleDesign.mono,
+                            fontSize: 12.5,
+                            color: muted,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => EditProfileScreen(db: db, did: did),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    text.edit,
-                    style: const TextStyle(
-                      fontFamily: AnsibleDesign.sans,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AnsibleDesign.ink,
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => EditProfileScreen(db: db, did: did),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      text.edit,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.sans,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: foreground,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           Padding(

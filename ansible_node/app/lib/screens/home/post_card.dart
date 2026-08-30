@@ -17,6 +17,7 @@ import '../../services/safety_actions.dart';
 import '../../theme/ansible_design.dart';
 import '../../theme/elix_screen_style.dart';
 import '../../widgets/author_label.dart';
+import '../../widgets/ansible_screen_chrome.dart';
 import '../../widgets/reaction_picker.dart';
 import '../../widgets/report_dialog.dart';
 import '../posts_view_screen.dart';
@@ -599,6 +600,19 @@ class _PostCardState extends State<PostCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            AnsibleSourceLabel(
+              data.category.isNotEmpty
+                  ? data.category
+                  : (data.openableThread
+                        ? 'BOARD · ${data.board}'
+                        : 'FROM YOUR TIMELINE'),
+              dotColor: data.openableThread
+                  ? (Theme.of(context).brightness == Brightness.dark
+                        ? AnsibleDesign.darkMoss
+                        : AnsibleDesign.moss)
+                  : style.accent,
+            ),
+            const SizedBox(height: 11),
             InkWell(
               key: Key('post_card_author_${thread.id}'),
               borderRadius: BorderRadius.circular(10),
@@ -632,6 +646,10 @@ class _PostCardState extends State<PostCard> {
                                 ),
                               ),
                             ),
+                            if (data.signatureVerified) ...[
+                              const SizedBox(width: 7),
+                              const ElixSignedPill(kind: 'PK'),
+                            ],
                             if (data.openableThread &&
                                 data.board.trim().isNotEmpty) ...[
                               Text(
@@ -674,12 +692,11 @@ class _PostCardState extends State<PostCard> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${data.timeAgo}'
-                          '${data.signatureVerified ? context.uiCopy(zh: ' · 已簽署', en: ' · signed') : ''}',
+                          data.timeAgo,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontFamily: AnsibleDesign.sans,
+                            fontFamily: AnsibleDesign.serif,
                             fontSize: 12,
                             color: style.faint,
                           ),
@@ -736,7 +753,7 @@ class _PostCardState extends State<PostCard> {
                         fontFamily: AnsibleDesign.serif,
                         fontSize: 16.5,
                         height: 1.4,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: _hover ? style.accent : style.foreground,
                       ),
                     ),

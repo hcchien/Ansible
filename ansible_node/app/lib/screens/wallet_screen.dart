@@ -233,6 +233,7 @@ class _WalletScreenState extends State<WalletScreen> {
     final text = SubpageL10n.of(context);
     return AnsibleScreenScaffold(
       title: context.uiCopy(zh: '皮夾', en: 'Wallet'),
+      eyebrow: 'LOCAL WALLET · SELECTIVE DISCLOSURE',
       leadingLabel: text.t('backSettings'),
       trailing: IconButton(
         onPressed: _reload,
@@ -248,36 +249,13 @@ class _WalletScreenState extends State<WalletScreen> {
 
           final credentials = snapshot.data ?? const <WalletCredential>[];
           return ListView(
-            padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
             children: [
-              AnsibleMonoLabel(text.t('walletLabel')),
-              const SizedBox(height: 6),
-              Text(
-                text.t('walletHero'),
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w500,
-                  color: AnsibleDesign.ink,
-                ),
+              AnsibleSourceLabel(
+                text.t('walletLabel'),
+                dotColor: AnsibleDesign.accent,
               ),
-              const SizedBox(height: 6),
-              Text(
-                text.t('walletHeroSub'),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AnsibleDesign.inkMuted,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                text.t('walletHeroBody'),
-                style: const TextStyle(
-                  fontSize: 13,
-                  height: 1.6,
-                  color: AnsibleDesign.inkMuted,
-                ),
-              ),
+              const SizedBox(height: 10),
               const SizedBox(height: 18),
               if (_capabilities.cameraScanner) ...[
                 _WalletVerifierRequestCard(onScan: _openVerifierScanner),
@@ -444,13 +422,6 @@ class _WalletVerifierRequestCard extends StatelessWidget {
             color: AnsibleDesign.paperElev,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AnsibleDesign.ochre, width: 0.5),
-            boxShadow: [
-              BoxShadow(
-                color: AnsibleDesign.ink.withValues(alpha: 0.06),
-                blurRadius: 14,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
           child: Row(
             children: [
@@ -608,13 +579,11 @@ class _IdentityCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: primary
-            ? AnsibleDesign.paperDeep.withValues(alpha: 0.45)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        color: primary ? AnsibleDesign.paperWhite : Colors.transparent,
+        borderRadius: BorderRadius.circular(AnsibleDesign.cardRadius),
         border: Border.all(
-          color: primary ? AnsibleDesign.ink : AnsibleDesign.rule,
-          width: 0.5,
+          color: primary ? AnsibleDesign.accent : AnsibleDesign.rule,
+          width: AnsibleDesign.hairline,
         ),
       ),
       child: Stack(

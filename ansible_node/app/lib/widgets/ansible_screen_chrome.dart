@@ -13,6 +13,8 @@ class AnsibleScreenScaffold extends StatelessWidget {
     this.onLeading,
     this.trailing,
     this.paddingTop = 8,
+    this.eyebrow,
+    this.showBrand = true,
   });
 
   final String title;
@@ -21,6 +23,8 @@ class AnsibleScreenScaffold extends StatelessWidget {
   final Widget? trailing;
   final Widget child;
   final double paddingTop;
+  final String? eyebrow;
+  final bool showBrand;
 
   @override
   Widget build(BuildContext context) {
@@ -43,22 +47,51 @@ class AnsibleScreenScaffold extends StatelessWidget {
         body: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(22, paddingTop, 22, 14),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: screenStyle.rule,
+                      width: AnsibleDesign.hairline,
+                    ),
+                  ),
+                ),
+                padding: EdgeInsets.fromLTRB(
+                  AnsibleDesign.pageGutter,
+                  paddingTop,
+                  AnsibleDesign.pageGutter,
+                  11,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: _NavTextButton(label: leading, onTap: onLeading),
                     ),
-                    Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: AnsibleDesign.mono,
-                        fontSize: 11,
-                        letterSpacing: 2.4,
-                      ).copyWith(color: screenStyle.muted),
-                    ),
+                    if (showBrand)
+                      Semantics(
+                        label: AnsibleDesign.brandName,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const AnsibleMark(size: 18),
+                            const SizedBox(width: 7),
+                            ElixWordmark(
+                              fontSize: 17,
+                              color: screenStyle.foreground,
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Text(
+                        eyebrow ?? title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 10,
+                          letterSpacing: 1.8,
+                        ).copyWith(color: screenStyle.faint),
+                      ),
                     Expanded(
                       child: Align(
                         alignment: Alignment.centerRight,
@@ -68,6 +101,69 @@ class AnsibleScreenScaffold extends StatelessWidget {
                   ],
                 ),
               ),
+              if (title.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(
+                    AnsibleDesign.pageGutter,
+                    16,
+                    AnsibleDesign.pageGutter,
+                    17,
+                  ),
+                  decoration: BoxDecoration(
+                    color: screenStyle.surface.withValues(alpha: 0.62),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: screenStyle.rule,
+                        width: AnsibleDesign.hairline,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (eyebrow ?? 'ELIX · ${title.toUpperCase()}'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AnsibleDesign.mono,
+                          fontSize: 9,
+                          letterSpacing: 1.7,
+                          color: screenStyle.faint,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 27,
+                            decoration: BoxDecoration(
+                              color: screenStyle.accent,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                fontFamily: AnsibleDesign.serif,
+                                fontFamilyFallback: AnsibleDesign.fallback,
+                                fontSize: 26,
+                                height: 1.2,
+                                fontWeight: FontWeight.w500,
+                                color: screenStyle.foreground,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               Expanded(child: child),
             ],
           ),
@@ -104,22 +200,34 @@ class AnsibleMonoLabel extends StatelessWidget {
 }
 
 class AnsibleRuleGroup extends StatelessWidget {
-  const AnsibleRuleGroup({super.key, required this.children});
+  const AnsibleRuleGroup({
+    super.key,
+    required this.children,
+    this.margin = const EdgeInsets.symmetric(horizontal: 18),
+  });
 
   final List<Widget> children;
+  final EdgeInsetsGeometry margin;
 
   @override
   Widget build(BuildContext context) {
     final rule = Theme.of(context).brightness == Brightness.dark
         ? AnsibleDesign.darkRule
         : AnsibleDesign.rule;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.symmetric(
-          horizontal: BorderSide(color: rule, width: 0.5),
+    final surface = Theme.of(context).brightness == Brightness.dark
+        ? AnsibleDesign.darkPaperWhite
+        : AnsibleDesign.paperWhite;
+    return Padding(
+      padding: margin,
+      child: Material(
+        color: surface,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AnsibleDesign.cardRadius),
+          side: BorderSide(color: rule, width: AnsibleDesign.hairline),
         ),
+        child: Column(children: children),
       ),
-      child: Column(children: children),
     );
   }
 }
@@ -218,12 +326,17 @@ class AnsibleSettingsRow extends StatelessWidget {
             ),
             if (value != null) ...[
               const SizedBox(width: 10),
-              Text(
-                value!,
-                style: TextStyle(
-                  fontFamily: AnsibleDesign.sans,
-                  fontSize: 14,
-                ).copyWith(color: valueColor ?? muted),
+              Flexible(
+                child: Text(
+                  value!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    fontFamily: AnsibleDesign.sans,
+                    fontSize: 14,
+                  ).copyWith(color: valueColor ?? muted),
+                ),
               ),
             ],
             const SizedBox(width: 5),
@@ -247,10 +360,14 @@ class AnsibleGlyphBox extends StatelessWidget {
     final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
     final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
     final dangerColor = dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
+    final fill = dark
+        ? AnsibleDesign.darkTintLavender
+        : AnsibleDesign.tintLavender;
     return Container(
       width: 38,
       height: 38,
       decoration: BoxDecoration(
+        color: danger ? dangerColor.withValues(alpha: 0.08) : fill,
         borderRadius: BorderRadius.circular(11),
         border: Border.all(color: rule, width: 0.5),
       ),
@@ -263,6 +380,130 @@ class AnsibleGlyphBox extends StatelessWidget {
           color: danger ? dangerColor : muted,
         ),
       ),
+    );
+  }
+}
+
+/// Editorial card used by settings, identity, Wallet, sync and disclosure
+/// screens. It deliberately carries no elevation; the hairline and paper
+/// contrast are the Forest Letter hierarchy.
+class AnsibleSectionCard extends StatelessWidget {
+  const AnsibleSectionCard({
+    super.key,
+    required this.child,
+    this.label,
+    this.accent = AnsibleDesign.accent,
+    this.padding = const EdgeInsets.all(18),
+    this.margin = EdgeInsets.zero,
+    this.surface,
+  });
+
+  final Widget child;
+  final String? label;
+  final Color accent;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
+  final Color? surface;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final fill =
+        surface ??
+        (dark ? AnsibleDesign.darkPaperWhite : AnsibleDesign.paperWhite);
+    final faint = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    return Container(
+      margin: margin,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AnsibleDesign.cardRadius),
+        border: Border.all(color: rule, width: AnsibleDesign.hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (label != null)
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: rule,
+                    width: AnsibleDesign.hairline,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label!,
+                      style: TextStyle(
+                        fontFamily: AnsibleDesign.mono,
+                        fontSize: 9,
+                        letterSpacing: 1.45,
+                        color: faint,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Padding(padding: padding, child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class AnsibleSourceLabel extends StatelessWidget {
+  const AnsibleSourceLabel(this.label, {super.key, this.color, this.dotColor});
+
+  final String label;
+  final Color? color;
+  final Color? dotColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final faint =
+        color ?? (dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (dotColor != null) ...[
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 7),
+        ],
+        Flexible(
+          child: Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 9,
+              letterSpacing: 1.45,
+              color: faint,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

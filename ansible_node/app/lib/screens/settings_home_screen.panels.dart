@@ -332,16 +332,8 @@ class _StyleChoice extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? AnsibleDesign.ochre : AnsibleDesign.rule,
-            width: 0.5,
+            width: selected ? 1.5 : AnsibleDesign.hairline,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AnsibleDesign.ochre.withValues(alpha: 0.28),
-                    spreadRadius: 1.5,
-                  ),
-                ]
-              : null,
         ),
         child: Column(
           children: [

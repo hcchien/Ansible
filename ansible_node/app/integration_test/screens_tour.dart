@@ -1,24 +1,32 @@
 import 'package:ansible_node/l10n/app_localizations.dart';
 import 'package:ansible_node/screens/content_detail_screen.dart';
 import 'package:ansible_node/screens/home/home_bottom_bar.dart';
-import 'package:ansible_node/screens/home/home_types.dart';
-import 'package:ansible_node/screens/home/post_card.dart';
 import 'package:ansible_node/screens/home/timeline_board.dart';
+import 'package:ansible_node/screens/home_shell.dart';
+import 'package:ansible_node/screens/inbox_screen.dart';
 import 'package:ansible_node/screens/notifications_screen.dart';
 import 'package:ansible_node/screens/onboarding_intro_screen.dart';
 import 'package:ansible_node/screens/post_composer_screen.dart';
+import 'package:ansible_node/screens/profile_screen.dart';
+import 'package:ansible_node/screens/search_screen.dart';
 import 'package:ansible_node/screens/settings_home_screen.dart';
 import 'package:ansible_node/screens/posts_view_screen.dart';
+import 'package:ansible_node/screens/sync_settings_screen.dart';
 import 'package:ansible_node/screens/threads_list_screen.dart';
+import 'package:ansible_node/screens/wallet_screen.dart';
 import 'package:ansible_node/services/handle_resolver.dart';
+import 'package:ansible_node/services/network_status_service.dart';
 import 'package:ansible_node/services/ops_dispatch_service.dart';
+import 'package:ansible_node/services/relay_discovery_client.dart';
 import 'package:ansible_node/theme/ansible_design.dart';
 import 'package:ansible_node/theme/elix_screen_style.dart';
 import 'package:ansible_store/ansible_store.dart';
 import 'package:drift/native.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// On-simulator screenshot tour. Mounts each real screen with seeded data and
 /// captures a PNG per screen (written to design/current-screens/ by the driver).
@@ -151,6 +159,32 @@ void main() {
       ),
     );
     await shoot(tester, 'b01_timeline_feed');
+  });
+
+  testWidgets('B · compact home shell', (tester) async {
+    SharedPreferences.setMockInitialValues({'elix_board_swipe_shown': true});
+    final db = freshDb();
+    addTearDown(db.close);
+    final network = _TourNetworkStatusMonitor();
+    addTearDown(network.dispose);
+    await tester.pumpWidget(
+      harness(
+        HomeShell(
+          db: db,
+          did: me,
+          autoSeedDefaultRelay: false,
+          initialBoard: HomeBoard.timeline,
+          networkStatusMonitor: network,
+          relayDiscoveryLoader: () async => _emptyTourDiscovery(),
+          defaultSubscriptionsDiscoveryLoader: () async =>
+              _emptyTourDiscovery(),
+        ),
+      ),
+    );
+    for (var i = 0; i < 12; i += 1) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await shoot(tester, 'b00_home_shell');
   });
 
   testWidgets('F · bottom nav', (tester) async {
@@ -470,4 +504,88 @@ void main() {
     );
     await shoot(tester, 'e01_me_settings');
   });
+
+  testWidgets('G · identity and utility surfaces', (tester) async {
+    final db = freshDb();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      harness(
+        const ProfileScreen(
+          did: me,
+          displayName: 'Tris',
+          handle: '@tris.elix.cool',
+          publicKeyLabel: 'pk · 7f2a…c19e',
+          bio: '寫筆記，也參與公開討論；每一次揭露都由我決定。',
+        ),
+      ),
+    );
+    await shoot(tester, 'g01_public_profile');
+
+    await tester.pumpWidget(
+      harness(
+        WalletScreen(
+          holderDid: me,
+          repository: InMemoryWalletRepository(),
+          db: db,
+        ),
+      ),
+    );
+    await shoot(tester, 'g02_wallet');
+
+    await tester.pumpWidget(harness(SearchScreen(db: db, localDid: me)));
+    await shoot(tester, 'g03_search');
+
+    await tester.pumpWidget(harness(const InboxScreen(senderDid: me)));
+    await shoot(tester, 'g04_inbox');
+
+    await tester.pumpWidget(harness(SyncSettingsScreen(db: db, localDid: me)));
+    await shoot(tester, 'g05_sync');
+  });
+}
+
+RelayDiscovery _emptyTourDiscovery() {
+  return const RelayDiscovery(
+    version: 1,
+    relay: RelayDiscoveryRelay(
+      serverKind: 'elixRelay',
+      origin: 'https://relay.example',
+      capabilities: {'forum_host_discovery': true},
+    ),
+    announcements: [],
+    featuredForumHosts: [],
+    featuredBoards: [],
+  );
+}
+
+class _TourNetworkStatusMonitor extends ChangeNotifier
+    implements NetworkStatusMonitor {
+  @override
+  NetworkStatus get status => NetworkStatus.offline;
+
+  @override
+  bool get isOnline => false;
+
+  @override
+  bool get isOffline => true;
+
+  @override
+  bool get isChecking => false;
+
+  @override
+  String get connectionType => 'Offline';
+
+  @override
+  DateTime? get lastChecked => DateTime.utc(2026, 8, 30);
+
+  @override
+  List<ConnectivityResult> get connectivityResults => const [
+    ConnectivityResult.none,
+  ];
+
+  @override
+  Future<void> checkStatus() async {}
+
+  @override
+  Future<bool> isUrlReachable(String url) async => false;
 }

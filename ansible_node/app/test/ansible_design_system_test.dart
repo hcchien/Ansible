@@ -27,8 +27,20 @@ void main() {
     expect(light.cardTheme.elevation, 0);
     expect(dark.cardTheme.elevation, 0);
     expect(
+      light.filledButtonTheme.style?.backgroundColor?.resolve({}),
+      AnsibleDesign.ink,
+    );
+    expect(
+      dark.filledButtonTheme.style?.backgroundColor?.resolve({}),
+      AnsibleDesign.darkInk,
+    );
+    expect(light.floatingActionButtonTheme.elevation, 0);
+    expect(dark.floatingActionButtonTheme.elevation, 0);
+    expect(light.appBarTheme.centerTitle, isTrue);
+    expect(dark.appBarTheme.centerTitle, isTrue);
+    expect(
       (light.cardTheme.shape! as RoundedRectangleBorder).borderRadius,
-      BorderRadius.circular(12),
+      BorderRadius.circular(AnsibleDesign.cardRadius),
     );
   });
 
