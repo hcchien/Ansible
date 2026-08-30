@@ -640,7 +640,9 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(context.uiCopy(zh: '刪除', en: 'Delete')),
           ),
         ],
@@ -674,7 +676,9 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(context.uiCopy(zh: '刪除', en: 'Delete')),
           ),
         ],
@@ -1657,7 +1661,7 @@ class _PostsViewScreenState extends State<PostsViewScreen> {
               value: 'delete',
               child: Text(
                 context.uiCopy(zh: '刪除', en: 'Delete'),
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           ],

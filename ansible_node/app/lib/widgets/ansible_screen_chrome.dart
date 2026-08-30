@@ -85,15 +85,18 @@ class AnsibleMonoLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final faint = Theme.of(context).brightness == Brightness.dark
+        ? AnsibleDesign.darkInkFaint
+        : AnsibleDesign.inkFaint;
     return Padding(
       padding: padding ?? EdgeInsets.zero,
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: AnsibleDesign.mono,
           fontSize: 10,
           letterSpacing: 1.5,
-          color: AnsibleDesign.inkFaint,
+          color: faint,
         ),
       ),
     );
@@ -107,10 +110,13 @@ class AnsibleRuleGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rule = Theme.of(context).brightness == Brightness.dark
+        ? AnsibleDesign.darkRule
+        : AnsibleDesign.rule;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border.symmetric(
-          horizontal: BorderSide(color: AnsibleDesign.rule, width: 0.5),
+          horizontal: BorderSide(color: rule, width: 0.5),
         ),
       ),
       child: Column(children: children),
@@ -146,7 +152,13 @@ class AnsibleSettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AnsibleDesign.danger : AnsibleDesign.ink;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final faint = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
+    final ruleSoft = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
+    final dangerColor = dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
+    final color = danger ? dangerColor : ink;
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -155,7 +167,7 @@ class AnsibleSettingsRow extends StatelessWidget {
           border: Border(
             bottom: last
                 ? BorderSide.none
-                : const BorderSide(color: AnsibleDesign.ruleSoft, width: 0.5),
+                : BorderSide(color: ruleSoft, width: 0.5),
           ),
         ),
         child: Row(
@@ -181,11 +193,11 @@ class AnsibleSettingsRow extends StatelessWidget {
                       ),
                       Text(
                         en,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AnsibleDesign.mono,
                           fontSize: 10,
                           letterSpacing: 1.3,
-                          color: AnsibleDesign.inkFaint,
+                          color: faint,
                         ),
                       ),
                     ],
@@ -194,10 +206,10 @@ class AnsibleSettingsRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       sub!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AnsibleDesign.serif,
                         fontSize: 13,
-                        color: AnsibleDesign.inkMuted,
+                        color: muted,
                       ),
                     ),
                   ],
@@ -208,14 +220,14 @@ class AnsibleSettingsRow extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 value!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AnsibleDesign.sans,
                   fontSize: 14,
-                ).copyWith(color: valueColor ?? AnsibleDesign.inkMuted),
+                ).copyWith(color: valueColor ?? muted),
               ),
             ],
             const SizedBox(width: 5),
-            Icon(trailingIcon, size: 16, color: AnsibleDesign.inkFaint),
+            Icon(trailingIcon, size: 16, color: faint),
           ],
         ),
       ),
@@ -231,12 +243,16 @@ class AnsibleGlyphBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final dangerColor = dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
     return Container(
       width: 38,
       height: 38,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        border: Border.all(color: rule, width: 0.5),
       ),
       alignment: Alignment.center,
       child: Text(
@@ -244,7 +260,7 @@ class AnsibleGlyphBox extends StatelessWidget {
         style: TextStyle(
           fontFamily: AnsibleDesign.mono,
           fontSize: 15,
-          color: danger ? AnsibleDesign.danger : AnsibleDesign.inkMuted,
+          color: danger ? dangerColor : muted,
         ),
       ),
     );
@@ -293,6 +309,9 @@ class _NavTextButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (label.isEmpty) return const SizedBox.shrink();
+    final muted = Theme.of(context).brightness == Brightness.dark
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
     return Align(
       alignment: Alignment.centerLeft,
       child: InkWell(
@@ -303,10 +322,10 @@ class _NavTextButton extends StatelessWidget {
           child: Text(
             label,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.sans,
               fontSize: 14,
-              color: AnsibleDesign.inkMuted,
+              color: muted,
             ),
           ),
         ),

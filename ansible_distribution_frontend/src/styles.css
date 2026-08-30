@@ -1,34 +1,40 @@
 /* ─────────────────────────────────────────────
-   ELIX WEB — Forest Letter
-   Bone paper, forest ink, ochre trust signals and moss board context.
+   ELIX WEB — Lavender Signal
+   Mist paper, warm ink, lavender identity and sky-blue context.
    Editorial serif carries discussion; sans carries chrome; mono carries
-   handles, policy and provenance labels.
-   Light is canonical on :root; dark ("Ink") arrives from the system
-   preference or an explicit scene theme.
+   handles, policy and provenance labels. These aliases intentionally cover
+   both the current app vocabulary and older component names so every page
+   resolves through one palette.
    ───────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #FBF7DC;
-  --background-soft: #F4EEC6;
-  --surface: #FBF7DC;
-  --surface-raised: #F4EEC6;
-  --surface-deep: #E8DEAA;
-  --border: #D6CB94;
-  --border-soft: #E3DAB0;
-  --border-strong: #C9BB7C;
-  --muted-fill: #E8DEAA;
-  --accent: #B88C2E;
-  --lavender: #5A6E3A;
-  --highlight: #FBF7DC;
-  --warning: #7E4A1E;
-  --danger: #7E4A1E;
-  --success: #5A6E3A;
-  --sky: #5A6E3A;
-  --text: #1F2E20;
-  --muted: #3D4E3D;
-  --faint: #88826E;
-  --on-accent: #FBF7DC;
-  --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
+  --background: #F4F3EC;
+  --background-soft: #ECEAE0;
+  --surface: #FFFFFF;
+  --surface-raised: #ECEAE0;
+  --surface-deep: #E2DFD2;
+  --border: #D8D3C4;
+  --border-soft: #E6E2D6;
+  --border-strong: #B9B29D;
+  --muted-fill: #E2DFD2;
+  --accent: #C9AEEB;
+  --lavender: #C9AEEB;
+  --highlight: #EBE21C;
+  --warning: #9A4A24;
+  --danger: #9A4A24;
+  --success: #2846A8;
+  --sky: #6FB2E8;
+  --navy: #2846A8;
+  --text: #2A2A0A;
+  --muted: #625F3C;
+  --faint: #9C9974;
+  --on-accent: #2A2A0A;
+  --glow: 0 0 18px color-mix(in oklab, var(--accent) 22%, transparent);
+  --paper: var(--background);
+  --rule: var(--border);
+  --rule-soft: var(--border-soft);
+  --ochre: var(--accent);
+  --ink-muted: var(--muted);
   --serif: "Noto Serif TC", "Newsreader", serif;
   --serif-en: "Newsreader", "Noto Serif TC", serif;
   --display: "Noto Serif TC", "Newsreader", serif;
@@ -42,52 +48,54 @@
 /* Paper theme — explicit selection (wins inside a dark system) */
 .forum-shell[data-theme="light"] {
   color-scheme: light;
-  --background: #FBF7DC;
-  --background-soft: #F4EEC6;
-  --surface: #FBF7DC;
-  --surface-raised: #F4EEC6;
-  --surface-deep: #E8DEAA;
-  --border: #D6CB94;
-  --border-soft: #E3DAB0;
-  --border-strong: #C9BB7C;
-  --muted-fill: #E8DEAA;
-  --accent: #B88C2E;
-  --lavender: #5A6E3A;
-  --highlight: #FBF7DC;
-  --warning: #7E4A1E;
-  --danger: #7E4A1E;
-  --success: #5A6E3A;
-  --sky: #5A6E3A;
-  --text: #1F2E20;
-  --muted: #3D4E3D;
-  --faint: #88826E;
-  --on-accent: #FBF7DC;
+  --background: #F4F3EC;
+  --background-soft: #ECEAE0;
+  --surface: #FFFFFF;
+  --surface-raised: #ECEAE0;
+  --surface-deep: #E2DFD2;
+  --border: #D8D3C4;
+  --border-soft: #E6E2D6;
+  --border-strong: #B9B29D;
+  --muted-fill: #E2DFD2;
+  --accent: #C9AEEB;
+  --lavender: #C9AEEB;
+  --highlight: #EBE21C;
+  --warning: #9A4A24;
+  --danger: #9A4A24;
+  --success: #2846A8;
+  --sky: #6FB2E8;
+  --navy: #2846A8;
+  --text: #2A2A0A;
+  --muted: #625F3C;
+  --faint: #9C9974;
+  --on-accent: #2A2A0A;
   --glow: 0 0 18px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 /* Ink theme — explicit selection */
 .forum-shell[data-theme="dark"] {
   color-scheme: dark;
-  --background: #0E1A0F;
-  --background-soft: #16221A;
-  --surface: #0E1A0F;
-  --surface-raised: #16221A;
-  --surface-deep: #1F2D24;
-  --border: #2A3526;
-  --border-soft: #1F291E;
-  --border-strong: #405038;
-  --muted-fill: #1F2D24;
-  --accent: #D9AB4E;
-  --lavender: #93A971;
-  --highlight: #0E1A0F;
-  --warning: #C98757;
-  --danger: #C98757;
-  --success: #93A971;
-  --sky: #93A971;
-  --text: #E8E0BE;
-  --muted: #B8B49A;
-  --faint: #7C8071;
-  --on-accent: #0E1A0F;
+  --background: #17130A;
+  --background-soft: #1F1A0E;
+  --surface: #14131A;
+  --surface-raised: #1F1A0E;
+  --surface-deep: #2A2413;
+  --border: #362E17;
+  --border-soft: #221D10;
+  --border-strong: #514525;
+  --muted-fill: #2A2413;
+  --accent: #D9C6F2;
+  --lavender: #D9C6F2;
+  --highlight: #F5EE3A;
+  --warning: #C97B52;
+  --danger: #C97B52;
+  --success: #5C82E0;
+  --sky: #8FC4F5;
+  --navy: #5C82E0;
+  --text: #F4EEDA;
+  --muted: #B7AD8E;
+  --faint: #726B4F;
+  --on-accent: #17130A;
   --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
 }
 
@@ -96,26 +104,27 @@
   :root,
   .forum-shell[data-theme="auto"] {
     color-scheme: dark;
-    --background: #0E1A0F;
-    --background-soft: #16221A;
-    --surface: #0E1A0F;
-    --surface-raised: #16221A;
-    --surface-deep: #1F2D24;
-    --border: #2A3526;
-    --border-soft: #1F291E;
-    --border-strong: #405038;
-    --muted-fill: #1F2D24;
-    --accent: #D9AB4E;
-    --lavender: #93A971;
-    --highlight: #0E1A0F;
-    --warning: #C98757;
-    --danger: #C98757;
-    --success: #93A971;
-    --sky: #93A971;
-    --text: #E8E0BE;
-    --muted: #B8B49A;
-    --faint: #7C8071;
-    --on-accent: #0E1A0F;
+    --background: #17130A;
+    --background-soft: #1F1A0E;
+    --surface: #14131A;
+    --surface-raised: #1F1A0E;
+    --surface-deep: #2A2413;
+    --border: #362E17;
+    --border-soft: #221D10;
+    --border-strong: #514525;
+    --muted-fill: #2A2413;
+    --accent: #D9C6F2;
+    --lavender: #D9C6F2;
+    --highlight: #F5EE3A;
+    --warning: #C97B52;
+    --danger: #C97B52;
+    --success: #5C82E0;
+    --sky: #8FC4F5;
+    --navy: #5C82E0;
+    --text: #F4EEDA;
+    --muted: #B7AD8E;
+    --faint: #726B4F;
+    --on-accent: #17130A;
     --glow: 0 0 20px color-mix(in oklab, var(--accent) 28%, transparent);
   }
 }
@@ -303,11 +312,24 @@ p {
 }
 
 .brand-word {
-  font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  display: block;
+  width: 54px;
+  height: 20px;
+  flex: 0 0 auto;
+  overflow: visible;
+  fill: currentColor;
   color: var(--text);
+}
+
+.brand-word__accent {
+  fill: var(--accent);
+}
+
+.brand-word__x {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 14;
+  stroke-linecap: butt;
 }
 
 .brand-host {
@@ -933,15 +955,15 @@ p {
 /* Polls — aligned to the b02/b03/b04 handoff: a calm editorial card, soft
    result fills, and a dedicated creation surface instead of a thread toggle. */
 .board-create-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.board-new-poll { background: #c9aeeb; border-color: #c9aeeb; color: #2a2a0a; }
+.board-new-poll { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .board-poll { display: grid; gap: 12px; margin-top: 16px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
 .board-poll-top { display: flex; justify-content: space-between; gap: 12px; color: var(--faint); font-family: var(--sans); font-size: 12px; }
-.board-poll-live { color: #2846a8; font-weight: 700; }
+.board-poll-live { color: var(--navy); font-weight: 700; }
 .board-poll-rule, .board-poll-vote-hint { margin: 0; color: var(--faint); font-family: var(--sans); font-size: 12px; line-height: 1.5; }
 .board-poll-options { display: grid; gap: 8px; }
 .board-poll-option { position: relative; overflow: hidden; min-height: 44px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); cursor: pointer; text-align: left; }
 .board-poll-option:disabled { cursor: not-allowed; opacity: .72; }
-.board-poll-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, #c9aeeb 40%, transparent); pointer-events: none; }
+.board-poll-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--accent) 40%, transparent); pointer-events: none; }
 .board-poll-option-row { position: relative; display: flex; justify-content: space-between; gap: 12px; font-family: var(--sans); font-size: 14px; }
 .poll-draft-fields { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-raised); }
 .poll-draft-heading { display: flex; justify-content: space-between; gap: 12px; color: var(--faint); font-family: var(--mono); font-size: 11px; }
@@ -2971,7 +2993,7 @@ p {
 
 .theme-option.is-selected {
   border-color: var(--lavender);
-  box-shadow: 0 0 0 2px rgba(201, 174, 235, 0.5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 .theme-swatch {
@@ -3837,7 +3859,7 @@ h2 {
   height: 26px;
   border-radius: 50%;
   background: var(--lavender);
-  color: #fff;
+  color: var(--on-accent);
   font-family: var(--sans);
   font-size: 12px;
   flex-shrink: 0;
@@ -3902,7 +3924,7 @@ h2 {
 .rail-board-row .hashav,
 .hashav {
   background: var(--lavender);
-  color: #fff;
+  color: var(--on-accent);
   border-color: transparent;
 }
 
@@ -4044,7 +4066,7 @@ h2 {
 
 .post.signed .av {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .post .thread-line {
@@ -4095,8 +4117,10 @@ h2 {
 }
 
 .post .src {
-  font-family: var(--sans);
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--faint);
 }
 
@@ -4106,15 +4130,15 @@ h2 {
 
 .post .heading {
   margin: 0;
-  font-family: var(--sans);
+  font-family: var(--serif);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.4;
   color: var(--text);
 }
 
 .post .text {
-  font-family: var(--sans);
+  font-family: var(--serif);
   font-size: 16px;
   line-height: 1.75;
   color: var(--text);
@@ -4190,7 +4214,7 @@ h2 {
 
 .compose-prompt .hint,
 .compose-prompt p {
-  font-family: var(--sans);
+  font-family: var(--serif);
   font-style: italic;
   font-size: 16px;
   color: var(--faint);
@@ -4199,7 +4223,7 @@ h2 {
 .compose .avatar,
 .compose .av {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: transparent;
 }
 
@@ -4215,13 +4239,13 @@ h2 {
 }
 
 .board-head .heading h1 {
-  font-family: var(--sans);
+  font-family: var(--serif);
   font-size: 32px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .board-head .heading p {
-  font-family: var(--sans);
+  font-family: var(--serif);
   font-size: 16px;
   line-height: 1.7;
   color: var(--muted);
@@ -4265,7 +4289,7 @@ h2 {
 
 .board-thread-row.is-signed .board-thread-avatar {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .board-thread-title {
@@ -4395,9 +4419,9 @@ h2 {
   height: 23px;
 }
 
-/* ── Forest Letter fidelity pass ─────────────────────────────────────── */
-/* The handoff is intentionally quiet: paper surfaces are separated by ink
-   hairlines, while ochre is reserved for trust and the one compose action. */
+/* ── Lavender Signal fidelity pass ───────────────────────────────────── */
+/* The handoff is intentionally quiet: mist surfaces are separated by ink
+   hairlines, while lavender is reserved for identity and primary action. */
 .command-header {
   border-bottom: 0.5px solid var(--border);
   padding: 14px 28px;
@@ -4595,7 +4619,7 @@ h4,
     border-radius: 50%;
     background: var(--text);
     color: var(--background);
-    box-shadow: 0 6px 20px rgb(31 46 32 / 18%);
+    box-shadow: 0 6px 20px color-mix(in oklab, var(--text) 18%, transparent);
     z-index: 8;
   }
 
@@ -4624,6 +4648,12 @@ h4,
 
 /* ── Tablet · 768–1023: icons-only rail ────── */
 @media (max-width: 1023px) {
+  .cols {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 20px;
+    padding-inline: 20px;
+  }
+
   .rail {
     align-items: center;
     gap: 6px;

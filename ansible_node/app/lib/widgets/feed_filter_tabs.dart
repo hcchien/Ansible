@@ -18,13 +18,23 @@ class FeedFilterTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+    final selectedBackground = dark
+        ? AnsibleDesign.darkTintLavender
+        : AnsibleDesign.tintLavender;
+    final foreground = dark
+        ? AnsibleDesign.darkInkMuted
+        : AnsibleDesign.inkMuted;
+    final selectedForeground = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
     return SegmentedButton<FeedFilter>(
       style: SegmentedButton.styleFrom(
-        backgroundColor: AnsibleDesign.paper,
-        selectedBackgroundColor: AnsibleDesign.paperDeep,
-        foregroundColor: AnsibleDesign.inkMuted,
-        selectedForegroundColor: AnsibleDesign.ink,
-        side: const BorderSide(color: AnsibleDesign.rule, width: 0.5),
+        backgroundColor: background,
+        selectedBackgroundColor: selectedBackground,
+        foregroundColor: foreground,
+        selectedForegroundColor: selectedForeground,
+        side: BorderSide(color: rule, width: 0.5),
       ),
       segments: [
         ButtonSegment(value: FeedFilter.all, label: Text(l10n.feedAll)),

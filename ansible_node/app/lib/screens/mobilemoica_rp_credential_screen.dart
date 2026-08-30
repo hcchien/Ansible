@@ -405,10 +405,12 @@ class _MobileMoicaRPCredentialPanelState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
+                Icon(
                   Icons.verified_user_outlined,
                   size: 56,
-                  color: Color(0xFF0E7C7B),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AnsibleDesign.darkMoss
+                      : AnsibleDesign.moss,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -480,7 +482,9 @@ class _MobileMoicaRPCredentialPanelState
                   Text(
                     _errorMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFFC0392B)),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ],
                 if (_phase == _Phase.polling) ...[

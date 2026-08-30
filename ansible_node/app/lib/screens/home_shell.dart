@@ -2499,7 +2499,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             content: Text(
               appSyncSummaryMessage(result, text: SubpageL10n.of(context)),
             ),
-            backgroundColor: result.success ? null : Colors.red,
+            backgroundColor: result.success
+                ? null
+                : Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -2508,7 +2510,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.syncFailedMessage(error.toString())),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     } finally {
@@ -2675,7 +2677,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                      icon: Icon(
+                        Icons.delete,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       onPressed: () async {
                         final confirm = await showDialog<bool>(
                           context: context,
@@ -2690,7 +2695,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                               TextButton(
                                 onPressed: () => Navigator.pop(ctx, true),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.error,
                                 ),
                                 child: Text(l10n.delete),
                               ),

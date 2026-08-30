@@ -142,7 +142,7 @@ class _WalletVerifierConsentScreenState
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: const TextStyle(color: Color(0xFFC0392B)),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
             const SizedBox(height: 24),
@@ -197,7 +197,7 @@ class _InfoRow extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Colors.grey.shade700,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -219,8 +219,11 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline,
+          width: 0.5,
+        ),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),

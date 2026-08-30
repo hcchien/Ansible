@@ -436,7 +436,10 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             child: Text(MaterialLocalizations.of(context).deleteButtonTooltip),
           ),
         ],
@@ -807,7 +810,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
                       'relay_ops_delivery_failed',
                 }),
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );
         }
@@ -823,7 +826,7 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
                 'error': userFacingError(context, e),
               }),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -1562,10 +1565,16 @@ class _SyncSettingsScreenState extends State<SyncSettingsScreen>
                   const SizedBox(width: 8),
                   TextButton.icon(
                     onPressed: () => _deleteRemoteNode(node),
-                    icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                    icon: Icon(
+                      Icons.delete,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                     label: Text(
                       MaterialLocalizations.of(context).deleteButtonTooltip,
-                      style: const TextStyle(color: Colors.red),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ),
                 ],

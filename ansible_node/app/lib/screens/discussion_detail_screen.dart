@@ -24,7 +24,6 @@ class DiscussionDetailScreen extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      backgroundColor: const Color(0xFF0C1424),
       builder: (_) => SummaryReviewSheet(
         summary: summary,
         sourceLabels: [title],
@@ -51,7 +50,7 @@ class DiscussionDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(body, style: const TextStyle(color: Colors.white70)),
+              Text(body, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: () => _openSummaryReview(context),

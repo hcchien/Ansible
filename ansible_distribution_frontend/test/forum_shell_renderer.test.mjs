@@ -61,6 +61,7 @@ const shell = renderAppShell({
 assert.match(shell, /自持有 DID/);
 assert.match(shell, /新討論串/);
 assert.match(shell, /data-active-scene="forum"/);
+assert.match(shell, /data-theme="light"/);
 assert.match(shell, /data-personal-theme="dark"/);
 assert.match(shell, /data-forum-theme="light"/);
 assert.match(shell, /data-motion-mode="book"/);

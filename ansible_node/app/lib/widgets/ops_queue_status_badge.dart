@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../theme/ansible_design.dart';
 import 'package:ansible_store/ansible_store.dart';
 
 /// A small inline badge showing the count of pending ops in the local queue.
@@ -22,6 +24,13 @@ class OpsQueueStatusBadge extends StatelessWidget {
             .where((entry) => entry.status == 'blocked')
             .length;
         if (count == 0) return const SizedBox.shrink();
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        final background = blocked > 0
+            ? (dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger)
+            : (dark ? AnsibleDesign.darkHighlight : AnsibleDesign.highlight);
+        final foreground = blocked > 0
+            ? (dark ? AnsibleDesign.darkPaper : AnsibleDesign.paperWhite)
+            : (dark ? AnsibleDesign.darkPaper : AnsibleDesign.ink);
         return Tooltip(
           message: blocked > 0
               ? '$blocked local post(s) are waiting for board permission'
@@ -29,13 +38,13 @@ class OpsQueueStatusBadge extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: blocked > 0 ? Colors.deepOrange.shade200 : Colors.amber,
+              color: background,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
-                color: Colors.black,
+              style: TextStyle(
+                color: foreground,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),

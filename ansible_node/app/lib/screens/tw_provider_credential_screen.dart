@@ -371,10 +371,10 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
+                Icon(
                   Icons.verified_user_outlined,
                   size: 56,
-                  color: Color(0xFFFFB26B),
+                  color: Theme.of(context).colorScheme.secondary,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -421,7 +421,9 @@ class _TwProviderCredentialPanelState extends State<TwProviderCredentialPanel> {
                   Text(
                     _errorMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFFFF6B6B)),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ],
                 if (_offer != null && _phase == _Phase.polling) ...[

@@ -156,9 +156,11 @@ class _CredentialIssuanceWizardState extends State<CredentialIssuanceWizard> {
                             ),
                             selected:
                                 _selectedFlow ==
-                                CredentialIssuanceFlow.androidPassportNfcReaderTest,
+                                CredentialIssuanceFlow
+                                    .androidPassportNfcReaderTest,
                             onTap: () => _select(
-                              CredentialIssuanceFlow.androidPassportNfcReaderTest,
+                              CredentialIssuanceFlow
+                                  .androidPassportNfcReaderTest,
                             ),
                           ),
                         _FlowOptionButton(
@@ -331,7 +333,8 @@ class _AndroidPassportNfcReaderTestPanelState
       await _reader.scan(
         accessData: access,
         onPassportRead: (passport) {
-          verified = passport.sodSignatureVerified &&
+          verified =
+              passport.sodSignatureVerified &&
               passport.dataGroupHashesVerified &&
               passport.countrySigningCertificateVerified;
         },
@@ -366,9 +369,9 @@ class _AndroidPassportNfcReaderTestPanelState
             en: 'Android Passport NFC Reader Test',
           ),
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
@@ -395,7 +398,10 @@ class _AndroidPassportNfcReaderTestPanelState
                 controller: _dateOfBirth,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: context.uiCopy(zh: '出生日期 YYMMDD', en: 'Birth date YYMMDD'),
+                  labelText: context.uiCopy(
+                    zh: '出生日期 YYMMDD',
+                    en: 'Birth date YYMMDD',
+                  ),
                 ),
               ),
             ),
@@ -405,7 +411,10 @@ class _AndroidPassportNfcReaderTestPanelState
                 controller: _dateOfExpiry,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: context.uiCopy(zh: '有效期限 YYMMDD', en: 'Expiry YYMMDD'),
+                  labelText: context.uiCopy(
+                    zh: '有效期限 YYMMDD',
+                    en: 'Expiry YYMMDD',
+                  ),
                 ),
               ),
             ),
@@ -985,7 +994,11 @@ class _PassportNfcCredentialPanelState
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(Icons.nfc, size: 56, color: Color(0xFF2DD4A8)),
+        Icon(
+          Icons.nfc,
+          size: 56,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
         const SizedBox(height: 16),
         Text(
           'Passport NFC',
@@ -1001,7 +1014,7 @@ class _PassportNfcCredentialPanelState
             key: const ValueKey('passport-build-label'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               letterSpacing: 0.4,
             ),
           ),
@@ -1013,9 +1026,9 @@ class _PassportNfcCredentialPanelState
             en: 'The passport number is never sent or stored as raw text. Only a local identifier and an irreversible server deduplication UID are derived.',
           ),
           textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 24),
         OutlinedButton.icon(
@@ -1039,9 +1052,9 @@ class _PassportNfcCredentialPanelState
             en: 'MRZ recognition stays on device and is used only to unlock the chip. Enter the fields below only if scanning is unavailable.',
           ),
           textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -1050,9 +1063,9 @@ class _PassportNfcCredentialPanelState
             en: 'Creating the one-time passport proof downloads about 128 MB of public cryptographic parameters. They are hash-verified, kept temporarily on this device, and deleted after success or failure.',
           ),
           textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -1108,12 +1121,12 @@ class _PassportNfcCredentialPanelState
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.red.shade50,
+              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               _errorMessage!,
-              style: TextStyle(color: Colors.red.shade800),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
           const SizedBox(height: 16),
@@ -1518,10 +1531,10 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(
+        Icon(
           Icons.verified_user_outlined,
           size: 56,
-          color: Color(0xFF2DD4A8),
+          color: Theme.of(context).colorScheme.secondary,
         ),
         const SizedBox(height: 16),
         Text(
@@ -1537,9 +1550,9 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
             zh: '驗證 Email 後可取得聯絡方式驗證狀態',
             en: 'Verify email to receive contact verification status.',
           ),
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
@@ -1586,12 +1599,12 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.red.shade50,
+              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               _errorMessage!,
-              style: TextStyle(color: Colors.red.shade800),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
           const SizedBox(height: 16),
@@ -1604,9 +1617,9 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
             en: 'The email address is not stored in server records.\nCredentials are encrypted on this device.',
           ),
           textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -1710,13 +1723,15 @@ class _EmailOtpCredentialPanelState extends State<EmailOtpCredentialPanel> {
                 )
               : Icon(
                   isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: isDone ? Colors.green : Colors.grey,
+                  color: isDone
+                      ? Theme.of(context).colorScheme.secondary
+                      : Theme.of(context).colorScheme.outline,
                   size: 24,
                 ),
           title: Text(
             step.label,
             style: TextStyle(
-              color: isCurrent ? const Color(0xFF2DD4A8) : null,
+              color: isCurrent ? Theme.of(context).colorScheme.secondary : null,
               fontWeight: isCurrent ? FontWeight.bold : null,
             ),
           ),

@@ -12,9 +12,12 @@ const DEFAULT_UI_PREFERENCES = Object.freeze({
 export function renderAppShell({ viewModel, bodyHtml, uiPreferences = DEFAULT_UI_PREFERENCES }) {
   const preferences = normalizeUiPreferences(uiPreferences);
   const pageId = viewModel?.page?.id ?? 'unknown';
+  const activeTheme = preferences.activeScene === 'forum'
+    ? preferences.forumTheme
+    : preferences.personalTheme;
 
   return `
-    <div class="forum-shell" data-page-id="${escapeAttribute(pageId)}" data-active-scene="${escapeAttribute(preferences.activeScene)}" data-personal-theme="${escapeAttribute(preferences.personalTheme)}" data-forum-theme="${escapeAttribute(preferences.forumTheme)}" data-motion-mode="${escapeAttribute(preferences.motionMode)}">
+    <div class="forum-shell" data-page-id="${escapeAttribute(pageId)}" data-active-scene="${escapeAttribute(preferences.activeScene)}" data-theme="${escapeAttribute(activeTheme)}" data-personal-theme="${escapeAttribute(preferences.personalTheme)}" data-forum-theme="${escapeAttribute(preferences.forumTheme)}" data-motion-mode="${escapeAttribute(preferences.motionMode)}">
       ${renderCommandHeader(viewModel)}
       <main class="forum-main">
         ${bodyHtml}
@@ -59,7 +62,7 @@ export function renderCommandHeader(viewModel) {
     <header class="command-header topbar wtop">
       <a class="brand-lockup" href="#/" aria-label="${escapeAttribute(t('common.elixHomeAria'))}">
         ${renderElixMark()}
-        <span class="brand-word">Elix</span>
+        ${renderElixWordmark()}
         <span class="brand-host">${escapeHtml(t('common.socialIdentity'))}</span>
       </a>
       <div class="searchbox" role="search" aria-label="${escapeAttribute(t('common.searchAria'))}">
@@ -99,6 +102,18 @@ export function renderElixMark() {
         <circle cx="0" cy="-60" r="14" />
         <circle class="elix-mark__center" cx="0" cy="6" r="8" />
       </g>
+    </svg>
+  `;
+}
+
+export function renderElixWordmark() {
+  return `
+    <svg class="brand-word" viewBox="-7 -7 306 114" role="img" aria-label="Elix">
+      <path d="M0 0H64V14H14V43H50V57H14V86H64V100H0Z" />
+      <path d="M88 0H102V86H152V100H88Z" />
+      <path d="M176 23.8H190V100H176Z" />
+      <circle class="brand-word__accent" cx="183" cy="8.68" r="8.68" />
+      <path class="brand-word__x" d="M214 0L246.7 43M290 0L257.3 43M214 100L246.7 57M290 100L257.3 57" />
     </svg>
   `;
 }

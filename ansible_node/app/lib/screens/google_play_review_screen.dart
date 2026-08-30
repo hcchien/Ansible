@@ -17,8 +17,7 @@ class GooglePlayReviewScreen extends StatefulWidget {
   final DiscoveryClient? client;
 
   @override
-  State<GooglePlayReviewScreen> createState() =>
-      _GooglePlayReviewScreenState();
+  State<GooglePlayReviewScreen> createState() => _GooglePlayReviewScreenState();
 }
 
 class _GooglePlayReviewScreenState extends State<GooglePlayReviewScreen> {
@@ -27,7 +26,8 @@ class _GooglePlayReviewScreenState extends State<GooglePlayReviewScreen> {
   @override
   void initState() {
     super.initState();
-    final client = widget.client ??
+    final client =
+        widget.client ??
         DiscoveryClient(
           appViewBaseUrl: AppEnvironment.appViewBaseUrl,
           relayBaseUrl: AppEnvironment.defaultRelayBaseUrl,
@@ -51,10 +51,7 @@ class _GooglePlayReviewScreenState extends State<GooglePlayReviewScreen> {
             children: [
               const Text(
                 'Google Play review access',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -64,10 +61,10 @@ class _GooglePlayReviewScreenState extends State<GooglePlayReviewScreen> {
               ),
               const SizedBox(height: 20),
               if (snapshot.hasError)
-                const Text(
+                Text(
                   'Public content could not be loaded. Please verify the AppView '
                   'endpoint in this review build.',
-                  style: TextStyle(color: Colors.red),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 )
               else if (posts == null || posts.isEmpty)
                 const Text('No public posts are available at this time.')
@@ -81,23 +78,23 @@ class _GooglePlayReviewScreenState extends State<GooglePlayReviewScreen> {
   }
 
   Widget _postCard(DiscoveredPost post) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                post.authorDid,
-                style: const TextStyle(
-                  fontFamily: AnsibleDesign.mono,
-                  fontSize: 11,
-                  color: AnsibleDesign.inkMuted,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(post.body.isEmpty ? '(No text)' : post.body),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            post.authorDid,
+            style: const TextStyle(
+              fontFamily: AnsibleDesign.mono,
+              fontSize: 11,
+              color: AnsibleDesign.inkMuted,
+            ),
           ),
-        ),
-      );
+          const SizedBox(height: 8),
+          Text(post.body.isEmpty ? '(No text)' : post.body),
+        ],
+      ),
+    ),
+  );
 }

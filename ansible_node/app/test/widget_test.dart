@@ -81,7 +81,7 @@ void main() {
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Elix'), findsOneWidget);
+    expect(find.bySemanticsLabel('Elix'), findsOneWidget);
     expect(
       find.text('Create identity first,\nthen join the community.'),
       findsOneWidget,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_l10n.dart';
 import '../../services/network_status_service.dart';
+import '../../theme/ansible_design.dart';
 
 class NetworkStatusIndicator extends StatelessWidget {
   const NetworkStatusIndicator({
@@ -20,6 +21,7 @@ class NetworkStatusIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     IconData icon;
     Color color;
     String tooltip;
@@ -28,19 +30,19 @@ class NetworkStatusIndicator extends StatelessWidget {
     switch (status) {
       case NetworkStatus.online:
         icon = Icons.wifi_rounded;
-        color = Colors.green;
+        color = dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
         label = connectionType;
         tooltip = '${l10n.networkOnline} · $connectionType';
         break;
       case NetworkStatus.offline:
         icon = Icons.wifi_off_rounded;
-        color = Colors.red;
+        color = dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
         label = l10n.networkOffline;
         tooltip = l10n.networkOffline;
         break;
       case NetworkStatus.checking:
         icon = Icons.wifi_find_rounded;
-        color = Colors.orange;
+        color = dark ? AnsibleDesign.darkHighlight : AnsibleDesign.lavender;
         label = l10n.networkChecking;
         tooltip = l10n.networkChecking;
         break;

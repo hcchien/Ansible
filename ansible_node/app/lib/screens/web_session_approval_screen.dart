@@ -233,15 +233,18 @@ class _ApprovalContent extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             context.uiCopy(zh: '此請求已過期。', en: 'This request has expired.'),
-            style: const TextStyle(
-              color: Colors.red,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.error,
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
         if (error != null) ...[
           const SizedBox(height: 16),
-          Text(error!, style: const TextStyle(color: Colors.red)),
+          Text(
+            error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         ],
         const SizedBox(height: 28),
         Row(

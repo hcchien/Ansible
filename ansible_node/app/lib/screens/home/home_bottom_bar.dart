@@ -84,12 +84,13 @@ class HomeBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
+    final rule = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
     return Container(
-      decoration: const BoxDecoration(
-        color: AnsibleDesign.paper,
-        border: Border(
-          top: BorderSide(color: AnsibleDesign.ruleSoft, width: 1),
-        ),
+      decoration: BoxDecoration(
+        color: background,
+        border: Border(top: BorderSide(color: rule, width: 0.5)),
       ),
       child: SafeArea(
         top: false,
@@ -152,7 +153,7 @@ class HomeBottomBar extends StatelessWidget {
           key: Key('board_switch_${board.name}'),
           onTap: () => onSelectBoard(board),
           customBorder: const StadiumBorder(),
-          child: _cell(icon, active),
+          child: _cell(context, icon, active),
         ),
       ),
     );
@@ -176,14 +177,23 @@ class HomeBottomBar extends StatelessWidget {
           key: cellKey,
           onTap: onTap,
           customBorder: const StadiumBorder(),
-          child: _cell(icon, active, showDot: showDot),
+          child: _cell(context, icon, active, showDot: showDot),
         ),
       ),
     );
   }
 
-  Widget _cell(IconData icon, bool active, {bool showDot = false}) {
-    final color = active ? AnsibleDesign.ink : AnsibleDesign.inkFaint;
+  Widget _cell(
+    BuildContext context,
+    IconData icon,
+    bool active, {
+    bool showDot = false,
+  }) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final color = active
+        ? (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink)
+        : (dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint);
+    final background = dark ? AnsibleDesign.darkPaper : AnsibleDesign.paper;
     return SizedBox(
       height: 46,
       child: Stack(
@@ -203,7 +213,7 @@ class HomeBottomBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AnsibleDesign.accent,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AnsibleDesign.paper, width: 1.5),
+                  border: Border.all(color: background, width: 1.5),
                 ),
               ),
             ),

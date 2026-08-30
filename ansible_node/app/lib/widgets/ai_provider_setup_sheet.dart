@@ -2,6 +2,7 @@ import 'package:ansible_store/ansible_store.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_l10n.dart';
+import '../theme/ansible_design.dart';
 
 class AiProviderSetupResult {
   final String displayName;
@@ -181,8 +182,10 @@ class _AiProviderSetupSheetState extends State<AiProviderSetupSheet> {
               const SizedBox(height: 12),
               Text(
                 context.uiCopy(zh: '連線測試通過', en: 'Connection test passed'),
-                style: const TextStyle(
-                  color: Color(0xFFFFB76B),
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AnsibleDesign.darkMoss
+                      : AnsibleDesign.moss,
                   fontWeight: FontWeight.w700,
                 ),
               ),

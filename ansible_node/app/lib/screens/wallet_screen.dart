@@ -768,6 +768,11 @@ class _CredentialTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = SubpageL10n.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final surface = dark
+        ? AnsibleDesign.darkPaperElev
+        : AnsibleDesign.paperElev;
+    final rule = dark ? AnsibleDesign.darkRuleSoft : AnsibleDesign.ruleSoft;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -777,8 +782,8 @@ class _CredentialTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: AnsibleDesign.paperElev,
-            border: Border.all(color: AnsibleDesign.ruleSoft, width: 0.5),
+            color: surface,
+            border: Border.all(color: rule, width: 0.5),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -788,13 +793,14 @@ class _CredentialTile extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: _statusColor(
+                    context,
                     credential.status,
                   ).withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.verified_user_outlined,
-                  color: _statusColor(credential.status),
+                  color: _statusColor(context, credential.status),
                 ),
               ),
               const SizedBox(width: 14),
@@ -890,7 +896,7 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(status);
+    final color = _statusColor(context, status);
     final text = SubpageL10n.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -911,16 +917,17 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-Color _statusColor(WalletCredentialStatus status) {
+Color _statusColor(BuildContext context, WalletCredentialStatus status) {
+  final dark = Theme.of(context).brightness == Brightness.dark;
   switch (status) {
     case WalletCredentialStatus.active:
-      return const Color(0xFF47D18C);
+      return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
     case WalletCredentialStatus.expired:
-      return const Color(0xFFFFC857);
+      return dark ? AnsibleDesign.darkHighlight : AnsibleDesign.lavender;
     case WalletCredentialStatus.revoked:
     case WalletCredentialStatus.suspended:
     case WalletCredentialStatus.deleted:
-      return const Color(0xFFFF6B6B);
+      return dark ? AnsibleDesign.darkEmber : AnsibleDesign.danger;
   }
 }
 

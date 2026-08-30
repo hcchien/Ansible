@@ -79,6 +79,83 @@ class AnsibleDesign {
     'MingLiU',
   ];
 
+  static TextTheme _editorialTextTheme(
+    TextTheme base, {
+    required Color foreground,
+    required Color muted,
+  }) {
+    TextStyle serif(
+      TextStyle? style, {
+      double? size,
+      double? height,
+      FontWeight? weight,
+      Color? color,
+    }) => (style ?? const TextStyle()).copyWith(
+      fontFamily: AnsibleDesign.serif,
+      fontFamilyFallback: fallback,
+      fontSize: size,
+      height: height,
+      fontWeight: weight,
+      color: color ?? foreground,
+      letterSpacing: 0,
+    );
+
+    TextStyle chrome(TextStyle? style, {Color? color}) =>
+        (style ?? const TextStyle()).copyWith(
+          fontFamily: AnsibleDesign.sans,
+          fontFamilyFallback: fallback,
+          color: color ?? foreground,
+        );
+
+    return base.copyWith(
+      displayLarge: serif(base.displayLarge, weight: FontWeight.w500),
+      displayMedium: serif(base.displayMedium, weight: FontWeight.w500),
+      displaySmall: serif(
+        base.displaySmall,
+        size: 28,
+        height: 1.2,
+        weight: FontWeight.w500,
+      ),
+      headlineLarge: serif(base.headlineLarge, weight: FontWeight.w500),
+      headlineMedium: serif(
+        base.headlineMedium,
+        size: 28,
+        height: 1.2,
+        weight: FontWeight.w500,
+      ),
+      headlineSmall: serif(
+        base.headlineSmall,
+        size: 22,
+        height: 1.3,
+        weight: FontWeight.w500,
+      ),
+      titleLarge: serif(
+        base.titleLarge,
+        size: 22,
+        height: 1.3,
+        weight: FontWeight.w500,
+      ),
+      titleMedium: serif(
+        base.titleMedium,
+        size: 17,
+        height: 1.35,
+        weight: FontWeight.w500,
+      ),
+      titleSmall: serif(
+        base.titleSmall,
+        size: 15,
+        height: 1.4,
+        weight: FontWeight.w500,
+      ),
+      bodyLarge: serif(base.bodyLarge, size: 16, height: 1.7),
+      bodyMedium: serif(base.bodyMedium, size: 14.5, height: 1.65),
+      bodySmall: serif(base.bodySmall, size: 13.5, height: 1.6, color: muted),
+      labelLarge: chrome(base.labelLarge),
+      labelMedium: chrome(base.labelMedium, color: muted),
+      labelSmall: chrome(base.labelSmall, color: muted),
+    );
+  }
+
   /// Paper screens always use this switch palette, even when the device is in
   /// dark mode. Some Paper surfaces intentionally stay light, and inheriting
   /// the app-wide dark switch theme made their selected state look black.
@@ -106,7 +183,7 @@ class AnsibleDesign {
       primary: ink,
       onPrimary: paper,
       secondary: accent,
-      onSecondary: paper,
+      onSecondary: ink,
       surface: paper,
       onSurface: ink,
       surfaceContainerHighest: paperElev,
@@ -123,11 +200,10 @@ class AnsibleDesign {
     );
 
     return base.copyWith(
-      textTheme: base.textTheme.apply(
-        bodyColor: ink,
-        displayColor: ink,
-        fontFamily: sans,
-        fontFamilyFallback: fallback,
+      textTheme: _editorialTextTheme(
+        base.textTheme,
+        foreground: ink,
+        muted: inkMuted,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: paper,
@@ -140,16 +216,16 @@ class AnsibleDesign {
         filled: true,
         fillColor: paperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: rule),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: rule),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: rule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: ink),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: accent, width: 1.2),
         ),
         labelStyle: const TextStyle(color: inkMuted),
         hintStyle: const TextStyle(
@@ -160,7 +236,7 @@ class AnsibleDesign {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: Colors.white,
+          foregroundColor: ink,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(
@@ -187,15 +263,63 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: ruleSoft, width: 0.5),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
         backgroundColor: paperElev,
-        selectedColor: paperDeep,
+        selectedColor: accentSoft,
         side: const BorderSide(color: rule, width: 0.5),
         labelStyle: const TextStyle(color: inkMuted, fontFamily: mono),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: paperWhite,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: rule, width: 0.5),
+        ),
+        titleTextStyle: const TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          color: ink,
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: paperWhite,
+        modalBackgroundColor: paperWhite,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+      ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: paper,
+        indicatorColor: accentSoft,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontFamily: sans, fontSize: 11.5),
+        ),
+      ),
+      navigationRailTheme: const NavigationRailThemeData(
+        backgroundColor: paper,
+        indicatorColor: accentSoft,
+        elevation: 0,
+        selectedIconTheme: IconThemeData(color: ink),
+        unselectedIconTheme: IconThemeData(color: inkFaint),
+        selectedLabelTextStyle: TextStyle(fontFamily: sans, color: ink),
+        unselectedLabelTextStyle: TextStyle(fontFamily: sans, color: inkFaint),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: ink,
+        contentTextStyle: const TextStyle(fontFamily: sans, color: paper),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        behavior: SnackBarBehavior.floating,
       ),
       // The Material 3 default uses a very dark unselected track with this
       // colour scheme.  On paper it made ON and OFF settings look almost the
@@ -230,11 +354,10 @@ class AnsibleDesign {
     );
 
     return base.copyWith(
-      textTheme: base.textTheme.apply(
-        bodyColor: darkInk,
-        displayColor: darkInk,
-        fontFamily: sans,
-        fontFamilyFallback: fallback,
+      textTheme: _editorialTextTheme(
+        base.textTheme,
+        foreground: darkInk,
+        muted: darkInkMuted,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: darkPaper,
@@ -247,16 +370,16 @@ class AnsibleDesign {
         filled: true,
         fillColor: darkPaperElev,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkRule),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkRule),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkRule, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkInk),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkOchre, width: 1.2),
         ),
         labelStyle: const TextStyle(color: darkInkMuted),
         hintStyle: const TextStyle(
@@ -294,15 +417,66 @@ class AnsibleDesign {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: darkRuleSoft, width: 0.5),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
         backgroundColor: darkPaperElev,
-        selectedColor: darkPaperDeep,
+        selectedColor: darkTintLavender,
         side: const BorderSide(color: darkRule, width: 0.5),
         labelStyle: const TextStyle(color: darkInkMuted, fontFamily: mono),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: darkPaperWhite,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: darkRule, width: 0.5),
+        ),
+        titleTextStyle: const TextStyle(
+          fontFamily: serif,
+          fontFamilyFallback: fallback,
+          color: darkInk,
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: darkPaperWhite,
+        modalBackgroundColor: darkPaperWhite,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+      ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: darkPaper,
+        indicatorColor: darkTintLavender,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontFamily: sans, fontSize: 11.5),
+        ),
+      ),
+      navigationRailTheme: const NavigationRailThemeData(
+        backgroundColor: darkPaper,
+        indicatorColor: darkTintLavender,
+        elevation: 0,
+        selectedIconTheme: IconThemeData(color: darkInk),
+        unselectedIconTheme: IconThemeData(color: darkInkFaint),
+        selectedLabelTextStyle: TextStyle(fontFamily: sans, color: darkInk),
+        unselectedLabelTextStyle: TextStyle(
+          fontFamily: sans,
+          color: darkInkFaint,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: darkInk,
+        contentTextStyle: const TextStyle(fontFamily: sans, color: darkPaper),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        behavior: SnackBarBehavior.floating,
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -388,22 +562,98 @@ class ElixWordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      AnsibleDesign.brandName,
-      style: TextStyle(
-        fontFamily: AnsibleDesign.display,
-        fontFamilyFallback: AnsibleDesign.fallback,
-        fontSize: fontSize,
-        fontWeight: FontWeight.w800,
-        height: 1,
-        letterSpacing: -0.6,
-        color:
-            color ??
-            (Theme.of(context).brightness == Brightness.dark
-                ? AnsibleDesign.darkInk
-                : AnsibleDesign.ink),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = color ?? (dark ? AnsibleDesign.darkInk : AnsibleDesign.ink);
+    final accent = dark ? AnsibleDesign.darkOchre : AnsibleDesign.accent;
+    return Semantics(
+      label: AnsibleDesign.brandName,
+      image: true,
+      child: ExcludeSemantics(
+        child: CustomPaint(
+          size: Size(fontSize * (306 / 114), fontSize),
+          painter: _ElixWordmarkPainter(color: ink, accent: accent),
+        ),
       ),
     );
+  }
+}
+
+class _ElixWordmarkPainter extends CustomPainter {
+  const _ElixWordmarkPainter({required this.color, required this.accent});
+
+  final Color color;
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const sourceWidth = 306.0;
+    const sourceHeight = 114.0;
+    final scale = (size.width / sourceWidth).clamp(
+      0.0,
+      size.height / sourceHeight,
+    );
+    canvas.save();
+    canvas.translate(
+      (size.width - sourceWidth * scale) / 2 + 7 * scale,
+      (size.height - sourceHeight * scale) / 2 + 7 * scale,
+    );
+    canvas.scale(scale);
+
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 14
+      ..strokeCap = StrokeCap.butt;
+
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, 0)
+        ..lineTo(64, 0)
+        ..lineTo(64, 14)
+        ..lineTo(14, 14)
+        ..lineTo(14, 43)
+        ..lineTo(50, 43)
+        ..lineTo(50, 57)
+        ..lineTo(14, 57)
+        ..lineTo(14, 86)
+        ..lineTo(64, 86)
+        ..lineTo(64, 100)
+        ..lineTo(0, 100)
+        ..close(),
+      fill,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(88, 0)
+        ..lineTo(102, 0)
+        ..lineTo(102, 86)
+        ..lineTo(152, 86)
+        ..lineTo(152, 100)
+        ..lineTo(88, 100)
+        ..close(),
+      fill,
+    );
+    canvas.drawRect(const Rect.fromLTRB(176, 23.8, 190, 100), fill);
+    canvas.drawCircle(
+      const Offset(183, 8.68),
+      8.68,
+      Paint()
+        ..color = accent
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawLine(const Offset(214, 0), const Offset(246.7, 43), stroke);
+    canvas.drawLine(const Offset(290, 0), const Offset(257.3, 43), stroke);
+    canvas.drawLine(const Offset(214, 100), const Offset(246.7, 57), stroke);
+    canvas.drawLine(const Offset(290, 100), const Offset(257.3, 57), stroke);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ElixWordmarkPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.accent != accent;
   }
 }
 
@@ -493,10 +743,14 @@ class AnsibleStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final rule = dark ? AnsibleDesign.darkRule : AnsibleDesign.rule;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final signal = dark ? AnsibleDesign.darkMoss : AnsibleDesign.spore;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        border: Border.all(color: AnsibleDesign.rule, width: 0.5),
+        border: Border.all(color: rule, width: 0.5),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -507,16 +761,16 @@ class AnsibleStatusChip extends StatelessWidget {
             height: 7,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: dot ?? AnsibleDesign.spore,
+              color: dot ?? signal,
             ),
           ),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AnsibleDesign.mono,
               fontSize: 11.5,
-              color: AnsibleDesign.inkMuted,
+              color: muted,
               letterSpacing: 0.8,
             ),
           ),
@@ -540,6 +794,10 @@ class AnsibleSectionHead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? AnsibleDesign.darkInk : AnsibleDesign.ink;
+    final muted = dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
+    final faint = dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 18, 0, 10),
       child: Row(
@@ -551,10 +809,11 @@ class AnsibleSectionHead extends StatelessWidget {
               zh,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
+                fontFamily: AnsibleDesign.serif,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: AnsibleDesign.ink,
+                color: ink,
               ),
             ),
           ),
@@ -562,10 +821,10 @@ class AnsibleSectionHead extends StatelessWidget {
           Expanded(
             child: Text(
               en,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AnsibleDesign.mono,
                 fontSize: 11,
-                color: AnsibleDesign.inkFaint,
+                color: faint,
                 letterSpacing: 1.4,
               ),
               overflow: TextOverflow.ellipsis,
@@ -574,10 +833,10 @@ class AnsibleSectionHead extends StatelessWidget {
           if (action != null)
             Text(
               action!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AnsibleDesign.mono,
                 fontSize: 10,
-                color: AnsibleDesign.inkMuted,
+                color: muted,
                 letterSpacing: 0.8,
               ),
             ),
@@ -713,7 +972,7 @@ class ElixSourceLabel extends StatelessWidget {
       case 'board':
         return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
       case 'circle':
-        return dark ? AnsibleDesign.ember : AnsibleDesign.ember;
+        return dark ? AnsibleDesign.darkHighlight : AnsibleDesign.ink;
       default:
         return dark ? AnsibleDesign.darkInkFaint : AnsibleDesign.inkFaint;
     }
@@ -763,7 +1022,8 @@ class AudienceChip extends StatelessWidget {
           alpha: 0.15,
         );
       case 'circle':
-        return AnsibleDesign.ember.withValues(alpha: 0.15);
+        return (dark ? AnsibleDesign.darkHighlight : AnsibleDesign.highlight)
+            .withValues(alpha: 0.22);
       default:
         return dark ? AnsibleDesign.darkPaperElev : AnsibleDesign.paperElev;
     }
@@ -776,7 +1036,7 @@ class AudienceChip extends StatelessWidget {
       case 'board':
         return dark ? AnsibleDesign.darkMoss : AnsibleDesign.moss;
       case 'circle':
-        return AnsibleDesign.ember;
+        return dark ? AnsibleDesign.darkHighlight : AnsibleDesign.ink;
       default:
         return dark ? AnsibleDesign.darkInkMuted : AnsibleDesign.inkMuted;
     }

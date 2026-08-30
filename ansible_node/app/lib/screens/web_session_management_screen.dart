@@ -93,7 +93,10 @@ class _WebSessionManagementScreenState
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               if (_error != null && index == 0) {
-                return Text(_error!, style: const TextStyle(color: Colors.red));
+                return Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                );
               }
               final session = sessions[index - (_error == null ? 0 : 1)];
               return _WebSessionTile(
